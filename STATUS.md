@@ -10,6 +10,54 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4/P6/P7 wider retained moments: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/ppml-wide-moments-local-2026-09-13/README.md)
+adopts fixed two-tile standardization above 64 active columns against accepted
+numerical `9ec47b8` (evidence-only `374d257` does not change that source). Each
+existing Gram-row partition uses at most 64 weighted left and 64 standardized
+right values: 1024 stack payload bytes, no heap, retained state or N-by-K copy.
+Every output keeps its exact observation/FMA order, selected mapping, weights
+and reference scales. The up-to-64 cache, scratch/unscaled/single-column paths,
+one-shot OLS, QR, rank and strict current-frame policies remain unchanged.
+[ADR 0057](docs/adr/0057-wider-retained-dense-moment-tiles.md) records the boundary.
+
+The complete original protocol now passes on repaired artifacts: 17 new pairs,
+including original PW K257 warm-up/full requests, nine primary pairs, seven
+controls and a separate private audit. Earlier incomplete probe pairs are not
+pooled. Unit K65/FW K129/PW K257 command medians are 2.308→1.678 /
+4.479→3.213 / 16.106→15.171 seconds; median paired gains are 29.2%/28.0%/5.4%.
+Finite-solve medians fall 0.730→0.310 / 1.247→0.405 / 1.282→0.756 seconds,
+with lower strict/final work. Every primary pair improves. K257 inference and
+publication dominate its remaining time; their costs are retained in totals.
+
+Every scientific CSV is byte-identical; samples, rank/status/DoF, cluster and
+separation tables, solver choices and certificates agree. Native peaks/models
+are exact in all 17 pairs and admitted; primary deltas remain 364.49/287.97/
+253.09 MB. PW sampled RSS rises 0.334→0.381 GiB; no memory saving is claimed.
+Largest absolute control increase is unchanged complete K50 +89 ms/1.2%; low
+FW adds 30 ms/3.3%. No control crosses the review envelope. The private audit
+falls 21.923→19.398 seconds and retains zero events/live/peak growth over 16
+iterations, stable capacities and fresh/warm equivalence. Retry/fallback counts
+are zero throughout. Public and private timing aggregates remain separate.
+
+Sixty-two distinct Rust checks and both independent dummy-Poisson/Hessian/
+sandwich oracle arms pass. One matching integration test was initially outside
+`--lib` filters and explicitly completed after timing; no failing numerical test
+or fit was rerun. Isolated universal/static and actual arm64 ABI checks pass.
+Candidate plugin is `d1e8efc290851ace10f917ac3cb630415bfaa975a2da588dead4a85b87fa2abc`,
+with all 176 source/ado/fixture inputs verified. Installed dist and the 97
+unrelated STATUS additions/358 original untracked paths are preserved. No agents,
+cluster, qualification or push occurred.
+
+This closes the bounded wider-moment evaluation. P6's width exercise combines
+these 63/64/65/128/129/257 finite-column tests with the existing weighted-Schur
+15/16/64/65 actual-RHS controls; rank policy is unchanged. Broader P4/P6/P7,
+P5 and R1–R5 remain open. Next inspect the now-dominant K257 covariance/
+eigensystem work, then remaining construction/predictor/state and centered-tile
+opportunities. Complete #27 before the authorized two-agent investigation,
+upstream CMG review and later small SCC campaign.
+
 ## P4/P6 published covariance inspection: adopted local repair
 
 The [source-bound report](benchmarks/reports/development/ppml-psd-validation-local-2026-09-13/README.md)

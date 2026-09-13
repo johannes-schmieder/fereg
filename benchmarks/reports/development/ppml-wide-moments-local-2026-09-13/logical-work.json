@@ -1,0 +1,35 @@
+{
+  "note": "Source/shape-derived counts for full-rank scaled retained dense calls. Not hardware counters, total passes or instrumented whole-fit counts.",
+  "cases": [
+    {
+      "full_rank_columns": 65,
+      "workers": 4,
+      "columns_per_partition": 17,
+      "partitions": 4,
+      "standardizations_per_observation_before": 2210,
+      "standardizations_per_observation_after": 223,
+      "gram_and_rhs_fmas_unchanged": 2210,
+      "stack_payload_bytes_per_partition": 1024
+    },
+    {
+      "full_rank_columns": 129,
+      "workers": 4,
+      "columns_per_partition": 33,
+      "partitions": 4,
+      "standardizations_per_observation_before": 8514,
+      "standardizations_per_observation_after": 447,
+      "gram_and_rhs_fmas_unchanged": 8514,
+      "stack_payload_bytes_per_partition": 1024
+    },
+    {
+      "full_rank_columns": 257,
+      "workers": 16,
+      "columns_per_partition": 17,
+      "partitions": 16,
+      "standardizations_per_observation_before": 33410,
+      "standardizations_per_observation_after": 2329,
+      "gram_and_rhs_fmas_unchanged": 33410,
+      "stack_payload_bytes_per_partition": 1024
+    }
+  ]
+}

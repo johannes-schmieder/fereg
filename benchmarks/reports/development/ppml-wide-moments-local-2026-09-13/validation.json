@@ -1,0 +1,163 @@
+{
+  "arm64_actual_abi_pass": true,
+  "baseline_commit": "9ec47b88c9c78773fa4c8b7cba955ba397ba9ab3",
+  "build_log_sha256": "b7ce8e6bb01f9591190c316be0d16b8e6cce455cd038c72bf9dab043b9f0eba2",
+  "candidate_main_before_commit": "374d257",
+  "distinct_tests": 62,
+  "independent_oracles": [
+    {
+      "arm": "baseline",
+      "fixture": "feppml_one_fe_dummy_oracle",
+      "fixture_sha256": "33cbf439fd83dafd0ed37265140e8319175d796db86b576d89ddffa8df248742",
+      "log_sha256": "4931d3d30b074f22f726f91e505ce1ff71dda7cc8e7a9fbaa0021ed0594f587d",
+      "plugin_sha256": "411ed113101399adda2c893d0b3e51fa16cbc96e230871ec568e8b346a689126",
+      "process_rc": 0,
+      "rc": 0,
+      "sentinels": [
+        "END_FIXTURE|feppml_one_fe_dummy_oracle|rc=0",
+        "ONE_FE_ORACLE_DONE|feppml_one_fe_dummy_oracle|rc=0"
+      ]
+    },
+    {
+      "arm": "candidate",
+      "fixture": "feppml_one_fe_dummy_oracle",
+      "fixture_sha256": "33cbf439fd83dafd0ed37265140e8319175d796db86b576d89ddffa8df248742",
+      "log_sha256": "2e66d6ddf7243723cca4ae9ae02028e4e1b74be6214e1f6c733a071a5f4f296f",
+      "plugin_sha256": "d1e8efc290851ace10f917ac3cb630415bfaa975a2da588dead4a85b87fa2abc",
+      "process_rc": 0,
+      "rc": 0,
+      "sentinels": [
+        "END_FIXTURE|feppml_one_fe_dummy_oracle|rc=0",
+        "ONE_FE_ORACLE_DONE|feppml_one_fe_dummy_oracle|rc=0"
+      ]
+    }
+  ],
+  "notes": [
+    "Initial --lib filter selection exercised 61 distinct tests; the one matching numeric-sample integration oracle was then run explicitly after timing, completing all 62 planned checks. No failed numerical test or fit was retried.",
+    "The supplemental PSD control-label correction is separate in evidence-only 374d257; numerical baseline remains 9ec47b8."
+  ],
+  "scope": "Local development: no installed dist replacement, agents, SCC, Windows, qualification or push.",
+  "test_runs": [
+    {
+      "filter": "finite_wls_kernel::tests",
+      "log_sha256": "225198e700c56ecd184aa3bac272c40349d07e69b81081bcd8ee52f0c4e67cfe",
+      "passed": [
+        "ols::finite_wls_kernel::tests::dropped_span_certificate_accepts_a_zero_gram_only_at_rank_zero",
+        "ols::finite_wls_kernel::tests::pivoted_and_canonical_factorizations_share_the_same_primitives",
+        "ols::finite_wls_kernel::tests::dropped_span_certificate_fails_closed_inside_the_threshold_guard",
+        "ols::finite_wls_kernel::tests::dropped_span_certificate_rejects_an_independent_omitted_direction",
+        "ols::finite_wls_kernel::tests::dropped_span_certificate_accepts_an_exact_duplicate",
+        "ols::finite_wls_kernel::tests::rank_revealing_factor_marks_both_sides_of_threshold_guard_ambiguous",
+        "ols::finite_wls_kernel::tests::retained_qr_rejects_nonfinite_observation_space_inputs",
+        "ols::finite_wls_kernel::tests::retained_qr_rank_decision_is_invariant_to_exact_column_scaling",
+        "ols::finite_wls_kernel::tests::dropped_span_certificate_rejects_asymmetric_and_negative_grams",
+        "ols::finite_wls_kernel::tests::retained_qr_marks_both_sides_of_rank_threshold_ambiguous",
+        "ols::finite_wls_kernel::tests::retained_qr_drops_general_exact_linear_combinations",
+        "ols::finite_wls_kernel::tests::retained_qr_handles_extreme_finite_column_scales",
+        "ols::finite_wls_kernel::tests::retained_qr_direct_span_accepts_an_exact_dependency",
+        "ols::finite_wls_kernel::tests::retained_qr_direct_span_rejects_a_perturbed_omitted_direction",
+        "ols::finite_wls_kernel::tests::retained_qr_direct_span_fails_closed_in_the_threshold_guard",
+        "ols::finite_wls_kernel::tests::retained_qr_covers_single_column_and_clear_threshold_sides",
+        "ols::finite_wls_kernel::tests::rank_revealing_factor_drops_an_exact_duplicate_and_compacts_outputs",
+        "ols::finite_wls_kernel::tests::retained_qr_is_canonical_under_row_and_column_permutations",
+        "ols::finite_wls_kernel::tests::retained_dense_moment_cache_rejects_nonfinite_selected_values",
+        "ols::finite_wls_kernel::tests::retained_qr_handles_exact_deficiency_above_sixty_four_columns",
+        "ols::finite_wls_kernel::tests::rank_revealing_factor_is_deterministic_and_full_stride_above_64_columns",
+        "ols::finite_wls_kernel::tests::retained_dense_moments_preserve_scalar_order_across_cache_boundaries",
+        "ols::finite_wls_kernel::tests::wide_prepared_moments_are_bounded_deterministic_and_match_direct_sums"
+      ],
+      "rc": 0
+    },
+    {
+      "filter": "retained_",
+      "log_sha256": "0e88f233d54c2c1692a27a641ce8784d1763173851ab808e74d41cce538debcd",
+      "passed": [
+        "ols::finite_wls_kernel::tests::retained_qr_drops_general_exact_linear_combinations",
+        "ols::finite_wls_kernel::tests::retained_qr_rank_decision_is_invariant_to_exact_column_scaling",
+        "ols::finite_wls_kernel::tests::retained_qr_rejects_nonfinite_observation_space_inputs",
+        "ols::finite_wls_kernel::tests::retained_qr_marks_both_sides_of_rank_threshold_ambiguous",
+        "ols::finite_wls_kernel::tests::retained_qr_direct_span_accepts_an_exact_dependency",
+        "ols::finite_wls_kernel::tests::retained_qr_handles_extreme_finite_column_scales",
+        "ols::finite_wls_kernel::tests::retained_qr_direct_span_fails_closed_in_the_threshold_guard",
+        "ols::finite_wls_kernel::tests::retained_qr_direct_span_rejects_a_perturbed_omitted_direction",
+        "fe::topology_finalize::tests::no_effects_copy_no_sources_but_preserve_retained_rows",
+        "ols::finite_wls_kernel::tests::retained_qr_covers_single_column_and_clear_threshold_sides",
+        "fe::design::tests::retained_effect_roles_rank_levels_and_break_ties_by_original_position",
+        "memory::tests::lsmr_batch_model_bounds_window_frames_and_retained_outputs",
+        "ols::finite_wls_kernel::tests::retained_qr_is_canonical_under_row_and_column_permutations",
+        "ppml::categorical_lsmr::tests::joint_memory_estimate_scales_with_retained_design_and_thread_team",
+        "ppml_separation::prepared_coordinator::tests::generation_zero_candidate_and_retained_axes_share_one_allocation",
+        "ppml::prepared::tests::unweighted_fractional_outcomes_are_retained_with_physical_effective_n",
+        "ppml::memory::tests::retained_generation_zero_active_pweights_are_charged_exactly",
+        "ols::prepared_fit::tests::strided_session_cache_compacts_in_place_and_reports_retained_capacity",
+        "ols::finite_wls_kernel::tests::retained_dense_moment_cache_rejects_nonfinite_selected_values",
+        "ols::finite_wls_kernel::tests::retained_qr_handles_exact_deficiency_above_sixty_four_columns",
+        "fe::borrowed_map::tests::retained_map_level_major_accumulator_reconstructs_every_rhs",
+        "fe::topology_slope_map::tests::retained_coefficient_connected_hint_matches_component_normalization",
+        "fe::topology_slope_map::tests::retained_coefficient_saved_only_plan_omits_combined_observation_vector",
+        "ols::prepared_fit::tests::strict_rollback_is_allocation_free_and_preserves_retained_storage",
+        "ols::prepared_fit::tests::retained_fresh_frozen_and_strict_kernels_use_requested_team_against_global_pool",
+        "ols::finite_wls_kernel::tests::retained_dense_moments_preserve_scalar_order_across_cache_boundaries",
+        "ols::prepared_fit::tests::retained_session_covers_zero_and_single_finite_rank_through_final_handoff",
+        "ppml::categorical_lsmr::tests::joint_solver_tracks_retained_team_across_one_four_one",
+        "ols::prepared_fit::tests::retained_low_residual_report_preserves_actual_work_without_changing_one_shot",
+        "ols::prepared_fit::tests::retained_session_drops_general_and_scaled_exact_linear_combinations",
+        "ols::prepared_fit::tests::retained_session_matches_one_shot_above_sixty_four_columns_with_exact_deficiency",
+        "fe::borrowed_map::tests::retained_lsmr_reuses_preparation_and_preserves_each_batch",
+        "ols::prepared_fit::tests::categorical_one_fe_initial_projection_preserves_warm_and_retained_paths"
+      ],
+      "rc": 0
+    },
+    {
+      "filter": "strict_",
+      "log_sha256": "4e55438acd680f3410fc59b2b6374488d02e092fc860c0fec93580ec8687d28f",
+      "passed": [
+        "ppml::prepared_irls::tests::strict_candidate_rank_predicate_is_shared_by_both_checkpoints",
+        "ppml::prepared_irls::tests::strict_profile_movement_never_weakens_a_tiny_user_tolerance",
+        "ppml::prepared_irls::tests::strict_projection_refinement_is_bounded_and_never_loosens_a_target",
+        "ppml::prepared_irls::tests::experimental_strict_guard_ignores_only_nonestimable_coefficient_slots",
+        "ppml::family::tests::exposure_requires_strict_positivity",
+        "ppml::memory::tests::strict_final_solve_charges_four_vectors_and_exact_candidate_phase_maximum",
+        "fe::topology_slope_map::tests::borrowed_cg_recovery_matches_strict_lsmr_coefficients",
+        "fe::topology_slope_map::tests::four_sweep_sd_pilot_then_lsmr_matches_strict_lsmr",
+        "ols::prepared_fit::tests::rejected_uncertified_strict_candidate_restores_exact_basis_transaction",
+        "ols::prepared_fit::tests::strict_rollback_is_allocation_free_and_preserves_retained_storage",
+        "ppml::prepared_irls::tests::strict_checkpoint_movement_resumes_bounded_irls_at_both_checkpoints",
+        "ppml::prepared_irls::tests::strict_candidate_fuses_two_fe_map_design_and_response_projection",
+        "ppml::prepared_irls::tests::strict_caller_error_and_unwind_restore_a_usable_prior_session",
+        "ppml::prepared_estimator::tests::saved_fe_recovery_uses_the_hessian_of_the_published_strict_state",
+        "ppml::prepared_estimator::tests::zero_active_control_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh",
+        "ppml::prepared_estimator::tests::three_effect_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh",
+        "ols::prepared_fit::tests::retained_fresh_frozen_and_strict_kernels_use_requested_team_against_global_pool",
+        "ols::prepared_fit::tests::certified_linear_session_fresh_frozen_and_strict_match_across_routes"
+      ],
+      "rc": 0
+    },
+    {
+      "filter": "ppml_fused_weight_refresh_rejects_stale_fe_collinearity_basis",
+      "log_sha256": "27a8a4348c5f702fb1446323e342576d71931ab458dff4aab7fba9eb192e3ed5",
+      "passed": [
+        "ols::prepared_fit::tests::ppml_fused_weight_refresh_rejects_stale_fe_collinearity_basis"
+      ],
+      "rc": 0
+    },
+    {
+      "filter": "certified_linear_session_generation_invalidation_is_fail_closed",
+      "log_sha256": "36bb67a5eacaa795f4c926f19e9672e651fba854c5089a04697e0e679ccf5a5f",
+      "passed": [
+        "ols::prepared_fit::tests::certified_linear_session_generation_invalidation_is_fail_closed"
+      ],
+      "rc": 0
+    },
+    {
+      "filter": "numeric_sample_oracle::retained_values_are_bit_exact_without_weight_or_adjustment_transforms",
+      "log_sha256": "487e466703c8980fda1a907a1d4f4db49d3249cac76f0279fd2c57af8a0872a6",
+      "passed": [
+        "retained_values_are_bit_exact_without_weight_or_adjustment_transforms"
+      ],
+      "rc": 0
+    }
+  ],
+  "universal_static_audit_pass": true,
+  "x86_runtime_executed": false
+}

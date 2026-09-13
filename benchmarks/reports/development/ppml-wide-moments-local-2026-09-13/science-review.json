@@ -1,0 +1,87 @@
+[
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-control-fw_exposure_missing-s31415927"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-control-low_fw-s31415927"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-control-one_fe_complete-s31415927"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-control-pw_cluster_offset-s31415927"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-control-saved_separation-s31415927"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-control-small_narrow-s31415927"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-control-weak_wide-s31415927"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-fw_129-s104729"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-pw_257-s104729"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-recheck-fw_129-s20260819"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-recheck-fw_129-s8675309"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-recheck-pw_257-s20260819"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-recheck-pw_257-s8675309"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-recheck-unit_65-s20260819"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-recheck-unit_65-s8675309"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-trace-pw_257-s67280421"
+  },
+  {
+    "admission_pass": true,
+    "all_scientific_csv_exact": true,
+    "pair": "ppmlonefe-wide-moments-unit_65-s104729"
+  }
+]
