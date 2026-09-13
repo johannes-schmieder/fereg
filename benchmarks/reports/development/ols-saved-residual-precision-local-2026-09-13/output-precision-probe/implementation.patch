@@ -1,0 +1,334 @@
+diff --git a/crates/fereg-core/src/fe/cmg.rs b/crates/fereg-core/src/fe/cmg.rs
+index e7c5199..f38e05c 100644
+--- a/crates/fereg-core/src/fe/cmg.rs
++++ b/crates/fereg-core/src/fe/cmg.rs
+@@ -1341,25 +1341,42 @@ impl<'a> CmgAbsorber<'a> {
+     /// coordinates and are normally FE-orthogonal. Running graph PCG on that
+     /// near-zero right-hand side can exhaust its relative iteration budget.
+     /// Certify first and perform a CG correction only when one is actually
+-    /// required; the retained CMG hierarchy remains available for all earlier
+-    /// outcome and regressor blocks.
++    /// required. This terminal call releases the hierarchy before reserving
++    /// the correction workspace; earlier outcome/regressor blocks retain it.
+     pub(crate) fn absorb_final_residual(
+-        &mut self,
++        self,
+         values: DenseMatrix,
++        tolerance: f64,
+     ) -> Result<CertifiedBorrowedMap> {
+         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
+             return Err(invalid_argument(
+                 "CMG final-residual design and matrix dimensions are inconsistent",
+             ));
+         }
+-        let certificate = certify_borrowed_intercept_candidate(
+-            &self.design,
+-            self.weights,
+-            &values,
+-            self.config.map,
+-        )?;
++        let mut config = self.config;
++        config.map.tolerance = config.map.tolerance.min(tolerance);
++        let certificate =
++            certify_borrowed_intercept_candidate(&self.design, self.weights, &values, config.map)?;
+         if !certificate.passed {
+-            return self.absorb(values);
++            drop(self.route);
++            ensure_cg_fallback_fits(&self.design, values.ncols(), config)?;
++            let reference_norms = weighted_column_norms(&values, self.weights, self.weight_scale)?;
++            let corrected = polish_borrowed_intercept_cg_with_reference_norms_certified(
++                &self.design,
++                self.weights,
++                values,
++                config.map,
++                &reference_norms,
++            )?;
++            let (residualized, mut report) = corrected.into_parts();
++            report.requested_solver = config.requested_solver;
++            report.used_solver = FeSolverKind::Cg;
++            report.fallback_used = true;
++            report.setup_seconds += self.pending_setup_seconds;
++            report
++                .warnings
++                .push("final CMG residual required a certified CG correction".to_owned());
++            return CertifiedBorrowedMap::from_certified_parts(residualized, report);
+         }
+         let normal_equation_residual = certificate.relative_two_norm;
+         CertifiedBorrowedMap::from_certified_parts(
+@@ -4965,6 +4982,64 @@ mod tests {
+         assert!(error.message.contains("joint execution/solver memory plan"));
+     }
+ 
++    #[test]
++    fn terminal_residual_correction_checks_its_cg_budget() {
++        let n = 4 * 3 * 4;
++        let left = (0..n).map(|row| (row % 4) as u32).collect::<Vec<_>>();
++        let right = (0..n).map(|row| ((row / 4) % 3) as u32).collect::<Vec<_>>();
++        let li = LevelIndex::from_codes(&left, 4).unwrap();
++        let ri = LevelIndex::from_codes(&right, 3).unwrap();
++        let noise = (0..n)
++            .map(|row| if (row / 12) % 2 == 0 { -1.0 } else { 1.0 })
++            .collect::<Vec<_>>();
++        let input = || {
++            DenseMatrix::from_columns(&[(0..n)
++                .map(|row| noise[row] + if left[row] == 0 { 2e-9 } else { 0.0 })
++                .collect()])
++            .unwrap()
++        };
++        let incremental = estimate_fe_solver_memory(n, 1, &[4, 3], 1, None)
++            .unwrap()
++            .cg_bytes;
++        for short in [true, false] {
++            let design = BorrowedInterceptFeDesign::new(
++                n,
++                vec![effect(&left, 4, &li), effect(&right, 3, &ri)],
++            )
++            .unwrap();
++            let mut options = config(1);
++            options.map.tolerance = 1e-8;
++            let mut session =
++                CmgAbsorber::build(design, BorrowedMapWeights::Unit, options, false).unwrap();
++            assert!(matches!(&session.route, CmgRoute::Graph(_)));
++            // Isolate admission of the terminal correction after construction.
++            // Its hierarchy is released before this independent reserve.
++            session.config.solver_memory_budget = Some(FeSolverMemoryBudget {
++                execution_bytes: 512,
++                usable_bytes: 512 + incremental - u128::from(short),
++            });
++            let result = session.absorb_final_residual(input(), 1e-12);
++            if short {
++                let error = result.unwrap_err();
++                assert_eq!(error.code, ErrorCode::Allocation);
++                assert!(error.message.contains("certified CG fallback requires"));
++            } else {
++                let result = result.unwrap();
++                assert!(result.report().certified());
++                assert_eq!(result.report().requested_solver, FeSolverKind::Cmg);
++                assert_eq!(result.report().used_solver, FeSolverKind::Cg);
++                assert!(result.report().fallback_used);
++                assert_eq!(result.report().checkpoint_retries, 0);
++                let (residual, _) = result.into_parts();
++                assert!(residual
++                    .as_slice()
++                    .iter()
++                    .zip(&noise)
++                    .all(|(a, b)| (a - b).abs() < 1e-12));
++            }
++        }
++    }
++
+     #[test]
+     fn weighted_two_way_projection_agrees_with_certified_cg() {
+         let worker = [0, 0, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2];
+diff --git a/crates/fereg-core/src/ols/prepared_fit.rs b/crates/fereg-core/src/ols/prepared_fit.rs
+index f86dbd5..5d0569c 100644
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -31,6 +31,9 @@ use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData
+ #[derive(Debug, Clone, Copy, PartialEq)]
+ pub struct PreparedOlsFitConfig {
+     pub absorb: AbsorbConfig,
++    /// Optional tighter final projection for pointwise residual-derived outputs.
++    /// Independent of whether the execution mode retains FE coefficients.
++    pub final_residual_tolerance: Option<f64>,
+     /// Multiplier on `eps * max(N, K, 1)` after finite columns are scaled by
+     /// their pre-absorption weighted norms.
+     pub rank_tolerance_multiplier: f64,
+@@ -96,6 +99,7 @@ impl Default for PreparedOlsFitConfig {
+                 ..AbsorbConfig::default()
+             },
+             rank_tolerance_multiplier: 128.0,
++            final_residual_tolerance: None,
+             fixed_effect_collinearity_tolerance: 1e-9,
+             score_tolerance: 5e-10,
+             bread_tolerance: 5e-10,
+@@ -104,6 +108,17 @@ impl Default for PreparedOlsFitConfig {
+     }
+ }
+ 
++impl PreparedOlsFitConfig {
++    fn final_absorb_config(self) -> AbsorbConfig {
++        let mut config = self.absorb;
++        if let Some(tolerance) = self.final_residual_tolerance {
++            config.map.tolerance = config.map.tolerance.min(tolerance);
++            config.lsmr.tolerance = config.lsmr.tolerance.min(tolerance);
++        }
++        config
++    }
++}
++
+ /// Internal scientific status of one canonical prepared coefficient slot.
+ ///
+ /// An absorbed-model intercept is transiently deferred by the within problem,
+@@ -1202,7 +1217,7 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
+         prepared,
+         weights.borrowed(),
+         residual_matrix,
+-        config.absorb,
++        config.final_absorb_config(),
+         &mut cmg,
+         false,
+         true,
+@@ -1557,12 +1572,15 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
+             cmg.schur_probe = Some(contraction);
+         }
+     }
+-    let mut absorbed = if let Some(session) = cmg.session.as_mut() {
+-        if final_residual {
+-            session.absorb_final_residual(values)
+-        } else {
+-            session.absorb(values)
+-        }
++    let final_cmg = if final_residual {
++        cmg.session.take()
++    } else {
++        None
++    };
++    let mut absorbed = if let Some(session) = final_cmg {
++        session.absorb_final_residual(values, config.map.tolerance)
++    } else if let Some(session) = cmg.session.as_mut() {
++        session.absorb(values)
+     } else if let Some(lsmr) = cmg.lsmr.as_mut() {
+         lsmr.absorb(values)
+     } else {
+@@ -1990,7 +2008,7 @@ fn fit_with_controls_internal_mode_with_frame<
+         prepared,
+         weights.borrowed(),
+         residual_matrix,
+-        config.absorb,
++        config.final_absorb_config(),
+         &mut cmg,
+         false,
+         true,
+@@ -2621,7 +2639,7 @@ fn fit_with_controls_low_internal_with_frame<
+         prepared,
+         weights.borrowed(),
+         residual_matrix,
+-        config.absorb,
++        config.final_absorb_config(),
+         &mut cmg,
+         false,
+         true,
+@@ -2869,6 +2887,9 @@ fn validate_config<P: PreparedOlsFitView + ?Sized>(
+         || !valid_unit_tolerance(config.fixed_effect_collinearity_tolerance)
+         || !valid_unit_tolerance(config.score_tolerance)
+         || !valid_unit_tolerance(config.bread_tolerance)
++        || config
++            .final_residual_tolerance
++            .is_some_and(|value| !valid_unit_tolerance(value))
+         || config.execution.poolsize == 0
+     {
+         return Err(invalid_argument(
+@@ -7076,6 +7097,78 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn saved_final_residual_removes_small_fe_components_across_solver_families() {
++        let n = 512 * 16 * 4;
++        let effects = [
++            (0..n).map(|row| (row % 512) as f64).collect::<Vec<_>>(),
++            (0..n)
++                .map(|row| ((row / 512) % 16) as f64)
++                .collect::<Vec<_>>(),
++        ];
++        // Each crossed FE cell has two +1 and two -1 observations with
++        // identical weights: its exact projected residual is known directly.
++        let residuals = (0..n)
++            .map(|row| {
++                if (row / (512 * 16)) % 2 == 0 {
++                    -1.0
++                } else {
++                    1.0
++                }
++            })
++            .collect::<Vec<_>>();
++        let raw_weights = (0..n)
++            .map(|row| 1.0 + ((row % (512 * 16)) % 3) as f64)
++            .collect::<Vec<_>>();
++        let prepared = prepared_multiway_categorical(&residuals, &[], &effects);
++        for weights in [
++            BorrowedMapWeights::Unit,
++            BorrowedMapWeights::Provided(&raw_weights),
++        ] {
++            for retain in [false, true] {
++                for solver in [
++                    FeSolverKind::Auto,
++                    FeSolverKind::Cg,
++                    FeSolverKind::Map,
++                    FeSolverKind::Lsmr,
++                    FeSolverKind::Cmg,
++                ] {
++                    let mut config = PreparedOlsFitConfig::default();
++                    config.absorb.solver = solver;
++                    config.absorb.retain_coefficients = retain;
++                    config.final_residual_tolerance = Some(1e-12);
++                    config.absorb.map.tolerance = 1e-8;
++                    let mut session = build_fit_fe_absorber(&prepared, weights, config).unwrap();
++                    let pending = (0..n)
++                        .map(|row| residuals[row] + if row % 512 == 0 { 2e-9 } else { 0.0 })
++                        .collect();
++                    let projected = absorb_fit_matrix(
++                        &prepared,
++                        weights,
++                        DenseMatrix::from_row_major(n, 1, pending).unwrap(),
++                        config.final_absorb_config(),
++                        &mut session,
++                        false,
++                        true,
++                    )
++                    .unwrap();
++                    assert!(projected.report().certified());
++                    let (actual, _, _) = projected.into_full_parts();
++                    let error = actual
++                        .as_slice()
++                        .iter()
++                        .zip(&residuals)
++                        .map(|(a, b)| (a - b).abs())
++                        .fold(0.0_f64, f64::max);
++                    assert!(
++                        error <= 1e-11,
++                        "{solver:?} final residual retains an FE component: {error}"
++                    );
++                }
++            }
++        }
++    }
++
+     fn prepared_multiway_categorical(
+         outcome: &[f64],
+         regressors: &[Vec<f64>],
+@@ -8602,12 +8695,9 @@ mod tests {
+                 let mut scale = canonical.bread_weight_scale();
+                 scale.solver_weight_divisor *= divisor_factor;
+                 scale.reference_weight_multiplier *= divisor_factor;
+-                let frame = LinearSolveFrame::from_parts(
+-                    canonical.response(),
+-                    canonical.raw_weights(),
+-                    scale,
+-                )
+-                .unwrap();
++                let frame =
++                    LinearSolveFrame::from_parts(canonical.response(), canonical.raw_weights(), scale)
++                        .unwrap();
+                 for (poolsize, threads) in [(1, 1), (3, 7), (5, 1)] {
+                     let config = PreparedOlsFitConfig {
+                         execution: PreparedOlsExecutionConfig {
+diff --git a/crates/fereg-plugin/src/estimate.rs b/crates/fereg-plugin/src/estimate.rs
+index 354d71f..22e2ef8 100644
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -792,6 +792,13 @@ impl EstimateActionSpec {
+         let default_fit = PreparedOlsFitConfig::default();
+         let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
+         let fit = PreparedOlsFitConfig {
++            // Residual-derived outputs need pointwise accuracy even when low
++            // memory deliberately omits retained FE coefficient products.
++            final_residual_tolerance: (self.outputs.residual.is_some()
++                || self.outputs.absorbed.is_some()
++                || self.outputs.xbd.is_some()
++                || self.outputs.saved_channels.iter().any(Option::is_some))
++            .then_some(1e-12),
+             absorb: AbsorbConfig {
+                 solver: self.solver,
+                 map: MapConfig {

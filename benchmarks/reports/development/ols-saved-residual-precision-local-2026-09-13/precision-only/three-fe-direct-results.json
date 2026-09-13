@@ -1,0 +1,53 @@
+{
+  "input_sha256": "11118f55524e0ee806d0e5f48b19343052d31850ec3f84fca09127f03c220a10",
+  "n": 30720,
+  "rank": 16,
+  "FE_rank": 6451,
+  "df_r": 24253,
+  "pair_components": 16,
+  "reduced_nullity": 17,
+  "nullspace_centered_g1_maxabs": 2.310374114244951e-13,
+  "iterative": {
+    "lsmr": {
+      "iterations": 449,
+      "stop": 2,
+      "residual_agreement_maxabs": 1.529091896941493e-11
+    },
+    "lsqr": {
+      "iterations": 455,
+      "stop": 2,
+      "residual_agreement_maxabs": 4.884023049700697e-12
+    }
+  },
+  "saved_g_scope": "identified within-first-pair-component contrasts; global individual FE gauge is nonunique",
+  "baseline": {
+    "saved_e": {
+      "maxabs": 7.97223653759005e-09,
+      "failing_rows": 4,
+      "max_tolerance_ratio": 6.424624552858728
+    },
+    "saved_g": {
+      "maxabs": 9.886040291950948e-09,
+      "failing_rows": 455,
+      "max_tolerance_ratio": 8.914077898165612
+    },
+    "b_maxabs": 1.0547118733938987e-15,
+    "V_maxabs": 1.1067501895414139e-16,
+    "global_saved_g_mean": -7.434030243243702e-14
+  },
+  "candidate": {
+    "saved_e": {
+      "maxabs": 4.12947454009327e-13,
+      "failing_rows": 0,
+      "max_tolerance_ratio": 0.00029251751254757345
+    },
+    "saved_g": {
+      "maxabs": 5.059563878972995e-13,
+      "failing_rows": 0,
+      "max_tolerance_ratio": 0.00043214159384910214
+    },
+    "b_maxabs": 1.0547118733938987e-15,
+    "V_maxabs": 5.5172338052356107e-17,
+    "global_saved_g_mean": -5.736152293896642e-16
+  }
+}

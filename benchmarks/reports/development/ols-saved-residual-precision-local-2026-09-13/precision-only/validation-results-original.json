@@ -1,0 +1,36 @@
+[
+  {
+    "name": "cg-below",
+    "process_rc": 0,
+    "cap": 537182407,
+    "fixture_sha256": "fe5fbdd5d0c0f2dde3c4db312bd2dd5f3879b24c132613b423395633b259f0cf",
+    "log_sha256": "643bc3baaf470cacfcd64de8400dfa78dd5b9456fccdb08d4bfd7cb83dcfb458",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "644919036b7379cda33a9bf97de5daf4daf8269775afd9fdd740eaea5a5101eb"
+  },
+  {
+    "name": "cg-exact",
+    "process_rc": 0,
+    "cap": 537182408,
+    "fixture_sha256": "fe5fbdd5d0c0f2dde3c4db312bd2dd5f3879b24c132613b423395633b259f0cf",
+    "log_sha256": "231729db0037d9a5880da37dc937e8eb240218e536af7bc648f5afd313fab93e",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "644919036b7379cda33a9bf97de5daf4daf8269775afd9fdd740eaea5a5101eb"
+  },
+  {
+    "name": "saved-oracle",
+    "process_rc": 0,
+    "cap": null,
+    "fixture_sha256": "f10bf0972abbadabbcf183f7ad650c87f10dac4376bb580746794e8e69114a51",
+    "log_sha256": "9497c952b22527925c6fa13e35b37d9ab0a24e5629f183451170adf49d7e0c82",
+    "sentinel": true,
+    "terminal_rc": [],
+    "plugin": "644919036b7379cda33a9bf97de5daf4daf8269775afd9fdd740eaea5a5101eb"
+  }
+]

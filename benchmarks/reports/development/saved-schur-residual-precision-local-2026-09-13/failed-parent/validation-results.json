@@ -1,0 +1,35 @@
+[
+  {
+    "name": "recovery-below",
+    "artifact": "be5fc20ae2fb05b4f75da8545635ba723c408fb5b7de6713f2229c88c1c8ba00",
+    "available_cap": 537252607,
+    "arg": "909",
+    "process_rc": 0,
+    "sentinel": true,
+    "log_sha256": "0dd37490ce1963212a2576f5f2c14ff9a321839acb25a9d78143496ecd21e8f4",
+    "fixture_sha256": "b263d54f7583c33b8676a910949706eb3b58ffec628669a194fcf0260745de4d",
+    "recovery_error": true
+  },
+  {
+    "name": "recovery-exact",
+    "artifact": "be5fc20ae2fb05b4f75da8545635ba723c408fb5b7de6713f2229c88c1c8ba00",
+    "available_cap": 537252608,
+    "arg": "0",
+    "process_rc": 0,
+    "sentinel": true,
+    "log_sha256": "45b9ba74f2841f9628bd864a333f2a3d6a177b3bd1b00e4aa756ed8b8703b40e",
+    "fixture_sha256": "b263d54f7583c33b8676a910949706eb3b58ffec628669a194fcf0260745de4d",
+    "recovery_error": false
+  },
+  {
+    "name": "saved-oracle",
+    "artifact": "be5fc20ae2fb05b4f75da8545635ba723c408fb5b7de6713f2229c88c1c8ba00",
+    "available_cap": null,
+    "arg": "1",
+    "process_rc": 0,
+    "sentinel": true,
+    "log_sha256": "8400e0a0f8c71860217869f0765ec2c0d89005f296c22bfd6994137ec8ca6008",
+    "fixture_sha256": "f10bf0972abbadabbcf183f7ad650c87f10dac4376bb580746794e8e69114a51",
+    "recovery_error": false
+  }
+]

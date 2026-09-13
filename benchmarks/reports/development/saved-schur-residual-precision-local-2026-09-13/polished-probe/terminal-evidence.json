@@ -1,0 +1,26 @@
+{
+  "guard-plugin-tests.log": {
+    "sha256": "166c5795fb622784327f4aabbd4a83bb253c5d2b111bf5e9e932d04d71fa354e",
+    "tail": "     Running unittests src/lib.rs (${FEREG_SAVED_SCHUR_POLISH_20260913_ROOT}/test-target/debug/deps/fereg_plugin-e9c3349472e39e19)\n\nrunning 6 tests\ntest estimate::tests::saved_fe_and_prediction_outputs_are_native_identity_consistent ... ok\ntest ppml_estimate::tests::saved_fe_recovery_uses_the_accepted_hessian_for_nonexact_counts ... ok\ntest ppml_estimate::tests::hidden_ppml_action_carries_factor_absorb_cluster_weight_and_saved_fe ... ok\ntest estimate::tests::saved_only_fast_path_matches_fully_materialized_outputs ... ok\ntest estimate::tests::saved_outputs_allow_a_generated_column_omitted_by_absorption ... ok\ntest estimate::tests::saved_output_store_failures_leave_receipt_incomplete ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 89 filtered out; finished in 0.05s\n"
+  },
+  "red.log": {
+    "sha256": "8bfa8f8784044262cfce230c12504ef4aa168de7184ca8bbd30a320bc6d52f90",
+    "tail": "\nthread 'ols::prepared_fit::tests::deferred_saved_schur_polishes_the_final_residual_before_recovery' panicked at crates/fereg-core/src/ols/prepared_fit.rs:7146:9:\nfinal residual retains an FE component: 0.0000000020000000544584395\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    ols::prepared_fit::tests::deferred_saved_schur_polishes_the_final_residual_before_recovery\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 808 filtered out; finished in 0.14s\n\nerror: test failed, to rerun pass `-p fereg-core --lib`"
+  },
+  "green.log": {
+    "sha256": "ba46a9f36f0d404ba970a92d255352ac81a79f4a80fd115e901d60e14a69401f",
+    "tail": "   Compiling fereg-core v0.5.0 (/private${FEREG_SAVED_SCHUR_POLISH_20260913_ROOT}/candidate/crates/fereg-core)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.54s\n     Running unittests src/lib.rs (${FEREG_SAVED_SCHUR_POLISH_20260913_ROOT}/test-target/debug/deps/fereg_core-cb1f50a02cf6d5d8)\n\nrunning 1 test\ntest ols::prepared_fit::tests::deferred_saved_schur_polishes_the_final_residual_before_recovery ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 808 filtered out; finished in 0.14s\n"
+  },
+  "rank-replay.log": {
+    "sha256": "0315e209fe024d94662c38a2d254f0debf414e8f41e00a473b1f1277d67aa009",
+    "tail": "    \"full_b_maxabs\": 1.0547118733938987e-15,\n    \"full_V_maxabs\": 1.641126335305207e-20,\n    \"full_b_V_including_constant\": true,\n    \"sample_status_rank_DoF_exact\": true\n  },\n  \"oracle_hashes\": {\n    \"rank-direct-covariance.csv\": \"6050035f25ab403740f3cca7b71e7996065772fd0a9426f60f3cbd22c9ce36f8\",\n    \"rank-direct-coefficients.csv\": \"d7a9148bb05fb8296bcecea3e6af68bcbaa71e2ab280d47d128d90f2281c454f\",\n    \"rank-direct-oracle.csv\": \"728558b36f7cb5649738df32e35aaf4393358e5f4f4aee87839c855e82476d2f\"\n  }\n}\nORIGINAL_RANK_REPLAY_TERMINAL_PASS"
+  },
+  "comparison-run.log": {
+    "sha256": "f04e722862754f1be4c14465739014e5fd79b7ff4213ad832138cfd92882d8cb",
+    "tail": "{\"kind\": \"primary\", \"name\": \"aw_saved\", \"seed\": 104729, \"arm\": \"baseline\", \"status\": \"pass\", \"seconds\": 82.96, \"native_peak\": 3363957262.0}\n{\"kind\": \"primary\", \"name\": \"aw_saved\", \"seed\": 104729, \"suffix\": \"\", \"baseline_seconds\": 82.96, \"candidate_seconds\": 82.757, \"delta_seconds\": -0.20299999999998875, \"percent\": -0.24469623915138472, \"review\": false, \"command_qualifies\": false, \"memory_qualifies\": false, \"baseline_native_peak\": 3363957262.0, \"candidate_native_peak\": 3363957262.0, \"baseline_rss_gib\": 3.72650146484375, \"candidate_rss_gib\": 3.7337799072265625, \"saved_maxabs\": {\"saved_e\": 0.0, \"saved_g\": 0.0, \"saved_h\": 0.0}, \"new_probe\": true, \"schur_probe_accepted\": false, \"parity_pass\": true, \"parity_failed_columns\": [], \"independent_oracle\": {}}\n{\"kind\": \"primary\", \"name\": \"pw_partial\", \"seed\": 104729, \"arm\": \"baseline\", \"status\": \"pass\", \"seconds\": 3.474, \"native_peak\": 841844333.0}\n{\"kind\": \"primary\", \"name\": \"pw_partial\", \"seed\": 104729, \"arm\": \"candidate\", \"status\": \"pass\", \"seconds\": 2.642, \"native_peak\": 581409185.0}\nTraceback (most recent call last):\n  File \"${FEREG_SAVED_SCHUR_POLISH_20260913_ROOT}/full_comparison.py\", line 17, in <module>\n    row=compare_pair(request,index,kind)\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private${FEREG_SAVED_SCHUR_POLISH_20260913_ROOT}/compare.py\", line 38, in compare_pair\n    assert name in ['weak_d3','disconnected_blocks','unbalanced'],(name,parity_failures)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ('pw_partial', ['saved_e', 'saved_g'])"
+  },
+  "pw-s104729-direct.log": {
+    "sha256": "cd97f85eec1397aac9445ac782549933553475cf4996903523c75d5870bfcc31",
+    "tail": "      \"failing_rows\": 0,\n      \"max_tolerance_ratio\": 0.0010471149480421162\n    },\n    \"saved_g\": {\n      \"maxabs\": 5.176814532603657e-10,\n      \"failing_rows\": 0,\n      \"max_tolerance_ratio\": 0.47650608972886915\n    },\n    \"full_b_maxabs\": 9.538377032658474e-15,\n    \"full_V_maxabs\": 2.087420320438545e-11\n  }\n}"
+  }
+}

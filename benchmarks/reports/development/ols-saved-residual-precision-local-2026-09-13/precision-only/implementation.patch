@@ -1,0 +1,261 @@
+diff --git a/crates/fereg-core/src/fe/cmg.rs b/crates/fereg-core/src/fe/cmg.rs
+index e7c5199..03dbd37 100644
+--- a/crates/fereg-core/src/fe/cmg.rs
++++ b/crates/fereg-core/src/fe/cmg.rs
+@@ -1191,6 +1191,14 @@ impl<'a> CmgAbsorber<'a> {
+     /// matrix to the caller; a valid partial CMG projection can still seed the
+     /// existing certified CG fallback.
+     pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
++        self.absorb_with_config(values, self.config)
++    }
++
++    fn absorb_with_config(
++        &mut self,
++        values: DenseMatrix,
++        config: CmgConfig,
++    ) -> Result<CertifiedBorrowedMap> {
+         let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
+             return Err(invalid_argument(
+@@ -1211,18 +1219,18 @@ impl<'a> CmgAbsorber<'a> {
+                     &self.design,
+                     self.weights,
+                     values,
+-                    self.config.map,
++                    config.map,
+                 )?
+             } else {
+                 absorb_borrowed_intercept_map_certified(
+                     &self.design,
+                     self.weights,
+                     values,
+-                    self.config.map,
++                    config.map,
+                 )?
+             };
+             let (residualized, mut report, coefficients) = direct.into_full_parts();
+-            report.requested_solver = self.config.requested_solver;
++            report.requested_solver = config.requested_solver;
+             report.setup_seconds += setup_seconds;
+             return if let Some(coefficients) = coefficients {
+                 CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+@@ -1236,16 +1244,16 @@ impl<'a> CmgAbsorber<'a> {
+         }
+ 
+         if let CmgRoute::Failed(message) = &self.route {
+-            ensure_cg_fallback_fits(&self.design, values.ncols(), self.config)?;
++            ensure_cg_fallback_fits(&self.design, values.ncols(), config)?;
+             let fallback = polish_borrowed_intercept_cg_with_reference_norms_certified(
+                 &self.design,
+                 self.weights,
+                 values,
+-                self.config.map,
++                config.map,
+                 &reference_norms,
+             )?;
+             let (residualized, mut report) = fallback.into_parts();
+-            report.requested_solver = self.config.requested_solver;
++            report.requested_solver = config.requested_solver;
+             report.used_solver = FeSolverKind::Cg;
+             report.fallback_used = true;
+             report.setup_seconds += setup_seconds;
+@@ -1264,7 +1272,7 @@ impl<'a> CmgAbsorber<'a> {
+                 self.weights,
+                 self.weight_scale,
+                 &mut candidate,
+-                self.config,
++                config,
+             ),
+             CmgRoute::Direct => unreachable!("direct CMG route returned above"),
+             CmgRoute::Failed(_) => unreachable!("failed CMG route returned above"),
+@@ -1278,7 +1286,7 @@ impl<'a> CmgAbsorber<'a> {
+                     &self.design,
+                     self.weights,
+                     candidate,
+-                    self.config.map,
++                    config.map,
+                     &reference_norms,
+                 )?;
+                 let (residualized, mut report) = polished.into_parts();
+@@ -1289,7 +1297,7 @@ impl<'a> CmgAbsorber<'a> {
+                     );
+                 }
+                 let polish_iterations = report.iterations;
+-                report.requested_solver = self.config.requested_solver;
++                report.requested_solver = config.requested_solver;
+                 report.used_solver = FeSolverKind::Cmg;
+                 report.iterations = metrics.iterations.saturating_add(polish_iterations);
+                 report.normal_equation_residual =
+@@ -1313,18 +1321,18 @@ impl<'a> CmgAbsorber<'a> {
+                 CertifiedBorrowedMap::from_certified_parts(residualized, report)
+             }
+             Err(error) => {
+-                ensure_cg_fallback_fits(&self.design, candidate.ncols(), self.config)?;
++                ensure_cg_fallback_fits(&self.design, candidate.ncols(), config)?;
+                 let failure = error.to_string();
+                 self.route = CmgRoute::Failed(failure.clone());
+                 let fallback = polish_borrowed_intercept_cg_with_reference_norms_certified(
+                     &self.design,
+                     self.weights,
+                     candidate,
+-                    self.config.map,
++                    config.map,
+                     &reference_norms,
+                 )?;
+                 let (residualized, mut report) = fallback.into_parts();
+-                report.requested_solver = self.config.requested_solver;
++                report.requested_solver = config.requested_solver;
+                 report.used_solver = FeSolverKind::Cg;
+                 report.fallback_used = true;
+                 report.setup_seconds += setup_seconds;
+@@ -1346,20 +1354,19 @@ impl<'a> CmgAbsorber<'a> {
+     pub(crate) fn absorb_final_residual(
+         &mut self,
+         values: DenseMatrix,
++        tolerance: f64,
+     ) -> Result<CertifiedBorrowedMap> {
+         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
+             return Err(invalid_argument(
+                 "CMG final-residual design and matrix dimensions are inconsistent",
+             ));
+         }
+-        let certificate = certify_borrowed_intercept_candidate(
+-            &self.design,
+-            self.weights,
+-            &values,
+-            self.config.map,
+-        )?;
++        let mut config = self.config;
++        config.map.tolerance = config.map.tolerance.min(tolerance);
++        let certificate =
++            certify_borrowed_intercept_candidate(&self.design, self.weights, &values, config.map)?;
+         if !certificate.passed {
+-            return self.absorb(values);
++            return self.absorb_with_config(values, config);
+         }
+         let normal_equation_residual = certificate.relative_two_norm;
+         CertifiedBorrowedMap::from_certified_parts(
+diff --git a/crates/fereg-core/src/ols/prepared_fit.rs b/crates/fereg-core/src/ols/prepared_fit.rs
+index f86dbd5..1a12abc 100644
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -1557,9 +1557,16 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
+             cmg.schur_probe = Some(contraction);
+         }
+     }
++    if final_residual && config.retain_coefficients {
++        // Saved effects reconstruct y - Xb - r. A small FE component in r
++        // can pass the ordinary moment check but contaminate that pointwise
++        // target; finish this existing RHS at recovery precision instead.
++        config.map.tolerance = config.map.tolerance.min(1e-12);
++        config.lsmr.tolerance = config.lsmr.tolerance.min(1e-12);
++    }
+     let mut absorbed = if let Some(session) = cmg.session.as_mut() {
+         if final_residual {
+-            session.absorb_final_residual(values)
++            session.absorb_final_residual(values, config.map.tolerance)
+         } else {
+             session.absorb(values)
+         }
+@@ -7076,6 +7083,75 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn saved_final_residual_removes_small_fe_components_across_solver_families() {
++        let n = 512 * 16 * 4;
++        let effects = [
++            (0..n).map(|row| (row % 512) as f64).collect::<Vec<_>>(),
++            (0..n)
++                .map(|row| ((row / 512) % 16) as f64)
++                .collect::<Vec<_>>(),
++        ];
++        // Each crossed FE cell has two +1 and two -1 observations with
++        // identical weights: its exact projected residual is known directly.
++        let residuals = (0..n)
++            .map(|row| {
++                if (row / (512 * 16)) % 2 == 0 {
++                    -1.0
++                } else {
++                    1.0
++                }
++            })
++            .collect::<Vec<_>>();
++        let raw_weights = (0..n)
++            .map(|row| 1.0 + ((row % (512 * 16)) % 3) as f64)
++            .collect::<Vec<_>>();
++        let prepared = prepared_multiway_categorical(&residuals, &[], &effects);
++        for weights in [
++            BorrowedMapWeights::Unit,
++            BorrowedMapWeights::Provided(&raw_weights),
++        ] {
++            for solver in [
++                FeSolverKind::Auto,
++                FeSolverKind::Cg,
++                FeSolverKind::Map,
++                FeSolverKind::Lsmr,
++                FeSolverKind::Cmg,
++            ] {
++                let mut config = PreparedOlsFitConfig::default();
++                config.absorb.solver = solver;
++                config.absorb.retain_coefficients = true;
++                config.absorb.map.tolerance = 1e-8;
++                let mut session = build_fit_fe_absorber(&prepared, weights, config).unwrap();
++                let pending = (0..n)
++                    .map(|row| residuals[row] + if row % 512 == 0 { 2e-9 } else { 0.0 })
++                    .collect();
++                let projected = absorb_fit_matrix(
++                    &prepared,
++                    weights,
++                    DenseMatrix::from_row_major(n, 1, pending).unwrap(),
++                    config.absorb,
++                    &mut session,
++                    false,
++                    true,
++                )
++                .unwrap();
++                assert!(projected.report().certified());
++                let (actual, _, _) = projected.into_full_parts();
++                let error = actual
++                    .as_slice()
++                    .iter()
++                    .zip(&residuals)
++                    .map(|(a, b)| (a - b).abs())
++                    .fold(0.0_f64, f64::max);
++                assert!(
++                    error <= 1e-11,
++                    "{solver:?} final residual retains an FE component: {error}"
++                );
++            }
++        }
++    }
++
+     fn prepared_multiway_categorical(
+         outcome: &[f64],
+         regressors: &[Vec<f64>],
+@@ -10883,9 +10959,12 @@ mod tests {
+                 let mut scale = canonical.bread_weight_scale();
+                 scale.solver_weight_divisor *= factor;
+                 scale.reference_weight_multiplier *= factor;
+-                let frame =
+-                    LinearSolveFrame::from_parts(canonical.response(), canonical.raw_weights(), scale)
+-                        .unwrap();
++                let frame = LinearSolveFrame::from_parts(
++                    canonical.response(),
++                    canonical.raw_weights(),
++                    scale,
++                )
++                .unwrap();
+                 let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                     &data,
+                     frame,
+@@ -10910,7 +10989,8 @@ mod tests {
+                     expected.dropped_generated_columns()
+                 );
+                 assert_eq!(actual.coefficients().len(), expected.coefficients().len());
+-                for (actual, expected) in actual.coefficients().iter().zip(expected.coefficients()) {
++                for (actual, expected) in actual.coefficients().iter().zip(expected.coefficients())
++                {
+                     assert_eq!(actual.coefficient_slot, expected.coefficient_slot);
+                     assert_eq!(
+                         actual.generated_column_index,

@@ -1,0 +1,50 @@
+[
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "recovery_"
+    ],
+    "rc": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "wide_ols_schur_guard_preserves_ineligible_routes_and_cycle_reports"
+    ],
+    "rc": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "direct_prepared_cg_checks_joint_budget_with_retained_coefficients"
+    ],
+    "rc": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-plugin",
+      "--lib",
+      "saved_"
+    ],
+    "rc": 0
+  }
+]

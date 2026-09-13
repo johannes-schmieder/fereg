@@ -10,6 +10,55 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P0/P6 saved-output precision: science passes; generic admission prerequisite
+
+The [source-bound investigation](benchmarks/reports/development/ols-saved-residual-precision-local-2026-09-13/README.md)
+preserves four precision candidates and the separate
+[saved-Schur failures/oracles](benchmarks/reports/development/saved-schur-residual-precision-local-2026-09-13/README.md).
+Accepted numerical source remains `f576bc5`; neither the three-file precision
+repair nor the archived five-file Schur/recovery optimization is adopted.
+
+The final isolated precision artifact `76858524` binds 176 inputs. Requested
+residual-derived outputs receive a separate final tolerance at most 1e-14 in
+fast/low/projection-only fits. Terminal CMG releases its hierarchy before checked
+CG correction. The original tiny weighted cut passes all 30,720 rows against an
+80-digit grounded oracle and independent LSQR/LSMR: maximum residual error
+3.05e-13, versus 1.76e-9 and 28 failing rows at the preceding 1e-12 target. Full
+b/V, saved FE, rank and DoF pass at unchanged public tolerances.
+
+All 97 focused core tests, 48 saved dummy fits, four weighted omission cases,
+public exact/one-byte-short CG caps, universal build and native ABI checks pass.
+The initial plugin suite passes 95/95; a final concurrent rerun passes 94/95 with
+one unexpected PPML warm-allocation event. Ten fixed exact checks per accepted/
+candidate binary and one complete serial 95-test suite per binary all pass.
+The failed concurrent result and unresolved cause remain evidence; no test or
+PPML production code was weakened. Timings start only after the serial gates.
+
+Nineteen complete cost pairs include all thirteen planned inputs and six
+prescribed reversed follow-ups. Candidate science passes throughout; independent
+oracles adjudicate six original baseline output-error cases, excluded from
+accuracy-matched speed claims. Median added costs are slope +27 ms/7.6%, weighted
+cut +54 ms, and automatic CMG +19 ms. These are correctness costs, not speedups.
+The slope final projection switches MAP→LSMR and native peak rises 28.87→38.54 MB
+against an unchanged public 18.93 MB execution base. Full phases, peaks, scratch,
+RSS, fallback/warning fields and all failed/superseded captures are archived.
+
+Source inspection and four isolated accepted-source closed-form regressions
+prove that generic owned-FE auto/MAP/CG/LSMR ignore the supplied joint workspace
+budget. Each unrestricted residual matches the oracle, then incorrectly succeeds
+at a one-byte budget. This pre-existing gap blocks precision adoption because
+the new final slope LSMR workspace needs checked admission. The initial missing
+test-fixture build failure is preserved; exact accepted fixture bytes produce
+all four intended red assertions.
+
+Next implement checked generic owned-design and solver/fallback admission, test
+the original slope and constrained boundaries, then resume precision adoption
+and the saved-Schur comparison on that repaired baseline. Do not drop slope
+coverage or relax precision to evade the gap. P0 reporting, P6 and the other
+#27 items remain open. All 97 unrelated STATUS additions, 358 original untracked
+paths and the protected installed plugin remain preserved in this step. No
+agents, SCC, qualification, dependency update or push.
+
 ## P6 prerequisite: omitted-column output publication repaired
 
 The [source-bound repair](benchmarks/reports/development/ols-derived-output-omissions-local-2026-09-13/README.md)

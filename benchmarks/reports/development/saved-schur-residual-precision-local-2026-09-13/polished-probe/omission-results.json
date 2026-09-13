@@ -1,0 +1,7 @@
+{
+  "process_rc": 0,
+  "sentinel": true,
+  "log_sha256": "b2c57ff2621caa6bce409f82db6ba3c31bf9654a6035780e18929682717e1606",
+  "fixture_sha256": "c1d0276b69e67d886c93bfc027e19415ebd80a91410bbd98e08bc496b310cb45",
+  "plugin": "7059496c4c4cfa2479c4e1a05e8adb5303dbb849495f9aa29a73b51cb73da09f"
+}

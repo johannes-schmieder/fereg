@@ -1,0 +1,1 @@
+Ten fixed alternating pairs of fresh-process exact PPML allocation-audit tests. Preserve all successes/failures. Same toolchain/environment; no builds or timings overlap. This diagnoses the unexpected one-allocation failure, not a retry-until-pass gate.

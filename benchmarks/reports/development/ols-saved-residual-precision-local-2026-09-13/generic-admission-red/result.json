@@ -1,0 +1,18 @@
+{
+  "accepted_commit": "f576bc5a327e34f504b102d44f01ad8565209275",
+  "process_exit_code": 101,
+  "test_count": 4,
+  "expected_red": true,
+  "solvers": [
+    "auto",
+    "map",
+    "cg",
+    "lsmr"
+  ],
+  "unrestricted_closed_form_checks_passed": true,
+  "one_byte_budget_ignored_in_all_four": true,
+  "actual_projection_reports_certified": true,
+  "source_changed_only_by_test_overlay": true,
+  "additional_test_fixture": "tests/fixtures/ppml/reconstruction.csv",
+  "setup_failure": "Initial build lacked this existing include_str fixture; exact accepted bytes were copied, then all four intended assertions failed. No scientific input or tolerance was replaced."
+}

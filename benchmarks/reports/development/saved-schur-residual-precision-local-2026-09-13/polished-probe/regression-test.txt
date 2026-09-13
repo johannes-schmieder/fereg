@@ -1,0 +1,62 @@
+    #[test]
+    fn deferred_saved_schur_polishes_the_final_residual_before_recovery() {
+        let n = 512 * 16 * 4;
+        let effects = [
+            (0..n).map(|row| (row % 512) as f64).collect::<Vec<_>>(),
+            (0..n).map(|row| ((row / 512) % 16) as f64).collect::<Vec<_>>(),
+        ];
+        // Every FE cell has two +1 and two -1 rows, so these residuals are
+        // independently orthogonal to both complete crossed partitions.
+        let residuals = (0..n)
+            .map(|row| if (row / (512 * 16)) % 2 == 0 { -1.0 } else { 1.0 })
+            .collect::<Vec<_>>();
+        let outcome = (0..n)
+            .map(|row| residuals[row] + effects[0][row] * 0.01 - effects[1][row])
+            .collect::<Vec<_>>();
+        let controls = (0..16)
+            .map(|column| {
+                (0..n)
+                    .map(|row| ((row * (17 + column * 2) + column * 13) % 1009) as f64 / 1009.0)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let prepared = prepared_multiway_categorical(&outcome, &controls, &effects);
+        let mut config = PreparedOlsFitConfig::default();
+        config.allow_final_fe_recovery = true;
+        config.absorb.retain_coefficients = true;
+        config.absorb.map.tolerance = 1e-8;
+        let mut session = build_fit_fe_absorber(&prepared, BorrowedMapWeights::Unit, config).unwrap();
+        let initial = absorb_fit_matrix(
+            &prepared,
+            BorrowedMapWeights::Unit,
+            prepared.fit_build_rhs().unwrap(),
+            config.absorb,
+            &mut session,
+            true,
+            false,
+        )
+        .unwrap();
+        assert_eq!(initial.report().pilot_iterations, 8);
+        assert!(initial.into_full_parts().2.is_none());
+        // A small remaining FE component passes the ordinary moment tolerance
+        // but exceeds the absolute saved-output oracle tolerance on these rows.
+        let pending = (0..n)
+            .map(|row| residuals[row] + if row % 512 == 0 { 2e-9 } else { 0.0 })
+            .collect();
+        let final_projection = absorb_fit_matrix(
+            &prepared,
+            BorrowedMapWeights::Unit,
+            DenseMatrix::from_row_major(n, 1, pending).unwrap(),
+            config.absorb,
+            &mut session,
+            false,
+            true,
+        )
+        .unwrap();
+        assert!(final_projection.report().certified());
+        let (actual, _, _) = final_projection.into_full_parts();
+        let error = actual.as_slice().iter().zip(&residuals)
+            .map(|(a, b)| (a - b).abs()).fold(0.0_f64, f64::max);
+        assert!(error <= 1e-11, "final residual retains an FE component: {error}");
+    }
+

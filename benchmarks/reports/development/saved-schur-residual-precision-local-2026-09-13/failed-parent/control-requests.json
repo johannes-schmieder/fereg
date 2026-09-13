@@ -1,0 +1,101 @@
+[
+  {
+    "name": "slope",
+    "seed": 31415927,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "name": "slope",
+      "design": "strong_d3",
+      "n": 30720,
+      "k": 16,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "weight": "[aw=w]",
+      "vce": "robust",
+      "absorb": "saved_g=g1 g2#c.x1",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/slope-n30720-s31415927.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/slope-n7680-s31415928.dta",
+    "data_sha256": "3e3d98ff331de284f6a1a3d94f791f82facadec6d41cb87875abdc1723054113",
+    "warm_sha256": "520e206bdafef47841459b518307bd100917efd2d5f71ec484d2de61fe6284bd"
+  },
+  {
+    "name": "three_fe_saved",
+    "seed": 31415927,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "name": "three_fe_saved",
+      "design": "three_fe_sparse",
+      "n": 30720,
+      "k": 16,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "vce": "robust",
+      "absorb": "saved_g=g1 g2 g3",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/three_fe_saved-n30720-s31415927.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/three_fe_saved-n7680-s31415928.dta",
+    "data_sha256": "11118f55524e0ee806d0e5f48b19343052d31850ec3f84fca09127f03c220a10",
+    "warm_sha256": "4b4626c9a4b51cd0eecf5da82af4150eb8b7c3cb16ec74c3cfcf81682a9b1f6c"
+  },
+  {
+    "name": "rank_deficient_saved",
+    "seed": 31415927,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "name": "rank_deficient_saved",
+      "design": "strong_d2",
+      "n": 30720,
+      "k": 50,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "weight": "[aw=w]",
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/rank_deficient_saved-n30720-s31415927-x2-equals-x1.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/rank_deficient_saved-n7680-s31415928-x2-equals-x1.dta",
+    "data_sha256": "0999a51768ce627eb3f0911238b86b6a5a301e88ee40cc56d9daf7d724435fb6",
+    "warm_sha256": "97818cfe32881c4362d99936eef2b21424f948e460e6c7d2921ec68876566d25",
+    "data_transform": "replace x2 with x1 exactly in full and warm data"
+  },
+  {
+    "name": "explicit_cg_saved",
+    "seed": 31415927,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "name": "explicit_cg_saved",
+      "design": "strong_d3",
+      "n": 30720,
+      "k": 16,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/explicit_cg_saved-n30720-s31415927.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/explicit_cg_saved-n7680-s31415928.dta",
+    "data_sha256": "3e3d98ff331de284f6a1a3d94f791f82facadec6d41cb87875abdc1723054113",
+    "warm_sha256": "520e206bdafef47841459b518307bd100917efd2d5f71ec484d2de61fe6284bd",
+    "solver": "cg"
+  }
+]

@@ -1,0 +1,42 @@
+{
+  "cap_measure.py": {
+    "executed_sha256": "0702133c543e920b5fb08b0e95930dbcf9779a8e766d9514b55d6a0744fd1ec9",
+    "archived_sha256": "3ab635c48851e3450c6296b83ac676db60cfb91aba12613720d709eb324446a0",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "compare.py": {
+    "executed_sha256": "c2273b3ec21d15272fb8aedda0218ebcf0f2661020681a408b7b68248d89474a",
+    "archived_sha256": "31b1eab9b454d0abecfb98a460ef8c9e46a8e0a4981ff3f152424a30ccb147fc",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "complete_comparisons.py": {
+    "executed_sha256": "914c264dc36e6f0ae0638b002c78143225de04177ccba05859c27c0f6c6e828b",
+    "archived_sha256": "e7071509482c3a731b58eaee03bbe6c3611644069140d6704b8925ad67ec88a2",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "extra_validation.py": {
+    "executed_sha256": "e9af742a12b4910738e1dc9ff9cf9b563b5e1ecb3e015e5d80b5dbba3aefe7ec",
+    "archived_sha256": "39a65996c0c2009e4b92b4d66781329cb287fbd17b9d067ac95b9203a02e4ca8",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "rank_direct_oracle.py": {
+    "executed_sha256": "e6a3c35810b126977ffd2ab2f16ca582b2838b2071968357af07b41e25eebabe",
+    "archived_sha256": "c918cd190edcbb3ed909b561d4359e3a4e9836983f7c3cba54fe2be51c94dc99",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "run_initial_caps.py": {
+    "executed_sha256": "a5f5a9a2da79e4f14c78acfdb6d653197d956356a59326d5103f1e5cd92128c8",
+    "archived_sha256": "c169379e9981e199a24280f91483a4197a86771018e5f2ec22fa466a30f2e6f8",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "run_tests.py": {
+    "executed_sha256": "eda2de4e474399c08db816354f374bb6d6372d176b48c89c1c7c761d3794af04",
+    "archived_sha256": "5ba8521a1daa1420efd919f62a68c0bdd4569ccdaede3fab203ac8b55a16194e",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "run_validation.py": {
+    "executed_sha256": "847a16a7f11f87e611de1679c470a4399ec8a77ef644659fc0a2fefafe67160e",
+    "archived_sha256": "3ccd0ca0121dc131287036d811c17329400da22527a894c394e6026c325fdccf",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  }
+}

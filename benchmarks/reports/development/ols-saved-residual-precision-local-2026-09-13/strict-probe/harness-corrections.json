@@ -1,0 +1,5 @@
+{
+  "format_cleanup": "The initial replacement guard matched multiple identical snippets and stopped before mutation. Restricting it with the next loop line removed only the unrelated formatting hunk. The prematurely invoked nonexistent test script made no changes.",
+  "plugin_test_rebind": "Retained initial passing suite, failed concurrent rerun, twenty fixed exact checks and both complete serial suites.",
+  "cost_prerequisite_failure": "Initial cost invocation exited at failed plugin-test gate before starting any Stata measurement. Updated the gate prospectively to require both unchanged full serial suites and all fixed audit follow-ups."
+}
