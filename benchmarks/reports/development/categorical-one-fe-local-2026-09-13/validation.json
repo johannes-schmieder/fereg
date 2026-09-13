@@ -1,0 +1,54 @@
+{
+  "rust_tests": [
+    "ols::prepared_fit::tests::categorical_recovery_uses_explicit_final_hessian_weights_for_normalization",
+    "ols::prepared_fit::tests::categorical_ols_adapter_and_borrowed_frame_are_exact",
+    "ols::prepared_fit::tests::categorical_one_fe_initial_projection_preserves_warm_and_retained_paths",
+    "ppml::prepared_estimator::tests::explicit_public_map_matches_one_effect_auto_bitwise"
+  ],
+  "rust_distinct_count": 4,
+  "log_sha256": {
+    "categorical-tests.log": "5bbdca8a2272a90a2d62a3d75fc1d3ecca129a6766dc1237a1db02e01f365640",
+    "ppml-policy-test.log": "a0f59ba263d8fd948eb1b7392945ef608f852586414451e53c6af6a49a8a08f6",
+    "build-pinned.log": "0baed62f1893da0d5ff685b950ebf610f7bc774aefe5ea03726ebdac55b117a0",
+    "oracle-reviewed-run.log": "1a4eff49721ae415a8dd464967f35c82eb8b3259649424612ca74718888ed4f6"
+  },
+  "universal_static_audit": "pass",
+  "native_arm64_actual_abi_self_test": "pass",
+  "licensed_oracles": [
+    {
+      "arm": "baseline",
+      "fixture": "ols_categorical_one_fe",
+      "rc": 0,
+      "process_rc": 0,
+      "sentinels": [
+        "END_FIXTURE|ols_categorical_one_fe|rc=0",
+        "ONE_FE_ORACLE_DONE|ols_categorical_one_fe|rc=0"
+      ],
+      "fixture_sha256": "90d42ea2ecd37d29e1f055cc89aede5e56294cd7bbecf67041920c50d5a36b81",
+      "plugin_sha256": "c9db0dceea82dc7b7b87a51979d0fd7ca1f83f1e71f04f034be32312527990f6",
+      "log_sha256": "e5fc13cd857070d7726ea61776e728acee02173aaed59bcadf64607ac98e80ea"
+    },
+    {
+      "arm": "candidate",
+      "fixture": "ols_categorical_one_fe",
+      "rc": 0,
+      "process_rc": 0,
+      "sentinels": [
+        "END_FIXTURE|ols_categorical_one_fe|rc=0",
+        "ONE_FE_ORACLE_DONE|ols_categorical_one_fe|rc=0"
+      ],
+      "fixture_sha256": "90d42ea2ecd37d29e1f055cc89aede5e56294cd7bbecf67041920c50d5a36b81",
+      "plugin_sha256": "ea63bae26377af9ae561c03df8acdb95039461c6124258fe8e05a54955960415",
+      "log_sha256": "8e14205bab532d9728bc42ce5fc7600a4af20b302cb091630427ab4bca236376"
+    }
+  ],
+  "pair_count": 17,
+  "successful_measured_commands": 34,
+  "qualification": false,
+  "exceptions": [
+    "Initial test scaffold used nonexistent ThreadTeam::unwrap and DenseMatrix::get methods; corrected before final source freeze. Final team installation is checked.",
+    "Initial build used the unpinned rustup default and failed target setup before compiling. Selecting installed Rust 1.85.1 produced the tested universal plugin.",
+    "Initial oracle incorrectly expected public MAP solver code 1 (Auto); source and diagnostic output establish MAP code 2. Corrected fixture passes both artifacts, retaining all scientific assertions. Original r(9) and debug logs are preserved locally.",
+    "Initial collector grouped the separately traced AW pair with primary results. Reviewed collector separates nine unprofiled primary pairs, seven controls and one profile; no observation is excluded."
+  ]
+}

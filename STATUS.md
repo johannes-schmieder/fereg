@@ -10,6 +10,43 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P2 categorical one-FE initial projection: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/categorical-one-fe-local-2026-09-13/README.md)
+adopts [ADR 0050](docs/adr/0050-categorical-one-fe-initial-projection.md) against
+accepted native `7663a87`. Fast automatic OLS with one intercept-only categorical
+effect and no saved-FE retention now reuses the existing simple one-FE initial
+projector and OLS norm scheduling. It omits only the redundant raw certificate;
+final independent certification and original reference scales remain. Warm
+residuals, explicit solvers, slopes, multi-FE, low memory and PPML keep their
+existing paths. No observation-sized allocation or alternate projector is added.
+
+Seventeen pairs / 34 measured commands include nine primary pairs, seven controls
+and one separate trace. Command medians fall 0.846→0.693 seconds for unit IID,
+0.310→0.274 for AW robust and 0.521→0.478 for PW two-way clustering: median
+paired gains 18.0%, 11.3% and 8.6%. The trace locates savings in initial absorption
+(0.06000→0.02004). Primary native peaks are effectively unchanged and admitted;
+weighted sampled RSS rises 0.392→0.502 / 0.394→0.491 GiB without an established
+cause. Largest protected command increase is slope +2 ms. Existing low-memory
+and weak model underreports remain open; no resident-memory gain is claimed.
+
+Full paired b/V, samples, status/DoF and solver decisions are exact. Four focused
+Rust tests and both arms of the independent interaction-dummy Stata oracle pass,
+including all OLS weight kinds, 1/7 workers, frequency expansion, rescaling,
+collinearity, raw-scale projection and warm/retained paths. All 152 native input
+hashes match the isolated measured plugin `ea63bae2...`; universal static/native
+arm64 ABI checks pass. Initial scaffold/toolchain and oracle-code assertion
+failures are preserved and explained in validation, without weakening science.
+
+The expanded P0 reporting prototype was verified against its archived 152-file
+manifest and exact thirteen-file patch, then removed from active native source.
+It remains archived and unadopted; this is not closure of its accounting gaps.
+Next evaluate constant-weight specialization and fresh low-memory one-FE blocks,
+then remaining #27 packages. Only after #27: the authorized two independent
+agents, upstream CMG assessment and new small SCC campaign. Installed dist, all
+97 unrelated Veneto STATUS lines and pre-existing evidence remain intact.
+No push, new cluster work or qualification occurred.
+
 ## P0/R1/P7 bounded LSMR batches: adopted local checkpoint
 
 The [adoption report](benchmarks/reports/development/lsmr-batch-adoption-local-2026-09-13/README.md)
@@ -51,9 +88,10 @@ qualification or push occurred.
 ## P0 attempted-memory reporting: expanded prototype, not adopted
 
 The [expanded source-bound report](benchmarks/reports/development/solver-memory-reporting-expanded-local-2026-09-13/README.md)
-records thirteen uncommitted native files against adopted `7663a87`, superseding
-the initial eight-file prototype's coverage statement without changing that
-historical receipt. CMG construction/rejection/error estimates now survive into
+records the archived thirteen-file native prototype against adopted `7663a87`,
+superseding the initial eight-file prototype's coverage statement without changing
+that historical receipt. Its exact patch was later removed from active source
+before the P2 categorical one-FE experiment above. CMG construction/rejection/error estimates now survive into
 fit reports, including retained hierarchy/coefficient overlap with CG polishing.
 Transient/retained borrowed LSMR records estimates without a supplied memory cap
 and uses the installed team; generic intercept-only LSMR preserves failed attempts.

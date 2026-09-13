@@ -613,6 +613,34 @@ impl PreparedOlsFitView for PreparedOlsData {
 }
 
 impl PreparedOlsFitView for PreparedCategoricalOlsData {
+    fn fit_absorb_initial_matrix(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        if config.solver == FeSolverKind::Auto
+            && !config.retain_coefficients
+            && self.effect_specs().len() == 1
+            && self.fit_supports_cmg_auto()
+        {
+            self.fe_topology().validate()?;
+            let design = self.fit_borrowed_cmg_design()?;
+            // An intercept-only interaction is one projection, just like a
+            // simple FE. Only fresh RHSs may skip the useful warm certificate.
+            absorb_borrowed_intercept_auto_initial_with_structural_constant_certified(
+                &design,
+                weights,
+                values,
+                config.map,
+                config.lsmr,
+                config.solver_memory_budget,
+            )
+        } else {
+            self.fit_absorb_matrix(weights, values, config)
+        }
+    }
+
     fn fit_model(&self) -> &PreparedOlsModel {
         self.model()
     }

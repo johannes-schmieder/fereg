@@ -8882,6 +8882,168 @@ mod tests {
     }
 
     #[test]
+    fn categorical_one_fe_initial_projection_preserves_warm_and_retained_paths() {
+        let rows = 16_384;
+        let x = source(1, "x");
+        let g = source(2, "g");
+        let h = source(3, "h");
+        let outcome = (0..rows).map(|r| (r % 53) as f64).collect::<Vec<_>>();
+        let g_values = (0..rows).map(|r| (r % 97) as f64).collect::<Vec<_>>();
+        let h_values = (0..rows).map(|r| ((r / 97) % 3) as f64).collect::<Vec<_>>();
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![x.clone(), g.clone(), h.clone()],
+                terms: vec![continuous_term(1, x.id, false)],
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![g.id, h.id],
+                slope_sources: Vec::new(),
+                label: "g#h".to_owned(),
+                saved_name: String::new(),
+            }],
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(x.id),
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::NumericSource(g.id),
+                },
+                OlsInputBinding {
+                    stata_var_position: 5,
+                    role: OlsInputRole::NumericSource(h.id),
+                },
+            ],
+            include_intercept: true,
+            keep_singletons: true,
+        };
+        let prepared = crate::prepare_categorical_ols_data(
+            &request,
+            &LoadedOlsInput {
+                candidate: vec![true; rows],
+                outcome: loaded(&outcome),
+                numeric_sources: vec![
+                    (x.id, loaded(&outcome)),
+                    (g.id, loaded(&g_values)),
+                    (h.id, loaded(&h_values)),
+                ],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+        )
+        .unwrap();
+        let config = AbsorbConfig::default();
+        assert_eq!(config.solver, FeSolverKind::Auto);
+        for width in [1, 17, 65] {
+            let columns = (0..width)
+                .map(|c| {
+                    (0..rows)
+                        .map(|r| {
+                            let between = if c == width - 1 { 1e6 } else { 3.0 };
+                            between * (g_values[r] + h_values[r])
+                                + ((r * (c + 7) % 997) as f64).sin()
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>();
+            let raw = DenseMatrix::from_columns(&columns).unwrap();
+            for weight_case in 0..4 {
+                let supplied = (0..rows)
+                    .map(|r| match weight_case {
+                        1 => 128.0,
+                        2 => (1 + r % 7) as f64,
+                        _ => {
+                            if r % 5 == 0 {
+                                1_048_576.0
+                            } else {
+                                1.0 / 1_048_576.0
+                            }
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                let weights = if weight_case == 0 {
+                    BorrowedMapWeights::Unit
+                } else {
+                    BorrowedMapWeights::Provided(&supplied)
+                };
+                let mut across_threads = None;
+                for threads in [1, 7] {
+                    crate::parallel::ThreadTeam::new(
+                        ThreadConfig::from_requested(threads, true).unwrap(),
+                    )
+                    .install(|| {
+                        let direct = prepared
+                            .fit_absorb_initial_matrix(weights, raw.clone(), config)
+                            .unwrap();
+                        assert_eq!(direct.report().iterations, 1);
+                        assert!(!direct.report().fallback_used);
+                        let residuals = direct.residualized();
+                        // Independent anchored group means on the original two-key frame.
+                        for c in 0..width {
+                            for group in 0..291 {
+                                let group_rows = (group..rows).step_by(291);
+                                let anchor = columns[c][group];
+                                let mut sum = 0.0;
+                                let mut mass = 0.0;
+                                for r in group_rows.clone() {
+                                    let w = if weight_case == 0 { 1.0 } else { supplied[r] };
+                                    sum += (columns[c][r] - anchor) * w;
+                                    mass += w;
+                                }
+                                for r in group_rows {
+                                    let expected = (columns[c][r] - anchor) - sum / mass;
+                                    assert!(
+                                        (residuals[(r, c)] - expected).abs() < 4e-8,
+                                        "width={width} weights={weight_case} row={r} column={c}"
+                                    );
+                                }
+                            }
+                        }
+                        if let Some(previous) = &across_threads {
+                            assert_eq!(residuals, previous);
+                        } else {
+                            across_threads = Some(residuals.clone());
+                        }
+                        let warm = prepared
+                            .fit_absorb_matrix(weights, residuals.clone(), config)
+                            .unwrap();
+                        assert_eq!(warm.report().iterations, 0);
+                        assert_eq!(warm.residualized(), residuals);
+                        for (solver, retain) in
+                            [(FeSolverKind::Auto, true), (FeSolverKind::Map, false)]
+                        {
+                            let mut unchanged = config;
+                            unchanged.solver = solver;
+                            unchanged.retain_coefficients = retain;
+                            let initial = prepared
+                                .fit_absorb_initial_matrix(weights, raw.clone(), unchanged)
+                                .unwrap();
+                            let ordinary = prepared
+                                .fit_absorb_matrix(weights, raw.clone(), unchanged)
+                                .unwrap();
+                            assert_eq!(initial.residualized(), ordinary.residualized());
+                            assert_eq!(initial.report().iterations, ordinary.report().iterations);
+                        }
+                    })
+                    .unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
     fn categorical_ols_adapter_and_borrowed_frame_are_exact() {
         let x = source(1, "x");
         let g = source(2, "g");
