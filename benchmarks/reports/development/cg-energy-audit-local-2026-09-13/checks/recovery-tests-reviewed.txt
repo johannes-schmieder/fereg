@@ -1,0 +1,47 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (EXPERIMENT/test-target/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 16 tests
+test fe::topology_slope_map::tests::borrowed_cg_recovery_matches_strict_lsmr_coefficients ... ok
+test fe::topology_slope_map::tests::coefficient_lsmr_recovery_matches_map_normalization ... ok
+test fe::topology_slope_map::tests::coefficient_lsmr_recovery_normalizes_disconnected_components ... ok
+test fe::topology_slope_map::tests::every_workspace_reservation_and_capacity_guard_fails_closed ... ok
+test fe::topology_slope_map::tests::four_sweep_sd_pilot_then_lsmr_matches_strict_lsmr ... ok
+test fe::topology_slope_map::tests::intercept_plus_slope_and_second_intercept_effect_match_explicit_span ... ok
+test fe::topology_slope_map::tests::recovery_output_capacity_overflow_is_an_allocation_error ... ok
+test fe::topology_slope_map::tests::recovery_returns_centered_crossed_effects_and_requested_channels ... ok
+test fe::topology_slope_map::tests::recovery_waits_for_reconstruction_after_an_early_moment_certificate ... ok
+test fe::topology_slope_map::tests::retained_coefficient_connected_hint_matches_component_normalization ... ok
+test fe::topology_slope_map::tests::retained_coefficient_saved_only_plan_omits_combined_observation_vector ... ok
+test fe::topology_slope_map::tests::sd_lsmr_recovery_uses_the_direct_one_effect_path_with_weights ... ok
+test fe::topology_slope_map::tests::slope_only_multiple_channels_match_their_explicit_local_span ... ok
+test fe::topology_slope_map::tests::three_nonorthogonal_slope_channels_preserve_the_known_complement ... ok
+test fe::topology_slope_map::tests::weak_cycle_cg_continues_to_the_reconstruction_certificate ... ok
+test fe::topology_slope_map::tests::weak_cycle_uses_the_hybrid_remainder_solve_and_certifies ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 789 filtered out; finished in 4.62s
+
+     Running tests/feppml_constrained_memory_contract.rs (EXPERIMENT/test-target/debug/deps/feppml_constrained_memory_contract-d3dc76b92ee3a6dc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/model_wire_adversarial.rs (EXPERIMENT/test-target/debug/deps/model_wire_adversarial-e9833c3069a03b78)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/model_wire_roundtrip.rs (EXPERIMENT/test-target/debug/deps/model_wire_roundtrip-27437a9c820a7106)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/numeric_sample_oracle.rs (EXPERIMENT/test-target/debug/deps/numeric_sample_oracle-890a28dc78c63a7f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+

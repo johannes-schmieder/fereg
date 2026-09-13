@@ -58,6 +58,13 @@ potential. Publication requires both Hestenes convergence and the joint fresh
 FE certificate. A certificate alone cannot terminate an ordinary CG path, and
 the recurrence alone can never authorize publication.
 
+For borrowed categorical CG, a small negative remaining-energy subtraction may
+be independently audited against the current and pending weighted iterates;
+[ADR 0059](adr/0059-borrowed-cg-negative-energy-audit.md) defines the bounded
+consistency check. An accepted audit uses the measured remaining energy and
+retains the same Hestenes stop and fresh certificate. Inconsistent steps,
+larger discrepancies and nonfinite recurrence errors still fail closed.
+
 Coefficient recovery uses the same recurrence but adds a stricter terminal
 condition: `max(abs(target - D alpha)) / max(abs(target)) <= 1e-10` (or the
 tolerance-derived stricter value). If the ordinary Hestenes condition fires

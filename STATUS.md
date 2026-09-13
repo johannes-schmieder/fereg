@@ -10,7 +10,44 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## P6 saved two-FE Schur: promising prototype; baseline repair next
+## P6 prerequisite: negative CG energy independently audited
+
+The [source-bound repair](benchmarks/reports/development/cg-energy-audit-local-2026-09-13/README.md)
+is adopted under [ADR 0059](docs/adr/0059-borrowed-cg-negative-energy-audit.md),
+against accepted numerical `257f4ce` at evidence HEAD `d4d7e97`. Candidate plugin
+`e831a657` binds 176 inputs; only borrowed symmetric CG changes. A previously
+fatal small negative Hestenes subtraction now requires an independent scaled,
+compensated check of current and pending weighted energy. Larger/inconsistent
+steps still fail; original recurrence stopping, reference scales, FE and strict
+reconstruction certificates remain. The calculation adds no heap workspace.
+
+The exact original PW missing/two-way-cluster/partial-saved worker now succeeds
+in 3.510 seconds. Separate tracing confirms RHS 51's two-ulp overshoot and zero
+independent remaining energy. This is a correctness repair; the failed baseline
+is not a timing denominator. The final 45-row closed-form fixture fails on the
+isolated accepted core and passes with the repair. All 57 focused Rust tests,
+48 saved-OLS dummy fits per artifact and both independent Poisson fixture arms
+pass. Both architecture builds and native arm64 ABI checks pass. Initial fixture
+expectation/overflow failures, a missing-oracle setup error and collector-field
+corrections remain disclosed; no existing test/public tolerance was loosened.
+
+All twelve protected pairs preserve exact full science, sample/status/DoF,
+solver decisions, native peaks, models and scratch. Largest absolute increase
+is saved unit 2.890→2.938 seconds (+1.7%); dense increases 5 ms/14.7%. No increase
+crosses max(10 ms,5%); no extra seeds were triggered. The saved-unit fallback
+flag and 59 iterations remain exact. RSS moves both ways. Existing low/saved
+observed/model gaps remain; repaired PW reaches 841.84 versus 424.69 MB. These
+are unresolved P0/P6 gaps, not memory qualification.
+
+Next reapply the archived saved-Schur prototype against this repaired baseline
+and resume the original PW screen, then prove overlapping final-recovery/
+fallback admission and constrained budgets before adoption and primary repeats.
+The prototype remains unadopted. Other #27 items remain open; finish those before
+the two-agent investigation, upstream CMG review and authorized later small SCC
+campaign. Installed dist, unrelated Veneto work and historical receipts remain.
+No agents, SCC, qualification or push occurred.
+
+## P6 saved two-FE Schur: archived prototype and baseline failure
 
 The [source-bound probe](benchmarks/reports/development/saved-schur-probe-local-2026-09-13/README.md)
 tests ordinary OLS permission to omit its initial coefficient batch only after
@@ -46,13 +83,11 @@ a two-ulp overshoot. The diagnostic changes no arithmetic or error policy and
 passes both architecture builds/native ABI. All failures and setup mistakes
 remain in the report; no failed command is counted as a pass.
 
-The P6 prototype is archived and removed; all 176 accepted build inputs are
-restored on main. Next independently reproduce and repair the energy-roundoff
-boundary using a narrowly triggered stable energy audit, retaining invalid-step
-rejection, Hestenes convergence and independent FE/reconstruction certificates.
-No repair is implemented yet. Then resume the exact original PW screen, resolve
-overlapping final-recovery/fallback memory admission and constrained budgets,
-and complete the prescribed protected/repeated comparisons before adoption.
+The P6 prototype is archived and removed. Its prerequisite energy repair is
+now adopted in ADR 0059 above. Resume the exact original PW screen against that
+repaired baseline, resolve overlapping final-recovery/fallback memory admission
+and constrained budgets, and complete the prescribed protected/repeated
+comparisons before adopting the saved-Schur optimization.
 P6 and the remaining #27 work stay open; no target/seed substitution, agents,
 SCC, qualification or push. Installed dist and unrelated Veneto work remain.
 

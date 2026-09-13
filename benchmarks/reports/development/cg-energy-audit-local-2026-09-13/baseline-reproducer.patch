@@ -1,0 +1,52 @@
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -10329,6 +10329,49 @@
+     }
+ 
+     #[test]
++    fn borrowed_cg_constant_energy_roundoff_preserves_weighted_projection() {
++        let n = 45;
++        let codes = vec![0_u32; n];
++        let index = LevelIndex::from_codes(&codes, 1).unwrap();
++        let source = ValidatedBorrowedInterceptSource::new(&codes, 1, &index).unwrap();
++        let design = BorrowedInterceptFeDesign::new(n, vec![source.effect()]).unwrap();
++        let weights = (0..n).map(|r| (1 + r % 7) as f64).collect::<Vec<_>>();
++        let x = (0..n).map(|r| (r % 5) as f64 - 2.0).collect::<Vec<_>>();
++        let mean =
++            x.iter().zip(&weights).map(|(x, w)| x * w).sum::<f64>() / weights.iter().sum::<f64>();
++        let input = DenseMatrix::from_columns(&[vec![1.0; n], x.clone()]).unwrap();
++        let ordinary = absorb_borrowed_intercept_cg_retaining_certified(
++            &design,
++            BorrowedMapWeights::Provided(&weights),
++            DenseMatrix::from_columns(&[x.clone()]).unwrap(),
++            config(),
++        )
++        .unwrap();
++        let ordinary_error = (0..n)
++            .map(|row| (ordinary.residualized()[(row, 0)] - (x[row] - mean)).abs())
++            .fold(0.0_f64, f64::max);
++        // The unaffected variable RHS already has cancellation error above
++        // 1e-13; use the existing borrowed-CG oracle bound for that column.
++        assert!(ordinary_error <= 2e-10);
++        let recovered = absorb_borrowed_intercept_cg_retaining_certified(
++            &design,
++            BorrowedMapWeights::Provided(&weights),
++            input,
++            config(),
++        )
++        .expect("constant RHS energy must not fail from a two-ulp subtraction overshoot");
++        let (residual, report, coefficients) = recovered.into_full_parts();
++        assert!(report.certified());
++        let coefficients = coefficients.unwrap();
++        for row in 0..n {
++            assert!(residual[(row, 0)].abs() <= 1e-13);
++            assert!((residual[(row, 1)] - (x[row] - mean)).abs() <= 2e-10);
++        }
++        assert!((coefficients.rhs(0).unwrap()[0] - 1.0).abs() <= 1e-13);
++        assert!((coefficients.rhs(1).unwrap()[0] - mean).abs() <= 2e-10);
++    }
++
++    #[test]
+     fn borrowed_cg_is_weighted_batched_certified_and_deterministic() {
+         let worker_codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
+         let firm_codes = [0_u32, 1, 1, 2, 2, 0, 0, 2];
