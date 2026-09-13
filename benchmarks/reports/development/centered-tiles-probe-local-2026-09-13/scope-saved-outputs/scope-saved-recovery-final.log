@@ -1,0 +1,32 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 17 tests
+test fe::topology_slope_map::tests::recovery_output_capacity_overflow_is_an_allocation_error ... ok
+test fe::topology_slope_map::tests::three_nonorthogonal_slope_channels_preserve_the_known_complement ... ok
+test fe::topology_slope_map::tests::slope_only_multiple_channels_match_their_explicit_local_span ... ok
+test fe::topology_slope_map::tests::recovery_returns_centered_crossed_effects_and_requested_channels ... ok
+test fe::topology_slope_map::tests::every_workspace_reservation_and_capacity_guard_fails_closed ... ok
+test fe::topology_slope_map::tests::sd_lsmr_recovery_uses_the_direct_one_effect_path_with_weights ... ok
+SELECTED_RECOVERY|effects=1|weighted=false|zero=false|method=Direct|iterations=1
+SELECTED_RECOVERY|effects=1|weighted=true|zero=false|method=Direct|iterations=1
+SELECTED_RECOVERY|effects=1|weighted=false|zero=true|method=Direct|iterations=0
+SELECTED_RECOVERY|effects=1|weighted=true|zero=true|method=Direct|iterations=0
+test fe::topology_slope_map::tests::coefficient_lsmr_recovery_matches_map_normalization ... ok
+test fe::topology_slope_map::tests::coefficient_lsmr_recovery_normalizes_disconnected_components ... ok
+test fe::topology_slope_map::tests::retained_coefficient_saved_only_plan_omits_combined_observation_vector ... ok
+test fe::topology_slope_map::tests::borrowed_cg_recovery_matches_strict_lsmr_coefficients ... ok
+test fe::topology_slope_map::tests::retained_coefficient_connected_hint_matches_component_normalization ... ok
+test fe::topology_slope_map::tests::four_sweep_sd_pilot_then_lsmr_matches_strict_lsmr ... ok
+SELECTED_RECOVERY|effects=2|weighted=false|zero=false|method=HybridLsmr|iterations=8
+test fe::topology_slope_map::tests::weak_cycle_uses_the_hybrid_remainder_solve_and_certifies ... ok
+SELECTED_RECOVERY|effects=2|weighted=true|zero=false|method=HybridLsmr|iterations=test fe::topology_slope_map::tests::weak_cycle_cg_continues_to_the_reconstruction_certificate ... ok
+11
+SELECTED_RECOVERY|effects=2|weighted=false|zero=true|method=Direct|iterations=0
+SELECTED_RECOVERY|effects=2|weighted=true|zero=true|method=Direct|iterations=0
+test fe::topology_slope_map::tests::selected_sd_recovery_preserves_channels_and_certificates_without_absorbed_sum ... ok
+test fe::topology_slope_map::tests::intercept_plus_slope_and_second_intercept_effect_match_explicit_span ... ok
+test fe::topology_slope_map::tests::recovery_waits_for_reconstruction_after_an_early_moment_certificate ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 815 filtered out; finished in 4.55s
+

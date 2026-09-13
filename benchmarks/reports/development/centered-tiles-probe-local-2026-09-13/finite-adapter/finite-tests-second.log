@@ -1,0 +1,11 @@
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.95s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 3 tests
+test ols::prepared_fit::centered_finite_probe::centered_finite_workspace_and_invalid_inputs_fail_closed ... ok
+test ols::prepared_fit::centered_finite_probe::centered_finite_deficient_design_retains_householder_decision ... ok
+test ols::prepared_fit::centered_finite_probe::centered_finite_matches_matrix_moments_solve_and_residuals ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 807 filtered out; finished in 0.31s
+

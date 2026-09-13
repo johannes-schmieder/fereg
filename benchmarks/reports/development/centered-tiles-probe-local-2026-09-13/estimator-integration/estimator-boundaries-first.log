@@ -1,0 +1,15 @@
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.98s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 2 tests
+CENTERED_ESTIMATOR_IID|kind=0|rank=1|rss=5.46825396825396748e0
+CENTERED_ESTIMATOR_IID|kind=1|rank=1|rss=1.28705600000000011e1
+CENTERED_ESTIMATOR_IID|kind=2|rank=1|rss=5.14822399999999902e0
+test ols::prepared_fit::centered_finite_probe::centered_estimator_conventional_matches_independent_rational_and_weight_policies ... ok
+CENTERED_ESTIMATOR_BOUNDS|deficient=false|reservation_failures=32|minimum_component_budget=676|scratch_bytes=0
+CENTERED_ESTIMATOR_BOUNDS|deficient=true|reservation_failures=42|minimum_component_budget=1574|scratch_bytes=192
+test ols::prepared_fit::centered_finite_probe::centered_estimator_reservations_budgets_and_changed_bindings_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 825 filtered out; finished in 0.06s
+

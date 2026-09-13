@@ -1,0 +1,34 @@
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+warning: unused import: `recover_finalized_categorical_effects_sd_lsmr_certified`
+   --> crates/fereg-core/src/fe/mod.rs:123:5
+    |
+123 |     recover_finalized_categorical_effects_sd_lsmr_certified,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` on by default
+
+warning: `fereg-core` (lib test) generated 1 warning (run `cargo fix --lib -p fereg-core --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.56s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 1 test
+CENTERED_SAVED|kind=0|deficient=false|rows=256|materialize_sum=false
+CENTERED_SAVED|kind=0|deficient=false|rows=256|materialize_sum=true
+CENTERED_SAVED|kind=0|deficient=true|rows=256|materialize_sum=false
+CENTERED_SAVED|kind=0|deficient=true|rows=256|materialize_sum=true
+CENTERED_SAVED|kind=1|deficient=false|rows=256|materialize_sum=false
+CENTERED_SAVED|kind=1|deficient=false|rows=256|materialize_sum=true
+CENTERED_SAVED|kind=1|deficient=true|rows=256|materialize_sum=false
+CENTERED_SAVED|kind=1|deficient=true|rows=256|materialize_sum=true
+CENTERED_SAVED|kind=2|deficient=false|rows=256|materialize_sum=false
+CENTERED_SAVED|kind=2|deficient=false|rows=256|materialize_sum=true
+CENTERED_SAVED|kind=2|deficient=true|rows=256|materialize_sum=false
+CENTERED_SAVED|kind=2|deficient=true|rows=256|materialize_sum=true
+CENTERED_SAVED|kind=3|deficient=false|rows=256|materialize_sum=false
+CENTERED_SAVED|kind=3|deficient=false|rows=256|materialize_sum=true
+CENTERED_SAVED|kind=3|deficient=true|rows=256|materialize_sum=false
+CENTERED_SAVED|kind=3|deficient=true|rows=256|materialize_sum=true
+test ols::prepared_fit::centered_finite_probe::centered_saved_outputs_recover_final_state_without_initial_coefficient_products ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 828 filtered out; finished in 0.06s
+

@@ -1,0 +1,14 @@
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+error[E0599]: no method named `into_residuals` found for struct `CertifiedBorrowedMap` in the current scope
+   --> crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs:227:32
+    |
+227 |     let mut within = projected.into_residuals();
+    |                                ^^^^^^^^^^^^^^ method not found in `CertifiedBorrowedMap`
+    |
+   ::: crates/fereg-core/src/fe/borrowed_map.rs:68:1
+    |
+68  | pub struct CertifiedBorrowedMap {
+    | ------------------------------- method `into_residuals` not found for this struct
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `fereg-core` (lib test) due to 1 previous error

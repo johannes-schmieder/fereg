@@ -1,0 +1,18 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 11 tests
+test ols::prepared_unadjusted::tests::wald_f_survives_weak_signal_under_large_orthogonal_noise ... ok
+test ols::prepared_unadjusted::tests::invalid_configs_pweights_and_nonpositive_residual_dof_fail_closed ... ok
+test ols::prepared_unadjusted::tests::pinned_constant_regressor_is_structurally_absorbed_and_cons_is_normalized ... ok
+test ols::prepared_unadjusted::tests::corrupted_absorbed_dof_artifact_cannot_be_composed ... ok
+test ols::prepared_unadjusted::tests::analytic_and_frequency_reference_scales_are_reported_exactly ... ok
+test ols::prepared_unadjusted::tests::hidden_constant_reported_constant_and_fe_only_edges_are_explicit ... ok
+test ols::prepared_unadjusted::tests::pinned_full_ibn_span_has_one_finite_contrast_and_report_only_cons ... ok
+test ols::prepared_unadjusted::tests::paired_no_x_default_and_noconstant_share_weighted_structural_residuals ... ok
+test ols::prepared_unadjusted::tests::allocation_failures_and_undersized_reservations_fail_closed ... ok
+test ols::prepared_unadjusted::tests::pinned_default_and_noconstant_pairs_share_the_structural_fit_for_unit_a_and_f_weights ... ok
+test ols::prepared_unadjusted::tests::every_inference_perturbation_is_rejected ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 816 filtered out; finished in 0.01s
+

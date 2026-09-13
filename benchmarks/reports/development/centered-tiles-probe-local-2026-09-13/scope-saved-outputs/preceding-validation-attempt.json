@@ -1,0 +1,104 @@
+[
+  {
+    "log": "scope-saved-centered-final.log",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "centered_",
+      "--",
+      "--nocapture"
+    ],
+    "exit_code": 101,
+    "elapsed_seconds": 8.542016666
+  },
+  {
+    "log": "scope-saved-robust-final.log",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_robust::tests::",
+      "--",
+      "--nocapture"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06960245800000031
+  },
+  {
+    "log": "scope-saved-clustered-final.log",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_clustered::tests::",
+      "--",
+      "--nocapture"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 2.0208802080000012
+  },
+  {
+    "log": "scope-saved-prepared-final.log",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_fit::tests::",
+      "--",
+      "--nocapture"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 14.246648292000001
+  },
+  {
+    "log": "scope-saved-unadjusted-final.log",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_unadjusted::tests::",
+      "--",
+      "--nocapture"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.04998045800000028
+  },
+  {
+    "log": "scope-saved-recovery-final.log",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "fe::topology_slope_map::tests::",
+      "--",
+      "--nocapture"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 4.585648708999997
+  },
+  {
+    "log": "scope-saved-core-check-final.log",
+    "command": [
+      "cargo",
+      "check",
+      "-p",
+      "fereg-core",
+      "--lib"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 1.1656039589999985
+  }
+]

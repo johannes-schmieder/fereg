@@ -1,0 +1,25 @@
+{
+  "profile3-aw_robust-s67280421-baseline": [
+    "FEREG_PHASE|ols_prepare|seconds=0.001697375",
+    "FEREG_PHASE|fit|rhs=0.000401208|raw_moments=0.000595250|initial_absorb=0.002988459|within_norms=0.001806667|finite_solve=0.002972291|score_cache=0.000000000|bread_raw_residual=0.003414750|residual_absorb=0.000141000|score=0.000079666|finalize=0.000003542|total=0.012403333",
+    "FEREG_PHASE|score_design|setup=0.000001000|storage=0.000000250|certificate=0.006578500|finalize=0.000000083|strided=0|reabsorbed=0|total=0.006580000",
+    "FEREG_PHASE|robust|setup_statistics=0.000198333|score_design=0.006670000|covariance=0.010615916|covariance_certificate=0.000880417|psd=0.000026875|wald=0.000030042|finalize=0.000000667|total=0.018422584",
+    "FEREG_PHASE|robust_plugin|prepare=0.001719334|inference=0.031180417|outputs=0.000019334|shadow=0.000054666|prestore_total=0.032974167",
+    "FEREG_PHASE|ols_prepare|seconds=0.023778958",
+    "FEREG_PHASE|fit|rhs=0.011366209|raw_moments=0.018181500|initial_absorb=0.030985000|within_norms=0.000001292|finite_solve=0.027980250|score_cache=0.000000667|bread_raw_residual=0.005035875|residual_absorb=0.003129583|score=0.001877625|finalize=0.000001583|total=0.098559917",
+    "FEREG_PHASE|score_design|setup=0.000001417|storage=0.000000083|certificate=0.090585500|finalize=0.000000041|strided=1|reabsorbed=0|total=0.090587167",
+    "FEREG_PHASE|robust|setup_statistics=0.005989500|score_design=0.090679958|covariance=0.087188333|covariance_certificate=0.000822292|psd=0.000024709|wald=0.000029166|finalize=0.000000875|total=0.184735125",
+    "FEREG_PHASE|robust_plugin|prepare=0.023826083|inference=0.285512625|outputs=0.000024000|shadow=0.000066833|prestore_total=0.309429625"
+  ],
+  "profile3-aw_robust-s67280421-candidate": [
+    "FEREG_PHASE|ols_prepare|seconds=0.001676958",
+    "FEREG_PHASE|fit|rhs=0.000367917|raw_moments=0.000594875|initial_absorb=0.003074209|within_norms=0.001810667|finite_solve=0.003024500|score_cache=0.000000042|bread_raw_residual=0.003444542|residual_absorb=0.000141625|score=0.000079542|finalize=0.000003208|total=0.012541417",
+    "FEREG_PHASE|score_design|setup=0.000002792|storage=0.000000750|certificate=0.002902458|finalize=0.000000083|strided=0|reabsorbed=0|total=0.002906125",
+    "FEREG_PHASE|robust|setup_statistics=0.000208375|score_design=0.002979833|covariance=0.010366916|covariance_certificate=0.000881208|psd=0.000028459|wald=0.000031166|finalize=0.000001000|total=0.014497166",
+    "FEREG_PHASE|robust_plugin|prepare=0.001708750|inference=0.027376625|outputs=0.000024750|shadow=0.000082542|prestore_total=0.029192875",
+    "FEREG_PHASE|ols_prepare|seconds=0.023730875",
+    "fereg centered_ols rows=245266 columns=51 component_limit_bytes=100068528 frame_charge_bytes=20468864 scratch_bytes=0 fit_seconds=0.220644083",
+    "FEREG_PHASE|robust|setup_statistics=0.005884542|score_design=0.034251500|covariance=0.102493166|covariance_certificate=0.000854250|psd=0.000026208|wald=0.000030500|finalize=0.000000833|total=0.143541458",
+    "FEREG_PHASE|robust_plugin|prepare=0.023770459|inference=0.365000334|outputs=0.000011000|shadow=0.000059000|prestore_total=0.388841167"
+  ]
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "centered_",
+      "--",
+      "--test-threads=1"
+    ],
+    "log": "qr6-centered-final.log",
+    "exit_code": 0
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "fereg-plugin",
+      "--lib",
+      "estimate::tests",
+      "--",
+      "--test-threads=1"
+    ],
+    "log": "qr6-plugin-estimate-final.log",
+    "exit_code": 0
+  }
+]

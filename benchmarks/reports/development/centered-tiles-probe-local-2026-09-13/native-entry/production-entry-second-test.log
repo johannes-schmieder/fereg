@@ -1,0 +1,19 @@
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.94s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 1 test
+
+thread 'ols::prepared_fit::centered_finite_probe::centered_native_entrypoints_match_independent_orthogonal_coefficients_and_matrix_inference' panicked at crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs:3978:69:
+called `Result::unwrap()` on an `Err` value: FeregError { code: InvalidData, message: "prepared robust covariance or statistic certificate did not pass" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ols::prepared_fit::centered_finite_probe::centered_native_entrypoints_match_independent_orthogonal_coefficients_and_matrix_inference ... FAILED
+
+failures:
+
+failures:
+    ols::prepared_fit::centered_finite_probe::centered_native_entrypoints_match_independent_orthogonal_coefficients_and_matrix_inference
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 832 filtered out; finished in 1.24s
+
+error: test failed, to rerun pass `-p fereg-core --lib`

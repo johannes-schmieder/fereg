@@ -1,0 +1,47 @@
+diff --git a/crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs b/crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs
+index c0280de..e31e32c 100644
+--- a/crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs
++++ b/crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs
+@@ -4281,3 +4281,42 @@ fn centered_native_five_row_groups_keep_independent_coefficients_and_residuals()
+         })
+         .unwrap();
+ }
++
++#[test]
++fn centered_native_near_capacity_qr_matches_matrix_route() {
++    let rows = 16_384_usize;
++    let columns = 16_usize;
++    let generated = columns + 1;
++    let groups_count = rows * generated / (2 * (generated + 1));
++    let groups: Vec<f64> = (0..rows).map(|r| (r * groups_count / rows) as f64).collect();
++    let mut x: Vec<Vec<f64>> = (1..=columns).map(|j| {
++        (0..rows).map(|r| {
++            groups[r] / 256.0 + ((groups[r] + 1.0) * j as f64 * 0.137).sin() * ((r % 3) as f64 - 1.0)
++        }).collect()
++    }).collect();
++    x[columns - 1] = x[0].clone();
++    let y: Vec<f64> = (0..rows).map(|r| {
++        x.iter().enumerate().fold(groups[r] / 16.0 + (r as f64 * 0.913).sin(), |v, (j, x)| v + (j + 1) as f64 / 32.0 * x[r])
++    }).collect();
++    let prepared = prepared(&y, &x, &vec![false; columns], Some(&groups), true, TestWeights::Unit);
++    let mut config = PreparedOlsFitConfig::default();
++    config.execution.threads = ThreadConfig::from_requested(4, false).unwrap();
++    let matrix = fit_prepared_ols_coefficients_view_map(&prepared, PreparedOlsFitConfig {
++        absorb: AbsorbConfig { solver: FeSolverKind::Map, ..config.absorb }, ..config
++    }).unwrap();
++    assert_eq!(matrix.finite_rank(), columns - 1);
++    let component_bytes = rows * generated * 8;
++    let mean_bytes = groups_count * (generated + 1) * 8;
++    assert!(mean_bytes <= component_bytes / 2);
++    assert!(component_bytes / 2 - mean_bytes < (generated + 1) * 8);
++    eprintln!("CENTERED_NEAR_CAPACITY_QR|rows={rows}|groups={groups_count}|columns={columns}|component_bytes={component_bytes}|mean_bytes={mean_bytes}|matrix_rank={}", matrix.finite_rank());
++    ThreadTeam::new(config.execution.threads).install(|| {
++        let (actual, _) = try_centered_ols_in_team(&prepared, config, None, |fit, _| Ok(fit)).unwrap();
++        let actual = actual.expect("eligible centered QR must preserve an admitted matrix fit");
++        assert_eq!(actual.finite_rank(), matrix.finite_rank());
++        assert_eq!(actual.kept_generated_columns(), matrix.kept_generated_columns());
++        for (a, b) in actual.residuals().iter().zip(matrix.residuals()) {
++            assert!((a-b).abs() <= 1e-9 + 1e-7 * b.abs());
++        }
++    }).unwrap();
++}

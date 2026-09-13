@@ -1,0 +1,20 @@
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.26s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 1 test
+CENTERED_ORACLE|maximum_outcome_centering_error=1.16415321826934814e-10
+
+thread 'ols::prepared_fit::centered_finite_probe::centered_finite_preserves_large_reference_scales_and_absorption_status' panicked at crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs:612:9:
+assertion failed: (residual - noise[row % 4]).abs() < 1e-12
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ols::prepared_fit::centered_finite_probe::centered_finite_preserves_large_reference_scales_and_absorption_status ... FAILED
+
+failures:
+
+failures:
+    ols::prepared_fit::centered_finite_probe::centered_finite_preserves_large_reference_scales_and_absorption_status
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 811 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p fereg-core --lib`

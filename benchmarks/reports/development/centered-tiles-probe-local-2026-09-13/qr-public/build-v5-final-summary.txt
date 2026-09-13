@@ -1,0 +1,8 @@
+   Compiling fereg-core v0.5.0 (<isolated-bench>/candidate5-final/crates/fereg-core)
+   Compiling fereg-plugin v0.5.0 (<isolated-bench>/candidate5-final/crates/fereg-plugin)
+    Finished `release` profile [optimized] target(s) in 48.71s
+   Compiling fereg-core v0.5.0 (<isolated-bench>/candidate5-final/crates/fereg-core)
+   Compiling fereg-plugin v0.5.0 (<isolated-bench>/candidate5-final/crates/fereg-plugin)
+    Finished `release` profile [optimized] target(s) in 48.51s
+actual-plugin ABI/self-test harness: PASS
+Built universal <isolated-bench>/candidate5-final/dist/fereg_macos.plugin

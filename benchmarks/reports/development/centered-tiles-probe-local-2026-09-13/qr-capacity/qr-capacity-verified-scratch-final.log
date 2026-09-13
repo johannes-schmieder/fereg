@@ -1,0 +1,18 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 11 tests
+test ols::prepared_scratch::tests::column_bounded_buffer_round_trips_columns_and_cross_column_ranges ... ok
+test ols::prepared_scratch::tests::row_major_blocks_patch_extract_and_share_selected_rows ... ok
+test ols::prepared_scratch::tests::row_major_compaction_failure_leaves_path_and_metadata_unchanged ... ok
+test ols::prepared_scratch::tests::row_major_compaction_is_forward_in_place_and_updates_metadata ... ok
+test ols::prepared_scratch::tests::row_major_compaction_supports_an_empty_selected_basis ... ok
+test ols::prepared_scratch::tests::row_major_creation_reserves_at_least_one_very_wide_row ... ok
+test ols::prepared_scratch::tests::row_major_io_failure_poisons_storage_without_publishing_new_metadata ... ok
+test ols::prepared_scratch::tests::scratch_layout_keeps_column_and_row_major_apis_disjoint ... ok
+test ols::prepared_scratch::tests::scratch_rejects_dimension_and_nonfinite_errors ... ok
+test ols::prepared_scratch::tests::scratch_round_trips_columns_and_cleans_up ... ok
+test ols::prepared_scratch::tests::scratch_shared_positional_reads_are_sync_and_cursor_independent ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 828 filtered out; finished in 0.18s
+

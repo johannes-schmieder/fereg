@@ -10,6 +10,55 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P5 centered tiles: evaluated and rejected for native adoption
+
+The [final QR/publication report](benchmarks/reports/development/centered-tiles-probe-local-2026-09-13/qr-public/README.md)
+concludes the bounded centered one-FE evaluation against accepted numerical
+`257f4ce` (evidence HEAD `436fe2a`). Stable current-frame means, streamed finite
+moments, existing rank-revealing scratch QR, original-row residuals and centered
+robust/clustered scores were implemented and tested in the archived prototype.
+They are not adopted. The conditional PPML extension is declined because there
+is no acceptable OLS winner; R3 may revisit a materially different mechanism.
+
+The earlier actual-dispatch screens saved 40–43% native peak. Bounded parallel
+Gram/FE certificates reduced initial overhead, but full-rank IID still missed
+the prescribed memory/time tradeoff (0.573→0.631 seconds, +10.1%). Those stages
+and their failures remain immutable in the same report tree.
+
+The near-capacity QR repair was then built as plugin `c8817a0b`. Its first public
+unit-IID candidate returned r(498): precommit required fast mode to report zero
+scratch. A separate diagnostic confirmed that cause and previous e(b) rollback.
+An experimental origin flag and exact final-axis/file-bound check repaired this
+reporting boundary without changing ordinary fast/low checks. Final plugin
+`840092dd` binds 182 inputs and passes both architecture builds/arm64 ABI.
+Thirty-five centered core and 46 plugin tests pass (81 distinct). An unavailable
+Cargo launcher and two report-comparison fixture failures remain disclosed.
+
+All five prospective public QR controls now pass science but violate the command
+cost envelope. Near unit/AW/FW/PW commands are 0.034→0.051 / 0.047→0.063 /
+0.046→0.062 / 0.046→0.065 seconds (+34–50%). Wide deficient AW is 1.366→1.898
+(+38.9%, +532 ms). Native peaks fall 30–41% and fit unchanged models; AW/wide
+sampled RSS rises. Two separate profiles confirm excess fit cost; wide score
+construction savings do not offset it. Full b/V and independent certificates
+pass, with exact sample/rank/status/DoF/FE/cluster structure. Scratch capacities
+are 2.23/40.11 MB; actual I/O traffic is unmeasured. Full overlapping admission
+proof remains incomplete. Cost rejection stops adoption before broader controls,
+repeat primary seeds or a PPML extension; no failing result is discarded.
+
+The rejected route, report extension and prototype-only modules were removed
+from main after the complete patch/source/artifact/numeric evidence was archived.
+All 176 accepted baseline build inputs matched before isolating the independent
+P6 selected-output candidate in three files: `fe/topology_slope_map.rs`,
+`fe/mod.rs` and `ols/prepared_categorical_data.rs`. That unadopted candidate only
+forwards the requested combined-output mask to the existing recovery finisher;
+its earlier independent evidence remains in the scope/saved-output stage.
+Next test and measure it separately, then continue remaining #27 P0/P3/P4/P6/P7
+and R1–R5 items. P6 saved outputs remains open. Complete #27 before the two-agent
+investigation, upstream CMG assessment and later small SCC campaign.
+
+Installed dist, the 97 unrelated STATUS additions and all 358 original untracked
+paths remain preserved. No agents, SCC, qualification or push occurred.
+
 ## P3 cluster-state reuse: evaluated; certificate prototype rejected
 
 The [source-bound report](benchmarks/reports/development/cluster-certificate-local-2026-09-13/README.md)

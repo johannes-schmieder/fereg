@@ -1,0 +1,1545 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index 37bb956..58017dc 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -15,6 +15,9 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
+ 
+ use super::map::ReusableMapCapacities;
+ 
++#[cfg(test)]
++pub(crate) mod centered_tiles_probe;
++
+ pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
+ pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
+ // Fixed row partitions make the compensated dot reduction independent of the
+diff --git a/crates/fereg-core/src/fe/mod.rs b/crates/fereg-core/src/fe/mod.rs
+index bc0d72d..4660467 100644
+--- a/crates/fereg-core/src/fe/mod.rs
++++ b/crates/fereg-core/src/fe/mod.rs
+@@ -29,6 +29,9 @@ mod topology_rhs;
+ mod topology_slope_map;
+ mod topology_source;
+ 
++#[cfg(test)]
++pub(crate) use borrowed_map::centered_tiles_probe::CenteredColumns;
++
+ pub use accelerated_map::absorb_accelerated_map;
+ pub use auto::{absorb_fixed_effects, AbsorbConfig};
+ pub use borrowed_map::{
+diff --git a/crates/fereg-core/src/ols/finite_wls_kernel.rs b/crates/fereg-core/src/ols/finite_wls_kernel.rs
+index 470cac9..d61850e 100644
+--- a/crates/fereg-core/src/ols/finite_wls_kernel.rs
++++ b/crates/fereg-core/src/ols/finite_wls_kernel.rs
+@@ -176,61 +176,74 @@ pub(super) struct FiniteWlsMomentLayout {
+     pub(super) partial_elements: usize,
+ }
+ 
++pub(super) fn prepared_moment_layout(
++    rows: usize,
++    dimension: usize,
++) -> Result<FiniteWlsMomentLayout> {
++    if rows == 0 || dimension == 0 {
++        return Err(invalid_argument(
++            "prepared moments require nonempty dimensions",
++        ));
++    }
++    if dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS {
++        let square = checked_square(dimension, "finite-WLS moment dimensions overflow")?;
++        let partial_stride = dimension
++            .checked_add(square)
++            .ok_or_else(|| allocation("finite-WLS moment partial stride overflows"))?;
++        let partitions = rows
++            .div_ceil(FIXED_BLOCK_MOMENT_ROWS)
++            .clamp(1, FIXED_BLOCK_MOMENT_MAX_BLOCKS);
++        let partial_elements = partitions
++            .checked_mul(partial_stride)
++            .ok_or_else(|| allocation("finite-WLS moment partial allocation overflows"))?;
++        Ok(FiniteWlsMomentLayout {
++            mode: FiniteWlsMomentMode::PreparedFixedBlocks,
++            partitions,
++            columns_per_partition: dimension,
++            partial_stride,
++            partial_elements,
++        })
++    } else {
++        partitioned_moment_layout(dimension, FiniteWlsMomentMode::PreparedPartitioned, 0)
++    }
++}
++
++fn partitioned_moment_layout(
++    dimension: usize,
++    mode: FiniteWlsMomentMode,
++    row_workspace: usize,
++) -> Result<FiniteWlsMomentLayout> {
++    let requested_partitions = rayon::current_num_threads().min(dimension).max(1);
++    let columns_per_partition = dimension.div_ceil(requested_partitions);
++    let partitions = dimension.div_ceil(columns_per_partition);
++    let partial_elements = partitions
++        .checked_mul(row_workspace)
++        .ok_or_else(|| allocation("finite-WLS retained row workspace overflows"))?;
++    Ok(FiniteWlsMomentLayout {
++        mode,
++        partitions,
++        columns_per_partition,
++        partial_stride: row_workspace,
++        partial_elements,
++    })
++}
++
+ pub(super) fn finite_wls_moment_layout(
+     source: FixedBlockMomentSource<'_>,
+ ) -> Result<FiniteWlsMomentLayout> {
+     source.validate()?;
+-    let dimension = source.dimension();
+     match source {
+-        FixedBlockMomentSource::PreparedStandardized { .. }
+-            if dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS =>
+-        {
+-            let square = checked_square(dimension, "finite-WLS moment dimensions overflow")?;
+-            let partial_stride = dimension
+-                .checked_add(square)
+-                .ok_or_else(|| allocation("finite-WLS moment partial stride overflows"))?;
+-            let partitions = source
+-                .rows()
+-                .div_ceil(FIXED_BLOCK_MOMENT_ROWS)
+-                .clamp(1, FIXED_BLOCK_MOMENT_MAX_BLOCKS);
+-            let partial_elements = partitions
+-                .checked_mul(partial_stride)
+-                .ok_or_else(|| allocation("finite-WLS moment partial allocation overflows"))?;
+-            Ok(FiniteWlsMomentLayout {
+-                mode: FiniteWlsMomentMode::PreparedFixedBlocks,
+-                partitions,
+-                columns_per_partition: dimension,
+-                partial_stride,
+-                partial_elements,
+-            })
++        FixedBlockMomentSource::PreparedStandardized { .. } => {
++            prepared_moment_layout(source.rows(), source.dimension())
+         }
+-        FixedBlockMomentSource::PreparedStandardized { .. }
+-        | FixedBlockMomentSource::RetainedDense { .. }
++        FixedBlockMomentSource::RetainedDense { .. }
+         | FixedBlockMomentSource::RetainedScratch { .. } => {
+-            // A block bank of `chunks * K^2` is intentionally forbidden for
+-            // reusable sessions. Disjoint left-column partitions each scan
+-            // rows in canonical order and write separate Gram rows. Dense
+-            // storage needs no auxiliary row buffer; scratch storage owns one
+-            // complete stored row per partition.
+-            let requested_partitions = rayon::current_num_threads().min(dimension).max(1);
+-            let columns_per_partition = dimension.div_ceil(requested_partitions);
+-            let partitions = dimension.div_ceil(columns_per_partition);
+-            let partial_stride = source.row_workspace();
+-            let partial_elements = partitions
+-                .checked_mul(partial_stride)
+-                .ok_or_else(|| allocation("finite-WLS retained row workspace overflows"))?;
+-            Ok(FiniteWlsMomentLayout {
+-                mode: match source {
+-                    FixedBlockMomentSource::PreparedStandardized { .. } => {
+-                        FiniteWlsMomentMode::PreparedPartitioned
+-                    }
+-                    _ => FiniteWlsMomentMode::RetainedPartitioned,
+-                },
+-                partitions,
+-                columns_per_partition,
+-                partial_stride,
+-                partial_elements,
+-            })
++            // Retained designs partition Gram rows instead of adding a blocks*K^2 bank.
++            partitioned_moment_layout(
++                source.dimension(),
++                FiniteWlsMomentMode::RetainedPartitioned,
++                source.row_workspace(),
++            )
+         }
+     }
+ }
+@@ -1893,7 +1906,7 @@ pub(super) fn certify_normal_equations(
+     })
+ }
+ 
+-fn merge_fixed_block_partials(
++pub(super) fn merge_fixed_block_partials(
+     layout: FiniteWlsMomentLayout,
+     partials: &[f64],
+     rhs: &mut [f64],
+@@ -1944,30 +1957,15 @@ fn fill_prepared_partitioned(
+         .enumerate()
+         .for_each(|(partition, (rhs_part, gram_part))| {
+             let left_start = partition * layout.columns_per_partition;
+-            for values in within.as_slice().chunks_exact(within.ncols()) {
+-                for (local_left, destination) in rhs_part.iter_mut().enumerate() {
+-                    let left = left_start + local_left;
+-                    let left_value = values[canonical_candidates[left] + 1];
+-                    *destination += left_value * values[0];
+-                    let gram_row =
+-                        &mut gram_part[local_left * dimension..(local_left + 1) * dimension];
+-                    // Avoid repeated indexing on the ordinary contiguous design.
+-                    // Plain multiply/add also avoids software FMA on portable x86.
+-                    if contiguous {
+-                        let start = canonical_candidates[left] + 1;
+-                        for (entry, right_value) in gram_row[left..]
+-                            .iter_mut()
+-                            .zip(&values[start..start + dimension - left])
+-                        {
+-                            *entry += left_value * right_value;
+-                        }
+-                    } else {
+-                        for right in left..dimension {
+-                            gram_row[right] += left_value * values[canonical_candidates[right] + 1];
+-                        }
+-                    }
+-                }
+-            }
++            accumulate_prepared_partition_rows(
++                within.as_slice(),
++                within.ncols(),
++                canonical_candidates,
++                contiguous,
++                left_start,
++                rhs_part,
++                gram_part,
++            );
+         });
+     for left in 0..dimension {
+         for right in (left + 1)..dimension {
+@@ -1981,6 +1979,41 @@ fn fill_prepared_partitioned(
+     }
+ }
+ 
++pub(super) fn accumulate_prepared_partition_rows(
++    values: &[f64],
++    columns: usize,
++    canonical_candidates: &[usize],
++    contiguous: bool,
++    left_start: usize,
++    rhs_part: &mut [f64],
++    gram_part: &mut [f64],
++) {
++    let dimension = canonical_candidates.len();
++    for values in values.chunks_exact(columns) {
++        for (local_left, destination) in rhs_part.iter_mut().enumerate() {
++            let left = left_start + local_left;
++            let left_value = values[canonical_candidates[left] + 1];
++            *destination += left_value * values[0];
++            let gram_row = &mut gram_part[local_left * dimension..(local_left + 1) * dimension];
++            // Avoid repeated indexing on the ordinary contiguous design.
++            // Plain multiply/add also avoids software FMA on portable x86.
++            if contiguous {
++                let start = canonical_candidates[left] + 1;
++                for (entry, right_value) in gram_row[left..]
++                    .iter_mut()
++                    .zip(&values[start..start + dimension - left])
++                {
++                    *entry += left_value * right_value;
++                }
++            } else {
++                for right in left..dimension {
++                    gram_row[right] += left_value * values[canonical_candidates[right] + 1];
++                }
++            }
++        }
++    }
++}
++
+ fn fill_retained_partitioned(
+     source: FixedBlockMomentSource<'_>,
+     layout: FiniteWlsMomentLayout,
+@@ -2322,9 +2355,23 @@ fn fill_prepared_partial(
+     start: usize,
+     end: usize,
+     partial: &mut [f64],
++) -> Result<()> {
++    let columns = within.ncols();
++    accumulate_prepared_rows(
++        &within.as_slice()[start * columns..end * columns],
++        columns,
++        canonical_candidates,
++        partial,
++    )
++}
++
++pub(super) fn accumulate_prepared_rows(
++    values: &[f64],
++    ncols: usize,
++    canonical_candidates: &[usize],
++    partial: &mut [f64],
+ ) -> Result<()> {
+     let dimension = canonical_candidates.len();
+-    let ncols = within.ncols();
+     let contiguous_start = canonical_candidates
+         .first()
+         .copied()
+@@ -2336,8 +2383,7 @@ fn fill_prepared_partial(
+                 .all(|(offset, column)| first.checked_add(offset) == Some(column))
+         })
+         .and_then(|first| first.checked_add(1));
+-    for row in start..end {
+-        let values = &within.as_slice()[row * ncols..(row + 1) * ncols];
++    for values in values.chunks_exact(ncols) {
+         let outcome = values[0];
+         if let Some(matrix_start) = contiguous_start {
+             let candidates = &values[matrix_start..matrix_start + dimension];
+diff --git a/crates/fereg-core/src/ols/prepared_fit.rs b/crates/fereg-core/src/ols/prepared_fit.rs
+index 30815c9..4851047 100644
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -3029,9 +3029,44 @@ fn build_standardized_moments_columnwise<R: FitReservation>(
+     Ok((standardized_rhs, standardized_gram))
+ }
+ 
++// Share the guarded solve and its certificates while the residual builder
++// reads either a retained matrix or the test-only centered-column source.
++trait PreparedCholeskyResidualSource: Sync {
++    fn nrows(&self) -> usize;
++    fn standardized_residual(
++        &self,
++        row: usize,
++        candidates: &[usize],
++        coefficients: &[f64],
++    ) -> Result<f64>;
++    fn standardized_within_is_reusable(&self) -> bool;
++}
++
++impl PreparedCholeskyResidualSource for DenseMatrix {
++    fn nrows(&self) -> usize {
++        DenseMatrix::nrows(self)
++    }
++    fn standardized_residual(
++        &self,
++        row: usize,
++        candidates: &[usize],
++        coefficients: &[f64],
++    ) -> Result<f64> {
++        let values = &self.as_slice()[row * self.ncols()..(row + 1) * self.ncols()];
++        let mut value = values[0];
++        for (position, generated) in candidates.iter().copied().enumerate() {
++            value = (-coefficients[position]).mul_add(values[generated + 1], value);
++        }
++        Ok(value)
++    }
++    fn standardized_within_is_reusable(&self) -> bool {
++        true
++    }
++}
++
+ #[allow(clippy::too_many_arguments)]
+-fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
+-    within: &DenseMatrix,
++fn try_fit_scaled_pivoted_cholesky<R: FitReservation, S: PreparedCholeskyResidualSource>(
++    within: &S,
+     weights: NormalizedWeights<'_>,
+     bread_weight_scale: PreparedOlsBreadWeightScale,
+     reference_norms: &[f64],
+@@ -3196,12 +3231,11 @@ fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
+         .par_iter_mut()
+         .enumerate()
+         .try_for_each(|(row, residual)| -> Result<()> {
+-            let values = &within.as_slice()[row * within.ncols()..(row + 1) * within.ncols()];
+-            let mut value = values[0];
+-            for (position, generated) in canonical_candidates.iter().copied().enumerate() {
+-                value =
+-                    (-standardized_coefficients[position]).mul_add(values[generated + 1], value);
+-            }
++            let value = within.standardized_residual(
++                row,
++                canonical_candidates,
++                &standardized_coefficients,
++            )?;
+             *residual = value / weights.root(row)?;
+             if residual.is_finite() {
+                 Ok(())
+@@ -3295,7 +3329,7 @@ fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
+         finite_score,
+         bread,
+         within_residuals: Some(residuals),
+-        standardized_within_is_reusable: true,
++        standardized_within_is_reusable: within.standardized_within_is_reusable(),
+     }))
+ }
+ 
+@@ -3340,40 +3374,14 @@ fn normalized_weights<P: PreparedOlsFitView + ?Sized>(
+     }
+ }
+ 
+-#[allow(clippy::too_many_arguments)]
+-fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
++fn classify_finite_candidates<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+     prepared: &P,
+-    within: &mut DenseMatrix,
+-    weights: NormalizedWeights<'_>,
+-    bread_weight_scale: PreparedOlsBreadWeightScale,
+     reference_norms: &[f64],
+     score_norms: &[f64],
+     config: PreparedOlsFitConfig,
+     reservation: &mut R,
+-    perturb_first_coefficient: bool,
+-    perturb_bread: bool,
+-    build_bread: bool,
+-) -> Result<QrFit> {
+-    let nrows = within.nrows();
++) -> Result<(Vec<PreparedOlsFitStatus>, Vec<usize>)> {
+     let generated_columns = prepared.fit_model().columns.len();
+-    let expected_columns = generated_columns
+-        .checked_add(1)
+-        .ok_or_else(|| allocation("prepared OLS absorbed RHS column count overflows"))?;
+-    if within.ncols() != expected_columns
+-        || reference_norms.len() != generated_columns
+-        || score_norms.len() != generated_columns
+-    {
+-        return Err(invalid_argument(
+-            "prepared OLS absorbed RHS dimensions are inconsistent",
+-        ));
+-    }
+-
+-    let mut generated_coefficients = reserved_filled(
+-        reservation,
+-        generated_columns,
+-        None,
+-        "unable to reserve prepared OLS generated coefficients",
+-    )?;
+     let mut generated_statuses = reserved_filled(
+         reservation,
+         generated_columns,
+@@ -3431,6 +3439,46 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+         }
+     }
+ 
++    Ok((generated_statuses, candidate_columns))
++}
++
++#[allow(clippy::too_many_arguments)]
++fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
++    prepared: &P,
++    within: &mut DenseMatrix,
++    weights: NormalizedWeights<'_>,
++    bread_weight_scale: PreparedOlsBreadWeightScale,
++    reference_norms: &[f64],
++    score_norms: &[f64],
++    config: PreparedOlsFitConfig,
++    reservation: &mut R,
++    perturb_first_coefficient: bool,
++    perturb_bread: bool,
++    build_bread: bool,
++) -> Result<QrFit> {
++    let nrows = within.nrows();
++    let generated_columns = prepared.fit_model().columns.len();
++    let expected_columns = generated_columns
++        .checked_add(1)
++        .ok_or_else(|| allocation("prepared OLS absorbed RHS column count overflows"))?;
++    if within.ncols() != expected_columns
++        || reference_norms.len() != generated_columns
++        || score_norms.len() != generated_columns
++    {
++        return Err(invalid_argument(
++            "prepared OLS absorbed RHS dimensions are inconsistent",
++        ));
++    }
++
++    let mut generated_coefficients = reserved_filled(
++        reservation,
++        generated_columns,
++        None,
++        "unable to reserve prepared OLS generated coefficients",
++    )?;
++    let (mut generated_statuses, mut candidate_columns) =
++        classify_finite_candidates(prepared, reference_norms, score_norms, config, reservation)?;
++
+     let candidate_count = candidate_columns.len();
+     let mut canonical_candidates = reserved_empty(
+         reservation,
+@@ -6724,7 +6772,7 @@ mod tests {
+     }
+ 
+     #[derive(Clone, Copy)]
+-    enum TestWeights<'a> {
++    pub(super) enum TestWeights<'a> {
+         Unit,
+         Analytic(&'a [f64]),
+         Probability(&'a [f64]),
+@@ -6857,7 +6905,7 @@ mod tests {
+         }
+     }
+ 
+-    fn prepared(
++    pub(super) fn prepared(
+         outcome: &[f64],
+         regressors: &[Vec<f64>],
+         omitted: &[bool],
+@@ -12356,3 +12404,6 @@ mod tests {
+         );
+     }
+ }
++
++#[cfg(test)]
++mod centered_finite_probe;
+diff --git a/crates/fereg-core/src/fe/borrowed_map/centered_tiles_probe.rs b/crates/fereg-core/src/fe/borrowed_map/centered_tiles_probe.rs
+new file mode 100644
+index 0000000..9ba3e46
+--- /dev/null
++++ b/crates/fereg-core/src/fe/borrowed_map/centered_tiles_probe.rs
+@@ -0,0 +1,361 @@
++//! Unadopted P5 primitive. Compiled only in tests until estimator-level rank,
++//! inference, memory admission and command comparisons have been established.
++
++use super::*;
++use crate::fe::{BorrowedInterceptEffect, LevelIndex, ValidatedBorrowedInterceptSource};
++
++pub(crate) struct CenteredColumns<'a> {
++    columns: &'a [&'a [f64]],
++    effect: &'a BorrowedInterceptEffect<'a>,
++    means: Vec<f64>,
++}
++
++impl<'a> CenteredColumns<'a> {
++    pub(crate) fn prepare(
++        columns: &'a [&'a [f64]],
++        effect: &'a BorrowedInterceptEffect<'a>,
++        weights: BorrowedMapWeights<'_>,
++        maximum_mean_bytes: usize,
++    ) -> Result<Self> {
++        Self::new(
++            columns,
++            effect,
++            weights,
++            maximum_mean_bytes,
++            &mut SystemWorkspaceReservation,
++        )
++    }
++
++    pub(crate) fn rows(&self) -> usize {
++        self.effect.codes().len()
++    }
++    pub(crate) fn width(&self) -> usize {
++        self.columns.len()
++    }
++    pub(crate) fn raw_column(&self, column: usize) -> &[f64] {
++        self.columns[column]
++    }
++    pub(crate) fn value(&self, row: usize, column: usize) -> f64 {
++        self.columns[column][row]
++            - self.means[self.effect.codes()[row] as usize * self.width() + column]
++    }
++
++    fn new<R: WorkspaceReservation>(
++        columns: &'a [&'a [f64]],
++        effect: &'a BorrowedInterceptEffect<'a>,
++        weights: BorrowedMapWeights<'_>,
++        maximum_mean_bytes: usize,
++        reservation: &mut R,
++    ) -> Result<Self> {
++        let rows = effect.codes().len();
++        if rows == 0 || columns.is_empty() || columns.iter().any(|c| c.len() != rows) {
++            return Err(invalid_argument(
++                "centered columns require aligned nonempty inputs",
++            ));
++        }
++        let elements = effect
++            .n_levels()
++            .checked_mul(columns.len())
++            .ok_or_else(|| allocation("centered group means overflow"))?;
++        let bytes = elements
++            .checked_mul(std::mem::size_of::<f64>())
++            .ok_or_else(|| allocation("centered group mean bytes overflow"))?;
++        if bytes > maximum_mean_bytes {
++            return Err(allocation(
++                "centered group means exceed their workspace budget",
++            ));
++        }
++        let weights = validate_weights(weights, rows)?;
++        if columns.iter().any(|c| c.iter().any(|v| !v.is_finite())) {
++            return Err(invalid_data("centered source contains a nonfinite value"));
++        }
++        let mut means = reserved_zeros(
++            elements,
++            reservation,
++            "unable to reserve centered group means",
++        )?;
++        if means.capacity() > maximum_mean_bytes / std::mem::size_of::<f64>() {
++            return Err(allocation(
++                "centered group mean capacity exceeds its budget",
++            ));
++        }
++        // Each finalized group keeps its membership order. Reuse the existing
++        // scaled/compensated mean arithmetic, including above-64 RHS blocks.
++        means
++            .par_chunks_mut(columns.len())
++            .enumerate()
++            .try_for_each(|(level, destination)| -> Result<()> {
++                for (block, output) in destination.chunks_mut(PARALLEL_GROUP_MAX_RHS).enumerate() {
++                    let start = block * PARALLEL_GROUP_MAX_RHS;
++                    fused_group_means_by_value(
++                        effect,
++                        level,
++                        weights,
++                        rows,
++                        output,
++                        |row, rhs| columns[start + rhs][row],
++                    )?;
++                }
++                Ok(())
++            })?;
++        Ok(Self {
++            columns,
++            effect,
++            means,
++        })
++    }
++
++    pub(crate) fn fill_rows(&self, start: usize, output: &mut [f64]) -> Result<()> {
++        let width = self.columns.len();
++        let rows = output.len() / width;
++        if output.len() % width != 0
++            || start
++                .checked_add(rows)
++                .is_none_or(|end| end > self.effect.codes().len())
++        {
++            return Err(invalid_argument(
++                "centered row tile is outside its source axis",
++            ));
++        }
++        for (offset, values) in output.chunks_exact_mut(width).enumerate() {
++            let row = start + offset;
++            let level = self.effect.codes()[row] as usize;
++            for (column, value) in values.iter_mut().enumerate() {
++                *value = self.columns[column][row] - self.means[level * width + column];
++                if !value.is_finite() {
++                    return Err(invalid_data("centered row value is not finite"));
++                }
++            }
++        }
++        Ok(())
++    }
++}
++
++#[test]
++fn centered_tiles_match_existing_projection_across_widths_weights_and_workers() {
++    let rows = 257;
++    let codes: Vec<u32> = (0..rows).map(|r| ((r * 7) % 17) as u32).collect();
++    let index = LevelIndex::from_codes(&codes, 17).unwrap();
++    let source = ValidatedBorrowedInterceptSource::new(&codes, 17, &index).unwrap();
++    let effect = source.effect();
++    for workers in [1, 4, 16] {
++        let pool = rayon::ThreadPoolBuilder::new()
++            .num_threads(workers)
++            .build()
++            .unwrap();
++        pool.install(|| {
++            for width in [1, 2, 17, 64, 65, 129] {
++                let columns: Vec<Vec<f64>> = (0..width)
++                    .map(|c| {
++                        (0..rows)
++                            .map(|r| {
++                                let between = f64::from(codes[r]) * 10_000.0;
++                                between + (((r + 1) * (c + 3)) as f64 * 0.17).sin()
++                            })
++                            .collect()
++                    })
++                    .collect();
++                let views: Vec<&[f64]> = columns.iter().map(Vec::as_slice).collect();
++                let supplied: Vec<f64> = (0..rows)
++                    .map(|r| match r % 3 {
++                        0 => 2.0_f64.powi(-100),
++                        1 => 1.0,
++                        _ => 2.0_f64.powi(100),
++                    })
++                    .collect();
++                for weights in [
++                    BorrowedMapWeights::Unit,
++                    BorrowedMapWeights::Provided(&supplied),
++                ] {
++                    let centered = CenteredColumns::new(
++                        &views,
++                        &effect,
++                        weights,
++                        17 * width * 8,
++                        &mut SystemWorkspaceReservation,
++                    )
++                    .unwrap();
++                    assert!(centered.means.capacity() <= 17 * width);
++                    let design =
++                        BorrowedInterceptFeDesign::new(rows, vec![source.effect()]).unwrap();
++                    let expected = absorb_borrowed_intercept_map_certified(
++                        &design,
++                        weights,
++                        DenseMatrix::from_columns(&columns).unwrap(),
++                        MapConfig::default(),
++                    )
++                    .unwrap();
++                    for tile_rows in [1, 17, 128] {
++                        let mut tile = vec![0.0; tile_rows * width];
++                        for start in (0..rows).step_by(tile_rows) {
++                            let count = tile_rows.min(rows - start);
++                            centered
++                                .fill_rows(start, &mut tile[..count * width])
++                                .unwrap();
++                            assert_eq!(
++                                &tile[..count * width],
++                                &expected.residualized().as_slice()
++                                    [start * width..(start + count) * width]
++                            );
++                        }
++                    }
++                }
++            }
++        });
++    }
++}
++
++#[test]
++fn centered_tiles_preserve_small_within_variation_and_exact_dependence() {
++    let base = 2.0_f64.powi(40);
++    let x = [base - 2.0, base - 1.0, base + 1.0, base + 2.0];
++    let twice = x.map(|v| 2.0 * v);
++    let constant = [base; 4];
++    let columns = [&x[..], &twice[..], &constant[..]];
++    let codes = [0; 4];
++    let index = LevelIndex::from_codes(&codes, 1).unwrap();
++    let source = ValidatedBorrowedInterceptSource::new(&codes, 1, &index).unwrap();
++    let effect = source.effect();
++    let centered = CenteredColumns::new(
++        &columns,
++        &effect,
++        BorrowedMapWeights::Unit,
++        24,
++        &mut SystemWorkspaceReservation,
++    )
++    .unwrap();
++    let mut values = [0.0; 12];
++    centered.fill_rows(0, &mut values).unwrap();
++    let mut square = 0.0;
++    for (row, expected) in values.chunks_exact(3).zip([-2.0, -1.0, 1.0, 2.0]) {
++        assert_eq!(row, &[expected, 2.0 * expected, 0.0]);
++        square += row[0] * row[0];
++    }
++    assert_eq!(square, 10.0);
++    // Independent exact arithmetic gives 10; uncentered product subtraction
++    // loses it at this representable between-group scale.
++    let raw = x.iter().map(|v| v * v).sum::<f64>() - x.iter().sum::<f64>().powi(2) / 4.0;
++    assert!((raw - 10.0).abs() > 1.0);
++}
++
++#[derive(Default)]
++struct RecordingReservation {
++    calls: usize,
++    elements: usize,
++    fail: bool,
++}
++impl WorkspaceReservation for RecordingReservation {
++    fn reserve_f64(
++        &mut self,
++        target: &mut Vec<f64>,
++        elements: usize,
++        _: &'static str,
++    ) -> Result<()> {
++        self.calls += 1;
++        self.elements += elements;
++        if self.fail {
++            return Err(allocation("injected centered reservation failure"));
++        }
++        target
++            .try_reserve_exact(elements)
++            .map_err(|_| allocation("centered test reservation failed"))
++    }
++}
++
++#[test]
++fn centered_tiles_fail_before_allocation_and_keep_capacity_bounded() {
++    let values = [1.0, 2.0, 4.0, 8.0];
++    let columns = [&values[..]];
++    let codes = [0, 1, 0, 1];
++    let index = LevelIndex::from_codes(&codes, 2).unwrap();
++    let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
++    let effect = source.effect();
++    let mut reservation = RecordingReservation::default();
++    assert_eq!(
++        CenteredColumns::new(
++            &columns,
++            &effect,
++            BorrowedMapWeights::Unit,
++            15,
++            &mut reservation
++        )
++        .err()
++        .unwrap()
++        .code,
++        ErrorCode::Allocation
++    );
++    assert_eq!(reservation.calls, 0);
++    reservation.fail = true;
++    assert_eq!(
++        CenteredColumns::new(
++            &columns,
++            &effect,
++            BorrowedMapWeights::Unit,
++            16,
++            &mut reservation
++        )
++        .err()
++        .unwrap()
++        .code,
++        ErrorCode::Allocation
++    );
++    assert_eq!(reservation.calls, 1);
++    reservation.fail = false;
++    let centered = CenteredColumns::new(
++        &columns,
++        &effect,
++        BorrowedMapWeights::Unit,
++        16,
++        &mut reservation,
++    )
++    .unwrap();
++    assert_eq!(centered.means.capacity(), 2);
++    let mut bad_tile = [99.0; 3];
++    assert!(centered.fill_rows(3, &mut bad_tile).is_err());
++    assert_eq!(bad_tile, [99.0; 3]);
++    let nonfinite = [f64::NAN; 4];
++    let bad = [&nonfinite[..]];
++    let before = reservation.calls;
++    assert_eq!(
++        CenteredColumns::new(
++            &bad,
++            &effect,
++            BorrowedMapWeights::Unit,
++            16,
++            &mut reservation
++        )
++        .err()
++        .unwrap()
++        .code,
++        ErrorCode::InvalidData
++    );
++    assert_eq!(reservation.calls, before);
++}
++
++#[test]
++fn centered_tiles_rebuild_means_for_changed_weight_frames() {
++    let values = [0.0, 2.0, 4.0, 6.0];
++    let columns = [&values[..]];
++    let codes = [0, 0, 1, 1];
++    let index = LevelIndex::from_codes(&codes, 2).unwrap();
++    let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
++    let effect = source.effect();
++    for (weights, expected) in [
++        ([1.0, 1.0, 1.0, 1.0], [-1.0, 1.0, -1.0, 1.0]),
++        ([3.0, 1.0, 1.0, 3.0], [-0.5, 1.5, -1.5, 0.5]),
++    ] {
++        let centered = CenteredColumns::new(
++            &columns,
++            &effect,
++            BorrowedMapWeights::Provided(&weights),
++            16,
++            &mut SystemWorkspaceReservation,
++        )
++        .unwrap();
++        let mut output = [0.0; 4];
++        centered.fill_rows(0, &mut output).unwrap();
++        for (actual, exact) in output.iter().zip(expected) {
++            assert!((actual - exact).abs() < 2e-15);
++        }
++    }
++}
+diff --git a/crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs b/crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs
+new file mode 100644
+index 0000000..fd1bdf0
+--- /dev/null
++++ b/crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs
+@@ -0,0 +1,698 @@
++//! Test-only P5 adapter. Estimator admission, original-row inference and a
++//! bounded Householder fallback remain prerequisites for production routing.
++
++use super::super::finite_wls_kernel::{
++    accumulate_prepared_partition_rows, accumulate_prepared_rows, merge_fixed_block_partials,
++    prepared_moment_layout, FiniteWlsMomentMode,
++};
++use super::tests::{prepared, TestWeights};
++use super::*;
++use crate::fe::{
++    absorb_borrowed_intercept_map_certified, BorrowedInterceptFeDesign, CenteredColumns,
++    LevelIndex, MapConfig, ValidatedBorrowedInterceptSource,
++};
++
++const TILE_ROWS: usize = 128;
++
++struct CenteredStandardized<'a> {
++    centered: &'a CenteredColumns<'a>,
++    weights: NormalizedWeights<'a>,
++    reference_norms: &'a [f64],
++}
++
++impl CenteredStandardized<'_> {
++    fn fill_tile(&self, start: usize, output: &mut [f64], candidates: &[usize]) -> Result<()> {
++        self.centered.fill_rows(start, output)?;
++        for (offset, values) in output.chunks_exact_mut(self.centered.width()).enumerate() {
++            let root = self.weights.root(start + offset)?;
++            values[0] *= root;
++            for &column in candidates {
++                values[column + 1] = root * values[column + 1] / self.reference_norms[column];
++            }
++            if values.iter().any(|value| !value.is_finite()) {
++                return Err(invalid_data("centered standardized tile is not finite"));
++            }
++        }
++        Ok(())
++    }
++}
++
++impl PreparedCholeskyResidualSource for CenteredStandardized<'_> {
++    fn nrows(&self) -> usize {
++        self.centered.rows()
++    }
++
++    fn standardized_residual(
++        &self,
++        row: usize,
++        candidates: &[usize],
++        coefficients: &[f64],
++    ) -> Result<f64> {
++        let root = self.weights.root(row)?;
++        let mut residual = root * self.centered.value(row, 0);
++        for (position, column) in candidates.iter().copied().enumerate() {
++            let value = root * self.centered.value(row, column + 1) / self.reference_norms[column];
++            residual = (-coefficients[position]).mul_add(value, residual);
++        }
++        Ok(residual)
++    }
++
++    fn standardized_within_is_reusable(&self) -> bool {
++        false
++    }
++}
++
++fn centered_moments<R: FitReservation>(
++    source: &CenteredStandardized<'_>,
++    candidates: &[usize],
++    maximum_workspace_bytes: usize,
++    reservation: &mut R,
++) -> Result<(Vec<f64>, Vec<f64>)> {
++    let rows = source.centered.rows();
++    let width = source.centered.width();
++    let dimension = candidates.len();
++    if source.reference_norms.len() != width - 1
++        || candidates.iter().any(|&column| {
++            column >= width - 1
++                || !source.reference_norms[column].is_finite()
++                || source.reference_norms[column] <= 0.0
++        })
++        || candidates.windows(2).any(|pair| pair[0] >= pair[1])
++    {
++        return Err(invalid_argument(
++            "centered moment candidates are inconsistent",
++        ));
++    }
++    let layout = prepared_moment_layout(rows, dimension)?;
++    let square = checked_square(dimension, "centered Gram dimensions overflow")?;
++    let tile_stride = TILE_ROWS
++        .min(rows)
++        .checked_mul(width)
++        .ok_or_else(|| allocation("centered tile dimensions overflow"))?;
++    let tile_elements = layout
++        .partitions
++        .checked_mul(tile_stride)
++        .ok_or_else(|| allocation("centered tile bank overflows"))?;
++    let elements = [tile_elements, layout.partial_elements, dimension, square]
++        .into_iter()
++        .try_fold(0_usize, |sum, count| sum.checked_add(count))
++        .ok_or_else(|| allocation("centered moment workspace overflows"))?;
++    if elements > maximum_workspace_bytes / std::mem::size_of::<f64>() {
++        return Err(allocation("centered moments exceed their workspace budget"));
++    }
++    // This cap covers only this call's live tile/moment storage. It is not an
++    // estimator admission claim for means, inputs, solve, inference or fallback.
++    let mut tiles = reserved_filled(reservation, tile_elements, 0.0, "centered tiles")?;
++    let mut partials = reserved_filled(
++        reservation,
++        layout.partial_elements,
++        0.0,
++        "centered partials",
++    )?;
++    let mut rhs = reserved_filled(reservation, dimension, 0.0, "centered RHS")?;
++    let mut gram = reserved_filled(reservation, square, 0.0, "centered Gram")?;
++    let capacity = [&tiles, &partials, &rhs, &gram]
++        .into_iter()
++        .try_fold(0_usize, |sum, values| sum.checked_add(values.capacity()))
++        .ok_or_else(|| allocation("centered moment capacities overflow"))?;
++    if capacity > maximum_workspace_bytes / std::mem::size_of::<f64>() {
++        return Err(allocation("centered moment capacities exceed their budget"));
++    }
++    match layout.mode {
++        FiniteWlsMomentMode::PreparedFixedBlocks => {
++            partials
++                .par_chunks_mut(layout.partial_stride)
++                .zip(tiles.par_chunks_mut(tile_stride))
++                .enumerate()
++                .try_for_each(|(partition, (partial, tile))| -> Result<()> {
++                    let rows_per_partition = rows / layout.partitions;
++                    let remainder = rows % layout.partitions;
++                    let start = partition * rows_per_partition + partition.min(remainder);
++                    let end = start + rows_per_partition + usize::from(partition < remainder);
++                    for row in (start..end).step_by(TILE_ROWS) {
++                        let values = &mut tile[..(end - row).min(TILE_ROWS) * width];
++                        source.fill_tile(row, values, candidates)?;
++                        accumulate_prepared_rows(values, width, candidates, partial)?;
++                    }
++                    if partial.iter().all(|v| v.is_finite()) {
++                        Ok(())
++                    } else {
++                        Err(invalid_data("centered moment partial is not finite"))
++                    }
++                })?;
++            merge_fixed_block_partials(layout, &partials, &mut rhs, &mut gram)?;
++        }
++        FiniteWlsMomentMode::PreparedPartitioned => {
++            let contiguous = candidates.windows(2).all(|pair| pair[1] == pair[0] + 1);
++            rhs.par_chunks_mut(layout.columns_per_partition)
++                .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
++                .zip(tiles.par_chunks_mut(tile_stride))
++                .enumerate()
++                .try_for_each(|(partition, ((rhs_part, gram_part), tile))| -> Result<()> {
++                    for row in (0..rows).step_by(TILE_ROWS) {
++                        let values = &mut tile[..(rows - row).min(TILE_ROWS) * width];
++                        source.fill_tile(row, values, candidates)?;
++                        accumulate_prepared_partition_rows(
++                            values,
++                            width,
++                            candidates,
++                            contiguous,
++                            partition * layout.columns_per_partition,
++                            rhs_part,
++                            gram_part,
++                        );
++                    }
++                    Ok(())
++                })?;
++            for left in 0..dimension {
++                for right in left + 1..dimension {
++                    gram[right * dimension + left] = gram[left * dimension + right];
++                }
++            }
++        }
++        FiniteWlsMomentMode::RetainedPartitioned => unreachable!(),
++    }
++    if rhs.iter().chain(&gram).any(|v| !v.is_finite()) {
++        return Err(invalid_data("centered moments are not finite"));
++    }
++    Ok((rhs, gram))
++}
++
++fn centered_norm(
++    source: &CenteredColumns<'_>,
++    column: usize,
++    weights: NormalizedWeights<'_>,
++    raw: bool,
++) -> Result<f64> {
++    let mut scale = 0.0;
++    let mut sum = 1.0;
++    for row in 0..source.rows() {
++        let value = if raw {
++            source.raw_column(column)[row]
++        } else {
++            source.value(row, column)
++        };
++        update_scaled_sum_of_squares(weights.root(row)? * value, &mut scale, &mut sum)?;
++    }
++    checked_norm(scale, sum)
++}
++
++fn assert_same_finite(left: &QrFit, right: &QrFit) {
++    assert_eq!(left.generated_coefficients, right.generated_coefficients);
++    assert_eq!(left.generated_statuses, right.generated_statuses);
++    assert_eq!(left.kept, right.kept);
++    assert_eq!(left.dropped, right.dropped);
++    assert_eq!(left.rank, right.rank);
++    assert_eq!(left.certificate, right.certificate);
++    assert_eq!(left.within_residuals, right.within_residuals);
++    assert_eq!(
++        format!("{:?}", left.finite_score),
++        format!("{:?}", right.finite_score)
++    );
++    assert_eq!(format!("{:?}", left.bread), format!("{:?}", right.bread));
++}
++
++#[test]
++fn centered_finite_matches_matrix_moments_solve_and_residuals() {
++    for (rows, columns, workers, kind) in [
++        (257, 10, 1, 0),
++        (32_777, 3, 4, 1),
++        (257, 64, 4, 2),
++        (257, 65, 16, 3),
++    ] {
++        let pool = rayon::ThreadPoolBuilder::new()
++            .num_threads(workers)
++            .build()
++            .unwrap();
++        pool.install(|| run_case(rows, columns, kind, None));
++    }
++}
++
++#[test]
++fn centered_finite_weak_and_deficient_designs_retain_householder_decisions() {
++    for kind in 0..4 {
++        for perturbation in [0.0, 1e-4] {
++            run_case(257, 10, kind, Some(perturbation));
++        }
++    }
++}
++
++fn run_case(rows: usize, columns: usize, kind: usize, dependence: Option<f64>) {
++    let codes: Vec<u32> = (0..rows).map(|r| (r % 17) as u32).collect();
++    let groups: Vec<f64> = codes.iter().map(|&g| f64::from(g)).collect();
++    let mut state = 0x9e37_79b9_7f4a_7c15_u64;
++    let mut regressors: Vec<Vec<f64>> = (0..columns)
++        .map(|_| {
++            (0..rows)
++                .map(|r| {
++                    state = state
++                        .wrapping_mul(6_364_136_223_846_793_005)
++                        .wrapping_add(1_442_695_040_888_963_407);
++                    ((state >> 11) as f64) / ((1_u64 << 53) as f64) - 0.5 + 0.1 * groups[r]
++                })
++                .collect()
++        })
++        .collect();
++    if let Some(perturbation) = dependence {
++        for row in 0..rows {
++            regressors[columns - 1][row] =
++                regressors[0][row] + perturbation * regressors[columns - 1][row];
++        }
++    }
++    // An exactly absorbed interior slot exercises indexed candidate mappings.
++    regressors.insert(1, groups.clone());
++    let outcome: Vec<f64> = (0..rows)
++        .map(|r| {
++            regressors
++                .iter()
++                .enumerate()
++                .fold(groups[r] + 0.02 * (r as f64 * 0.13).cos(), |y, (j, x)| {
++                    ((j + 1) as f64 / columns as f64).mul_add(x[r], y)
++                })
++        })
++        .collect();
++    let weights: Vec<f64> = (0..rows).map(|r| 1.0 + (r % 7) as f64).collect();
++    let weight_kind = match kind {
++        0 => TestWeights::Unit,
++        1 => TestWeights::Frequency(&weights),
++        2 => TestWeights::Analytic(&weights),
++        _ => TestWeights::Probability(&weights),
++    };
++    let prepared = prepared(
++        &outcome,
++        &regressors,
++        &vec![false; columns + 1],
++        Some(&groups),
++        true,
++        weight_kind,
++    );
++    let frame = LinearSolveFrame::from_prepared_ols(&prepared).unwrap();
++    let raw = prepared.fit_build_rhs().unwrap();
++    // Generated fixture columns are materialized only for the matrix oracle.
++    // The adapter borrows them and never retains a projected N-by-K array.
++    let raw_columns: Vec<Vec<f64>> = (0..raw.ncols())
++        .map(|c| (0..rows).map(|r| raw[(r, c)]).collect())
++        .collect();
++    let views: Vec<&[f64]> = raw_columns.iter().map(Vec::as_slice).collect();
++    let index = LevelIndex::from_codes(&codes, 17).unwrap();
++    let membership = ValidatedBorrowedInterceptSource::new(&codes, 17, &index).unwrap();
++    let effect = membership.effect();
++    let centered = CenteredColumns::prepare(
++        &views,
++        &effect,
++        frame.weights.borrowed(),
++        17 * views.len() * 8,
++    )
++    .unwrap();
++    let design = BorrowedInterceptFeDesign::new(rows, vec![membership.effect()]).unwrap();
++    let projected = absorb_borrowed_intercept_map_certified(
++        &design,
++        frame.weights.borrowed(),
++        raw.clone(),
++        MapConfig::default(),
++    )
++    .unwrap();
++    let (mut within, _) = projected.into_parts();
++    let mut from_tiles = DenseMatrix::zeros(rows, views.len()).unwrap();
++    for start in (0..rows).step_by(TILE_ROWS) {
++        let end = (start + TILE_ROWS).min(rows);
++        centered
++            .fill_rows(
++                start,
++                &mut from_tiles.as_mut_slice()[start * views.len()..end * views.len()],
++            )
++            .unwrap();
++    }
++    assert_eq!(within.as_slice(), from_tiles.as_slice());
++    let norms: Vec<f64> = (1..views.len())
++        .map(|c| {
++            let norm = centered_norm(&centered, c, frame.weights, true).unwrap();
++            assert_eq!(
++                norm,
++                weighted_matrix_column_norm(&raw, c, frame.weights).unwrap()
++            );
++            norm
++        })
++        .collect();
++    let score_norms: Vec<f64> = (1..views.len())
++        .map(|c| {
++            let norm = centered_norm(&centered, c, frame.weights, false).unwrap();
++            assert_eq!(
++                norm,
++                weighted_matrix_column_norm(&within, c, frame.weights).unwrap()
++            );
++            norm
++        })
++        .collect();
++    let config = PreparedOlsFitConfig::default();
++    let (statuses, candidates) = classify_finite_candidates(
++        &prepared,
++        &norms,
++        &score_norms,
++        config,
++        &mut SystemFitReservation,
++    )
++    .unwrap();
++    assert!(!candidates.contains(&1));
++    assert_eq!(candidates.len(), columns);
++    let source = CenteredStandardized {
++        centered: &centered,
++        weights: frame.weights,
++        reference_norms: &norms,
++    };
++    let (rhs, gram) =
++        centered_moments(&source, &candidates, usize::MAX, &mut SystemFitReservation).unwrap();
++    let mut standardized = within.clone();
++    for row in 0..rows {
++        let root = frame.weights.root(row).unwrap();
++        standardized[(row, 0)] *= root;
++        for &c in &candidates {
++            standardized[(row, c + 1)] = root * standardized[(row, c + 1)] / norms[c];
++        }
++    }
++    let expected =
++        build_standardized_moments(&standardized, &candidates, &mut SystemFitReservation).unwrap();
++    assert_eq!(rhs, expected.0);
++    assert_eq!(gram, expected.1);
++    let relative_threshold =
++        config.rank_tolerance_multiplier * f64::EPSILON * rows.max(norms.len()) as f64;
++    let fit = try_fit_scaled_pivoted_cholesky(
++        &source,
++        frame.weights,
++        frame.bread_weight_scale,
++        &norms,
++        &score_norms,
++        &candidates,
++        &statuses,
++        &gram,
++        &rhs,
++        relative_threshold,
++        config,
++        &mut SystemFitReservation,
++        false,
++        false,
++        true,
++    )
++    .unwrap();
++    let expected = fit_scaled_pivoted_qr(
++        &prepared,
++        &mut within,
++        frame.weights,
++        frame.bread_weight_scale,
++        &norms,
++        &score_norms,
++        config,
++        &mut SystemFitReservation,
++        false,
++        false,
++        true,
++    )
++    .unwrap();
++    if let Some(perturbation) = dependence {
++        assert!(fit.is_none(), "Cholesky must not decide omissions");
++        let fallback = fit_scaled_pivoted_qr(
++            &prepared,
++            &mut from_tiles,
++            frame.weights,
++            frame.bread_weight_scale,
++            &norms,
++            &score_norms,
++            config,
++            &mut SystemFitReservation,
++            false,
++            false,
++            true,
++        )
++        .unwrap();
++        assert_same_finite(&fallback, &expected);
++        assert_eq!(fallback.rank, columns - usize::from(perturbation == 0.0));
++        assert!(!fallback.standardized_within_is_reusable);
++    } else {
++        let fit = fit.expect("well-conditioned centered design admitted");
++        assert_same_finite(&fit, &expected);
++        assert_eq!(fit.rank, columns);
++        assert!(!fit.standardized_within_is_reusable);
++        assert!(expected.standardized_within_is_reusable);
++    }
++}
++
++#[test]
++fn centered_finite_workspace_and_invalid_inputs_fail_closed() {
++    struct Reservation {
++        calls: usize,
++        fail_at: usize,
++        oversize: bool,
++    }
++    impl FitReservation for Reservation {
++        fn reserve<T>(
++            &mut self,
++            target: &mut Vec<T>,
++            elements: usize,
++            label: &'static str,
++        ) -> Result<()> {
++            self.calls += 1;
++            if self.calls == self.fail_at {
++                return Err(allocation("injected centered reserve failure"));
++            }
++            SystemFitReservation.reserve(target, elements + usize::from(self.oversize), label)
++        }
++    }
++    let columns = [vec![1.0, 4.0, 3.0, 8.0], vec![2.0, 5.0, 7.0, 9.0]];
++    let views: Vec<&[f64]> = columns.iter().map(Vec::as_slice).collect();
++    let codes = [0, 0, 1, 1];
++    let index = LevelIndex::from_codes(&codes, 2).unwrap();
++    let membership = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
++    let effect = membership.effect();
++    let centered = CenteredColumns::prepare(&views, &effect, BorrowedMapWeights::Unit, 32).unwrap();
++    let source = CenteredStandardized {
++        centered: &centered,
++        weights: NormalizedWeights {
++            values: None,
++            raw_scale: 1.0,
++            kind: None,
++        },
++        reference_norms: &[12.0],
++    };
++    let bytes = (4 * 2 + 2 + 1 + 1) * 8;
++    let mut reservation = Reservation {
++        calls: 0,
++        fail_at: usize::MAX,
++        oversize: false,
++    };
++    assert!(centered_moments(&source, &[0], bytes - 1, &mut reservation).is_err());
++    assert_eq!(reservation.calls, 0, "admit before any allocation");
++    centered_moments(&source, &[0], bytes, &mut reservation).unwrap();
++    for fail_at in 1..=4 {
++        let mut reservation = Reservation {
++            calls: 0,
++            fail_at,
++            oversize: false,
++        };
++        assert!(centered_moments(&source, &[0], bytes, &mut reservation).is_err());
++        assert_eq!(reservation.calls, fail_at);
++    }
++    let mut reservation = Reservation {
++        calls: 0,
++        fail_at: usize::MAX,
++        oversize: true,
++    };
++    assert!(centered_moments(&source, &[0], bytes, &mut reservation).is_err());
++    for candidates in [vec![], vec![1], vec![0, 0]] {
++        let mut reservation = Reservation {
++            calls: 0,
++            fail_at: usize::MAX,
++            oversize: false,
++        };
++        assert!(centered_moments(&source, &candidates, bytes, &mut reservation).is_err());
++        assert_eq!(reservation.calls, 0);
++    }
++    let invalid = CenteredStandardized {
++        reference_norms: &[f64::NAN],
++        ..source
++    };
++    let mut reservation = Reservation {
++        calls: 0,
++        fail_at: usize::MAX,
++        oversize: false,
++    };
++    assert!(centered_moments(&invalid, &[0], bytes, &mut reservation).is_err());
++    assert_eq!(reservation.calls, 0);
++}
++
++#[test]
++fn centered_finite_preserves_large_reference_scales_and_absorption_status() {
++    let rows = 256;
++    let delta = [-2.0, -1.0, 1.0, 2.0];
++    let noise = [1.0, -1.0, -1.0, 1.0];
++    let codes: Vec<u32> = (0..rows).map(|r| (r / 4) as u32).collect();
++    let groups: Vec<f64> = codes.iter().map(|&g| f64::from(g)).collect();
++    let x: Vec<f64> = (0..rows).map(|r| 2.0_f64.powi(14) + delta[r % 4]).collect();
++    let absorbed: Vec<f64> = (0..rows).map(|r| 2.0_f64.powi(40) + delta[r % 4]).collect();
++    let y: Vec<f64> = (0..rows)
++        .map(|r| 1e6 + groups[r] + 7.0 * delta[r % 4] + noise[r % 4])
++        .collect();
++    let prepared = prepared(
++        &y,
++        &[x.clone(), absorbed.clone()],
++        &[false, false],
++        Some(&groups),
++        false,
++        TestWeights::Unit,
++    );
++    let frame = LinearSolveFrame::from_prepared_ols(&prepared).unwrap();
++    let views: Vec<&[f64]> = vec![&y, &x, &absorbed];
++    let index = LevelIndex::from_codes(&codes, 64).unwrap();
++    let membership = ValidatedBorrowedInterceptSource::new(&codes, 64, &index).unwrap();
++    let effect = membership.effect();
++    let centered =
++        CenteredColumns::prepare(&views, &effect, frame.weights.borrowed(), 64 * 3 * 8).unwrap();
++    let design = BorrowedInterceptFeDesign::new(rows, vec![membership.effect()]).unwrap();
++    let projected = absorb_borrowed_intercept_map_certified(
++        &design,
++        frame.weights.borrowed(),
++        prepared.fit_build_rhs().unwrap(),
++        MapConfig::default(),
++    )
++    .unwrap();
++    let centering_error = (0..rows)
++        .map(|row| {
++            assert_eq!(centered.value(row, 0), projected.residualized()[(row, 0)]);
++            (centered.value(row, 0) - (7.0 * delta[row % 4] + noise[row % 4])).abs()
++        })
++        .fold(0.0_f64, f64::max);
++    eprintln!("CENTERED_ORACLE|maximum_outcome_centering_error={centering_error:.17e}");
++    assert!(
++        centering_error < 1e-9,
++        "registered absolute residual envelope"
++    );
++    for row in 0..rows {
++        assert_eq!(centered.value(row, 1), delta[row % 4]);
++        assert_eq!(centered.value(row, 2), delta[row % 4]);
++    }
++    let reference: Vec<f64> = (1..=2)
++        .map(|c| centered_norm(&centered, c, frame.weights, true).unwrap())
++        .collect();
++    let norms: Vec<f64> = (1..=2)
++        .map(|c| centered_norm(&centered, c, frame.weights, false).unwrap())
++        .collect();
++    let config = PreparedOlsFitConfig::default();
++    let (statuses, candidates) = classify_finite_candidates(
++        &prepared,
++        &reference,
++        &norms,
++        config,
++        &mut SystemFitReservation,
++    )
++    .unwrap();
++    assert_eq!(candidates, vec![0]);
++    assert_eq!(statuses[1], PreparedOlsFitStatus::CollinearWithFixedEffects);
++    let source = CenteredStandardized {
++        centered: &centered,
++        weights: frame.weights,
++        reference_norms: &reference,
++    };
++    let (rhs, gram) =
++        centered_moments(&source, &candidates, usize::MAX, &mut SystemFitReservation).unwrap();
++    let threshold = config.rank_tolerance_multiplier * f64::EPSILON * rows as f64;
++    let fit = try_fit_scaled_pivoted_cholesky(
++        &source,
++        frame.weights,
++        frame.bread_weight_scale,
++        &reference,
++        &norms,
++        &candidates,
++        &statuses,
++        &gram,
++        &rhs,
++        threshold,
++        config,
++        &mut SystemFitReservation,
++        false,
++        false,
++        true,
++    )
++    .unwrap()
++    .unwrap();
++    // Independent four-point contrasts: sum(delta*noise)=0 and sum(delta^2)=10.
++    assert!((fit.generated_coefficients[0].unwrap() - 7.0).abs() < 1e-12);
++    assert_eq!(fit.generated_coefficients[1], None);
++    assert_eq!(fit.rank, 1);
++    assert!((fit.bread.as_ref().unwrap().values[0] - 1.0 / 640.0).abs() < 1e-15);
++    for (row, &residual) in fit.within_residuals.as_ref().unwrap().iter().enumerate() {
++        let centered_noise = centered.value(row, 0) - 7.0 * delta[row % 4];
++        assert!((residual - centered_noise).abs() < 1e-12);
++        assert!((residual - noise[row % 4]).abs() < 1e-9);
++    }
++}
++
++#[test]
++fn centered_finite_wide_workspace_does_not_grow_with_observations() {
++    struct CountReservation {
++        elements: usize,
++    }
++    impl FitReservation for CountReservation {
++        fn reserve<T>(
++            &mut self,
++            target: &mut Vec<T>,
++            elements: usize,
++            label: &'static str,
++        ) -> Result<()> {
++            self.elements += elements;
++            SystemFitReservation.reserve(target, elements, label)
++        }
++    }
++    let pool = rayon::ThreadPoolBuilder::new()
++        .num_threads(4)
++        .build()
++        .unwrap();
++    pool.install(|| {
++        let dimension = 65;
++        let layout = prepared_moment_layout(512, dimension).unwrap();
++        assert_eq!(layout.partial_elements, 0, "no blocks*K^2 bank above 64");
++        let bound =
++            layout.partitions * TILE_ROWS * (dimension + 1) + dimension + dimension * dimension;
++        for rows in [512, 1024] {
++            let codes: Vec<u32> = (0..rows).map(|r| (r % 2) as u32).collect();
++            let columns: Vec<Vec<f64>> = (0..=dimension)
++                .map(|c| (0..rows).map(|r| ((c + r) % 7) as f64).collect())
++                .collect();
++            let views: Vec<&[f64]> = columns.iter().map(Vec::as_slice).collect();
++            let index = LevelIndex::from_codes(&codes, 2).unwrap();
++            let membership = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
++            let effect = membership.effect();
++            let centered = CenteredColumns::prepare(
++                &views,
++                &effect,
++                BorrowedMapWeights::Unit,
++                2 * (dimension + 1) * 8,
++            )
++            .unwrap();
++            let norms = vec![1.0; dimension];
++            let source = CenteredStandardized {
++                centered: &centered,
++                weights: NormalizedWeights {
++                    values: None,
++                    raw_scale: 1.0,
++                    kind: None,
++                },
++                reference_norms: &norms,
++            };
++            let mut reservation = CountReservation { elements: 0 };
++            centered_moments(
++                &source,
++                &(0..dimension).collect::<Vec<_>>(),
++                bound * 8,
++                &mut reservation,
++            )
++            .unwrap();
++            assert_eq!(reservation.elements, bound);
++        }
++        assert_eq!(
++            prepared_moment_layout(usize::MAX, 64).unwrap().partitions,
++            64
++        );
++        // Wide layout metadata needs no square allocation; its consumer checks
++        // the Gram size before requesting storage.
++        assert!(checked_square(usize::MAX, "Gram overflow control").is_err());
++    });
++}

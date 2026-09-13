@@ -1,0 +1,30 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 23 tests
+test ols::finite_wls_kernel::tests::dropped_span_certificate_accepts_a_zero_gram_only_at_rank_zero ... ok
+test ols::finite_wls_kernel::tests::dropped_span_certificate_rejects_an_independent_omitted_direction ... ok
+test ols::finite_wls_kernel::tests::dropped_span_certificate_rejects_asymmetric_and_negative_grams ... ok
+test ols::finite_wls_kernel::tests::pivoted_and_canonical_factorizations_share_the_same_primitives ... ok
+test ols::finite_wls_kernel::tests::dropped_span_certificate_accepts_an_exact_duplicate ... ok
+test ols::finite_wls_kernel::tests::dropped_span_certificate_fails_closed_inside_the_threshold_guard ... ok
+test ols::finite_wls_kernel::tests::rank_revealing_factor_marks_both_sides_of_threshold_guard_ambiguous ... ok
+test ols::finite_wls_kernel::tests::rank_revealing_factor_drops_an_exact_duplicate_and_compacts_outputs ... ok
+test ols::finite_wls_kernel::tests::retained_qr_covers_single_column_and_clear_threshold_sides ... ok
+test ols::finite_wls_kernel::tests::retained_qr_direct_span_accepts_an_exact_dependency ... ok
+test ols::finite_wls_kernel::tests::retained_qr_drops_general_exact_linear_combinations ... ok
+test ols::finite_wls_kernel::tests::retained_qr_direct_span_rejects_a_perturbed_omitted_direction ... ok
+test ols::finite_wls_kernel::tests::retained_qr_direct_span_fails_closed_in_the_threshold_guard ... ok
+test ols::finite_wls_kernel::tests::retained_qr_marks_both_sides_of_rank_threshold_ambiguous ... ok
+test ols::finite_wls_kernel::tests::retained_qr_handles_extreme_finite_column_scales ... ok
+test ols::finite_wls_kernel::tests::retained_qr_rank_decision_is_invariant_to_exact_column_scaling ... ok
+test ols::finite_wls_kernel::tests::retained_qr_rejects_nonfinite_observation_space_inputs ... ok
+test ols::finite_wls_kernel::tests::retained_qr_is_canonical_under_row_and_column_permutations ... ok
+test ols::finite_wls_kernel::tests::retained_dense_moment_cache_rejects_nonfinite_selected_values ... ok
+test ols::finite_wls_kernel::tests::retained_qr_handles_exact_deficiency_above_sixty_four_columns ... ok
+test ols::finite_wls_kernel::tests::rank_revealing_factor_is_deterministic_and_full_stride_above_64_columns ... ok
+test ols::finite_wls_kernel::tests::retained_dense_moments_preserve_scalar_order_across_cache_boundaries ... ok
+test ols::finite_wls_kernel::tests::wide_prepared_moments_are_bounded_deterministic_and_match_direct_sums ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 797 filtered out; finished in 0.54s
+

@@ -1,0 +1,18 @@
+[
+  {
+    "arm": "baseline",
+    "process_rc": 0,
+    "passed": true,
+    "plugin_sha256": "c64ead0763d662a8f7bd1c74f1058426ea03f90c871ff387e76a6fe935b2e3da",
+    "worker_sha256": "4d803a7d88ccf3d028554aa720cb93523837e0c32fd04a07e243636612f64fc3",
+    "log_sha256": "4029fdd632aee588b87bfb0829155dbe20c3c8b5c3c28d965eb5eee1bfff683e"
+  },
+  {
+    "arm": "candidate",
+    "process_rc": 0,
+    "passed": true,
+    "plugin_sha256": "b1370e7ace9a8ab02ef716a15c2f5b5abe88beeb5d4ca1635dc1bd8c41c38303",
+    "worker_sha256": "c9a713d31b6c110e6be2ebb053287594817bb3ad2a94abf20e8dde680d8e657a",
+    "log_sha256": "ff790280682595d476d1cf0c61cb5f766be07c06eceb9e0f17cc227ad9b47cf6"
+  }
+]

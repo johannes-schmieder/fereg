@@ -1,0 +1,47 @@
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.33s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 13 tests
+test fe::borrowed_map::centered_tiles_probe::centered_tiles_rebuild_means_for_changed_weight_frames ... ok
+test fe::borrowed_map::centered_tiles_probe::centered_tiles_fail_before_allocation_and_keep_capacity_bounded ... ok
+test fe::borrowed_map::centered_tiles_probe::centered_tiles_preserve_small_within_variation_and_exact_dependence ... ok
+test fe::topology_slope_map::tests::recovery_returns_centered_crossed_effects_and_requested_channels ... ok
+test ols::prepared_fit::centered_finite_probe::centered_finite_workspace_and_invalid_inputs_fail_closed ... ok
+CENTERED_ORACLE|maximum_outcome_centering_error=1.16415321826934814e-10
+test ols::prepared_fit::centered_finite_probe::centered_finite_preserves_large_reference_scales_and_absorption_status ... ok
+test ols::prepared_fit::centered_finite_probe::centered_scratch_fallback_matches_rational_weighted_and_expanded_oracles ... ok
+CENTERED_SCRATCH_BOUNDS|reserve_calls=23|charged_fit_payload=4395|scratch_bytes=1536
+test ols::prepared_fit::centered_finite_probe::centered_scratch_fallback_budget_failures_remove_private_storage ... ok
+CENTERED_SCRATCH_CASE|rows=257|active_columns=10|weight_kind=0|dependence=0.00000000000000000e0|charged_payload=40292|scratch_bytes=24672
+CENTERED_SCRATCH|coefficient_error=3.33066907387546962e-16|bread_error=2.77555756156289135e-17|residual_error=5.85642645489770075e-15
+test ols::prepared_fit::centered_finite_probe::centered_finite_wide_workspace_does_not_grow_with_observations ... ok
+CENTERED_SCRATCH_CASE|rows=257|active_columns=10|weight_kind=0|dependence=1.00000000000000005e-4|charged_payload=41028|scratch_bytes=24672
+CENTERED_SCRATCH|coefficient_error=3.19317905450589024e-11|bread_error=8.75443220138549805e-7|residual_error=2.60104437987962456e-14
+CENTERED_SCRATCH_CASE|rows=257|active_columns=10|weight_kind=1|dependence=0.00000000000000000e0|charged_payload=40292|scratch_bytes=24672
+CENTERED_SCRATCH|coefficient_error=7.77156117237609578e-16|bread_error=1.21430643318376497e-17|residual_error=4.00547650603044758e-15
+CENTERED_SCRATCH_CASE|rows=257|active_columns=10|weight_kind=1|dependence=1.00000000000000005e-4|charged_payload=41028|scratch_bytes=24672
+CENTERED_SCRATCH|coefficient_error=1.27897692436818033e-11|bread_error=8.61473381519317627e-8|residual_error=3.78239106701983019e-14
+CENTERED_SCRATCH_CASE|rows=257|active_columns=10|weight_kind=2|dependence=0.00000000000000000e0|charged_payload=40292|scratch_bytes=24672
+CENTERED_SCRATCH|coefficient_error=7.77156117237609578e-16|bread_error=4.16333634234433703e-17|residual_error=4.00547650603044758e-15
+CENTERED_SCRATCH_CASE|rows=257|active_columns=10|weight_kind=2|dependence=1.00000000000000005e-4|charged_payload=41028|scratch_bytes=24672
+CENTERED_SCRATCH|coefficient_error=1.27897692436818033e-11|bread_error=3.41795384883880615e-7|residual_error=3.78239106701983019e-14
+CENTERED_SCRATCH_CASE|rows=257|active_columns=10|weight_kind=3|dependence=0.00000000000000000e0|charged_payload=40292|scratch_bytes=24672
+CENTERED_SCRATCH|coefficient_error=7.77156117237609578e-16|bread_error=4.16333634234433703e-17|residual_error=4.00547650603044758e-15
+CENTERED_SCRATCH_CASE|rows=257|active_columns=10|weight_kind=3|dependence=1.00000000000000005e-4|charged_payload=41028|scratch_bytes=24672
+CENTERED_SCRATCH|coefficient_error=1.27897692436818033e-11|bread_error=3.41795384883880615e-7|residual_error=3.78239106701983019e-14
+test ols::prepared_fit::centered_finite_probe::centered_finite_weak_and_deficient_designs_retain_householder_decisions ... ok
+test fe::borrowed_map::centered_tiles_probe::centered_tiles_match_existing_projection_across_widths_weights_and_workers ... ok
+test ols::prepared_fit::centered_finite_probe::centered_finite_matches_matrix_moments_solve_and_residuals ... ok
+CENTERED_SCRATCH_CASE|rows=1024|active_columns=65|weight_kind=3|dependence=0.00000000000000000e0|charged_payload=795859|scratch_bytes=548864
+CENTERED_SCRATCH|coefficient_error=8.88178419700125232e-16|bread_error=1.38777878078144568e-17|residual_error=3.15268644524024921e-14
+CENTERED_SCRATCH_CASE|rows=1024|active_columns=65|weight_kind=3|dependence=1.00000000000000005e-4|charged_payload=800555|scratch_bytes=548864
+CENTERED_SCRATCH|coefficient_error=8.79012418408819940e-11|bread_error=4.59374859929084778e-7|residual_error=3.39351810541010934e-13
+CENTERED_SCRATCH_CASE|rows=65537|active_columns=3|weight_kind=1|dependence=0.00000000000000000e0|charged_payload=3670685|scratch_bytes=2621480
+CENTERED_SCRATCH|coefficient_error=4.21884749357559485e-15|bread_error=1.35525271560688054e-20|residual_error=5.90420073942610202e-13
+CENTERED_SCRATCH_CASE|rows=65537|active_columns=3|weight_kind=1|dependence=1.00000000000000005e-4|charged_payload=3670917|scratch_bytes=2621480
+CENTERED_SCRATCH|coefficient_error=8.75290950830276415e-11|bread_error=2.33740138355642557e-10|residual_error=2.98649993624167109e-13
+test ols::prepared_fit::centered_finite_probe::centered_scratch_fallback_covers_wide_and_parallel_qr_boundaries ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 802 filtered out; finished in 2.95s
+

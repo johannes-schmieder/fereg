@@ -1,0 +1,15 @@
+   Compiling libc v0.2.189
+   Compiling getrandom v0.4.3
+   Compiling rand v0.10.2
+   Compiling approx-chol v0.5.0
+   Compiling within v0.4.0 (https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a)
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+   Compiling fereg-plugin v0.5.0 (<source>/crates/fereg-plugin)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 12.26s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_plugin-e9c3349472e39e19)
+
+running 1 test
+test estimate::tests::centered_qr_scratch_publication_requires_exact_bounded_origin ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.00s
+

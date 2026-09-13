@@ -1,0 +1,15 @@
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.26s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 1 test
+CENTERED_SCOPE|rows=32777|workers=1|packed_requested=true
+CENTERED_SCOPE|rows=32777|workers=1|packed_requested=false
+CENTERED_SCOPE|rows=32777|workers=4|packed_requested=true
+CENTERED_SCOPE|rows=32777|workers=4|packed_requested=false
+CENTERED_SCOPE|rows=32777|workers=16|packed_requested=true
+CENTERED_SCOPE|rows=32777|workers=16|packed_requested=false
+test ols::prepared_fit::centered_finite_probe::centered_scope_keeps_borrowed_state_through_inference_on_the_requested_team ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 827 filtered out; finished in 0.99s
+

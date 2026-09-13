@@ -1,0 +1,92 @@
+[
+  {
+    "case": "unit_iid",
+    "route_excluded": true,
+    "reason": "FE level count is about N/5, above provisional N/16 guard",
+    "baseline": {
+      "seconds": 0.5780000000000001,
+      "native_bytes": 925865188.0,
+      "model_bytes": 1663324488.0,
+      "peak_rss_bytes": 1490796544.0,
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58"
+    },
+    "candidate": {
+      "seconds": 0.582,
+      "native_bytes": 925865188.0,
+      "model_bytes": 1663324488.0,
+      "peak_rss_bytes": 1490550784.0,
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58"
+    },
+    "science": {
+      "coefficients.csv:se": 0.0,
+      "coefficients.csv:value": 0.0,
+      "covariance.csv:value": 0.0,
+      "full_V_maxabs": 0.0,
+      "full_b_V_including_constant": true,
+      "full_b_maxabs": 0.0,
+      "reference_arm": "fereg",
+      "sample_exact": true,
+      "sample_status_rank_DoF_exact": true
+    }
+  },
+  {
+    "case": "aw_robust",
+    "route_excluded": true,
+    "reason": "FE level count is about N/5, above provisional N/16 guard",
+    "baseline": {
+      "seconds": 0.426,
+      "native_bytes": 233241144.0,
+      "model_bytes": 415846728.0,
+      "peak_rss_bytes": 403488768.0,
+      "sample_sha256": "5967ab7c1ba165110b3a6dfdd9212b0a7d5b4e77ff118b4f09e54ea4cba8b9c2"
+    },
+    "candidate": {
+      "seconds": 0.43,
+      "native_bytes": 233241144.0,
+      "model_bytes": 415846728.0,
+      "peak_rss_bytes": 405504000.0,
+      "sample_sha256": "5967ab7c1ba165110b3a6dfdd9212b0a7d5b4e77ff118b4f09e54ea4cba8b9c2"
+    },
+    "science": {
+      "coefficients.csv:se": 0.0,
+      "coefficients.csv:value": 0.0,
+      "covariance.csv:value": 0.0,
+      "full_V_maxabs": 0.0,
+      "full_b_V_including_constant": true,
+      "full_b_maxabs": 0.0,
+      "reference_arm": "fereg",
+      "sample_exact": true,
+      "sample_status_rank_DoF_exact": true
+    }
+  },
+  {
+    "case": "pw_cluster",
+    "route_excluded": true,
+    "reason": "FE level count is about N/5, above provisional N/16 guard",
+    "baseline": {
+      "seconds": 0.329,
+      "native_bytes": 239038342.0,
+      "model_bytes": 421744968.0,
+      "peak_rss_bytes": 417251328.0,
+      "sample_sha256": "681b94c249563d041aa04c7986f84475e6af3fa1052cae6729d57377586f30d1"
+    },
+    "candidate": {
+      "seconds": 0.341,
+      "native_bytes": 239038342.0,
+      "model_bytes": 421744968.0,
+      "peak_rss_bytes": 421609472.0,
+      "sample_sha256": "681b94c249563d041aa04c7986f84475e6af3fa1052cae6729d57377586f30d1"
+    },
+    "science": {
+      "coefficients.csv:se": 0.0,
+      "coefficients.csv:value": 0.0,
+      "covariance.csv:value": 0.0,
+      "full_V_maxabs": 0.0,
+      "full_b_V_including_constant": true,
+      "full_b_maxabs": 0.0,
+      "reference_arm": "fereg",
+      "sample_exact": true,
+      "sample_status_rank_DoF_exact": true
+    }
+  }
+]

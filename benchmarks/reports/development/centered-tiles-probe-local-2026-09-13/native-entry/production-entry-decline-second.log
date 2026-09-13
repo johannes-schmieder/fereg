@@ -1,0 +1,10 @@
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.18s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 1 test
+CENTERED_NATIVE_DECLINE|map_iterations=2|discarded_attempt_seconds=0.084947541
+test ols::prepared_fit::centered_finite_probe::centered_native_decline_continues_the_original_map_and_charges_attempt_time ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 834 filtered out; finished in 0.53s
+

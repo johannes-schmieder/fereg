@@ -1,0 +1,352 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index 37bb956..57116e2 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -15,6 +15,9 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
+ 
+ use super::map::ReusableMapCapacities;
+ 
++#[cfg(test)]
++mod centered_tiles_probe;
++
+ pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
+ pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
+ // Fixed row partitions make the compensated dot reduction independent of the
+diff --git a/crates/fereg-core/src/fe/borrowed_map/centered_tiles_probe.rs b/crates/fereg-core/src/fe/borrowed_map/centered_tiles_probe.rs
+new file mode 100644
+index 0000000..98135d8
+--- /dev/null
++++ b/crates/fereg-core/src/fe/borrowed_map/centered_tiles_probe.rs
+@@ -0,0 +1,332 @@
++//! Unadopted P5 primitive. Compiled only in tests until estimator-level rank,
++//! inference, memory admission and command comparisons have been established.
++
++use super::*;
++use crate::fe::{BorrowedInterceptEffect, LevelIndex, ValidatedBorrowedInterceptSource};
++
++struct CenteredColumns<'a> {
++    columns: &'a [&'a [f64]],
++    effect: &'a BorrowedInterceptEffect<'a>,
++    means: Vec<f64>,
++}
++
++impl<'a> CenteredColumns<'a> {
++    fn new<R: WorkspaceReservation>(
++        columns: &'a [&'a [f64]],
++        effect: &'a BorrowedInterceptEffect<'a>,
++        weights: BorrowedMapWeights<'_>,
++        maximum_mean_bytes: usize,
++        reservation: &mut R,
++    ) -> Result<Self> {
++        let rows = effect.codes().len();
++        if rows == 0 || columns.is_empty() || columns.iter().any(|c| c.len() != rows) {
++            return Err(invalid_argument(
++                "centered columns require aligned nonempty inputs",
++            ));
++        }
++        let elements = effect
++            .n_levels()
++            .checked_mul(columns.len())
++            .ok_or_else(|| allocation("centered group means overflow"))?;
++        let bytes = elements
++            .checked_mul(std::mem::size_of::<f64>())
++            .ok_or_else(|| allocation("centered group mean bytes overflow"))?;
++        if bytes > maximum_mean_bytes {
++            return Err(allocation(
++                "centered group means exceed their workspace budget",
++            ));
++        }
++        let weights = validate_weights(weights, rows)?;
++        if columns.iter().any(|c| c.iter().any(|v| !v.is_finite())) {
++            return Err(invalid_data("centered source contains a nonfinite value"));
++        }
++        let mut means = reserved_zeros(
++            elements,
++            reservation,
++            "unable to reserve centered group means",
++        )?;
++        if means.capacity() > maximum_mean_bytes / std::mem::size_of::<f64>() {
++            return Err(allocation(
++                "centered group mean capacity exceeds its budget",
++            ));
++        }
++        // Each finalized group keeps its membership order. Reuse the existing
++        // scaled/compensated mean arithmetic, including above-64 RHS blocks.
++        means
++            .par_chunks_mut(columns.len())
++            .enumerate()
++            .try_for_each(|(level, destination)| -> Result<()> {
++                for (block, output) in destination.chunks_mut(PARALLEL_GROUP_MAX_RHS).enumerate() {
++                    let start = block * PARALLEL_GROUP_MAX_RHS;
++                    fused_group_means_by_value(
++                        effect,
++                        level,
++                        weights,
++                        rows,
++                        output,
++                        |row, rhs| columns[start + rhs][row],
++                    )?;
++                }
++                Ok(())
++            })?;
++        Ok(Self {
++            columns,
++            effect,
++            means,
++        })
++    }
++
++    fn fill_rows(&self, start: usize, output: &mut [f64]) -> Result<()> {
++        let width = self.columns.len();
++        let rows = output.len() / width;
++        if output.len() % width != 0
++            || start
++                .checked_add(rows)
++                .is_none_or(|end| end > self.effect.codes().len())
++        {
++            return Err(invalid_argument(
++                "centered row tile is outside its source axis",
++            ));
++        }
++        for (offset, values) in output.chunks_exact_mut(width).enumerate() {
++            let row = start + offset;
++            let level = self.effect.codes()[row] as usize;
++            for (column, value) in values.iter_mut().enumerate() {
++                *value = self.columns[column][row] - self.means[level * width + column];
++                if !value.is_finite() {
++                    return Err(invalid_data("centered row value is not finite"));
++                }
++            }
++        }
++        Ok(())
++    }
++}
++
++#[test]
++fn centered_tiles_match_existing_projection_across_widths_weights_and_workers() {
++    let rows = 257;
++    let codes: Vec<u32> = (0..rows).map(|r| ((r * 7) % 17) as u32).collect();
++    let index = LevelIndex::from_codes(&codes, 17).unwrap();
++    let source = ValidatedBorrowedInterceptSource::new(&codes, 17, &index).unwrap();
++    let effect = source.effect();
++    for workers in [1, 4, 16] {
++        let pool = rayon::ThreadPoolBuilder::new()
++            .num_threads(workers)
++            .build()
++            .unwrap();
++        pool.install(|| {
++            for width in [1, 2, 17, 64, 65, 129] {
++                let columns: Vec<Vec<f64>> = (0..width)
++                    .map(|c| {
++                        (0..rows)
++                            .map(|r| {
++                                let between = f64::from(codes[r]) * 10_000.0;
++                                between + (((r + 1) * (c + 3)) as f64 * 0.17).sin()
++                            })
++                            .collect()
++                    })
++                    .collect();
++                let views: Vec<&[f64]> = columns.iter().map(Vec::as_slice).collect();
++                let supplied: Vec<f64> = (0..rows)
++                    .map(|r| match r % 3 {
++                        0 => 2.0_f64.powi(-100),
++                        1 => 1.0,
++                        _ => 2.0_f64.powi(100),
++                    })
++                    .collect();
++                for weights in [
++                    BorrowedMapWeights::Unit,
++                    BorrowedMapWeights::Provided(&supplied),
++                ] {
++                    let centered = CenteredColumns::new(
++                        &views,
++                        &effect,
++                        weights,
++                        17 * width * 8,
++                        &mut SystemWorkspaceReservation,
++                    )
++                    .unwrap();
++                    assert!(centered.means.capacity() <= 17 * width);
++                    let design =
++                        BorrowedInterceptFeDesign::new(rows, vec![source.effect()]).unwrap();
++                    let expected = absorb_borrowed_intercept_map_certified(
++                        &design,
++                        weights,
++                        DenseMatrix::from_columns(&columns).unwrap(),
++                        MapConfig::default(),
++                    )
++                    .unwrap();
++                    for tile_rows in [1, 17, 128] {
++                        let mut tile = vec![0.0; tile_rows * width];
++                        for start in (0..rows).step_by(tile_rows) {
++                            let count = tile_rows.min(rows - start);
++                            centered
++                                .fill_rows(start, &mut tile[..count * width])
++                                .unwrap();
++                            assert_eq!(
++                                &tile[..count * width],
++                                &expected.residualized().as_slice()
++                                    [start * width..(start + count) * width]
++                            );
++                        }
++                    }
++                }
++            }
++        });
++    }
++}
++
++#[test]
++fn centered_tiles_preserve_small_within_variation_and_exact_dependence() {
++    let base = 2.0_f64.powi(40);
++    let x = [base - 2.0, base - 1.0, base + 1.0, base + 2.0];
++    let twice = x.map(|v| 2.0 * v);
++    let constant = [base; 4];
++    let columns = [&x[..], &twice[..], &constant[..]];
++    let codes = [0; 4];
++    let index = LevelIndex::from_codes(&codes, 1).unwrap();
++    let source = ValidatedBorrowedInterceptSource::new(&codes, 1, &index).unwrap();
++    let effect = source.effect();
++    let centered = CenteredColumns::new(
++        &columns,
++        &effect,
++        BorrowedMapWeights::Unit,
++        24,
++        &mut SystemWorkspaceReservation,
++    )
++    .unwrap();
++    let mut values = [0.0; 12];
++    centered.fill_rows(0, &mut values).unwrap();
++    let mut square = 0.0;
++    for (row, expected) in values.chunks_exact(3).zip([-2.0, -1.0, 1.0, 2.0]) {
++        assert_eq!(row, &[expected, 2.0 * expected, 0.0]);
++        square += row[0] * row[0];
++    }
++    assert_eq!(square, 10.0);
++    // Independent exact arithmetic gives 10; uncentered product subtraction
++    // loses it at this representable between-group scale.
++    let raw = x.iter().map(|v| v * v).sum::<f64>() - x.iter().sum::<f64>().powi(2) / 4.0;
++    assert!((raw - 10.0).abs() > 1.0);
++}
++
++#[derive(Default)]
++struct RecordingReservation {
++    calls: usize,
++    elements: usize,
++    fail: bool,
++}
++impl WorkspaceReservation for RecordingReservation {
++    fn reserve_f64(
++        &mut self,
++        target: &mut Vec<f64>,
++        elements: usize,
++        _: &'static str,
++    ) -> Result<()> {
++        self.calls += 1;
++        self.elements += elements;
++        if self.fail {
++            return Err(allocation("injected centered reservation failure"));
++        }
++        target
++            .try_reserve_exact(elements)
++            .map_err(|_| allocation("centered test reservation failed"))
++    }
++}
++
++#[test]
++fn centered_tiles_fail_before_allocation_and_keep_capacity_bounded() {
++    let values = [1.0, 2.0, 4.0, 8.0];
++    let columns = [&values[..]];
++    let codes = [0, 1, 0, 1];
++    let index = LevelIndex::from_codes(&codes, 2).unwrap();
++    let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
++    let effect = source.effect();
++    let mut reservation = RecordingReservation::default();
++    assert_eq!(
++        CenteredColumns::new(
++            &columns,
++            &effect,
++            BorrowedMapWeights::Unit,
++            15,
++            &mut reservation
++        )
++        .err()
++        .unwrap()
++        .code,
++        ErrorCode::Allocation
++    );
++    assert_eq!(reservation.calls, 0);
++    reservation.fail = true;
++    assert_eq!(
++        CenteredColumns::new(
++            &columns,
++            &effect,
++            BorrowedMapWeights::Unit,
++            16,
++            &mut reservation
++        )
++        .err()
++        .unwrap()
++        .code,
++        ErrorCode::Allocation
++    );
++    assert_eq!(reservation.calls, 1);
++    reservation.fail = false;
++    let centered = CenteredColumns::new(
++        &columns,
++        &effect,
++        BorrowedMapWeights::Unit,
++        16,
++        &mut reservation,
++    )
++    .unwrap();
++    assert_eq!(centered.means.capacity(), 2);
++    let mut bad_tile = [99.0; 3];
++    assert!(centered.fill_rows(3, &mut bad_tile).is_err());
++    assert_eq!(bad_tile, [99.0; 3]);
++    let nonfinite = [f64::NAN; 4];
++    let bad = [&nonfinite[..]];
++    let before = reservation.calls;
++    assert_eq!(
++        CenteredColumns::new(
++            &bad,
++            &effect,
++            BorrowedMapWeights::Unit,
++            16,
++            &mut reservation
++        )
++        .err()
++        .unwrap()
++        .code,
++        ErrorCode::InvalidData
++    );
++    assert_eq!(reservation.calls, before);
++}
++
++#[test]
++fn centered_tiles_rebuild_means_for_changed_weight_frames() {
++    let values = [0.0, 2.0, 4.0, 6.0];
++    let columns = [&values[..]];
++    let codes = [0, 0, 1, 1];
++    let index = LevelIndex::from_codes(&codes, 2).unwrap();
++    let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
++    let effect = source.effect();
++    for (weights, expected) in [
++        ([1.0, 1.0, 1.0, 1.0], [-1.0, 1.0, -1.0, 1.0]),
++        ([3.0, 1.0, 1.0, 3.0], [-0.5, 1.5, -1.5, 0.5]),
++    ] {
++        let centered = CenteredColumns::new(
++            &columns,
++            &effect,
++            BorrowedMapWeights::Provided(&weights),
++            16,
++            &mut SystemWorkspaceReservation,
++        )
++        .unwrap();
++        let mut output = [0.0; 4];
++        centered.fill_rows(0, &mut output).unwrap();
++        for (actual, exact) in output.iter().zip(expected) {
++            assert!((actual - exact).abs() < 2e-15);
++        }
++    }
++}

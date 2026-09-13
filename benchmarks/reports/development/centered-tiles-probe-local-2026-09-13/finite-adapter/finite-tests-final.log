@@ -1,0 +1,19 @@
+   Compiling fereg-core v0.5.0 (<source>/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.45s
+     Running unittests src/lib.rs (<isolated-test-target>/debug/deps/fereg_core-cb1f50a02cf6d5d8)
+
+running 10 tests
+test fe::borrowed_map::centered_tiles_probe::centered_tiles_fail_before_allocation_and_keep_capacity_bounded ... ok
+test fe::borrowed_map::centered_tiles_probe::centered_tiles_preserve_small_within_variation_and_exact_dependence ... ok
+test fe::borrowed_map::centered_tiles_probe::centered_tiles_rebuild_means_for_changed_weight_frames ... ok
+test fe::topology_slope_map::tests::recovery_returns_centered_crossed_effects_and_requested_channels ... ok
+test ols::prepared_fit::centered_finite_probe::centered_finite_workspace_and_invalid_inputs_fail_closed ... ok
+CENTERED_ORACLE|maximum_outcome_centering_error=1.16415321826934814e-10
+test ols::prepared_fit::centered_finite_probe::centered_finite_preserves_large_reference_scales_and_absorption_status ... ok
+test ols::prepared_fit::centered_finite_probe::centered_finite_wide_workspace_does_not_grow_with_observations ... ok
+test ols::prepared_fit::centered_finite_probe::centered_finite_weak_and_deficient_designs_retain_householder_decisions ... ok
+test fe::borrowed_map::centered_tiles_probe::centered_tiles_match_existing_projection_across_widths_weights_and_workers ... ok
+test ols::prepared_fit::centered_finite_probe::centered_finite_matches_matrix_moments_solve_and_residuals ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 802 filtered out; finished in 0.32s
+

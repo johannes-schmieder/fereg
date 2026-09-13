@@ -1,0 +1,14 @@
+    Checking fereg-core v0.5.0 (<source>/crates/fereg-core)
+warning: field `projection_reference_norms` is never read
+   --> crates/fereg-core/src/ols/prepared_fit/centered_finite_probe.rs:106:5
+    |
+102 | struct BoundCenteredFrame<'a> {
+    |        ------------------ field in this struct
+...
+106 |     projection_reference_norms: Vec<f64>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: `fereg-core` (lib) generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.03s
