@@ -1,0 +1,14 @@
+[
+  {
+    "name": "generic-diagnostic",
+    "process_rc": 0,
+    "cap": null,
+    "fixture_sha256": "739a86fe36983163a52ab8c8faffcb61284b74140abe321d23d17d841b7748f5",
+    "log_sha256": "66a650f26a8dbcbfd18e59d3e61510b7163bec520549a89144286d32d99559e8",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "8b7b9eca887aef7ea1334d41fd13d30eae55ce677b1351d7d794fd464d7cb89f"
+  }
+]

@@ -7076,6 +7076,130 @@ mod tests {
         }
     }
 
+    #[test]
+    fn generic_prepared_slope_admits_owned_design_unit_weights_and_solver_together() {
+        let group = source(1, "group");
+        let slope = source(2, "slope");
+        let n = 12;
+        let groups = (0..n).map(|row| (row / 6) as f64).collect::<Vec<_>>();
+        let slopes = (0..n).map(|row| (row % 6) as f64 - 2.0).collect::<Vec<_>>();
+        let noise = (0..n)
+            .map(|row| [1.0, -2.0, 1.0][row % 3])
+            .collect::<Vec<_>>();
+        let y = (0..n)
+            .map(|row| 3.0 * groups[row] + 2.0 * slopes[row] + noise[row])
+            .collect::<Vec<_>>();
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![group.clone(), slope.clone()],
+                terms: Vec::new(),
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![group.id],
+                slope_sources: vec![slope.id],
+                label: "group##c.slope".into(),
+                saved_name: String::new(),
+            }],
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(group.id),
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::NumericSource(slope.id),
+                },
+            ],
+            include_intercept: false,
+            keep_singletons: true,
+        };
+        let input = LoadedOlsInput {
+            candidate: vec![true; n],
+            outcome: loaded(&y),
+            numeric_sources: vec![(group.id, loaded(&groups)), (slope.id, loaded(&slopes))],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let prepared =
+            crate::prepared_categorical_data::prepare_categorical_ols_data(&request, &input)
+                .unwrap();
+        let memory = prepared.fit_owned_fe_design_memory().unwrap();
+        let design = prepared.fit_owned_fe_design().unwrap();
+        assert_eq!(
+            memory.resident_bytes,
+            design.storage_capacities().resident_bytes
+        );
+        let supplied = (0..n).map(|row| 1.0 + (row / 6) as f64).collect::<Vec<_>>();
+        for weights in [
+            BorrowedMapWeights::Unit,
+            BorrowedMapWeights::Provided(&supplied),
+        ] {
+            let unit_bytes = if matches!(weights, BorrowedMapWeights::Unit) {
+                (8 * n) as u128
+            } else {
+                0
+            };
+            for solver in [
+                FeSolverKind::Auto,
+                FeSolverKind::Cg,
+                FeSolverKind::Lsmr,
+                FeSolverKind::IronsTuck,
+            ] {
+                let mut config = AbsorbConfig {
+                    solver,
+                    ..AbsorbConfig::default()
+                };
+                let solver_bytes =
+                    crate::memory::generic_fe_solver_bytes(&design, 1, solver, config.lsmr)
+                        .unwrap()
+                        + if solver == FeSolverKind::Lsmr {
+                            (8 * n) as u128
+                        } else {
+                            0
+                        };
+                let required = memory
+                    .construction_bytes
+                    .max(memory.resident_bytes + solver_bytes)
+                    + unit_bytes
+                    + (24 * n) as u128;
+                for usable in [1, 137 + required - 1, 137 + required] {
+                    config.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+                        execution_bytes: 137,
+                        usable_bytes: usable,
+                    });
+                    let result = prepared.fit_absorb_owned_matrix(
+                        weights,
+                        DenseMatrix::from_columns(&[y.clone()]).unwrap(),
+                        config,
+                    );
+                    if usable < 137 + required {
+                        assert_eq!(result.unwrap_err().code, ErrorCode::Allocation);
+                    } else {
+                        let output = result.unwrap();
+                        assert!(output.report().certified());
+                        assert!(output
+                            .residualized()
+                            .as_slice()
+                            .iter()
+                            .zip(&noise)
+                            .all(|(a, b)| (a - b).abs() < 1e-10));
+                    }
+                }
+            }
+        }
+    }
+
     fn prepared_multiway_categorical(
         outcome: &[f64],
         regressors: &[Vec<f64>],

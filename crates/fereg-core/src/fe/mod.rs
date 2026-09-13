@@ -72,6 +72,7 @@ pub use design::{
 };
 pub use interaction::{factorize_code_interaction, CategoricalCodeView, EncodedInteraction};
 pub(crate) use interaction::{try_factorize_dense_code_interaction, InteractionReservation};
+pub(crate) use lsmr::resolve_preconditioner_kind;
 pub use lsmr::{absorb_lsmr, LsmrConfig};
 pub use map::{absorb_map, MapConfig};
 pub(crate) use map::{ReusableMapAbsorber, ReusableMapCapacities};

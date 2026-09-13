@@ -33,6 +33,18 @@ LSMR/CG planner. It uses the installed team and charges five coefficient batches
 when categorical CG retains them. Empty topology and slope adapters retain their
 existing paths; see [ADR 0060](adr/0060-prepared-direct-cg-memory-admission.md).
 
+The generic owned intercept/slope adapter separately admits code, slope and
+membership construction and charges the retained design and materialized unit
+weights beside each solver. Zero-control owned fits also reserve the normalized
+weight, retained outcome and final residual overlap. The unified generic
+dispatcher checks MAP, CG, accelerator and LSMR workspace at the route taken;
+an admitted MAP pilot can finish without reserving LSMR, and an unaffordable
+LSMR attempt can use the separately admitted existing CG continuation. LSMR
+planning includes slope-channel whitening and signed Schur covers while leaving
+the intercept-only model unchanged. See
+[ADR 0062](adr/0062-generic-owned-fe-memory-admission.md). Specialized slope MAP,
+recovery and public whole-action reporting remain separate accounting boundaries.
+
 Topology-selected CMG uses the same joint budget. Before hierarchy
 construction, fereg consumes CMG's upstream checked conservative estimate for
 the graph, hierarchy, parallel plan, and reusable workspace pool, then adds

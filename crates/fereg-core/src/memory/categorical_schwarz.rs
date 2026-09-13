@@ -49,6 +49,26 @@ pub(crate) fn estimate_categorical_schwarz_memory(
     threads: u128,
     dense_cross_tab_bytes: u128,
 ) -> Result<CategoricalSchwarzMemoryEstimate> {
+    estimate_schwarz_memory(
+        rows,
+        effects,
+        levels,
+        maximum_levels,
+        threads,
+        dense_cross_tab_bytes,
+        false,
+    )
+}
+
+pub(super) fn estimate_schwarz_memory(
+    rows: u128,
+    effects: u128,
+    levels: u128,
+    maximum_levels: u128,
+    threads: u128,
+    dense_cross_tab_bytes: u128,
+    signed_cover: bool,
+) -> Result<CategoricalSchwarzMemoryEstimate> {
     let pairs = checked_mul(
         effects,
         effects.saturating_sub(1),
@@ -63,19 +83,30 @@ pub(crate) fn estimate_categorical_schwarz_memory(
 
     // Constants include payload slack for opaque upstream vector and factor
     // records, not an empirically selected routing threshold.
-    let retained_edge_bytes = checked_mul(edges, 80, "categorical LSMR retained edge bytes")?;
+    // A signed reduced Schur factor may use the pinned Gremban cover: two
+    // vertices/edges per original. Charge that expansion in construction and
+    // retained factors, even when a particular channel pair needs no cover.
+    let factor_copies = if signed_cover { 2 } else { 1 };
+    let factor_edges = checked_mul(edges, factor_copies, "Schwarz cover edges")?;
+    let factor_levels = checked_mul(pair_level_incidence, factor_copies, "Schwarz cover levels")?;
+    let retained_edge_bytes =
+        checked_mul(factor_edges, 80, "categorical LSMR retained edge bytes")?;
     let retained_level_bytes = checked_mul(
-        pair_level_incidence,
+        factor_levels,
         80,
         "categorical LSMR retained pair-level bytes",
     )?;
     let diagonal_bytes = bytes_for_memory::<f64>(levels, "categorical LSMR retained diagonal")?;
 
     // A categorical component owns both FE blocks and the reduced factor's
-    // augmented dimension in each of its two local scratch vectors. It has
-    // no signed cover, so 3*maximum_levels + 2 bounds each vector.
+    // augmented dimension in each of its two local scratch vectors. A signed
+    // cover additionally needs up to 2*maximum_levels entries in each vector.
     let local_scratch_values = checked_sum(&[
-        checked_mul(maximum_levels, 6, "categorical Schwarz local scratch")?,
+        checked_mul(
+            maximum_levels,
+            if signed_cover { 10 } else { 6 },
+            "categorical Schwarz local scratch",
+        )?,
         4,
     ])?;
     let global_apply_values = checked_sum(&[levels, local_scratch_values])?;
@@ -149,9 +180,9 @@ pub(crate) fn estimate_categorical_schwarz_memory(
             "categorical LSMR sort cursor bytes",
         )?,
     ])?;
-    let build_edge_bytes = checked_mul(edges, 64, "categorical LSMR transient edge bytes")?;
+    let build_edge_bytes = checked_mul(factor_edges, 64, "categorical LSMR transient edge bytes")?;
     let build_level_bytes = checked_mul(
-        pair_level_incidence,
+        factor_levels,
         64,
         "categorical LSMR transient pair-level bytes",
     )?;

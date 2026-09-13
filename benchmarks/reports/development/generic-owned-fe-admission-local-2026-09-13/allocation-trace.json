@@ -1,0 +1,27 @@
+{
+  "diagnostic_plugin": "8b7b9eca887aef7ea1334d41fd13d30eae55ce677b1351d7d794fd464d7cb89f",
+  "stderr_sha256": "635a791efb6dea425246e6cc259f777732d4165b94b138220c8bfa5b39789071",
+  "trace": [
+    "GENERIC_MEMORY_AUDIT|label=action_start|current=1801|peak=1801",
+    "GENERIC_MEMORY_AUDIT|label=prepared|current=253237|peak=426297",
+    "GENERIC_MEMORY_AUDIT|label=before_owned_design|current=321069|peak=426297",
+    "GENERIC_MEMORY_AUDIT|label=owned_design|current=403165|peak=426297",
+    "GENERIC_MEMORY_AUDIT|label=before_owned_solve|current=403165|peak=426297",
+    "GENERIC_MEMORY_AUDIT|label=lsmr_entry|current=435941|peak=435949",
+    "GENERIC_MEMORY_AUDIT|label=lsmr_rhs|current=468813|peak=468813",
+    "GENERIC_MEMORY_AUDIT|label=lsmr_returned|current=501630|peak=699757",
+    "GENERIC_MEMORY_AUDIT|label=lsmr_certified|current=501630|peak=699757",
+    "GENERIC_MEMORY_AUDIT|label=after_owned_solve|current=403165|peak=699757",
+    "GENERIC_MEMORY_AUDIT|label=before_owned_design|current=353845|peak=699757",
+    "GENERIC_MEMORY_AUDIT|label=owned_design|current=435941|peak=699757",
+    "GENERIC_MEMORY_AUDIT|label=before_owned_solve|current=435941|peak=699757",
+    "GENERIC_MEMORY_AUDIT|label=lsmr_entry|current=468717|peak=699757",
+    "GENERIC_MEMORY_AUDIT|label=lsmr_rhs|current=501589|peak=699757",
+    "GENERIC_MEMORY_AUDIT|label=lsmr_returned|current=534406|peak=732533",
+    "GENERIC_MEMORY_AUDIT|label=lsmr_certified|current=534406|peak=732533",
+    "GENERIC_MEMORY_AUDIT|label=after_owned_solve|current=435941|peak=732533",
+    "GENERIC_MEMORY_AUDIT|label=fitted|current=321299|peak=732533",
+    "GENERIC_MEMORY_AUDIT|label=derived|current=321347|peak=732533"
+  ],
+  "cost_timing_exclusion": true
+}

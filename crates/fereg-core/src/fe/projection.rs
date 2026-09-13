@@ -23,14 +23,26 @@ impl ProjectionWorkspace {
         Ok(Self {
             max_channels,
             rhs_count,
-            gram: vec![0.0; gram_length],
-            right_hand_sides: vec![0.0; rhs_length],
+            gram: fallible_zeros(gram_length)?,
+            right_hand_sides: fallible_zeros(rhs_length)?,
         })
     }
 
     pub(crate) fn storage_capacities(&self) -> (usize, usize) {
         (self.gram.capacity(), self.right_hand_sides.capacity())
     }
+}
+
+fn fallible_zeros(elements: usize) -> Result<Vec<f64>> {
+    let mut values = Vec::new();
+    values.try_reserve_exact(elements).map_err(|_| {
+        FeregError::new(
+            ErrorCode::Allocation,
+            "unable to reserve generic FE projection workspace",
+        )
+    })?;
+    values.resize(elements, 0.0);
+    Ok(values)
 }
 
 /// Subtract the weighted least-squares projection onto one effect term.

@@ -1,0 +1,32 @@
+{
+  "baseline_numerical_commit": "f576bc5a327e34f504b102d44f01ad8565209275",
+  "preimplementation_head": "7ae569d",
+  "core_tests": 134,
+  "plugin_tests": 95,
+  "saved_dummy_fits": 48,
+  "weighted_omission_cases": 4,
+  "public_cap": {
+    "one_byte_short_rc": 909,
+    "exact_cap": 537677240,
+    "usable_bytes": 806328,
+    "observed_native_peak_bytes": 730668,
+    "independent_dummy_residual_pass": true,
+    "prior_results_sample_order_output_rollback_pass": true
+  },
+  "cost_pairs": 10,
+  "exact_scientific_exports_all": true,
+  "exact_OLS_non_time_solver_fields": true,
+  "cost_review_flags": 0,
+  "native_peaks_exact_pairs": 9,
+  "weak_native_peak_increase_bytes": 530456,
+  "weak_peak_increase_cause": "untraced",
+  "universal_build": true,
+  "native_arm64_ABI": true,
+  "first_build_failure": "Both slices compiled; source-only snapshot omitted audit harness. Exact HEAD harness was added; static and native ABI audits then passed. V3 complete build passes.",
+  "v2_cap_failure": "Functional boundary passed but native peak 730668 exceeded 708024 usable. Diagnostic localized caller normalized-weight/within-outcome/final-residual overlap; V3 charges three observation vectors for zero-control owned fits.",
+  "diagnostic_script_correction": "Expected three categorical result sites; source has two. Setup assertion corrected before build.",
+  "collector_syntax_check": "Initial py_compile tried a nonwritable system cache. Compilation with no bytecode writes passes.",
+  "scope": "Local development; generic owned admission. Specialized slope MAP, saved recovery and whole-action public memory reporting remain separate work; no universal opaque-factor memory bound claim.",
+  "archive_collector_correction": "Trace has 20 entries, not 19; corrected assertion and resumed only receipt-writing tail. Numeric archives were already complete and were not regenerated.",
+  "final_archive_hash_check": "All parts and CSV blobs verified. Initial checker compared a digest to a filename including .csv; corrected to its stem before staging."
+}

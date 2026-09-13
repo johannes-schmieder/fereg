@@ -5,7 +5,7 @@ use crate::fe::{
     weighted_column_norms, FeDesign, FeSolverKind, LsmrConfig, MapConfig, SolveReport,
     SolveStopReason,
 };
-use crate::memory::FeSolverMemoryBudget;
+use crate::memory::{generic_fe_solver_bytes, owned_fe_matrix_bytes, FeSolverMemoryBudget};
 
 /// Frozen automatic-routing threshold selected from the registered AKM matrix.
 ///
@@ -102,9 +102,24 @@ pub fn absorb_fixed_effects(
     config: AbsorbConfig,
 ) -> Result<SolveReport> {
     match config.solver {
-        FeSolverKind::Map => absorb_map(design, weights, values, config.map),
+        FeSolverKind::Map => {
+            admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
+            absorb_map(design, weights, values, config.map)
+        }
         FeSolverKind::Lsmr => {
-            let original = config.certified_fallback.then(|| values.clone());
+            admit_generic_solver(
+                design,
+                values,
+                config,
+                FeSolverKind::Lsmr,
+                config.certified_fallback,
+            )?;
+            let original = config
+                .certified_fallback
+                .then(|| {
+                    fallible_matrix_copy(values, "unable to reserve explicit LSMR fallback matrix")
+                })
+                .transpose()?;
             let report = absorb_lsmr(design, weights, values, config.lsmr)?;
             if report.certified() || !config.certified_fallback {
                 return Ok(report);
@@ -112,6 +127,7 @@ pub fn absorb_fixed_effects(
             if let Some(original) = original {
                 *values = original;
             }
+            admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
             let mut fallback = absorb_map(design, weights, values, config.map)?;
             fallback.requested_solver = FeSolverKind::Lsmr;
             fallback.fallback_used = true;
@@ -125,6 +141,7 @@ pub fn absorb_fixed_effects(
             Ok(fallback)
         }
         FeSolverKind::Cg | FeSolverKind::IronsTuck | FeSolverKind::Squarem => {
+            admit_generic_solver(design, values, config, config.solver, false)?;
             absorb_accelerated_map(design, weights, values, config.map, config.solver)
         }
         FeSolverKind::Cmg => Err(FeregError::new(
@@ -141,6 +158,9 @@ fn absorb_auto(
     values: &mut DenseMatrix,
     config: AbsorbConfig,
 ) -> Result<SolveReport> {
+    // Admit the cheap pilot first. An unused LSMR/CG workspace must not prevent
+    // a MAP certificate from closing an otherwise affordable request.
+    admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
     let reference_norms = weighted_column_norms(values, weights)?;
     let initial = certify_residuals_with_reference_norms(
         design,
@@ -188,15 +208,20 @@ fn absorb_auto(
     let mut lsmr_failure = None;
     let mut attempted_lsmr = None;
     if auto_selects_lsmr(contraction, design.total_coefficients()) {
-        let mut lsmr_values =
-            fallible_matrix_copy(values, "unable to reserve automatic LSMR fallback matrix")?;
         let lsmr_config = LsmrConfig {
             tolerance: direct_lsmr_tolerance(config.map.tolerance),
             max_iterations: config.lsmr.max_iterations.min(remaining_iterations),
             ..config.lsmr
         };
-        match absorb_lsmr(design, weights, &mut lsmr_values, lsmr_config) {
-            Ok(mut lsmr) => {
+        let attempt: Result<(SolveReport, DenseMatrix)> = (|| {
+            admit_generic_solver(design, values, config, FeSolverKind::Lsmr, true)?;
+            let mut lsmr_values =
+                fallible_matrix_copy(values, "unable to reserve automatic LSMR fallback matrix")?;
+            let report = absorb_lsmr(design, weights, &mut lsmr_values, lsmr_config)?;
+            Ok((report, lsmr_values))
+        })();
+        match attempt {
+            Ok((mut lsmr, lsmr_values)) => {
                 lsmr.certificate = certify_residuals_with_reference_norms(
                     design,
                     weights,
@@ -245,6 +270,9 @@ fn absorb_auto(
         }
     }
 
+    // A failed/rejected LSMR attempt has released its solver and transport.
+    // Recheck the actual continuation instead of charging two live solvers.
+    admit_generic_solver(design, values, config, FeSolverKind::Cg, false)?;
     let mut cg = absorb_accelerated_map(
         design,
         weights,
@@ -279,6 +307,36 @@ fn absorb_auto(
         cg.warnings.insert(0, warning);
     }
     Ok(cg)
+}
+
+fn admit_generic_solver(
+    design: &FeDesign,
+    values: &DenseMatrix,
+    config: AbsorbConfig,
+    solver: FeSolverKind,
+    preserve_input: bool,
+) -> Result<()> {
+    let Some(budget) = config.solver_memory_budget else {
+        return Ok(());
+    };
+    let workspace = generic_fe_solver_bytes(design, values.ncols(), solver, config.lsmr)?;
+    let preserved = if preserve_input {
+        owned_fe_matrix_bytes(values.nrows(), values.ncols())?
+    } else {
+        0
+    };
+    let required = workspace.checked_add(preserved).ok_or_else(|| {
+        FeregError::new(
+            ErrorCode::Allocation,
+            "generic FE joint workspace overflows",
+        )
+    })?;
+    if !budget.fits(required) {
+        return Err(FeregError::new(ErrorCode::Allocation, format!(
+            "generic {solver:?} requires {required} workspace bytes beside {} execution bytes; usable={}",
+            budget.execution_bytes, budget.usable_bytes)));
+    }
+    Ok(())
 }
 
 fn fallible_matrix_copy(input: &DenseMatrix, label: &'static str) -> Result<DenseMatrix> {
@@ -393,5 +451,240 @@ mod tests {
         assert_eq!(report.used_solver, FeSolverKind::Map);
         assert!(report.fallback_used);
         assert!(report.certified());
+    }
+}
+
+#[cfg(test)]
+mod generic_budget_regression {
+    use super::*;
+    use crate::fe::EffectTerm;
+
+    fn crossed_slope() -> (FeDesign, Vec<f64>, Vec<f64>) {
+        let n = 48;
+        let left = (0..n).map(|row| (row % 4) as u32).collect::<Vec<_>>();
+        let right = (0..n).map(|row| ((row / 4) % 3) as u32).collect::<Vec<_>>();
+        let slope = (0..n)
+            .map(|row| (row / 12) as f64 - 1.5)
+            .collect::<Vec<_>>();
+        // The four equal-weight observations in every crossed cell have
+        // residuals [1,-1,-1,1], orthogonal to both intercept and slope.
+        let noise = (0..n)
+            .map(|row| [1.0, -1.0, -1.0, 1.0][row / 12])
+            .collect::<Vec<_>>();
+        let outcome = (0..n)
+            .map(|row| 2.0 * left[row] as f64 + 3.0 * right[row] as f64 * slope[row] + noise[row])
+            .collect::<Vec<_>>();
+        let design = FeDesign::new(
+            n,
+            vec![
+                EffectTerm::new(left, 4, true, vec![]).unwrap(),
+                EffectTerm::new(right, 3, false, vec![slope]).unwrap(),
+            ],
+        )
+        .unwrap();
+        (design, outcome, noise)
+    }
+
+    fn check_budget(solver: FeSolverKind) {
+        let (design, outcome, noise) = crossed_slope();
+        let weights = vec![1.0; design.nobs()];
+        let mut config = AbsorbConfig {
+            solver,
+            ..AbsorbConfig::default()
+        };
+        config.map.tolerance = 1e-12;
+        config.lsmr.tolerance = 1e-12;
+        let mut values = DenseMatrix::from_columns(&[outcome.clone()]).unwrap();
+        let report = absorb_fixed_effects(&design, &weights, &mut values, config).unwrap();
+        assert!(report.certified());
+        assert!(values
+            .as_slice()
+            .iter()
+            .zip(&noise)
+            .all(|(a, b)| (a - b).abs() < 1e-10));
+        config.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: 1,
+        });
+        let mut values = DenseMatrix::from_columns(&[outcome]).unwrap();
+        let error = absorb_fixed_effects(&design, &weights, &mut values, config)
+            .expect_err("generic slope projection must enforce its joint workspace budget");
+        assert_eq!(error.code, ErrorCode::Allocation);
+    }
+    #[test]
+    fn generic_auto_enforces_joint_budget() {
+        check_budget(FeSolverKind::Auto);
+    }
+    #[test]
+    fn generic_map_enforces_joint_budget() {
+        check_budget(FeSolverKind::Map);
+    }
+    #[test]
+    fn generic_lsmr_enforces_joint_budget() {
+        check_budget(FeSolverKind::Lsmr);
+    }
+    #[test]
+    fn generic_cg_enforces_joint_budget() {
+        check_budget(FeSolverKind::Cg);
+    }
+
+    #[test]
+    fn generic_exact_workspace_and_one_byte_short_preserve_input() {
+        let (design, outcome, noise) = crossed_slope();
+        let weights = vec![1.0; design.nobs()];
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for solver in [
+                        FeSolverKind::Map,
+                        FeSolverKind::Cg,
+                        FeSolverKind::IronsTuck,
+                        FeSolverKind::Squarem,
+                        FeSolverKind::Lsmr,
+                    ] {
+                        for preconditioner in [
+                            crate::fe::LsmrPreconditioner::Off,
+                            crate::fe::LsmrPreconditioner::Diagonal,
+                            crate::fe::LsmrPreconditioner::Schwarz,
+                            crate::fe::LsmrPreconditioner::Auto,
+                        ] {
+                            let mut config = AbsorbConfig {
+                                solver,
+                                ..AbsorbConfig::default()
+                            };
+                            config.lsmr.preconditioner = preconditioner;
+                            let reserve = generic_fe_solver_bytes(&design, 1, solver, config.lsmr)
+                                .unwrap()
+                                + if solver == FeSolverKind::Lsmr {
+                                    owned_fe_matrix_bytes(design.nobs(), 1).unwrap()
+                                } else {
+                                    0
+                                };
+                            for short in [false, true] {
+                                let mut values =
+                                    DenseMatrix::from_columns(&[outcome.clone()]).unwrap();
+                                config.solver_memory_budget = Some(FeSolverMemoryBudget {
+                                    execution_bytes: 137,
+                                    usable_bytes: 137 + reserve - u128::from(short),
+                                });
+                                let result =
+                                    absorb_fixed_effects(&design, &weights, &mut values, config);
+                                if short {
+                                    assert_eq!(result.unwrap_err().code, ErrorCode::Allocation);
+                                    assert_eq!(values.as_slice(), outcome);
+                                } else {
+                                    assert!(result.unwrap().certified());
+                                    assert!(values
+                                        .as_slice()
+                                        .iter()
+                                        .zip(&noise)
+                                        .all(|(a, b)| (a - b).abs() < 1e-10));
+                                }
+                            }
+                        }
+                    }
+                });
+        }
+    }
+
+    #[test]
+    fn generic_auto_admits_map_without_reserving_an_unused_lsmr() {
+        let (design, outcome, noise) = crossed_slope();
+        let mut values = DenseMatrix::from_columns(&[outcome]).unwrap();
+        let mut config = AbsorbConfig::default();
+        let reserve = generic_fe_solver_bytes(&design, 1, FeSolverKind::Map, config.lsmr).unwrap();
+        assert!(
+            reserve < generic_fe_solver_bytes(&design, 1, FeSolverKind::Lsmr, config.lsmr).unwrap()
+        );
+        config.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 137,
+            usable_bytes: 137 + reserve,
+        });
+        let report =
+            absorb_fixed_effects(&design, &vec![1.0; design.nobs()], &mut values, config).unwrap();
+        assert!(report.certified());
+        assert_eq!(report.used_solver, FeSolverKind::Map);
+        assert!(!report.fallback_used);
+        assert!(values
+            .as_slice()
+            .iter()
+            .zip(&noise)
+            .all(|(a, b)| (a - b).abs() < 1e-10));
+    }
+
+    #[test]
+    fn generic_auto_rechecks_cg_when_slope_lsmr_does_not_fit() {
+        let levels = 12;
+        let n = levels * 4;
+        let left = (0..n).map(|row| (row / 4) as u32).collect::<Vec<_>>();
+        let right = (0..n)
+            .map(|row| ((row / 4 + (row / 2) % 2) % levels) as u32)
+            .collect::<Vec<_>>();
+        let slope = (0..n)
+            .map(|row| 1.0 + ((row / 2) % 3) as f64)
+            .collect::<Vec<_>>();
+        let weights = (0..n)
+            .map(|row| 1.0 + ((row / 2) % 5) as f64)
+            .collect::<Vec<_>>();
+        let noise = (0..n)
+            .map(|row| if row % 2 == 0 { -1.0 } else { 1.0 })
+            .collect::<Vec<_>>();
+        let y = (0..n)
+            .map(|row| 2.0 * left[row] as f64 + 3.0 * right[row] as f64 * slope[row] + noise[row])
+            .collect::<Vec<_>>();
+        let design = FeDesign::new(
+            n,
+            vec![
+                EffectTerm::new(left, levels, true, vec![]).unwrap(),
+                EffectTerm::new(right, levels, false, vec![slope]).unwrap(),
+            ],
+        )
+        .unwrap();
+        let config = AbsorbConfig {
+            map: MapConfig {
+                tolerance: 1e-12,
+                ..MapConfig::default()
+            },
+            ..AbsorbConfig::default()
+        };
+        let mut unlimited = DenseMatrix::from_columns(&[y.clone()]).unwrap();
+        let baseline = absorb_fixed_effects(&design, &weights, &mut unlimited, config).unwrap();
+        assert_eq!(baseline.used_solver, FeSolverKind::Lsmr);
+        let cg_bytes = generic_fe_solver_bytes(&design, 1, FeSolverKind::Cg, config.lsmr).unwrap();
+        let lsmr_bytes =
+            generic_fe_solver_bytes(&design, 1, FeSolverKind::Lsmr, config.lsmr).unwrap();
+        assert!(lsmr_bytes > cg_bytes);
+        for short in [false, true] {
+            let mut values = DenseMatrix::from_columns(&[y.clone()]).unwrap();
+            let result = absorb_fixed_effects(
+                &design,
+                &weights,
+                &mut values,
+                AbsorbConfig {
+                    solver_memory_budget: Some(FeSolverMemoryBudget {
+                        execution_bytes: 137,
+                        usable_bytes: 137 + cg_bytes - u128::from(short),
+                    }),
+                    ..config
+                },
+            );
+            if short {
+                assert_eq!(result.unwrap_err().code, ErrorCode::Allocation);
+            } else {
+                let report = result.unwrap();
+                assert!(report.certified());
+                assert_eq!(report.used_solver, FeSolverKind::Cg);
+                assert!(report.fallback_used);
+                assert!(report.warnings[0].contains("workspace bytes"));
+                assert!(values
+                    .as_slice()
+                    .iter()
+                    .zip(&noise)
+                    .all(|(a, b)| (a - b).abs() < 1e-8));
+            }
+        }
     }
 }

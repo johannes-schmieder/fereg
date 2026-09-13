@@ -28,6 +28,7 @@ use crate::fe::{
     BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig, EffectTerm, FeDesign,
     FeSolverKind, MapConfig,
 };
+use crate::memory::{owned_fe_matrix_bytes, OwnedFeDesignMemoryEstimate};
 use crate::options::ThreadConfig;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use rayon::prelude::*;
@@ -202,6 +203,8 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_owned_fe_design(&self) -> Result<FeDesign>;
 
+    fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate>;
+
     /// Borrow the finalized intercept-only topology for PPML's reusable MAP
     /// session. One-shot OLS never calls this seam; slope-bearing prepared
     /// views return `None` and retain the generic owned-design projector.
@@ -268,8 +271,40 @@ pub(crate) trait PreparedOlsFitView: Sync {
         &self,
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
-        config: AbsorbConfig,
+        mut config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        if let Some(mut budget) = config.solver_memory_budget {
+            let memory = self.fit_owned_fe_design_memory()?;
+            // With no finite controls the base has no resident-X/parallel-RHS
+            // allowance. The normalized weight frame, retained within outcome
+            // and final residual can coexist at the second owned projection.
+            let caller_outcome_bytes = if self.fit_model().columns.is_empty() {
+                owned_fe_matrix_bytes(values.nrows(), 3)?
+            } else {
+                0
+            };
+            let unit_bytes = match weights {
+                BorrowedMapWeights::Unit => owned_fe_matrix_bytes(values.nrows(), 1)?,
+                BorrowedMapWeights::Provided(_) => 0,
+            };
+            let construction = memory
+                .construction_bytes
+                .checked_add(unit_bytes)
+                .and_then(|bytes| bytes.checked_add(caller_outcome_bytes))
+                .ok_or_else(|| allocation("owned FE construction bytes overflow"))?;
+            if !budget.fits(construction) {
+                return Err(allocation(
+                    "owned FE design construction exceeds the joint memory budget",
+                ));
+            }
+            budget.execution_bytes = budget
+                .execution_bytes
+                .checked_add(memory.resident_bytes)
+                .and_then(|bytes| bytes.checked_add(unit_bytes))
+                .and_then(|bytes| bytes.checked_add(caller_outcome_bytes))
+                .ok_or_else(|| allocation("owned FE resident execution bytes overflow"))?;
+            config.solver_memory_budget = Some(budget);
+        }
         let design = self.fit_owned_fe_design()?;
         let mut residualized = values;
         let unit_weights;
@@ -629,6 +664,25 @@ impl PreparedOlsFitView for PreparedOlsData {
         }
     }
 
+    fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate> {
+        let borrowed = self.borrowed_intercept_fe_design()?;
+        let mut memory = OwnedFeDesignMemoryEstimate::default();
+        for effect in borrowed.effects() {
+            memory.add_effect(self.fit_sample().n_active(), effect.n_levels(), 0)?;
+        }
+        if borrowed.effects().is_empty() {
+            if self.fit_structural_intercept() {
+                memory.add_effect(self.fit_sample().n_active(), 1, 0)?;
+            } else {
+                // The existing owned constructor reserves at least one slot.
+                memory.resident_bytes = std::mem::size_of::<EffectTerm>() as u128;
+                memory.construction_bytes = memory.resident_bytes;
+            }
+        }
+        memory.add_view_metadata(0, borrowed.effects().len(), 0)?;
+        Ok(memory)
+    }
+
     fn fit_owned_fe_design(&self) -> Result<FeDesign> {
         let borrowed = self.borrowed_intercept_fe_design()?;
         let mut effects = Vec::new();
@@ -875,6 +929,39 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
                 config.retain_coefficients,
             )
         }
+    }
+
+    fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate> {
+        let topology = self.fe_topology();
+        if topology.effect_to_topology().len() != self.effect_specs().len() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "categorical owned FE memory shape and effects differ",
+            ));
+        }
+        let mut memory = OwnedFeDesignMemoryEstimate::default();
+        let mut slopes = 0_usize;
+        for (&index, spec) in topology
+            .effect_to_topology()
+            .iter()
+            .zip(self.effect_specs())
+        {
+            memory.add_effect(
+                self.fit_sample().n_active(),
+                topology.registry().source(index)?.n_levels(),
+                spec.slopes.len(),
+            )?;
+            slopes = slopes
+                .checked_add(spec.slopes.len())
+                .ok_or_else(|| allocation("owned FE slope count overflows"))?;
+        }
+        let sources = topology
+            .compacted_sources()
+            .len()
+            .checked_add(topology.registry().sources().len())
+            .ok_or_else(|| allocation("owned FE source count overflows"))?;
+        memory.add_view_metadata(sources, self.effect_specs().len(), slopes)?;
+        Ok(memory)
     }
 
     fn fit_owned_fe_design(&self) -> Result<FeDesign> {

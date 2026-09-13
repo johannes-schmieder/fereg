@@ -10,6 +10,42 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P0 generic owned-FE admission: adopted local repair
+
+The [source-bound report](benchmarks/reports/development/generic-owned-fe-admission-local-2026-09-13/README.md)
+adopts [ADR 0062](docs/adr/0062-generic-owned-fe-memory-admission.md) against
+accepted numerical `f576bc5` at evidence HEAD `7ae569d`. The isolated universal
+candidate `ad725932` binds 178 inputs. Owned-design construction and retained
+codes/slopes/memberships/unit weights now enter joint admission. Generic MAP,
+CG, accelerators and LSMR check their actual route, including explicit fallback
+copies and separately admitted CG continuation after rejected LSMR. A cheap MAP
+pilot need not reserve unused LSMR. Zero-control fits charge three overlapping
+caller observation vectors. Numerical rules and the categorical model remain.
+
+Four accepted-source red regressions are green. All 134 focused core checks,
+95 serial plugin tests, 48 saved dummy fits, four weighted omission cases and
+universal/static/native arm64 ABI checks pass. The public AW intercept/slope
+fixture with zero finite controls matches independent dummy residuals. Its exact
+cap leaves 806328 usable bytes and observes 730668 native bytes; one byte below
+admission returns r(909) and preserves prior estimates/sample/order/output absence.
+The superseded 708024-byte estimate failed the observed-peak check. Separate
+allocator tracing localized the missing caller overlap; its diagnostic artifact,
+failed estimate and initial build/collector corrections remain archived.
+
+Ten fixed paired commands preserve exact scientific exports and OLS non-time
+solver fields. Original slope auto/LSMR/CG changes are +2/+3/-1 ms; none crosses
+the prospective 5% and 10 ms review threshold. Native peaks are exact in nine
+pairs; weak saved OLS adds 530456 bytes (1.6%) for an untraced reason. Public
+bases/scratch remain unchanged and RSS moves both ways. This is a correctness
+repair, with no claimed speedup or general memory reduction.
+
+Next rebase and validate the separate final-output precision repair, then resume
+saved-Schur/recovery comparisons. Both prototypes remain unadopted. Specialized
+slope MAP, recovery, whole-action reporting and opaque factor-storage bounds
+remain separate P0 work; all 16 unresolved #27 items remain open. The installed
+plugin, 97 unrelated STATUS additions and all 358 original untracked paths are
+preserved. No agents, SCC, qualification, dependency update or push occurred.
+
 ## P0/P6 saved-output precision: science passes; generic admission prerequisite
 
 The [source-bound investigation](benchmarks/reports/development/ols-saved-residual-precision-local-2026-09-13/README.md)

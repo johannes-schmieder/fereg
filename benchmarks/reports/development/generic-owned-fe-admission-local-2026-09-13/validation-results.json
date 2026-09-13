@@ -1,0 +1,36 @@
+[
+  {
+    "name": "saved-oracle",
+    "process_rc": 0,
+    "cap": null,
+    "fixture_sha256": "f10bf0972abbadabbcf183f7ad650c87f10dac4376bb580746794e8e69114a51",
+    "log_sha256": "61961042d36d883e6a1015c0c33b4615613cbd4de02c0fa60f8cd20c769db44b",
+    "sentinel": true,
+    "terminal_rc": [],
+    "plugin": "fa7ff5449880028234584c466a7e9c15f8949701b1b7f408de1a3b90652ec34a"
+  },
+  {
+    "name": "omission-oracle",
+    "process_rc": 0,
+    "cap": null,
+    "fixture_sha256": "c1d0276b69e67d886c93bfc027e19415ebd80a91410bbd98e08bc496b310cb45",
+    "log_sha256": "0c1e3fd8c0f5a2806aa29eee19aae62a3a6bfa4c2b28c9fcb1fd2c20213f3d2f",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "fa7ff5449880028234584c466a7e9c15f8949701b1b7f408de1a3b90652ec34a"
+  },
+  {
+    "name": "generic-unrestricted",
+    "process_rc": 0,
+    "cap": null,
+    "fixture_sha256": "739a86fe36983163a52ab8c8faffcb61284b74140abe321d23d17d841b7748f5",
+    "log_sha256": "4cdaaddd5bfc2cfd75cf0cb5500dc8cd034af000c7def66435e75857e9377a6b",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "fa7ff5449880028234584c466a7e9c15f8949701b1b7f408de1a3b90652ec34a"
+  }
+]

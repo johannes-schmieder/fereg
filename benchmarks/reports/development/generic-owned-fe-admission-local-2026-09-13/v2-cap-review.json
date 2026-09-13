@@ -1,0 +1,8 @@
+{
+  "usable_bytes": 708024,
+  "observed_native_peak_bytes": 730668,
+  "overage_bytes": 22644,
+  "within_usable": false,
+  "functional_exact_and_one_byte_short_checks_pass": true,
+  "adoption": "blocked pending source/allocator overlap diagnosis; no performance comparisons started"
+}

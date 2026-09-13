@@ -1,0 +1,105 @@
+{
+  "generic-budget-probe": {
+    "log_sha256": "5afb50945bdfc3c45ad0525c0f3024610dd3726c84e9232632d2b42801b44d7b",
+    "process_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sentinels": [
+      "GENERIC_CAP_ACTUAL_RC=909 EXPECTED=909",
+      "GENERIC_CAP_PASS rc=0",
+      "VALIDATION_TERMINAL_RC=0"
+    ]
+  },
+  "saved-oracle": {
+    "log_sha256": "61961042d36d883e6a1015c0c33b4615613cbd4de02c0fa60f8cd20c769db44b",
+    "process_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sentinels": [
+      "SAVED_SCHUR_ORACLE|fits=48|rollback=1|rc=0",
+      "END_FIXTURE|ols_saved_schur|rc=0"
+    ]
+  },
+  "omission-oracle": {
+    "log_sha256": "0c1e3fd8c0f5a2806aa29eee19aae62a3a6bfa4c2b28c9fcb1fd2c20213f3d2f",
+    "process_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sentinels": [
+      "OMITTED_OUTPUTS_ORACLE|fits=4|expected_rc=0|rc=0",
+      "VALIDATION_TERMINAL_RC=0"
+    ]
+  },
+  "generic-one-short-v2": {
+    "log_sha256": "350aabd508bfcf7e3b38d61e9c399cbd468382fcbdc332b35a3bc8a641d7a004",
+    "process_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sentinels": [
+      "GENERIC_CAP_ACTUAL_RC=909 EXPECTED=909",
+      "GENERIC_CAP_PASS rc=0",
+      "VALIDATION_TERMINAL_RC=0"
+    ]
+  },
+  "v3-omission-oracle": {
+    "log_sha256": "30a0c46dcfe2c40aca4ee6cc7533e84e9f9a0823994756babc14408403070e01",
+    "process_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sentinels": [
+      "OMITTED_OUTPUTS_ORACLE|fits=4|expected_rc=0|rc=0",
+      "VALIDATION_TERMINAL_RC=0"
+    ]
+  },
+  "generic-unrestricted": {
+    "log_sha256": "4cdaaddd5bfc2cfd75cf0cb5500dc8cd034af000c7def66435e75857e9377a6b",
+    "process_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sentinels": [
+      "GENERIC_CAP_ACTUAL_RC=0 EXPECTED=0",
+      "GENERIC_CAP_MODEL=               262144",
+      "GENERIC_CAP_PEAK=               730668",
+      "GENERIC_CAP_PASS rc=0",
+      "VALIDATION_TERMINAL_RC=0"
+    ]
+  },
+  "v3-saved-oracle": {
+    "log_sha256": "1c56ecb60baccb18652719b3cf33421ca5175754838823a018537679756b53e1",
+    "process_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sentinels": [
+      "SAVED_SCHUR_ORACLE|fits=48|rollback=1|rc=0",
+      "END_FIXTURE|ols_saved_schur|rc=0"
+    ]
+  },
+  "generic-exact-v2": {
+    "log_sha256": "78cc65b6de4595dd8fdc486ee94f290ac85470dc06ca765bf8fe3f20ac81b828",
+    "process_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sentinels": [
+      "GENERIC_CAP_ACTUAL_RC=0 EXPECTED=0",
+      "GENERIC_CAP_MODEL=               262144",
+      "GENERIC_CAP_PEAK=               730668",
+      "GENERIC_CAP_PASS rc=0",
+      "VALIDATION_TERMINAL_RC=0"
+    ]
+  },
+  "generic-v3-exact": {
+    "log_sha256": "c10f5ee3fac3931381acd20b5bcf6af7984dd0829fdeabd673457ef9159d9f63",
+    "process_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sentinels": [
+      "GENERIC_CAP_ACTUAL_RC=0 EXPECTED=0",
+      "GENERIC_CAP_MODEL=               262144",
+      "GENERIC_CAP_PEAK=               730668",
+      "GENERIC_CAP_PASS rc=0",
+      "VALIDATION_TERMINAL_RC=0"
+    ]
+  },
+  "generic-diagnostic": {
+    "log_sha256": "66a650f26a8dbcbfd18e59d3e61510b7163bec520549a89144286d32d99559e8",
+    "process_stderr_sha256": "635a791efb6dea425246e6cc259f777732d4165b94b138220c8bfa5b39789071",
+    "sentinels": [
+      "GENERIC_CAP_ACTUAL_RC=0 EXPECTED=0",
+      "GENERIC_CAP_MODEL=               262144",
+      "GENERIC_CAP_PEAK=               730732",
+      "GENERIC_CAP_PASS rc=0",
+      "VALIDATION_TERMINAL_RC=0"
+    ]
+  },
+  "generic-v3-one-short": {
+    "log_sha256": "e41006472e730912e99d1ad8815d4261da9bec1f55e96fe3c0e054170e3e66ee",
+    "process_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sentinels": [
+      "GENERIC_CAP_ACTUAL_RC=909 EXPECTED=909",
+      "GENERIC_CAP_PASS rc=0",
+      "VALIDATION_TERMINAL_RC=0"
+    ]
+  }
+}

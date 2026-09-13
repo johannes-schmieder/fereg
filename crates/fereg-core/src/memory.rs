@@ -3,9 +3,13 @@ use crate::fe::LsmrPreconditioner;
 use crate::options::MemoryMode;
 
 mod categorical_schwarz;
+mod owned_fe;
 pub(crate) use categorical_schwarz::{
     categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
     CategoricalSchwarzMemoryEstimate,
+};
+pub(crate) use owned_fe::{
+    generic_fe_solver_bytes, owned_fe_matrix_bytes, OwnedFeDesignMemoryEstimate,
 };
 
 const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
@@ -235,6 +239,24 @@ pub fn estimate_fe_solver_memory(
     threads: usize,
     local_reorthogonalization_size: Option<usize>,
 ) -> Result<FeSolverMemoryEstimate> {
+    estimate_fe_solver_memory_for_channels(
+        observations,
+        rhs_columns,
+        effect_level_counts,
+        threads,
+        local_reorthogonalization_size,
+        false,
+    )
+}
+
+fn estimate_fe_solver_memory_for_channels(
+    observations: usize,
+    rhs_columns: usize,
+    effect_level_counts: &[usize],
+    threads: usize,
+    local_reorthogonalization_size: Option<usize>,
+    signed_cover: bool,
+) -> Result<FeSolverMemoryEstimate> {
     if observations == 0 || rhs_columns == 0 {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
@@ -396,7 +418,7 @@ pub fn estimate_fe_solver_memory(
             metadata_bytes,
         ])
     };
-    let schwarz = estimate_categorical_schwarz_memory(
+    let schwarz = categorical_schwarz::estimate_schwarz_memory(
         n,
         effects,
         levels,
@@ -406,6 +428,7 @@ pub fn estimate_fe_solver_memory(
             categorical_dense_cross_tab_bytes(n, effect_level_counts)?,
             schwarz_weighted_correction_bytes(n, effect_level_counts)?,
         ])?,
+        signed_cover,
     )?;
     let diagonal_bytes = checked_mul(levels, 16, "LSMR diagonal build and retained inverse")?;
     let lsmr_off_bytes = checked_sum(&[common(off_krylov_bytes)?, schwarz.solver_frame_bytes])?;

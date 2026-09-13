@@ -271,7 +271,7 @@ pub fn absorb_lsmr(
     })
 }
 
-fn resolve_preconditioner_kind(
+pub(crate) fn resolve_preconditioner_kind(
     design: &FeDesign,
     requested: LsmrPreconditioner,
 ) -> LsmrPreconditioner {
