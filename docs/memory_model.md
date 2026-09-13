@@ -86,6 +86,14 @@ another observation-sized design. This increment is independent of thread
 count and uses checked arithmetic. It does not change low-mode estimates or
 the at-most-64 execution policy (ADR 0030).
 
+Scaled retained dense moments at up to 64 active columns may use a fixed
+64-double stack cache per Gram-row partition when the layout assigns multiple
+columns to each partition. Its payload is 512 bytes per partition, conservatively
+at most 32 KiB across eligible partitions; it creates no heap allocation,
+retained partial bank or observation-sized state. Wider, unscaled and scratch
+paths do not enter that helper. Heap allocation receipts exclude this transient
+stack payload; see [ADR 0054](adr/0054-retained-dense-moment-row-standardization.md).
+
 ## Allocation discipline
 
 Observation-scale vectors and matrices use checked arithmetic, fallible

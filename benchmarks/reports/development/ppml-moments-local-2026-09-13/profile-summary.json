@@ -1,0 +1,98 @@
+{
+  "baseline_native_commit": "6ad8b201b73dcc1e550827a6b713011288292910",
+  "plugin_sha256": "ef4f1a61a8f5c240e9a7a6de8b2aef835344ab51206e784d12b68c8480d09a75",
+  "duration_requested_seconds": 7,
+  "sampling_interval_ms": 1,
+  "valid_callgraphs": 1,
+  "callgraph_sha256": "f0b5e94da63fe834c88f7bf79103873daab72322b37d8d0104effa1c6b472957",
+  "hot_plugin_symbols": [
+    {
+      "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::h053a9618cb600948",
+      "top_of_stack_samples": 15076
+    },
+    {
+      "symbol": "fereg_core::prepared_categorical_data::PreparedCategoricalOlsData::column_value::h3cb44b02574a385c",
+      "top_of_stack_samples": 1091
+    },
+    {
+      "symbol": "fereg_core::fe::borrowed_map::fused_group_means_for_level::h43d15d0fe22e493a",
+      "top_of_stack_samples": 790
+    },
+    {
+      "symbol": "fereg_core::ols::linear_session::update_scaled_square::h33a7ebd8eeef2b28",
+      "top_of_stack_samples": 665
+    },
+    {
+      "symbol": "fereg_core::ols::linear_session::compensated_add::h2c04b3f858ab4ddb",
+      "top_of_stack_samples": 536
+    },
+    {
+      "symbol": "fereg_core::fe::borrowed_map::weighted_column_norms::hbd22ac86f09738d4",
+      "top_of_stack_samples": 296
+    },
+    {
+      "symbol": "fereg_core::data::sample::classify_row::hc18a97890ec1c87e",
+      "top_of_stack_samples": 288
+    },
+    {
+      "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::hb26d809c438e586d",
+      "top_of_stack_samples": 232
+    },
+    {
+      "symbol": "fereg_core::ppml::prepared_irls::prepared_score_certificate::h29a986959d0ef4a5",
+      "top_of_stack_samples": 208
+    },
+    {
+      "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::h31dd3e8dba87ce5f",
+      "top_of_stack_samples": 207
+    },
+    {
+      "symbol": "fereg_core::ols::prepared_fit::compensated_add::h533427e252b22030",
+      "top_of_stack_samples": 149
+    },
+    {
+      "symbol": "core::iter::traits::iterator::Iterator::try_fold::h35eaaf3c42c292e7",
+      "top_of_stack_samples": 108
+    },
+    {
+      "symbol": "fereg_core::fe::borrowed_map::certify_effects_parallel::h1fa7c874bc559e38",
+      "top_of_stack_samples": 95
+    },
+    {
+      "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::h488a6534cbce80f0",
+      "top_of_stack_samples": 80
+    },
+    {
+      "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::h65cc38563eaae0e8",
+      "top_of_stack_samples": 76
+    },
+    {
+      "symbol": "fereg_core::fe::borrowed_map::ReusableCategoricalMapAbsorber::absorb::h07ddc5249fcee36c",
+      "top_of_stack_samples": 69
+    },
+    {
+      "symbol": "fereg_core::ols::linear_session::stream_frozen_solve::hbc5932633bb84712",
+      "top_of_stack_samples": 67
+    },
+    {
+      "symbol": "fereg_core::ols::prepared_fit::weighted_mean_by::h4c82b4df20adf823",
+      "top_of_stack_samples": 66
+    },
+    {
+      "symbol": "core::iter::traits::iterator::Iterator::try_fold::h1f534dc5512df3b1",
+      "top_of_stack_samples": 51
+    },
+    {
+      "symbol": "fereg_core::ols::linear_session::CertifiedLinearSession$LT$P$GT$::solve_full_retained_rank::h8d6fa968f9fc9576",
+      "top_of_stack_samples": 42
+    }
+  ],
+  "attribution": "The dominant Rayon helper h053a9618cb600948 is below fill_finite_wls_moments in stream_frozen_solve; source inspection identifies repeated per-pair column standardization in retained dense moments.",
+  "limitations": "One partial-command statistical sample, not a complete phase timer or a CPU-percent estimate. Both identical-binary estimator commands passed scientific comparison; the watcher subsequently failed on an exiting child AccessDenied, so the second callgraph was not captured and the two-sample assertion failed. Diagnostic command times are excluded from performance acceptance.",
+  "diagnostic_command_seconds": [
+    10.449,
+    9.641
+  ],
+  "profile_driver_sha256": "8ded8820afedeefb26239c6fd136085de6229a89756bc72708c71a71e154f7f0",
+  "profile_log_sha256": "95b7ad10e6f0b6ab297e070e391fc6ba9bc7b4b356ba3c068519df7aee1bc184"
+}

@@ -10,6 +10,42 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4/P7 retained dense moments: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/ppml-moments-local-2026-09-13/README.md)
+adopts [ADR 0054](docs/adr/0054-retained-dense-moment-row-standardization.md)
+against accepted native `6ad8b20`. Scaled retained dense moments at up to 64
+active columns standardize each observation's selected suffix once per existing
+Gram-row partition. The fixed local cache preserves exact row/FMA order and
+uses no heap allocation, retained partial bank or observation-sized state.
+Wider, scratch, unscaled and single-column partitions retain their previous
+loops. Rank, scales, certificates, generations and one-shot OLS policy remain.
+
+Sixteen pairs / 32 commands include nine primaries across three seeds, six
+controls and one separate private audit. Complete/FW/PW command medians fall
+9.540→7.440 / 3.180→2.446 / 2.944→2.253 seconds, with median paired gains
+22.0%/24.0%/24.4%. Every primary improves. Finite and strict solving fall while
+projection/preparation stay close. All native peaks are exact and admitted;
+sampled RSS moves both ways, including higher PW RSS. The largest protected
+increase is K=65 +10 ms/1.4%. The private audit falls 7.817→5.429 seconds and
+retains zero events/live/peak growth, stable capacities and fresh/warm equivalence.
+
+Full b/V and discrete science/solver fields are exact. Sixty-two isolated Rust
+tests cover exact scalar moments, 1/4/16 workers, 1/7/16/63/64/65 columns, extreme
+scales, selected storage, nonfinite rejection, retained QR, strict rollback and
+stale generations. Both independent dummy Poisson/sandwich oracle arms and
+universal static/native arm64 ABI checks pass. All 152 native inputs match the
+measured isolated artifact. A rejected scratch-fixture NaN, incomplete diagnostic
+sampler and duplicate-VCE wide-control warm-up failure are preserved and explained.
+Only the malformed wide control was rerun; its corrected pair passes.
+
+Next evaluate bounded standardization reuse beyond 64 columns and in scratch
+consumers, then remaining P4 construction/predictor/state work and other #27
+packages. Broad P4/P7/P6 items remain open. Complete #27 before the authorized
+two independent agents, upstream CMG assessment and small SCC campaign. Installed
+dist, unrelated Veneto work and historical receipts remain intact; no agents,
+SCC, push or qualification ran.
+
 ## P4 fresh raw reference norms: evaluated and rejected
 
 The [source-bound report](benchmarks/reports/development/ppml-raw-norms-local-2026-09-13/README.md)

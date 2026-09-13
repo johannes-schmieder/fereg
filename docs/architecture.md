@@ -84,6 +84,13 @@ means. Frozen finite solves share an existing identity scratch bank across
 disjoint QR/certificate lifetimes; see
 [ADR 0040](adr/0040-ppml-stable-reference-pass-scheduling.md).
 
+Scaled retained dense finite moments reuse an observation's standardized values
+within each existing Gram-row partition at up to 64 active columns. A fixed
+local cache removes repeated division while preserving each entry's row/FMA
+order. Wider, scratch, unscaled and single-column partitions retain their loops;
+no cross-frame numerical cache or new rank policy is introduced. See
+[ADR 0054](adr/0054-retained-dense-moment-row-standardization.md).
+
 Numeric preparation first classifies borrowed sources without observation-sized
 allocation. After generation-zero admission, the same visitor constructs the
 row ledger and weight reports, and the owner consumes the offset/exposure buffer

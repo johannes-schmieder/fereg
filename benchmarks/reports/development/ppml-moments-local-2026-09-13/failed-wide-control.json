@@ -1,0 +1,65 @@
+{
+  "disposition": "Benchmark setup failure before target invocation; excluded from completed pairs. Corrected only the duplicate option and reran the same seed/shape/order under a distinct prefix; both corrected arms pass.",
+  "result": {
+    "arm": "feppml",
+    "cell": {
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "vce(robust)",
+      "k": 65,
+      "model": "ppml",
+      "n": 30720,
+      "name": "wide_65",
+      "section": "width",
+      "threads": 4
+    },
+    "command_time_lower_bound": null,
+    "cpu_affinity": null,
+    "failure_stage": "before_target_invocation",
+    "input_sha256": "ebca3f7e37a190b59a6dfefeabd89cfda622be0144d2ad24b0afd58ed27cdc66",
+    "input_value_audit": "columnwise IEEE-754 SHA-256",
+    "job_id": null,
+    "machine": "arm64",
+    "measurement_fingerprint": {
+      "base_commit": "6ad8b201b73dcc1e550827a6b713011288292910",
+      "plugin_sha256": "ad39e2329579cf87295796379e12035805d923a3417b8021af37df0a198322f6",
+      "seed": 31415927,
+      "trace": false,
+      "variant": "candidate"
+    },
+    "metadata": {},
+    "peak_process_tree_threads": 0,
+    "peak_rss_gib": null,
+    "phase": "warm",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "process_returncode": 0,
+    "rss_interval_seconds": 0.01,
+    "rss_samples": 0,
+    "schema": "fixest-gap-local-arm-v1",
+    "seconds": null,
+    "sentinel": false,
+    "stata_worker_sha256": "d7d38e0cd5a4f4e1b7e9fa65f5c4b39779fae81ceec80df1b76c9907c06efdfe",
+    "status": "worker_failure",
+    "system_load_average_at_launch": [
+      6.42333984375,
+      5.27734375,
+      4.24853515625
+    ],
+    "task_id": null
+  },
+  "warmup_rc": 198,
+  "diagnostic": "Default PPML vce(robust) plus fit_options=vce(robust) produced duplicate options; SYSTEMATIC_WARMUP_FAILED rc=198.",
+  "files_sha256": {
+    "result.json": "47f0142472e919d7f8b4601c6dfc264b515480cc886888755346c2ebddb3df12",
+    "request.json": "7c279972555ad5d55b21c570383b96a88e7e29861134ff476dafd4ba9349ec0e",
+    "import.log": "ba38223219ef0d755ad5b85716f8d9dc4c5830215416abcf13ef06409ddc9aba",
+    "stderr.txt": "98ca896a2cf19b2ff6ab9569e78ceea799c91581e3c2bc4465c5c93d191789c7",
+    "stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stata_worker.do": "d7d38e0cd5a4f4e1b7e9fa65f5c4b39779fae81ceec80df1b76c9907c06efdfe"
+  },
+  "original_driver_sha256": "7dd4e359b48b6fee226af6d182de2df9a69d5568eba1c20a3d68245e3315d106",
+  "corrected_driver_sha256": "9e105b223a76c72385db464fa015319c08f605aa3e5fd2090142ca0bff0eab44",
+  "corrected_pair": "ppmlonefe-moments-control-fixed-wide_65-s31415927"
+}
