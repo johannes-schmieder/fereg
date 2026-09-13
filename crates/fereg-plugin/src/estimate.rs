@@ -184,7 +184,11 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let _action_observation_guard = instrumentation::lock_action_observation();
     let started = Instant::now();
     let resources_start = instrumentation::begin_observation();
-    let specification = EstimateActionSpec::parse(args)?;
+    let local_bundle = read_local_estimate_bundle(args, spi)?.map(|value| [value]);
+    let specification = EstimateActionSpec::parse(
+        local_bundle.as_ref().map_or(args, |values| values.as_slice()),
+    )?;
+    drop(local_bundle);
     let action = specification.decode_and_validate(spi)?;
     let preflight_seconds = started.elapsed().as_secs_f64();
     let loaded = load_ols_input(
@@ -879,6 +883,68 @@ impl EstimateActionSpec {
             matrices,
         })
     }
+}
+
+// This is a metadata transport capacity, independent of N and finite rank.
+// Refuse impossible descriptors before reserving or accessing the caller macro.
+const MAX_LOCAL_ESTIMATE_BUNDLE_BYTES: usize = 16 * 1024 * 1024;
+
+pub(crate) fn read_local_estimate_bundle(
+    args: &[String],
+    spi: &mut dyn SpiApi,
+) -> Result<Option<String>> {
+    let Some(descriptor) = args
+        .iter()
+        .find_map(|argument| argument.strip_prefix("bundle_local="))
+    else {
+        return Ok(None);
+    };
+    if args.len() != 1 {
+        return Err(syntax(
+            "local estimation bundle must be the only action argument",
+        ));
+    }
+    if descriptor.is_empty()
+        || descriptor.starts_with('0')
+        || !descriptor.bytes().all(|byte| byte.is_ascii_digit())
+    {
+        return Err(syntax(
+            "local estimation bundle byte count is not canonical",
+        ));
+    }
+    let length = descriptor
+        .parse::<usize>()
+        .map_err(|_| allocation("local estimation bundle byte count overflows"))?;
+    if length > MAX_LOCAL_ESTIMATE_BUNDLE_BYTES {
+        return Err(allocation(
+            "local estimation bundle exceeds the 16 MiB metadata capacity",
+        ));
+    }
+    const PREFIX: &[u8] = b"bundle=";
+    // Read one byte beyond the declaration so SPI truncation cannot make an
+    // overlong macro look exact. The SPI limit excludes its NUL terminator.
+    let required = PREFIX.len() + length + 2;
+    let mut bytes = Vec::new();
+    bytes
+        .try_reserve_exact(required)
+        .map_err(|_| allocation("unable to reserve local estimation bundle metadata"))?;
+    if bytes.capacity() < required {
+        return Err(allocation(
+            "local estimation bundle reservation was undersized",
+        ));
+    }
+    bytes.resize(required, u8::MAX);
+    bytes[..PREFIX.len()].copy_from_slice(PREFIX);
+    spi.read_estimate_bundle(&mut bytes[PREFIX.len()..])?;
+    if bytes[PREFIX.len()..].iter().position(|&byte| byte == 0) != Some(length) {
+        return Err(syntax(
+            "local estimation bundle byte count or terminator is inconsistent",
+        ));
+    }
+    bytes.truncate(PREFIX.len() + length);
+    String::from_utf8(bytes)
+        .map(Some)
+        .map_err(|_| syntax("local estimation bundle is not valid UTF-8"))
 }
 
 /// Stata 18 rejects a plugin call with the complete guarded estimate protocol
@@ -3009,6 +3075,8 @@ mod tests {
 
     #[derive(Clone)]
     struct FakeSpi {
+        local_bundle: Option<Vec<u8>>,
+        macro_reads: usize,
         nobs: usize,
         nvars: usize,
         data: BTreeMap<(u32, usize), (f64, bool)>,
@@ -3027,6 +3095,18 @@ mod tests {
     }
 
     impl SpiApi for FakeSpi {
+        fn read_estimate_bundle(&mut self, buffer: &mut [u8]) -> Result<()> {
+            self.macro_reads += 1;
+            let value = self
+                .local_bundle
+                .as_ref()
+                .ok_or_else(|| invalid("fake local request macro is unavailable"))?;
+            let copied = value.len().min(buffer.len() - 1);
+            buffer[..copied].copy_from_slice(&value[..copied]);
+            buffer[copied] = 0;
+            Ok(())
+        }
+
         fn nobs(&mut self) -> Result<usize> {
             Ok(self.nobs)
         }
@@ -3503,6 +3583,8 @@ mod tests {
         (
             args,
             FakeSpi {
+                local_bundle: None,
+                macro_reads: 0,
                 nobs: 6,
                 nvars: binding_count + 3,
                 data,
@@ -4213,13 +4295,35 @@ mod tests {
 
         let (args, mut packed) = fixture(OlsVceKind::Iid);
         estimate_ols_test(&bundled(&args), &mut packed).expect("bundle succeeds");
+        let (args, mut local) = fixture(OlsVceKind::Iid);
+        let bundle = bundled(&args)
+            .pop()
+            .unwrap()
+            .strip_prefix("bundle=")
+            .unwrap()
+            .as_bytes()
+            .to_vec();
+        let local_args = [format!("bundle_local={}", bundle.len())];
+        local.local_bundle = Some(bundle);
+        estimate_ols_test(&local_args, &mut local).expect("local bundle succeeds");
+        assert_eq!(local.macro_reads, 1);
+        assert_eq!(ordinary.macro_reads, 0);
+        assert_eq!(packed.macro_reads, 0);
         for name in [
-            "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RFE", "RCLUSTER",
-            "RSUBSET", "RCERT", "RREC",
+            "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RFE", "RCLUSTER", "RSUBSET",
+            "RCERT", "RREC",
         ] {
             assert_eq!(packed.matrices[name], ordinary.matrices[name], "{name}");
+            assert_eq!(
+                local.matrices[name], ordinary.matrices[name],
+                "local {name}"
+            );
         }
-        for runtime in [&ordinary.matrices["RRUNTIME"], &packed.matrices["RRUNTIME"]] {
+        for runtime in [
+            &ordinary.matrices["RRUNTIME"],
+            &packed.matrices["RRUNTIME"],
+            &local.matrices["RRUNTIME"],
+        ] {
             assert_eq!(runtime[0], [1.0, 1.0]);
             assert_eq!(runtime[1], [1.0, 1.0]);
             assert_eq!(runtime[2], [1.0, 10.0]);
@@ -4243,6 +4347,9 @@ mod tests {
         assert_eq!(packed.store_calls, ordinary.store_calls);
         assert_eq!(packed.stores.last(), ordinary.stores.last());
         assert_eq!(packed.numeric_reads, ordinary.numeric_reads);
+        assert_eq!(local.numeric_reads, ordinary.numeric_reads);
+        assert_eq!(local.stores.last(), ordinary.stores.last());
+        assert_eq!(local.store_calls, ordinary.store_calls);
 
         let malformed = [
             "bundle=0:",
@@ -4281,11 +4388,74 @@ mod tests {
         let (args, mut mixed_spi) = fixture(OlsVceKind::Iid);
         let mut mixed = bundled(&args);
         mixed.push("ado=0.5.0".to_owned());
-        let error = estimate_ols_test(&mixed, &mut mixed_spi)
-            .expect_err("mixed bundle and argv are rejected");
+        let error =
+            estimate_ols_test(&mixed, &mut mixed_spi).expect_err("mixed bundle and argv are rejected");
         assert_eq!(error.code, ErrorCode::Syntax);
         assert_eq!(mixed_spi.numeric_reads, 0);
         assert_eq!(mixed_spi.store_calls, 0);
+    }
+
+    #[test]
+    fn local_estimation_bundle_validates_capacity_bytes_and_framing_before_reads() {
+        for descriptor in [
+            "",
+            "0",
+            "01",
+            "+1",
+            "-1",
+            "1.0",
+            "1 ",
+            "16777217",
+            "999999999999999999999999",
+        ] {
+            let (_, mut spi) = fixture(OlsVceKind::Iid);
+            assert!(estimate_ols_test(&[format!("bundle_local={descriptor}")], &mut spi).is_err());
+            assert_eq!(
+                (spi.macro_reads, spi.numeric_reads, spi.store_calls),
+                (0, 0, 0)
+            );
+        }
+        let (_, mut spi) = fixture(OlsVceKind::Iid);
+        assert!(estimate_ols_test(
+            &["bundle_local=6".to_owned(), "ado=0.5.0".to_owned()],
+            &mut spi
+        )
+        .is_err());
+        assert_eq!(spi.macro_reads, 0);
+        for (payload, declared) in [
+            (None, 6),
+            (Some(b"1:3:a=b".to_vec()), 6),
+            (Some(b"1:3:a=b".to_vec()), 8),
+            (Some(b"1:3:a\0b".to_vec()), 7),
+            (Some(vec![0xff; 7]), 7),
+            (Some(b"1:9:a=b".to_vec()), 7),
+            (Some(b"1:3:a=b".to_vec()), 7),
+        ] {
+            let (_, mut spi) = fixture(OlsVceKind::Iid);
+            spi.local_bundle = payload;
+            assert!(estimate_ols_test(&[format!("bundle_local={declared}")], &mut spi).is_err());
+            assert_eq!(spi.macro_reads, 1);
+            assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+            assert_eq!(spi.receipt_complete(), 0.0);
+        }
+        let (args, mut overlong) = fixture(OlsVceKind::Iid);
+        let mut payload = format!("{}:", args.len());
+        for value in &args {
+            payload.push_str(&format!("{}:{value}", value.len()));
+        }
+        let declared = payload.len();
+        payload.push_str("trailing-data");
+        overlong.local_bundle = Some(payload.into_bytes());
+        assert!(estimate_ols_test(&[format!("bundle_local={declared}")], &mut overlong).is_err());
+        assert_eq!((overlong.macro_reads, overlong.numeric_reads, overlong.store_calls), (1, 0, 0));
+
+        let (_, mut spi) = fixture(OlsVceKind::Iid);
+        let payload = "1:4:a=é";
+        spi.local_bundle = Some(payload.as_bytes().to_vec());
+        assert_eq!(
+            read_local_estimate_bundle(&[format!("bundle_local={}", payload.len())], &mut spi).unwrap(),
+            Some(format!("bundle={payload}"))
+        );
     }
 
     #[test]

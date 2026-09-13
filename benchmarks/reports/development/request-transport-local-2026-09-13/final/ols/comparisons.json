@@ -1,0 +1,109 @@
+{
+  "note": "Two final-binary transport cost controls, one seed and rotated order; no speed claim.",
+  "pairs": [
+    {
+      "baseline": {
+        "command_seconds": 0.575,
+        "input_seconds": 0.04630775,
+        "modeled_bytes": 259969440,
+        "native_peak_bytes": 143669580,
+        "native_seconds": 0.468525583,
+        "outer_seconds": 0.059331041999999945,
+        "plugin_sha256": "ad39e2329579cf87295796379e12035805d923a3417b8021af37df0a198322f6",
+        "rss_gib": 0.3133087158203125,
+        "scratch_bytes": 0
+      },
+      "candidate": {
+        "command_seconds": 0.579,
+        "input_seconds": 0.047218125,
+        "modeled_bytes": 259969440,
+        "native_peak_bytes": 143669580,
+        "native_seconds": 0.471472,
+        "outer_seconds": 0.059481332999999914,
+        "plugin_sha256": "7b7c6664132041e60425382edb99728a20bc258c628a68369de32852d0bb65fe",
+        "rss_gib": 0.3138275146484375,
+        "scratch_bytes": 0
+      },
+      "candidate_baseline_ratio": 1.0069565217391305,
+      "case": "aw_129",
+      "exact_science": true,
+      "group": "control",
+      "pair": "prep-transport-aw_129-s31415927"
+    },
+    {
+      "baseline": {
+        "command_seconds": 0.008,
+        "input_seconds": 0.00028220800000000005,
+        "modeled_bytes": 860232,
+        "native_peak_bytes": 685372,
+        "native_seconds": 0.0019621670000000003,
+        "outer_seconds": 0.0056305,
+        "plugin_sha256": "ad39e2329579cf87295796379e12035805d923a3417b8021af37df0a198322f6",
+        "rss_gib": 0.0854644775390625,
+        "scratch_bytes": 0
+      },
+      "candidate": {
+        "command_seconds": 0.006,
+        "input_seconds": 0.000247083,
+        "modeled_bytes": 860232,
+        "native_peak_bytes": 685372,
+        "native_seconds": 0.0013796670000000002,
+        "outer_seconds": 0.004276166,
+        "plugin_sha256": "7b7c6664132041e60425382edb99728a20bc258c628a68369de32852d0bb65fe",
+        "rss_gib": 0.0561370849609375,
+        "scratch_bytes": 0
+      },
+      "candidate_baseline_ratio": 0.75,
+      "case": "narrow_no_fe",
+      "exact_science": true,
+      "group": "control",
+      "pair": "prep-transport-narrow_no_fe-s31415927"
+    }
+  ],
+  "summary": [
+    {
+      "baseline_command_seconds": 0.575,
+      "baseline_input_seconds": 0.04630775,
+      "baseline_modeled_bytes": 259969440,
+      "baseline_native_peak_bytes": 143669580,
+      "baseline_native_seconds": 0.468525583,
+      "baseline_outer_seconds": 0.059331041999999945,
+      "baseline_rss_gib": 0.3133087158203125,
+      "baseline_scratch_bytes": 0,
+      "candidate_command_seconds": 0.579,
+      "candidate_input_seconds": 0.047218125,
+      "candidate_modeled_bytes": 259969440,
+      "candidate_native_peak_bytes": 143669580,
+      "candidate_native_seconds": 0.471472,
+      "candidate_outer_seconds": 0.059481332999999914,
+      "candidate_rss_gib": 0.3138275146484375,
+      "candidate_scratch_bytes": 0,
+      "case": "aw_129",
+      "group": "control",
+      "median_paired_change_percent": 0.6956521739130528,
+      "pairs": 1
+    },
+    {
+      "baseline_command_seconds": 0.008,
+      "baseline_input_seconds": 0.00028220800000000005,
+      "baseline_modeled_bytes": 860232,
+      "baseline_native_peak_bytes": 685372,
+      "baseline_native_seconds": 0.0019621670000000003,
+      "baseline_outer_seconds": 0.0056305,
+      "baseline_rss_gib": 0.0854644775390625,
+      "baseline_scratch_bytes": 0,
+      "candidate_command_seconds": 0.006,
+      "candidate_input_seconds": 0.000247083,
+      "candidate_modeled_bytes": 860232,
+      "candidate_native_peak_bytes": 685372,
+      "candidate_native_seconds": 0.0013796670000000002,
+      "candidate_outer_seconds": 0.004276166,
+      "candidate_rss_gib": 0.0561370849609375,
+      "candidate_scratch_bytes": 0,
+      "case": "narrow_no_fe",
+      "group": "control",
+      "median_paired_change_percent": -25.0,
+      "pairs": 1
+    }
+  ]
+}

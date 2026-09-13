@@ -651,9 +651,15 @@ program define _fereg_estimate_ppml, eclass
         local request_bundle `"`request_bundle'`argument_length':`argument'"'
     }
     local request_bundle `"`request_count':`request_bundle'"'
+    local request_bytes = strlen(`"`request_bundle'"')
+    if `request_bytes' > 4000 {
+        local fereg_request_bundle `"`request_bundle'"'
+        local request_bundle "bundle_local=`request_bytes'"
+    }
+    else local request_bundle `"bundle=`request_bundle'"'
     plugin call __fereg_estimate_plugin `touse' `depvar' `source_vars' ///
         `weight_variable' `adjustment_variable' `output_variables', ///
-        `"estimate-ppml"' `"bundle=`request_bundle'"'
+        `"estimate-ppml"' `"`request_bundle'"'
 
     // Developer-only publication-boundary mutations prove that malformed
     // native products are classified and rolled back without a second call.

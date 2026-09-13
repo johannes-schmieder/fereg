@@ -490,9 +490,15 @@ program define _fereg_estimate_ols, eclass
         local request_bundle `"`request_bundle'`argument_length':`argument'"'
     }
     local request_bundle `"`request_count':`request_bundle'"'
+    local request_bytes = strlen(`"`request_bundle'"')
+    if `request_bytes' > 4000 {
+        local fereg_request_bundle `"`request_bundle'"'
+        local request_bundle "bundle_local=`request_bytes'"
+    }
+    else local request_bundle `"bundle=`request_bundle'"'
     plugin call __fereg_estimate_plugin `touse' `depvar' `source_vars' ///
         `weight_variable' `output_variables', ///
-        `"estimate-ols"' `"bundle=`request_bundle'"'
+        `"estimate-ols"' `"`request_bundle'"'
 
     if `"`inject'"' == "breakpostplugin" {
         di as result "FEREG_BREAK_ARMED"

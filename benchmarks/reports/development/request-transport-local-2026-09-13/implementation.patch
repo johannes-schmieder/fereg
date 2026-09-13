@@ -1,0 +1,588 @@
+diff --git a/crates/fereg-plugin/src/estimate.rs b/crates/fereg-plugin/src/estimate.rs
+index 63f360a..95d4581 100644
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -184,7 +184,11 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+     let _action_observation_guard = instrumentation::lock_action_observation();
+     let started = Instant::now();
+     let resources_start = instrumentation::begin_observation();
+-    let specification = EstimateActionSpec::parse(args)?;
++    let local_bundle = read_local_estimate_bundle(args, spi)?.map(|value| [value]);
++    let specification = EstimateActionSpec::parse(
++        local_bundle.as_ref().map_or(args, |values| values.as_slice()),
++    )?;
++    drop(local_bundle);
+     let action = specification.decode_and_validate(spi)?;
+     let preflight_seconds = started.elapsed().as_secs_f64();
+     let loaded = load_ols_input(
+@@ -881,6 +885,68 @@ impl EstimateActionSpec {
+     }
+ }
+ 
++// This is a metadata transport capacity, independent of N and finite rank.
++// Refuse impossible descriptors before reserving or accessing the caller macro.
++const MAX_LOCAL_ESTIMATE_BUNDLE_BYTES: usize = 16 * 1024 * 1024;
++
++pub(crate) fn read_local_estimate_bundle(
++    args: &[String],
++    spi: &mut dyn SpiApi,
++) -> Result<Option<String>> {
++    let Some(descriptor) = args
++        .iter()
++        .find_map(|argument| argument.strip_prefix("bundle_local="))
++    else {
++        return Ok(None);
++    };
++    if args.len() != 1 {
++        return Err(syntax(
++            "local estimation bundle must be the only action argument",
++        ));
++    }
++    if descriptor.is_empty()
++        || descriptor.starts_with('0')
++        || !descriptor.bytes().all(|byte| byte.is_ascii_digit())
++    {
++        return Err(syntax(
++            "local estimation bundle byte count is not canonical",
++        ));
++    }
++    let length = descriptor
++        .parse::<usize>()
++        .map_err(|_| allocation("local estimation bundle byte count overflows"))?;
++    if length > MAX_LOCAL_ESTIMATE_BUNDLE_BYTES {
++        return Err(allocation(
++            "local estimation bundle exceeds the 16 MiB metadata capacity",
++        ));
++    }
++    const PREFIX: &[u8] = b"bundle=";
++    // Read one byte beyond the declaration so SPI truncation cannot make an
++    // overlong macro look exact. The SPI limit excludes its NUL terminator.
++    let required = PREFIX.len() + length + 2;
++    let mut bytes = Vec::new();
++    bytes
++        .try_reserve_exact(required)
++        .map_err(|_| allocation("unable to reserve local estimation bundle metadata"))?;
++    if bytes.capacity() < required {
++        return Err(allocation(
++            "local estimation bundle reservation was undersized",
++        ));
++    }
++    bytes.resize(required, u8::MAX);
++    bytes[..PREFIX.len()].copy_from_slice(PREFIX);
++    spi.read_estimate_bundle(&mut bytes[PREFIX.len()..])?;
++    if bytes[PREFIX.len()..].iter().position(|&byte| byte == 0) != Some(length) {
++        return Err(syntax(
++            "local estimation bundle byte count or terminator is inconsistent",
++        ));
++    }
++    bytes.truncate(PREFIX.len() + length);
++    String::from_utf8(bytes)
++        .map(Some)
++        .map_err(|_| syntax("local estimation bundle is not valid UTF-8"))
++}
++
+ /// Stata 18 rejects a plugin call with the complete guarded estimate protocol
+ /// as "too many options" before native dispatch.  Keep the ordinary argv form
+ /// for the C and Fake SPI boundaries, and additionally accept one explicitly
+@@ -3009,6 +3075,8 @@ mod tests {
+ 
+     #[derive(Clone)]
+     struct FakeSpi {
++        local_bundle: Option<Vec<u8>>,
++        macro_reads: usize,
+         nobs: usize,
+         nvars: usize,
+         data: BTreeMap<(u32, usize), (f64, bool)>,
+@@ -3027,6 +3095,18 @@ mod tests {
+     }
+ 
+     impl SpiApi for FakeSpi {
++        fn read_estimate_bundle(&mut self, buffer: &mut [u8]) -> Result<()> {
++            self.macro_reads += 1;
++            let value = self
++                .local_bundle
++                .as_ref()
++                .ok_or_else(|| invalid("fake local request macro is unavailable"))?;
++            let copied = value.len().min(buffer.len() - 1);
++            buffer[..copied].copy_from_slice(&value[..copied]);
++            buffer[copied] = 0;
++            Ok(())
++        }
++
+         fn nobs(&mut self) -> Result<usize> {
+             Ok(self.nobs)
+         }
+@@ -3503,6 +3583,8 @@ mod tests {
+         (
+             args,
+             FakeSpi {
++                local_bundle: None,
++                macro_reads: 0,
+                 nobs: 6,
+                 nvars: binding_count + 3,
+                 data,
+@@ -4213,13 +4295,35 @@ mod tests {
+ 
+         let (args, mut packed) = fixture(OlsVceKind::Iid);
+         estimate_ols_test(&bundled(&args), &mut packed).expect("bundle succeeds");
++        let (args, mut local) = fixture(OlsVceKind::Iid);
++        let bundle = bundled(&args)
++            .pop()
++            .unwrap()
++            .strip_prefix("bundle=")
++            .unwrap()
++            .as_bytes()
++            .to_vec();
++        let local_args = [format!("bundle_local={}", bundle.len())];
++        local.local_bundle = Some(bundle);
++        estimate_ols_test(&local_args, &mut local).expect("local bundle succeeds");
++        assert_eq!(local.macro_reads, 1);
++        assert_eq!(ordinary.macro_reads, 0);
++        assert_eq!(packed.macro_reads, 0);
+         for name in [
+-            "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RFE", "RCLUSTER",
+-            "RSUBSET", "RCERT", "RREC",
++            "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RFE", "RCLUSTER", "RSUBSET",
++            "RCERT", "RREC",
+         ] {
+             assert_eq!(packed.matrices[name], ordinary.matrices[name], "{name}");
++            assert_eq!(
++                local.matrices[name], ordinary.matrices[name],
++                "local {name}"
++            );
+         }
+-        for runtime in [&ordinary.matrices["RRUNTIME"], &packed.matrices["RRUNTIME"]] {
++        for runtime in [
++            &ordinary.matrices["RRUNTIME"],
++            &packed.matrices["RRUNTIME"],
++            &local.matrices["RRUNTIME"],
++        ] {
+             assert_eq!(runtime[0], [1.0, 1.0]);
+             assert_eq!(runtime[1], [1.0, 1.0]);
+             assert_eq!(runtime[2], [1.0, 10.0]);
+@@ -4243,6 +4347,9 @@ mod tests {
+         assert_eq!(packed.store_calls, ordinary.store_calls);
+         assert_eq!(packed.stores.last(), ordinary.stores.last());
+         assert_eq!(packed.numeric_reads, ordinary.numeric_reads);
++        assert_eq!(local.numeric_reads, ordinary.numeric_reads);
++        assert_eq!(local.stores.last(), ordinary.stores.last());
++        assert_eq!(local.store_calls, ordinary.store_calls);
+ 
+         let malformed = [
+             "bundle=0:",
+@@ -4281,13 +4388,76 @@ mod tests {
+         let (args, mut mixed_spi) = fixture(OlsVceKind::Iid);
+         let mut mixed = bundled(&args);
+         mixed.push("ado=0.5.0".to_owned());
+-        let error = estimate_ols_test(&mixed, &mut mixed_spi)
+-            .expect_err("mixed bundle and argv are rejected");
++        let error =
++            estimate_ols_test(&mixed, &mut mixed_spi).expect_err("mixed bundle and argv are rejected");
+         assert_eq!(error.code, ErrorCode::Syntax);
+         assert_eq!(mixed_spi.numeric_reads, 0);
+         assert_eq!(mixed_spi.store_calls, 0);
+     }
+ 
++    #[test]
++    fn local_estimation_bundle_validates_capacity_bytes_and_framing_before_reads() {
++        for descriptor in [
++            "",
++            "0",
++            "01",
++            "+1",
++            "-1",
++            "1.0",
++            "1 ",
++            "16777217",
++            "999999999999999999999999",
++        ] {
++            let (_, mut spi) = fixture(OlsVceKind::Iid);
++            assert!(estimate_ols_test(&[format!("bundle_local={descriptor}")], &mut spi).is_err());
++            assert_eq!(
++                (spi.macro_reads, spi.numeric_reads, spi.store_calls),
++                (0, 0, 0)
++            );
++        }
++        let (_, mut spi) = fixture(OlsVceKind::Iid);
++        assert!(estimate_ols_test(
++            &["bundle_local=6".to_owned(), "ado=0.5.0".to_owned()],
++            &mut spi
++        )
++        .is_err());
++        assert_eq!(spi.macro_reads, 0);
++        for (payload, declared) in [
++            (None, 6),
++            (Some(b"1:3:a=b".to_vec()), 6),
++            (Some(b"1:3:a=b".to_vec()), 8),
++            (Some(b"1:3:a\0b".to_vec()), 7),
++            (Some(vec![0xff; 7]), 7),
++            (Some(b"1:9:a=b".to_vec()), 7),
++            (Some(b"1:3:a=b".to_vec()), 7),
++        ] {
++            let (_, mut spi) = fixture(OlsVceKind::Iid);
++            spi.local_bundle = payload;
++            assert!(estimate_ols_test(&[format!("bundle_local={declared}")], &mut spi).is_err());
++            assert_eq!(spi.macro_reads, 1);
++            assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
++            assert_eq!(spi.receipt_complete(), 0.0);
++        }
++        let (args, mut overlong) = fixture(OlsVceKind::Iid);
++        let mut payload = format!("{}:", args.len());
++        for value in &args {
++            payload.push_str(&format!("{}:{value}", value.len()));
++        }
++        let declared = payload.len();
++        payload.push_str("trailing-data");
++        overlong.local_bundle = Some(payload.into_bytes());
++        assert!(estimate_ols_test(&[format!("bundle_local={declared}")], &mut overlong).is_err());
++        assert_eq!((overlong.macro_reads, overlong.numeric_reads, overlong.store_calls), (1, 0, 0));
++
++        let (_, mut spi) = fixture(OlsVceKind::Iid);
++        let payload = "1:4:a=é";
++        spi.local_bundle = Some(payload.as_bytes().to_vec());
++        assert_eq!(
++            read_local_estimate_bundle(&[format!("bundle_local={}", payload.len())], &mut spi).unwrap(),
++            Some(format!("bundle={payload}"))
++        );
++    }
++
+     #[test]
+     fn every_output_store_failure_leaves_receipt_incomplete() {
+         let (args, mut successful) = fixture(OlsVceKind::Iid);
+diff --git a/crates/fereg-plugin/src/ffi.rs b/crates/fereg-plugin/src/ffi.rs
+index e1b90af..8fffa90 100644
+--- a/crates/fereg-plugin/src/ffi.rs
++++ b/crates/fereg-plugin/src/ffi.rs
+@@ -521,6 +521,7 @@ extern "C" {
+     fn fereg_spi_matrix_cols(name: *const c_char) -> c_int;
+     fn fereg_spi_mat_el(name: *const c_char, row: c_int, column: c_int, value: *mut f64) -> c_int;
+     fn fereg_spi_mat_store(name: *const c_char, row: c_int, column: c_int, value: f64) -> c_int;
++    fn fereg_spi_macro_use(name: *const c_char, buffer: *mut c_char, length: c_int) -> c_int;
+     fn fereg_spi_is_main_thread() -> c_int;
+ }
+ 
+@@ -626,6 +627,11 @@ unsafe fn fereg_spi_is_main_thread() -> c_int {
+     0
+ }
+ 
++#[cfg(test)]
++unsafe fn fereg_spi_macro_use(_name: *const c_char, _buffer: *mut c_char, _length: c_int) -> c_int {
++    498
++}
++
+ struct SpiSink;
+ 
+ const NUMERIC_STORE_ERROR: &str = "Stata SPI numeric store failed during atomic result commit";
+@@ -704,6 +710,30 @@ impl SpiSession {
+ }
+ 
+ impl SpiApi for SpiSession {
++    fn read_estimate_bundle(&mut self, buffer: &mut [u8]) -> Result<(), FeregError> {
++        let maximum = buffer.len().checked_sub(1).ok_or_else(|| {
++            FeregError::new(ErrorCode::Syntax, "request buffer has no terminator capacity")
++        })?;
++        let length = c_int::try_from(maximum).map_err(|_| {
++            FeregError::new(
++                ErrorCode::Allocation,
++                "request buffer exceeds the Stata SPI range",
++            )
++        })?;
++        // SAFETY: the session is confined to Stata's bound thread. The fixed
++        // local name is NUL-terminated, and the uniquely borrowed initialized
++        // buffer includes the extra terminator byte required beyond SPI's
++        // character limit and is live for the bounded write. No pointer escapes.
++        let rc = unsafe {
++            fereg_spi_macro_use(
++                c"_fereg_request_bundle".as_ptr(),
++                buffer.as_mut_ptr().cast(),
++                length,
++            )
++        };
++        Self::spi_rc(rc, "local estimation request read")
++    }
++
+     fn nobs(&mut self) -> Result<usize, FeregError> {
+         // SAFETY: `SpiSession` exists only on the bound Stata thread.
+         let value = unsafe { fereg_spi_nobs() };
+diff --git a/crates/fereg-plugin/src/input.rs b/crates/fereg-plugin/src/input.rs
+index 4d81f55..08324fa 100644
+--- a/crates/fereg-plugin/src/input.rs
++++ b/crates/fereg-plugin/src/input.rs
+@@ -97,6 +97,15 @@ impl PreparedMatrixStoreName {
+ 
+ /// Safe abstraction over a Stata-thread-confined SPI session.
+ pub trait SpiApi {
++    /// Read the caller's fixed local `fereg_request_bundle`, including its
++    /// NUL terminator, into an already admitted metadata buffer. Only the
++    /// main-thread adapter implements this optional transport.
++    fn read_estimate_bundle(&mut self, _buffer: &mut [u8]) -> Result<()> {
++        Err(FeregError::new(
++            ErrorCode::Unsupported,
++            "local estimation request transport requires a live Stata SPI session",
++        ))
++    }
+     fn nobs(&mut self) -> Result<usize>;
+     fn nvars(&mut self) -> Result<usize>;
+     fn variable_is_string(&mut self, variable: u32) -> Result<bool>;
+diff --git a/crates/fereg-plugin/src/ppml_estimate.rs b/crates/fereg-plugin/src/ppml_estimate.rs
+index d518153..a8ea2c2 100644
+--- a/crates/fereg-plugin/src/ppml_estimate.rs
++++ b/crates/fereg-plugin/src/ppml_estimate.rs
+@@ -5,7 +5,7 @@ use std::time::Instant;
+ use crate::estimate::{
+     imposed_memory_limit_bytes, load_ols_input, parse_bool, parse_nonnegative_u32,
+     parse_positive_f64, parse_positive_u32, parse_positive_usize, parse_u16, parse_usize,
+-    read_bindings, read_numeric_columns_in_chunks, read_table, required,
++    read_bindings, read_local_estimate_bundle, read_numeric_columns_in_chunks, read_table, required,
+ };
+ use crate::input::{PreparedMatrixStoreName, SpiApi};
+ use crate::instrumentation::{
+@@ -283,7 +283,11 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+     let resources_start = crate::instrumentation::begin_ppml_observation();
+     let (action_probe, action_start, action_previous_baseline) =
+         ppml_action_allocation_observation(resources_start);
+-    let specification = EstimatePpmlSpec::parse(args)?;
++    let local_bundle = read_local_estimate_bundle(args, spi)?.map(|value| [value]);
++    let specification = EstimatePpmlSpec::parse(
++        local_bundle.as_ref().map_or(args, |values| values.as_slice()),
++    )?;
++    drop(local_bundle);
+     let action = specification.decode_and_validate(spi)?;
+     if action.injection == PpmlDeveloperInjection::Panic {
+         panic!("injected hidden PPML transaction panic");
+@@ -2846,6 +2850,8 @@ mod tests {
+     }
+ 
+     struct FakeSpi {
++        local_bundle: Option<Vec<u8>>,
++        macro_reads: usize,
+         nobs: usize,
+         nvars: usize,
+         numeric: BTreeMap<(u32, usize), (f64, bool)>,
+@@ -2874,6 +2880,18 @@ mod tests {
+     }
+ 
+     impl SpiApi for FakeSpi {
++        fn read_estimate_bundle(&mut self, buffer: &mut [u8]) -> Result<()> {
++            self.macro_reads += 1;
++            let value = self
++                .local_bundle
++                .as_ref()
++                .ok_or_else(|| invalid("fake local request macro is unavailable"))?;
++            let copied = value.len().min(buffer.len() - 1);
++            buffer[..copied].copy_from_slice(&value[..copied]);
++            buffer[copied] = 0;
++            Ok(())
++        }
++
+         fn nobs(&mut self) -> Result<usize> {
+             Ok(self.nobs)
+         }
+@@ -3168,6 +3186,8 @@ mod tests {
+         (
+             args,
+             FakeSpi {
++                local_bundle: None,
++                macro_reads: 0,
+                 nobs: 10,
+                 nvars: 10,
+                 numeric,
+@@ -3601,6 +3621,42 @@ mod tests {
+         assert!(error.message.contains("between one and 83"));
+     }
+ 
++    #[test]
++    fn ppml_local_bundle_preserves_science_and_rejects_incomplete_input_before_reads() {
++        let (args, mut ordinary) = fixture();
++        estimate_ppml_test(&args, &mut ordinary).unwrap();
++        let (args, mut local) = fixture();
++        let mut payload = format!("{}:", args.len());
++        for value in &args {
++            payload.push_str(&format!("{}:{value}", value.len()));
++        }
++        let descriptor = [format!("bundle_local={}", payload.len())];
++        local.local_bundle = Some(payload.as_bytes().to_vec());
++        estimate_ppml_test(&descriptor, &mut local).unwrap();
++        assert_eq!((ordinary.macro_reads, local.macro_reads), (0, 1));
++        for name in [
++            "RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER", "RSUBSET", "RSEP", "RINF",
++            "RDROP", "RSEQ", "RCERT", "RREC",
++        ] {
++            assert_eq!(ordinary.matrices[name], local.matrices[name], "{name}");
++        }
++        assert_eq!(ordinary.reads, local.reads);
++        assert_eq!(ordinary.stores.last(), local.stores.last());
++        assert_eq!(ordinary.store_calls, local.store_calls);
++        let (_, mut truncated) = fixture();
++        truncated.local_bundle = Some(payload.as_bytes()[..payload.len() - 1].to_vec());
++        assert!(estimate_ppml_test(&descriptor, &mut truncated).is_err());
++        assert_eq!(
++            (
++                truncated.macro_reads,
++                truncated.reads,
++                truncated.store_calls
++            ),
++            (1, 0, 0)
++        );
++        assert_eq!(truncated.receipt_complete(), 0.0);
++    }
++
+     #[test]
+     fn hidden_ppml_action_commits_a_distinct_receipt_last() {
+         let (args, mut spi) = fixture();
+diff --git a/stata/_fereg_estimate_ols.ado b/stata/_fereg_estimate_ols.ado
+index cef8ad6..b17067a 100644
+--- a/stata/_fereg_estimate_ols.ado
++++ b/stata/_fereg_estimate_ols.ado
+@@ -490,9 +490,15 @@ program define _fereg_estimate_ols, eclass
+         local request_bundle `"`request_bundle'`argument_length':`argument'"'
+     }
+     local request_bundle `"`request_count':`request_bundle'"'
++    local request_bytes = strlen(`"`request_bundle'"')
++    if `request_bytes' > 4000 {
++        local fereg_request_bundle `"`request_bundle'"'
++        local request_bundle "bundle_local=`request_bytes'"
++    }
++    else local request_bundle `"bundle=`request_bundle'"'
+     plugin call __fereg_estimate_plugin `touse' `depvar' `source_vars' ///
+         `weight_variable' `output_variables', ///
+-        `"estimate-ols"' `"bundle=`request_bundle'"'
++        `"estimate-ols"' `"`request_bundle'"'
+ 
+     if `"`inject'"' == "breakpostplugin" {
+         di as result "FEREG_BREAK_ARMED"
+diff --git a/stata/_fereg_estimate_ppml.ado b/stata/_fereg_estimate_ppml.ado
+index 541c30c..011c51d 100644
+--- a/stata/_fereg_estimate_ppml.ado
++++ b/stata/_fereg_estimate_ppml.ado
+@@ -651,9 +651,15 @@ program define _fereg_estimate_ppml, eclass
+         local request_bundle `"`request_bundle'`argument_length':`argument'"'
+     }
+     local request_bundle `"`request_count':`request_bundle'"'
++    local request_bytes = strlen(`"`request_bundle'"')
++    if `request_bytes' > 4000 {
++        local fereg_request_bundle `"`request_bundle'"'
++        local request_bundle "bundle_local=`request_bytes'"
++    }
++    else local request_bundle `"bundle=`request_bundle'"'
+     plugin call __fereg_estimate_plugin `touse' `depvar' `source_vars' ///
+         `weight_variable' `adjustment_variable' `output_variables', ///
+-        `"estimate-ppml"' `"bundle=`request_bundle'"'
++        `"estimate-ppml"' `"`request_bundle'"'
+ 
+     // Developer-only publication-boundary mutations prove that malformed
+     // native products are classified and rolled back without a second call.
+diff --git a/tests/stata/development/local_request_transport_oracle.do b/tests/stata/development/local_request_transport_oracle.do
+new file mode 100644
+index 0000000..2440818
+--- /dev/null
++++ b/tests/stata/development/local_request_transport_oracle.do
+@@ -0,0 +1,108 @@
++version 18.0
++clear all
++set more off
++set obs 4096
++generate int g = 1 + mod(_n-1,16)
++generate int cl = 1 + mod(floor((_n-1)/19),97)
++local xs
++forvalues j=1/60 {
++    local name "long_transport_control_number`j'"
++    generate double `name' = sin(2*c(pi)*`j'*(_n-1)/_N) + cos(2*c(pi)*(`j'+97)*(_n-1)/_N)
++    local xs `xs' `name'
++}
++generate double w = 0.2 + mod(_n,13)/3
++generate double fw = 1 + mod(_n,7)
++generate double y = 1 + mod(floor(100*exp(0.2*long_transport_control_number1 - 0.1*long_transport_control_number2 + 0.03*g)),19)
++
++// Long source and term names exercise metadata transport even at modest rank.
++quietly regress y `xs' [aw=w], vce(robust)
++matrix oracle_b = e(b)
++matrix oracle_V = e(V)
++fereg y `xs' [aw=w], vce(robust) threads(4)
++mata: assert(max(abs(st_matrix("e(b)")-st_matrix("oracle_b")) :/ (1e-10 :+ 1e-7:*abs(st_matrix("oracle_b")))) <= 1)
++mata: assert(max(abs(st_matrix("e(V)")-st_matrix("oracle_V")) :/ (1e-10 :+ 1e-6:*abs(st_matrix("oracle_V")))) <= 1)
++assert e(sample) == 1
++assert e(fereg_certificate)[32,2] == 1
++
++mata:
++void transport_dummy_sandwich(string scalar xs, string scalar kind)
++{
++    g = st_data(.,"g")
++    G = J(rows(g),16,0)
++    for (j=1; j<=16; j++) G[.,j] = (g :== j)
++    X = (st_data(.,tokens(xs)),G)
++    y = st_data(.,"y")
++    mu = st_data(.,"mu_dummy")
++    w = st_data(.,"raw_w")
++    Hinv = invsym(quadcross(X,w:*mu,X))
++    if (kind == "pw") {
++        cl = st_data(.,"cl")
++        sums = J(97,cols(X),0)
++        for (i=1; i<=rows(X); i++) sums[cl[i],.] = sums[cl[i],.] + w[i]*(y[i]-mu[i])*X[i,.]
++        meat = quadcross(sums,sums)
++    }
++    else meat = quadcross(X,w:*(y-mu):^2,X)
++    V = Hinv*meat*Hinv*st_numscalar("correction")
++    st_matrix("V_dummy",V[1..60,1..60])
++}
++end
++
++generate double raw_w = fw
++foreach kind in fw pw {
++    local weight "[fw=fw]"
++    local covariance "robust"
++    replace raw_w = fw
++    if "`kind'" == "pw" {
++        local weight "[pw=w]"
++        local covariance "cluster cl"
++        replace raw_w = w
++    }
++    feppml y `xs' `weight', absorb(g) vce(`covariance') separation(none) keepsingletons threads(4) mu(mu_native)
++    matrix b_native = e(b)
++    matrix V_native = e(V)
++    scalar correction = e(feppml_inference)[3,1]
++    assert e(feppml_certificate)[16,1] == 1
++    assert e(converged) == 1
++    assert e(sample) == 1
++    quietly poisson y `xs' ibn.g `weight', noconstant nolog
++    forvalues j=1/60 {
++        assert abs(_b[long_transport_control_number`j'] - b_native[1,`j']) <= 1e-7
++    }
++    predict double mu_dummy, n
++    assert abs(mu_native-mu_dummy) <= 1e-7*(1+abs(mu_dummy))
++    mata: transport_dummy_sandwich("`xs'","`kind'")
++    matrix V_slopes = V_native[1..60,1..60]
++    mata: assert(max(abs(st_matrix("V_slopes")-st_matrix("V_dummy")) :/ (1e-10 :+ 1e-6:*abs(st_matrix("V_dummy")))) <= 1)
++    drop mu_native mu_dummy
++}
++
++quietly regress y `xs'
++matrix before_b = e(b)
++matrix before_V = e(V)
++generate byte before_sample = e(sample)
++// Read past the declaration by one content byte before rejecting truncation.
++_fereg_load, action(loadonly)
++local transport_plugin `"`r(plugin_file)'"'
++program __fereg_transport_oracle, plugin using(`"`transport_plugin'"')
++local fereg_request_bundle "1:3:a=btrailing-data"
++foreach action in estimate-ols estimate-ppml {
++    capture noisily plugin call __fereg_transport_oracle, "`action'" "bundle_local=7"
++    assert _rc == 198
++    capture noisily plugin call __fereg_transport_oracle, "`action'" "bundle_local=16777217"
++    assert _rc == 909
++    assert "`e(cmd)'" == "regress"
++    assert e(sample) == before_sample
++    assert mreldif(e(b),before_b) == 0
++    assert mreldif(e(V),before_V) == 0
++}
++program drop __fereg_transport_oracle
++replace y = -1 in 1
++capture noisily feppml y `xs', absorb(g) threads(4) mu(failed_mu)
++assert _rc == 459
++assert "`e(cmd)'" == "regress"
++assert e(sample) == before_sample
++assert mreldif(e(b),before_b) == 0
++assert mreldif(e(V),before_V) == 0
++confirm new variable failed_mu
++
++display as result "END_FIXTURE|local_request_transport_oracle|rc=0"

@@ -96,6 +96,14 @@ stack payload; see [ADR 0054](adr/0054-retained-dense-moment-row-standardization
 
 ## Allocation discipline
 
+Long estimation metadata uses one fallibly reserved transport buffer bounded by
+16 MiB of payload plus nine bytes for the decoder prefix, truncation-detection
+byte and NUL. It is released after parsing, before observation loading and PPML
+generation-zero admission. This metadata cap is independent of observation count
+and does not authorize pre-admission observation-sized preparation state. Stata
+retains its own caller-local payload until the transaction returns; see
+[ADR 0055](adr/0055-bounded-local-request-transport.md).
+
 Observation-scale vectors and matrices use checked arithmetic, fallible
 reservation, and explicit capacity validation before mutation. Preparation,
 factorization, topology, MAP, QR, score, VCE, result-container, and scratch

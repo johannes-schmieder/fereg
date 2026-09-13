@@ -521,6 +521,7 @@ extern "C" {
     fn fereg_spi_matrix_cols(name: *const c_char) -> c_int;
     fn fereg_spi_mat_el(name: *const c_char, row: c_int, column: c_int, value: *mut f64) -> c_int;
     fn fereg_spi_mat_store(name: *const c_char, row: c_int, column: c_int, value: f64) -> c_int;
+    fn fereg_spi_macro_use(name: *const c_char, buffer: *mut c_char, length: c_int) -> c_int;
     fn fereg_spi_is_main_thread() -> c_int;
 }
 
@@ -626,6 +627,11 @@ unsafe fn fereg_spi_is_main_thread() -> c_int {
     0
 }
 
+#[cfg(test)]
+unsafe fn fereg_spi_macro_use(_name: *const c_char, _buffer: *mut c_char, _length: c_int) -> c_int {
+    498
+}
+
 struct SpiSink;
 
 const NUMERIC_STORE_ERROR: &str = "Stata SPI numeric store failed during atomic result commit";
@@ -704,6 +710,30 @@ impl SpiSession {
 }
 
 impl SpiApi for SpiSession {
+    fn read_estimate_bundle(&mut self, buffer: &mut [u8]) -> Result<(), FeregError> {
+        let maximum = buffer.len().checked_sub(1).ok_or_else(|| {
+            FeregError::new(ErrorCode::Syntax, "request buffer has no terminator capacity")
+        })?;
+        let length = c_int::try_from(maximum).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "request buffer exceeds the Stata SPI range",
+            )
+        })?;
+        // SAFETY: the session is confined to Stata's bound thread. The fixed
+        // local name is NUL-terminated, and the uniquely borrowed initialized
+        // buffer includes the extra terminator byte required beyond SPI's
+        // character limit and is live for the bounded write. No pointer escapes.
+        let rc = unsafe {
+            fereg_spi_macro_use(
+                c"_fereg_request_bundle".as_ptr(),
+                buffer.as_mut_ptr().cast(),
+                length,
+            )
+        };
+        Self::spi_rc(rc, "local estimation request read")
+    }
+
     fn nobs(&mut self) -> Result<usize, FeregError> {
         // SAFETY: `SpiSession` exists only on the bound Stata thread.
         let value = unsafe { fereg_spi_nobs() };

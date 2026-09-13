@@ -41,6 +41,23 @@ rejected. The additive PPML wires do not alter or alias the OLS result wire.
   `_fereg_estimate_ppml` transaction. Non-SPI dispatcher attempts to invoke
   `estimate-ppml` are rejected.
 
+## Estimation request transport
+
+OLS and PPML retain their canonical count/byte-length framed request. The ado
+adapter sends `bundle=<payload>` through 4,000 payload bytes. Above that size,
+it stores the identical payload in the caller-local `fereg_request_bundle` and
+sends only `bundle_local=<byte-count>`. The SPI name is `_fereg_request_bundle`;
+the leading underscore selects a local, not a global. The descriptor must be the
+only action argument. No caller-supplied macro name is accepted.
+
+Rust admits at most 16 MiB of metadata before the fixed main-thread macro read.
+Its buffer includes one content byte beyond the declared size to detect SPI
+truncation, plus a separate terminator byte. Exact NUL position, UTF-8 and the
+unchanged canonical request decoder are checked before observations are read.
+The buffer is dropped after parsing. Malformed/over-cap transport cannot complete
+a receipt; scientific request/result versions and the one-call transaction are
+unchanged. See [ADR 0055](adr/0055-bounded-local-request-transport.md).
+
 ## Public OLS transaction
 
 Before any observation read, Rust validates the complete request, exact

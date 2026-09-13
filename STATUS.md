@@ -10,6 +10,43 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4/P6 bounded request transport: adopted local repair
+
+The [source-bound report](benchmarks/reports/development/request-transport-local-2026-09-13/README.md)
+adopts [ADR 0055](docs/adr/0055-bounded-local-request-transport.md) against accepted
+`22b5106`. Above 4,000 metadata bytes, OLS/PPML retain the unchanged framed
+request in one fixed caller-local macro and pass a bounded byte descriptor to
+the same native call. Exact length/NUL/UTF-8/framing and existing handshakes
+precede observation reads. A 16 MiB metadata cap, extra truncation-detection
+byte and separate SPI terminator capacity keep the read bounded. The buffer
+is released after parsing; all numerical core inputs remain unchanged.
+
+The final isolated plugin `7b7c6664...` passes 94 plugin tests, 26 static tests,
+universal static/native arm64 ABI checks and the ordinary independent OLS/PPML
+oracles. A new long-name fixture passes OLS AW robust and PPML FW robust/PW
+clustered independent calculations, malformed/over-cap reads and rollback.
+The old binary's r(1003) is expected transport-failure evidence, not a science
+pass. Final review found and fixed the initial candidate's SPI terminator bound
+and truncating-reader test model; its failing reproducer and eight initial
+pairs remain archived separately. A fixture registration error and Python
+launcher failures are preserved; corrected runs pass without weaker checks.
+
+Eight final pairs preserve exact b/V and discrete science/solver fields. The
+largest slowdown is complete PPML 7.354→7.500 s (+2.0%); none crosses the
+prospective max(10 ms, 5%) review envelope. Native peaks are exact on seven
+pairs and 4,302 bytes lower on FW K129; all are admitted. Sampled FW/weak RSS
+rises, so no general memory saving or command-speed gain is claimed.
+
+The exact original PW K257 full fit now succeeds at N30720/seed104729. Its
+N7680/seed104730 warm-up reaches native code but fails the existing covariance
+PSD-report consistency check with r(430), on both transport candidates. This
+is a newly exposed separate numerical validation issue; it is not silently
+accepted, bypassed or replaced with a smaller passing target. Next localize
+and repair that check independently, then resume the original wider-moment
+protocol. The wider optimization remains absent/unadopted and broader #27
+items remain open. Installed dist, all 97 unrelated Veneto additions and prior
+untracked evidence remain intact; no agents, cluster, push or qualification.
+
 ## P4/P6 wider moment probe: request transport needs repair first
 
 The [source-bound probe](benchmarks/reports/development/ppml-wide-moments-probe-local-2026-09-13/README.md)

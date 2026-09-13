@@ -31,6 +31,12 @@ fereg.ado
   -> fereg_p.ado / fereg_estat.ado for public postestimation
 ```
 
+Both estimation actions carry the same canonical framed metadata either inline
+or, above 4,000 bytes, through one fixed caller-local macro read within the same
+plugin call. Rust checks a bounded descriptor, exact bytes and framing before
+observation loading; no worker reads Stata macros. See
+[ADR 0055](adr/0055-bounded-local-request-transport.md).
+
 The hidden OLS adapter and test transaction remain qualification-only and are
 excluded from distribution archives. Public `feppml` is a one-call wrapper
 over the guarded PPML transaction; it neither reparses nor posts results.

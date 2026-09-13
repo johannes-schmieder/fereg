@@ -5,7 +5,7 @@ use std::time::Instant;
 use crate::estimate::{
     imposed_memory_limit_bytes, load_ols_input, parse_bool, parse_nonnegative_u32,
     parse_positive_f64, parse_positive_u32, parse_positive_usize, parse_u16, parse_usize,
-    read_bindings, read_numeric_columns_in_chunks, read_table, required,
+    read_bindings, read_local_estimate_bundle, read_numeric_columns_in_chunks, read_table, required,
 };
 use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::instrumentation::{
@@ -283,7 +283,11 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let resources_start = crate::instrumentation::begin_ppml_observation();
     let (action_probe, action_start, action_previous_baseline) =
         ppml_action_allocation_observation(resources_start);
-    let specification = EstimatePpmlSpec::parse(args)?;
+    let local_bundle = read_local_estimate_bundle(args, spi)?.map(|value| [value]);
+    let specification = EstimatePpmlSpec::parse(
+        local_bundle.as_ref().map_or(args, |values| values.as_slice()),
+    )?;
+    drop(local_bundle);
     let action = specification.decode_and_validate(spi)?;
     if action.injection == PpmlDeveloperInjection::Panic {
         panic!("injected hidden PPML transaction panic");
@@ -2846,6 +2850,8 @@ mod tests {
     }
 
     struct FakeSpi {
+        local_bundle: Option<Vec<u8>>,
+        macro_reads: usize,
         nobs: usize,
         nvars: usize,
         numeric: BTreeMap<(u32, usize), (f64, bool)>,
@@ -2874,6 +2880,18 @@ mod tests {
     }
 
     impl SpiApi for FakeSpi {
+        fn read_estimate_bundle(&mut self, buffer: &mut [u8]) -> Result<()> {
+            self.macro_reads += 1;
+            let value = self
+                .local_bundle
+                .as_ref()
+                .ok_or_else(|| invalid("fake local request macro is unavailable"))?;
+            let copied = value.len().min(buffer.len() - 1);
+            buffer[..copied].copy_from_slice(&value[..copied]);
+            buffer[copied] = 0;
+            Ok(())
+        }
+
         fn nobs(&mut self) -> Result<usize> {
             Ok(self.nobs)
         }
@@ -3168,6 +3186,8 @@ mod tests {
         (
             args,
             FakeSpi {
+                local_bundle: None,
+                macro_reads: 0,
                 nobs: 10,
                 nvars: 10,
                 numeric,
@@ -3599,6 +3619,42 @@ mod tests {
             .expect_err("84-field PPML bundle must fail closed");
         assert_eq!(error.code, ErrorCode::Syntax);
         assert!(error.message.contains("between one and 83"));
+    }
+
+    #[test]
+    fn ppml_local_bundle_preserves_science_and_rejects_incomplete_input_before_reads() {
+        let (args, mut ordinary) = fixture();
+        estimate_ppml_test(&args, &mut ordinary).unwrap();
+        let (args, mut local) = fixture();
+        let mut payload = format!("{}:", args.len());
+        for value in &args {
+            payload.push_str(&format!("{}:{value}", value.len()));
+        }
+        let descriptor = [format!("bundle_local={}", payload.len())];
+        local.local_bundle = Some(payload.as_bytes().to_vec());
+        estimate_ppml_test(&descriptor, &mut local).unwrap();
+        assert_eq!((ordinary.macro_reads, local.macro_reads), (0, 1));
+        for name in [
+            "RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCLUSTER", "RSUBSET", "RSEP", "RINF",
+            "RDROP", "RSEQ", "RCERT", "RREC",
+        ] {
+            assert_eq!(ordinary.matrices[name], local.matrices[name], "{name}");
+        }
+        assert_eq!(ordinary.reads, local.reads);
+        assert_eq!(ordinary.stores.last(), local.stores.last());
+        assert_eq!(ordinary.store_calls, local.store_calls);
+        let (_, mut truncated) = fixture();
+        truncated.local_bundle = Some(payload.as_bytes()[..payload.len() - 1].to_vec());
+        assert!(estimate_ppml_test(&descriptor, &mut truncated).is_err());
+        assert_eq!(
+            (
+                truncated.macro_reads,
+                truncated.reads,
+                truncated.store_calls
+            ),
+            (1, 0, 0)
+        );
+        assert_eq!(truncated.receipt_complete(), 0.0);
     }
 
     #[test]

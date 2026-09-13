@@ -97,6 +97,15 @@ impl PreparedMatrixStoreName {
 
 /// Safe abstraction over a Stata-thread-confined SPI session.
 pub trait SpiApi {
+    /// Read the caller's fixed local `fereg_request_bundle`, including its
+    /// NUL terminator, into an already admitted metadata buffer. Only the
+    /// main-thread adapter implements this optional transport.
+    fn read_estimate_bundle(&mut self, _buffer: &mut [u8]) -> Result<()> {
+        Err(FeregError::new(
+            ErrorCode::Unsupported,
+            "local estimation request transport requires a live Stata SPI session",
+        ))
+    }
     fn nobs(&mut self) -> Result<usize>;
     fn nvars(&mut self) -> Result<usize>;
     fn variable_is_string(&mut self, variable: u32) -> Result<bool>;

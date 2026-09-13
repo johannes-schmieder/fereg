@@ -1,0 +1,109 @@
+{
+  "note": "Two transport cost controls, one seed and rotated order; no speed claim.",
+  "pairs": [
+    {
+      "baseline": {
+        "command_seconds": 0.5900000000000001,
+        "input_seconds": 0.047850666,
+        "modeled_bytes": 259969440,
+        "native_peak_bytes": 143669580,
+        "native_seconds": 0.479210542,
+        "outer_seconds": 0.06209512500000003,
+        "plugin_sha256": "ad39e2329579cf87295796379e12035805d923a3417b8021af37df0a198322f6",
+        "rss_gib": 0.266937255859375,
+        "scratch_bytes": 0
+      },
+      "candidate": {
+        "command_seconds": 0.598,
+        "input_seconds": 0.048807916,
+        "modeled_bytes": 259969440,
+        "native_peak_bytes": 143669580,
+        "native_seconds": 0.486442167,
+        "outer_seconds": 0.06191491699999996,
+        "plugin_sha256": "1c2aedb88532e0ab15f338f9322b81c9966317263b8b105a924bde540df873f2",
+        "rss_gib": 0.314178466796875,
+        "scratch_bytes": 0
+      },
+      "candidate_baseline_ratio": 1.013559322033898,
+      "case": "aw_129",
+      "exact_science": true,
+      "group": "control",
+      "pair": "prep-transport-aw_129-s31415927"
+    },
+    {
+      "baseline": {
+        "command_seconds": 0.006,
+        "input_seconds": 0.000323541,
+        "modeled_bytes": 860232,
+        "native_peak_bytes": 685372,
+        "native_seconds": 0.0015196250000000001,
+        "outer_seconds": 0.004048167,
+        "plugin_sha256": "ad39e2329579cf87295796379e12035805d923a3417b8021af37df0a198322f6",
+        "rss_gib": 0.08697509765625,
+        "scratch_bytes": 0
+      },
+      "candidate": {
+        "command_seconds": 0.006,
+        "input_seconds": 0.000217625,
+        "modeled_bytes": 860232,
+        "native_peak_bytes": 685372,
+        "native_seconds": 0.001472875,
+        "outer_seconds": 0.004198166,
+        "plugin_sha256": "1c2aedb88532e0ab15f338f9322b81c9966317263b8b105a924bde540df873f2",
+        "rss_gib": 0.056243896484375,
+        "scratch_bytes": 0
+      },
+      "candidate_baseline_ratio": 1.0,
+      "case": "narrow_no_fe",
+      "exact_science": true,
+      "group": "control",
+      "pair": "prep-transport-narrow_no_fe-s31415927"
+    }
+  ],
+  "summary": [
+    {
+      "baseline_command_seconds": 0.5900000000000001,
+      "baseline_input_seconds": 0.047850666,
+      "baseline_modeled_bytes": 259969440,
+      "baseline_native_peak_bytes": 143669580,
+      "baseline_native_seconds": 0.479210542,
+      "baseline_outer_seconds": 0.06209512500000003,
+      "baseline_rss_gib": 0.266937255859375,
+      "baseline_scratch_bytes": 0,
+      "candidate_command_seconds": 0.598,
+      "candidate_input_seconds": 0.048807916,
+      "candidate_modeled_bytes": 259969440,
+      "candidate_native_peak_bytes": 143669580,
+      "candidate_native_seconds": 0.486442167,
+      "candidate_outer_seconds": 0.06191491699999996,
+      "candidate_rss_gib": 0.314178466796875,
+      "candidate_scratch_bytes": 0,
+      "case": "aw_129",
+      "group": "control",
+      "median_paired_change_percent": 1.3559322033898091,
+      "pairs": 1
+    },
+    {
+      "baseline_command_seconds": 0.006,
+      "baseline_input_seconds": 0.000323541,
+      "baseline_modeled_bytes": 860232,
+      "baseline_native_peak_bytes": 685372,
+      "baseline_native_seconds": 0.0015196250000000001,
+      "baseline_outer_seconds": 0.004048167,
+      "baseline_rss_gib": 0.08697509765625,
+      "baseline_scratch_bytes": 0,
+      "candidate_command_seconds": 0.006,
+      "candidate_input_seconds": 0.000217625,
+      "candidate_modeled_bytes": 860232,
+      "candidate_native_peak_bytes": 685372,
+      "candidate_native_seconds": 0.001472875,
+      "candidate_outer_seconds": 0.004198166,
+      "candidate_rss_gib": 0.056243896484375,
+      "candidate_scratch_bytes": 0,
+      "case": "narrow_no_fe",
+      "group": "control",
+      "median_paired_change_percent": 0.0,
+      "pairs": 1
+    }
+  ]
+}
