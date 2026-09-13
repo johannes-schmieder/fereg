@@ -1,0 +1,102 @@
+diff --git a/crates/fereg-core/src/ols/prepared_fit.rs b/crates/fereg-core/src/ols/prepared_fit.rs
+index 30815c9..44d40ca 100644
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -31,6 +31,10 @@ use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData
+ #[derive(Debug, Clone, Copy, PartialEq)]
+ pub struct PreparedOlsFitConfig {
+     pub absorb: AbsorbConfig,
++    /// The one-shot OLS publisher can recover saved effects from the certified
++    /// final target when an accepted Schur solve omits its initial product.
++    /// Other weighted-linear callers retain their coefficient requirement.
++    pub allow_final_fe_recovery: bool,
+     /// Multiplier on `eps * max(N, K, 1)` after finite columns are scaled by
+     /// their pre-absorption weighted norms.
+     pub rank_tolerance_multiplier: f64,
+@@ -96,6 +100,7 @@ impl Default for PreparedOlsFitConfig {
+                 ..AbsorbConfig::default()
+             },
+             rank_tolerance_multiplier: 128.0,
++            allow_final_fe_recovery: false,
+             fixed_effect_collinearity_tolerance: 1e-9,
+             score_tolerance: 5e-10,
+             bread_tolerance: 5e-10,
+@@ -1359,7 +1364,7 @@ fn build_fit_fe_absorber<'a, P: PreparedOlsFitView + ?Sized>(
+         .ok_or_else(|| invalid_argument("OLS Schur RHS width overflows"))?;
+     if config.absorb.solver == FeSolverKind::Auto
+         && config.execution.mode == PreparedOlsExecutionMode::Fast
+-        && !config.absorb.retain_coefficients
++        && (!config.absorb.retain_coefficients || config.allow_final_fe_recovery)
+         && (16..=64).contains(&width)
+         && config.absorb.certified_fallback
+         && config.absorb.map.max_iterations
+@@ -1541,6 +1546,9 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
+                 eprintln!("FEREG_PHASE|schur_route|contraction={contraction:.9}|probe={probe_seconds:.9}|selected={}", contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION);
+             }
+             if contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION {
++                // A rejected probe still uses the original retained-product
++                // policy. Only accepted Schur calls defer coefficient recovery.
++                config.retain_coefficients = false;
+                 return crate::fe::absorb_ols_schur_certified(
+                     design,
+                     weights,
+@@ -7452,6 +7460,47 @@ mod tests {
+         assert_eq!(result.report().pilot_contraction, contraction);
+         assert!(result.report().setup_seconds > 0.0);
+         assert!(result.report().iterations <= config.absorb.map.max_iterations);
++        let mut saved = config;
++        saved.absorb.retain_coefficients = true;
++        saved.allow_final_fe_recovery = true;
++        let mut saved_session =
++            build_fit_fe_absorber(&prepared, BorrowedMapWeights::Unit, saved).unwrap();
++        assert!(saved_session.schur_config.is_some());
++        let saved_result = absorb_fit_matrix(
++            &prepared,
++            BorrowedMapWeights::Unit,
++            prepared.fit_build_rhs().unwrap(),
++            saved.absorb,
++            &mut saved_session,
++            true,
++            false,
++        )
++        .unwrap();
++        assert_eq!(saved_result.report().pilot_contraction, contraction);
++        assert!(saved_result.report().certified());
++        assert!(saved_result.into_full_parts().2.is_some());
++
++        let strong_effects = [
++            (0..n).map(|r| (r % 17) as f64).collect::<Vec<_>>(),
++            (0..n).map(|r| ((r / 17) % 13) as f64).collect::<Vec<_>>(),
++        ];
++        let strong = prepared_multiway_categorical(&y, &x, &strong_effects);
++        let mut strong_session =
++            build_fit_fe_absorber(&strong, BorrowedMapWeights::Unit, saved).unwrap();
++        let strong_result = absorb_fit_matrix(
++            &strong,
++            BorrowedMapWeights::Unit,
++            strong.fit_build_rhs().unwrap(),
++            saved.absorb,
++            &mut strong_session,
++            true,
++            false,
++        )
++        .unwrap();
++        assert!(strong_result.report().certified());
++        assert_eq!(strong_result.report().pilot_iterations, 8);
++        assert!(strong_result.report().pilot_contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION);
++        assert!(strong_result.into_full_parts().2.is_none());
+         for variant in 0..4 {
+             let mut config = config;
+             match variant {
+diff --git a/crates/fereg-plugin/src/estimate.rs b/crates/fereg-plugin/src/estimate.rs
+index 95d4581..57f19e3 100644
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -792,6 +792,7 @@ impl EstimateActionSpec {
+         let default_fit = PreparedOlsFitConfig::default();
+         let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
+         let fit = PreparedOlsFitConfig {
++            allow_final_fe_recovery: true,
+             absorb: AbsorbConfig {
+                 solver: self.solver,
+                 map: MapConfig {

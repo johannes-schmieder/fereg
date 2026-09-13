@@ -10,6 +10,31 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P6 original PW screen resumed; recovery admission remains open
+
+The [repaired-baseline screen](benchmarks/reports/development/saved-schur-probe-local-2026-09-13/repaired-baseline/README.md)
+reapplies the archived two-file saved-Schur prototype against accepted `dadd956`.
+Plugin `18427c19` binds 176 inputs, passes both architecture builds/native ABI,
+the focused guard test and all 48 independent saved-output oracle fits. The
+identical baseline plugin's 48-fit oracle receipt is retained from the CG repair.
+
+The exact original PW missing/two-way-cluster/partial-saved pair now completes:
+3.498→2.518 seconds (−28.0%), native peak 841.84→581.41 MB (−30.9%), input near
+0.081 s in both. Full b/V/residuals are exact, saved FE maximum difference is
+6.05e-10 within unchanged tolerances, and samples/status/DoF/certificates pass.
+The probe accepts at 0.00794698, but its full Schur attempt reaches the 64-step
+cap and continues with CG: candidate 138 = 8 probe + 64 Schur + 66 CG iterations,
+versus baseline 66. Both fallback flags remain set. Reported command/peak includes
+that discarded attempt and final recovery; this is one pair, not adoption.
+
+Both peaks exceed the unchanged 424.69 MB model. The source audit identifies
+retained score storage overlapping the unbudgeted final recovery/fallback chain.
+Next implement checked admission for those overlapping allocations and test
+constrained-budget failure/rollback before further timing or primary repeats.
+The prototype remains uncommitted in prepared_fit.rs and plugin estimate.rs;
+accepted numerical baseline remains `dadd956`, installed dist is unchanged, and
+unrelated Veneto changes remain. #27 is unfinished; no agents/SCC/push.
+
 ## P6 prerequisite: negative CG energy independently audited
 
 The [source-bound repair](benchmarks/reports/development/cg-energy-audit-local-2026-09-13/README.md)
