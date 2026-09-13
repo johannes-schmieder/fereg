@@ -10,6 +10,50 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P0/R1 borrowed LSMR transport: adopted local checkpoint
+
+The borrowed categorical LSMR adapter now delays its overwritten candidate
+allocation until the upstream solve ends, releases RHS transport before output
+materialization, and releases demeaned/unrequested coefficient banks before
+independent certification. The original input and requested recovery coefficients
+retain their scientific lifetimes; see
+[ADR 0048](docs/adr/0048-borrowed-lsmr-transport-lifetimes.md).
+
+The [report](benchmarks/reports/development/lsmr-transport-local-2026-09-12/README.md)
+binds seventeen successful pairs / 34 measured commands against `15bd21d`.
+Three-seed automatic weak-graph native peaks fall 30.37→27.31 MB at N30720/K10
+and 469.17→403.31 MB at N122880/K65 (10.1%/14.0%). Command medians are
+0.060→0.060 and 0.997→1.013 seconds; the wide median paired overhead is 0.9%.
+This is a measured memory improvement, not a speed claim. Full successful
+science and non-time solver decisions remain exact. Generic explicit fast
+LSMR, strong Schur and complete IID control peaks remain unchanged. The PPML
+checkpoint control adds 10 ms/3.9%, with exact science and retry diagnostics.
+
+Sixty-two focused Rust tests and both arms of two explicit-dummy Stata oracles
+pass, including retained batches, saved coefficients, raw-scale certificates
+and constrained routing. Two other weak requests fail identical r(459) guards
+on both artifacts: low FW cluster is uncertified; saved AW coefficient recovery
+is not certified/aligned. All seven timed failed calls and the separate
+untimed duplicate-solver warm-up failure are preserved. Those failures remain
+unresolved and do not count as passing oracles.
+
+The [P0 audit](benchmarks/reports/development/lsmr-transport-local-2026-09-12/memory-audit.md)
+proves the OLS model's missing per-RHS/coefficient-space recurrence accounting
+with six independent allocation tests and four pinned-within batch probes.
+Reporting separately omits topology solver increments. Row permutation,
+scatter, batch output overlap and Schwarz dense/setup/apply lifetimes also need
+reconciliation; inspect the existing more detailed PPML model before sharing
+it, including its unproven nested-concurrency bound. Public model excesses persist:
+27.31 versus 13.39 MB and 403.31 versus 268.55 MB on these primary cases.
+The small weak control exposes about 55 MB versus 1.045 MB. P0 is not closed.
+
+Adopted native inputs match the measured universal plugin; static/native arm64
+ABI checks pass. Installed dist, 97 unrelated Veneto STATUS additions and all
+pre-existing untracked paths remain preserved. No SCC, qualification or push.
+Next correct and validate joint memory accounting/reporting, then address the
+remaining #27 work and preserved certificate failures. Finish #27 before the
+authorized independent agents, upstream CMG assessment and new small SCC campaign.
+
 ## P3/P7 cluster-boundary setup: adopted local checkpoint
 
 OLS ordered clustering and PPML paired-independent reductions now share a bounded

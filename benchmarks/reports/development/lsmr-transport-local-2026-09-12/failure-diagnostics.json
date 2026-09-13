@@ -1,0 +1,58 @@
+[
+  {
+    "arm": "baseline",
+    "case": "retained_low",
+    "metadata": {
+      "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10  [fw=w], absorb(g1 g2) threads(4) solver(lsmr) poolsize(10) vce(cluster c1) memory(low) preconditioner(schwarz)",
+      "processors_lic": 8.0,
+      "processors_mach": 24.0,
+      "rc": 459.0,
+      "seconds": 0.048,
+      "stata_processors": 4.0,
+      "stata_version": 19.0
+    },
+    "status": "worker_failure"
+  },
+  {
+    "arm": "candidate",
+    "case": "retained_low",
+    "metadata": {
+      "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10  [fw=w], absorb(g1 g2) threads(4) solver(lsmr) poolsize(10) vce(cluster c1) memory(low) preconditioner(schwarz)",
+      "processors_lic": 8.0,
+      "processors_mach": 24.0,
+      "rc": 459.0,
+      "seconds": 0.048,
+      "stata_processors": 4.0,
+      "stata_version": 19.0
+    },
+    "status": "worker_failure"
+  },
+  {
+    "arm": "baseline",
+    "case": "saved",
+    "metadata": {
+      "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10  [aw=w], absorb(saved_g=g1 g2) threads(4) solver(lsmr) poolsize(10) residuals(saved_e) preconditioner(schwarz)",
+      "processors_lic": 8.0,
+      "processors_mach": 24.0,
+      "rc": 459.0,
+      "seconds": 0.019,
+      "stata_processors": 4.0,
+      "stata_version": 19.0
+    },
+    "status": "worker_failure"
+  },
+  {
+    "arm": "candidate",
+    "case": "saved",
+    "metadata": {
+      "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10  [aw=w], absorb(saved_g=g1 g2) threads(4) solver(lsmr) poolsize(10) residuals(saved_e) preconditioner(schwarz)",
+      "processors_lic": 8.0,
+      "processors_mach": 24.0,
+      "rc": 459.0,
+      "seconds": 0.019,
+      "stata_processors": 4.0,
+      "stata_version": 19.0
+    },
+    "status": "worker_failure"
+  }
+]

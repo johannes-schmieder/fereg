@@ -1,0 +1,48 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index f69d31c..b580e4b 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -4568,10 +4568,8 @@ fn run_borrowed_lsmr_with_prepared<'a>(
+         ));
+     }
+     let lsmr_setup_started = Instant::now();
+-    let mut lsmr_values =
+-        fallible_matrix_copy(values, "unable to reserve automatic LSMR fallback matrix")?;
+-    let rhs = (0..lsmr_values.ncols())
+-        .map(|column| lsmr_values.column(column))
++    let rhs = (0..values.ncols())
++        .map(|column| values.column(column))
+         .collect::<Result<Vec<_>>>()?;
+     let rhs_views = rhs.iter().map(Vec::as_slice).collect::<Vec<_>>();
+     let options = LsmrOptions {
+@@ -4587,7 +4585,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
+     );
+     let preconditioner = borrowed_within_preconditioner(resolved_preconditioner);
+     let owned_setup_seconds = lsmr_setup_started.elapsed().as_secs_f64();
+-    let (solved, preconditioner_fallback) = if let Some(prepared) = prepared.filter(|p| !p.disabled)
++    let (mut solved, preconditioner_fallback) = if let Some(prepared) = prepared.filter(|p| !p.disabled)
+     {
+         prepared.solve(
+             design,
+@@ -4637,11 +4635,21 @@ fn run_borrowed_lsmr_with_prepared<'a>(
+             }
+         }
+     };
++    // The candidate is wholly overwritten by the returned residuals. Allocate
++    // it after Krylov work, once the RHS transport can be released; preserve
++    // the caller's values for independent reference norms and any continuation.
++    drop(rhs_views);
++    drop(rhs);
++    let mut lsmr_values = DenseMatrix::zeros(values.nrows(), values.ncols())?;
+     for column in 0..lsmr_values.ncols() {
+         for (row, value) in solved.demeaned(column).iter().copied().enumerate() {
+             lsmr_values[(row, column)] = value;
+         }
+     }
++    drop(std::mem::take(&mut solved.demeaned));
++    if !retain_coefficients {
++        drop(std::mem::take(&mut solved.x));
++    }
+     let mut reservation = SystemWorkspaceReservation;
+     let mut certificate_workspace = BorrowedMapWorkspace::new(
+         design,

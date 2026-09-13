@@ -117,6 +117,13 @@ finite QR, VCE and saved-output recovery, so those stages do not overlap a
 new retained solver. RHS transport and certification workspaces remain per
 batch; this is setup reuse, not an allocation-free projection path.
 
+The borrowed LSMR adapter releases its column-major RHS transport before
+materializing the row-major result. It then releases the returned demeaned bank
+and unrequested coefficients before independent certification. The original
+input remains available for reference norms and certified continuation; requested
+coefficient products retain their existing lifetime. See
+[ADR 0048](adr/0048-borrowed-lsmr-transport-lifetimes.md).
+
 PPML joint and checkpoint LSMR preflight also charges the pinned Schwarz
 builder's dense cross-tabulation scratch. Its dispatch depends on both the
 product of retained FE level counts and the sparse observation-count cost;

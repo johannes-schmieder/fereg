@@ -1,0 +1,5 @@
+{
+  "source_sha256": "aba42494994cf8a9880f146b6f29178cef048e15e525a5df74b8032ed918ed0f",
+  "executable_sha256": "79fda33eace6e6da9431bcae7537dd548ede4647c1484390b7cf2aa320316c2d",
+  "note": "Setup delta excludes the weight buffer supplied by the caller; solve peak is measured after construction."
+}
