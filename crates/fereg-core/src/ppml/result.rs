@@ -1,6 +1,8 @@
 use super::prepared_model::PreparedPpmlModel;
 use super::prepared_separation::candidate_ledger_hash_candidate_axis;
 use super::prepared_separation::CertifiedSeparationSeal;
+use super::psd::inspect_published_ppml_covariance;
+#[cfg(test)]
 use super::psd::apply_ppml_psd_policy;
 use super::residuals::{ppml_residuals, PpmlResidualKind};
 use super::vce::{compute_ppml_wald, validate_weight_report};
@@ -2298,7 +2300,7 @@ fn validate_covariance_and_certificates(
     }
     let cluster_dimensions = inference.vce.cluster_dimension_groups.len();
     let (repaired, recomputed_psd) =
-        apply_ppml_psd_policy(&identified, rank, cluster_dimensions, tolerance)?;
+        inspect_published_ppml_covariance(&identified, rank, cluster_dimensions, tolerance)?;
     if matrix_relative_error(&identified, &repaired)? > tolerance {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
@@ -2326,7 +2328,7 @@ fn validate_covariance_and_certificates(
     if !state_valid
         || !report_values_valid
         || !psd.passed
-        || psd.final_rank != recomputed_psd.final_rank
+        || psd.final_rank != recomputed_psd.rank
         || psd.final_rank > rank
         || psd.clipped_eigenvalues > rank
         || psd.eigensystem_reconstruction_relative_error < 0.0
@@ -2346,17 +2348,17 @@ fn validate_covariance_and_certificates(
             && (psd.raw_minimum_eigenvalue < 0.0 || psd.clipped_eigenvalues != 0))
         || (psd.state == PpmlPsdState::Strict && psd.clipped_eigenvalues != 0)
         || psd.eigensystem_reconstruction_relative_error + 16.0 * f64::EPSILON
-            < recomputed_psd.eigensystem_reconstruction_relative_error
+            < recomputed_psd.reconstruction_relative_error
         || psd.orthogonality_relative_error + 16.0 * f64::EPSILON
             < recomputed_psd.orthogonality_relative_error
         || (psd.state != PpmlPsdState::MultiwayClipped
             && relative_scalar_error(
                 psd.raw_minimum_eigenvalue,
-                recomputed_psd.raw_minimum_eigenvalue,
+                recomputed_psd.minimum_eigenvalue,
             ) > tolerance)
         || relative_scalar_error(
             psd.final_minimum_eigenvalue,
-            recomputed_psd.final_minimum_eigenvalue,
+            recomputed_psd.minimum_eigenvalue,
         ) > tolerance
     {
         return Err(FeregError::new(
@@ -5371,6 +5373,103 @@ mod tests {
         terminal_mu.note = "prepared mu found no small zero-outcome means".into();
         validate_separation_report(&report, mu_only, &candidate_original_rows, 1, &[], 0)
             .expect("proof-free Mu no-candidate result is the sole no-drop grammar");
+    }
+
+    #[test]
+    fn clipped_covariance_validation_certifies_the_published_matrix() {
+        // Q is an independently constructed Householder reflection. The raw
+        // spectrum has 22 positive and 43 negative eigenvalues, so its exact
+        // PSD projection is Q diag(max(lambda, 0)) Q'.
+        let dimension = 65;
+        let tolerance = 1e-10;
+        let vector: Vec<f64> = (0..dimension)
+            .map(|i| (((i + 1) * 137 + 11 * 53) % 251) as f64 - 125.0)
+            .collect();
+        let squared_norm: f64 = vector.iter().map(|value| value * value).sum();
+        let orthogonal: Vec<f64> = (0..dimension * dimension)
+            .map(|i| {
+                f64::from(u8::from(i / dimension == i % dimension))
+                    - 2.0 * vector[i / dimension] * vector[i % dimension] / squared_norm
+            })
+            .collect();
+        let eigenvalues: Vec<f64> = (0..dimension)
+            .map(|j| {
+                if j % 3 == 0 {
+                    1.0 + j as f64
+                } else {
+                    -(1.0 + j as f64) / 7.0
+                }
+            })
+            .collect();
+        let mut raw = vec![0.0; dimension * dimension];
+        let mut expected = vec![0.0; dimension * dimension];
+        for row in 0..dimension {
+            for column in row..dimension {
+                let mut value = 0.0;
+                let mut clipped = 0.0;
+                for eigen in 0..dimension {
+                    value += orthogonal[row * dimension + eigen]
+                        * eigenvalues[eigen]
+                        * orthogonal[column * dimension + eigen];
+                    clipped += orthogonal[row * dimension + eigen]
+                        * eigenvalues[eigen].max(0.0)
+                        * orthogonal[column * dimension + eigen];
+                }
+                raw[row * dimension + column] = value;
+                raw[column * dimension + row] = value;
+                expected[row * dimension + column] = clipped;
+                expected[column * dimension + row] = clipped;
+            }
+        }
+        let (published, report) = apply_ppml_psd_policy(&raw, dimension, 2, tolerance).unwrap();
+        assert_eq!(report.final_rank, 22);
+        assert_eq!(report.clipped_eigenvalues, 43);
+        assert!(matrix_relative_error(&published, &expected).unwrap() < tolerance);
+        let coefficients = PpmlCoefficientOutput::new(
+            vec![0.0; dimension],
+            vec![PpmlCoefficientStatus::Identified; dimension],
+            (0..dimension).map(Some).collect(),
+            (0..dimension).collect(),
+        )
+        .unwrap();
+        let mut inference = certified_composite_input().inference;
+        inference.vce.covariance = published.clone();
+        inference.vce.standard_errors = (0..dimension)
+            .map(|index| published[index * dimension + index].sqrt())
+            .collect();
+        inference.vce.cluster_dimension_groups = vec![97, 3];
+        inference.vce.psd = report;
+        validate_covariance_and_certificates(&coefficients, &inference, tolerance)
+            .expect("the certificate must describe the actual published covariance");
+        assert_eq!(inference.vce.covariance, published);
+        for mutation in 0..8 {
+            inference.vce.psd = report;
+            match mutation {
+                0 => inference.vce.psd.final_rank += 1,
+                1 => inference.vce.psd.clipped_eigenvalues = 0,
+                2 => inference.vce.psd.adjusted = false,
+                3 => inference.vce.psd.raw_minimum_eigenvalue = 0.0,
+                4 => inference.vce.psd.final_minimum_eigenvalue = 1.0,
+                5 => inference.vce.psd.orthogonality_relative_error = 0.0,
+                6 => inference.vce.psd.eigensystem_reconstruction_relative_error = 0.0,
+                _ => inference.vce.psd.passed = false,
+            }
+            assert_eq!(
+                validate_covariance_and_certificates(&coefficients, &inference, tolerance)
+                    .expect_err("an inconsistent report must still be rejected")
+                    .code,
+                ErrorCode::NonConvergence,
+            );
+        }
+        inference.vce.psd = report;
+        inference.vce.covariance[1] = 1000.0;
+        inference.vce.covariance[dimension] = 1000.0;
+        assert_eq!(
+            validate_covariance_and_certificates(&coefficients, &inference, tolerance)
+                .expect_err("a materially indefinite matrix cannot reuse a valid report")
+                .code,
+            ErrorCode::NonConvergence,
+        );
     }
 
     #[test]

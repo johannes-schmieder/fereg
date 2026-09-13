@@ -10,6 +10,52 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4/P6 published covariance inspection: adopted local repair
+
+The [source-bound report](benchmarks/reports/development/ppml-psd-validation-local-2026-09-13/README.md)
+repairs final PPML PSD-report validation against accepted `fd6b970`. The validator
+inspects the published covariance's own eigensystem, retaining the existing
+bound on further repair and all report/rank/tolerance checks. It no longer
+substitutes diagnostics from a newly re-clipped comparison matrix. Production
+CGM, inference and all numerical session/moment code remain unchanged;
+[ADR 0056](docs/adr/0056-published-ppml-covariance-validation.md) records the boundary.
+
+The original PW K257/N7680 warm-up fails r(430) on baseline and passes candidate.
+A closed-form 65-dimensional Householder spectrum independently reproduces the
+invalid rejection; forged reports and indefinite matrices still fail. A NumPy
+profiled-Poisson/full-CGM oracle matches the original sample, identified and
+reported ranks, nested FE and cluster structure, with maximum b/V errors
+3.97e-15 / 2.87e-16. The N30720 full request has exact scientific exports in both
+arms. Its common +576-byte modeled-phase offset is recorded separately as a
+pre-validator dynamic embedding input discrepancy; its allocation source was
+not traced. Native peak is unchanged/admitted. The initial oracle's incorrect
+identified-versus-reported rank assertion is preserved and corrected to the
+existing normalized-constant contract, not a new rank policy.
+
+Forty-seven core tests, 33 PPML plugin tests and three independent licensed
+fixtures on both arms pass, with explicit r(0)/sentinels. Isolated universal
+build/static audits and actual arm64 ABI checks pass. Eleven paired cost
+comparisons preserve exact b/V, discrete science, native peaks and modeled
+budgets, all admitted. FW K129/exposure/missing saves 337/340/345 ms across
+three seeds: median command 4.740→4.400 seconds (7.2% paired), publication
+0.68449→0.34734. Inference remains unchanged. The largest absolute control
+increase is complete K50 +230 ms/3.1%, in unchanged finite/strict work;
+saved-output +11.5% is +3 ms. No control crosses the review envelope. K129 and
+AW OLS sampled RSS rise; no memory saving is claimed. All PPML retry/fallback
+counts stay zero. Cold functional calls are separate from timing evidence.
+
+Candidate plugin is `411ed113101399adda2c893d0b3e51fa16cbc96e230871ec568e8b346a689126`;
+176 source/ado/fixture inputs are bound by the report. An excluded initial
+wrong-Cargo-directory diagnostic build, baseline failures and both harness
+corrections remain disclosed. Installed/dist and unrelated Veneto evidence are
+preserved. No agents, cluster, qualification or push occurred.
+
+Next resume the original 17-pair wider-moment protocol against this repair,
+including the unchanged PW K257 warm-up and full request. The wider prototype
+remains absent/unadopted; broader #27 P4/P6/P7 and other open items remain open.
+Complete #27 before the authorized two-agent investigation, upstream CMG review
+and later small SCC campaign.
+
 ## P4/P6 bounded request transport: adopted local repair
 
 The [source-bound report](benchmarks/reports/development/request-transport-local-2026-09-13/README.md)

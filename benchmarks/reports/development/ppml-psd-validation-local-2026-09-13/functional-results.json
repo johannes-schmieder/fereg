@@ -1,0 +1,38 @@
+[
+  {
+    "arm": "baseline",
+    "expected_rc": 430,
+    "n": 7680,
+    "rc": 430.0,
+    "scientific_pass": false,
+    "sentinel": true,
+    "status": "worker_failure"
+  },
+  {
+    "arm": "candidate",
+    "expected_rc": 0,
+    "n": 7680,
+    "rc": 0.0,
+    "scientific_pass": true,
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "baseline",
+    "expected_rc": 0,
+    "n": 30720,
+    "rc": 0.0,
+    "scientific_pass": true,
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "candidate",
+    "expected_rc": 0,
+    "n": 30720,
+    "rc": 0.0,
+    "scientific_pass": true,
+    "sentinel": true,
+    "status": "pass"
+  }
+]

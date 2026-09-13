@@ -148,6 +148,86 @@ struct SymmetricEigensystem {
     orthogonality_relative_error: f64,
 }
 
+#[derive(Debug)]
+pub(crate) struct PublishedPpmlPsdInspection {
+    pub minimum_eigenvalue: f64,
+    pub rank: usize,
+    pub reconstruction_relative_error: f64,
+    pub orthogonality_relative_error: f64,
+}
+
+/// Inspect the published matrix itself. The returned comparison matrix retains
+/// the existing bound on any further PSD repair, but its eigensystem must not
+/// replace diagnostics for the matrix whose report is being validated.
+pub(crate) fn inspect_published_ppml_covariance(
+    covariance: &[f64],
+    dimension: usize,
+    cluster_dimensions: usize,
+    tolerance: f64,
+) -> Result<(Vec<f64>, PublishedPpmlPsdInspection)> {
+    if !tolerance.is_finite() || tolerance <= 0.0 || tolerance >= 1.0 {
+        return Err(invalid_argument(
+            "PPML PSD tolerance must be finite and lie in (0, 1)",
+        ));
+    }
+    let square = checked_square(dimension, "PPML PSD dimensions overflow usize")?;
+    if covariance.len() != square || covariance.iter().any(|value| !value.is_finite()) {
+        return Err(invalid_argument(
+            "PPML covariance is nonfinite or dimensionally inconsistent",
+        ));
+    }
+    if dimension == 0 {
+        return Ok((
+            Vec::new(),
+            PublishedPpmlPsdInspection {
+                minimum_eigenvalue: 0.0,
+                rank: 0,
+                reconstruction_relative_error: 0.0,
+                orthogonality_relative_error: 0.0,
+            },
+        ));
+    }
+    let mut symmetric = fallible_copy(covariance, "unable to reserve PPML symmetric covariance")?;
+    symmetrize(&mut symmetric, dimension)?;
+    let spectrum = symmetric_eigensystem(&symmetric, dimension)?;
+    let minimum = spectrum
+        .values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min);
+    let scale = matrix_scale(&symmetric, dimension)?;
+    if minimum < -tolerance * scale
+        || spectrum.reconstruction_relative_error > tolerance
+        || spectrum.orthogonality_relative_error > tolerance
+    {
+        return Err(numerical_nonconvergence(
+            "PPML published covariance fails its independent PSD inspection",
+        ));
+    }
+    let inspection = PublishedPpmlPsdInspection {
+        minimum_eigenvalue: minimum,
+        rank: spectrum
+            .values
+            .iter()
+            .filter(|value| **value > tolerance * scale)
+            .count(),
+        reconstruction_relative_error: spectrum.reconstruction_relative_error,
+        orthogonality_relative_error: spectrum.orthogonality_relative_error,
+    };
+    let comparison = if cluster_dimensions > 1 && minimum < 0.0 {
+        let (repaired, _) = reconstruct_clipped(&spectrum, dimension)?;
+        if certify_clipped_reconstruction(&spectrum, &repaired, dimension)? > tolerance {
+            return Err(numerical_nonconvergence(
+                "PPML published covariance repair comparison is uncertified",
+            ));
+        }
+        repaired
+    } else {
+        symmetric
+    };
+    Ok((comparison, inspection))
+}
+
 fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEigensystem> {
     let square = checked_square(dimension, "PPML eigensystem dimensions overflow usize")?;
     if matrix.len() != square {
@@ -491,6 +571,35 @@ fn allocation(message: impl Into<String>) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn published_psd_inspection_rejects_invalid_inputs_without_mutation() {
+        let positive = [2.0_f64, -0.5, -0.5, 1.0];
+        for clusters in [0, 1, 2, 5] {
+            let (comparison, inspection) =
+                inspect_published_ppml_covariance(&positive, 2, clusters, 1e-10).unwrap();
+            assert_eq!(comparison, positive);
+            assert_eq!(inspection.rank, 2);
+            assert!(inspection.minimum_eigenvalue > 0.0);
+            assert!(
+                inspect_published_ppml_covariance(&[1.0, 2.0, 2.0, 1.0], 2, clusters, 1e-10)
+                    .is_err()
+            );
+        }
+        for (values, dimension, tolerance) in [
+            (vec![1.0, f64::NAN, 0.0, 1.0], 2, 1e-10),
+            (vec![1.0], 2, 1e-10),
+            (vec![1.0], 1, 0.0),
+            (vec![1.0], 1, f64::INFINITY),
+            (vec![], usize::MAX, 1e-10),
+        ] {
+            assert!(inspect_published_ppml_covariance(&values, dimension, 2, tolerance).is_err());
+        }
+        let (empty, inspection) = inspect_published_ppml_covariance(&[], 0, 2, 1e-10).unwrap();
+        assert!(empty.is_empty());
+        assert_eq!(inspection.rank, 0);
+        assert_eq!(inspection.minimum_eigenvalue, 0.0);
+    }
 
     #[test]
     fn robust_and_one_way_paths_reject_material_indefiniteness() {

@@ -157,6 +157,11 @@ N/K/K² value, omission marker, dimension, and destination is validated before
 the first store. SPI calls stay on Stata's thread. Completion is the final
 receipt cell; no allocation, polling, display, computation, or store follows.
 
+PPML final covariance validation independently inspects the published matrix's
+eigensystem and checks its production report. A further clipped comparison
+retains the existing repair-distance bound but does not supply replacement
+diagnostics or public values; see [ADR 0056](adr/0056-published-ppml-covariance-validation.md).
+
 SPI cannot physically roll back private cells, so an incomplete receipt makes
 all shadows invalid. The ado transaction holds prior named/null estimates and
 defers requested variable renames until its final protected block. Native

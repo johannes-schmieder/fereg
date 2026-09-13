@@ -1,0 +1,108 @@
+{
+  "all_licensed_oracles_pass": true,
+  "arm64_actual_abi_selftest_pass": true,
+  "closed_form_candidate_pass": true,
+  "core_tests": 47,
+  "expected_closed_form_baseline_failure": true,
+  "failures": [
+    "Expected original warm covariance-report rejection and baseline known-spectrum unit failure.",
+    "Excluded initial diagnostic build launched from wrong Cargo working directory; isolated artifact never used, rebuilt correctly.",
+    "Original full functional comparator assumed pure-shape memory totals; all share +576-byte pre-validator dynamic model offset. Separately recorded; all scientific exactness guards retained.",
+    "Initial independent oracle confused reported finite rank with identified sandwich rank; corrected to existing normalized-constant contract with additional status/nesting checks."
+  ],
+  "focused_core_groups": {
+    "psd": 4,
+    "result": 29,
+    "vce": 14
+  },
+  "independent_profile_oracle_pass": true,
+  "installed_plugin_unchanged": true,
+  "licensed_invocations": 6,
+  "logs": {
+    "build.log": {
+      "sha256": "6da27eb92aca9a1f1d403a45e2b128d9c88fdf523434e17558a6a6ab3e4233fb",
+      "test_results": []
+    },
+    "diagnostic-build.log": {
+      "sha256": "bb26a5d21e5c3bf9962c04f5393a9eb7e4c2e5c9e7a1e8683775aeff0da5bb29",
+      "test_results": []
+    },
+    "functional.log": {
+      "sha256": "f005c61f997135537f673e65ada8e95025bc6be7b0376cb73dc70fc524904904",
+      "test_results": []
+    },
+    "licensed-oracles.log": {
+      "sha256": "efa44e0425176a818555b065ee8400cf83099cce327ed767b62fdfc67a7e37df",
+      "test_results": []
+    },
+    "paired-controls.log": {
+      "sha256": "f052b044e90f4404a08db45b8442565d06dd499cf9afe0889d1142426cf70ca7",
+      "test_results": []
+    },
+    "paired-repeats.log": {
+      "sha256": "a420739bb32497f69ca35e9df46780fa7597e81893cc2742bf36befda194fc02",
+      "test_results": []
+    },
+    "plugin-tests.log": {
+      "sha256": "4494a5508511fda0a4bfcc351b284d295219cc679b33c7e97913ec966e4bf550",
+      "test_results": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 93 filtered out; finished in 0.01s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 93 filtered out; finished in 0.04s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 93 filtered out; finished in 0.86s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 93 filtered out; finished in 4.03s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 93 filtered out; finished in 11.98s",
+        "test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 61 filtered out; finished in 11.99s"
+      ]
+    },
+    "profiled-oracle-final.log": {
+      "sha256": "cb03d9796f61f77cf0ebe553bc3a1a6f3d9c1edefbe49a1e2db6fe0af55fbbb3",
+      "test_results": []
+    },
+    "profiled-oracle.log": {
+      "sha256": "2a5824cb1bca6c126cc425403c9e1f709277c7cb14554f7c1c0bb3dadadc9228",
+      "test_results": []
+    },
+    "psd-tests.log": {
+      "sha256": "951359b37c0ab4d8ed845927b2bc82d003ee31a1835d96992815608089e81105",
+      "test_results": [
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 798 filtered out; finished in 0.00s"
+      ]
+    },
+    "result-tests.log": {
+      "sha256": "07071f2cd34576d06415003b98af485dd56f3800e29c221e591df91e317b07c6",
+      "test_results": [
+        "test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 773 filtered out; finished in 1.59s"
+      ]
+    },
+    "validator-repair.log": {
+      "sha256": "5eee9e2c0bc94d5bb0af025169651a301445b561a53df9314c886ac5f32f26f9",
+      "test_results": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 800 filtered out; finished in 0.48s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s"
+      ]
+    },
+    "validator-reproducer.log": {
+      "sha256": "4ddc4656db4f121dd1377552f9b208f4b9ab43c66d5ed3341b842ccd57d25d94",
+      "test_results": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 800 filtered out; finished in 0.58s"
+      ]
+    },
+    "vce-tests.log": {
+      "sha256": "6e79ad996551b0491c3af8d698086a64346e5f1ccf38a7d165438c78cd20beab",
+      "test_results": [
+        "test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 788 filtered out; finished in 0.03s"
+      ]
+    },
+    "wrong-directory-build.log": {
+      "sha256": "525f7a74510dbaead5115988748125c2bd19ba90e1bb8929d4c802b6683a5735",
+      "test_results": []
+    }
+  },
+  "plugin_tests": 33,
+  "static_binary_audits_pass": true,
+  "universal_build": true,
+  "x86_runtime_run": false
+}

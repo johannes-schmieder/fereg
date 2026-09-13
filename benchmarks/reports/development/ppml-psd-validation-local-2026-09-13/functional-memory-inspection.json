@@ -1,0 +1,27 @@
+{
+  "admission_pass": true,
+  "explanation": "Every modeled phase and both mode totals share a 576-byte offset. The unchanged pre-core allocator embedding snapshot is a dynamic model input and is charged equally to every phase. The changed final result validator runs after this snapshot. The individual allocation responsible was not traced; no allocation or memory-saving claim is inferred.",
+  "model_deltas": {
+    "feppml_memory_fast_bytes": 576.0,
+    "feppml_memory_low_bytes": 576.0,
+    "feppml_memory_selected_bytes": 576.0,
+    "feppml_modeled_peak_fe_recovery": 576.0,
+    "feppml_modeled_peak_feproj": 576.0,
+    "feppml_modeled_peak_final_solve": 576.0,
+    "feppml_modeled_peak_finite": 576.0,
+    "feppml_modeled_peak_inference": 576.0,
+    "feppml_modeled_peak_line_search": 576.0,
+    "feppml_modeled_peak_prep": 576.0,
+    "feppml_modeled_peak_publication": 576.0,
+    "feppml_modeled_peak_sep_fe": 576.0,
+    "feppml_modeled_peak_sep_ir": 576.0,
+    "feppml_modeled_peak_sep_mu": 576.0,
+    "feppml_modeled_peak_sep_simplex": 576.0,
+    "feppml_modeled_peak_weight": 576.0
+  },
+  "native_peaks": {
+    "baseline": 253216167.0,
+    "candidate": 253216167.0
+  },
+  "science_exact": true
+}
