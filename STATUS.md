@@ -10,6 +10,40 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 same-call projection norms: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/ppml-norm-reuse-local-2026-09-13/README.md)
+adopts [ADR 0052](docs/adr/0052-ppml-same-call-projection-norms.md) against repaired
+`6b7d0fe`. Successful fused one-FE PPML projection copies its certified trailing
+control norms into retained storage when frame/MAP weight divisors match.
+Multi-FE handoffs and alternative divisors retain the stable current-frame scan.
+No last-result accessor, norm-vector transfer or observation-sized allocation is
+introduced. Raw reference scales, warm certificates and strict rank policy remain.
+
+Fifteen pairs / 30 commands include nine primaries over three seeds, five controls
+and one separate private audit. Complete/FW/PW command medians fall
+10.317→9.689 / 3.380→3.231 / 3.035→2.933 seconds; median paired gains are
+8.5%/4.5%/4.5%. All primary pairs improve. The large first-screen preparation
+difference is preserved and not attributed to norm reuse. Projection/strict
+phases fall; native peaks are exact and admitted throughout. Sampled RSS moves
+both ways, including higher explicit-MAP RSS; no memory saving is claimed.
+The largest protected command increase is explicit MAP +5 ms. The private audit
+falls 8.661→8.027 seconds and retains zero allocation events and live/peak growth.
+
+Full paired b/V and discrete scientific/solver fields are exact; independent
+certificates pass. Twenty-three isolated candidate tests include changed-weight,
+iteration-zero, capacity and failure checks; the stale-rank oracle now exercises
+both matching and alternative divisors. Both independent dummy Poisson/sandwich
+oracle arms and universal static/native arm64 ABI checks pass. All 152 native
+input hashes match the measured isolated plugin a4d4a33a... . Initial scale-field
+compilation error and every measurement are disclosed; no tolerances changed.
+
+Next evaluate fresh raw one-FE certificates and fresh-design norm construction,
+then remaining P4 passes and #27 packages. The combined P4 fresh-input/norm item
+remains open. The two independent agents, upstream CMG assessment and small SCC
+campaign remain after #27. Installed dist, all 97 unrelated Veneto lines and
+historical receipts remain intact; no push, agents, cluster or qualification.
+
 ## P4 current-weight within norms: correctness repair
 
 The [source-bound repair and cost report](benchmarks/reports/development/ppml-current-norms-local-2026-09-13/README.md)
@@ -47,9 +81,8 @@ universal static and native arm64 ABI checks passing again. The workflow now
 records source-snapshot target isolation. Other scaffold/test-expectation
 failures and all timing observations are preserved in the report.
 
-Next remove the added norm scan by safely consuming same-call certified
-projector norms, then evaluate fresh-input certificate removal. Further P4
-passes and the remaining #27 work are open. The two independent agents,
+The subsequent same-call norm reuse is adopted above. Fresh-input certificate
+removal, further P4 passes and the remaining #27 work are open. The two independent agents,
 upstream CMG assessment and small SCC campaign remain after #27. Installed
 dist, all 97 unrelated Veneto lines and prior evidence remain intact; no push,
 agents, cluster work or qualification occurred.

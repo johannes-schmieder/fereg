@@ -4832,7 +4832,20 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
 
         let combined = DenseMatrix::from_row_major(rows, stride, values)?;
-        let absorbed = self.absorb_reusable_map(combined)?;
+        let Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) =
+            self.fe_projector.as_mut()
+        else {
+            return Err(invalid_argument(
+                "fused weighted-linear projection requires the PPML categorical MAP route",
+            ));
+        };
+        let (absorbed, norms_reused) = projector.absorb_with_trailing_norms(
+            self.weights.borrowed(),
+            combined,
+            self.config.absorb.map,
+            self.bread_weight_scale.solver_weight_divisor,
+            &mut within_norms,
+        )?;
         if !absorbed.report().certified() {
             return Err(invalid_data(
                 "fused weighted-linear response/design projection did not certify",
@@ -4861,8 +4874,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let within = DenseMatrix::from_row_major(rows, columns, values)?;
         // Strict rank and score checks consume these norms under the current
         // weight frame, even when a frozen solve did not need them itself.
-        workspace_reused &=
-            self.fill_weighted_dense_column_norms_reusing(&within, &mut within_norms)?;
+        if !norms_reused {
+            workspace_reused &=
+                self.fill_weighted_dense_column_norms_reusing(&within, &mut within_norms)?;
+        }
         self.within = Some(RetainedWithinDesign {
             storage: RetainedWithinStorage::Dense(within),
             stored_generated_columns,

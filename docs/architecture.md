@@ -70,6 +70,10 @@ After a fused response/design projection, retained within-column norms must
 also use the current weight frame. Strict rank and score checks consume those
 norms even when the preceding frozen-basis solve did not need them; advancing
 design generations cannot make old norms authoritative.
+One-FE fused projections copy norms certified by that same call into retained
+storage when the frame and projector weight divisors match. Multi-FE handoffs
+and alternative frame divisors retain the stable current-frame scan; see
+[ADR 0052](adr/0052-ppml-same-call-projection-norms.md).
 Large, wide one-FE retained reference refreshes assign columns to the existing
 team while preserving each column's row order, stable norms and compensated
 means. Frozen finite solves share an existing identity scratch bank across

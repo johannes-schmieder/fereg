@@ -10747,62 +10747,70 @@ mod tests {
             },
             ..PreparedOlsFitConfig::default()
         };
-        let fresh_frame = LinearSolveFrame::from_prepared_ols(&next).unwrap();
-        let mut fresh = CertifiedLinearSession::new_with_ppml_fe_design(
-            &initial,
-            fresh_frame,
-            config,
-            LinearSessionGenerations::new(0, 0, 1, 1, 0),
-            initial.fit_owned_fe_design().unwrap(),
-        )
-        .unwrap();
-        let fresh_output = fresh.solve_fresh().unwrap();
-        let expected = fresh_output.fit();
-        assert_eq!(expected.finite_rank(), 0);
-        let mut reused = CertifiedLinearSession::new_with_ppml_fe_design(
-            &initial,
-            LinearSolveFrame::from_prepared_ols(&initial).unwrap(),
-            config,
-            LinearSessionGenerations::new(0, 0, 0, 0, 0),
-            initial.fit_owned_fe_design().unwrap(),
-        )
-        .unwrap();
-        assert_eq!(reused.solve_fresh().unwrap().fit().finite_rank(), 1);
-        reused.refresh_response(&y, 1).unwrap();
-        reused
-            .refresh_weights(
-                fresh_frame.raw_weights(),
-                fresh_frame.bread_weight_scale(),
-                1,
+        let canonical = LinearSolveFrame::from_prepared_ols(&next).unwrap();
+        for divisor_factor in [1.0, 8.0] {
+            let mut scale = canonical.bread_weight_scale();
+            scale.solver_weight_divisor *= divisor_factor;
+            scale.reference_weight_multiplier *= divisor_factor;
+            let fresh_frame =
+                LinearSolveFrame::from_parts(canonical.response(), canonical.raw_weights(), scale)
+                    .unwrap();
+            let mut fresh = CertifiedLinearSession::new_with_ppml_fe_design(
+                &initial,
+                fresh_frame,
+                config,
+                LinearSessionGenerations::new(0, 0, 1, 1, 0),
+                initial.fit_owned_fe_design().unwrap(),
             )
             .unwrap();
-        // Each two-row group's weighted within sum of squares is
-        // w0*w1/(w0+w1) * (x1-x0)^2. The current ratio is below the unchanged
-        // FE-collinearity cutoff; using the old numerator instead is above it.
-        let within_square = 4.0 * (1e-8 / (1.0 + 1e-8)) * 0.002_f64.powi(2);
-        let raw_square = x
-            .iter()
-            .zip(&next_weights)
-            .map(|(x, w)| w * x * x)
-            .sum::<f64>();
-        assert!(within_square / raw_square < config.fixed_effect_collinearity_tolerance);
-        assert!(8e-6 / raw_square > config.fixed_effect_collinearity_tolerance);
-        // Strict staging must recertify the prior basis before a transaction
-        // can publish. Here that basis became FE-collinear under new weights.
-        let error = reused
-            .strictify()
-            .err()
-            .expect("stale prior basis must fail closed");
-        assert_eq!(error.code, ErrorCode::InvalidData);
-        assert_eq!(
-            error.message,
-            "strict weighted-linear prior basis could not be recertified"
-        );
-        assert_eq!(reused.basis_generation_for_test(), 0);
-        assert!(reused.output().is_err());
-        reused.refresh_basis(1).unwrap();
-        let actual = reused.solve_fresh().unwrap();
-        assert_fit_science_equal(actual.fit(), expected);
+            let fresh_output = fresh.solve_fresh().unwrap();
+            let expected = fresh_output.fit();
+            assert_eq!(expected.finite_rank(), 0);
+            let mut reused = CertifiedLinearSession::new_with_ppml_fe_design(
+                &initial,
+                LinearSolveFrame::from_prepared_ols(&initial).unwrap(),
+                config,
+                LinearSessionGenerations::new(0, 0, 0, 0, 0),
+                initial.fit_owned_fe_design().unwrap(),
+            )
+            .unwrap();
+            assert_eq!(reused.solve_fresh().unwrap().fit().finite_rank(), 1);
+            reused.refresh_response(&y, 1).unwrap();
+            reused
+                .refresh_weights(
+                    fresh_frame.raw_weights(),
+                    fresh_frame.bread_weight_scale(),
+                    1,
+                )
+                .unwrap();
+            // Each two-row group's weighted within sum of squares is
+            // w0*w1/(w0+w1) * (x1-x0)^2. The current ratio is below the unchanged
+            // FE-collinearity cutoff; using the old numerator instead is above it.
+            let within_square = 4.0 * (1e-8 / (1.0 + 1e-8)) * 0.002_f64.powi(2);
+            let raw_square = x
+                .iter()
+                .zip(&next_weights)
+                .map(|(x, w)| w * x * x)
+                .sum::<f64>();
+            assert!(within_square / raw_square < config.fixed_effect_collinearity_tolerance);
+            assert!(8e-6 / raw_square > config.fixed_effect_collinearity_tolerance);
+            // Strict staging must recertify the prior basis before a transaction
+            // can publish. Here that basis became FE-collinear under new weights.
+            let error = reused
+                .strictify()
+                .err()
+                .expect("stale prior basis must fail closed");
+            assert_eq!(error.code, ErrorCode::InvalidData);
+            assert_eq!(
+                error.message,
+                "strict weighted-linear prior basis could not be recertified"
+            );
+            assert_eq!(reused.basis_generation_for_test(), 0);
+            assert!(reused.output().is_err());
+            reused.refresh_basis(1).unwrap();
+            let actual = reused.solve_fresh().unwrap();
+            assert_fit_science_equal(actual.fit(), expected);
+        }
     }
 
     #[test]

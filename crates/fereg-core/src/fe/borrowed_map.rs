@@ -1378,6 +1378,47 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         }
     }
 
+    /// Copy trailing-column norms from this successful projection into retained
+    /// caller storage. One-FE returns certify the exact returned values in this
+    /// workspace; multi-FE solver handoffs need not leave the same norms here.
+    pub(crate) fn absorb_with_trailing_norms(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: MapConfig,
+        norm_weight_scale: f64,
+        output: &mut [f64],
+    ) -> Result<(CertifiedBorrowedMap, bool)> {
+        if output.len() > values.ncols() {
+            return Err(invalid_argument(
+                "reusable categorical MAP norm output exceeds the RHS count",
+            ));
+        }
+        let absorbed = self.absorb(weights, values, config)?;
+        if self.design.effects().len() != 1 {
+            return Ok((absorbed, false));
+        }
+        // The linear frame may deliberately use a divisor other than MAP's
+        // maximum raw weight. Leave its stable norm calculation authoritative.
+        let raw_scale = match weights {
+            BorrowedMapWeights::Unit => 1.0,
+            BorrowedMapWeights::Provided(values) => {
+                values.iter().copied().fold(0.0_f64, f64::max)
+            }
+        };
+        if raw_scale != norm_weight_scale {
+            return Ok((absorbed, false));
+        }
+        let norms = &self.workspace.residual_norms;
+        if norms.len() != absorbed.residualized().ncols() {
+            return Err(invalid_data(
+                "reusable categorical MAP certified norms are not aligned",
+            ));
+        }
+        output.copy_from_slice(&norms[norms.len() - output.len()..]);
+        Ok((absorbed, true))
+    }
+
     pub(crate) fn absorb(
         &mut self,
         weights: BorrowedMapWeights<'_>,
@@ -8769,6 +8810,135 @@ mod tests {
                     assert_eq!(projector.capacities(), capacities);
                 }
             });
+        }
+    }
+
+    #[test]
+    fn reusable_one_fe_trailing_norms_follow_current_values_weights_and_width() {
+        let codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
+        let index = LevelIndex::from_codes(&codes, 4).unwrap();
+        let source = ValidatedBorrowedInterceptSource::new(&codes, 4, &index).unwrap();
+        let design = BorrowedInterceptFeDesign::new(codes.len(), vec![source.effect()]).unwrap();
+        let mut reusable = ReusableCategoricalMapAbsorber::new(design, 3, 1).unwrap();
+        let capacities = reusable.capacities();
+        let columns = [
+            vec![1.0, 2.0, 3.0, 5.0, -1.0, 4.0, 6.0, 3.0],
+            vec![1e140, 2e140, -3e140, 1e140, 2e140, 5e140, -1e140, 3e140],
+            vec![1e-140, 2e-140, 5e-140, 3e-140, 0.0, -1e-140, 2e-140, 4e-140],
+        ];
+        let first = [1.0, 3.0, 2.0, 5.0, 4.0, 7.0, 6.0, 8.0];
+        let next = [8e100, 1e100, 7e100, 2e100, 6e100, 3e100, 5e100, 4e100];
+        let mut output = [0.0; 2];
+        for (weights, scale) in [
+            (BorrowedMapWeights::Unit, 1.0),
+            (BorrowedMapWeights::Provided(&first), 8.0),
+            (BorrowedMapWeights::Provided(&next), 8e100),
+        ] {
+            for width in [3, 1, 2, 3] {
+                let norms = &mut output[..width - 1];
+                let (actual, reused) = reusable
+                    .absorb_with_trailing_norms(
+                        weights,
+                        DenseMatrix::from_columns(&columns[..width]).unwrap(),
+                        config(),
+                        scale,
+                        norms,
+                    )
+                    .unwrap();
+                assert!(reused);
+                assert!(actual.report().iterations > 0);
+                for (column, &norm) in norms.iter().enumerate() {
+                    // Hypot is independent of the scaled-square accumulator
+                    // and remains finite at both extreme column scales.
+                    let expected = (0..codes.len()).fold(0.0_f64, |sum, row| {
+                        let w = match weights {
+                            BorrowedMapWeights::Unit => 1.0,
+                            BorrowedMapWeights::Provided(w) => w[row] / scale,
+                        };
+                        sum.hypot(w.sqrt() * actual.residualized()[(row, column + 1)])
+                    });
+                    assert!((norm / expected - 1.0).abs() < 2e-15);
+                }
+                let (values, _) = actual.into_parts();
+                let saved = norms.to_vec();
+                norms.fill(-1.0);
+                let (warm, reused) = reusable
+                    .absorb_with_trailing_norms(weights, values, config(), scale, norms)
+                    .unwrap();
+                assert!(reused);
+                assert_eq!(warm.report().iterations, 0);
+                assert_eq!(norms, saved.as_slice());
+                assert_eq!(reusable.capacities(), capacities);
+            }
+        }
+    }
+
+    #[test]
+    fn reusable_trailing_norms_do_not_publish_on_mismatch_or_failure() {
+        let codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
+        let index = LevelIndex::from_codes(&codes, 4).unwrap();
+        let source = ValidatedBorrowedInterceptSource::new(&codes, 4, &index).unwrap();
+        let second_codes = [0_u32, 1, 0, 1, 0, 1, 0, 1];
+        let second_index = LevelIndex::from_codes(&second_codes, 2).unwrap();
+        let second = ValidatedBorrowedInterceptSource::new(&second_codes, 2, &second_index).unwrap();
+        let weights = [1.0, 3.0, 2.0, 5.0, 4.0, 7.0, 6.0, 8.0];
+        let values = || {
+            DenseMatrix::from_columns(&[
+                vec![1.0, 3.0, 2.0, -1.0, 5.0, 4.0, 6.0, 8.0],
+                vec![2.0, -1.0, 5.0, 3.0, 4.0, 6.0, -2.0, 7.0],
+            ])
+            .unwrap()
+        };
+        for multi_fe in [false, true] {
+            let effects = if multi_fe {
+                vec![source.effect(), second.effect()]
+            } else {
+                vec![source.effect()]
+            };
+            let design = BorrowedInterceptFeDesign::new(codes.len(), effects).unwrap();
+            let mut reusable = ReusableCategoricalMapAbsorber::new(design, 2, 1).unwrap();
+            reusable.enable_checkpoint_lsmr();
+            let mut norms = [-1.0];
+            for scale in [8.0, 4.0] {
+                let saved = norms;
+                let (_, reused) = reusable
+                    .absorb_with_trailing_norms(
+                        BorrowedMapWeights::Provided(&weights),
+                        values(),
+                        config(),
+                        scale,
+                        &mut norms,
+                    )
+                    .unwrap();
+                assert_eq!(reused, !multi_fe && scale == 8.0);
+                if !reused {
+                    assert_eq!(norms, saved);
+                }
+            }
+            let saved = norms;
+            let mut invalid = values();
+            invalid[(0, 0)] = f64::NAN;
+            assert!(reusable
+                .absorb_with_trailing_norms(
+                    BorrowedMapWeights::Unit,
+                    invalid,
+                    config(),
+                    1.0,
+                    &mut norms,
+                )
+                .is_err());
+            assert_eq!(norms, saved);
+            let mut oversized = [-1.0; 3];
+            assert!(reusable
+                .absorb_with_trailing_norms(
+                    BorrowedMapWeights::Unit,
+                    values(),
+                    config(),
+                    1.0,
+                    &mut oversized,
+                )
+                .is_err());
+            assert_eq!(oversized, [-1.0; 3]);
         }
     }
 
