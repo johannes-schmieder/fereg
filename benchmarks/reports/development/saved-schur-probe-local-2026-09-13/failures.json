@@ -1,0 +1,67 @@
+{
+  "original_pw": {
+    "status": "worker_failure",
+    "seconds": 0.495,
+    "metadata": {
+      "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50  [pw=w], absorb(saved_g=g1 g2) threads(16) solver(auto) poolsize(10) vce(cluster c1 c2) residuals(saved_e)",
+      "processors_lic": 8.0,
+      "processors_mach": 24.0,
+      "rc": 459.0,
+      "seconds": 0.495,
+      "stata_processors": 8.0,
+      "stata_version": 19.0
+    },
+    "sample_rows": null,
+    "sample_sha256": null,
+    "input_sha256": "eecf8666668f96734ee06c52310b9920f29c65fc9cce86fd3707be22399fc7d0",
+    "peak_rss_gib": 1.085235595703125,
+    "rss_samples": 20,
+    "rss_interval_seconds": 0.01,
+    "process_returncode": 0,
+    "sentinel": true,
+    "failure_stage": "result_extraction_or_status",
+    "stata_worker_sha256": "d7d38e0cd5a4f4e1b7e9fa65f5c4b39779fae81ceec80df1b76c9907c06efdfe"
+  },
+  "exact_worker_diagnostic": {
+    "status": "worker_failure",
+    "seconds": 0.494,
+    "metadata": {
+      "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50  [pw=w], absorb(saved_g=g1 g2) threads(16) solver(auto) poolsize(10) vce(cluster c1 c2) residuals(saved_e)",
+      "processors_lic": 8.0,
+      "processors_mach": 24.0,
+      "rc": 459.0,
+      "seconds": 0.494,
+      "stata_processors": 8.0,
+      "stata_version": 19.0
+    },
+    "sample_rows": null,
+    "sample_sha256": null,
+    "input_sha256": "eecf8666668f96734ee06c52310b9920f29c65fc9cce86fd3707be22399fc7d0",
+    "peak_rss_gib": 1.0835723876953125,
+    "rss_samples": 20,
+    "rss_interval_seconds": 0.01,
+    "process_returncode": 0,
+    "sentinel": true,
+    "failure_stage": "result_extraction_or_status",
+    "stata_worker_sha256": "dd5c5c30f94c9781a9a47a20159d500acca9ac27e6d1f3c867de644f5206a337"
+  },
+  "direct_replays": {
+    "diagnostic-pw-baseline": {
+      "rc": 0,
+      "same_warmup": false,
+      "purpose": "diagnostic only; not a replacement performance result"
+    },
+    "diagnostic-pw-warm-baseline": {
+      "rc": 0,
+      "same_warmup": true,
+      "purpose": "diagnostic only; not a replacement performance result"
+    }
+  },
+  "harness_correction": "Original AW weighted graph fails the existing probe (0.010614637>0.01). Both commands and science pass. Remove the incorrect assumption that a nominal strong graph must select Schur; rejected probes instead require exact full b/V/fit/certificate/saved exports. Preserve initial assertion failure and original paired results. No source, data, solver, or numerical tolerance change.",
+  "operational_errors": [
+    "Initial snapshot omitted identity-listed Stata fixtures; corrected before build.",
+    "First direct diagnostic used parent cwd and returned Stata r601; preserved locally and excluded.",
+    "One diagnostic launch requested a not-yet-created cwd; no process launched. Created the directory before retry.",
+    "Initial scalar-diagnostic harness reused an existing output-directory name and raised FileExistsError before launching Stata. Corrected to a fresh directory; prior output unchanged."
+  ]
+}

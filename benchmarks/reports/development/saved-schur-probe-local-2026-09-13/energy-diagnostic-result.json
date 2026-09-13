@@ -1,0 +1,23 @@
+{
+  "status": "worker_failure",
+  "seconds": 0.488,
+  "metadata": {
+    "command": "fereg y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40 x41 x42 x43 x44 x45 x46 x47 x48 x49 x50  [pw=w], absorb(saved_g=g1 g2) threads(16) solver(auto) poolsize(10) vce(cluster c1 c2) residuals(saved_e)",
+    "processors_lic": 8.0,
+    "processors_mach": 24.0,
+    "rc": 459.0,
+    "seconds": 0.488,
+    "stata_processors": 8.0,
+    "stata_version": 19.0
+  },
+  "sample_rows": null,
+  "sample_sha256": null,
+  "input_sha256": "eecf8666668f96734ee06c52310b9920f29c65fc9cce86fd3707be22399fc7d0",
+  "peak_rss_gib": 1.07965087890625,
+  "rss_samples": 20,
+  "rss_interval_seconds": 0.01,
+  "process_returncode": 0,
+  "sentinel": true,
+  "failure_stage": "result_extraction_or_status",
+  "stata_worker_sha256": "dd5c5c30f94c9781a9a47a20159d500acca9ac27e6d1f3c867de644f5206a337"
+}

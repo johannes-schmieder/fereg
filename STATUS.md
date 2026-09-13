@@ -10,6 +10,52 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P6 saved two-FE Schur: promising prototype; baseline repair next
+
+The [source-bound probe](benchmarks/reports/development/saved-schur-probe-local-2026-09-13/README.md)
+tests ordinary OLS permission to omit its initial coefficient batch only after
+the existing weighted Schur probe accepts. Rejected probes retain coefficients;
+other weighted-linear callers keep their default requirement. Baseline numerical
+source is `257f4ce` at evidence HEAD `75ad177`. Prototype plugin `002a3089` binds
+176 inputs, passes both architecture builds/native arm64 ABI, the focused core
+guard test and 48 independent saved-output dummy-oracle fits per artifact.
+Eligible weighted two-FE oracle fits demonstrate actual new Schur dispatch.
+
+The original unit saved-both-channel screen falls 2.897→0.650 seconds, with
+native peak 839.05→378.71 MB. Input time stays about 0.075 s; native falls
+2.784→0.538 s and initial absorption supplies the savings. Full b/V and saved
+values pass original tolerances; sample/status/DoF remain exact. This is one
+pair, not adoption or a cumulative speed claim. Its baseline exceeds the public
+418.80 MB model; its candidate fits, but complete recovery admission is unproven.
+
+The original degree-two AW operator rejects Schur: contraction 0.0106146 exceeds
+0.01. Both commands spend about 84 seconds, with exact b/V/fit/certificate/saved
+exports and unchanged 3363.96 MB native peak, above the 1675.12 MB public model.
+The candidate adds the charged eight-step probe. The harness initially assumed
+every nominal strong graph must select Schur; that assertion failure and its
+correction remain preserved. No original AW pair was replaced or rerun.
+
+The original PW missing/two-way-cluster/partial-saved baseline fails r(459)
+before the candidate runs. Exact noisy-worker replay identifies a CG Hestenes
+negative-energy failure during absorption. Two direct replays pass; the cause
+of that worker/direct difference remains unestablished. A separate accepted-
+baseline scalar diagnostic (plugin `200370b2`) reproduces the error on RHS 51,
+the explicit constant: previous 139583.428571428522, decrease
+139583.428571428580, remaining −5.820766e−11 versus floor 3.099375e−11. This is
+a two-ulp overshoot. The diagnostic changes no arithmetic or error policy and
+passes both architecture builds/native ABI. All failures and setup mistakes
+remain in the report; no failed command is counted as a pass.
+
+The P6 prototype is archived and removed; all 176 accepted build inputs are
+restored on main. Next independently reproduce and repair the energy-roundoff
+boundary using a narrowly triggered stable energy audit, retaining invalid-step
+rejection, Hestenes convergence and independent FE/reconstruction certificates.
+No repair is implemented yet. Then resume the exact original PW screen, resolve
+overlapping final-recovery/fallback memory admission and constrained budgets,
+and complete the prescribed protected/repeated comparisons before adoption.
+P6 and the remaining #27 work stay open; no target/seed substitution, agents,
+SCC, qualification or push. Installed dist and unrelated Veneto work remain.
+
 ## P6 selected-output mask: evaluated and rejected
 
 The [isolated report](benchmarks/reports/development/selected-output-mask-local-2026-09-13/README.md)

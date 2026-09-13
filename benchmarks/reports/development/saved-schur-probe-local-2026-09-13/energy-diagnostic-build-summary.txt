@@ -1,0 +1,8 @@
+   Compiling fereg-core v0.5.0 (<isolated-bench>/energy-diagnostic-source/crates/fereg-core)
+   Compiling fereg-plugin v0.5.0 (<isolated-bench>/energy-diagnostic-source/crates/fereg-plugin)
+    Finished `release` profile [optimized] target(s) in 45.35s
+   Compiling fereg-core v0.5.0 (<isolated-bench>/energy-diagnostic-source/crates/fereg-core)
+   Compiling fereg-plugin v0.5.0 (<isolated-bench>/energy-diagnostic-source/crates/fereg-plugin)
+    Finished `release` profile [optimized] target(s) in 45.11s
+actual-plugin ABI/self-test harness: PASS
+Built universal <isolated-bench>/energy-diagnostic-source/dist/fereg_macos.plugin
