@@ -10,6 +10,35 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4/P6 wider moment probe: request transport needs repair first
+
+The [source-bound probe](benchmarks/reports/development/ppml-wide-moments-probe-local-2026-09-13/README.md)
+archives an unadopted extension against accepted `22b5106`. Two fixed 64-value
+tiles preserve exact Gram/RHS row/FMA order above 64 active columns with no new
+heap or observation-sized state. Sixty-two isolated tests pass, including exact
+scalar moments at 128/129/257 columns and 1/4/16 workers; both narrow independent
+Poisson/sandwich oracle arms and universal static/native arm64 ABI checks pass.
+
+First-screen unit K65 and FW K129 commands fall 2.269→1.636 and 4.726→3.458
+seconds, with exact b/V and admitted unchanged native peaks. These single pairs
+are promising but insufficient for adoption. The PW K257 target fails on the
+unchanged baseline's warm-up with r(1003), before measurement. No repeats,
+protected performance controls, private audit or candidate K257 public fit ran.
+
+Noisy replay/trace localize the failure to framed request transport at the
+plugin invocation. A separate 270-variable short call reaches native code;
+1,024/4,096-byte dummy options reach native validation, while 8,192+ bytes fail
+inside Stata with `options too long`. The exact universal limit is not claimed.
+All failures and diagnostic log hashes are preserved, including an initial
+invalid `_dup` probe. The numerical prototype is archived and reversed; all
+152 accepted native hashes are restored. Installed dist and Veneto work remain.
+
+Next repair bounded metadata/request transport independently, preserving one
+substantive native call, main-thread SPI, canonical framing and publication
+atomicity, then resume the full wider-tile protocol against that repaired
+baseline. Do not replace the unavailable PW target with a smaller passing case.
+Other #27 work remains open; agents, CMG assessment and SCC remain after #27.
+
 ## P4/P7 retained dense moments: adopted local checkpoint
 
 The [source-bound report](benchmarks/reports/development/ppml-moments-local-2026-09-13/README.md)

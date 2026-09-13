@@ -1,0 +1,15 @@
+{
+  "all_pairs_exact_science": false,
+  "all_pairs_science_pass": true,
+  "completed_pairs": 2,
+  "contents": "Portable synthetic input hashes/recipes; full b/V and diagnostic tables; sample hashes; action and phase timings, allocations and sampled RSS; saved outputs; per-run worker copies where available. No licensed logs, binaries, request paths or private data.",
+  "measured_calls": 4,
+  "primary_pairs": 2,
+  "sha256": "5fe936b1f891c9088a94dc361adc498ebf7e31e007667d71890f7240c671d8be",
+  "disposition": "unadopted prototype interrupted by baseline transport failure",
+  "all_pairs_full_b_V_exact": true,
+  "failed_before_target_invocation": 1,
+  "protected_pairs": 0,
+  "private_audit_pairs": 0,
+  "repeated_pairs": 0
+}
