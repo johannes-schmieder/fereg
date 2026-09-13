@@ -5,8 +5,8 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::sandwich::{
-    bread_meat_bread, reduce_qualified_cluster_subset, reduce_qualified_clustered_score_meats,
-    QualifiedClusterCertificateRoute, QualifiedClusterRoutePolicy,
+    bread_meat_bread, prepare_cluster_score_batch, reduce_qualified_cluster_subset, reduce_qualified_clustered_score_meats,
+    QualifiedClusterCertificateRoute, QualifiedClusterRoutePolicy, QualifiedClusterScoreBatch,
     QualifiedClusterSubsetMeatProvider, QualifiedClusterSubsetMeats, SandwichCorrectionPolicy,
     SandwichProductMode, SandwichScoreMultiplier, SandwichScorePair,
 };
@@ -360,6 +360,7 @@ struct OlsQualifiedClusterSubsetProvider<'a> {
     scores: &'a CertifiedPreparedOlsScoreDesign<'a>,
     weights: ReferenceWeightView<'a>,
     dimensions: &'a [&'a [u32]],
+    group_batch: Option<&'a QualifiedClusterScoreBatch>,
 }
 
 #[derive(Clone, Copy)]
@@ -412,25 +413,29 @@ impl<R: PreparedInferenceReservation> QualifiedClusterSubsetMeatProvider<R>
         } else {
             QualifiedClusterCertificateRoute::OlsPerGroupBread(self.fit.bread().values())
         };
-        let meats = reduce_qualified_cluster_subset(
-            self.scores,
-            self.scores.dense_view(),
-            OlsClusterScoreMultiplier {
-                residuals: self.fit.residuals(),
-                weights: self.weights,
-            },
-            self.dimensions,
-            mask,
-            certificate,
-            QualifiedClusterRoutePolicy {
-                maximum_dimensions: 10,
-                reduction_maximum_blocks: CLUSTER_REDUCTION_MAX_BLOCKS,
-                partial_budget_bytes: CLUSTER_PARTIAL_BUDGET_BYTES,
-                ordered_rows_per_block: 16_384,
-                dense_groups_per_block: 1_024,
-            },
-            reservation,
-        )?;
+        let meats = if let Some(batch) = self.group_batch {
+            batch.reduce_subset(mask, self.fit.bread().values(), reservation)?
+        } else {
+            reduce_qualified_cluster_subset(
+                self.scores,
+                self.scores.dense_view(),
+                OlsClusterScoreMultiplier {
+                    residuals: self.fit.residuals(),
+                    weights: self.weights,
+                },
+                self.dimensions,
+                mask,
+                certificate,
+                QualifiedClusterRoutePolicy {
+                    maximum_dimensions: 10,
+                    reduction_maximum_blocks: CLUSTER_REDUCTION_MAX_BLOCKS,
+                    partial_budget_bytes: CLUSTER_PARTIAL_BUDGET_BYTES,
+                    ordered_rows_per_block: 16_384,
+                    dense_groups_per_block: 1_024,
+                },
+                reservation,
+            )?
+        };
         #[cfg(test)]
         {
             // Keep the pre-extraction implementation as a qualification oracle
@@ -988,15 +993,32 @@ fn build_raw_covariance<R: PreparedInferenceReservation>(
 ) -> Result<RawClusterCovariance> {
     let p = fit.bread().dimension();
     let square = checked_square(p, "prepared clustered meat dimensions overflow usize")?;
-    let combined = reduce_qualified_clustered_score_meats(
-        &OlsQualifiedClusterSubsetProvider {
-            fit,
-            scores,
-            weights,
-            dimensions,
-        },
-        reservation,
-    )?;
+    let combined = {
+        let group_batch = if scores.dense_view().is_none() {
+            prepare_cluster_score_batch(
+                scores,
+                OlsClusterScoreMultiplier {
+                    residuals: fit.residuals(),
+                    weights,
+                },
+                dimensions,
+                10,
+                reservation,
+            )?
+        } else {
+            None
+        };
+        reduce_qualified_clustered_score_meats(
+            &OlsQualifiedClusterSubsetProvider {
+                fit,
+                scores,
+                weights,
+                dimensions,
+                group_batch: group_batch.as_ref(),
+            },
+            reservation,
+        )?
+    };
     let combined_meat = combined.production;
     let mut combined_influence = combined.certificate;
     let subsets = combined.subsets;
@@ -3468,6 +3490,47 @@ mod tests {
     fn low_memory_small_cluster_table_matches_legacy_group_influences() {
         let (mut request, mut loaded) = super::super::prepared_clusters::tests::fixture();
         request.ols.include_intercept = true;
+        let original = loaded.clone();
+        loaded.candidate = original.candidate.repeat(512);
+        loaded.outcome.values = original.outcome.values.repeat(512);
+        loaded.outcome.missing = original.outcome.missing.repeat(512);
+        for ((_, target), (_, source)) in loaded
+            .numeric_sources
+            .iter_mut()
+            .zip(&original.numeric_sources)
+        {
+            target.values = source.values.repeat(512);
+            target.missing = source.missing.repeat(512);
+        }
+        let prepared =
+            prepare_ols_clustered_data(&request, &loaded).expect("large clustered fixture");
+        let mut config = PreparedOlsClusteredConfig::default();
+        config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
+        let low = fit_prepared_ols_clustered_map(&prepared, config).expect("bounded score table");
+        assert!(low.certificate().passed);
+        // Every subset also runs the independent pre-extraction scratch reducer
+        // inside the provider and requires bit-identical meats and group counts.
+        let mut count = CountingReservation::succeeds();
+        fit_with_reservation(&prepared, config, &mut count).expect("count new-route reservations");
+        for fail_at in 0..count.calls {
+            let mut failing = CountingReservation::fails_at(fail_at);
+            assert!(fit_with_reservation(&prepared, config, &mut failing).is_err());
+        }
+    }
+
+    #[test]
+    fn low_memory_batched_cluster_tables_match_legacy_and_fail_closed() {
+        let (mut request, mut loaded) = super::super::prepared_clusters::tests::fixture();
+        request.ols.include_intercept = true;
+        let sources = request.clusters[0].sources.clone();
+        request.clusters = sources
+            .into_iter()
+            .enumerate()
+            .map(|(index, source)| super::super::OlsClusterTermV1 {
+                label: format!("cluster_{index}"),
+                sources: vec![source],
+            })
+            .collect();
         let original = loaded.clone();
         loaded.candidate = original.candidate.repeat(512);
         loaded.outcome.values = original.outcome.values.repeat(512);

@@ -72,6 +72,11 @@ overlap. Larger or unrepresentable Cartesian products retain tuple sorting;
 scratch tiles and independent per-group bread checks remain unchanged. This
 does not increase admission or retain a second observation-by-control design;
 see [ADR 0044](adr/0044-sequential-low-memory-cluster-scores.md).
+For multiple dimensions, all subset score tables may instead share one row pass
+when their combined values, compensation, presence flags, range descriptors and
+row-code scratch fit the same ordering budget. Planning is all-or-none, the bank
+is action-local, and effective frequency counts never enlarge its physical-row
+budget; see [ADR 0045](adr/0045-batched-low-memory-cluster-scores.md).
 
 Above 64 finite columns, fast preflight additionally reserves
 `32*K^2 + 128*K` bytes for guarded Cholesky's four live square work/inverse/bread
@@ -90,8 +95,9 @@ paths have allocation/store-failure injection tests. An allocation failure
 cannot produce a complete receipt or partially committed public result.
 
 Unit weights remain structural. Categorical and FE recipes reuse compact source
-codes; interaction keys and cluster subset scores are streamed rather than
-retained as dense observation-by-arity or group-by-parameter tables.
+codes. Interaction keys are streamed rather than retained as a dense
+observation-by-arity matrix; cluster score tables obey the bounded alternatives
+above.
 Direct borrowed LSMR also reuses prepared memberships and Schwarz inputs. Its
 memory model reports the code/membership copy avoided relative to the former
 owned adapter. Schwarz setup and Krylov solve are modeled as non-overlapping

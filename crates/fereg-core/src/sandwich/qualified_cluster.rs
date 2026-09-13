@@ -289,6 +289,216 @@ where
     })
 }
 
+#[derive(Clone, Copy)]
+struct ClusterSubsetRange {
+    group_start: usize,
+    groups: usize,
+}
+
+/// Action-local group scores; all subsets share one original-row design pass.
+/// The complete bank and range metadata replace one N-row ordering allocation.
+pub(crate) struct QualifiedClusterScoreBatch {
+    dimension: usize,
+    ranges: Vec<ClusterSubsetRange>,
+    scores: DenseGroupScores,
+}
+
+impl QualifiedClusterScoreBatch {
+    pub(crate) fn reduce_subset<R: SandwichReservation>(
+        &self,
+        mask: usize,
+        bread: &[f64],
+        reservation: &mut R,
+    ) -> Result<QualifiedClusterSubsetResult> {
+        let range = mask
+            .checked_sub(1)
+            .and_then(|index| self.ranges.get(index))
+            .ok_or_else(|| invalid_argument("batched cluster subset is out of range"))?;
+        let group_end = range.group_start + range.groups;
+        let start = range.group_start * self.dimension;
+        let end = group_end * self.dimension;
+        finish_serial_dense_groups(
+            &self.scores.values[start..end],
+            &self.scores.corrections[start..end],
+            &self.scores.seen[range.group_start..group_end],
+            self.dimension,
+            bread,
+            reservation,
+        )
+    }
+}
+
+fn subset_group_slots(radices: &[usize], mask: usize) -> Option<usize> {
+    radices
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| mask & (1 << index) != 0)
+        .try_fold(1usize, |product, (_, radix)| product.checked_mul(*radix))
+}
+
+pub(crate) fn prepare_cluster_score_batch<S, M, R>(
+    design: &S,
+    multipliers: M,
+    dimensions: &[&[u32]],
+    maximum_dimensions: usize,
+    reservation: &mut R,
+) -> Result<Option<QualifiedClusterScoreBatch>>
+where
+    S: SandwichDesign + ?Sized,
+    M: SandwichScoreMultiplier,
+    R: SandwichReservation,
+{
+    let nobs = design.nrows();
+    let dimension = design.dimension();
+    if dimensions.len() < 2 || dimension == 0 {
+        return Ok(None);
+    }
+    if nobs == 0
+        || multipliers.nrows() != nobs
+        || dimensions.len() > maximum_dimensions
+        || dimensions.len() > 16
+        || dimensions.iter().any(|codes| codes.len() != nobs)
+    {
+        return Err(invalid_argument(
+            "batched cluster scores are not sample aligned",
+        ));
+    }
+    let mut radices = [0usize; 16];
+    for (target, codes) in radices.iter_mut().zip(dimensions) {
+        *target = codes
+            .iter()
+            .copied()
+            .max()
+            .and_then(|code| usize::try_from(code).ok())
+            .and_then(|code| code.checked_add(1))
+            .ok_or_else(|| invalid_data("batched cluster dimension has no groups"))?;
+    }
+    let subset_count = (1usize << dimensions.len()) - 1;
+    let budget = nobs
+        .checked_mul(std::mem::size_of::<usize>())
+        .ok_or_else(|| allocation("batched cluster ordering budget overflows"))?;
+    let metadata_bytes = subset_count
+        .checked_mul(std::mem::size_of::<ClusterSubsetRange>())
+        .ok_or_else(|| allocation("batched cluster range bytes overflow"))?;
+    let row_codes_bytes = (subset_count + 1)
+        .checked_mul(std::mem::size_of::<usize>())
+        .ok_or_else(|| allocation("batched cluster row-code bytes overflow"))?;
+    let metadata_bytes = metadata_bytes
+        .checked_add(row_codes_bytes)
+        .ok_or_else(|| allocation("batched cluster metadata bytes overflow"))?;
+    let Some(bytes_per_group) = dimension
+        .checked_mul(2 * std::mem::size_of::<f64>())
+        .and_then(|bytes| bytes.checked_add(std::mem::size_of::<u8>()))
+    else {
+        return Ok(None);
+    };
+    let mut total_groups = 0usize;
+    for mask in 1..=subset_count {
+        let Some(groups) = subset_group_slots(&radices[..dimensions.len()], mask) else {
+            return Ok(None);
+        };
+        let Some(total) = total_groups.checked_add(groups) else {
+            return Ok(None);
+        };
+        let Some(bytes) = total
+            .checked_mul(bytes_per_group)
+            .and_then(|bytes| bytes.checked_add(metadata_bytes))
+        else {
+            return Ok(None);
+        };
+        if bytes > budget {
+            return Ok(None);
+        }
+        total_groups = total;
+    }
+    // All shape arithmetic and admission precede bank reservation. A declined
+    // batch leaves the existing per-subset ordering/table budget available.
+    let mut ranges = reserved_empty(
+        reservation,
+        subset_count,
+        "unable to reserve batched cluster ranges",
+    )?;
+    let mut group_start = 0usize;
+    for mask in 1..=subset_count {
+        let groups = subset_group_slots(&radices[..dimensions.len()], mask)
+            .ok_or_else(|| allocation("admitted batched cluster range overflows"))?;
+        push_reserved(
+            &mut ranges,
+            ClusterSubsetRange {
+                group_start,
+                groups,
+            },
+            "batched cluster range capacity exhausted",
+        )?;
+        group_start += groups;
+    }
+    let score_slots = total_groups
+        .checked_mul(dimension)
+        .ok_or_else(|| allocation("batched cluster score slots overflow"))?;
+    let mut scores = DenseGroupScores {
+        values: reserved_filled(
+            reservation,
+            score_slots,
+            0.0,
+            "unable to reserve batched cluster scores",
+        )?,
+        corrections: reserved_filled(
+            reservation,
+            score_slots,
+            0.0,
+            "unable to reserve batched cluster corrections",
+        )?,
+        seen: reserved_filled(
+            reservation,
+            total_groups,
+            0u8,
+            "unable to reserve batched cluster presence",
+        )?,
+    };
+    let mut row_values = reserved_filled(
+        reservation,
+        dimension,
+        0.0,
+        "unable to reserve batched cluster score row",
+    )?;
+    let mut row_codes = reserved_filled(
+        reservation,
+        subset_count + 1,
+        0usize,
+        "unable to reserve batched cluster row codes",
+    )?;
+    for row in 0..nobs {
+        design.fill_row(row, &mut row_values)?;
+        let scale = multipliers.score_pair(row)?.production;
+        for value in &mut row_values {
+            *value = scale * *value;
+        }
+        for (index, range) in ranges.iter().enumerate() {
+            let mask = index + 1;
+            let last = mask.ilog2() as usize;
+            let prefix = mask ^ (1usize << last);
+            // Prefix masks precede this mask. Appending the last declared code
+            // gives the same lexicographic mixed radix, with admitted bounds.
+            row_codes[mask] = row_codes[prefix] * radices[last] + dimensions[last][row] as usize;
+            let group = range.group_start + row_codes[mask];
+            scores.seen[group] = 1;
+            let start = group * dimension;
+            for (coordinate, value) in row_values.iter().copied().enumerate() {
+                compensated_add(
+                    value,
+                    &mut scores.values[start + coordinate],
+                    &mut scores.corrections[start + coordinate],
+                )?;
+            }
+        }
+    }
+    Ok(Some(QualifiedClusterScoreBatch {
+        dimension,
+        ranges,
+        scores,
+    }))
+}
+
 fn aggregate_dense_table<D, M, R>(
     design: D,
     multipliers: M,
@@ -562,26 +772,46 @@ where
         Err(error) if error.code == crate::error::ErrorCode::Allocation => None,
         Err(error) => return Err(error),
     };
-    let order = if dense_plan.is_some() {
-        Vec::new()
-    } else {
-        let mut order = reserved_empty(
+    if let Some(plan) = dense_plan {
+        let mut row_values = reserved_filled(
             reservation,
-            nobs,
-            "unable to reserve qualified clustered subset ordering",
+            dimension,
+            0.0,
+            "unable to reserve qualified clustered score row",
         )?;
-        for row in 0..nobs {
-            push_reserved(
-                &mut order,
-                row,
-                "qualified clustered subset ordering capacity exhausted",
-            )?;
-        }
-        order.sort_unstable_by(|left, right| {
-            compare_rows(dimensions, mask, *left, *right).then_with(|| left.cmp(right))
-        });
-        order
-    };
+        let scores = accumulate_dense_groups(
+            design,
+            multipliers,
+            dimensions,
+            mask,
+            plan,
+            &mut row_values,
+            reservation,
+        )?;
+        return finish_serial_dense_groups(
+            &scores.values,
+            &scores.corrections,
+            &scores.seen,
+            dimension,
+            bread,
+            reservation,
+        );
+    }
+    let mut order = reserved_empty(
+        reservation,
+        nobs,
+        "unable to reserve qualified clustered subset ordering",
+    )?;
+    for row in 0..nobs {
+        push_reserved(
+            &mut order,
+            row,
+            "qualified clustered subset ordering capacity exhausted",
+        )?;
+    }
+    order.sort_unstable_by(|left, right| {
+        compare_rows(dimensions, mask, *left, *right).then_with(|| left.cmp(right))
+    });
     let mut group = reserved_filled(
         reservation,
         dimension,
@@ -637,70 +867,11 @@ where
         "unable to reserve qualified clustered influence corrections",
     )?;
     let mut groups = 0usize;
-    if let Some(plan) = dense_plan {
-        let scores = accumulate_dense_groups(
-            design,
-            multipliers,
-            dimensions,
-            mask,
-            plan,
-            &mut row_values,
-            reservation,
-        )?;
-        for (group, present) in scores.seen.iter().enumerate() {
-            if *present == 0 {
-                continue;
-            }
-            let start = group * dimension;
-            let end = start + dimension;
-            finish_serial_group(
-                bread,
-                &scores.values[start..end],
-                &scores.corrections[start..end],
-                &mut raw_score,
-                &mut influence_score,
-                &mut raw,
-                &mut raw_corrections,
-                &mut influence,
-                &mut influence_corrections,
-            )?;
-            groups += 1;
-        }
-    } else {
-        let mut previous = None;
-        for row in order {
-            if previous
-                .is_some_and(|prior| compare_rows(dimensions, mask, prior, row) != Ordering::Equal)
-            {
-                finish_serial_group(
-                    bread,
-                    &group,
-                    &group_corrections,
-                    &mut raw_score,
-                    &mut influence_score,
-                    &mut raw,
-                    &mut raw_corrections,
-                    &mut influence,
-                    &mut influence_corrections,
-                )?;
-                group.fill(0.0);
-                group_corrections.fill(0.0);
-                groups = groups
-                    .checked_add(1)
-                    .ok_or_else(|| allocation("qualified clustered group count overflows"))?;
-            }
-            let scale = multipliers.score_pair(row)?.production;
-            design.fill_row(row, &mut row_values)?;
-            for coordinate in 0..dimension {
-                compensated_add(
-                    scale * row_values[coordinate],
-                    &mut group[coordinate],
-                    &mut group_corrections[coordinate],
-                )?;
-            }
-            previous = Some(row);
-        }
-        if previous.is_some() {
+    let mut previous = None;
+    for row in order {
+        if previous
+            .is_some_and(|prior| compare_rows(dimensions, mask, prior, row) != Ordering::Equal)
+        {
             finish_serial_group(
                 bread,
                 &group,
@@ -712,10 +883,122 @@ where
                 &mut influence,
                 &mut influence_corrections,
             )?;
+            group.fill(0.0);
+            group_corrections.fill(0.0);
             groups = groups
                 .checked_add(1)
                 .ok_or_else(|| allocation("qualified clustered group count overflows"))?;
         }
+        let scale = multipliers.score_pair(row)?.production;
+        design.fill_row(row, &mut row_values)?;
+        for coordinate in 0..dimension {
+            compensated_add(
+                scale * row_values[coordinate],
+                &mut group[coordinate],
+                &mut group_corrections[coordinate],
+            )?;
+        }
+        previous = Some(row);
+    }
+    if previous.is_some() {
+        finish_serial_group(
+            bread,
+            &group,
+            &group_corrections,
+            &mut raw_score,
+            &mut influence_score,
+            &mut raw,
+            &mut raw_corrections,
+            &mut influence,
+            &mut influence_corrections,
+        )?;
+        groups = groups
+            .checked_add(1)
+            .ok_or_else(|| allocation("qualified clustered group count overflows"))?;
+    }
+    finalize(&mut raw, raw_corrections, dimension)?;
+    finalize(&mut influence, influence_corrections, dimension)?;
+    Ok(QualifiedClusterSubsetResult {
+        production: raw,
+        certificate: influence,
+        groups,
+    })
+}
+
+fn finish_serial_dense_groups<R: SandwichReservation>(
+    values: &[f64],
+    corrections: &[f64],
+    seen: &[u8],
+    dimension: usize,
+    bread: &[f64],
+    reservation: &mut R,
+) -> Result<QualifiedClusterSubsetResult> {
+    let square = dimension
+        .checked_mul(dimension)
+        .ok_or_else(|| allocation("qualified clustered serial meat overflows"))?;
+    if bread.len() != square
+        || values.len() != corrections.len()
+        || seen.len().checked_mul(dimension) != Some(values.len())
+    {
+        return Err(invalid_argument(
+            "qualified clustered group-score dimensions disagree",
+        ));
+    }
+    let mut raw_score = reserved_filled(
+        reservation,
+        dimension,
+        0.0,
+        "unable to reserve qualified clustered raw score",
+    )?;
+    let mut influence_score = reserved_filled(
+        reservation,
+        dimension,
+        0.0,
+        "unable to reserve qualified clustered influence score",
+    )?;
+    let mut raw = reserved_filled(
+        reservation,
+        square,
+        0.0,
+        "unable to reserve qualified clustered raw meat",
+    )?;
+    let mut raw_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0,
+        "unable to reserve qualified clustered raw corrections",
+    )?;
+    let mut influence = reserved_filled(
+        reservation,
+        square,
+        0.0,
+        "unable to reserve qualified clustered influence meat",
+    )?;
+    let mut influence_corrections = reserved_filled(
+        reservation,
+        square,
+        0.0,
+        "unable to reserve qualified clustered influence corrections",
+    )?;
+    let mut groups = 0usize;
+    for (group, present) in seen.iter().enumerate() {
+        if *present == 0 {
+            continue;
+        }
+        let start = group * dimension;
+        let end = start + dimension;
+        finish_serial_group(
+            bread,
+            &values[start..end],
+            &corrections[start..end],
+            &mut raw_score,
+            &mut influence_score,
+            &mut raw,
+            &mut raw_corrections,
+            &mut influence,
+            &mut influence_corrections,
+        )?;
+        groups += 1;
     }
     finalize(&mut raw, raw_corrections, dimension)?;
     finalize(&mut influence, influence_corrections, dimension)?;
@@ -1094,6 +1377,199 @@ mod scratch_table_tests {
                 .map_err(|_| allocation(label))
         }
     }
+    #[test]
+    fn batched_scores_read_once_and_charge_metadata_at_the_boundary() {
+        let bread = [1.0, 0.25, 0.25, 2.0];
+        // Eleven group slots * 33 bytes + three ranges + four row codes = 443.
+        for nrows in [55, 56] {
+            let design = Design {
+                nrows,
+                reads: RefCell::new(Vec::new()),
+            };
+            let first: Vec<u32> = (0..nrows).map(|row| (row % 3) as u32).collect();
+            let second: Vec<u32> = (0..nrows).map(|row| (row % 2) as u32).collect();
+            let dimensions: [&[u32]; 2] = [&first, &second];
+            let mut reservation = Reservation::default();
+            let batch = prepare_cluster_score_batch(
+                &design,
+                Multipliers(nrows),
+                &dimensions,
+                10,
+                &mut reservation,
+            )
+            .expect("batch planning");
+            if nrows == 55 {
+                assert!(batch.is_none());
+                assert!(reservation.0.is_empty());
+                assert!(design.reads.borrow().is_empty());
+                continue;
+            }
+            let batch = batch.expect("443 bytes fit 448-byte order budget");
+            assert_eq!(
+                reservation
+                    .0
+                    .iter()
+                    .filter(|(label, _)| *label != "unable to reserve batched cluster score row")
+                    .map(|(_, bytes)| *bytes)
+                    .sum::<usize>(),
+                443
+            );
+            assert_eq!(*design.reads.borrow(), (0..nrows).collect::<Vec<_>>());
+            for mask in [1, 2, 3] {
+                let oracle_design = Design {
+                    nrows,
+                    reads: RefCell::new(Vec::new()),
+                };
+                let expected = aggregate_streaming_serial(
+                    &oracle_design,
+                    Multipliers(nrows),
+                    &dimensions,
+                    mask,
+                    &bread,
+                    10,
+                    &mut Reservation::default(),
+                )
+                .expect("separate subset oracle");
+                let actual = batch
+                    .reduce_subset(mask, &bread, &mut reservation)
+                    .expect("bank subset");
+                assert_eq!(actual, expected);
+            }
+            assert_eq!(design.reads.borrow().len(), nrows);
+            assert!(batch.reduce_subset(0, &bread, &mut reservation).is_err());
+            assert!(batch.reduce_subset(4, &bread, &mut reservation).is_err());
+            assert!(batch.reduce_subset(1, &[1.0], &mut reservation).is_err());
+        }
+    }
+
+    #[test]
+    fn five_way_batch_preserves_every_lexicographic_subset_and_sparse_decline() {
+        let nrows = 2048;
+        let design = Design {
+            nrows,
+            reads: RefCell::new(Vec::new()),
+        };
+        let columns: Vec<Vec<u32>> = (0..5)
+            .map(|index| {
+                (0..nrows)
+                    .map(|row| ((row / (2 * index + 1)) % 2) as u32)
+                    .collect()
+            })
+            .collect();
+        let dimensions: Vec<&[u32]> = columns.iter().map(Vec::as_slice).collect();
+        let mut reservation = Reservation::default();
+        let batch = prepare_cluster_score_batch(
+            &design,
+            Multipliers(nrows),
+            &dimensions,
+            10,
+            &mut reservation,
+        )
+        .expect("five-way planning")
+        .expect("combined table fits");
+        let bread = [1.0, 0.25, 0.25, 2.0];
+        for mask in 1..32 {
+            let expected = aggregate_streaming_serial(
+                &design,
+                Multipliers(nrows),
+                &dimensions,
+                mask,
+                &bread,
+                10,
+                &mut Reservation::default(),
+            )
+            .expect("separate subset");
+            assert_eq!(
+                batch
+                    .reduce_subset(mask, &bread, &mut reservation)
+                    .expect("combined subset"),
+                expected
+            );
+        }
+        design.reads.borrow_mut().clear();
+        let sparse = vec![u32::MAX; nrows];
+        let dimensions: [&[u32]; 4] = [&sparse; 4];
+        let mut reservation = Reservation::default();
+        assert!(prepare_cluster_score_batch(
+            &design,
+            Multipliers(nrows),
+            &dimensions,
+            10,
+            &mut reservation
+        )
+        .expect("sparse batch declines")
+        .is_none());
+        assert!(reservation.0.is_empty());
+        assert!(design.reads.borrow().is_empty());
+    }
+
+    #[test]
+    fn every_batch_reservation_failure_and_undersize_fails_before_row_reads() {
+        struct SelectiveReservation {
+            calls: usize,
+            fail_at: usize,
+            undersize: bool,
+        }
+        impl SandwichReservation for SelectiveReservation {
+            fn reserve<T>(
+                &mut self,
+                target: &mut Vec<T>,
+                elements: usize,
+                label: &'static str,
+            ) -> Result<()> {
+                let fails = self.calls == self.fail_at;
+                self.calls += 1;
+                if fails && !self.undersize {
+                    return Err(allocation(label));
+                }
+                target
+                    .try_reserve_exact(if fails {
+                        elements.saturating_sub(1)
+                    } else {
+                        elements
+                    })
+                    .map_err(|_| allocation(label))
+            }
+        }
+        let nrows = 64;
+        let first: Vec<u32> = (0..nrows).map(|row| (row % 3) as u32).collect();
+        let second: Vec<u32> = (0..nrows).map(|row| (row % 2) as u32).collect();
+        let dimensions: [&[u32]; 2] = [&first, &second];
+        let design = Design {
+            nrows,
+            reads: RefCell::new(Vec::new()),
+        };
+        let mut count = Reservation::default();
+        assert!(prepare_cluster_score_batch(
+            &design,
+            Multipliers(nrows),
+            &dimensions,
+            10,
+            &mut count
+        )
+        .expect("count reservations")
+        .is_some());
+        for fail_at in 0..count.0.len() {
+            for undersize in [false, true] {
+                design.reads.borrow_mut().clear();
+                let mut reservation = SelectiveReservation {
+                    calls: 0,
+                    fail_at,
+                    undersize,
+                };
+                assert!(prepare_cluster_score_batch(
+                    &design,
+                    Multipliers(nrows),
+                    &dimensions,
+                    10,
+                    &mut reservation
+                )
+                .is_err());
+                assert!(design.reads.borrow().is_empty());
+            }
+        }
+    }
+
     #[test]
     fn sequential_scratch_table_respects_ordering_budget_and_sparse_fallback() {
         // Six group slots require exactly 198 bytes for two compensated scores

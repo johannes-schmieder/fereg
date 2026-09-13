@@ -1,0 +1,108 @@
+{
+  "scope": "local development only; no SCC, qualification or installed plugin replacement",
+  "rust_tests": {
+    "distinct_passed": 13,
+    "clustered": 9,
+    "scratch_boundary": 4,
+    "five_way_all_31_masks_exact": true,
+    "all_constructor_reservations_failure_and_undersize_checked": true,
+    "443_byte_boundary_rejects_440_accepts_448": true,
+    "wrong_workdir_run_excluded": true
+  },
+  "licensed_oracle": {
+    "baseline": {
+      "summary": {
+        "completed": true,
+        "failure_detail": null,
+        "failure_kind": null,
+        "results": [
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/ols_cluster_batch.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          }
+        ],
+        "schema_version": 1,
+        "stata_edition": "MP",
+        "stata_machine_type": "Mac (Apple Silicon)",
+        "stata_os": "Unix",
+        "stata_processors": 8,
+        "stata_rc": 0,
+        "stata_version": "19",
+        "status": "success",
+        "tests_failed": 0,
+        "tests_passed": 1
+      },
+      "fixture_sha256": "d2d8b995ed37eb7d3d346cded6b94135c9e6ad9400a798a1755de37bc427c25e",
+      "plugin_sha256": "13d35042a36ca5222202e5d3f982fa5b9fa85f2bd8f8a367b845397e043f19e0"
+    },
+    "candidate": {
+      "summary": {
+        "completed": true,
+        "failure_detail": null,
+        "failure_kind": null,
+        "results": [
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/ols_cluster_batch.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          }
+        ],
+        "schema_version": 1,
+        "stata_edition": "MP",
+        "stata_machine_type": "Mac (Apple Silicon)",
+        "stata_os": "Unix",
+        "stata_processors": 8,
+        "stata_rc": 0,
+        "stata_version": "19",
+        "status": "success",
+        "tests_failed": 0,
+        "tests_passed": 1
+      },
+      "fixture_sha256": "d2d8b995ed37eb7d3d346cded6b94135c9e6ad9400a798a1755de37bc427c25e",
+      "plugin_sha256": "4c83f9e86568f18420a3d77d285392cdd1f64f6c669e450ac49942df3b41650e"
+    }
+  },
+  "build": {
+    "universal_static_audits": "pass",
+    "actual_arm64_abi_selftest": "pass",
+    "reviewed_plugin_byte_identical": true
+  },
+  "preserved_attempts": [
+    "Initial row/subset indexing pilot: 0.964 to 0.982 seconds; excluded from revised prototype estimates.",
+    "Initial independent oracle failed on accepted baseline: raw indefinite covariance was compared without CGM repair, and covariance rank was used as design rank.",
+    "Second oracle draft independently measured the correct design rank but used the wrong eigenvector orientation. Reconstruction errors were 3.914e-6 for row orientation and 7.623e-21 for column orientation. Final fixture asserts eigensystem reconstruction and applies the registered slope repair.",
+    "A prior Rust command ran from main rather than candidate and is excluded from candidate evidence.",
+    "The first baseline identity audit compared nested manifest entries to hashes; corrected audit compares prior candidate hashes and passes all 150 entries."
+  ],
+  "log_sha256": {
+    "clustered-tests.log": "46ce28e08d3204d686f8a4d0e7988928d1e61d614d984560559fb7d282ab83fa",
+    "new-route-tests.log": "f10734db1f86bb7c6236896f0c6b8553bcf106173aff73a145f1ee8d52a37d88",
+    "boundary-tests.log": "ee8fa3db04df4ce3155c3a19a2e043771316b74a7cffe65dc4868ce3d0b63d40",
+    "revised-clustered-tests.log": "826f96fb353c3de98801ed5020a85ded224c37cbc5b9ad721b5ef14684080711",
+    "revised-boundary-tests.log": "dc17771bd776cfc3f9f4e817ce1d36711fad06206f4f4d78d3b73f7b501ab27f",
+    "final-boundary-tests.log": "3524fe89a9aad0ffdcfb7a76ec07b4f83b2a5a80be3cde807382769fbbe8360b",
+    "reviewed-boundary-tests.log": "2f8639c4e3957036b9b1f30e767edfd016824d6fb2d7aa00f34668f72bff72fe",
+    "wrong-workdir-tests.log": "2a18968c53bb4926c901e1d07ff59e8e3262ee1cb932e64f705a1afd2882ef60",
+    "build.log": "13f723d4815dc742ee76ea5d9185637a0e31b188fce5099d4e72e797cfa27904",
+    "build-v2.log": "d2a2ea639b30cafbc312b589b07e2560a3a0b5ffb4f912a9d592ccb821bcac70",
+    "build-reviewed.log": "fa303ef05bef0aa75df64b1887d1edeba4d755b989f304dde4ac2279d514c8d1",
+    "baseline-oracle-driver.log": "c1330f2f56304c5ba6dc3d49084740eef41810f60f261cf727ba99a135b2ffa9",
+    "oracle-driver-v2.log": "fb56b1209c7ff7cbed9941dc95dfaf21fecec76868fb85b0ad7a0333f9525e9e",
+    "oracle-debug-v2.log": "54616d6c93d3a7aaf2af2b3dc7f9287327648b1694f5a5e55355568c46d1a940",
+    "oracle-eigen-debug.log": "ef8411d59adea044684ce980ce6817a78313a867408febaaa2cb8104a8869ff7",
+    "oracle-driver-v3.log": "2e45551b29ac1345635e78ac953b5325ec61321bb9e03264f208a96a76105618",
+    "pilot-v2.log": "119b89080e811165158f69b3f0a085a6880f92fcaf9d8308b37f1494e9068393",
+    "primary-v2.log": "00b1e595438dc4a50acb67f152113cfeabad29e110d000c4623ddd3b408f8cda",
+    "controls-v2.log": "93cb4a1c0458a5ce4f5bd30640c6b64b9f4d7b496c6ae5b7ac42ea93c009ce93",
+    "manyway-v2.log": "f23c2f3361958076324e6ec1669651ac51219174f96992340ffd87600eb8fef9",
+    "profile-v2.log": "876821793b8f199e4766c57b247a5b0dfea3c53a926e00a41944018ef940a7b5",
+    "memory-recheck-v2.log": "3d6a209069a2875d86ea8501da4a197e956c590c3eaeca1d10bd078fbd2ac90e"
+  }
+}

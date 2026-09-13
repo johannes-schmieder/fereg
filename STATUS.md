@@ -10,6 +10,47 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P3 shared subset score passes: adopted local checkpoint
+
+Scratch-backed OLS covariance can now feed all subset accumulators from one
+original-row traversal when the entire compensated bank, range metadata and
+prefix scratch fit one displaced physical-row ordering budget. Planning is
+all-or-none; larger products retain the accepted per-subset route. Group/merge
+order, independent per-group bread, weights, PSD, rank and publication contracts
+remain unchanged; see [ADR 0045](docs/adr/0045-batched-low-memory-cluster-scores.md).
+
+The [report](benchmarks/reports/development/cluster-subset-batch-local-2026-09-12/README.md)
+binds 26 pairs / 52 measured commands against `c37686b`, including original and
+revised pilots, six original primary pairs, nine controls, six fresh many-way
+pairs, a separate profile and two memory rechecks. The original two-/three-way
+10% target was missed (0.7%/5.9% paired gains). A separately specified follow-up
+repeats five-way gains of 20.4% at N30720/K4 and 17.4% at N122880/K10 with AW,
+with command medians 0.054→0.043 and 0.441→0.365 seconds. Adoption rests on those
+many-way results; ordinary two-way gain remains unconvincing.
+
+All full scientific exports, saved values and non-time solver diagnostics are
+exact. Primary native/scratch peaks are unchanged. Worst protected command
+slowdown is one-way +5 ms / 2.0%. Weak controls still exceed their pre-existing
+memory models. A two-way native-peak increase changes direction in rechecks;
+the source of variation remains unestablished, and no model-bound pass or
+universal RSS reduction is claimed. Bank bytes and fewer score traversals are
+source-derived counts, not measured physical I/O.
+
+Thirteen distinct focused Rust tests and both arms of an independent full-dummy/
+Mata covariance oracle pass, covering unit/AW/FW/PW, full/deficient rank, all
+31 five-way masks, exact admission bounds and fallible reservations. Initial
+oracle failures (DoF rank, omitted PSD repair, eigenvector orientation) and the
+slower initial prototype are preserved. The reviewed universal plugin is
+byte-identical to the measured revised artifact; static/native arm64 ABI checks
+pass. Installed dist, unrelated Veneto changes and historical receipts remain
+intact. No SCC, qualification or push occurred.
+
+Next: remaining P3 interaction construction/order reuse, skew scheduling and
+score residualization; P0 memory/counter reconciliation and P2/P4–P7/R1–R5 remain
+open. This completes the bounded low-memory subset-sharing experiment, not #27.
+Finish #27 before the authorized independent agents, CMG review and new small
+SCC campaign.
+
 ## P3 low-memory cluster scores: adopted local checkpoint
 
 Low-memory OLS now reads eligible cluster score subsets sequentially, using

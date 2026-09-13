@@ -13,7 +13,8 @@ use crate::error::{ErrorCode, FeregError, Result};
 
 mod qualified_cluster;
 pub(crate) use qualified_cluster::{
-    reduce_qualified_cluster_subset, QualifiedClusterCertificateRoute, QualifiedClusterRoutePolicy,
+    prepare_cluster_score_batch, reduce_qualified_cluster_subset, QualifiedClusterCertificateRoute,
+    QualifiedClusterRoutePolicy, QualifiedClusterScoreBatch,
 };
 
 /// Reservation boundary shared by certified inference reducers.

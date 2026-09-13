@@ -1,0 +1,116 @@
+{
+  "note": "Isolated subset-score bank experiment. Separate initial/revised pilots, original primary/control cases, fresh many-way follow-ups and tracing; do not merge candidate artifacts or evidence tiers.",
+  "pairs": [
+    {
+      "baseline": {
+        "command_seconds": 0.439,
+        "input_seconds": 0.014639583,
+        "modeled_bytes": 55116744,
+        "native_peak_bytes": 39112772,
+        "native_seconds": 0.413327375,
+        "outer_seconds": 0.010857541999999998,
+        "plugin_sha256": "13d35042a36ca5222202e5d3f982fa5b9fa85f2bd8f8a367b845397e043f19e0",
+        "rss_gib": 0.1006317138671875,
+        "scratch_bytes": 19621280
+      },
+      "candidate": {
+        "command_seconds": 0.369,
+        "input_seconds": 0.015016834,
+        "modeled_bytes": 55116744,
+        "native_peak_bytes": 39112772,
+        "native_seconds": 0.342983291,
+        "outer_seconds": 0.010823666999999981,
+        "plugin_sha256": "4c83f9e86568f18420a3d77d285392cdd1f64f6c669e450ac49942df3b41650e",
+        "rss_gib": 0.123077392578125,
+        "scratch_bytes": 19621280
+      },
+      "candidate_baseline_ratio": 0.8405466970387243,
+      "case": "low_manyway",
+      "exact_science": true,
+      "group": "primary",
+      "pair": "inference-batch-v2-many-large-low_manyway-s104395301"
+    },
+    {
+      "baseline": {
+        "command_seconds": 0.441,
+        "input_seconds": 0.015235,
+        "modeled_bytes": 55116744,
+        "native_peak_bytes": 39112772,
+        "native_seconds": 0.41457766700000004,
+        "outer_seconds": 0.01101137499999999,
+        "plugin_sha256": "13d35042a36ca5222202e5d3f982fa5b9fa85f2bd8f8a367b845397e043f19e0",
+        "rss_gib": 0.121490478515625,
+        "scratch_bytes": 19621280
+      },
+      "candidate": {
+        "command_seconds": 0.364,
+        "input_seconds": 0.015035375,
+        "modeled_bytes": 55116744,
+        "native_peak_bytes": 39112772,
+        "native_seconds": 0.33710545799999997,
+        "outer_seconds": 0.011698833999999991,
+        "plugin_sha256": "4c83f9e86568f18420a3d77d285392cdd1f64f6c669e450ac49942df3b41650e",
+        "rss_gib": 0.100067138671875,
+        "scratch_bytes": 19621280
+      },
+      "candidate_baseline_ratio": 0.8253968253968254,
+      "case": "low_manyway",
+      "exact_science": true,
+      "group": "primary",
+      "pair": "inference-batch-v2-many-large-low_manyway-s67450611"
+    },
+    {
+      "baseline": {
+        "command_seconds": 0.4419999999999999,
+        "input_seconds": 0.014852584,
+        "modeled_bytes": 55116744,
+        "native_peak_bytes": 39112772,
+        "native_seconds": 0.416931875,
+        "outer_seconds": 0.010049332999999883,
+        "plugin_sha256": "13d35042a36ca5222202e5d3f982fa5b9fa85f2bd8f8a367b845397e043f19e0",
+        "rss_gib": 0.1217498779296875,
+        "scratch_bytes": 19621280
+      },
+      "candidate": {
+        "command_seconds": 0.365,
+        "input_seconds": 0.014890125,
+        "modeled_bytes": 55116744,
+        "native_peak_bytes": 39112772,
+        "native_seconds": 0.339176042,
+        "outer_seconds": 0.01076012500000001,
+        "plugin_sha256": "4c83f9e86568f18420a3d77d285392cdd1f64f6c669e450ac49942df3b41650e",
+        "rss_gib": 0.0977630615234375,
+        "scratch_bytes": 19621280
+      },
+      "candidate_baseline_ratio": 0.8257918552036201,
+      "case": "low_manyway",
+      "exact_science": true,
+      "group": "primary",
+      "pair": "inference-batch-v2-many-large-low_manyway-s86028121"
+    }
+  ],
+  "summary": [
+    {
+      "baseline_command_seconds": 0.441,
+      "baseline_input_seconds": 0.014852584,
+      "baseline_modeled_bytes": 55116744,
+      "baseline_native_peak_bytes": 39112772,
+      "baseline_native_seconds": 0.41457766700000004,
+      "baseline_outer_seconds": 0.010857541999999998,
+      "baseline_rss_gib": 0.121490478515625,
+      "baseline_scratch_bytes": 19621280,
+      "candidate_command_seconds": 0.365,
+      "candidate_input_seconds": 0.015016834,
+      "candidate_modeled_bytes": 55116744,
+      "candidate_native_peak_bytes": 39112772,
+      "candidate_native_seconds": 0.339176042,
+      "candidate_outer_seconds": 0.010823666999999981,
+      "candidate_rss_gib": 0.100067138671875,
+      "candidate_scratch_bytes": 19621280,
+      "case": "low_manyway",
+      "group": "primary",
+      "median_paired_change_percent": -17.42081447963799,
+      "pairs": 3
+    }
+  ]
+}
