@@ -88,7 +88,7 @@ processor cap; affinity is uncontrolled. These are local development findings.
 | FW, exposure/missing, robust (three seeds) | 61440 / 129 / 4 | 4.740 → 4.400 |
 | Complete one-FE robust | 983040 / 50 / 16 | 7.414 → 7.644 |
 | PW, offset/missing, two-way cluster | 245760 / 50 / 16 | 2.099 → 2.055 |
-| Weak three-FE PPML | 7680 / 10 / 4 | 0.135 → 0.137 |
+| Weak two-FE PPML | 7680 / 10 / 4 | 0.135 → 0.137 |
 | Low-memory FW PPML | 30720 / 10 / 4 | 0.784 → 0.763 |
 | Small one-FE PPML | 7680 / 2 / 1 | 0.030 → 0.028 |
 | Saved/separated PPML | 7680 / 3 / 4 | 0.026 → 0.029 |
@@ -142,6 +142,27 @@ preserve those decisions. An initial diagnostic build launched from the wrong
 Cargo working directory was excluded, terminated and rebuilt correctly; neither
 its artifact nor its measurements are used. Raw licensed logs, local paths,
 binaries and synthetic datasets remain outside Git.
+
+## Supplemental control-label correction
+
+The original `weak_d3` manifest denotes a **two-FE, degree-three** graph. Its
+recorded commands correctly absorb g1/g2; the earlier report/protocol description
+of three FE was wrong. The table above is corrected, while all original numeric
+archives remain unchanged. An initial explicit-g3 setup attempt failed r(111)
+during warm-up because that source has no g3; it is preserved and not counted
+as a measured estimator result.
+
+One additional pair uses the existing `three_fe_sparse` manifest (mobility 0.02),
+N7680/K10/t4/seed31415927 with explicit g1/g2/g3, alongside the original weak
+two-FE control. It passes **0.083→0.082 seconds**, with exact science. Native
+peak delta is 18,453,252→18,452,084 bytes, both below the unchanged 42,341,675-byte
+model; it is not exactly equal or evidence of a causal memory saving. An initial
+supplemental collection assertion expecting exact peaks failed on that 1168-byte
+difference; the scientific comparison passed and no estimation was rerun.
+[Supplemental evidence](control-correction/comparisons.json) records this twelfth
+successful pair separately. Code/artifacts and the original 11-pair performance
+estimates are unchanged. This closes the label/coverage correction without
+claiming that degree and FE dimension are interchangeable.
 
 ## Replay and next step
 

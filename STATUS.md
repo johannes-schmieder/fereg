@@ -50,6 +50,14 @@ wrong-Cargo-directory diagnostic build, baseline failures and both harness
 corrections remain disclosed. Installed/dist and unrelated Veneto evidence are
 preserved. No agents, cluster, qualification or push occurred.
 
+A [supplemental control correction](benchmarks/reports/development/ppml-psd-validation-local-2026-09-13/control-correction/comparisons.json)
+clarifies that `weak_d3` means degree three with two FEs, not three FEs. The
+original pair and all 11-pair archives remain unchanged. An added explicit
+low-mobility three-FE pair passes 0.083→0.082 seconds with exact science and
+admitted peak (18.453→18.452 MB, not exactly equal). A first missing-g3 warm-up
+setup failure and an overstrict collection peak-equality assertion are preserved.
+There are now twelve successful cost pairs, with the extra control separate.
+
 Next resume the original 17-pair wider-moment protocol against this repair,
 including the unchanged PW K257 warm-up and full request. The wider prototype
 remains absent/unadopted; broader #27 P4/P6/P7 and other open items remain open.
