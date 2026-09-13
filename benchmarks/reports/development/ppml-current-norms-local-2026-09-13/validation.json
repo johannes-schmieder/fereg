@@ -1,0 +1,101 @@
+{
+  "distinct_candidate_rust_tests_passed": 21,
+  "test_names": [
+    "fe::topology_slope_map::tests::borrowed_cg_recovery_matches_strict_lsmr_coefficients",
+    "fe::topology_slope_map::tests::four_sweep_sd_pilot_then_lsmr_matches_strict_lsmr",
+    "ols::prepared_fit::tests::certified_linear_session_fresh_frozen_and_strict_match_across_routes",
+    "ols::prepared_fit::tests::certified_linear_session_generation_invalidation_is_fail_closed",
+    "ols::prepared_fit::tests::ppml_fused_weight_refresh_rejects_stale_fe_collinearity_basis",
+    "ols::prepared_fit::tests::rejected_uncertified_strict_candidate_restores_exact_basis_transaction",
+    "ols::prepared_fit::tests::retained_fresh_frozen_and_strict_kernels_use_requested_team_against_global_pool",
+    "ols::prepared_fit::tests::strict_rollback_is_allocation_free_and_preserves_retained_storage",
+    "ppml::family::tests::exposure_requires_strict_positivity",
+    "ppml::memory::tests::strict_final_solve_charges_four_vectors_and_exact_candidate_phase_maximum",
+    "ppml::prepared_estimator::tests::saved_fe_recovery_uses_the_hessian_of_the_published_strict_state",
+    "ppml::prepared_estimator::tests::three_effect_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh",
+    "ppml::prepared_estimator::tests::zero_active_control_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh",
+    "ppml::prepared_irls::tests::bitwise_identical_weights_skip_final_frame_control_reprojection",
+    "ppml::prepared_irls::tests::experimental_strict_guard_ignores_only_nonestimable_coefficient_slots",
+    "ppml::prepared_irls::tests::strict_caller_error_and_unwind_restore_a_usable_prior_session",
+    "ppml::prepared_irls::tests::strict_candidate_fuses_two_fe_map_design_and_response_projection",
+    "ppml::prepared_irls::tests::strict_candidate_rank_predicate_is_shared_by_both_checkpoints",
+    "ppml::prepared_irls::tests::strict_checkpoint_movement_resumes_bounded_irls_at_both_checkpoints",
+    "ppml::prepared_irls::tests::strict_profile_movement_never_weakens_a_tiny_user_tolerance",
+    "ppml::prepared_irls::tests::strict_projection_refinement_is_bounded_and_never_loosens_a_target"
+  ],
+  "candidate_target_isolation": "Accepted test results use a fresh candidate-only Cargo target directory. Earlier shared-target invocations are not counted.",
+  "baseline_final_reproducer": {
+    "expected_failure": true,
+    "message": "stale prior basis must fail closed",
+    "production_source": "c6ad4c4",
+    "test": "same finalized test as the candidate"
+  },
+  "oracles": [
+    {
+      "arm": "baseline",
+      "fixture": "feppml_one_fe_dummy_oracle",
+      "rc": 0,
+      "process_rc": 0,
+      "sentinels": [
+        "END_FIXTURE|feppml_one_fe_dummy_oracle|rc=0",
+        "ONE_FE_ORACLE_DONE|feppml_one_fe_dummy_oracle|rc=0"
+      ],
+      "fixture_sha256": "33cbf439fd83dafd0ed37265140e8319175d796db86b576d89ddffa8df248742",
+      "plugin_sha256": "b8333c4ac9e28137c1ee457f95d7cf637bed824ab8d80cad67b67d6f84527b35",
+      "log_sha256": "9aafb4c1ad68b3fd76a1e44f056d9fbee92486d7986601cfaf37032b9cc00c45"
+    },
+    {
+      "arm": "candidate",
+      "fixture": "feppml_one_fe_dummy_oracle",
+      "rc": 0,
+      "process_rc": 0,
+      "sentinels": [
+        "END_FIXTURE|feppml_one_fe_dummy_oracle|rc=0",
+        "ONE_FE_ORACLE_DONE|feppml_one_fe_dummy_oracle|rc=0"
+      ],
+      "fixture_sha256": "33cbf439fd83dafd0ed37265140e8319175d796db86b576d89ddffa8df248742",
+      "plugin_sha256": "313e85aa7ccd298f8333e9dc3c3845ab963b38bbfcf37964a88a2944c06687e6",
+      "log_sha256": "0c4690d716e6fe7a736840102a6cd665348cf0289a024f9ee3130451f7f979b7"
+    }
+  ],
+  "build": {
+    "universal_static_audit": true,
+    "native_arm64_ABI_self_test": "PASS",
+    "expected_injected_panic_contained": true,
+    "forced_recompilation_of_changed_crate_matches_timed_plugin": true
+  },
+  "development_failures": [
+    "Initial reproducer expected strict rank replacement; it exposed rank 1 versus fresh rank 0. After restoring current norms, the existing prior-basis certificate rejects the transition. Final assertions require that rejection, unchanged basis generation and no output, followed by an explicitly authorized basis refresh.",
+    "A test-only clone-on-reference warning was removed; expect_err required Debug on a non-Debug success type, so the equivalent err().expect assertion is used.",
+    "An attempted warm rank replacement also correctly failed the frozen-basis contract; the final test explicitly refreshes the basis before its new canonical solve.",
+    "The separate baseline reproducer first lacked the existing reconstruction fixture; adding its fixture tree allowed the intended negative test.",
+    "Reusing a Cargo target across copied source trees reused the baseline test executable despite matching candidate source hashes. Candidate validation was rerun with an independent target. A forced release recompilation produced exactly the measured candidate plugin bytes."
+  ],
+  "logs_sha256": {
+    "controls.log": "3ca560154c827d3a41bb1ff0b171b1cda1857f9dd405a0bb0438ec75b804080d",
+    "same-frame-isolated.log": "9216b4b1b0653c1504ec1888d90eb081614da8d2f9eaf5751e395138baa67145",
+    "strict-isolated.log": "47ce4618522468f599adf07ea564c1673ba8e71d6667532d0975c2deab82496f",
+    "same-frame-test.log": "ef8f8b03fcf65788e728c9fba6e7eedf8d2008bc8525b5310fc05f4e310ce1d3",
+    "strict-tests.log": "d9737c9c95c6991baaa247cc238ce280b33a75b081db2c76ecffda833d5b41a9",
+    "oracle-run.log": "2cab56446cdf212a61508415b5ec82910b286238d746e9675ef414af6467d8fa",
+    "reproducer-contract.log": "d9737c9c95c6991baaa247cc238ce280b33a75b081db2c76ecffda833d5b41a9",
+    "screen.log": "b8ca75a5763f3276eafa0b0e12c3c87460d476ca11c2a48cab80a54f042d36c9",
+    "reproducer-final.log": "addde99a189ce640da364541f76b8ee373c1e8feb486481bc5e359d132735cd3",
+    "candidate-final-reproducer.log": "14ffade87a2ae5a45caa8de79c38fed56e860c27cde3f525d7593f9b0a6f7693",
+    "rechecks.log": "9582f233655a8beea154391bffef12c40f1c96436ef9b9b569014c342ae8cd32",
+    "reproducer-original.log": "cd6186468008e32933733dff51d8250475867c4a7a44895bf6983a1dce385ee9",
+    "strict-tests-fixed.log": "0d9fef75c474ffc49ebddc5c426dde1e03bd3180b8aa11b89e8b78832b1a0fdf",
+    "audit.log": "2ac299ce8a8ae349ed0740e5b7dbc496b65e6ebc08e5e2f1aaadc9828d4b1c0f",
+    "reproducer-fixed.log": "21b016248f6c2cc5c13c44fdbc253e317434c6e23988b54c3230b6af6bc9bd22",
+    "generation-test.log": "f4c3922fa9df79ae26e9c7eedbf246137592d74b96a32714b3aeecdc11e3ea02",
+    "candidate-isolated-reproducer.log": "4c229148f16797469dfe305ef087099a608c1e8fee13cef5962cbda255203270",
+    "reproducer-contract-fixed.log": "d0e1d9c64d3323f5796cfb5091c2cfd3a9fd56dcd17602d69ef02096b09935fa",
+    "forced-rebuild.log": "7f3e5e65ef1edbe2ae734a4556ace96cedf1230f7848b5b02b75028b2f70975b",
+    "reproducer.log": "cd6186468008e32933733dff51d8250475867c4a7a44895bf6983a1dce385ee9",
+    "baseline-final-reproducer.log": "c85d791b9a2dfb8cd26788dbb66f2b97bae38ada47fa1b3400abe4960d24a43e",
+    "baseline-final-reproducer-with-fixtures.log": "9f0278f8d434e47008375e7fea44ee5d026e115820cd61e7698425eff27a61be",
+    "build.log": "40cdcf01a962f282e528febcfc6a5f68661f1475b7b62fe7f5ef8a4433864a72",
+    "generation-isolated.log": "0381c956eecf8ddc89c8667e42556e502d278e6148fecee7e6b6bdd59bed7dfe"
+  },
+  "scope": "Local development repair and cost measurements; no claim of a public end-to-end counterexample, speedup, external comparator performance, cluster or release qualification."
+}

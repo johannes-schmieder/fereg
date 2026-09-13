@@ -66,6 +66,10 @@ categorical projector and fused changing-response/retained-design projection.
 It preserves current-weight reference scales and independent certificates,
 allocates no accelerator matrices, and leaves low-memory and slope routes
 unchanged; see [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md).
+After a fused response/design projection, retained within-column norms must
+also use the current weight frame. Strict rank and score checks consume those
+norms even when the preceding frozen-basis solve did not need them; advancing
+design generations cannot make old norms authoritative.
 Large, wide one-FE retained reference refreshes assign columns to the existing
 team while preserving each column's row order, stable norms and compensated
 means. Frozen finite solves share an existing identity scratch bank across

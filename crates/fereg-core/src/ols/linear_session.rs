@@ -4782,7 +4782,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             active_positions,
             reference_norms,
             reference_means,
-            within_norms,
+            mut within_norms,
             ..
         } = prior;
         let RetainedWithinStorage::Dense(matrix) = storage else {
@@ -4806,7 +4806,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .ok_or_else(|| allocation("fused weighted-linear stride overflows"))?;
         let elements = checked_elements(rows, stride)?;
         let mut values = matrix.into_row_major();
-        let workspace_reused = values.capacity() >= elements;
+        let mut workspace_reused = values.capacity() >= elements;
         values
             .try_reserve(elements.saturating_sub(values.len()))
             .map_err(|_| allocation("unable to expand fused weighted-linear projection"))?;
@@ -4858,10 +4858,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             }
         }
         values.truncate(checked_elements(rows, columns)?);
+        let within = DenseMatrix::from_row_major(rows, columns, values)?;
+        // Strict rank and score checks consume these norms under the current
+        // weight frame, even when a frozen solve did not need them itself.
+        workspace_reused &=
+            self.fill_weighted_dense_column_norms_reusing(&within, &mut within_norms)?;
         self.within = Some(RetainedWithinDesign {
-            storage: RetainedWithinStorage::Dense(DenseMatrix::from_row_major(
-                rows, columns, values,
-            )?),
+            storage: RetainedWithinStorage::Dense(within),
             stored_generated_columns,
             active_positions,
             reference_norms,

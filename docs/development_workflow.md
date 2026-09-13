@@ -56,6 +56,13 @@ qualification evidence:
 The Stata commands require the licensed Mac environment documented in
 `STATA_CI_RUNNER.md`. Do not claim a test was run when it was not.
 
+Use a distinct Cargo target directory for tests of different source snapshots.
+Copied source timestamps and a shared target can leave Cargo's freshness check
+reusing the other snapshot's test executable. If a build target is shared for
+benchmark artifacts, explicitly force compilation of changed crates and verify
+the rebuilt artifact's hash against the measured binary; matching source-file
+hashes alone do not establish what the compiler rebuilt.
+
 For focused PPML development, use the active public command and the smallest
 fixture that exercises the changed boundary:
 

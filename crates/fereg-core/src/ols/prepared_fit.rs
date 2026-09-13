@@ -10708,6 +10708,104 @@ mod tests {
     }
 
     #[test]
+    fn ppml_fused_weight_refresh_rejects_stale_fe_collinearity_basis() {
+        let groups = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
+        let x = groups
+            .iter()
+            .enumerate()
+            .map(|(r, g)| g + if r % 2 == 0 { -0.001 } else { 0.001 })
+            .collect::<Vec<_>>();
+        let y = groups
+            .iter()
+            .enumerate()
+            .map(|(r, g)| g + if r % 2 == 0 { -0.1 } else { 0.1 })
+            .collect::<Vec<_>>();
+        let initial_weights = vec![1.0; groups.len()];
+        let next_weights = (0..groups.len())
+            .map(|r| if r % 2 == 0 { 1.0 } else { 1e-8 })
+            .collect::<Vec<_>>();
+        let initial = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&groups),
+            true,
+            TestWeights::Analytic(&initial_weights),
+        );
+        let next = prepared(
+            &y,
+            std::slice::from_ref(&x),
+            &[false],
+            Some(&groups),
+            true,
+            TestWeights::Analytic(&next_weights),
+        );
+        let config = PreparedOlsFitConfig {
+            absorb: AbsorbConfig {
+                solver: FeSolverKind::Map,
+                ..AbsorbConfig::default()
+            },
+            ..PreparedOlsFitConfig::default()
+        };
+        let fresh_frame = LinearSolveFrame::from_prepared_ols(&next).unwrap();
+        let mut fresh = CertifiedLinearSession::new_with_ppml_fe_design(
+            &initial,
+            fresh_frame,
+            config,
+            LinearSessionGenerations::new(0, 0, 1, 1, 0),
+            initial.fit_owned_fe_design().unwrap(),
+        )
+        .unwrap();
+        let fresh_output = fresh.solve_fresh().unwrap();
+        let expected = fresh_output.fit();
+        assert_eq!(expected.finite_rank(), 0);
+        let mut reused = CertifiedLinearSession::new_with_ppml_fe_design(
+            &initial,
+            LinearSolveFrame::from_prepared_ols(&initial).unwrap(),
+            config,
+            LinearSessionGenerations::new(0, 0, 0, 0, 0),
+            initial.fit_owned_fe_design().unwrap(),
+        )
+        .unwrap();
+        assert_eq!(reused.solve_fresh().unwrap().fit().finite_rank(), 1);
+        reused.refresh_response(&y, 1).unwrap();
+        reused
+            .refresh_weights(
+                fresh_frame.raw_weights(),
+                fresh_frame.bread_weight_scale(),
+                1,
+            )
+            .unwrap();
+        // Each two-row group's weighted within sum of squares is
+        // w0*w1/(w0+w1) * (x1-x0)^2. The current ratio is below the unchanged
+        // FE-collinearity cutoff; using the old numerator instead is above it.
+        let within_square = 4.0 * (1e-8 / (1.0 + 1e-8)) * 0.002_f64.powi(2);
+        let raw_square = x
+            .iter()
+            .zip(&next_weights)
+            .map(|(x, w)| w * x * x)
+            .sum::<f64>();
+        assert!(within_square / raw_square < config.fixed_effect_collinearity_tolerance);
+        assert!(8e-6 / raw_square > config.fixed_effect_collinearity_tolerance);
+        // Strict staging must recertify the prior basis before a transaction
+        // can publish. Here that basis became FE-collinear under new weights.
+        let error = reused
+            .strictify()
+            .err()
+            .expect("stale prior basis must fail closed");
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert_eq!(
+            error.message,
+            "strict weighted-linear prior basis could not be recertified"
+        );
+        assert_eq!(reused.basis_generation_for_test(), 0);
+        assert!(reused.output().is_err());
+        reused.refresh_basis(1).unwrap();
+        let actual = reused.solve_fresh().unwrap();
+        assert_fit_science_equal(actual.fit(), expected);
+    }
+
+    #[test]
     fn certified_linear_session_fresh_frozen_and_strict_match_across_routes() {
         let g = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
         let x = vec![-2.0, 0.5, -1.0, 2.0, -0.25, 3.0, 1.0, 4.5];

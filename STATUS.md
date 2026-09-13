@@ -10,6 +10,50 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 current-weight within norms: correctness repair
+
+The [source-bound repair and cost report](benchmarks/reports/development/ppml-current-norms-local-2026-09-13/README.md)
+fixes stale within-column norms in fused PPML response/design projection against
+`c6ad4c4`. The raw reference norms and projected values refreshed, but strict
+rank/score checks could consume within norms from older weights. A two-row-group
+closed-form oracle gives a current within/raw squared ratio about 5.34e-15 versus
+2.67e-7 with the stale numerator, across the unchanged 1e-9 FE-collinearity cutoff.
+The old retained strict solve accepts rank one while a fresh solve gives rank zero.
+The finalized test requires the existing strict prior-basis rejection, unchanged
+basis generation and no current output; explicit basis refresh permits rank zero.
+
+The repair uses the existing stable current-frame norm scan after fused matrix
+compaction, with retained scratch and no observation-sized allocation. This
+covers fused one/two/three-FE categorical checkpoint consumers. Raw scales, warm
+projection, finite/QR policies, generations and strict transaction rules remain.
+This is a correctness repair, not a performance gain or a public-estimator
+counterexample claim.
+
+Eleven pairs / 22 commands preserve exact full b/V and discrete science; all
+independent certificates pass. The first public screen costs +4.8% for complete
+one FE, +5.0% for FW/exposure and +4.6% for PW/offset/clustering. Two additional
+FW seeds confirm a +5.3% median paired cost across three pairs. Native peaks are
+exact and admitted throughout; sampled RSS moves both ways. Protected increases
+are weak +4 ms, low FW +12 ms (1.5%) and explicit MAP +2 ms. The separate private
+audit costs +12.4% but retains zero allocation events and zero live/peak growth.
+
+Twenty-one distinct tests pass from a candidate-only Cargo target, including
+strict rollback, identical-frame reuse, generation invalidation and the new
+reproducer. Both artifacts pass the independent full-dummy Poisson/Hessian/
+sandwich oracle. A shared Cargo target reused the baseline test executable after
+switching copied source trees; those test results are excluded. A forced release
+recompilation produces the exact measured candidate bytes (313e85aa...), with
+universal static and native arm64 ABI checks passing again. The workflow now
+records source-snapshot target isolation. Other scaffold/test-expectation
+failures and all timing observations are preserved in the report.
+
+Next remove the added norm scan by safely consuming same-call certified
+projector norms, then evaluate fresh-input certificate removal. Further P4
+passes and the remaining #27 work are open. The two independent agents,
+upstream CMG assessment and small SCC campaign remain after #27. Installed
+dist, all 97 unrelated Veneto lines and prior evidence remain intact; no push,
+agents, cluster work or qualification occurred.
+
 ## P2 low-memory fresh blocks: adopted local checkpoint
 
 The [source-bound report](benchmarks/reports/development/low-one-fe-local-2026-09-13/README.md)
