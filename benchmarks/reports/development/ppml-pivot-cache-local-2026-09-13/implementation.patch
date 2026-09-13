@@ -1,0 +1,243 @@
+diff --git a/crates/fereg-core/src/ppml/psd.rs b/crates/fereg-core/src/ppml/psd.rs
+index b7ca831..12ce372 100644
+--- a/crates/fereg-core/src/ppml/psd.rs
++++ b/crates/fereg-core/src/ppml/psd.rs
+@@ -241,6 +241,16 @@ fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEi
+     for index in 0..dimension {
+         vectors[index * dimension + index] = 1.0;
+     }
++    // The modeled eigensystem peak already includes this vector beside work
++    // and eigenvectors. Wide rotations reuse it for upper-row maxima before
++    // filling the final diagonal; there is no second cache allocation.
++    let mut values = filled(dimension, 0.0_f64, "unable to reserve PPML eigenvalues")?;
++    let cached_pivots = dimension > 64;
++    if cached_pivots {
++        for (row, maximum) in values.iter_mut().enumerate() {
++            *maximum = upper_row_maximum(&work, dimension, row).1;
++        }
++    }
+     if dimension > 1 {
+         let threshold = 128.0 * f64::EPSILON * matrix_scale(&work, dimension)?;
+         let maximum_iterations = dimension
+@@ -249,24 +259,22 @@ fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEi
+             .ok_or_else(|| allocation("PPML Jacobi iteration limit overflows usize"))?;
+         let mut converged = false;
+         for _ in 0..maximum_iterations {
+-            let mut pivot_row = 0_usize;
+-            let mut pivot_column = 1_usize;
+-            let mut maximum = 0.0_f64;
+-            for row in 0..dimension {
+-                for column in (row + 1)..dimension {
+-                    let candidate = work[row * dimension + column].abs();
+-                    if candidate > maximum {
+-                        maximum = candidate;
+-                        pivot_row = row;
+-                        pivot_column = column;
+-                    }
+-                }
+-            }
++            let (pivot_row, pivot_column, maximum) = if cached_pivots {
++                cached_jacobi_pivot(&work, dimension, &values)
++            } else {
++                exhaustive_jacobi_pivot(&work, dimension)
++            };
+             if maximum <= threshold {
+                 converged = true;
+                 break;
+             }
++            if cached_pivots {
++                invalidate_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column);
++            }
+             jacobi_rotate(&mut work, &mut vectors, dimension, pivot_row, pivot_column)?;
++            if cached_pivots {
++                refresh_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column);
++            }
+         }
+         if !converged {
+             return Err(numerical_nonconvergence(
+@@ -274,7 +282,6 @@ fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEi
+             ));
+         }
+     }
+-    let mut values = filled(dimension, 0.0_f64, "unable to reserve PPML eigenvalues")?;
+     for index in 0..dimension {
+         values[index] = work[index * dimension + index];
+     }
+@@ -291,6 +298,97 @@ fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEi
+     })
+ }
+ 
++fn exhaustive_jacobi_pivot(matrix: &[f64], dimension: usize) -> (usize, usize, f64) {
++    let (mut pivot_row, mut pivot_column, mut maximum) = (0, 1, 0.0_f64);
++    for row in 0..dimension {
++        for column in (row + 1)..dimension {
++            let candidate = matrix[row * dimension + column].abs();
++            if candidate > maximum {
++                maximum = candidate;
++                pivot_row = row;
++                pivot_column = column;
++            }
++        }
++    }
++    (pivot_row, pivot_column, maximum)
++}
++
++fn upper_row_maximum(matrix: &[f64], dimension: usize, row: usize) -> (usize, f64) {
++    let mut column = row + 1;
++    let mut maximum = 0.0_f64;
++    for index in (row + 1)..dimension {
++        let candidate = matrix[row * dimension + index].abs();
++        if candidate > maximum {
++            column = index;
++            maximum = candidate;
++        }
++    }
++    (column, maximum)
++}
++
++fn cached_jacobi_pivot(
++    matrix: &[f64],
++    dimension: usize,
++    row_maxima: &[f64],
++) -> (usize, usize, f64) {
++    let (mut pivot_row, mut maximum) = (0, 0.0_f64);
++    for (row, &candidate) in row_maxima.iter().enumerate() {
++        if candidate > maximum {
++            pivot_row = row;
++            maximum = candidate;
++        }
++    }
++    // Strict greater-than comparisons preserve the exhaustive search's first
++    // row and first column on ties, including its all-zero stopping pivot.
++    let (pivot_column, _) = upper_row_maximum(matrix, dimension, pivot_row);
++    (pivot_row, pivot_column, maximum)
++}
++
++fn invalidate_rotated_maxima(
++    matrix: &[f64],
++    dimension: usize,
++    row_maxima: &mut [f64],
++    p: usize,
++    q: usize,
++) {
++    for (row, maximum) in row_maxima.iter_mut().enumerate() {
++        if row == p
++            || row == q
++            || (row < p && matrix[row * dimension + p].abs() == *maximum)
++            || (row < q && matrix[row * dimension + q].abs() == *maximum)
++        {
++            // Magnitudes are nonnegative. The sign bit marks an invalidated
++            // row without an index/flag buffer; -0.0 must also be rescanned.
++            *maximum = -*maximum;
++        }
++    }
++}
++
++fn refresh_rotated_maxima(
++    matrix: &[f64],
++    dimension: usize,
++    row_maxima: &mut [f64],
++    p: usize,
++    q: usize,
++) {
++    for (row, maximum) in row_maxima.iter_mut().enumerate() {
++        if maximum.is_sign_negative() {
++            *maximum = upper_row_maximum(matrix, dimension, row).1;
++        } else {
++            // Other upper rows changed only in columns p/q. Their old
++            // maximum remains present, but either new entry may exceed it.
++            for column in [p, q] {
++                if row < column {
++                    let candidate = matrix[row * dimension + column].abs();
++                    if candidate > *maximum {
++                        *maximum = candidate;
++                    }
++                }
++            }
++        }
++    }
++}
++
+ fn jacobi_rotate(
+     matrix: &mut [f64],
+     vectors: &mut [f64],
+@@ -572,6 +670,79 @@ fn allocation(message: impl Into<String>) -> FeregError {
+ mod tests {
+     use super::*;
+ 
++    #[test]
++    fn cached_jacobi_pivots_match_exhaustive_search_after_rotations() {
++        for dimension in [1, 2, 7, 63, 64, 65, 129, 257] {
++            for pattern in 0..4 {
++                let scale = match pattern {
++                    0 => 2.0_f64.powi(-400),
++                    1 => 2.0_f64.powi(400),
++                    _ => 1.0,
++                };
++                let mut matrix = vec![0.0; dimension * dimension];
++                let mut vectors = vec![0.0; dimension * dimension];
++                for row in 0..dimension {
++                    vectors[row * dimension + row] = 1.0;
++                    matrix[row * dimension + row] = (row + 1) as f64 * scale;
++                    for column in (row + 1)..dimension {
++                        let value = match pattern {
++                            0 => ((row * 31 + column * 17) % 29) as f64 - 14.0,
++                            1 => {
++                                if (row + column) % 3 == 0 {
++                                    0.25
++                                } else {
++                                    -0.25
++                                }
++                            }
++                            2 => {
++                                if row == 0 && column == dimension - 1 {
++                                    0.5
++                                } else {
++                                    -0.0
++                                }
++                            }
++                            _ => -0.0,
++                        } * scale;
++                        matrix[row * dimension + column] = value;
++                        matrix[column * dimension + row] = value;
++                    }
++                }
++                let mut maxima = (0..dimension)
++                    .map(|row| upper_row_maximum(&matrix, dimension, row).1)
++                    .collect::<Vec<_>>();
++                let capacity = maxima.capacity();
++                for _ in 0..512 {
++                    let expected = exhaustive_jacobi_pivot(&matrix, dimension);
++                    let cached = cached_jacobi_pivot(&matrix, dimension, &maxima);
++                    assert_eq!(cached, expected, "dimension={dimension}, pattern={pattern}");
++                    if expected.2 == 0.0 {
++                        break;
++                    }
++                    invalidate_rotated_maxima(
++                        &matrix,
++                        dimension,
++                        &mut maxima,
++                        expected.0,
++                        expected.1,
++                    );
++                    if pattern == 2 && dimension > 2 {
++                        assert!(maxima
++                            .iter()
++                            .any(|value| *value == 0.0 && value.is_sign_negative()));
++                    }
++                    jacobi_rotate(&mut matrix, &mut vectors, dimension, expected.0, expected.1)
++                        .unwrap();
++                    refresh_rotated_maxima(&matrix, dimension, &mut maxima, expected.0, expected.1);
++                    for (row, &maximum) in maxima.iter().enumerate() {
++                        assert_eq!(maximum, upper_row_maximum(&matrix, dimension, row).1);
++                        assert!(!maximum.is_sign_negative());
++                    }
++                    assert_eq!(maxima.capacity(), capacity);
++                }
++            }
++        }
++    }
++
+     #[test]
+     fn published_psd_inspection_rejects_invalid_inputs_without_mutation() {
+         let positive = [2.0_f64, -0.5, -0.5, 1.0];

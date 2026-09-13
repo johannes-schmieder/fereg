@@ -1,0 +1,74 @@
+[
+  {
+    "baseline_seconds": 2.205,
+    "candidate_seconds": 2.158,
+    "increase_percent": -2.1315192743764255,
+    "increase_seconds": -0.04700000000000015,
+    "pair": "pivot-control-fw_exposure_missing-s31415927",
+    "review_required": false
+  },
+  {
+    "baseline_seconds": 0.829,
+    "candidate_seconds": 0.797,
+    "increase_percent": -3.860072376357049,
+    "increase_seconds": -0.03199999999999992,
+    "pair": "pivot-control-low_fw-s31415927",
+    "review_required": false
+  },
+  {
+    "baseline_seconds": 0.025,
+    "candidate_seconds": 0.019,
+    "increase_percent": -24.00000000000001,
+    "increase_seconds": -0.006000000000000002,
+    "pair": "pivot-control-no_fe_narrow-s31415927",
+    "review_required": false
+  },
+  {
+    "baseline_seconds": 7.477,
+    "candidate_seconds": 7.431,
+    "increase_percent": -0.6152200080246084,
+    "increase_seconds": -0.04600000000000026,
+    "pair": "pivot-control-one_fe_complete-s31415927",
+    "review_required": false
+  },
+  {
+    "baseline_seconds": 0.027,
+    "candidate_seconds": 0.027,
+    "increase_percent": 0.0,
+    "increase_seconds": 0.0,
+    "pair": "pivot-control-saved_separation-s31415927",
+    "review_required": false
+  },
+  {
+    "baseline_seconds": 0.027,
+    "candidate_seconds": 0.029,
+    "increase_percent": 7.407407407407418,
+    "increase_seconds": 0.0020000000000000018,
+    "pair": "pivot-control-small_narrow-s31415927",
+    "review_required": false
+  },
+  {
+    "baseline_seconds": 0.43,
+    "candidate_seconds": 0.379,
+    "increase_percent": -11.860465116279073,
+    "increase_seconds": -0.05099999999999999,
+    "pair": "pivot-control-three_sparse_65-s31415927",
+    "review_required": false
+  },
+  {
+    "baseline_seconds": 0.5389999999999999,
+    "candidate_seconds": 0.527,
+    "increase_percent": -2.226345083487924,
+    "increase_seconds": -0.0119999999999999,
+    "pair": "pivot-control-unit_64-s31415927",
+    "review_required": false
+  },
+  {
+    "baseline_seconds": 0.469,
+    "candidate_seconds": 0.412,
+    "increase_percent": -12.153518123667373,
+    "increase_seconds": -0.056999999999999995,
+    "pair": "pivot-control-weak_pw_cluster_65-s31415927",
+    "review_required": false
+  }
+]

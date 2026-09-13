@@ -10,6 +10,52 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P3/P4 exact wide covariance pivots: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/ppml-pivot-cache-local-2026-09-13/README.md)
+adopts exact upper-row maximum reuse in PPML Jacobi eigensystems above 64
+identified dimensions against `d9aa8c0`. The existing eigenvalue vector holds
+temporary maxima within its modeled lifetime; only affected rows are rescanned.
+Pivot/tie order, rotations, stopping, clipping/rank policy and independent
+certificates remain unchanged. There is no new heap allocation, retained state,
+worker team or SPI call. [ADR 0058](docs/adr/0058-exact-ppml-jacobi-pivot-cache.md)
+records the boundary.
+
+All 19 planned pairs pass: nine primary pairs over three seeds, nine protected
+controls and one separate private audit. Unit K65/FW K129/PW K257 command medians
+fall 1.637→1.597 / 3.148→2.264 / 14.784→4.072 seconds; median paired gains are
+2.4%/28.0%/72.3%. Adoption rests on the repeated K129/K257 gains. Their inference
+medians fall 0.810→0.230 / 8.609→0.827 and publication 0.347→0.055 / 3.239→0.320
+seconds. Baseline instrumentation attributes most eigensystem time to exhaustive
+pivot search; separate standalone whole-inspection timings are not pooled with
+command evidence.
+
+Every scientific CSV is byte-identical, with exact sample/rank/status/DoF,
+cluster/separation/PSD reports and discrete solver fields. Native peaks are exact
+in 18/19 pairs, including all primaries, and every peak is admitted. Three-FE
+peak rises 24,715 bytes to 38.510 MB against a 58.377 MB model; its allocation
+source is untraced. All modeled phases are exact. Sampled RSS moves both ways;
+no memory saving is claimed. Largest protected slowdown is small K2 +2 ms/7.4%,
+within the review envelope. The private audit falls 19.344→8.623 seconds while
+retaining zero events/live/peak growth over 16 iterations, stable capacities and
+fresh/warm equivalence. Retry/fallback counts are zero throughout.
+
+Forty-nine distinct core tests, 22 PPML plugin tests, both independent dummy
+Poisson/Hessian/sandwich fixture arms and the original wide profiled-Poisson/
+full-CGM oracle pass. The latter retains b/V errors 3.97e-15/2.87e-16. Isolated
+universal/static and actual arm64 ABI checks pass. A read-only identity-key
+mistake and initial collector's interleaved-test-output undercount are disclosed;
+neither required a fit/test rerun. Candidate plugin is
+`c64ead0763d662a8f7bd1c74f1058426ea03f90c871ff387e76a6fe935b2e3da`, with all
+176 inputs verified. Installed dist, 97 unrelated STATUS additions and 358
+original untracked paths remain intact. No agents, SCC, qualification or push.
+
+This closes the bounded covariance experiment, not the remaining P3 cluster-state
+reuse/duplicate residualization or broader P4/P5/P6/P7 and R1–R5 work. Next audit
+final-sample cluster ordering consumers and low-memory score reconstruction, then
+the remaining construction/state and centered-tile work. Complete #27 before the
+authorized two-agent investigation, upstream CMG review and later small SCC run.
+
 ## P4/P6/P7 wider retained moments: adopted local checkpoint
 
 The [source-bound report](benchmarks/reports/development/ppml-wide-moments-local-2026-09-13/README.md)

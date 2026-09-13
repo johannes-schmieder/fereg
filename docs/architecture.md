@@ -100,6 +100,14 @@ numerical cache or new rank policy is introduced. See
 [ADR 0054](adr/0054-retained-dense-moment-row-standardization.md) and
 [ADR 0057](adr/0057-wider-retained-dense-moment-tiles.md).
 
+PPML covariance production and independent publication inspection use the same
+maximum-pivot Jacobi arithmetic. Above 64 identified dimensions, upper-row maxima
+reuse the eigenvalue vector within its existing modeled lifetime. Only affected
+rows are rescanned after a rotation; pivot ties, stopping, clipping and independent
+certificates remain exact. This cache belongs to one eigensystem, with no new heap
+allocation or state shared across weight frames; see
+[ADR 0058](adr/0058-exact-ppml-jacobi-pivot-cache.md).
+
 Numeric preparation first classifies borrowed sources without observation-sized
 allocation. After generation-zero admission, the same visitor constructs the
 row ledger and weight reports, and the owner consumes the offset/exposure buffer
