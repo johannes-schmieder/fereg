@@ -1,0 +1,22 @@
+{
+  "disposition": "Adopted for local development; wide native-memory reduction, ordinary-command timing review passes. No narrow speed claim.",
+  "focused_unit_tests_distinct": 134,
+  "followup_exact_science": true,
+  "followup_measured_commands": 24,
+  "followup_pairs": 12,
+  "independent_licensed_fixtures": 3,
+  "licensed_fixture_invocations": 6,
+  "lsmr_filter_passed": 67,
+  "memory_filter_passed": 77,
+  "previous_scientific_tests_unchanged": true,
+  "prior_validation": "../lsmr-batch-memory-local-2026-09-13/validation.json",
+  "prior_validation_sha256": "79ba659d2607287db4d933ea4245ea191ee27062f1461844b32860aba36c6320",
+  "reviewed_build": {
+    "byte_identical_to_measured": true,
+    "native_arm64_abi_self_test": true,
+    "plugin_sha256": "c9db0dceea82dc7b7b87a51979d0fd7ca1f83f1e71f04f034be32312527990f6",
+    "universal_static_audit": true
+  },
+  "reviewed_source_change": "Only a cfg(test) comment correction; no executable code or assertion changes.",
+  "scope": "Focused local development. No full profile, SCC, Windows, release qualification or installed-artifact replacement."
+}

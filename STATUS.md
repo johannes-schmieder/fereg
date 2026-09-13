@@ -10,51 +10,43 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## P0/R1/P7 batch-memory investigation: prototype held for timing review
+## P0/R1/P7 bounded LSMR batches: adopted local checkpoint
 
-The [source-bound investigation](benchmarks/reports/development/lsmr-batch-memory-local-2026-09-13/README.md)
-archives 72 local pairs / 144 measured commands across six variants. None is a
-new adopted optimization. Accepted native main remains `ac47b19`; the current
-uncommitted core candidate matches the 152-input `wide-guard` snapshot and plugin
-`c9db0dceea82dc7b7b87a51979d0fd7ca1f83f1e71f04f034be32312527990f6`.
+The [adoption report](benchmarks/reports/development/lsmr-batch-adoption-local-2026-09-13/README.md)
+supersedes the held-prototype decision at `cd298d5` without altering its immutable
+72-pair investigation. The private adapter windows independent RHSs only above
+64 columns and 4× the installed team, sharing one weighted solver. Narrow batches
+retain upstream transport. Shared categorical OLS/PPML memory estimates now charge
+recurrence, dense construction, scatter, output overlap and Schwarz stack/pool
+state; see [ADR 0049](docs/adr/0049-bounded-lsmr-batches-and-memory.md).
 
-The candidate corrects categorical LSMR recurrence, dense construction, scatter,
-output-overlap and Schwarz scratch accounting and shares it with PPML checkpoints.
-It windows only above 64 RHS and 4× the installed worker team, retaining one weighted
-solver. Earlier policies increased ordinary-width allocation or used PPML's
-machine-default configuration instead of its installed team; those variants are
-preserved and not adopted. Wide weak OLS native peak falls 403.31→351.32 MB (12.9%)
-with +1.5% median paired command cost; wide weak PPML falls 182.18→169.43 MB (7.0%)
-with +0.5% command cost. These are candidate memory results, not adopted speedups.
+Repeated wide weak OLS native peak falls 403.31→351.32 MB (12.9%) with +1.5%
+median paired command cost; wide weak PPML falls 182.18→169.43 MB (7.0%) with
++0.5% command cost. Adoption rests on memory savings, not speed. A prospective
+ordinary-command follow-up adds 12 pairs / 24 calls: six identical-binary A/A
+controls and six A/B comparisons, interleaved over three seeds in both orders.
+A/B differences are −6/−8/−17/+3/−16/−23 ms, all within the original review
+envelope; A/A ranges −19 to +18 ms. Earlier traced PPML increases of 21/36/38 ms
+remain unexplained and preserved. No causal narrow speedup is claimed.
 
-Ordinary-width K17 PPML has +4.0% median cost across six pairs and three 21/36/38 ms
-increases (6–11%). Model-only and direct adapter decompositions show +1.0%/+1.3%
-medians; the latter ranges −12 to +9 ms. They narrow attribution but do not explain
-or erase the larger regressions. Do not adopt or restart favorable seeds without
-resolving that review. The model-only diagnostic must remain narrow-only: its
-unmodified batch engine cannot enforce the revised model's wide concurrency cap.
+Full science and non-time solver/retry decisions are exact. The preceding 67
+LSMR-filter and 77 memory-filter tests (134 distinct), three independent licensed
+fixtures in both arms and nine source-bound allocation probes remain applicable.
+The reviewed source differs only by a corrected test comment; its universal plugin
+is byte-identical to the measured `c9db0dce...` candidate and static/native arm64 ABI
+checks pass. The report binds all 152 final native inputs and seven changed files.
+A discriminating 327680-byte admission test rejects the old over-budget LSMR
+construction and selects certified CG. Three unconverged allocation probes remain
+allocation evidence only. The ill-conditioned smooth 65-column oracle and earlier
+low-FW/saved-AW weak certificate failures remain failures, not passing controls.
 
-The final candidate passes 67 LSMR-filter and 77 memory-filter tests (134 distinct),
-three independent licensed fixtures in both arms, and universal/static/native
-arm64 ABI checks. Nine source-bound allocation probes fit the revised estimate;
-three are deliberately iteration-bounded and unconverged, so are not scientific
-oracles. A weighted 320-row construction needs 425777 bytes: the 327680-byte admission
-regression fails on baseline and routes to certified CG on candidate. The first
-65536-byte test was nondiscriminating and remains excluded as proof.
-
-The 65-control Poisson oracle uses well-conditioned Fourier columns and passes
-full slope/prediction/covariance checks at 1/4 workers and unit/FW/PW. Its initial
-smooth-column expansion has condition 2.72e15 and fails the same bread guard on
-both artifacts; all failed receipts remain. The earlier low-FW/saved-AW weak
-certificate failures are not fixed or rerun. Public OLS memory reporting still
-omits solver increments; opaque factor/stack bounds and full fallback counters
-remain open. No general memory-bound or qualification claim is made.
-
-Next resolve the narrow PPML timing concern and decide the candidate, then repair
-actual attempted/fallback peak reporting and continue the remaining #27 packages.
-Finish #27 before the authorized two-agent investigations, upstream CMG assessment
-and new small SCC campaign. Installed dist, the 97 unrelated Veneto STATUS additions
-and all pre-existing local evidence remain intact. No SCC, qualification or push.
+Next repair actual attempted/fallback peak reporting: public OLS selected-model
+bytes still omit solver increments. Opaque factor/stack bounds and full construction
+counters remain open; this is not universal memory-bound qualification. Continue
+remaining #27 packages before the authorized two-agent investigations, upstream
+CMG assessment and new small SCC campaign. Installed dist, the 97 unrelated Veneto
+STATUS additions and all pre-existing local evidence remain intact. No SCC,
+qualification or push occurred.
 
 ## P0/R1 borrowed LSMR transport: adopted local checkpoint
 

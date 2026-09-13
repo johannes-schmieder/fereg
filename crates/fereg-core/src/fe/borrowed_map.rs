@@ -1479,11 +1479,13 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 report.certification_seconds += certification_started.elapsed().as_secs_f64();
                 if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
                     emit_solver_trace(&format!(
-                        "FEREG_SOLVER_TRACE|phase=checkpoint_lsmr_attempt|retry={}|recurrence_tolerance={:.17e}|canonical_tolerance={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|certificate_seconds={:.17e}|canonical_relinf={:.17e}|canonical_passed={}",
+                        "FEREG_SOLVER_TRACE|phase=checkpoint_lsmr_attempt|retry={}|recurrence_tolerance={:.17e}|canonical_tolerance={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|certificate_seconds={:.17e}|canonical_relinf={:.17e}|canonical_passed={}|rhs={}|batch_window={}|threads={}|rows={}",
                         u8::from(accumulated.is_some()), recurrence_tolerance, config.tolerance,
                         report.iterations, report.setup_seconds, report.solve_seconds,
                         report.certification_seconds, canonical_certificate.relative_infinity_norm,
-                        u8::from(canonical_certificate.passed),
+                        u8::from(canonical_certificate.passed), values.ncols(),
+                        crate::memory::lsmr_rhs_window(values.ncols(), rayon::current_num_threads()),
+                        rayon::current_num_threads(), self.design.nobs(),
                     ));
                 }
                 if let Some(prior) = accumulated.take() {
@@ -4419,18 +4421,17 @@ impl<'a> BorrowedLsmrPrepared<'a> {
             self.builds += 1;
             setup_seconds += setup.elapsed().as_secs_f64();
         }
-        let initial = self
-            .solver
-            .as_ref()
-            .expect("LSMR preparation exists")
-            .solve_batch(rhs, Some(options));
+        let initial = super::lsmr_batch::solve_prepared_batch(
+            self.solver.as_ref().expect("LSMR preparation exists"),
+            rhs,
+            options,
+        );
         let mut solved = match initial {
             Ok(solved) => solved,
             Err(error)
                 if requested == LsmrPreconditioner::Auto
                     && !self.preconditioner_fallback
-                    && matches!(&error, within::SolveError::InvalidInput { context, message }
-                    if *context == "mlsmr" && message.contains("preconditioner not positive definite")) =>
+                    && error.preconditioner_breakdown() =>
             {
                 // Release the rejected preconditioner before constructing its replacement.
                 self.solver = None;
@@ -4443,18 +4444,16 @@ impl<'a> BorrowedLsmrPrepared<'a> {
                 self.builds += 1;
                 self.preconditioner_fallback = true;
                 setup_seconds += setup.elapsed().as_secs_f64();
-                self.solver.as_ref().expect("fallback LSMR preparation exists")
-                    .solve_batch(rhs, Some(options)).map_err(|error| FeregError::new(
-                        ErrorCode::Internal,
-                        format!("borrowed modified LSMR failed after unpreconditioned fallback: {error}"),
-                    ))?
+                super::lsmr_batch::solve_prepared_batch(
+                    self.solver.as_ref().expect("fallback LSMR preparation exists"),
+                    rhs,
+                    options,
+                )
+                .map_err(|error| {
+                    error.into_fereg("borrowed modified LSMR failed after unpreconditioned fallback")
+                })?
             }
-            Err(error) => {
-                return Err(FeregError::new(
-                    ErrorCode::Internal,
-                    format!("borrowed modified LSMR failed: {error}"),
-                ))
-            }
+            Err(error) => return Err(error.into_fereg("borrowed modified LSMR failed")),
         };
         self.batches += 1;
         solved.time_setup += setup_seconds;
@@ -4585,7 +4584,8 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     );
     let preconditioner = borrowed_within_preconditioner(resolved_preconditioner);
     let owned_setup_seconds = lsmr_setup_started.elapsed().as_secs_f64();
-    let (mut solved, preconditioner_fallback) = if let Some(prepared) = prepared.filter(|p| !p.disabled)
+    let (mut solved, preconditioner_fallback) = if let Some(prepared) =
+        prepared.filter(|p| !p.disabled)
     {
         prepared.solve(
             design,
@@ -4597,41 +4597,34 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         )?
     } else {
         let effects = borrowed_lsmr_effects(design)?;
-        let initial = within::solve_batch(
+        let initial = super::lsmr_batch::solve_batch(
             effects.clone(),
             &rhs_views,
             weights.values,
-            Some(&options),
+            &options,
             preconditioner,
         );
         match initial {
             Ok(solved) => (solved, false),
             Err(error)
                 if lsmr_config.preconditioner == LsmrPreconditioner::Auto
-                    && borrowed_lsmr_preconditioner_breakdown(&error) =>
+                    && error.preconditioner_breakdown() =>
             {
-                let solved = within::solve_batch(
-                effects,
-                &rhs_views,
-                weights.values,
-                Some(&options),
-                PreconditionerConfig::Off,
-            )
-            .map_err(|fallback_error| {
-                FeregError::new(
-                    ErrorCode::Internal,
-                    format!(
-                        "borrowed modified LSMR failed after unpreconditioned fallback: {fallback_error}"
-                    ),
+                let solved = super::lsmr_batch::solve_batch(
+                    effects,
+                    &rhs_views,
+                    weights.values,
+                    &options,
+                    PreconditionerConfig::Off,
                 )
-            })?;
+                .map_err(|fallback_error| {
+                    fallback_error
+                        .into_fereg("borrowed modified LSMR failed after unpreconditioned fallback")
+                })?;
                 (solved, true)
             }
             Err(error) => {
-                return Err(FeregError::new(
-                    ErrorCode::Internal,
-                    format!("borrowed modified LSMR failed: {error}"),
-                ));
+                return Err(error.into_fereg("borrowed modified LSMR failed"));
             }
         }
     };
@@ -4785,14 +4778,6 @@ fn borrowed_within_preconditioner(preconditioner: LsmrPreconditioner) -> Precond
         LsmrPreconditioner::Diagonal => PreconditionerConfig::Diagonal,
         LsmrPreconditioner::Schwarz => PreconditionerConfig::default(),
     }
-}
-
-fn borrowed_lsmr_preconditioner_breakdown(error: &within::WithinError) -> bool {
-    matches!(
-        error,
-        within::WithinError::Solve(within::SolveError::InvalidInput { context, message })
-            if *context == "mlsmr" && message.contains("preconditioner not positive definite")
-    )
 }
 
 fn pilot_contraction(initial: f64, current: f64) -> Result<f64> {
@@ -10585,10 +10570,13 @@ mod tests {
             estimate_fe_solver_memory(observations, 1, &[workers, workers + 1], 1, lsmr.local_size)
                 .expect("solver memory");
         assert!(memory.cg_bytes < memory.lsmr_schwarz_bytes);
+        let weights: Vec<f64> = (0..observations)
+            .map(|row| 0.5 + (row % 19) as f64 / 19.0)
+            .collect();
         let run = |usable_bytes| {
             absorb_borrowed_intercept_auto_routed_certified(
                 &design,
-                BorrowedMapWeights::Unit,
+                BorrowedMapWeights::Provided(&weights),
                 DenseMatrix::from_columns(std::slice::from_ref(&outcome)).expect("matrix"),
                 config(),
                 lsmr,
@@ -10607,6 +10595,16 @@ mod tests {
             .warnings
             .first()
             .is_some_and(|warning| { warning.contains("joint execution/solver memory plan") }));
+
+        // The old model charged the compensation table but omitted the equally
+        // sized primary table. Check rejection before any LSMR numerical work.
+        let bounded = run(327_680).expect("small budget must use certified CG");
+        assert_eq!(bounded.report().used_solver, FeSolverKind::Cg);
+        assert!(bounded.report().fallback_used);
+        assert!(bounded.report().warnings.iter().any(|warning| {
+            warning.contains("joint execution/solver memory plan")
+        }));
+        assert_eq!(bounded.residualized(), cg.residualized());
 
         let error = run(memory.cg_bytes - 1).expect_err("neither route may allocate");
         assert_eq!(error.code, ErrorCode::Allocation);

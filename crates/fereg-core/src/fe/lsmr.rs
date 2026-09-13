@@ -150,41 +150,33 @@ pub fn absorb_lsmr(
     };
     let resolved_preconditioner = resolve_preconditioner_kind(design, config.preconditioner);
     let preconditioner = within_preconditioner(resolved_preconditioner);
-    let initial = within::solve_batch(
+    let initial = super::lsmr_batch::solve_batch(
         effects,
         &rhs_views,
         Some(weights),
-        Some(&options),
+        &options,
         preconditioner,
     );
     let (solved, preconditioner_fallback) = match initial {
         Ok(solved) => (solved, false),
         Err(error)
             if config.preconditioner == LsmrPreconditioner::Auto
-                && is_preconditioner_positivity_breakdown(&error) =>
+                && error.preconditioner_breakdown() =>
         {
-            let solved = within::solve_batch(
+            let solved = super::lsmr_batch::solve_batch(
                 build_effects(design)?,
                 &rhs_views,
                 Some(weights),
-                Some(&options),
+                &options,
                 PreconditionerConfig::Off,
             )
             .map_err(|fallback_error| {
-                FeregError::new(
-                    ErrorCode::Internal,
-                    format!(
-                        "modified LSMR failed after unpreconditioned fallback: {fallback_error}"
-                    ),
-                )
+                fallback_error.into_fereg("modified LSMR failed after unpreconditioned fallback")
             })?;
             (solved, true)
         }
         Err(error) => {
-            return Err(FeregError::new(
-                ErrorCode::Internal,
-                format!("modified LSMR failed: {error}"),
-            ));
+            return Err(error.into_fereg("modified LSMR failed"));
         }
     };
 
@@ -277,14 +269,6 @@ pub fn absorb_lsmr(
         pilot_contraction: 0.0,
         warnings,
     })
-}
-
-fn is_preconditioner_positivity_breakdown(error: &within::WithinError) -> bool {
-    matches!(
-        error,
-        within::WithinError::Solve(within::SolveError::InvalidInput { context, message })
-            if *context == "mlsmr" && message.contains("preconditioner not positive definite")
-    )
 }
 
 fn resolve_preconditioner_kind(

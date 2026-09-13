@@ -124,6 +124,19 @@ input remains available for reference norms and certified continuation; requeste
 coefficient products retain their existing lifetime. See
 [ADR 0048](adr/0048-borrowed-lsmr-transport-lifetimes.md).
 
+Categorical LSMR batches above both 64 RHSs and four times the installed team
+are solved in windows of at most that team's width, retaining one weighted
+operator and complete final output banks. Narrow batches retain upstream
+transport; their memory estimate charges the full RHS width because nested
+Rayon can suspend a recurrence and start another. The shared categorical
+OLS/PPML checkpoint model includes coefficient-space recurrence/scatter state,
+transformed input/output overlap, primary dense tables, weighted compensation
+and Schwarz worker stacks/pools. See
+[ADR 0049](adr/0049-bounded-lsmr-batches-and-memory.md).
+Public OLS selected-memory reporting still omits topology-specific solver
+increments; the source-bound development evidence does not close that gap or
+prove universal bounds for opaque upstream factor storage.
+
 PPML joint and checkpoint LSMR preflight also charges the pinned Schwarz
 builder's dense cross-tabulation scratch. Its dispatch depends on both the
 product of retained FE level counts and the sparse observation-count cost;

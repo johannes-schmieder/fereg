@@ -12,6 +12,7 @@ mod components;
 mod design;
 mod interaction;
 mod lsmr;
+mod lsmr_batch;
 mod map;
 mod partition;
 mod partition_registry;
