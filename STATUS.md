@@ -10,6 +10,36 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P3 cluster-state reuse: evaluated; certificate prototype rejected
+
+The [source-bound report](benchmarks/reports/development/cluster-certificate-local-2026-09-13/README.md)
+rejects representative-tuple certification against accepted `257f4ce`. Dense OLS,
+sparse OLS and sparse PPML first-screen commands fall 0.318→0.308 / 0.172→0.170 /
+0.363→0.358 seconds: none meets the prospective joint 5%/10 ms threshold. No
+additional primary seeds ran. All nine pairs (three screens, four controls and
+two separate public profiles) preserve exact scientific exports and solver
+fields. Largest protected slowdown is low AW saved-output OLS +3 ms/4.1%.
+The sparse OLS profile saves 6.4 ms in preparation; that does not overturn the
+command-screen rejection. All three primary native peaks are unchanged/admitted,
+while sampled RSS rises. Two control peaks differ for untraced reasons.
+
+The small-slope and weak OLS controls exceed their unchanged models on both
+artifacts: 1,388,568 versus 1,382,472 bytes, and 27.49/27.91 versus 13.64 MB.
+These are recorded P0 gaps, not memory acceptance passes. Three focused unit
+tests, both independent OLS/Poisson interaction oracle arms, universal static
+checks and native arm64 ABI checks pass. Initial compilation and collection/checker
+failures remain disclosed. All 179 accepted inputs are restored, installed dist
+is unchanged, and unrelated Veneto work is preserved.
+
+The [consumer audit](benchmarks/reports/development/cluster-certificate-local-2026-09-13/consumer-audit.md)
+completes the bounded cluster-state reuse evaluation: final codes/subset orders
+already serve their production and certificate consumers; the identified extra
+categorical factorization alternative is rejected. Low-memory QR overwrites
+within scratch, so direct inference handoff would be incorrect. That broader
+P3 item remains open. Next prototype stable one-FE centered tiles through the
+existing moment/rank boundaries, preserving reference scales and QR fallback;
+P0 and other P4–P7/R1–R5 work remain. No agents, SCC, qualification or push.
+
 ## P3/P4 exact wide covariance pivots: adopted local checkpoint
 
 The [source-bound report](benchmarks/reports/development/ppml-pivot-cache-local-2026-09-13/README.md)

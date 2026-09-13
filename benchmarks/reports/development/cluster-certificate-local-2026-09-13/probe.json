@@ -1,0 +1,32 @@
+{
+  "baseline_commit": "257f4cee74ee0b3e80c55e1f1867b486e26410b5",
+  "prototype_source_sha256": "9672bc4110bdc9998f3e4d9dfc79e141581821a3f7dccbbc6add81254d5d4fbe",
+  "prototype_patch_sha256": "72d0760c18506e31ed773f375577dac797625f65dd6f0cba4af069d7d0e7dbc8",
+  "tests": [
+    "ols::prepared_categorical_clusters::partition_certificate_tests::interaction_certificate_bounds_workspace_and_propagates_allocation_failure",
+    "ols::prepared_categorical_clusters::partition_certificate_tests::interaction_certificate_rejects_merge_split_relabel_and_missing_groups",
+    "ols::prepared_categorical_clusters::partition_certificate_tests::interaction_certificate_matches_exact_factorization_across_row_orders"
+  ],
+  "test_log_sha256": "fa90df04c6148dc5908c8c7b5331eabfd40d5acca09e916401fb7c412c393e9a",
+  "initial_compilation_error": "E0282: Option<usize> annotation required for prior representative row",
+  "initial_error_log_sha256": "f95c09e81617ef5215600980c62f3a22e591d2247f7456bd1b145959a26073ce",
+  "status": "unadopted; three isolated unit tests pass, no candidate plugin, licensed fixture or performance comparison yet",
+  "audit": {
+    "baseline_commit": "257f4cee74ee0b3e80c55e1f1867b486e26410b5",
+    "source_hashes": {
+      "crates/fereg-core/src/ols/prepared_categorical_clusters.rs": "817235109fc613eb62f7626ef387118253887286846dcc868095a620e1f0171a",
+      "crates/fereg-core/src/ols/prepared_clusters.rs": "cf31085c93c0b5fa5e8e289cb4b64e6654b114807bf5539f7b305e6d00ca0373",
+      "crates/fereg-core/src/ols/prepared_scores.rs": "66e559f4769aeaee0c50d5f4d1f1bb6a827dedc749a188b2dc62494866691060",
+      "crates/fereg-core/src/ols/prepared_fit.rs": "476fdd1775276e479d521b7705a7a4f006deb17712d700cdd7443c31ee90b33e",
+      "crates/fereg-core/src/sandwich.rs": "5eeb0332b6b71bb2a91621331e7463ed4e2b101a536d9c9e6f81e05ceb43e249",
+      "crates/fereg-core/src/sandwich/qualified_cluster.rs": "69b17e95c121fb48e4b8ec396c6b01175f67130959136d15bf844371a1283ed5",
+      "crates/fereg-core/src/ppml/vce.rs": "bd6f91ebb06bd8aa2416c1fd1c122789db04b56769b7d6f84d6974ce3a0d8547"
+    },
+    "findings": [
+      "Simple final-sample clusters already borrow authoritative categorical codes; interacted categorical clusters refactorize during certify_prepared_clusters.",
+      "OLS and positive-rank PPML share one ordered subset pass between production/certificate and obtain group counts from that pass; rank-zero PPML has a separate count-only path.",
+      "OLS low-memory QR modifies its within scratch in place; its final scratch is not an unmodified residualized design. Direct ownership transfer without reconstruction is invalid."
+    ],
+    "hypothesis": "Replace only categorical interaction re-factorization with independent tuple membership and strict lexicographic representative checks, within the previous scratch bound. Performance and adoption remain unproven."
+  }
+}

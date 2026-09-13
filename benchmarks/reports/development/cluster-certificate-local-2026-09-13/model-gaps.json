@@ -1,0 +1,33 @@
+{
+  "gaps": [
+    {
+      "arm": "baseline",
+      "model": "ols",
+      "modeled": 1382472,
+      "observed": 1388568,
+      "pair": "prep-clcert-control-small_slope-s31415927"
+    },
+    {
+      "arm": "candidate",
+      "model": "ols",
+      "modeled": 1382472,
+      "observed": 1388568,
+      "pair": "prep-clcert-control-small_slope-s31415927"
+    },
+    {
+      "arm": "baseline",
+      "model": "ols",
+      "modeled": 13640648,
+      "observed": 27494384,
+      "pair": "prep-clcert-control-weak_pw-s31415927"
+    },
+    {
+      "arm": "candidate",
+      "model": "ols",
+      "modeled": 13640648,
+      "observed": 27914968,
+      "pair": "prep-clcert-control-weak_pw-s31415927"
+    }
+  ],
+  "note": "Both gaps occur on the accepted baseline and candidate. They are not admitted-peak passes. Native reporting is unchanged; P0 remains open."
+}

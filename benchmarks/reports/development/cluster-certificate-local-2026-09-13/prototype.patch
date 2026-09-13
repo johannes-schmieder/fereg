@@ -1,0 +1,242 @@
+diff --git a/crates/fereg-core/src/ols/prepared_categorical_clusters.rs b/crates/fereg-core/src/ols/prepared_categorical_clusters.rs
+index 8b47dbe..d7f503c 100644
+--- a/crates/fereg-core/src/ols/prepared_categorical_clusters.rs
++++ b/crates/fereg-core/src/ols/prepared_categorical_clusters.rs
+@@ -254,6 +254,15 @@ fn factorize_interaction<R: CategoricalClusterReservation>(
+     categorical_indices: &[usize],
+     reservation: &mut R,
+ ) -> Result<crate::fe::EncodedInteraction> {
++    let views = interaction_views(ols, categorical_indices, reservation)?;
++    factorize_code_interaction(&views)
++}
++
++fn interaction_views<'a, R: CategoricalClusterReservation>(
++    ols: &'a PreparedCategoricalOlsData,
++    categorical_indices: &[usize],
++    reservation: &mut R,
++) -> Result<Vec<CategoricalCodeView<'a>>> {
+     if categorical_indices.len() < 2 {
+         return Err(invalid_argument(
+             "categorical cluster interaction requires at least two sources",
+@@ -277,7 +286,7 @@ fn factorize_interaction<R: CategoricalClusterReservation>(
+             "categorical cluster interaction-view capacity exhausted",
+         )?;
+     }
+-    factorize_code_interaction(&views)
++    Ok(views)
+ }
+ 
+ fn certify_prepared_clusters(prepared: &PreparedCategoricalOlsClusteredData) -> Result<()> {
+@@ -329,12 +338,10 @@ fn certify_prepared_clusters(prepared: &PreparedCategoricalOlsClusteredData) ->
+                 }
+             }
+             (PreparedOlsClusterCodes::Interaction(_), indices) if indices.len() >= 2 => {
+-                let expected = factorize_interaction(&prepared.ols, indices, &mut reservation)?;
+-                if expected.n_levels() != dimension.groups || expected.codes() != codes {
+-                    return Err(invalid_data(
+-                        "categorical cluster interaction differs from its source tuple partition",
+-                    ));
+-                }
++                let views = interaction_views(&prepared.ols, indices, &mut reservation)?;
++                certify_interaction_partition(&views, codes, dimension.groups, &mut reservation)?;
++                // The partition certificate also proves every code is present.
++                continue;
+             }
+             _ => {
+                 return Err(invalid_argument(
+@@ -360,6 +367,73 @@ fn certify_prepared_clusters(prepared: &PreparedCategoricalOlsClusteredData) ->
+     Ok(())
+ }
+ 
++fn certify_interaction_partition<R: CategoricalClusterReservation>(
++    components: &[CategoricalCodeView<'_>],
++    codes: &[u32],
++    groups: usize,
++    reservation: &mut R,
++) -> Result<()> {
++    if components.len() < 2
++        || codes.is_empty()
++        || groups == 0
++        || groups > codes.len()
++        || components
++            .iter()
++            .any(|source| source.codes().len() != codes.len())
++    {
++        return Err(invalid_argument(
++            "categorical cluster partition axes disagree",
++        ));
++    }
++    // At most one row index per observed group. On 64-bit targets this fits
++    // the replaced factorization's 4*N codes + 4*P dense map (G <= N, P),
++    // or its 8*N ordering + 4*N codes. No second contiguity bitmap overlaps.
++    let mut representatives = reserved_filled(
++        reservation,
++        groups,
++        usize::MAX,
++        "unable to reserve categorical cluster certificate representatives",
++    )?;
++    for (row, &code) in codes.iter().enumerate() {
++        let representative = representatives
++            .get_mut(code as usize)
++            .ok_or_else(|| invalid_data("categorical cluster partition code is out of range"))?;
++        if *representative == usize::MAX {
++            *representative = row;
++        } else if components
++            .iter()
++            .any(|source| source.codes()[row] != source.codes()[*representative])
++        {
++            return Err(invalid_data(
++                "categorical cluster code merges distinct source tuples",
++            ));
++        }
++    }
++    let mut previous: Option<usize> = None;
++    for representative in representatives {
++        if representative == usize::MAX {
++            return Err(invalid_data(
++                "categorical cluster codes are not contiguous on the final sample",
++            ));
++        }
++        if let Some(prior) = previous {
++            let order = components
++                .iter()
++                .map(|source| source.codes()[prior].cmp(&source.codes()[representative]))
++                .find(|order| !order.is_eq());
++            // Strict lexicographic order excludes split tuples as well as
++            // noncanonical relabeling, independently of the factorizer.
++            if order != Some(std::cmp::Ordering::Less) {
++                return Err(invalid_data(
++                    "categorical cluster codes do not follow canonical tuple order",
++                ));
++            }
++        }
++        previous = Some(representative);
++    }
++    Ok(())
++}
++
+ fn reserved_empty<T, R: CategoricalClusterReservation>(
+     reservation: &mut R,
+     elements: usize,
+@@ -421,3 +495,121 @@ fn invalid_data(message: impl Into<String>) -> FeregError {
+ fn allocation(message: impl Into<String>) -> FeregError {
+     FeregError::new(ErrorCode::Allocation, message)
+ }
++
++#[cfg(test)]
++mod partition_certificate_tests {
++    use super::*;
++
++    #[test]
++    fn interaction_certificate_matches_exact_factorization_across_row_orders() {
++        for rows in [2, 17, 257] {
++            for reverse in [false, true] {
++                let mut first = (0..rows).map(|row| (row % 7) as u32).collect::<Vec<_>>();
++                let mut second = (0..rows)
++                    .map(|row| ((row * 13) % 11) as u32)
++                    .collect::<Vec<_>>();
++                if reverse {
++                    first.reverse();
++                    second.reverse();
++                }
++                let components = [
++                    CategoricalCodeView::new(&first, 7),
++                    CategoricalCodeView::new(&second, 11),
++                    CategoricalCodeView::new(&first, 7),
++                ];
++                let encoded = factorize_code_interaction(&components).unwrap();
++                certify_interaction_partition(
++                    &components,
++                    encoded.codes(),
++                    encoded.n_levels(),
++                    &mut SystemCategoricalClusterReservation,
++                )
++                .unwrap();
++            }
++        }
++    }
++
++    #[test]
++    fn interaction_certificate_rejects_merge_split_relabel_and_missing_groups() {
++        let first = [0, 0, 0, 1, 1, 1];
++        let second = [0, 0, 1, 0, 1, 1];
++        let components = [
++            CategoricalCodeView::new(&first, 2),
++            CategoricalCodeView::new(&second, 2),
++        ];
++        let valid = [0, 0, 1, 2, 3, 3];
++        certify_interaction_partition(
++            &components,
++            &valid,
++            4,
++            &mut SystemCategoricalClusterReservation,
++        )
++        .unwrap();
++        for (codes, groups) in [
++            ([0, 0, 0, 2, 3, 3], 4),
++            ([0, 1, 2, 3, 4, 4], 5),
++            ([1, 1, 0, 2, 3, 3], 4),
++            ([0, 0, 1, 2, 4, 4], 5),
++            ([0, 0, 1, 2, 4, 4], 4),
++        ] {
++            assert_eq!(
++                certify_interaction_partition(
++                    &components,
++                    &codes,
++                    groups,
++                    &mut SystemCategoricalClusterReservation,
++                )
++                .unwrap_err()
++                .code,
++                ErrorCode::InvalidData,
++            );
++        }
++        assert_eq!(first, [0, 0, 0, 1, 1, 1]);
++        assert_eq!(valid, [0, 0, 1, 2, 3, 3]);
++    }
++
++    struct BoundedReservation {
++        bytes: usize,
++        fail: bool,
++    }
++    impl CategoricalClusterReservation for BoundedReservation {
++        fn reserve_vec<T>(
++            &mut self,
++            target: &mut Vec<T>,
++            elements: usize,
++            label: &'static str,
++        ) -> Result<()> {
++            self.bytes += elements * std::mem::size_of::<T>();
++            if self.fail {
++                return Err(allocation("injected partition certificate allocation"));
++            }
++            SystemCategoricalClusterReservation.reserve_vec(target, elements, label)
++        }
++        fn reserve_string(&mut self, _: &mut String, _: usize, _: &'static str) -> Result<()> {
++            panic!("partition certification must not allocate strings");
++        }
++    }
++
++    #[test]
++    fn interaction_certificate_bounds_workspace_and_propagates_allocation_failure() {
++        for rows in [2, 513] {
++            let first = (0..rows).map(|row| row as u32).collect::<Vec<_>>();
++            let second = vec![0; rows];
++            let components = [
++                CategoricalCodeView::new(&first, rows),
++                CategoricalCodeView::new(&second, 1),
++            ];
++            for fail in [false, true] {
++                let mut reservation = BoundedReservation { bytes: 0, fail };
++                let result =
++                    certify_interaction_partition(&components, &first, rows, &mut reservation);
++                assert!(reservation.bytes <= 4 * rows + 4 * rows);
++                if fail {
++                    assert_eq!(result.unwrap_err().code, ErrorCode::Allocation);
++                } else {
++                    result.unwrap();
++                }
++            }
++        }
++    }
++}

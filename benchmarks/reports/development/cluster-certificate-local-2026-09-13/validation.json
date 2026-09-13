@@ -1,0 +1,58 @@
+{
+  "tests": [
+    "ols::prepared_categorical_clusters::partition_certificate_tests::interaction_certificate_bounds_workspace_and_propagates_allocation_failure",
+    "ols::prepared_categorical_clusters::partition_certificate_tests::interaction_certificate_rejects_merge_split_relabel_and_missing_groups",
+    "ols::prepared_categorical_clusters::partition_certificate_tests::interaction_certificate_matches_exact_factorization_across_row_orders"
+  ],
+  "oracle_arms": [
+    {
+      "arm": "baseline",
+      "fixture": "interaction_codes_oracle",
+      "rc": 0,
+      "process_rc": 0,
+      "sentinels": [
+        "END_FIXTURE|interaction_codes_oracle|rc=0",
+        "INTERACTION_ORACLE_DONE|interaction_codes_oracle|rc=0"
+      ],
+      "fixture_sha256": "0346a4ba46c9de954a8a4ca742a475bcbc08c65ff22921b24de707b417c56a39",
+      "plugin_sha256": "c64ead0763d662a8f7bd1c74f1058426ea03f90c871ff387e76a6fe935b2e3da",
+      "log_sha256": "5aefd72573a1cbc5d61008d7d1abf118dec244d4dbda5c9e30f39df63b6f45b3"
+    },
+    {
+      "arm": "candidate",
+      "fixture": "interaction_codes_oracle",
+      "rc": 0,
+      "process_rc": 0,
+      "sentinels": [
+        "END_FIXTURE|interaction_codes_oracle|rc=0",
+        "INTERACTION_ORACLE_DONE|interaction_codes_oracle|rc=0"
+      ],
+      "fixture_sha256": "0346a4ba46c9de954a8a4ca742a475bcbc08c65ff22921b24de707b417c56a39",
+      "plugin_sha256": "f8e1ccca1ffaf7b21dbce5abc9a777d9e7b90fafd85aa535f447177ef71271e5",
+      "log_sha256": "e4a80d6ce0dcd4a3003a01971d803ade7504ffac1ab10bfd2d72bf992566a133"
+    }
+  ],
+  "inputs_verified": 179,
+  "only_changed_input": "crates/fereg-core/src/ols/prepared_categorical_clusters.rs",
+  "universal_static_pass": true,
+  "native_arm64_abi_pass": true,
+  "x86_64_execution": false,
+  "log_sha256": {
+    "partition-tests.log": "f95c09e81617ef5215600980c62f3a22e591d2247f7456bd1b145959a26073ce",
+    "partition-tests-final.log": "fa90df04c6148dc5908c8c7b5331eabfd40d5acca09e916401fb7c412c393e9a",
+    "build.log": "0d7e129c8e7222ffb985ff55066228bebc6e17f43b6f4817322c1dafbcaef33a",
+    "oracles.log": "a44723acedcc7716bc443b3c2c507efe5cb7b2723d1a557b0571951720e4330c",
+    "screen.log": "68418a01a01f998d14eb56ff1a9f0e3656de0a13846f779dd203e700a2f0ec3e",
+    "rejection-checks.log": "fbb799dde10fa2de74aaab67336420d5e2b246f73e0e074703fabee75805bf14",
+    "collection-initial.log": "3612bef33c74d497c03a046820646789834983b433e016afacb55b7677ed73b1",
+    "collection-final.log": "3014c604a1e724e8ea16e6ead9b16bbf4518b9295ea524190ad4250c259f75aa"
+  },
+  "disclosed_failures": [
+    "Initial E0282 Option<usize> type annotation; corrected before final tests/build.",
+    "Initial collection required all observed peaks to fit models; small-slope and weak OLS violate the unchanged model on both arms. Final collection records these as open P0 gaps, not acceptance passes. No numerical fit or performance pair was rerun.",
+    "Read-only final model checker initially included available OS memory in model equality; selecting the actual modeled fields passes. No data or run changed.",
+    "Initial portability scan flagged its own bare path-prefix literals in the replay collector. The final scan distinguishes those literals from actual local paths."
+  ],
+  "collector_note": "Public PPML profile grouping and raw-vs-action allocation peaks are corrected explicitly after the shared legacy collector. Final summaries retain separate primary/control/public-profile groups.",
+  "accepted_inputs_restored": 179
+}
