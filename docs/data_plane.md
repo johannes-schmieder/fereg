@@ -84,6 +84,11 @@ observation-by-arity string key table or dense dummy matrix is part of the
 production representation. Disconnected and no-regressor models use the same
 sample/topology contract.
 
+Categorical interaction coding uses a bounded exact tuple mapping when it fits
+the row-order workspace, otherwise the existing lexical sort. Both produce the
+same final codes and retain component validation and fallible allocation; see
+[ADR 0046](adr/0046-bounded-interaction-coding.md).
+
 ## Computation and outputs
 
 Certified MAP residualization and rank-aware finite regression operate under

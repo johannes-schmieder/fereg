@@ -1,0 +1,344 @@
+diff --git a/crates/fereg-core/src/fe/interaction.rs b/crates/fereg-core/src/fe/interaction.rs
+index 29284b8..4d28bd1 100644
+--- a/crates/fereg-core/src/fe/interaction.rs
++++ b/crates/fereg-core/src/fe/interaction.rs
+@@ -1,8 +1,8 @@
+ //! Collision-free coding for categorical fixed-effect interactions.
+ //!
+-//! The factorizer stores one row ordering and one output `u32` code per
+-//! observation. It never materializes concatenated strings, hashed tuple keys,
+-//! or an observation-by-arity tuple table. Codes are assigned in lexicographic
++//! The factorizer stores output `u32` codes and either a bounded dense mapping
++//! or a row ordering. It never materializes concatenated strings, hashed tuple
++//! keys, or an observation-by-arity tuple table. Codes are assigned in lexicographic
+ //! component-code order, so the result is deterministic under row permutation
+ //! whenever each component's compact coding is deterministic.
+ 
+@@ -61,9 +61,9 @@ impl EncodedInteraction {
+ /// Factorize an all-categorical interaction without lossy hashing.
+ ///
+ /// The returned codes are contiguous in `0..n_levels` and ordered
+-/// lexicographically by the supplied compact component codes. The algorithm is
+-/// `O(A N log N)` for arity `A` and observations `N`, with one `usize` ordering
+-/// and one `u32` output vector. Component storage is borrowed.
++/// lexicographically by the supplied compact component codes. A bounded mapping
++/// costs `O(A N + P)` for arity A, rows N and Cartesian levels P; larger products
++/// use `O(A N log N)` comparison sorting. Component storage is borrowed.
+ pub fn factorize_code_interaction(
+     components: &[CategoricalCodeView<'_>],
+ ) -> Result<EncodedInteraction> {
+@@ -71,7 +71,7 @@ pub fn factorize_code_interaction(
+     factorize_code_interaction_with_reservation(components, &mut reservation)
+ }
+ 
+-trait InteractionReservation {
++pub(crate) trait InteractionReservation {
+     fn reserve_vec<T>(
+         &mut self,
+         target: &mut Vec<T>,
+@@ -107,6 +107,12 @@ fn factorize_code_interaction_with_reservation<R: InteractionReservation>(
+         });
+     }
+ 
++    if let Some(encoded) =
++        try_factorize_dense_code_interaction(nobs, components.iter().copied(), reservation)?
++    {
++        return Ok(encoded);
++    }
++
+     let mut order = Vec::new();
+     reservation.reserve_vec(
+         &mut order,
+@@ -161,6 +167,80 @@ fn factorize_code_interaction_with_reservation<R: InteractionReservation>(
+     Ok(EncodedInteraction { codes, n_levels })
+ }
+ 
++/// Callers validate component alignment and code ranges before this helper.
++/// The table replaces the row order; the output temporarily holds tuple slots.
++pub(crate) fn try_factorize_dense_code_interaction<'a, I, R>(
++    nobs: usize,
++    components: I,
++    reservation: &mut R,
++) -> Result<Option<EncodedInteraction>>
++where
++    I: Iterator<Item = CategoricalCodeView<'a>> + Clone,
++    R: InteractionReservation,
++{
++    let Some(order_bytes) = nobs.checked_mul(std::mem::size_of::<usize>()) else {
++        return Ok(None);
++    };
++    let Some(slots) = components
++        .clone()
++        .try_fold(1usize, |product, component| {
++            product.checked_mul(component.n_levels)
++        })
++        .filter(|slots| {
++            *slots > 0
++                && *slots <= u32::MAX as usize
++                && slots
++                    .checked_mul(std::mem::size_of::<u32>())
++                    .is_some_and(|bytes| bytes <= order_bytes)
++        })
++    else {
++        return Ok(None);
++    };
++    let mut canonical_by_slot = Vec::new();
++    reservation.reserve_vec(
++        &mut canonical_by_slot,
++        slots,
++        "unable to reserve categorical-interaction dense mapping",
++    )?;
++    if canonical_by_slot.capacity() < slots {
++        return Err(allocation(
++            "categorical-interaction mapping capacity is insufficient",
++        ));
++    }
++    canonical_by_slot.resize(slots, u32::MAX);
++    let mut codes = Vec::new();
++    reservation.reserve_vec(
++        &mut codes,
++        nobs,
++        "unable to reserve categorical-interaction codes",
++    )?;
++    if codes.capacity() < nobs {
++        return Err(allocation(
++            "categorical-interaction code capacity is smaller than the observation count",
++        ));
++    }
++    codes.resize(nobs, 0);
++    for (row, code) in codes.iter_mut().enumerate() {
++        // Validated code bounds and the admitted product bound every prefix.
++        let slot = components.clone().fold(0usize, |prefix, component| {
++            prefix * component.n_levels + component.codes[row] as usize
++        });
++        *code = slot as u32;
++        canonical_by_slot[slot] = 0;
++    }
++    let mut n_levels = 0usize;
++    for canonical in &mut canonical_by_slot {
++        if *canonical != u32::MAX {
++            *canonical = n_levels as u32;
++            n_levels += 1;
++        }
++    }
++    for code in &mut codes {
++        *code = canonical_by_slot[*code as usize];
++    }
++    Ok(Some(EncodedInteraction { codes, n_levels }))
++}
++
+ fn validate_components(components: &[CategoricalCodeView<'_>]) -> Result<usize> {
+     let first = components
+         .first()
+@@ -397,36 +477,128 @@ mod tests {
+     fn every_workspace_reservation_and_capacity_guard_fails_closed() {
+         let left = [0, 0, 1, 1];
+         let right = [0, 1, 0, 1];
+-        let components = [
+-            CategoricalCodeView::new(&left, 2),
+-            CategoricalCodeView::new(&right, 2),
+-        ];
+-        let mut successful = InjectedReservation::default();
+-        factorize_code_interaction_with_reservation(&components, &mut successful)
+-            .expect("successful reservation audit");
+-        assert_eq!(successful.calls, 2);
+-
+-        for fail_at in 0..successful.calls {
+-            let mut injected = InjectedReservation {
+-                fail_at: Some(fail_at),
+-                ..InjectedReservation::default()
+-            };
+-            let error = factorize_code_interaction_with_reservation(&components, &mut injected)
+-                .expect_err("injected allocation failure");
+-            assert_eq!(error.code, ErrorCode::Allocation, "call {fail_at}");
++        for levels in [2, 3] {
++            let components = [
++                CategoricalCodeView::new(&left, levels),
++                CategoricalCodeView::new(&right, levels),
++            ];
++            let mut successful = InjectedReservation::default();
++            factorize_code_interaction_with_reservation(&components, &mut successful)
++                .expect("successful reservation audit");
++            assert_eq!(successful.calls, 2);
++
++            for fail_at in 0..successful.calls {
++                let mut injected = InjectedReservation {
++                    fail_at: Some(fail_at),
++                    ..InjectedReservation::default()
++                };
++                let error = factorize_code_interaction_with_reservation(&components, &mut injected)
++                    .expect_err("injected allocation failure");
++                assert_eq!(error.code, ErrorCode::Allocation, "call {fail_at}");
++            }
++
++            for label in [
++                if levels == 2 {
++                    "unable to reserve categorical-interaction dense mapping"
++                } else {
++                    "unable to reserve categorical-interaction row ordering"
++                },
++                "unable to reserve categorical-interaction codes",
++            ] {
++                let mut undersized = InjectedReservation {
++                    skip_label: Some(label),
++                    ..InjectedReservation::default()
++                };
++                let error =
++                    factorize_code_interaction_with_reservation(&components, &mut undersized)
++                        .expect_err("capacity guard");
++                assert_eq!(error.code, ErrorCode::Allocation, "{label}");
++            }
+         }
++    }
++
++    #[test]
++    fn dense_table_admission_uses_the_displaced_order_bytes() {
++        let left = [0, 1, 0];
++        let right = [0, 2, 2];
++        for nobs in [2, 3] {
++            let components = [
++                CategoricalCodeView::new(&left[..nobs], 2),
++                CategoricalCodeView::new(&right[..nobs], 3),
++            ];
++            let mut reservation = InjectedReservation::default();
++            let encoded = try_factorize_dense_code_interaction(
++                nobs,
++                components.iter().copied(),
++                &mut reservation,
++            )
++            .expect("table planning");
++            if nobs == 2 {
++                assert!(encoded.is_none());
++                assert_eq!(reservation.calls, 0);
++            } else {
++                assert_eq!(
++                    encoded.expect("24 bytes fit 24-byte order budget").codes(),
++                    &[0, 2, 1]
++                );
++                assert_eq!(reservation.calls, 2);
++            }
++        }
++        let huge = [0, u32::MAX - 1, 1];
++        let components = [CategoricalCodeView::new(&huge, u32::MAX as usize); 3];
++        let mut reservation = InjectedReservation::default();
++        assert!(try_factorize_dense_code_interaction(
++            3,
++            components.iter().copied(),
++            &mut reservation
++        )
++        .expect("overflow declines")
++        .is_none());
++        assert_eq!(reservation.calls, 0);
++        let encoded = factorize_code_interaction(&components).expect("overflow keeps sorting");
++        assert_eq!(encoded.codes(), &[0, 2, 1]);
++    }
+ 
+-        for label in [
+-            "unable to reserve categorical-interaction row ordering",
+-            "unable to reserve categorical-interaction codes",
+-        ] {
+-            let mut undersized = InjectedReservation {
+-                skip_label: Some(label),
+-                ..InjectedReservation::default()
+-            };
+-            let error = factorize_code_interaction_with_reservation(&components, &mut undersized)
+-                .expect_err("capacity guard");
+-            assert_eq!(error.code, ErrorCode::Allocation, "{label}");
++    #[test]
++    fn table_and_sort_routes_match_an_independent_tuple_map() {
++        use std::collections::BTreeMap;
++        for arity in 1..=6 {
++            for nobs in [1, 7, 32, 257, 4096] {
++                for extra_levels in [0, 19] {
++                    let columns: Vec<Vec<u32>> = (0..arity)
++                        .map(|column| {
++                            (0..nobs)
++                                .map(|row| {
++                                    ((row * 17 + row / 7 + column * 3) % (column + 2)) as u32
++                                })
++                                .collect()
++                        })
++                        .collect();
++                    let components: Vec<_> = columns
++                        .iter()
++                        .enumerate()
++                        .map(|(index, codes)| {
++                            CategoricalCodeView::new(codes, index + 2 + extra_levels)
++                        })
++                        .collect();
++                    let tuples: Vec<Vec<u32>> = (0..nobs)
++                        .map(|row| columns.iter().map(|codes| codes[row]).collect())
++                        .collect();
++                    let mut canonical: BTreeMap<Vec<u32>, u32> =
++                        tuples.iter().cloned().map(|tuple| (tuple, 0)).collect();
++                    for (code, (_, value)) in canonical.iter_mut().enumerate() {
++                        *value = code as u32;
++                    }
++                    let expected: Vec<u32> = tuples.iter().map(|tuple| canonical[tuple]).collect();
++                    let actual = factorize_code_interaction(&components).expect("factorization");
++                    assert_eq!(actual.n_levels(), canonical.len());
++                    assert_eq!(
++                        actual.codes(),
++                        expected,
++                        "arity={arity}, rows={nobs}, extra={extra_levels}"
++                    );
++                }
++            }
+         }
+     }
+ 
+diff --git a/crates/fereg-core/src/fe/mod.rs b/crates/fereg-core/src/fe/mod.rs
+index dae120a..558a2f4 100644
+--- a/crates/fereg-core/src/fe/mod.rs
++++ b/crates/fereg-core/src/fe/mod.rs
+@@ -70,6 +70,7 @@ pub use design::{
+     BorrowedInterceptEffect, BorrowedInterceptFeDesign, EffectTerm, FeDesign, LevelIndex,
+ };
+ pub use interaction::{factorize_code_interaction, CategoricalCodeView, EncodedInteraction};
++pub(crate) use interaction::{try_factorize_dense_code_interaction, InteractionReservation};
+ pub use lsmr::{absorb_lsmr, LsmrConfig};
+ pub use map::{absorb_map, MapConfig};
+ pub(crate) use map::{ReusableMapAbsorber, ReusableMapCapacities};
+diff --git a/crates/fereg-core/src/ols/prepared_clusters.rs b/crates/fereg-core/src/ols/prepared_clusters.rs
+index ec87a8b..6e4e769 100644
+--- a/crates/fereg-core/src/ols/prepared_clusters.rs
++++ b/crates/fereg-core/src/ols/prepared_clusters.rs
+@@ -375,6 +375,18 @@ fn factorize_interaction<R: ClusterReservation>(
+             "prepared cluster interaction requires at least two sources",
+         ));
+     }
++    let components = categorical_indices.iter().map(|index| {
++        let encoded = &ols.categorical_sources[*index].encoded;
++        crate::fe::CategoricalCodeView::new(&encoded.codes, encoded.n_levels())
++    });
++    if let Some(encoded) = crate::fe::try_factorize_dense_code_interaction(
++        nobs,
++        components,
++        &mut ClusterInteractionReservation(reservation),
++    )? {
++        let groups = encoded.n_levels();
++        return Ok((encoded.into_codes(), groups));
++    }
+     let mut order = reserved_empty(
+         reservation,
+         nobs,
+@@ -418,6 +430,19 @@ fn factorize_interaction<R: ClusterReservation>(
+     Ok((codes, groups))
+ }
+ 
++struct ClusterInteractionReservation<'a, R>(&'a mut R);
++
++impl<R: ClusterReservation> crate::fe::InteractionReservation for ClusterInteractionReservation<'_, R> {
++    fn reserve_vec<T>(
++        &mut self,
++        target: &mut Vec<T>,
++        elements: usize,
++        label: &'static str,
++    ) -> Result<()> {
++        self.0.reserve_vec(target, elements, label)
++    }
++}
++
+ fn compare_rows(
+     ols: &PreparedOlsData,
+     categorical_indices: &[usize],

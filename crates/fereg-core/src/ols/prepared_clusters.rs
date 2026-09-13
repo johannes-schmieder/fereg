@@ -375,6 +375,18 @@ fn factorize_interaction<R: ClusterReservation>(
             "prepared cluster interaction requires at least two sources",
         ));
     }
+    let components = categorical_indices.iter().map(|index| {
+        let encoded = &ols.categorical_sources[*index].encoded;
+        crate::fe::CategoricalCodeView::new(&encoded.codes, encoded.n_levels())
+    });
+    if let Some(encoded) = crate::fe::try_factorize_dense_code_interaction(
+        nobs,
+        components,
+        &mut ClusterInteractionReservation(reservation),
+    )? {
+        let groups = encoded.n_levels();
+        return Ok((encoded.into_codes(), groups));
+    }
     let mut order = reserved_empty(
         reservation,
         nobs,
@@ -416,6 +428,19 @@ fn factorize_interaction<R: ClusterReservation>(
             .map_err(|_| allocation("prepared cluster interaction code exceeds u32"))?;
     }
     Ok((codes, groups))
+}
+
+struct ClusterInteractionReservation<'a, R>(&'a mut R);
+
+impl<R: ClusterReservation> crate::fe::InteractionReservation for ClusterInteractionReservation<'_, R> {
+    fn reserve_vec<T>(
+        &mut self,
+        target: &mut Vec<T>,
+        elements: usize,
+        label: &'static str,
+    ) -> Result<()> {
+        self.0.reserve_vec(target, elements, label)
+    }
 }
 
 fn compare_rows(

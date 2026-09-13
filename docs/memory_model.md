@@ -98,6 +98,11 @@ Unit weights remain structural. Categorical and FE recipes reuse compact source
 codes. Interaction keys are streamed rather than retained as a dense
 observation-by-arity matrix; cluster score tables obey the bounded alternatives
 above.
+Categorical FE/cluster interactions may replace row sorting with a u32 mapping
+whose complete Cartesian table fits the displaced physical-row ordering bytes.
+The output codes double as temporary tuple slots; sparse/overflowing products
+retain sorting without partial table allocation. See
+[ADR 0046](adr/0046-bounded-interaction-coding.md).
 Direct borrowed LSMR also reuses prepared memberships and Schwarz inputs. Its
 memory model reports the code/membership copy avoided relative to the former
 owned adapter. Schwarz setup and Krylov solve are modeled as non-overlapping

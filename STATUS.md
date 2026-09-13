@@ -10,6 +10,37 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P3/P6 interaction coding: adopted local checkpoint
+
+Categorical FE/cluster interactions now use one shared exact dense tuple mapping
+when its full u32 table fits the displaced physical-row ordering bytes. Sparse
+or overflowing products retain comparison sorting without partial allocation.
+Original validation, lexical codes, sample/weight/singleton semantics and numerical
+operations remain; see [ADR 0046](docs/adr/0046-bounded-interaction-coding.md).
+
+The [report](benchmarks/reports/development/interaction-codes-local-2026-09-12/README.md)
+binds 27 pairs / 54 measured commands against `9c2bcc5`: nine primary, fifteen
+protected, one pilot and two public profiles. Repeated OLS command medians fall
+0.439→0.393 seconds for interacted clusters (10.5% paired), and 0.370→0.345 for
+interacted FE/clusters (6.8%, with 24–26 ms savings). Separate traces locate those
+gains in preparation. PPML falls 0.383→0.370 (3.4%), but its recorded preparation
+time barely changes; that smaller gain is not wholly attributed to this timer.
+
+Full science, samples, saved values and non-time solver diagnostics are exact.
+Primary native peaks are unchanged within their models; the largest protected
+command increase is unchanged IID +4 ms/0.7%. Graph controls retain pre-existing
+memory-accounting gaps, including weak OLS 30.6→30.9 MB against a 13.6 MB model;
+this does not close P0. Forty-one distinct focused Rust tests and both independent
+Stata/Mata OLS/Poisson oracle arms pass. The final comment-reviewed universal
+plugin is byte-identical to the measured candidate; static/native arm64 ABI checks
+pass. The first comment-layout rebuild mismatch is retained in validation.
+
+Installed dist, unrelated Veneto changes/evidence and historical receipts remain
+intact. No SCC, qualification or push occurred. Next evaluate the duplicate
+cluster-boundary scans under P3/P7, then remaining score reconstruction and the
+P0/P2/P4–P7/R1–R5 work. Finish #27 before the authorized two-agent investigation,
+upstream CMG review and new small SCC campaign.
+
 ## P3 shared subset score passes: adopted local checkpoint
 
 Scratch-backed OLS covariance can now feed all subset accumulators from one

@@ -1,0 +1,7 @@
+# P3/P6 bounded interaction code construction
+
+Baseline main 9c2bcc5348c3f25dda70ab1340c3cbbdd48a089c and isolated accepted plugin 4c83f9e86568f18420a3d77d285392cdd1f64f6c669e450ac49942df3b41650e. Keep installed dist and unrelated state intact.
+
+Test replacing full-row lexicographic comparison sorting with a canonical mixed-radix lookup when its u32 mapping table fits the displaced N*sizeof(usize) order budget and its indices fit u32. Reuse the output codes as temporary tuple indices. Planning is allocation-free; unrepresentable/sparse products keep the exact existing sort. All categorical validation still runs before allocation. Use one shared helper for ordinary OLS interacted clusters and the existing categorical interaction factorizer serving FE construction/validation and categorical OLS/PPML cluster preparation. No new observation-sized keys, persistent order cache, worker/SPI access or arithmetic policy.
+
+Target >=10% median paired complete-command gain or >=20 ms repeatable command saving with preparation attribution on interacting-cluster/absorbed-term cases. Review protected regressions above max(10 ms,5%); preserve native/scratch/RSS/model evidence and reject an unexplained new memory-bound violation. Begin with OLS cluster interactions, then categorical OLS and PPML surfaces touched by the shared helper. Use a few rotated seeds and stratified controls, independent tuple/dummy/Poisson oracles and exact source/artifact identities; no SCC or qualification.
