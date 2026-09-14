@@ -1,0 +1,38 @@
+{
+  "script_edit_assertion": {
+    "cause": "A twelve-space search also matched sixteen-space lines; the earlier CMG edit script stopped before writing.",
+    "resolution": "Anchor the replacement to the preceding newline and preserve the two intended early routes."
+  },
+  "initial_compile": {
+    "result": "one admission test passed; four mutable-constant-reference warnings",
+    "log_sha256": "ac754d7fb73c6cacf9f7033ff861fe39f06eea94d4f6c08c8bc202d5f684493a",
+    "resolution": "Use explicit local attempt accumulators; strengthen the hierarchy fixture to inspect its accumulator."
+  },
+  "pool_test_api": {
+    "result": "test compilation failed because the pinned workspace exposes workspace_count, not len",
+    "log_sha256": "a00dddb2d52f5d4422baa5c7bc41ddddc492381764dc93f5cbda089e670366f3",
+    "resolution": "Use the documented pinned API; no test input or expected pool growth changed."
+  },
+  "preliminary_plugin_build": {
+    "result": "95 tests passed but the validation driver rejected unused production certificate-wrapper warnings",
+    "log_sha256": "313d492915dfb4cecf4629d7f8f8bc260f8980307653756184c88cba46b6d2af",
+    "candidate_patch_sha256": "226f469c68a16fbe76ad85b580292a8f8c161e2299268165e11e3dcd77439b9b",
+    "resolution": "Restrict the existing certificate-only adapter/import to tests and rerun all final checks."
+  },
+  "review_findings": [
+    "CMG hierarchy and optional coefficient products coexist with ordinary CG polishing, but final correction releases the hierarchy first.",
+    "Reference-norm construction retains three temporary vectors before handing one vector to the solver.",
+    "CMG result coefficient width can exceed its pool batch width; charge the actual full output bank.",
+    "Upstream pool capacities can grow during owned bulk solves; re-read the retained report after solving.",
+    "Discarded attempts must propagate even without timing or warning fields."
+  ],
+  "unmodeled_scopes": [
+    "Warm retained LSMR operator and pool overlap",
+    "Saved MAP coefficient conversion",
+    "Failed CMG bulk attempts with requested coefficients",
+    "Prepared PPML parent topology/frame propagation",
+    "Specialized slopes, recovery, inference and whole-action publication",
+    "CMG construction without an existing budget"
+  ],
+  "initial_read_only_path_errors": "Two searches targeted nonexistent prior report/helper paths; existing reports and source were located before use."
+}

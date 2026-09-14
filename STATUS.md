@@ -10,6 +10,39 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P0 CMG/Schur memory lifetimes: tested prototype continuation, not adopted
+
+The [source-bound report](benchmarks/reports/development/action-memory-cmg-schur-local-2026-09-14/README.md)
+archives full patch `2e03030b` and five-file incremental patch `d02e385b` against
+carrier `082e1625`, evidence `2739915` and accepted native `25bf610`. Borrowed CG
+reports actual fixed-bank/matrix/coefficient capacities. CMG retains admitted
+construction through setup failure and hierarchy rejection, observes lazy pool
+growth, charges hierarchy/coefficient overlap during ordinary polishing, and
+separates released-hierarchy final correction. Three-vector norm construction
+and its retained output are included. OLS Schur now carries allocated probe,
+full-attempt and CG-continuation/reference-norm peaks through the outer adapter.
+
+All 86 distinct focused core tests and 95 serial plugin tests pass on the final
+frozen source without compiler warnings; replay matches all 179 candidate inputs.
+Six new tests cover oversized reservations/early exits, real failed nuisance
+construction, rejected admission, one-to-four pool growth, full-width coefficient
+reconstruction, retained versus released correction, and one-time outer merging.
+Existing weighted independent-MAP, forced Schur continuation, weak-graph and
+exact/one-byte-short admission checks pass. Initial edit assertion, incorrect
+pool accessor and test-only adapter warnings remain documented. No scientific
+threshold or fixture was loosened.
+
+The implementation stays isolated; public reporting, all 178 accepted main inputs
+and installed dist remain unchanged. No release build, licensed-Stata oracle,
+new public cap or command timing ran, so no performance gain or whole-action
+bound is claimed. Next cover warm retained LSMR, saved MAP conversion/failed CMG
+coefficient attempts, specialized slopes, recovery/inference and final action
+transport, then the original three-FE and weak-wide checks. Prepared PPML parent
+accounting also remains open. Full pass/copy/build/physical-attempt reporting and
+seven P0–P7 items remain; R1–R5 are excluded. Reviews, upstream assessment and SCC
+follow P0–P7. All 97 unrelated STATUS additions and 358 original untracked paths
+remain; no agent, cluster, upstream change or push occurred.
+
 ## P0 compact action-memory carrier: implemented prototype, not adopted
 
 The [source-bound checkpoint](benchmarks/reports/development/action-memory-carrier-local-2026-09-14/README.md)
