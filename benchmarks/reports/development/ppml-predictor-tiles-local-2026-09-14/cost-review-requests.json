@@ -1,0 +1,66 @@
+[
+  {
+    "block_width": "1",
+    "cell": {
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "memory(low) exposure(exposure)",
+      "k": 10,
+      "missing": true,
+      "model": "ppml",
+      "n": 30720,
+      "name": "low_fw",
+      "section": "width",
+      "threads": 4,
+      "vce": "cluster c1",
+      "weight": "[fw=w]"
+    },
+    "data": "${MOMENTS_ROOT}/ppml-data/low_fw-n30720-s31415927.dta",
+    "output": "${MOMENTS_ROOT}/runs/ppmlonefe-moments-control-low_fw-s31415927-baseline",
+    "phase": "warm",
+    "solver": "auto",
+    "source": "${MOMENTS_ROOT}/baseline",
+    "trace": false,
+    "warm": "${MOMENTS_ROOT}/ppml-data/low_fw-n7680-s31415928.dta",
+    "name": "low_fw",
+    "kind": "cost-recheck-1",
+    "request_source": "${MOMENTS_ROOT}/runs/ppmlonefe-moments-control-low_fw-s31415927-baseline/request.json",
+    "request_sha256": "28352b5c4359cfb211f2f55fca3c5ab5e6fd5e611e19b4bd5d2aebb77dd3e2cc",
+    "data_sha256": "b3bd36066c9c8d50ecbf4ac095007e194a346abe832fb204b34209b6af1f006e",
+    "warm_sha256": "02fcaaf9b0b83e0177eb7339ac6c997541e502a04e776368bc24c97d6e19cfe4"
+  },
+  {
+    "block_width": "1",
+    "cell": {
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "memory(low) exposure(exposure)",
+      "k": 10,
+      "missing": true,
+      "model": "ppml",
+      "n": 30720,
+      "name": "low_fw",
+      "section": "width",
+      "threads": 4,
+      "vce": "cluster c1",
+      "weight": "[fw=w]"
+    },
+    "data": "${MOMENTS_ROOT}/ppml-data/low_fw-n30720-s31415927.dta",
+    "output": "${MOMENTS_ROOT}/runs/ppmlonefe-moments-control-low_fw-s31415927-baseline",
+    "phase": "warm",
+    "solver": "auto",
+    "source": "${MOMENTS_ROOT}/baseline",
+    "trace": false,
+    "warm": "${MOMENTS_ROOT}/ppml-data/low_fw-n7680-s31415928.dta",
+    "name": "low_fw",
+    "kind": "cost-recheck-2",
+    "request_source": "${MOMENTS_ROOT}/runs/ppmlonefe-moments-control-low_fw-s31415927-baseline/request.json",
+    "request_sha256": "28352b5c4359cfb211f2f55fca3c5ab5e6fd5e611e19b4bd5d2aebb77dd3e2cc",
+    "data_sha256": "b3bd36066c9c8d50ecbf4ac095007e194a346abe832fb204b34209b6af1f006e",
+    "warm_sha256": "02fcaaf9b0b83e0177eb7339ac6c997541e502a04e776368bc24c97d6e19cfe4"
+  }
+]

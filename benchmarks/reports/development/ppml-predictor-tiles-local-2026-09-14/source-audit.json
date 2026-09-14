@@ -1,0 +1,40 @@
+{
+  "source_files": {
+    "crates/fereg-core/src/ppml/prepared_irls.rs": "ecf1a5eaf9d38f68e83bec4d012a1f262ff5ba8fa75d3c204affcdceeacd03d5",
+    "crates/fereg-core/src/ppml/memory.rs": "23a41e607163e1cba41b0cbcd80c5cce11d7cfaa185e4b779e76f6fb3f75ae01",
+    "crates/fereg-core/src/ols/linear_session.rs": "b7a006793bf10d1b98708ee5d9ef4693377172733c24999eb825e14db2c873fb",
+    "crates/fereg-core/src/ols/prepared_rhs.rs": "41e51d00aa51f2a41fecdfac57ee3bfc8797625f2ee9e6a422901598a9845c5d",
+    "crates/fereg-core/src/ols/prepared_fit.rs": "f8863525627e0124123c150fa10b84e6784424afa283d4a33f493fcf7d562444"
+  },
+  "rows": [
+    {
+      "consumer": "Ordinary canonical frame refresh",
+      "path": "ppml/prepared_irls.rs::refresh_linear_frame -> linear_session.rs::refresh_response/refresh_weights",
+      "cost": "Validates response with old weights then new weights with copied response; copies old response for reusable categorical projection, copies new response and raw weights. Recycles/invalidate products twice.",
+      "policy": "New response/weight generations invalidate numerical state. Final refresh_frame additionally tests exact raw weight bits and all scale fields; only exact identity carries design generation forward.",
+      "disposition": "Unchanged. A joint validation/copy seam may reduce passes, but must preserve old-response storage and failure/strict semantics."
+    },
+    {
+      "consumer": "PPML workspace refresh",
+      "path": "ppml/memory.rs::refresh_working_state",
+      "cost": "One exp pass fills means; a working-state pass validates inputs and computes Hessian/response using stable log-domain y/mu; a separate score-residual pass.",
+      "policy": "No observation-sized allocation; mean/current eta and original weights/offsets define current Hessian. Stable ratio arithmetic is scientific, not disposable overhead.",
+      "disposition": "Unchanged. Need phase attribution before fusing/parallelizing or retaining log(y). Log-cache would add an observation-sized admitted buffer."
+    },
+    {
+      "consumer": "Ordinary frozen PPML predictor",
+      "path": "linear_session.rs::FrozenOutputKind::PpmlCombined; prepared_irls.rs::fill_frozen_ppml_candidate",
+      "cost": "O(N) response minus certified residual plus offset; no K-column finite predictor reconstruction.",
+      "policy": "Combined representation and independent reconstruction certificate already adopted.",
+      "disposition": "No new implementation needed; do not claim fresh/strict optimization speeds every ordinary iteration."
+    },
+    {
+      "consumer": "Fresh and strict finite predictor",
+      "path": "linear_session.rs::rebuild_predictors",
+      "cost": "Per-kept-coefficient full row scan through fit_column_value; one subsequent absorbed-predictor/certificate pass.",
+      "policy": "Preserve coefficient-slot FMA order, omitted status, canonical combined response-minus-residual and gamma(8) reconstruction check.",
+      "disposition": "Current two-file prototype binds numeric sources once, uses bounded existing row tiles and caller coefficient order. Same output vector and no heap allocation; generic fallback unchanged."
+    }
+  ],
+  "scope": "Source-derived pass/ownership audit. It is not timing or hardware-traffic evidence, and none of the broader P4 state/pass checkboxes is closed."
+}

@@ -66,6 +66,10 @@ are fixed by
 [ADR 0020](adr/0020-retained-ppml-session-execution-boundary.md).
 Canonical PPML predictors and their cancellation-aware arithmetic check are
 specified in [working-response reconstruction](ppml_reconstruction.md).
+Fresh/strict numeric predictors use bounded row tiles under the existing worker
+team while preserving selected-column FMA order and the independent reconstruction
+check; generated/small/wide designs retain their existing evaluation path. See
+[ADR 0066](adr/0066-retained-numeric-predictor-tiles.md).
 
 Fast PPML with one categorical intercept effect uses the existing reusable
 categorical projector and fused changing-response/retained-design projection.

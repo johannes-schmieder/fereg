@@ -1,0 +1,178 @@
+[
+  {
+    "name": "numeric-rhs",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_rhs::tests",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 817 filtered out; finished in 0.03s"
+    ],
+    "log_sha256": "247d8de95a1f0c52581375e610cb160742a9b054a6b5a7a296b4f98826d5d2a8"
+  },
+  {
+    "name": "reconstruction",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::linear_session::tests",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 825 filtered out; finished in 0.00s"
+    ],
+    "log_sha256": "abaa033d4eb0732b0d8fcaf7e673f7ca8461d6f8f6be4d1bf2f93f2c8663ba23"
+  },
+  {
+    "name": "session",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_fit::tests::certified_linear_session",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 823 filtered out; finished in 0.28s"
+    ],
+    "log_sha256": "423c62834556157c51fed09dbbaca8c3bd3e2abcc2d889924f1c905efef1afe2"
+  },
+  {
+    "name": "rollback",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_fit::tests::strict_rollback",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 824 filtered out; finished in 0.00s"
+    ],
+    "log_sha256": "54b95130a2bab8053eae99b7c42035a6b8ba8a009317132ed96f52e04fb2121e"
+  },
+  {
+    "name": "team",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_fit::tests::retained_fresh_frozen_and_strict",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 824 filtered out; finished in 0.03s"
+    ],
+    "log_sha256": "7f10a4227385b30cff28abb25f64131ac669b6d360e57f487f0167ce04c2fb19"
+  },
+  {
+    "name": "identical-frame",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ppml::prepared_irls::tests::bitwise_identical_weights",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 824 filtered out; finished in 0.00s"
+    ],
+    "log_sha256": "c310c41d05e52fa7e71cc9335a1b37469c8a20230b12c53a086beba498588915"
+  },
+  {
+    "name": "caller-rollback",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ppml::prepared_irls::tests::strict_caller",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 824 filtered out; finished in 0.01s"
+    ],
+    "log_sha256": "0af431fcff0cc2c71fbe4686aadb377420f91759d7dcd95ef380fd056a1f7297"
+  },
+  {
+    "name": "checkpoint",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ppml::prepared_irls::tests::strict_checkpoint_movement",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 824 filtered out; finished in 0.01s"
+    ],
+    "log_sha256": "6202a67e09ad266115a206ca9451a3c03891fd4e99cd7bb8068018409b15825b"
+  },
+  {
+    "name": "plugin-serial",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-plugin",
+      "--lib",
+      "",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.01s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 3.79s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 11.26s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.03s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.79s",
+      "test result: ok. 95 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.98s"
+    ],
+    "log_sha256": "5d3c922a470a02e51950e1ebb190cd5a3edf6d9b4910d8263aecadf30b87fd12"
+  }
+]

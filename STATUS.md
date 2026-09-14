@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-13
+**Last updated:** 2026-09-14
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,44 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
+
+## P4 retained numeric predictor tiles: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/ppml-predictor-tiles-local-2026-09-14/README.md)
+and [ADR 0066](docs/adr/0066-retained-numeric-predictor-tiles.md) adopt bounded
+numeric finite-predictor tiles against `e65d6f9`, isolated plugin `2689faf0`.
+Fresh/strict retained solves reuse the existing numeric bindings and installed
+team, preserving selected-column FMA order with a fixed stack bank and the
+original reconstruction/certification. Ordinary frozen PPML, generic fallback,
+reference scales, generation validity, low-memory storage and one-shot OLS remain.
+
+Three-seed complete/FW/PW command medians are 7.785→7.467 / 2.585→2.436 /
+2.376→2.202 seconds; median paired reductions are 5.72%/5.76%/6.33%. Separate
+exact-science diagnostics locate 82/90 ms in the three weighted predictor
+accumulations; unchanged reconstruction/certification remains about 3.4 ms.
+All 25 untraced A/B pairs, six A/A pairs and three diagnostic pairs preserve
+exact science and solver decisions. Untraced native peaks are exact and admitted;
+weighted sampled RSS rises slightly. This is no memory-saving claim.
+
+Original low-FW costs +142/+171/+3 ms remain, alongside later +151/+155 ms flags.
+Six interleaved identical-binary A/A pairs range -132 to +185 ms. Six new A/B
+pairs have median -24 ms/-2.62%; all nine A/B pairs have median +3 ms/+0.29%,
+passing the prospectively fixed median cost gates. Adopt with the variability
+and individual flags disclosed, without a low-FW speedup or zero-cost claim.
+The low changed kernel saves about 2 ms, not enough to explain those swings.
+
+Validation passes 20 distinct core checks, 95 serial plugin tests, four positive
+independent Poisson/Hessian/sandwich/generated-factor fits per arm, and universal/
+static/native arm64 ABI. Initial wrong test import, zero-match selector and two
+archive collector failures are retained. All 178 candidate inputs match main;
+the installed plugin and 97 unrelated STATUS additions/358 untracked paths remain.
+
+Eight active P0–P7 items remain. Next reduce duplicated PPML response/weight
+refresh passes while preserving exact frame identity and invalidation; then
+weighted Schur comparisons, remaining generated/slope/three-FE layouts, P7 and
+P0 reporting. The user excludes R1–R5 from this run. After P0–P7, two independent
+agents review changes, followed by upstream CMG small-components assessment and
+the bounded SCC benchmark campaign. No agents, cluster work or push occurred.
 
 ## P3/P6 low-memory OLS score retention: adopted local checkpoint
 

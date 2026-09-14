@@ -1,0 +1,90 @@
+[
+  {
+    "block_width": "1",
+    "cell": {
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "k": 50,
+      "model": "ppml",
+      "n": 983040,
+      "name": "one_fe_complete",
+      "section": "width",
+      "threads": 16
+    },
+    "data": "${MOMENTS_ROOT}/ppml-data/one_fe_complete-n983040-s104729.dta",
+    "output": "${MOMENTS_ROOT}/runs/ppmlonefe-moments-one_fe_complete-s104729-baseline",
+    "phase": "warm",
+    "solver": "auto",
+    "source": "${MOMENTS_ROOT}/baseline",
+    "trace": false,
+    "warm": "${MOMENTS_ROOT}/ppml-data/one_fe_complete-n7680-s104730.dta",
+    "name": "one_fe_complete",
+    "request_source": "${MOMENTS_ROOT}/runs/ppmlonefe-moments-one_fe_complete-s104729-baseline/request.json",
+    "request_sha256": "d4f4614bb4084c49215e7942550ecf8603b3ae240f82d4dd808f430dd8639af2",
+    "data_sha256": "38be01f98087b233366ba9efe7b8d9769701b29b5e0c3262bf141dc485d0a239",
+    "warm_sha256": "f4a98b4e650df11d75b49a7f5ee1102051e523c125a9151e65d170977776bc41"
+  },
+  {
+    "block_width": "1",
+    "cell": {
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "exposure(exposure)",
+      "k": 50,
+      "missing": true,
+      "model": "ppml",
+      "n": 245760,
+      "name": "fw_exposure_missing",
+      "section": "width",
+      "threads": 4,
+      "weight": "[fw=w]"
+    },
+    "data": "${MOMENTS_ROOT}/ppml-data/fw_exposure_missing-n245760-s104729.dta",
+    "output": "${MOMENTS_ROOT}/runs/ppmlonefe-moments-fw_exposure_missing-s104729-baseline",
+    "phase": "warm",
+    "solver": "auto",
+    "source": "${MOMENTS_ROOT}/baseline",
+    "trace": false,
+    "warm": "${MOMENTS_ROOT}/ppml-data/fw_exposure_missing-n7680-s104730.dta",
+    "name": "fw_exposure_missing",
+    "request_source": "${MOMENTS_ROOT}/runs/ppmlonefe-moments-fw_exposure_missing-s104729-baseline/request.json",
+    "request_sha256": "b5ccd2f456cee1da0d2e851b9a81624082be59b732b51e412a11cc899bf1994c",
+    "data_sha256": "f8d17e1dc72a036aa7c3a58147130076408f8764c69568743d883fa4d5cc18aa",
+    "warm_sha256": "acafc59a2667d611ae31e566466b32fe5259a247a5e3e9b97dc20b1ecbbab4da"
+  },
+  {
+    "block_width": "1",
+    "cell": {
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "offset(off)",
+      "k": 50,
+      "missing": true,
+      "model": "ppml",
+      "n": 245760,
+      "name": "pw_cluster_offset",
+      "section": "width",
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]"
+    },
+    "data": "${MOMENTS_ROOT}/ppml-data/pw_cluster_offset-n245760-s104729.dta",
+    "output": "${MOMENTS_ROOT}/runs/ppmlonefe-moments-pw_cluster_offset-s104729-baseline",
+    "phase": "warm",
+    "solver": "auto",
+    "source": "${MOMENTS_ROOT}/baseline",
+    "trace": false,
+    "warm": "${MOMENTS_ROOT}/ppml-data/pw_cluster_offset-n7680-s104730.dta",
+    "name": "pw_cluster_offset",
+    "request_source": "${MOMENTS_ROOT}/runs/ppmlonefe-moments-pw_cluster_offset-s104729-baseline/request.json",
+    "request_sha256": "03f6fb003fe3c156686c40cf740abc7f5c85789268ff524b0a4201c93a4a9963",
+    "data_sha256": "8eaf531cd8ce9a68e5c5458e4b2918a261f19b8efa1a5013bcca454b08b6e665",
+    "warm_sha256": "3f4f8b9769a561d1e0ba202bd3e1f50723f29146214fb5d61ac047ae00f367ab"
+  }
+]
