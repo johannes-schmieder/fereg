@@ -4940,36 +4940,44 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             self.prepared.fit_model(),
             self.prepared.fit_sample(),
         )?;
-        let mut selected = [(0_usize, 0.0_f64); super::prepared_rhs::MAX_BOUND_NUMERIC_COLUMNS];
-        let mut selected_count = 0;
-        for coefficient in fit.coefficients() {
-            if coefficient.status != PreparedOlsFitStatus::Kept {
-                continue;
-            }
-            let generated = coefficient.generated_column_index.ok_or_else(|| {
-                invalid_argument("kept weighted-linear coefficient has no generated column")
-            })?;
-            let value = coefficient
-                .value
-                .ok_or_else(|| invalid_argument("kept weighted-linear coefficient has no value"))?;
-            if numeric.is_some() {
-                let target = selected.get_mut(selected_count).ok_or_else(|| {
-                    invalid_argument("numeric predictor selection exceeds its bound")
+        if numeric.is_some()
+            || !crate::prepared_fit_view::add_generated_predictor(
+                self.prepared,
+                fit.coefficients(),
+                &mut self.finite_predictor,
+            )?
+        {
+            let mut selected = [(0_usize, 0.0_f64); super::prepared_rhs::MAX_BOUND_NUMERIC_COLUMNS];
+            let mut selected_count = 0;
+            for coefficient in fit.coefficients() {
+                if coefficient.status != PreparedOlsFitStatus::Kept {
+                    continue;
+                }
+                let generated = coefficient.generated_column_index.ok_or_else(|| {
+                    invalid_argument("kept weighted-linear coefficient has no generated column")
                 })?;
-                *target = (generated, value);
-                selected_count += 1;
-            } else {
-                for row in 0..rows {
-                    self.finite_predictor[row] = value.mul_add(
-                        self.prepared.fit_column_value(generated, row)?,
-                        self.finite_predictor[row],
-                    );
+                let value = coefficient
+                    .value
+                    .ok_or_else(|| invalid_argument("kept weighted-linear coefficient has no value"))?;
+                if numeric.is_some() {
+                    let target = selected.get_mut(selected_count).ok_or_else(|| {
+                        invalid_argument("numeric predictor selection exceeds its bound")
+                    })?;
+                    *target = (generated, value);
+                    selected_count += 1;
+                } else {
+                    for row in 0..rows {
+                        self.finite_predictor[row] = value.mul_add(
+                            self.prepared.fit_column_value(generated, row)?,
+                            self.finite_predictor[row],
+                        );
+                    }
                 }
             }
-        }
-        if let Some(numeric) = numeric {
-            numeric
-                .add_selected_columns(&selected[..selected_count], &mut self.finite_predictor)?;
+            if let Some(numeric) = numeric {
+                numeric
+                    .add_selected_columns(&selected[..selected_count], &mut self.finite_predictor)?;
+            }
         }
         let mut certificate = LinearReconstructionCertificate::new();
         for row in 0..rows {

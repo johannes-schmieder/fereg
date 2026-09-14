@@ -36,6 +36,135 @@ use rayon::prelude::*;
 use super::{PreparedOlsData, PreparedOlsModel};
 use crate::ols::build_prepared_ols_rhs_with_response;
 
+/// Accumulate generated finite predictors without per-cell recipe lookup.
+/// Each row keeps coefficient-slot FMA order, including multiplication by zero
+/// for absent indicators. Ordinary OLS subtraction has different zero handling
+/// and deliberately does not enter this predictor-only helper.
+pub(crate) fn add_generated_predictor<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    coefficients: &[crate::ols::PreparedOlsFittedCoefficient],
+    output: &mut [f64],
+) -> Result<bool> {
+    use crate::ols::{PreparedOlsColumnKind, PreparedOlsFitStatus};
+    let model = prepared.fit_model();
+    let rows = prepared.fit_sample().n_active();
+    if rows < 4096
+        || model.columns.len() < 8
+        || !model.columns.iter().any(|c| {
+            matches!(
+                c.kind,
+                PreparedOlsColumnKind::Categorical { .. }
+                    | PreparedOlsColumnKind::CategoricalInteraction { .. }
+            )
+        })
+    {
+        return Ok(false);
+    }
+    let invalid = || {
+        FeregError::new(
+            ErrorCode::InvalidArgument,
+            "generated predictor columns are not aligned and finite",
+        )
+    };
+    if output.len() != rows {
+        return Err(invalid());
+    }
+    for c in coefficients
+        .iter()
+        .filter(|c| c.status == PreparedOlsFitStatus::Kept)
+    {
+        if c.generated_column_index
+            .is_none_or(|i| i >= model.columns.len())
+            || c.value.is_none_or(|v| !v.is_finite())
+        {
+            return Err(invalid());
+        }
+    }
+    const TILE_ROWS: usize = 128;
+    let fill = |(tile, destination): (usize, &mut [f64])| -> Result<()> {
+        let start = tile * TILE_ROWS;
+        let end = start + destination.len();
+        let mut tile_values = [0.0_f64; TILE_ROWS];
+        let values = &mut tile_values[..destination.len()];
+        for c in coefficients
+            .iter()
+            .filter(|c| c.status == PreparedOlsFitStatus::Kept)
+        {
+            let column = c.generated_column_index.ok_or_else(invalid)?;
+            let coefficient = c.value.ok_or_else(invalid)?;
+            match &model.columns[column].kind {
+                PreparedOlsColumnKind::Intercept => values.fill(1.0),
+                PreparedOlsColumnKind::Continuous {
+                    prepared_source_index,
+                    ..
+                } => {
+                    let source = prepared
+                        .fit_sample()
+                        .regressors
+                        .get(*prepared_source_index)
+                        .and_then(|source| source.get(start..end))
+                        .ok_or_else(invalid)?;
+                    values.copy_from_slice(source);
+                }
+                PreparedOlsColumnKind::Categorical {
+                    categorical_source_index,
+                    level_code,
+                    ..
+                } => {
+                    if let Some(level) = level_code {
+                        let codes = prepared.fit_categorical_codes(*categorical_source_index)?;
+                        let codes = codes.get(start..end).ok_or_else(invalid)?;
+                        for (target, code) in values.iter_mut().zip(codes) {
+                            *target = f64::from(code == level);
+                        }
+                    } else {
+                        values.fill(0.0);
+                    }
+                }
+                PreparedOlsColumnKind::CategoricalInteraction { components } => {
+                    values.fill(1.0);
+                    for component in components {
+                        let Some(level) = component.level_code else {
+                            values.fill(0.0);
+                            break;
+                        };
+                        let codes =
+                            prepared.fit_categorical_codes(component.categorical_source_index)?;
+                        let codes = codes.get(start..end).ok_or_else(invalid)?;
+                        for (target, code) in values.iter_mut().zip(codes) {
+                            if *code != level {
+                                *target = 0.0;
+                            }
+                        }
+                    }
+                }
+            }
+            for (target, value) in destination.iter_mut().zip(values.iter()) {
+                *target = coefficient.mul_add(*value, *target);
+            }
+        }
+        if destination.iter().any(|v| !v.is_finite()) {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "generated finite predictor is not finite",
+            ));
+        }
+        Ok(())
+    };
+    if rayon::current_thread_index().is_some() && rayon::current_num_threads() > 1 {
+        output
+            .par_chunks_mut(TILE_ROWS)
+            .enumerate()
+            .try_for_each(fill)?;
+    } else {
+        output
+            .chunks_mut(TILE_ROWS)
+            .enumerate()
+            .try_for_each(fill)?;
+    }
+    Ok(true)
+}
+
 /// Common scientific input boundary for the prepared coefficient engine.
 ///
 /// Implementations must return an owned certified result and may not expose a
@@ -52,6 +181,9 @@ pub(crate) trait PreparedOlsFitView: Sync {
     fn fit_report_intercept(&self) -> bool;
 
     fn fit_column_value(&self, column: usize, row: usize) -> Result<f64>;
+
+    /// Borrow ordinary factor codes on the current finalized sample.
+    fn fit_categorical_codes(&self, source: usize) -> Result<&[u32]>;
 
     /// Subtract one fitted raw-scale column from an observation vector. The
     /// default is topology-generic; concrete prepared layouts may resolve the
@@ -428,6 +560,18 @@ fn admit_prepared_intercept_cg(
 }
 
 impl PreparedOlsFitView for PreparedOlsData {
+    fn fit_categorical_codes(&self, source: usize) -> Result<&[u32]> {
+        self.categorical_sources
+            .get(source)
+            .map(|source| source.encoded.codes.as_slice())
+            .ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::InvalidArgument,
+                    "prepared categorical source is out of range",
+                )
+            })
+    }
+
     fn fit_model(&self) -> &PreparedOlsModel {
         &self.model
     }
@@ -722,6 +866,18 @@ impl PreparedOlsFitView for PreparedOlsData {
 }
 
 impl PreparedOlsFitView for PreparedCategoricalOlsData {
+    fn fit_categorical_codes(&self, source: usize) -> Result<&[u32]> {
+        self.categorical_sources()
+            .get(source)
+            .ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::InvalidArgument,
+                    "prepared categorical source is out of range",
+                )
+            })?
+            .codes(self.fe_topology())
+    }
+
     fn fit_absorb_initial_matrix(
         &self,
         weights: BorrowedMapWeights<'_>,

@@ -1,0 +1,26 @@
+[
+  {
+    "arm": "baseline",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "fits": [],
+    "sentinel": true,
+    "fixture_sha256": "9e9e8e76130a05bd80cbcc00e65c3e10b8388b6e4fca242af06686006837701e",
+    "plugin": "f4cb7dee75376ae49f339e1d0c198b437184d00c63a709cedb7c57705526f242",
+    "log_sha256": "0aa4cbecfd046212751c095b747d8f0af0a8b42759523b7076d2edabe7afc16b"
+  },
+  {
+    "arm": "candidate",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "fits": [],
+    "sentinel": true,
+    "fixture_sha256": "9e9e8e76130a05bd80cbcc00e65c3e10b8388b6e4fca242af06686006837701e",
+    "plugin": "e6978061081c90606a035da5f0cedd6c979f324e1eba2bf146860b057cdfd501",
+    "log_sha256": "3c6c61b52d7f043b42085609a60ff431aa7569d28fb84339e692416cd44ac0c5"
+  }
+]

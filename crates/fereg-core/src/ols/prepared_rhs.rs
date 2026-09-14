@@ -1163,6 +1163,225 @@ mod tests {
     }
 
     #[test]
+    fn generated_predictor_tiles_preserve_raw_level_oracle_and_fma_order() {
+        use crate::options::ThreadConfig;
+        use crate::parallel::ThreadTeam;
+        use crate::prepared_fit_view::PreparedOlsFitView;
+        for n in [4095, 4096, 4099] {
+            let x = source(1, "x");
+            let g = source(2, "g");
+            let h = source(3, "h");
+            let mut terms = vec![
+                continuous_term(1, x.id),
+                categorical_term(2, g.id, 1.0, true),
+                categorical_interaction_term(3, (g.id, 2.0), (h.id, 2.0)),
+                categorical_interaction_term(4, (g.id, 99.0), (h.id, 2.0)),
+            ];
+            for level in 2..=67 {
+                terms.push(categorical_term(level + 3, g.id, f64::from(level), false));
+            }
+            terms.push(categorical_term(71, h.id, 1.0, true));
+            let mut request = request(false, true);
+            request.model = CompiledTermGraph {
+                sources: vec![x.clone(), g.clone(), h.clone()],
+                terms,
+            };
+            request.bindings.extend([
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::NumericSource(g.id),
+                },
+                OlsInputBinding {
+                    stata_var_position: 5,
+                    role: OlsInputRole::NumericSource(h.id),
+                },
+            ]);
+            request.absorbed_terms = vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![g.id],
+                slope_sources: Vec::new(),
+                label: "g".into(),
+                saved_name: String::new(),
+            }];
+            let xv: Vec<_> = (0..n)
+                .map(|r| if r % 2 == 0 { -0.0 } else { r as f64 / 7.0 })
+                .collect();
+            let gv: Vec<_> = (0..n).map(|r| (1 + r % 7) as f64).collect();
+            let hv: Vec<_> = (0..n).map(|r| (1 + (r / 7) % 3) as f64).collect();
+            let input = LoadedOlsInput {
+                candidate: vec![true; n],
+                outcome: loaded((0..n).map(|r| r as f64).collect()),
+                numeric_sources: vec![
+                    (x.id, loaded(xv.clone())),
+                    (g.id, loaded(gv.clone())),
+                    (h.id, loaded(hv.clone())),
+                ],
+                analytic_weight: Some(loaded((0..n).map(|r| 1.0 + (r % 5) as f64).collect())),
+                frequency_weight: None,
+                probability_weight: None,
+            };
+            request.bindings.push(OlsInputBinding {
+                stata_var_position: 6,
+                role: OlsInputRole::AnalyticWeight,
+            });
+            let simple = prepare_ols_data(&request, &input).unwrap();
+            let complex =
+                crate::prepared_categorical_data::prepare_categorical_ols_data(&request, &input)
+                    .unwrap();
+            assert!(complex
+                .categorical_sources()
+                .iter()
+                .any(|s| s.is_topology_backed()));
+            let views: [&dyn PreparedOlsFitView; 2] = [&simple, &complex];
+            for prepared in views {
+                let width = prepared.fit_model().columns.len();
+                let raw = |source: SourceId, row: usize| match source.get() {
+                    1 => xv[row],
+                    2 => gv[row],
+                    3 => hv[row],
+                    _ => panic!("unknown source"),
+                };
+                // Raw level values form the oracle independently of either
+                // layout's compact codes or final-sample recipe rebasing.
+                let expected: Vec<_> = (0..n)
+                    .flat_map(|row| {
+                        let mut values = vec![row as f64];
+                        values.extend(prepared.fit_model().columns.iter().map(|column| {
+                            match &column.kind {
+                                PreparedOlsColumnKind::Intercept => 1.0,
+                                PreparedOlsColumnKind::Continuous { source, .. } => raw(*source, row),
+                                PreparedOlsColumnKind::Categorical {
+                                    source, level_bits, ..
+                                } => f64::from(raw(*source, row) == f64::from_bits(*level_bits)),
+                                PreparedOlsColumnKind::CategoricalInteraction { components } => {
+                                    f64::from(
+                                        components.iter().all(|c| {
+                                            raw(c.source, row) == f64::from_bits(c.level_bits)
+                                        }),
+                                    )
+                                }
+                            }
+                        }));
+                        values
+                    })
+                    .collect();
+                assert_eq!(expected.len(), n * (width + 1));
+                let selection = [
+                    (width - 1, -0.0),
+                    (1, 1e100),
+                    (0, 1e-100),
+                    (1, -1e100),
+                    (2, 0.7),
+                ];
+                let coefficients: Vec<_> = selection
+                    .iter()
+                    .enumerate()
+                    .map(
+                        |(slot, (column, value))| crate::ols::PreparedOlsFittedCoefficient {
+                            coefficient_slot: CoefficientSlot::new((slot + 1) as u32).unwrap(),
+                            generated_column_index: Some(*column),
+                            status: crate::ols::PreparedOlsFitStatus::Kept,
+                            value: Some(*value),
+                        },
+                    )
+                    .collect();
+                let mut wanted = vec![-0.0_f64; n];
+                for &(column, coefficient) in &selection {
+                    for row in 0..n {
+                        wanted[row] =
+                            coefficient.mul_add(expected[row * (width + 1) + column + 1], wanted[row]);
+                    }
+                }
+                for workers in [1, 4, 16] {
+                    let team = ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap());
+                    let mut actual = vec![-0.0_f64; n];
+                    let used = team
+                        .install(|| {
+                            crate::prepared_fit_view::add_generated_predictor(
+                                prepared,
+                                &coefficients,
+                                &mut actual,
+                            )
+                        })
+                        .unwrap()
+                        .unwrap();
+                    assert_eq!(used, n >= 4096);
+                    if used {
+                        assert!(actual
+                            .iter()
+                            .zip(&wanted)
+                            .all(|(a, b)| a.to_bits() == b.to_bits()));
+                    } else {
+                        assert!(actual.iter().all(|v| v.to_bits() == (-0.0_f64).to_bits()));
+                    }
+                }
+                if n >= 4096 {
+                    let mut invalid = coefficients.clone();
+                    for (column, value) in [
+                        (None, Some(1.0)),
+                        (Some(width), Some(1.0)),
+                        (Some(0), None),
+                        (Some(0), Some(f64::NAN)),
+                        (Some(0), Some(f64::INFINITY)),
+                    ] {
+                        invalid[0].generated_column_index = column;
+                        invalid[0].value = value;
+                        let mut untouched = vec![7.0; n];
+                        assert!(crate::prepared_fit_view::add_generated_predictor(
+                            prepared,
+                            &invalid,
+                            &mut untouched
+                        )
+                        .is_err());
+                        assert_eq!(untouched, vec![7.0; n]);
+                    }
+                    let mut short = vec![7.0; n - 1];
+                    assert!(crate::prepared_fit_view::add_generated_predictor(
+                        prepared,
+                        &coefficients,
+                        &mut short
+                    )
+                    .is_err());
+                    let mut nonfinite = vec![f64::MAX; n];
+                    let overflow = vec![crate::ols::PreparedOlsFittedCoefficient {
+                        coefficient_slot: CoefficientSlot::new(1).unwrap(),
+                        generated_column_index: Some(width - 1),
+                        status: crate::ols::PreparedOlsFitStatus::Kept,
+                        value: Some(f64::MAX),
+                    }];
+                    assert_eq!(
+                        crate::prepared_fit_view::add_generated_predictor(
+                            prepared,
+                            &overflow,
+                            &mut nonfinite
+                        )
+                        .unwrap_err()
+                        .code,
+                        ErrorCode::InvalidData
+                    );
+                    let omitted = vec![crate::ols::PreparedOlsFittedCoefficient {
+                        coefficient_slot: CoefficientSlot::new(1).unwrap(),
+                        generated_column_index: None,
+                        status: crate::ols::PreparedOlsFitStatus::SyntaxOmitted,
+                        value: None,
+                    }];
+                    let mut unchanged = vec![-0.0_f64; n];
+                    assert!(crate::prepared_fit_view::add_generated_predictor(
+                        prepared,
+                        &omitted,
+                        &mut unchanged
+                    )
+                    .unwrap());
+                    assert!(unchanged
+                        .iter()
+                        .all(|v| v.to_bits() == (-0.0_f64).to_bits()));
+                }
+            }
+        }
+    }
+
+    #[test]
     fn empty_rhs_is_valid_but_map_requires_nonempty_rows() {
         let request = request(false, false);
         let prepared = prepare_ols_data(

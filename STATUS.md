@@ -10,6 +10,44 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4/P6 generated finite-predictor tiles: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/generated-predictor-tiles-local-2026-09-14/README.md)
+and [ADR 0068](docs/adr/0068-retained-generated-predictor-tiles.md) adopt candidate
+`e6978061` against evidence `ef38dd5`/accepted native `fb4cc5b`. Fresh/strict
+retained generated predictors borrow final ordinary/topology factor codes into
+128-row tiles under the existing team. Original coefficient-slot FMA order,
+including zero indicators, remains exact. The fixed 1024-byte stack bank adds
+no retained/N-sized allocation. Numeric precedence, ordinary frozen PPML, OLS
+subtraction, rank, weight generations and independent reconstruction remain.
+
+Nine primary pairs give FW/unit/PW command medians 1.438→1.366 / 4.029→3.691 /
+1.464→1.363 seconds; median paired gains are 5.92%/8.39%/6.64%. Separate original-
+input diagnostics locate 99.293 ms in three FW accumulations (113.483→14.190 ms),
+with unchanged independent certification. All 23 successful untraced pairs have
+exact science and non-time solver decisions. Fourteen successful controls cover
+weak graphs, slopes, three FE, low memory, saved outputs and width/sample guards;
+largest added cost is 6 ms on small numeric. Primary peaks are exact/admitted;
+one weak-PW peak is lower by 1.380 MB, without an established cause or memory claim.
+
+The original topology-backed/exact-duplicate control fails r(430) on both artifacts
+in both warm/full fits because the final Hessian changes canonical basis. All
+failures remain; explicit checks verify no coefficients are published. This is
+failed positive public coverage, not a speed result, and no rank/tolerance rule
+was changed. Sixteen distinct core and 95 serial plugin tests, seven independent
+OLS/dummy-Poisson/Hessian/sandwich fits per artifact, universal/static/arm64 ABI
+checks pass. Both artifacts admit the generated width-eight control at exactly
+18,154,399 usable bytes and reject one byte below with r(909). All 54 captures,
+formatting/Mata/summary-assumption failures, source and artifact identities remain.
+
+Seven P0–P7 items remain. Next audit generated OLS raw-residual consumers and
+shared slope/three-plus-FE layouts, including the unchanged canonical-basis
+failure as a coverage limitation; then remaining PPML state/construction, P7
+scheduling and P0 complete accounting. R1–R5 are excluded. Independent reviews,
+upstream CMG assessment and the bounded SCC campaign follow P0–P7. Installed
+dist, unrelated STATUS additions and original untracked files remain; no agents,
+cluster work, upstream change or push occurred.
+
 ## P6 generated RHS tiles: standalone prototype rejected
 
 The [source-bound screen](benchmarks/reports/development/generated-rhs-tiles-local-2026-09-14/README.md)

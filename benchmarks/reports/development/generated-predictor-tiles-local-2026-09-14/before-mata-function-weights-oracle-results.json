@@ -1,0 +1,14 @@
+[
+  {
+    "arm": "baseline",
+    "process_rc": 0,
+    "terminal_rc": [
+      "1"
+    ],
+    "fits": [],
+    "sentinel": false,
+    "fixture_sha256": "798afb016f89fc3654c0d9e457923d120f127ef00c994c0b050f7f4d13ef594a",
+    "plugin": "f4cb7dee75376ae49f339e1d0c198b437184d00c63a709cedb7c57705526f242",
+    "log_sha256": "81acaffb6be3ca2e9b4383e210f7c1da0432f6f26fb87b054cb2dd3e6f7d5565"
+  }
+]

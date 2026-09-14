@@ -73,8 +73,11 @@ Canonical PPML predictors and their cancellation-aware arithmetic check are
 specified in [working-response reconstruction](ppml_reconstruction.md).
 Fresh/strict numeric predictors use bounded row tiles under the existing worker
 team while preserving selected-column FMA order and the independent reconstruction
-check; generated/small/wide designs retain their existing evaluation path. See
-[ADR 0066](adr/0066-retained-numeric-predictor-tiles.md).
+check. Eligible generated predictors borrow ordinary/topology factor codes into
+fixed row tiles, including wider designs; small/narrow models retain their prior
+path. Ordinary OLS subtraction keeps its separate absent-indicator arithmetic.
+See [ADR 0066](adr/0066-retained-numeric-predictor-tiles.md) and
+[ADR 0068](adr/0068-retained-generated-predictor-tiles.md).
 
 Fast PPML with one categorical intercept effect uses the existing reusable
 categorical projector and fused changing-response/retained-design projection.

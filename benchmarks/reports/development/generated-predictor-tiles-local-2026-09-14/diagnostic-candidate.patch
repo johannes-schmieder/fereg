@@ -1,0 +1,39 @@
+--- a/crates/fereg-core/src/ols/linear_session.rs
++++ b/crates/fereg-core/src/ols/linear_session.rs
+@@ -4925,6 +4925,8 @@
+         &mut self,
+         fit: &CertifiedPreparedOlsFit,
+     ) -> Result<LinearReconstructionCertificate> {
++        let trace = std::env::var_os("FEREG_PHASE_TIMING").is_some();
++        let total_started = Instant::now();
+         let rows = self.response.len();
+         resize_zeroed(
+             &mut self.finite_predictor,
+@@ -4936,6 +4938,8 @@
+             rows,
+             "unable to reserve weighted-linear absorbed predictor",
+         )?;
++        let initialize_seconds = total_started.elapsed().as_secs_f64();
++        let accumulate_started = Instant::now();
+         let numeric = super::prepared_rhs::NumericOlsColumns::bind(
+             self.prepared.fit_model(),
+             self.prepared.fit_sample(),
+@@ -4979,6 +4983,8 @@
+                     .add_selected_columns(&selected[..selected_count], &mut self.finite_predictor)?;
+             }
+         }
++        let accumulate_seconds = accumulate_started.elapsed().as_secs_f64();
++        let certificate_started = Instant::now();
+         let mut certificate = LinearReconstructionCertificate::new();
+         for row in 0..rows {
+             self.absorbed_predictor[row] =
+@@ -4989,6 +4995,9 @@
+                 self.absorbed_predictor[row],
+                 fit.residuals()[row],
+             )?;
++        }
++        if trace {
++            eprintln!("FEREG_PHASE|retained_predictor|rows={rows}|generated={}|kept={}|initialize={initialize_seconds:.9}|accumulate={accumulate_seconds:.9}|certificate={:.9}|total={:.9}", self.prepared.fit_model().columns.len(), fit.finite_rank(), certificate_started.elapsed().as_secs_f64(), total_started.elapsed().as_secs_f64());
+         }
+         Ok(certificate)
+     }
