@@ -50,11 +50,13 @@ preserved. The successful full run uses CG whereas the earlier r(459) used CMG;
 independent power-of-two oracles isolate the QR bug, but the full runs do not
 isolate its sole causality. German subsets and exact small masks remain controls.
 
-Next: resolve the pending PPML outcome choice (`exp(logrwage2)` versus censored
-`rwage`), then test the German PPML subsets before any full run. Universal
+Next: test German PPML on smaller subsets using the user-selected imputed
+wage outcome `exp(logrwage2)`, retaining its observed extremes, before any full run. Universal
 singleton pruning is already adopted for OLS/PPML and all memory modes; no German
 PPML result is claimed. Broader #27 work and the separate action-memory/PPML repair
 remain open. No cluster work, installed-binary replacement or push occurred.
+
+Roadmap disposition: [#27 evidence and open work](https://github.com/johannes-schmieder/fereg/issues/27#issuecomment-5670448455).
 
 ## Universal singleton pruning: prepared PPML queue adopted locally
 
@@ -93,12 +95,11 @@ and DoF. Maximum coefficient difference is 1.11e-11. The largest subset costs
 57.512/56.901 s (low/fast) versus reghdfe's 31.613 s: a useful weak-graph control,
 not a speed win. These use the parent plugin and are single diagnostic timings.
 
-Next: resolve the full German OLS bread-inverse certificate failure without
-relaxing its tolerance, beginning with independent reduction/QR evidence. The
-full 88,876,264-row retained count is already verified, but full estimation has
-not succeeded. German PPML outcome clarification is pending; no empirical PPML
-success is claimed. #27 priorities and the unrelated action-memory/PPML repair
-work remain open. No cluster work, installed-binary replacement or push occurred.
+Full German OLS estimation, unresolved at this checkpoint, is now certified
+by the QR/macOS follow-up above. The user selected `exp(logrwage2)` for German
+PPML; no empirical PPML success is claimed. #27 priorities and the unrelated
+action-memory/PPML repair work remain open. No cluster work, installed-binary
+replacement or push occurred.
 
 ## AKM singleton pruning: indexed linear-time fix, full retained count verified
 
@@ -119,8 +120,8 @@ singleton-heavy inputs gives approximately 2x time versus the scanner's 4x;
 65,540-row cascading pruning falls 1.106749→0.001242 s with exactly equal live
 allocation peaks. No-singleton performance/allocations remain unchanged.
 
-The original full AKM command clears all native preparation in 27.574 s, then
-fails closed with r(459), `prepared OLS bread inverse certificate did not pass`,
+At this checkpoint, the original full AKM command cleared native preparation
+in 27.574 s, then failed closed with r(459), `prepared OLS bread inverse certificate did not pass`,
 in the unchanged low-memory numerical path. No full estimates are produced.
 A separately archived diagnostic plugin (`e9b2141e`) reports the unchanged
 prepared sample and deliberately stops before solving: 91,045,290 original and
@@ -130,8 +131,9 @@ r(1) and no-public-coefficients assertion pass. This diagnostic hook is not adop
 The normal candidate smoke retains 65,503 rows; its 18 coefficient and V maxima
 against saved reghdfe results are 1.77913e-14 and 1.37152e-17, with exact N/DoF.
 
-The full-model bread-inverse certificate remains an unresolved empirical blocker;
-do not claim full-sample estimation success or relax it. All failed runs/builds,
+The later QR/macOS follow-up above now certifies full OLS estimation under
+unchanged tolerances. This earlier inverse-failure receipt remains unchanged.
+All failed runs/builds,
 original data/scripts and historical receipts remain. This fix leaves #27's seven
 P0–P7 items and the isolated action-memory prototype open; it does not add solver
 changes, agents, cluster work or a push. Unrelated STATUS additions and all 358
