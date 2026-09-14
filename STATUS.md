@@ -10,7 +10,7 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## German PPML: positive-outcome report capacity adopted; full retry running
+## German PPML: report capacity adopted; batch retained scratch moments next
 
 The [source-bound report](benchmarks/reports/development/german-ppml-report-capacity-local-2026-09-14/README.md)
 bounds separation records/hashes by at most two generations for positive outcomes,
@@ -42,11 +42,25 @@ improvement, not a demonstrated speed gain. Fallbacks/retries are zero.
 Pool1 takes 28.694 s on the larger subset; pool4 median is 12.307 s. The full
 pool4 retry uses the unchanged physical-memory guard and exp(logrwage2), with
 all extremes retained subject to ordinary sample rules. Attempt1 stopped before
-estimation due to an incompatible diagnostic option; attempt2 removes it and is
-running. Full PPML retained count and estimates remain unverified. Raw evidence
-is under the local root named in the report. Continue the full fit/comparator
-investigation. Separate work, original untracked paths and STATUS additions are
-preserved; no installed binary replacement, cluster work or push.
+estimation due to an incompatible diagnostic option. Attempt2 passed admission
+and separation and reached the first retained finite-moment solve. A one-second
+stack sample shows workers in per-row positional scratch reads; each Gram-column
+partition rereads every row. It was interrupted with SIGINT after 723.36 process
+seconds (65.07 GB maximum RSS, no swaps), before an estimate. The owned scratch is
+preserved locally; its 12,798,182,016 bytes correspond to 88,876,264 rows by 18
+slopes, but no authoritative full PPML row/result publication is claimed.
+
+Next: batch retained scratch moment reads while preserving row/arithmetic order,
+explicit worker-memory bounds, and positional-read validation; test both shared
+OLS and PPML consumers before rerunning German PPML. Check partition-count bounds
+when selected rank is below stored width. Raw evidence is under the local root
+named in the report. Separate work and original untracked/STATUS edits remain.
+No installed-binary replacement, cluster work or push.
+
+Roadmap: [adopted capacity progress](https://github.com/johannes-schmieder/fereg/issues/27#issuecomment-5671590033).
+The detailed external payload was rejected by automatic approval review; a
+minimal progress note and one narrow checkbox were approved. All 49 earlier
+checkboxes are preserved and 12 open items remain.
 
 ## German PPML: smaller samples pass; low-memory categorical projection adopted
 
