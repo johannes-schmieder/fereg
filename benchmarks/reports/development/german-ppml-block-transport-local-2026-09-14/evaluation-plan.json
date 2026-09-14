@@ -1,0 +1,14 @@
+{
+  "baseline_native": "0531450 / 2acecd29",
+  "candidate_scope": "Low retained changing-weight scratch block extraction and patch only",
+  "primary": "5100000",
+  "controls": [
+    "5010000",
+    "narrow",
+    "wide_pool1"
+  ],
+  "pairs_per_case": 3,
+  "target_gate": "At least 5% and 10 ms lower median complete-command time on the primary; exact scientific outputs",
+  "control_gate": "Investigate any control slower by both 5% and 10 ms; preserve all scientific and capacity checks",
+  "disclose": "More full-width sequential I/O per block; unchanged resident bank; interrupted full run is not a completed timing baseline"
+}

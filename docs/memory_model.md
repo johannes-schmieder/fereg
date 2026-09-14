@@ -130,6 +130,12 @@ retained partial bank or observation-sized state. Wider, unscaled and scratch
 paths do not enter that helper. Heap allocation receipts exclude this transient
 stack payload; see [ADR 0054](adr/0054-retained-dense-moment-row-standardization.md).
 
+Changing-weight retained column-block projection reuses the scratch file's
+existing bounded encoded I/O bank for complete-row extraction and patching.
+It does not add capacity or another retained design. Repeated full-row transport
+can increase sequential bytes for narrow pools; admission and headroom are
+unchanged. See the [local transport evidence](../benchmarks/reports/development/german-ppml-block-transport-local-2026-09-14/README.md).
+
 Retained low-memory finite moments own bounded complete-row tiles per existing
 Gram-column partition. Preflight charges at most
 `min(threads,K)*min(N*K,max(K,1024))` doubles across every selected rank and stored

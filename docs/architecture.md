@@ -114,6 +114,11 @@ numerical cache or new rank policy is introduced. See
 [ADR 0054](adr/0054-retained-dense-moment-row-standardization.md) and
 [ADR 0057](adr/0057-wider-retained-dense-moment-tiles.md).
 
+Changing-weight retained scratch projection extracts and patches pool-width
+blocks through the existing bounded complete-row I/O bank. It retains the same
+file, row/column ordering, projector and arithmetic, with no additional resident
+storage. See the [local transport evidence](../benchmarks/reports/development/german-ppml-block-transport-local-2026-09-14/README.md).
+
 Retained scratch finite moments batch complete rows inside each existing
 Gram-column partition. A checked bounded tile bank replaces per-row positional
 reads while preserving observation/FMA order and selected stored-column identity.

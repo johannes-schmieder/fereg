@@ -4712,18 +4712,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         checked_elements(rows, block)?,
                         "unable to reserve weighted-linear reusable low-memory projection block",
                     )?;
-                    for row in 0..rows {
-                        let source = row
-                            .checked_mul(columns)
-                            .and_then(|offset| offset.checked_add(start))
-                            .ok_or_else(|| {
-                                allocation("weighted-linear reusable scratch read offset overflows")
-                            })?;
-                        scratch.read_linear_shared(
-                            source,
-                            &mut self.projection_block[row * block..(row + 1) * block],
-                        )?;
-                    }
+                    scratch.read_row_major_block(start, block, &mut self.projection_block)?;
                     let raw = DenseMatrix::from_row_major(
                         rows,
                         block,
@@ -4749,20 +4738,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         &mut within_norms[start..end],
                     )?;
                     self.projection_block = values.into_row_major();
-                    for row in 0..rows {
-                        let destination = row
-                            .checked_mul(columns)
-                            .and_then(|offset| offset.checked_add(start))
-                            .ok_or_else(|| {
-                                allocation(
-                                    "weighted-linear reusable scratch write offset overflows",
-                                )
-                            })?;
-                        scratch.write_linear(
-                            destination,
-                            &self.projection_block[row * block..(row + 1) * block],
-                        )?;
-                    }
+                    scratch.patch_row_major_block(start, block, &self.projection_block)?;
                 }
                 RetainedWithinStorage::Scratch(scratch)
             }

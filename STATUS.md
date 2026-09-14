@@ -10,6 +10,34 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## German PPML: changing-weight scratch block transport adopted
+
+The [source-bound report](benchmarks/reports/development/german-ppml-block-transport-local-2026-09-14/README.md)
+adopts complete-row extract/patch transport through the existing bounded scratch
+bank. Parent native is `0531450` / `2acecd29`; tested candidate is `fdaf3e16`.
+No production capacity, weight, sample, rank, projector or certificate change.
+215 OLS/session, 351 PPML, 97 plugin tests, universal static/ARM64 ABI and 26
+licensed fits pass, including weak weighted graphs and memory/pool controls.
+
+Twenty-four paired commands preserve exact scientific exports. Three-pair German
+command medians fall 0.817→0.323 s (6,654 retained) and 8.109→2.245 s (65,503),
+located in FE projection and strict/final work. Narrow and 129-column/pool-one
+controls improve; independent scores/model-space pass, as do pinned-reference
+German samples/b/V. Native peaks and scratch bytes are exact; full phase/RSS
+costs and tiny variable synthetic plans are recorded. This is local evidence.
+Full-row I/O increases logical sequential bytes while greatly reducing calls;
+the existing 1 MiB bank is reused. The wide oracle's original width-limit error
+and corrected all-column audit remain visible.
+
+Next retry the full exp(logrwage2) model with low memory, pool four and eight
+threads, then run the pinned reference sequentially. Preserve sample/order and
+means/absorbed outputs after the command timer for independent verification.
+The preceding full run verified 88,876,264 active rows but was interrupted after
+one completed IRLS iteration and 1,453.38 process seconds; no full PPML estimate
+or full-data speed claim exists. Its scratch, logs and three samples are preserved.
+Installed dist remains `4187efdf`; no push or cluster work. Original unrelated
+STATUS additions and untracked evidence remain intact.
+
 ## German PPML: scratch moments adopted; full retained count verified
 
 The [source-bound report](benchmarks/reports/development/german-ppml-scratch-moments-local-2026-09-14/README.md)
@@ -45,9 +73,14 @@ published. The new validated IRLS-entry trace exposes that count before solving.
 The full retry now passes preparation/separation and its validated IRLS-entry
 trace confirms 91,045,290 original and **88,876,264 active rows**. It uses
 exp(logrwage2), all observed extremes, low memory, pool four and eight threads.
-See the separate full-row-check receipt in the report. Estimation is running;
-no full PPML result is published. Next assess certified estimation/reference
-outputs. Residual, QR and other scratch row loops remain possible bottlenecks.
+See the separate full-row-check receipt in the report. The first IRLS iteration
+completed, but the next changing-weight projection still used per-row block
+reads/writes. A third one-second sample captured 742 worker samples there.
+The owned run was interrupted after 1,453.38 process seconds, with 65.16 GB
+maximum RSS and zero swaps; no full estimate was published. Its scratch and
+three samples remain local. The bounded block transport adoption above addresses
+this bottleneck; its full-data retry remains pending. Residual and QR row loops
+remain possible later costs.
 No installed-binary replacement, cluster work or push. Original separate STATUS
 changes and untracked evidence are preserved.
 
