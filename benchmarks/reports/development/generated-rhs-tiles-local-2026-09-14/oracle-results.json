@@ -1,0 +1,38 @@
+[
+  {
+    "arm": "baseline",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "fits": [
+      "aw_fast",
+      "pw_low",
+      "fw_three",
+      "unit_slope",
+      "ppml_fw"
+    ],
+    "sentinel": true,
+    "fixture_sha256": "035500acabde2d5beb713af399373a60dce3332f1357fea80f71afd8994e1175",
+    "plugin": "f4cb7dee75376ae49f339e1d0c198b437184d00c63a709cedb7c57705526f242",
+    "log_sha256": "b5a405c7753c7cb3d3a820d19343865f38541309f10a6929d9796955194fd2f1"
+  },
+  {
+    "arm": "candidate",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "fits": [
+      "aw_fast",
+      "pw_low",
+      "fw_three",
+      "unit_slope",
+      "ppml_fw"
+    ],
+    "sentinel": true,
+    "fixture_sha256": "035500acabde2d5beb713af399373a60dce3332f1357fea80f71afd8994e1175",
+    "plugin": "6bbc5aceee8a3e164b57ce00c8f26caa369ae1d8e52da010b925a1e1b87b53b5",
+    "log_sha256": "238367b01ed1e20258317232665747e161d9607153fa62a9944f26138b5cfb18"
+  }
+]

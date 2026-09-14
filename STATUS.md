@@ -10,6 +10,30 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P6 generated RHS tiles: standalone prototype rejected
+
+The [source-bound screen](benchmarks/reports/development/generated-rhs-tiles-local-2026-09-14/README.md)
+rejects shared generated RHS tiles against accepted `fb4cc5b`. Candidate `6bbc5ace`
+uses borrowed ordinary/topology factor codes and a fixed 128-byte interaction mask
+for both prepared layouts and low-memory blocks. All 18 focused core tests, 95
+serial plugin tests, five independent dummy/Poisson/Hessian/sandwich fits per arm
+and universal/static/actual arm64 ABI checks pass. Original fixture compile,
+base-policy, rebased-axis, PPML omitted-slot and archive-interpreter failures remain.
+
+Three untraced pairs preserve exact scientific exports and solver decisions:
+fast AW OLS 1.118→1.129 s, low PW clustered OLS 2.224→2.231, FW PPML 1.522→1.481.
+None meets the prospectively fixed 5% and 10 ms gain gate. Three separate diagnostic
+pairs preserve original science; fast AW RHS saves only 6.311 ms (31.432→25.121),
+and its entire baseline scope is 2.81% of command time. All three native peaks
+are exact and admitted; RSS rises slightly. No extra seeds/graph timing/private
+audit/public exact-cap calls follow rejection. All twelve captures and the patch
+are archived; all 178 accepted inputs and installed dist are restored/unchanged.
+
+Seven P0–P7 items remain. Next target repeated generated raw-residual/predictor
+consumers, then shared slope/three-plus-FE layout, remaining PPML state, scheduling
+and complete accounting. R1–R5 are excluded. Independent reviews, upstream CMG
+assessment and the bounded SCC campaign follow P0–P7. No agents, cluster or push.
+
 ## P4 guarded PPML Schur checkpoints: adopted local checkpoint
 
 The [final source-bound report](benchmarks/reports/development/ppml-schur-checkpoint-adoption-local-2026-09-14/README.md)

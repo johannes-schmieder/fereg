@@ -1,0 +1,87 @@
+[
+  {
+    "name": "ols_fast_aw",
+    "seed": 104729,
+    "warm_seed": 104730,
+    "cell": {
+      "section": "width",
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h",
+      "name": "ols_fast_aw",
+      "model": "ols",
+      "design": "one_fe",
+      "n": 491520,
+      "k": 8,
+      "threads": 16,
+      "weight": "[aw=w]",
+      "levels": 8,
+      "missing": true
+    },
+    "data": "/private${GENERATED_RHS_ROOT}/data/ols_fast_aw-data.dta",
+    "data_sha256": "8b32357e3af300adb1c09ef743c951eed7b3665a025d29103e41b2d93d70fa96",
+    "data_metadata_sha256": "6e1f4e399b5731c174bebc99c4ffa58a9c97b4b7fd2aad35f95ac0b85ed3c8ca",
+    "warm": "/private${GENERATED_RHS_ROOT}/data/ols_fast_aw-warm.dta",
+    "warm_sha256": "8cbcd5d3fe7a16bbb0c9bd0e9c5e6ea07b96d34dd24fe25daf6f1491f8ee0f76",
+    "warm_metadata_sha256": "25278c4691355f132511ebc14c098f7689e38bd40ab63801bb5d63f803b2249e"
+  },
+  {
+    "name": "ols_low_pw",
+    "seed": 104729,
+    "warm_seed": 104730,
+    "cell": {
+      "section": "width",
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h",
+      "name": "ols_low_pw",
+      "model": "ols",
+      "design": "one_fe",
+      "n": 122880,
+      "k": 8,
+      "threads": 4,
+      "weight": "[pw=w]",
+      "vce": "cluster c1",
+      "fit_options": "memory(low)",
+      "levels": 4,
+      "missing": true
+    },
+    "data": "/private${GENERATED_RHS_ROOT}/data/ols_low_pw-data.dta",
+    "data_sha256": "a611bcc8fae5ebfd235a87044a8f5be136497b6b2d72fbcdc109775f2962ef82",
+    "data_metadata_sha256": "89106469826bb7178c4733c5b0313ee159f608beebf6c10d8f2089d7257dc653",
+    "warm": "/private${GENERATED_RHS_ROOT}/data/ols_low_pw-warm.dta",
+    "warm_sha256": "2c9cf6935648781d2acdff842fca94c1e9b1eb0a2d51bcffa4756c53f0cb0f0d",
+    "warm_metadata_sha256": "6046f35a6c3dc801e7a428282bfb540a830a515e4bc7b342b0259826fd9293e9"
+  },
+  {
+    "name": "ppml_fw",
+    "seed": 104729,
+    "warm_seed": 104730,
+    "cell": {
+      "section": "width",
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h",
+      "name": "ppml_fw",
+      "model": "ppml",
+      "design": "one_fe",
+      "n": 122880,
+      "k": 8,
+      "threads": 4,
+      "weight": "[fw=w]",
+      "vce": "robust",
+      "fit_options": "exposure(exposure)",
+      "levels": 4,
+      "missing": true
+    },
+    "data": "/private${GENERATED_RHS_ROOT}/data/ppml_fw-data.dta",
+    "data_sha256": "6d873315c2879de9bf16ad305249c778e2b3ab3bc5f584d11dfd3f693f87d6de",
+    "data_metadata_sha256": "8e1a69d4e05599276828ab3e40c92bf54daa0f7df1e752dd5d4194369c6dad18",
+    "warm": "/private${GENERATED_RHS_ROOT}/data/ppml_fw-warm.dta",
+    "warm_sha256": "ce9c6ba74e5a6e1c514dba038980b2de3983beedf814f119c1f710bdbe1486aa",
+    "warm_metadata_sha256": "caaf6270760113712ce348d0ea99fc7fffe0487409bdf68b31eac22b78fe9efa"
+  }
+]

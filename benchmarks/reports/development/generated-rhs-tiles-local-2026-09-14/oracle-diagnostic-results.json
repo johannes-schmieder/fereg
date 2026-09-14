@@ -1,0 +1,19 @@
+[
+  {
+    "arm": "baseline",
+    "process_rc": 0,
+    "terminal_rc": [
+      "9"
+    ],
+    "fits": [
+      "aw_fast",
+      "pw_low",
+      "fw_three",
+      "unit_slope"
+    ],
+    "sentinel": false,
+    "fixture_sha256": "ed1ad61edfcbd10dd6ad706ff7c3c337fb517a7fa3197f69afd8d7478a6212aa",
+    "plugin": "f4cb7dee75376ae49f339e1d0c198b437184d00c63a709cedb7c57705526f242",
+    "log_sha256": "d38c50419d41f1ec97337fae179b2b17e6383b402f70e7255ac3366de8203bd6"
+  }
+]
