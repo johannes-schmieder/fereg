@@ -45,6 +45,8 @@ fast before workspace allocation while low succeeds. The first dummy-Poisson
 oracle's loose stopping and the independent audit's insufficient scratch budget
 are preserved with their resolved reruns and unchanged candidate tolerances.
 
+Roadmap evidence: [#27 adopted low-memory follow-up](https://github.com/johannes-schmieder/fereg/issues/27#issuecomment-5671023540).
+
 Next: inspect full German PPML memory admission and a fitting bounded pool,
 then estimate and compare with pinned ppmlhdfe. The 8.37-billion wage in the
 largest subset was removed by ordinary singleton pruning in both commands;
