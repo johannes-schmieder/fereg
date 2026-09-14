@@ -29,14 +29,18 @@ Full-row I/O increases logical sequential bytes while greatly reducing calls;
 the existing 1 MiB bank is reused. The wide oracle's original width-limit error
 and corrected all-column audit remain visible.
 
-Next retry the full exp(logrwage2) model with low memory, pool four and eight
-threads, then run the pinned reference sequentially. Preserve sample/order and
-means/absorbed outputs after the command timer for independent verification.
+The full exp(logrwage2) retry is running with low memory, pool four and eight
+threads; see the source-bound full-retry-launch receipt. The isolated tested
+plugin matches committed `fad7a5c`. The harness preserves sample/order and
+means/absorbed outputs after the command timer. Run the pinned reference
+sequentially after native completion, then independently compare outputs.
 The preceding full run verified 88,876,264 active rows but was interrupted after
 one completed IRLS iteration and 1,453.38 process seconds; no full PPML estimate
 or full-data speed claim exists. Its scratch, logs and three samples are preserved.
 Installed dist remains `4187efdf`; no push or cluster work. Original unrelated
 STATUS additions and untracked evidence remain intact.
+
+Roadmap: [adopted transport and remaining work](https://github.com/johannes-schmieder/fereg/issues/27#issuecomment-5672315940).
 
 ## German PPML: scratch moments adopted; full retained count verified
 
