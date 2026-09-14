@@ -9,6 +9,11 @@ inputs and installed dist. The rejected [patch](implementation.patch),
 [source archive](candidate-source.json) and [artifact identities](built-identities.json)
 remain available for a later, separately specified experiment.
 
+Subsequent [source adjudication](memory-gap-adjudication.md) clarifies the memory
+finding: solver workspace is separately admitted, while the public field reports
+the base execution estimate. The captured discrepancy confirms incomplete public
+reporting; it does not establish a breach of the actual joint memory cap.
+
 ## Experiment and command results
 
 The [initial audit](protocol.md) reuses the preceding generated-RHS experiment's

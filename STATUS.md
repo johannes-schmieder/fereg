@@ -31,6 +31,15 @@ all 56 captures and the summary's failed admission assertion remain. No extra
 repeats/public cap calls follow rejection. All 178 accepted source inputs are
 restored; the prototype source/patch/artifacts remain isolated and archived.
 
+Source [adjudication](benchmarks/reports/development/generated-ols-residual-tiles-local-2026-09-14/memory-gap-adjudication.md)
+clarifies that the public value is a base execution model; adapters separately
+admit incremental solver workspace against the usable cap. This confirms the
+known P0 reporting gap, not an established breach of actual joint admission.
+Next complete action/attempt memory reporting and verify the joint boundary on
+the original three-FE inputs, including the older reporting prototype's known
+weak-wide timing and coverage limitations. Do not inflate a multiplier to cover
+the observed number.
+
 Seven P0–P7 items remain. Next diagnose and repair that three-FE memory gap on its
 original full/warm inputs before broader timing work. Then finish generated/shared
 layouts, remaining PPML state/construction, P7 scheduling and P0 full accounting.
