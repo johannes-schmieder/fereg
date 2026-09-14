@@ -10,57 +10,48 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## German PPML: report capacity adopted; batch retained scratch moments next
+## German PPML: bounded scratch moments adopted; full retry next
 
-The [source-bound report](benchmarks/reports/development/german-ppml-report-capacity-local-2026-09-14/README.md)
-bounds separation records/hashes by at most two generations for positive outcomes,
-including initial recursive singleton removal and final replay. Zero-containing
-samples retain N. The scan follows authoritative classification, allocates no
-observation state and polls interruption. Actual reservations/appends obey the
-same bound. Parent is `a1d0fd6` / `9d920101`; isolated plugin is `e1c72f56`.
-All 177 inputs match the transfer; installed dist remains `4187efdf`.
+The [source-bound report](benchmarks/reports/development/german-ppml-scratch-moments-local-2026-09-14/README.md)
+adopts bounded complete-row reads in retained scratch moments. The same Gram
+partitions preserve row/FMA order, weight/reference scales and selected identities.
+Low preflight covers tile capacity and nonmonotone partition counts after rank
+shrinkage. Dense/one-shot OLS routes do not acquire the bank. Parent is `1f76986`
+with plugin `e1c72f56`; isolated candidate is `2acecd29`. Installed dist remains
+`4187efdf`. See ADR 0070 for the bounded workspace extension to ADR 0020.
 
-Full N=91,045,290 probes reduce the low/pool1 plan from 156.87 to 68.74 GB,
-an 88.13 GB modeled reservation saving. Pool4 needs 88.41 GB. Headroom and FE
-bounds are unchanged. Both intentional one-byte-cap probes reject before fit
-workspace allocation, with zero planner allocator growth. The prior normal
-pool1 run returned r(909), against about 104.40 GB usable after headroom.
+214 OLS/session tests, 351 PPML tests, 97 plugin tests, two memory tests,
+universal static/ARM64 ABI checks and 26 licensed native fits pass. The new
+scalar oracle proves exact moments and over 50-fold fewer read chunks at 18
+stored columns on 65,536/131,072 rows. Constrained-memory expectations now charge
+the tiles under the same imposed limits. Warmed allocation checks pass.
 
-351 core PPML tests, 97 plugin tests on final rerun, two memory-contract tests,
-universal static/ARM64 ABI checks and 26 licensed native fits pass. The first
-plugin suite had one intermittent warmed-allocation event; isolated and whole
-reruns passed unchanged. Baseline constrained-memory expectations were stale
-for the prior low-projector adoption and are repaired; historical receipts stay.
+Three alternating German pairs per subset retain 6,654 and 65,503 rows. Command
+medians fall 1.194→0.845 s and 11.688→8.224 s (about 29%); finite solve medians
+fall 0.327158→0.039424 s and 3.171349→0.390776 s. All paired scientific values
+are exact, and independent score/model-space checks pass. Native allocation
+peaks rise 47,520 bytes each; larger RSS median rises about 6.14 MB. Scratch and
+non-time solver work are unchanged; solver fallbacks remain zero. This is local
+development evidence, not a qualification or full-data timing claim.
 
-Six paired German comparisons preserve all scientific outputs exactly, with
-independent score/model-space checks and pinned reference parity. Native allocated
-peaks fall 12.52→5.01 MB and 112.89→39.95 MB; RSS does not fall correspondingly.
-Command medians are 1.172→1.246 s (+6.31%) and 12.281→12.307 s (+0.21%). Three
-pairs do not establish systematic runtime changes. This is an admission/capacity
-improvement, not a demonstrated speed gain. Fallbacks/retries are zero.
+The preceding [positive-outcome report-capacity adoption](benchmarks/reports/development/german-ppml-report-capacity-local-2026-09-14/README.md)
+reduces the full low/pool1 plan from 156.87 to 68.74 GB without weakening
+headroom. Zero-containing samples retain their general bound. The old full
+pool4 attempt passed admission/separation and reached retained moments, but was
+interrupted after 723.36 process seconds, 65.07 GB maximum RSS and no swaps.
+Its scratch is preserved; no estimate or authoritative retained count was
+published. The new validated IRLS-entry trace exposes that count before solving.
 
-Pool1 takes 28.694 s on the larger subset; pool4 median is 12.307 s. The full
-pool4 retry uses the unchanged physical-memory guard and exp(logrwage2), with
-all extremes retained subject to ordinary sample rules. Attempt1 stopped before
-estimation due to an incompatible diagnostic option. Attempt2 passed admission
-and separation and reached the first retained finite-moment solve. A one-second
-stack sample shows workers in per-row positional scratch reads; each Gram-column
-partition rereads every row. It was interrupted with SIGINT after 723.36 process
-seconds (65.07 GB maximum RSS, no swaps), before an estimate. The owned scratch is
-preserved locally; its 12,798,182,016 bytes correspond to 88,876,264 rows by 18
-slopes, but no authoritative full PPML row/result publication is claimed.
+Next: retry full German PPML with exp(logrwage2), all observed extremes,
+low memory, pool four and eight threads. Verify 88,876,264 retained rows and
+then assess certified estimation/reference outputs. Residual, QR and other
+scratch row loops remain possible bottlenecks. No full PPML success is claimed.
+No installed-binary replacement, cluster work or push. Original separate STATUS
+changes and untracked evidence are preserved.
 
-Next: batch retained scratch moment reads while preserving row/arithmetic order,
-explicit worker-memory bounds, and positional-read validation; test both shared
-OLS and PPML consumers before rerunning German PPML. Check partition-count bounds
-when selected rank is below stored width. Raw evidence is under the local root
-named in the report. Separate work and original untracked/STATUS edits remain.
-No installed-binary replacement, cluster work or push.
-
-Roadmap: [adopted capacity progress](https://github.com/johannes-schmieder/fereg/issues/27#issuecomment-5671590033).
-The detailed external payload was rejected by automatic approval review; a
-minimal progress note and one narrow checkbox were approved. All 49 earlier
-checkboxes are preserved and 12 open items remain.
+Roadmap: [existing progress note](https://github.com/johannes-schmieder/fereg/issues/27#issuecomment-5671590033).
+Detailed external benchmark payloads previously failed automatic approval review;
+only minimal generic roadmap updates have been approved.
 
 ## German PPML: smaller samples pass; low-memory categorical projection adopted
 

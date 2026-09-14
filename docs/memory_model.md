@@ -130,6 +130,15 @@ retained partial bank or observation-sized state. Wider, unscaled and scratch
 paths do not enter that helper. Heap allocation receipts exclude this transient
 stack payload; see [ADR 0054](adr/0054-retained-dense-moment-row-standardization.md).
 
+Retained low-memory finite moments own bounded complete-row tiles per existing
+Gram-column partition. Preflight charges at most
+`min(threads,K)*min(N*K,max(K,1024))` doubles across every selected rank and stored
+width inside the admitted dimensions. This replaces the one-row bound in
+ADR 0020 paragraph 10. The envelope covers partition-count increases after rank
+shrinkage and does not create observation-sized preparation state or another
+retained design. Positional I/O keeps its existing bounded encoded stack buffer;
+see [ADR 0070](adr/0070-bounded-retained-scratch-moment-tiles.md).
+
 ## Allocation discipline
 
 Long estimation metadata uses one fallibly reserved transport buffer bounded by

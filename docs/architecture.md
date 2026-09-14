@@ -114,6 +114,12 @@ numerical cache or new rank policy is introduced. See
 [ADR 0054](adr/0054-retained-dense-moment-row-standardization.md) and
 [ADR 0057](adr/0057-wider-retained-dense-moment-tiles.md).
 
+Retained scratch finite moments batch complete rows inside each existing
+Gram-column partition. A checked bounded tile bank replaces per-row positional
+reads while preserving observation/FMA order and selected stored-column identity.
+Preflight covers every possible active rank; no resident N-by-K copy is added.
+See [ADR 0070](adr/0070-bounded-retained-scratch-moment-tiles.md).
+
 PPML covariance production and independent publication inspection use the same
 maximum-pivot Jacobi arithmetic. Above 64 identified dimensions, upper-row maxima
 reuse the eigenvalue vector within its existing modeled lifetime. Only affected

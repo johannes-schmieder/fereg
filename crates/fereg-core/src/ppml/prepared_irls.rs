@@ -825,6 +825,15 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let preparation_clock = PpmlPhaseClock::start();
     validate_inputs(prepared, outcome, prior_weights, offset, config)?;
     validate_memory_dimensions(prepared, memory_plan.dimensions, config)?;
+    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        eprintln!(
+            "FEREG_SOLVER_TRACE|phase=prepared_irls_start|original_rows={}|active_rows={}|finite_columns={}|memory={:?}",
+            memory_plan.dimensions.original_observations,
+            outcome.len(),
+            memory_plan.dimensions.finite_columns,
+            memory_plan.selected,
+        );
+    }
     // Route selection happened exactly once on generation zero, before any
     // separation detector workspace. The composite owner rebases only the
     // exact final dimensions into that conservative fit-lifetime plan.

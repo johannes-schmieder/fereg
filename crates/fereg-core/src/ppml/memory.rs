@@ -23,7 +23,7 @@ use crate::fe::{
 use crate::metadata::CoefficientSlot;
 use crate::ols::{
     FrozenLinearBasisSlot, PreparedOlsBreadCoordinate, PreparedOlsCoefficient, PreparedOlsColumn,
-    PreparedOlsFitStatus, PreparedOlsFittedCoefficient,
+    PreparedOlsFitStatus, PreparedOlsFittedCoefficient, RETAINED_MOMENT_TILE_ELEMENTS,
 };
 use crate::options::MemoryMode;
 use crate::ppml_separation::{ExactFeLevelIdentity, SeparationDropReason, SeparationMethodReport};
@@ -1390,23 +1390,22 @@ fn estimate_route(
             "PPML linear slot bookkeeping",
         )?,
     ])?;
-    // Reusable-session moments never enter the one-shot PreparedFixedBlocks
-    // bank. Dense retained storage writes disjoint Gram rows directly and
-    // needs no partials. Row-major scratch owns one complete stored-K row per
-    // actual selected-column partition. Rank is not known at preflight, so K
-    // is the exact generation-zero upper bound for both selected and stored
-    // width.
+    // Retained scratch moments own a bounded complete-row tile per selected
+    // Gram-column partition. Selected rank can shrink without changing stored
+    // width, and partition count is not monotone in rank (e.g. K=5 has three
+    // partitions on four workers, while rank=4 has four). Bound every possible
+    // selected rank by min(threads, K), and every stored width by this monotone
+    // tile-capacity envelope. Dense retained moments need no partial bank.
     let retained_moment_partial_cells = match route {
         PpmlMemoryRoute::Fast => 0,
         PpmlMemoryRoute::Low if k == 0 => 0,
         PpmlMemoryRoute::Low => {
-            let requested_partitions = threads.min(k).max(1);
-            let columns_per_partition = k.div_ceil(requested_partitions);
-            let actual_partitions = k.div_ceil(columns_per_partition);
+            let tile_cells = checked_mul(n, k, "PPML moment row-tile cells")?
+                .min(k.max(RETAINED_MOMENT_TILE_ELEMENTS as u128));
             checked_mul(
-                actual_partitions,
-                k,
-                "PPML retained scratch moment row workspaces",
+                threads.min(k),
+                tile_cells,
+                "PPML retained scratch moment tile workspaces",
             )?
         }
     };
@@ -4475,16 +4474,16 @@ mod tests {
     }
 
     #[test]
-    fn finite_session_charges_inverse_lower_and_exact_route_moment_storage() {
+    fn finite_session_charges_inverse_lower_and_bounded_route_moment_storage() {
         let memory_dimensions = dimensions();
         let estimate = estimate_ppml_memory(memory_dimensions, PpmlMemoryConfig::default())
             .expect("finite-session estimate");
         let k = memory_dimensions.finite_columns as u128;
         let requested = (memory_dimensions.threads as u128).min(k).max(1);
-        let columns_per_partition = k.div_ceil(requested);
-        let actual_partitions = k.div_ceil(columns_per_partition);
+        let tile_cells = (memory_dimensions.observations as u128 * k)
+            .min(k.max(RETAINED_MOMENT_TILE_ELEMENTS as u128));
         let fast_expected = LINEAR_SQUARE_WORKSPACE_COUNT * k * k * size_of::<f64>() as u128;
-        let low_expected = (LINEAR_SQUARE_WORKSPACE_COUNT * k * k + actual_partitions * k)
+        let low_expected = (LINEAR_SQUARE_WORKSPACE_COUNT * k * k + requested * tile_cells)
             * size_of::<f64>() as u128;
         assert_eq!(LINEAR_SQUARE_WORKSPACE_COUNT, 7);
         assert_eq!(estimate.fast.linear_workspace_bytes, fast_expected);
@@ -4502,8 +4501,9 @@ mod tests {
             .low;
         assert_eq!(
             uneven_low.linear_workspace_bytes,
-            (LINEAR_SQUARE_WORKSPACE_COUNT * 25 + 3 * 5) * size_of::<f64>() as u128,
-            "K=5 across four requested workers creates three actual two-column partitions",
+            (LINEAR_SQUARE_WORKSPACE_COUNT * 25 + 4 * RETAINED_MOMENT_TILE_ELEMENTS as u128)
+                * size_of::<f64>() as u128,
+            "K=5 must also admit four rank-4 partitions over its retained stored width",
         );
     }
 

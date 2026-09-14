@@ -17,6 +17,10 @@ use crate::fe::BorrowedMapWeights;
 
 use super::prepared_scratch::PreparedOlsScratch;
 
+/// One bounded positional read per narrow row tile. Wider rows retain their
+/// existing complete-row buffer and may span several scratch read chunks.
+pub(crate) const RETAINED_MOMENT_TILE_ELEMENTS: usize = 1024;
+
 pub(super) const FIXED_BLOCK_MOMENT_ROWS: usize = 16_384;
 pub(super) const FIXED_BLOCK_MOMENT_MAX_BLOCKS: usize = 64;
 pub(super) const FIXED_BLOCK_MOMENT_MAX_COLUMNS: usize = 64;
@@ -42,7 +46,7 @@ pub(super) enum FixedBlockMomentSource<'a> {
         column_scales: Option<&'a [f64]>,
     },
     /// Row-major reusable scratch representation. Each fixed block owns one
-    /// complete row buffer inside its caller-provided partial workspace.
+    /// bounded complete-row tile inside its caller-provided partial workspace.
     RetainedScratch {
         values: &'a PreparedOlsScratch,
         selected_columns: Option<&'a [usize]>,
@@ -83,7 +87,18 @@ impl FixedBlockMomentSource<'_> {
 
     fn row_workspace(self) -> usize {
         match self {
-            Self::RetainedScratch { values, .. } => values.columns(),
+            Self::RetainedScratch { values, .. } => {
+                let columns = values.columns();
+                if columns == 0 {
+                    0
+                } else {
+                    columns
+                        * values
+                            .rows()
+                            .max(1)
+                            .min((RETAINED_MOMENT_TILE_ELEMENTS / columns).max(1))
+                }
+            }
             Self::PreparedStandardized { .. } | Self::RetainedDense { .. } => 0,
         }
     }
@@ -211,7 +226,7 @@ pub(super) fn finite_wls_moment_layout(
             // reusable sessions. Disjoint left-column partitions each scan
             // rows in canonical order and write separate Gram rows. Dense
             // storage needs no auxiliary row buffer; scratch storage owns one
-            // complete stored row per partition.
+            // bounded stored-row tile per partition.
             let requested_partitions = rayon::current_num_threads().min(dimension).max(1);
             let columns_per_partition = dimension.div_ceil(requested_partitions);
             let partitions = dimension.div_ceil(columns_per_partition);
@@ -2254,23 +2269,34 @@ fn fill_retained_scratch_partitioned(
             |(partition, ((row_workspace, rhs_rows), gram_rows))| -> Result<()> {
                 record_retained_moment_worker();
                 let left_start = partition * layout.columns_per_partition;
-                for (row, &response_value) in response.iter().enumerate() {
-                    values.read_linear_shared(row * stored_columns, row_workspace)?;
-                    let weight = normalized_weight(weights, divisor, row)?;
-                    for (local_left, destination) in rhs_rows.iter_mut().enumerate() {
-                        let left = left_start + local_left;
-                        let source_left = selected_columns.map_or(left, |selected| selected[left]);
-                        let left_value = scaled_column(row_workspace[source_left], scales, left)?;
-                        let weighted_left = weight * left_value;
-                        *destination = weighted_left.mul_add(response_value, *destination);
-                        let gram_row =
-                            &mut gram_rows[local_left * dimension..(local_left + 1) * dimension];
-                        for right in left..dimension {
-                            let source_right =
-                                selected_columns.map_or(right, |selected| selected[right]);
-                            let right_value =
-                                scaled_column(row_workspace[source_right], scales, right)?;
-                            gram_row[right] = weighted_left.mul_add(right_value, gram_row[right]);
+                let tile_rows = row_workspace.len() / stored_columns;
+                for start_row in (0..response.len()).step_by(tile_rows) {
+                    let rows = (response.len() - start_row).min(tile_rows);
+                    let tile = &mut row_workspace[..rows * stored_columns];
+                    values.read_linear_shared(start_row * stored_columns, tile)?;
+                    // Preserve every observation and FMA in canonical order;
+                    // only the positional I/O granularity changes.
+                    for (local_row, stored_row) in tile.chunks_exact(stored_columns).enumerate() {
+                        let row = start_row + local_row;
+                        let response_value = response[row];
+                        let weight = normalized_weight(weights, divisor, row)?;
+                        for (local_left, destination) in rhs_rows.iter_mut().enumerate() {
+                            let left = left_start + local_left;
+                            let source_left =
+                                selected_columns.map_or(left, |selected| selected[left]);
+                            let left_value = scaled_column(stored_row[source_left], scales, left)?;
+                            let weighted_left = weight * left_value;
+                            *destination = weighted_left.mul_add(response_value, *destination);
+                            let gram_row = &mut gram_rows
+                                [local_left * dimension..(local_left + 1) * dimension];
+                            for right in left..dimension {
+                                let source_right =
+                                    selected_columns.map_or(right, |selected| selected[right]);
+                                let right_value =
+                                    scaled_column(stored_row[source_right], scales, right)?;
+                                gram_row[right] =
+                                    weighted_left.mul_add(right_value, gram_row[right]);
+                            }
                         }
                     }
                 }
@@ -2556,6 +2582,113 @@ mod tests {
             (actual - expected).abs() <= tolerance,
             "actual {actual:.17e}, expected {expected:.17e}, tolerance {tolerance:.3e}"
         );
+    }
+
+    #[test]
+    fn scratch_moment_tiles_match_scalar_oracle_and_bound_read_chunks() {
+        for (stored, columns, rows) in [
+            (1, 1, 2051),
+            (5, 4, 419),
+            (18, 8, 131),
+            (129, 7, 23),
+            (1025, 4, 3),
+            (18, 8, 65_536),
+            (18, 8, 131_072),
+        ] {
+            let selected = (0..columns)
+                .map(|c| c * (stored - 1) / columns.max(1))
+                .collect::<Vec<_>>();
+            let scales = (0..columns)
+                .map(|c| 2.0_f64.powi(c as i32 - 3))
+                .collect::<Vec<_>>();
+            let mut data = vec![0.0; rows * stored];
+            for row in 0..rows {
+                for c in 0..columns {
+                    data[row * stored + selected[c]] =
+                        (((row * 17 + c * 13) % 31) as f64 - 15.0) / 16.0 * scales[c];
+                }
+            }
+            let response = (0..rows)
+                .map(|row| ((row % 17) as f64 - 8.0) / 8.0)
+                .collect::<Vec<_>>();
+            let weights = (0..rows)
+                .map(|row| 2.0_f64.powi((row % 5) as i32 * 100 - 200))
+                .collect::<Vec<_>>();
+            let mut scratch = PreparedOlsScratch::create_row_major(rows, stored).unwrap();
+            scratch.write_linear(0, &data).unwrap();
+            for provided in [false, true] {
+                let divisor = if provided { 2.0_f64.powi(202) } else { 1.0 };
+                let mut expected_rhs = vec![0.0; columns];
+                let mut expected_gram = vec![0.0; columns * columns];
+                for left in 0..columns {
+                    for row in 0..rows {
+                        let weight = if provided {
+                            weights[row] / divisor
+                        } else {
+                            1.0
+                        };
+                        let left_value = data[row * stored + selected[left]] / scales[left];
+                        let weighted_left = weight * left_value;
+                        expected_rhs[left] = weighted_left.mul_add(response[row], expected_rhs[left]);
+                        for right in left..columns {
+                            let position = left * columns + right;
+                            expected_gram[position] = weighted_left.mul_add(
+                                data[row * stored + selected[right]] / scales[right],
+                                expected_gram[position],
+                            );
+                        }
+                    }
+                    for right in left..columns {
+                        expected_gram[right * columns + left] = expected_gram[left * columns + right];
+                    }
+                }
+                for threads in [1, 4] {
+                    rayon::ThreadPoolBuilder::new()
+                        .num_threads(threads)
+                        .build()
+                        .unwrap()
+                        .install(|| {
+                            let source = FixedBlockMomentSource::RetainedScratch {
+                                values: &scratch,
+                                selected_columns: Some(&selected),
+                                response: &response,
+                                weights: if provided {
+                                    BorrowedMapWeights::Provided(&weights)
+                                } else {
+                                    BorrowedMapWeights::Unit
+                                },
+                                solver_weight_divisor: divisor,
+                                column_scales: Some(&scales),
+                            };
+                            let layout = finite_wls_moment_layout(source).unwrap();
+                            let mut partials = vec![0.0; layout.partial_elements];
+                            let mut rhs = vec![0.0; columns];
+                            let mut gram = vec![0.0; columns * columns];
+                            let before = scratch.shared_read_chunks_for_test();
+                            fill_finite_wls_moments(source, layout, &mut partials, &mut rhs, &mut gram)
+                                .unwrap();
+                            assert_eq!(rhs, expected_rhs);
+                            assert_eq!(gram, expected_gram);
+                            let tile_rows = layout.partial_stride / stored;
+                            let chunks_per_tile = layout.partial_stride.div_ceil(1024);
+                            let full_tiles = rows / tile_rows;
+                            let tail = rows % tile_rows;
+                            let expected_chunks = layout.partitions
+                                * (full_tiles * chunks_per_tile + (tail * stored).div_ceil(1024));
+                            assert_eq!(
+                                scratch.shared_read_chunks_for_test() - before,
+                                expected_chunks as u64
+                            );
+                            let bound = threads.min(stored)
+                                * (rows * stored).min(stored.max(RETAINED_MOMENT_TILE_ELEMENTS));
+                            assert!(layout.partial_elements <= bound);
+                            if stored == 18 && rows >= 65_536 {
+                                assert!(expected_chunks * 50 < layout.partitions * rows);
+                            }
+                        });
+                }
+            }
+        }
     }
 
     #[test]

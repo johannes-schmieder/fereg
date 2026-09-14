@@ -33,6 +33,8 @@ pub(crate) struct PreparedOlsScratch {
     layout: ScratchLayout,
     poisoned: bool,
     io_buffer: Vec<u8>,
+    #[cfg(test)]
+    shared_read_chunks: AtomicU64,
 }
 
 impl PreparedOlsScratch {
@@ -117,6 +119,8 @@ impl PreparedOlsScratch {
                         layout,
                         poisoned: false,
                         io_buffer,
+                        #[cfg(test)]
+                        shared_read_chunks: AtomicU64::new(0),
                     });
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
@@ -381,6 +385,8 @@ impl PreparedOlsScratch {
                 .and_then(|offset| u64::try_from(offset).ok())
                 .and_then(|offset| offset.checked_mul(8))
                 .ok_or_else(|| allocation("prepared OLS selected row offset overflows u64"))?;
+            #[cfg(test)]
+            self.shared_read_chunks.fetch_add(1, Ordering::Relaxed);
             read_exact_at(self.file_ref(), &mut encoded[..byte_count], byte_offset).map_err(
                 |error| {
                     io_error(
@@ -516,6 +522,8 @@ impl PreparedOlsScratch {
                 .ok()
                 .and_then(|value| value.checked_mul(8))
                 .ok_or_else(|| allocation("prepared OLS shared read offset overflows u64"))?;
+            #[cfg(test)]
+            self.shared_read_chunks.fetch_add(1, Ordering::Relaxed);
             read_exact_at(self.file_ref(), &mut encoded[..byte_count], byte_offset).map_err(
                 |error| io_error("unable to positionally read prepared OLS scratch", error),
             )?;
@@ -532,6 +540,11 @@ impl PreparedOlsScratch {
                 .ok_or_else(|| allocation("prepared OLS shared read offset overflows usize"))?;
         }
         Ok(())
+    }
+
+    #[cfg(test)]
+    pub(super) fn shared_read_chunks_for_test(&self) -> u64 {
+        self.shared_read_chunks.load(Ordering::Relaxed)
     }
 
     fn read_encoded_tile(&mut self, element_offset: usize, byte_count: usize) -> Result<()> {

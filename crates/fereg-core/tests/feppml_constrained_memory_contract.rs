@@ -80,9 +80,10 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     // plus five recurrence scalars per RHS.
     assert_eq!(base.fast.peak_bytes, 47_400_233_650);
     assert_eq!(base.fast.separation_peak_bytes, 47_170_268_279);
-    assert_eq!(base.low.peak_bytes, 24_681_278_266);
-    assert_eq!(base.low.separation_peak_bytes, 24_451_312_895);
-    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 22_718_955_384);
+    // Low admits an 8-KiB complete-row tile instead of one 51-double row.
+    assert_eq!(base.low.peak_bytes, 24_681_286_050);
+    assert_eq!(base.low.separation_peak_bytes, 24_451_320_679);
+    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 22_718_947_600);
 
     let numeric_vector_bytes = 53_u128 * OBSERVATIONS as u128 * 8;
     let bit_vector_bytes = 54_u128 * OBSERVATIONS as u128 / 8;
@@ -101,7 +102,7 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     )
     .expect("embedded governing estimate");
     assert_eq!(embedded.fast.peak_bytes, 51_707_733_650);
-    assert_eq!(embedded.low.peak_bytes, 28_988_778_266);
+    assert_eq!(embedded.low.peak_bytes, 28_988_786_050);
 
     let auto = plan_ppml_memory(
         dimensions,
@@ -117,7 +118,7 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     assert_eq!(auto.usable_bytes, Some(29_040_000_000));
     assert_eq!(
         auto.usable_bytes.expect("imposed usable memory") - embedded.low.peak_bytes,
-        51_221_734
+        51_213_950
     );
     assert_eq!(
         embedded.fast.peak_bytes - auto.usable_bytes.expect("imposed usable memory"),
@@ -172,8 +173,8 @@ fn previous_k10_four_gigabyte_shape_still_rejects_every_route() {
     let base = estimate_ppml_memory(dimensions, PpmlMemoryConfig::default())
         .expect("previous constrained estimate");
     assert_eq!(base.fast.peak_bytes, 21_800_051_330);
-    assert_eq!(base.low.peak_bytes, 21_481_099_786);
-    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 318_951_544);
+    assert_eq!(base.low.peak_bytes, 21_481_107_890);
+    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 318_943_440);
 
     // Outcome plus twelve sources and their missingness masks, plus candidate.
     let old_embedding_resident_floor_bytes =

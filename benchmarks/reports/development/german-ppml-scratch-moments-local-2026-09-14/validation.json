@@ -1,0 +1,27 @@
+{
+  "core_ols_tests": 214,
+  "core_ppml_tests": 351,
+  "core_moment_tests": 24,
+  "plugin_tests": 97,
+  "constrained_memory_tests": 2,
+  "licensed_native_fits": 26,
+  "licensed_fixture_rc": 0,
+  "licensed_fixture_sentinels": [
+    "FEPPML_LOW_CATEGORICAL_COMPLETE",
+    "END_FIXTURE|feppml_singleton_index|rc=0"
+  ],
+  "paired_commands": 12,
+  "all_paired_scientific_outputs_exact": true,
+  "independent_score_and_model_space_pass": true,
+  "universal_static_audit": true,
+  "arm64_abi_self_test": true,
+  "installed_plugin_unchanged": true,
+  "full_ppml_retry": "pending at this adoption checkpoint",
+  "limitations": [
+    "Local development evidence only; no cross-platform qualification.",
+    "Initial constrained-memory assertions were updated for the newly admitted bounded tiles; both final tests pass.",
+    "Native allocation peak increases by 47,520 bytes on each German subset; larger process RSS median rises about 6.14 MB.",
+    "Other retained scratch consumers still issue individual row reads.",
+    "No full-data result or timing gain is claimed from the earlier interrupted run."
+  ]
+}
