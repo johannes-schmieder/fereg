@@ -31,9 +31,11 @@ and corrected all-column audit remain visible.
 
 The full exp(logrwage2) retry is running with low memory, pool four and eight
 threads; see the source-bound full-retry-launch receipt. The isolated tested
-plugin matches committed `fad7a5c`. The harness preserves sample/order and
-means/absorbed outputs after the command timer. Run the pinned reference
-sequentially after native completion, then independently compare outputs.
+plugin matches committed `fad7a5c`. Its validated IRLS-entry trace confirms
+91,045,290 original and **88,876,264 active rows**; see full-row-check.json. No
+full fit is published yet. The harness preserves sample/order and means/absorbed
+outputs after the command timer. Run the pinned reference sequentially after
+native completion, then independently compare outputs.
 The preceding full run verified 88,876,264 active rows but was interrupted after
 one completed IRLS iteration and 1,453.38 process seconds; no full PPML estimate
 or full-data speed claim exists. Its scratch, logs and three samples are preserved.
