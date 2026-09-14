@@ -24,6 +24,7 @@ use crate::fe::{
     CertifiedBorrowedMap, FeCoefficientBatch, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
     RecoveredCategoricalEffects, SingletonMultiplicity,
 };
+use crate::memory::{estimate_intercept_recovery_memory, FeSolverMemoryBudget};
 use crate::metadata::SourceId;
 use crate::prepared_categorical_rebase::{
     rebase_categorical_model, PreparedCategoricalOlsReportPlan,
@@ -307,6 +308,7 @@ impl PreparedCategoricalOlsData {
         materialize_absorbed_sum: bool,
         lsmr: LsmrConfig,
         map: MapConfig,
+        memory_budget: Option<FeSolverMemoryBudget>,
     ) -> Result<RecoveredCategoricalEffects> {
         let weights = match &self.sample.weights {
             PreparedWeights::None => BorrowedMapWeights::Unit,
@@ -321,6 +323,7 @@ impl PreparedCategoricalOlsData {
             materialize_absorbed_sum,
             lsmr,
             map,
+            memory_budget,
         )
     }
 
@@ -337,6 +340,7 @@ impl PreparedCategoricalOlsData {
         materialize_absorbed_sum: bool,
         lsmr: LsmrConfig,
         map: MapConfig,
+        memory_budget: Option<FeSolverMemoryBudget>,
     ) -> Result<RecoveredCategoricalEffects> {
         self.recover_absorbed_effects_fast_with_weights_inner(
             weights,
@@ -349,6 +353,7 @@ impl PreparedCategoricalOlsData {
             map,
             false,
             true,
+            memory_budget,
         )
     }
 
@@ -382,6 +387,7 @@ impl PreparedCategoricalOlsData {
             map,
             true,
             false,
+            None,
         )
     }
 
@@ -398,10 +404,46 @@ impl PreparedCategoricalOlsData {
         map: MapConfig,
         propagate_allocation: bool,
         allow_lsmr: bool,
+        memory_budget: Option<FeSolverMemoryBudget>,
     ) -> Result<RecoveredCategoricalEffects> {
         self.validate()?;
         let effects = self.effect_views()?;
-        if let Some(coefficients) = retained {
+        let recovery_memory = if memory_budget.is_some()
+            && effects
+                .iter()
+                .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
+        {
+            let mut levels = Vec::new();
+            levels.try_reserve_exact(effects.len()).map_err(|_| {
+                FeregError::new(
+                    ErrorCode::Allocation,
+                    "unable to reserve recovery level counts",
+                )
+            })?;
+            for &source in self.fe_topology.effect_to_topology() {
+                levels.push(self.fe_topology.registry().source(source)?.n_levels());
+            }
+            Some(estimate_intercept_recovery_memory(
+                self.sample.n_active(),
+                &levels,
+                requested_channels
+                    .iter()
+                    .filter(|&&requested| requested)
+                    .count(),
+                rayon::current_num_threads(),
+                lsmr.local_size,
+            )?)
+        } else {
+            None
+        };
+        let fits = |bytes| memory_budget.is_none_or(|budget| budget.fits(bytes));
+        // A budget excludes only that attempted route. In particular, a valid
+        // retained product or the bounded MAP fallback need not reserve an
+        // unused Schwarz hierarchy. Each failed attempt drops its workspace
+        // before the next admitted route starts.
+        if let Some(coefficients) = retained
+            .filter(|_| recovery_memory.is_none_or(|memory| fits(memory.retained_peak_bytes)))
+        {
             match recover_finalized_categorical_effects_from_coefficients_selected_certified(
                 &self.fe_topology,
                 &effects,
@@ -424,7 +466,8 @@ impl PreparedCategoricalOlsData {
             .iter()
             .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
         {
-            if effects.len() > 1 {
+            if effects.len() > 1 && recovery_memory.is_none_or(|memory| fits(memory.cg_peak_bytes))
+            {
                 match recover_finalized_categorical_effects_cg_certified(
                     &self.fe_topology,
                     &effects,
@@ -445,7 +488,7 @@ impl PreparedCategoricalOlsData {
                     Err(_) => {}
                 }
             }
-            if allow_lsmr {
+            if allow_lsmr && recovery_memory.is_none_or(|memory| fits(memory.sd_lsmr_peak_bytes)) {
                 match recover_finalized_categorical_effects_sd_lsmr_certified(
                     &self.fe_topology,
                     &effects,
@@ -463,7 +506,7 @@ impl PreparedCategoricalOlsData {
                 }
             }
         }
-        if allow_lsmr {
+        if allow_lsmr && recovery_memory.is_none_or(|memory| fits(memory.lsmr_peak_bytes)) {
             match recover_finalized_categorical_effects_lsmr_certified(
                 &self.fe_topology,
                 &effects,
@@ -479,6 +522,15 @@ impl PreparedCategoricalOlsData {
                 }
                 Err(_) => {}
             }
+        }
+        if let Some(memory) = recovery_memory.filter(|memory| !fits(memory.map_peak_bytes)) {
+            return Err(FeregError::new(
+                ErrorCode::Allocation,
+                format!(
+                    "saved-FE recovery requires at least {} incremental bytes and does not fit the joint execution/recovery memory plan",
+                    memory.map_peak_bytes,
+                ),
+            ));
         }
         recover_finalized_categorical_effects_map_certified(
             &self.fe_topology,

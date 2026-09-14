@@ -1,0 +1,587 @@
+[
+  {
+    "name": "weighted_cut",
+    "seed": 31415927,
+    "cell": {
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "k": 16,
+      "model": "ols",
+      "n": 30720,
+      "name": "weighted_cut",
+      "section": "width",
+      "threads": 4,
+      "weight": "[aw=w]",
+      "weight_frame": "cut",
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${CG_ENERGY_ROOT}/weighted-data/weighted_cut-n30720-s31415927.dta",
+    "warm": "${CG_ENERGY_ROOT}/weighted-data/weighted_cut-n7680-s31415928.dta",
+    "data_sha256": "133786d4725f279a48de3094d7f23cb09ff51adfa6bc2a88bc42f64b488b6382",
+    "warm_sha256": "53130e2ad08ed107e3ef9587d136631d2a43bd933daadbf0f96ec8da68758d7c",
+    "reused_request": "${CG_ENERGY_ROOT}/runs/control-weighted_cut-s31415927-candidate/request.json",
+    "changes_from_reused_request": {
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    }
+  },
+  {
+    "name": "weak_d3",
+    "seed": 31415927,
+    "cell": {
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "k": 16,
+      "model": "ols",
+      "n": 30720,
+      "name": "weak_d3",
+      "section": "width",
+      "threads": 4,
+      "vce": "robust",
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${CG_ENERGY_ROOT}/preparation-data/weak_d3-n30720-s31415927.dta",
+    "warm": "${CG_ENERGY_ROOT}/preparation-data/weak_d3-n7680-s31415928.dta",
+    "data_sha256": "4777324f185c1ffa95686da26b5b2f064b07888d84efa48664063d2df1db8343",
+    "warm_sha256": "07faf429e4ce4668491c543d61780323d6ea093cf94a1d22980b0bdfc318e435",
+    "reused_request": "${CG_ENERGY_ROOT}/runs/control-weak_d3-s31415927-candidate/request.json",
+    "changes_from_reused_request": {
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    }
+  },
+  {
+    "name": "disconnected_blocks",
+    "seed": 31415927,
+    "cell": {
+      "design": "disconnected_blocks",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "k": 16,
+      "model": "ols",
+      "n": 30720,
+      "name": "disconnected_blocks",
+      "section": "width",
+      "threads": 4,
+      "vce": "robust",
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${CG_ENERGY_ROOT}/preparation-data/disconnected_blocks-n30720-s31415927.dta",
+    "warm": "${CG_ENERGY_ROOT}/preparation-data/disconnected_blocks-n7680-s31415928.dta",
+    "data_sha256": "9427b8ebe4149d564ba02a50131fe1a88ad04b9b55b63a61cdc5090f5deb12ac",
+    "warm_sha256": "a96c99a19bc03f5044ded9ad0a930fe8c2488254ef12bafe9bad582f376376fe",
+    "reused_request": "${CG_ENERGY_ROOT}/runs/control-disconnected_blocks-s31415927-candidate/request.json",
+    "changes_from_reused_request": {
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    }
+  },
+  {
+    "name": "unbalanced",
+    "seed": 31415927,
+    "cell": {
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "k": 16,
+      "model": "ols",
+      "n": 30720,
+      "name": "unbalanced",
+      "section": "width",
+      "threads": 4,
+      "vce": "robust",
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${CG_ENERGY_ROOT}/preparation-data/unbalanced-n30720-s31415927.dta",
+    "warm": "${CG_ENERGY_ROOT}/preparation-data/unbalanced-n7680-s31415928.dta",
+    "data_sha256": "8fe72bd00c779d64bef6a332118650a7923a4e74c0cab6b4c0436179306d2889",
+    "warm_sha256": "6319fd450ea58ff2ee7a37915e48a490c9be4e9e484a037e777d135cea9106de",
+    "reused_request": "${CG_ENERGY_ROOT}/runs/control-unbalanced-s31415927-candidate/request.json",
+    "changes_from_reused_request": {
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    }
+  },
+  {
+    "name": "small_aw",
+    "seed": 31415927,
+    "cell": {
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "k": 2,
+      "model": "ols",
+      "n": 1920,
+      "name": "small_aw",
+      "section": "width",
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "absorb": "saved_g=g1",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${CG_ENERGY_ROOT}/preparation-data/small_aw-n1920-s31415927.dta",
+    "warm": "${CG_ENERGY_ROOT}/preparation-data/small_aw-n7680-s31415928.dta",
+    "data_sha256": "c80cf31df3be39f6c5296518141e6b3bc2c5a95b28fff2b595d547f79460fa98",
+    "warm_sha256": "095fd9574a6a77ac9c4878fe059e2f8e6ca7de26ce7bfeffef267aa88ed15188",
+    "reused_request": "${CG_ENERGY_ROOT}/runs/control-small_aw-s31415927-candidate/request.json",
+    "changes_from_reused_request": {
+      "absorb": "saved_g=g1",
+      "fit_options": "residuals(saved_e)"
+    }
+  },
+  {
+    "name": "low_fw",
+    "seed": 31415927,
+    "cell": {
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "fit_options": "memory(low) residuals(saved_e)",
+      "k": 16,
+      "model": "ols",
+      "n": 30720,
+      "name": "low_fw",
+      "section": "width",
+      "threads": 4,
+      "vce": "cluster c1",
+      "weight": "[fw=w]",
+      "absorb": "saved_g=g1 saved_h=g2"
+    },
+    "data": "${CG_ENERGY_ROOT}/preparation-data/low_fw-n30720-s31415927.dta",
+    "warm": "${CG_ENERGY_ROOT}/preparation-data/low_fw-n7680-s31415928.dta",
+    "data_sha256": "3e3d98ff331de284f6a1a3d94f791f82facadec6d41cb87875abdc1723054113",
+    "warm_sha256": "520e206bdafef47841459b518307bd100917efd2d5f71ec484d2de61fe6284bd",
+    "reused_request": "${CG_ENERGY_ROOT}/runs/control-low_fw-s31415927-candidate/request.json",
+    "changes_from_reused_request": {
+      "fit_options": "memory(low) residuals(saved_e)",
+      "absorb": "saved_g=g1 saved_h=g2"
+    }
+  },
+  {
+    "name": "complete_iid",
+    "seed": 31415927,
+    "cell": {
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "name": "complete_iid",
+      "section": "width",
+      "threads": 16
+    },
+    "data": "${CG_ENERGY_ROOT}/preparation-data/complete_iid-n983040-s31415927.dta",
+    "warm": "${CG_ENERGY_ROOT}/preparation-data/complete_iid-n7680-s31415928.dta",
+    "data_sha256": "31b35f15f4c7e0391e4e23c4dd4bae570f714ca1d5c3198b0fe7baf2729b6940",
+    "warm_sha256": "d49b8ac0a29a462aff4206e54e94726cfe67b5eff582b002cbbc08c4b293e0ac",
+    "reused_request": "${CG_ENERGY_ROOT}/runs/control-complete_iid-s31415927-candidate/request.json",
+    "changes_from_reused_request": {}
+  },
+  {
+    "name": "narrow_saved",
+    "seed": 31415927,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "name": "narrow_saved",
+      "design": "strong_d3",
+      "n": 30720,
+      "k": 10,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/narrow_saved-n30720-s31415927.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/narrow_saved-n7680-s31415928.dta",
+    "data_sha256": "8a3a5be10a1b98afd8d67ae6f1e106ccb95a155d27b7404372336cc0c6383297",
+    "warm_sha256": "cd09ec350fdafdc8730f94b86e93c20af428b9edf0fba13853802e72fe2ad987"
+  },
+  {
+    "name": "slope",
+    "seed": 31415927,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "name": "slope",
+      "design": "strong_d3",
+      "n": 30720,
+      "k": 16,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "weight": "[aw=w]",
+      "vce": "robust",
+      "absorb": "saved_g=g1 g2#c.x1",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/slope-n30720-s31415927.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/slope-n7680-s31415928.dta",
+    "data_sha256": "3e3d98ff331de284f6a1a3d94f791f82facadec6d41cb87875abdc1723054113",
+    "warm_sha256": "520e206bdafef47841459b518307bd100917efd2d5f71ec484d2de61fe6284bd"
+  },
+  {
+    "name": "three_fe_saved",
+    "seed": 31415927,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "name": "three_fe_saved",
+      "design": "three_fe_sparse",
+      "n": 30720,
+      "k": 16,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "vce": "robust",
+      "absorb": "saved_g=g1 g2 g3",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/three_fe_saved-n30720-s31415927.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/three_fe_saved-n7680-s31415928.dta",
+    "data_sha256": "11118f55524e0ee806d0e5f48b19343052d31850ec3f84fca09127f03c220a10",
+    "warm_sha256": "4b4626c9a4b51cd0eecf5da82af4150eb8b7c3cb16ec74c3cfcf81682a9b1f6c"
+  },
+  {
+    "name": "rank_deficient_saved",
+    "seed": 31415927,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "name": "rank_deficient_saved",
+      "design": "strong_d2",
+      "n": 30720,
+      "k": 50,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "weight": "[aw=w]",
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/rank_deficient_saved-n30720-s31415927-x2-equals-x1.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/rank_deficient_saved-n7680-s31415928-x2-equals-x1.dta",
+    "data_sha256": "0999a51768ce627eb3f0911238b86b6a5a301e88ee40cc56d9daf7d724435fb6",
+    "warm_sha256": "97818cfe32881c4362d99936eef2b21424f948e460e6c7d2921ec68876566d25",
+    "data_transform": "replace x2 with x1 exactly in full and warm data"
+  },
+  {
+    "name": "explicit_cg_saved",
+    "seed": 31415927,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "name": "explicit_cg_saved",
+      "design": "strong_d3",
+      "n": 30720,
+      "k": 16,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/explicit_cg_saved-n30720-s31415927.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/explicit_cg_saved-n7680-s31415928.dta",
+    "data_sha256": "3e3d98ff331de284f6a1a3d94f791f82facadec6d41cb87875abdc1723054113",
+    "warm_sha256": "520e206bdafef47841459b518307bd100917efd2d5f71ec484d2de61fe6284bd",
+    "solver": "cg"
+  },
+  {
+    "name": "unit_saved_s104729",
+    "seed": 104729,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "unit_saved",
+      "design": "strong_d2",
+      "n": 245760,
+      "k": 50,
+      "threads": 16,
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_ORIGINAL_ROOT}/preparation-data/unit_saved-n245760-s104729.dta",
+    "warm": "${SAVED_ORIGINAL_ROOT}/preparation-data/unit_saved-n7680-s104730.dta",
+    "data_sha256": "298fd6334eb91fc142c96d56b79e2d325090bd3bd1e5e1bc3e6e9c098494076b",
+    "warm_sha256": "613d48e4969b943cd45f43621c3cae779506a996a28e8f72ac9d007b14a375b7"
+  },
+  {
+    "name": "aw_saved_s104729",
+    "seed": 104729,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "aw_saved",
+      "design": "strong_d2",
+      "n": 983040,
+      "k": 50,
+      "threads": 4,
+      "weight": "[aw=w]",
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_ORIGINAL_ROOT}/preparation-data/aw_saved-n983040-s104729.dta",
+    "warm": "${SAVED_ORIGINAL_ROOT}/preparation-data/aw_saved-n7680-s104730.dta",
+    "data_sha256": "d245e3f08d1715b655ebe2ce17ea783454f678b727de3f2f9c76973b7f784c43",
+    "warm_sha256": "613d48e4969b943cd45f43621c3cae779506a996a28e8f72ac9d007b14a375b7"
+  },
+  {
+    "name": "pw_partial_s104729",
+    "seed": 104729,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "pw_partial",
+      "design": "strong_d2",
+      "n": 245760,
+      "k": 50,
+      "threads": 16,
+      "weight": "[pw=w]",
+      "vce": "cluster c1 c2",
+      "missing": true,
+      "absorb": "saved_g=g1 g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_ORIGINAL_ROOT}/preparation-data/pw_partial-n245760-s104729.dta",
+    "warm": "${SAVED_ORIGINAL_ROOT}/preparation-data/pw_partial-n7680-s104730.dta",
+    "data_sha256": "eecf8666668f96734ee06c52310b9920f29c65fc9cce86fd3707be22399fc7d0",
+    "warm_sha256": "49d672569416ea90fa172e2f4e2eb80de5b8d89928937706b67c1de8bd3ef5d9"
+  },
+  {
+    "name": "unit_saved_s8675309",
+    "seed": 8675309,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "unit_saved",
+      "design": "strong_d2",
+      "n": 245760,
+      "k": 50,
+      "threads": 16,
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${RECOVERY_ROOT}/preparation-data/unit_saved-n245760-s8675309.dta",
+    "warm": "${RECOVERY_ROOT}/preparation-data/unit_saved-n7680-s8675310.dta",
+    "data_sha256": "5515fb8f40e2cb529a932e6a92b9e38b0e6640a45a244c645865f3283eb00aca",
+    "warm_sha256": "f985501a0ce8a571aa2a2bdd66bfc026fd9e0e21afde870f0d4e7e0e272d54c0"
+  },
+  {
+    "name": "aw_saved_s8675309",
+    "seed": 8675309,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "aw_saved",
+      "design": "strong_d2",
+      "n": 983040,
+      "k": 50,
+      "threads": 4,
+      "weight": "[aw=w]",
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/aw_saved-n983040-s8675309.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/aw_saved-n7680-s8675310.dta",
+    "data_sha256": "2197b558198bcc26cf719473ec33a5f169de3347d472215f8b081b097caa7c74",
+    "warm_sha256": "f985501a0ce8a571aa2a2bdd66bfc026fd9e0e21afde870f0d4e7e0e272d54c0"
+  },
+  {
+    "name": "pw_partial_s8675309",
+    "seed": 8675309,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "pw_partial",
+      "design": "strong_d2",
+      "n": 245760,
+      "k": 50,
+      "threads": 16,
+      "weight": "[pw=w]",
+      "vce": "cluster c1 c2",
+      "missing": true,
+      "absorb": "saved_g=g1 g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/pw_partial-n245760-s8675309.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/pw_partial-n7680-s8675310.dta",
+    "data_sha256": "4b2ae3aa8440444fafd82973503784147ef60b82873dafaa5d5427890ec5ede4",
+    "warm_sha256": "f9da06365fad9ac9e29183d2509dcb03c21d30c63e42a5cc8b6c5fba22b1e6d7"
+  },
+  {
+    "name": "unit_saved_s20260819",
+    "seed": 20260819,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "unit_saved",
+      "design": "strong_d2",
+      "n": 245760,
+      "k": 50,
+      "threads": 16,
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${RECOVERY_ROOT}/preparation-data/unit_saved-n245760-s20260819.dta",
+    "warm": "${RECOVERY_ROOT}/preparation-data/unit_saved-n7680-s20260820.dta",
+    "data_sha256": "4220e9eae483311ebe5b593e3906dc7f424a75d0364d8d752845b3cfbb8b556b",
+    "warm_sha256": "8f88a9f907fc64ec687b24811b6dff0dbfcd0b38204969eda8bb0534f5152131"
+  },
+  {
+    "name": "aw_saved_s20260819",
+    "seed": 20260819,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "aw_saved",
+      "design": "strong_d2",
+      "n": 983040,
+      "k": 50,
+      "threads": 4,
+      "weight": "[aw=w]",
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/aw_saved-n983040-s20260819.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/aw_saved-n7680-s20260820.dta",
+    "data_sha256": "668be45ff452e9690227b9778e1862d89010ec23ffeec763c8142fc7f7db8dde",
+    "warm_sha256": "8f88a9f907fc64ec687b24811b6dff0dbfcd0b38204969eda8bb0534f5152131"
+  },
+  {
+    "name": "pw_partial_s20260819",
+    "seed": 20260819,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "pw_partial",
+      "design": "strong_d2",
+      "n": 245760,
+      "k": 50,
+      "threads": 16,
+      "weight": "[pw=w]",
+      "vce": "cluster c1 c2",
+      "missing": true,
+      "absorb": "saved_g=g1 g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/pw_partial-n245760-s20260819.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/pw_partial-n7680-s20260820.dta",
+    "data_sha256": "b5b7e94ea9c6ffe5c7a0deb7bb3f4d722a672053b6280df8d281e22c22d2584b",
+    "warm_sha256": "1311f2e16798099ef745804e67d1bbaf93b5ad2eb203d80c77525a0099461f14"
+  },
+  {
+    "name": "ppml_weak_pw",
+    "cell": {
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "k": 16,
+      "model": "ppml",
+      "n": 7680,
+      "name": "ppml_weak_pw",
+      "section": "width",
+      "threads": 4,
+      "vce": "cluster c1",
+      "weight": "[pw=w]"
+    },
+    "data": "${CG_ENERGY_ROOT}/ppml-data/ppml_weak_pw-n7680-s31415927.dta",
+    "warm": "${CG_ENERGY_ROOT}/ppml-data/ppml_weak_pw-n7680-s31415928.dta",
+    "data_sha256": "530f24ddc624dc69f3eca254466d89649566cde9cc3703ec7e0454db68ab9351",
+    "warm_sha256": "4c4ca3583186adf07d9d0bc54cc706085b1a0b4f64be73647de322010f94a4d9"
+  },
+  {
+    "name": "auto_cmg_saved",
+    "seed": 31415927,
+    "cell": {
+      "model": "ols",
+      "section": "width",
+      "name": "explicit_cg_saved",
+      "design": "strong_d3",
+      "n": 30720,
+      "k": 16,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "absorb": "saved_g=g1 saved_h=g2",
+      "fit_options": "residuals(saved_e)"
+    },
+    "data": "${SAVED_SCREEN_ROOT}/preparation-data/explicit_cg_saved-n30720-s31415927.dta",
+    "warm": "${SAVED_SCREEN_ROOT}/preparation-data/explicit_cg_saved-n7680-s31415928.dta",
+    "data_sha256": "3e3d98ff331de284f6a1a3d94f791f82facadec6d41cb87875abdc1723054113",
+    "warm_sha256": "520e206bdafef47841459b518307bd100917efd2d5f71ec484d2de61fe6284bd",
+    "solver": "auto"
+  }
+]

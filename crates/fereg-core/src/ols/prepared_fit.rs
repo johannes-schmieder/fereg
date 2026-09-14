@@ -31,6 +31,10 @@ use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PreparedOlsFitConfig {
     pub absorb: AbsorbConfig,
+    /// The one-shot OLS publisher can recover saved effects from the certified
+    /// final target when an accepted Schur solve omits its initial product.
+    /// Other weighted-linear callers retain their coefficient requirement.
+    pub allow_final_fe_recovery: bool,
     /// Optional tighter final projection for pointwise residual-derived outputs.
     /// Independent of whether the execution mode retains FE coefficients.
     pub final_residual_tolerance: Option<f64>,
@@ -100,6 +104,7 @@ impl Default for PreparedOlsFitConfig {
             },
             rank_tolerance_multiplier: 128.0,
             final_residual_tolerance: None,
+            allow_final_fe_recovery: false,
             fixed_effect_collinearity_tolerance: 1e-9,
             score_tolerance: 5e-10,
             bread_tolerance: 5e-10,
@@ -1374,7 +1379,7 @@ fn build_fit_fe_absorber<'a, P: PreparedOlsFitView + ?Sized>(
         .ok_or_else(|| invalid_argument("OLS Schur RHS width overflows"))?;
     if config.absorb.solver == FeSolverKind::Auto
         && config.execution.mode == PreparedOlsExecutionMode::Fast
-        && !config.absorb.retain_coefficients
+        && (!config.absorb.retain_coefficients || config.allow_final_fe_recovery)
         && (16..=64).contains(&width)
         && config.absorb.certified_fallback
         && config.absorb.map.max_iterations
@@ -1556,6 +1561,9 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
                 eprintln!("FEREG_PHASE|schur_route|contraction={contraction:.9}|probe={probe_seconds:.9}|selected={}", contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION);
             }
             if contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION {
+                // A rejected probe still uses the original retained-product
+                // policy. Only accepted Schur calls defer coefficient recovery.
+                config.retain_coefficients = false;
                 return crate::fe::absorb_ols_schur_certified(
                     design,
                     weights,
@@ -7293,6 +7301,154 @@ mod tests {
         }
     }
 
+    #[test]
+    fn saved_intercept_recovery_enforces_joint_budget_before_materialization() {
+        let n = 96;
+        let effects = [
+            (0..n).map(|row| (row % 4) as f64).collect::<Vec<_>>(),
+            (0..n).map(|row| ((row / 4) % 3) as f64).collect::<Vec<_>>(),
+        ];
+        let target = (0..n)
+            .map(|row| 2.0 * effects[0][row] + 3.0 * effects[1][row])
+            .collect::<Vec<_>>();
+        let prepared = prepared_multiway_categorical(&target, &[], &effects);
+        for workers in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap()
+                .install(|| {
+                    let lsmr = crate::fe::LsmrConfig::default();
+                    let map = crate::fe::MapConfig {
+                        tolerance: 1e-12,
+                        ..crate::fe::MapConfig::default()
+                    };
+                    let memory = crate::memory::estimate_intercept_recovery_memory(
+                        n,
+                        &[4, 3],
+                        2,
+                        workers,
+                        lsmr.local_size,
+                    )
+                    .unwrap();
+                    let workspace = memory.cg_peak_bytes;
+                    let execution = 137;
+                    let run = |usable_bytes| {
+                        prepared.recover_absorbed_effects_fast(
+                            &target,
+                            &[true, true],
+                            None,
+                            false,
+                            true,
+                            lsmr,
+                            map,
+                            Some(crate::memory::FeSolverMemoryBudget {
+                                execution_bytes: execution,
+                                usable_bytes,
+                            }),
+                        )
+                    };
+                    let error = run(execution + memory.map_peak_bytes - 1).unwrap_err();
+                    assert_eq!(error.code, ErrorCode::Allocation);
+                    assert!(error
+                        .message
+                        .contains("joint execution/recovery memory plan"));
+                    let recovered = run(execution + workspace).unwrap();
+                    assert_eq!(
+                        recovered.recovery_method(),
+                        crate::fe::CategoricalRecoveryMethod::Cg
+                    );
+                    let tight = run(execution + memory.map_peak_bytes).unwrap();
+                    assert_eq!(
+                        tight.recovery_method(),
+                        crate::fe::CategoricalRecoveryMethod::Map
+                    );
+                    assert!(tight
+                        .absorbed_sum()
+                        .iter()
+                        .zip(&target)
+                        .all(|(actual, expected)| (actual - expected).abs() <= 1e-10));
+                    for row in 0..n {
+                        assert!((recovered.absorbed_sum()[row] - target[row]).abs() <= 1e-10);
+                        assert!(
+                            (recovered.channels()[0].as_ref().unwrap()[row]
+                                - (2.0 * effects[0][row] + 3.0))
+                                .abs()
+                                <= 1e-10
+                        );
+                        assert!(
+                            (recovered.channels()[1].as_ref().unwrap()[row]
+                                - (3.0 * effects[1][row] - 3.0))
+                                .abs()
+                                <= 1e-10
+                        );
+                    }
+                    let retained = crate::fe::FeCoefficientBatch::from_values(
+                        vec![1, 1],
+                        vec![4, 3],
+                        1,
+                        vec![0.0, 2.0, 4.0, 6.0, 0.0, 3.0, 6.0],
+                    )
+                    .unwrap();
+                    let retained_run = |coefficients, bytes| {
+                        prepared.recover_absorbed_effects_fast(
+                            &target,
+                            &[true, true],
+                            Some(coefficients),
+                            false,
+                            true,
+                            lsmr,
+                            map,
+                            Some(crate::memory::FeSolverMemoryBudget {
+                                execution_bytes: execution,
+                                usable_bytes: execution + bytes,
+                            }),
+                        )
+                    };
+                    assert!(memory.retained_peak_bytes < workspace);
+                    let normalized = retained_run(&retained, memory.retained_peak_bytes).unwrap();
+                    assert_eq!(
+                        normalized.recovery_method(),
+                        crate::fe::CategoricalRecoveryMethod::RetainedCoefficients
+                    );
+                    assert!(normalized
+                        .absorbed_sum()
+                        .iter()
+                        .zip(&target)
+                        .all(|(actual, expected)| (actual - expected).abs() <= 1e-10));
+                    assert_eq!(
+                        retained_run(&retained, memory.retained_peak_bytes - 1)
+                            .unwrap_err()
+                            .code,
+                        ErrorCode::Allocation
+                    );
+                    let incorrect = crate::fe::FeCoefficientBatch::from_values(
+                        vec![1, 1],
+                        vec![4, 3],
+                        1,
+                        vec![0.0; 7],
+                    )
+                    .unwrap();
+                    let fallback = retained_run(&incorrect, memory.retained_peak_bytes).unwrap();
+                    assert_eq!(
+                        fallback.recovery_method(),
+                        crate::fe::CategoricalRecoveryMethod::Map
+                    );
+                    assert!(fallback
+                        .absorbed_sum()
+                        .iter()
+                        .zip(&target)
+                        .all(|(actual, expected)| (actual - expected).abs() <= 1e-10));
+                    let corrected = retained_run(&incorrect, workspace).unwrap();
+                    assert!(corrected
+                        .absorbed_sum()
+                        .iter()
+                        .zip(&target)
+                        .all(|(actual, expected)| (actual - expected).abs() <= 1e-10));
+                });
+        }
+    }
+
     fn prepared_multiway_categorical(
         outcome: &[f64],
         regressors: &[Vec<f64>],
@@ -7792,6 +7948,47 @@ mod tests {
         assert_eq!(result.report().pilot_contraction, contraction);
         assert!(result.report().setup_seconds > 0.0);
         assert!(result.report().iterations <= config.absorb.map.max_iterations);
+        let mut saved = config;
+        saved.absorb.retain_coefficients = true;
+        saved.allow_final_fe_recovery = true;
+        let mut saved_session =
+            build_fit_fe_absorber(&prepared, BorrowedMapWeights::Unit, saved).unwrap();
+        assert!(saved_session.schur_config.is_some());
+        let saved_result = absorb_fit_matrix(
+            &prepared,
+            BorrowedMapWeights::Unit,
+            prepared.fit_build_rhs().unwrap(),
+            saved.absorb,
+            &mut saved_session,
+            true,
+            false,
+        )
+        .unwrap();
+        assert_eq!(saved_result.report().pilot_contraction, contraction);
+        assert!(saved_result.report().certified());
+        assert!(saved_result.into_full_parts().2.is_some());
+
+        let strong_effects = [
+            (0..n).map(|r| (r % 17) as f64).collect::<Vec<_>>(),
+            (0..n).map(|r| ((r / 17) % 13) as f64).collect::<Vec<_>>(),
+        ];
+        let strong = prepared_multiway_categorical(&y, &x, &strong_effects);
+        let mut strong_session =
+            build_fit_fe_absorber(&strong, BorrowedMapWeights::Unit, saved).unwrap();
+        let strong_result = absorb_fit_matrix(
+            &strong,
+            BorrowedMapWeights::Unit,
+            strong.fit_build_rhs().unwrap(),
+            saved.absorb,
+            &mut strong_session,
+            true,
+            false,
+        )
+        .unwrap();
+        assert!(strong_result.report().certified());
+        assert_eq!(strong_result.report().pilot_iterations, 8);
+        assert!(strong_result.report().pilot_contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION);
+        assert!(strong_result.into_full_parts().2.is_none());
         for variant in 0..4 {
             let mut config = config;
             match variant {

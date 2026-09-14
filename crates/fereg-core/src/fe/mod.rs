@@ -27,6 +27,8 @@ mod topology_map;
 mod topology_registry;
 mod topology_rhs;
 mod topology_slope_map;
+#[cfg(test)]
+pub(crate) use topology_slope_map::CategoricalRecoveryMethod;
 mod topology_source;
 
 pub use accelerated_map::absorb_accelerated_map;

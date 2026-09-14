@@ -1,0 +1,7 @@
+{
+  "stopped_at": "disconnected_blocks after two completed pairs and both disconnected model calls",
+  "cause": "Archived finite-only oracle is 16-dimensional; public b/V is 17-dimensional. Extend independent normalized-intercept oracle rather than omit that check.",
+  "old_oracle_source_sha256": "6cc7d160c3ba1495ba79b3c1150bd7a591d916a4df5a69ca515f9c453e9e394b",
+  "captures_preserved": true,
+  "timings_to_resume_by_identity": true
+}

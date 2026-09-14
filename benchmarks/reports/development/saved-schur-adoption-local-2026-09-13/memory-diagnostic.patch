@@ -1,0 +1,95 @@
+--- a/crates/fereg-core/src/lib.rs
++++ b/crates/fereg-core/src/lib.rs
+@@ -137,3 +137,13 @@
+     CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofEffectSpec,
+     CategoricalTopologyDofPolicy, CategoricalTopologyDofReport, CategoricalTopologyDofSlopeSpec,
+ };
++
++// Isolated allocation diagnostic only; never part of the adoption candidate.
++pub static OLS_ALLOCATION_AUDIT_STAGE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
++pub struct OlsAllocationAuditGuard(usize);
++impl OlsAllocationAuditGuard {
++    pub fn enter(stage: usize) -> Self { Self(OLS_ALLOCATION_AUDIT_STAGE.swap(stage, std::sync::atomic::Ordering::Relaxed)) }
++}
++impl Drop for OlsAllocationAuditGuard {
++    fn drop(&mut self) { OLS_ALLOCATION_AUDIT_STAGE.store(self.0, std::sync::atomic::Ordering::Relaxed); }
++}
+--- a/crates/fereg-core/src/ols/prepared_categorical_data.rs
++++ b/crates/fereg-core/src/ols/prepared_categorical_data.rs
+@@ -406,6 +406,7 @@
+         allow_lsmr: bool,
+         memory_budget: Option<FeSolverMemoryBudget>,
+     ) -> Result<RecoveredCategoricalEffects> {
++        let _audit_stage = crate::OlsAllocationAuditGuard::enter(5);
+         self.validate()?;
+         let effects = self.effect_views()?;
+         let recovery_memory = if memory_budget.is_some()
+@@ -436,6 +437,7 @@
+         } else {
+             None
+         };
++        eprintln!("OLS_RECOVERY_BUDGET|retained={}|budget={memory_budget:?}|model={recovery_memory:?}", retained.is_some());
+         let fits = |bytes| memory_budget.is_none_or(|budget| budget.fits(bytes));
+         // A budget excludes only that attempted route. In particular, a valid
+         // retained product or the bounded MAP fallback need not reserve an
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -1427,6 +1427,7 @@
+     weights: BorrowedMapWeights<'a>,
+     config: PreparedOlsFitConfig,
+ ) -> Result<FitFeAbsorber<'a>> {
++    let _audit_stage = crate::OlsAllocationAuditGuard::enter(4);
+     if config.absorb.solver != FeSolverKind::Cmg
+         && (config.absorb.solver != FeSolverKind::Auto || !prepared.fit_supports_cmg_auto())
+     {
+@@ -1551,6 +1552,8 @@
+     initial: bool,
+     final_residual: bool,
+ ) -> Result<CertifiedBorrowedMap> {
++    let _audit_stage = crate::OlsAllocationAuditGuard::enter(if initial { 1 } else if final_residual { 2 } else { 3 });
++    eprintln!("OLS_ALLOCATION_BUDGET|initial={initial}|final={final_residual}|rhs={}|budget={:?}", values.ncols(), config.solver_memory_budget);
+     if initial {
+         if let Some(mut fit_config) = cmg.schur_config.take() {
+             let started = std::time::Instant::now();
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -180,6 +180,7 @@
+ const INPUT_BULK_MIN_RUN_ROWS: usize = 64;
+ 
+ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
++    let _allocation_audit = crate::ffi::OlsAllocationAudit::begin();
+     #[cfg(test)]
+     let _action_observation_guard = instrumentation::lock_action_observation();
+     let started = Instant::now();
+--- a/crates/fereg-plugin/src/ffi.rs
++++ b/crates/fereg-plugin/src/ffi.rs
+@@ -171,6 +171,9 @@
+ fn record_allocation(bytes: usize, mut phases: u16) {
+     let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
+     record_allocation_on(&ALLOCATION_CURRENT_BYTES, &ALLOCATION_PEAK_BYTES, bytes);
++    let audit_stage = fereg_core::OLS_ALLOCATION_AUDIT_STAGE.load(Ordering::Relaxed);
++    OLS_AUDIT_PEAKS[audit_stage].fetch_max(ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed), Ordering::Relaxed);
++
+     phases &= PPML_PHASE_MASK;
+     while phases != 0 {
+         let index = phases.trailing_zeros() as usize;
+@@ -1369,3 +1372,19 @@
+         );
+     }
+ }
++
++static OLS_AUDIT_PEAKS: [AtomicU64; 6] = [const { AtomicU64::new(0) }; 6];
++pub(crate) struct OlsAllocationAudit(u64);
++impl OlsAllocationAudit {
++    pub(crate) fn begin() -> Self {
++        for peak in &OLS_AUDIT_PEAKS { peak.store(0, Ordering::Relaxed); }
++        Self(ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed))
++    }
++}
++impl Drop for OlsAllocationAudit {
++    fn drop(&mut self) {
++        for (stage, peak) in OLS_AUDIT_PEAKS.iter().enumerate() {
++            eprintln!("OLS_ALLOCATION_AUDIT|stage={stage}|baseline={}|absolute_peak={}|delta={}", self.0, peak.load(Ordering::Relaxed), peak.load(Ordering::Relaxed).saturating_sub(self.0));
++        }
++    }
++}

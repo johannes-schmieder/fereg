@@ -484,6 +484,95 @@ fn estimate_fe_solver_memory_for_channels(
     })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct InterceptRecoveryMemoryEstimate {
+    pub(crate) retained_peak_bytes: u128,
+    pub(crate) cg_peak_bytes: u128,
+    pub(crate) sd_lsmr_peak_bytes: u128,
+    pub(crate) lsmr_peak_bytes: u128,
+    pub(crate) map_peak_bytes: u128,
+}
+
+/// Peak added by the intercept-only saved-effect recovery chain, including
+/// retained-coefficient normalization and the SD pilot's overlap with LSMR.
+/// The caller's prepared data, final fit and output target remain charged in
+/// `FeSolverMemoryBudget::execution_bytes`. Ordinary robust/clustered inference
+/// has already consumed and released the fit's score cache before recovery.
+pub(crate) fn estimate_intercept_recovery_memory(
+    observations: usize,
+    effect_level_counts: &[usize],
+    requested_channels: usize,
+    threads: usize,
+    local_reorthogonalization_size: Option<usize>,
+) -> Result<InterceptRecoveryMemoryEstimate> {
+    if requested_channels > effect_level_counts.len()
+        || effect_level_counts
+            .iter()
+            .any(|&levels| levels > observations)
+    {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "intercept recovery memory dimensions are inconsistent",
+        ));
+    }
+    let solver = estimate_fe_solver_memory(
+        observations,
+        1,
+        effect_level_counts,
+        threads,
+        local_reorthogonalization_size,
+    )?;
+    let n = observations as u128;
+    let effects = effect_level_counts.len() as u128;
+    let levels = effect_level_counts
+        .iter()
+        .try_fold(0_u128, |total, &count| checked_sum(&[total, count as u128]))?;
+    let retained_cg = checked_sum(&[
+        solver.cg_bytes,
+        checked_mul(
+            solver.coefficient_batch_bytes,
+            5,
+            "recovery CG coefficient state",
+        )?,
+    ])?;
+    // SD retains its original residual, direction, group workspace and two
+    // coefficient products while the remainder-LSMR call runs. Charge these
+    // even if an earlier SD certificate makes the LSMR attempt unnecessary.
+    let sd_frame = checked_sum(&[
+        checked_mul(n, 16, "recovery SD observation frame")?,
+        checked_mul(levels, 32, "recovery SD groups and coefficient frame")?,
+    ])?;
+    let lsmr = solver
+        .lsmr_off_bytes
+        .max(solver.lsmr_diagonal_bytes)
+        .max(solver.lsmr_schwarz_bytes);
+    // Include target copying, residual certification, combined output and all
+    // requested channels. MAP and retained-product finishing fit this reserve.
+    let finishing = checked_sum(&[
+        checked_mul(
+            checked_mul(n, requested_channels as u128 + 4, "recovery output axes")?,
+            8,
+            "recovery output and certificate values",
+        )?,
+        // Parent/rank/observed/component labels, component means/weights and
+        // normalized coefficients coexist with the retained coefficient input.
+        checked_mul(levels, 128, "recovery normalization and coefficient state")?,
+        checked_mul(effects, 256, "recovery effect views and output registry")?,
+        4096,
+    ])?;
+    Ok(InterceptRecoveryMemoryEstimate {
+        retained_peak_bytes: finishing,
+        cg_peak_bytes: checked_sum(&[retained_cg, finishing])?,
+        sd_lsmr_peak_bytes: checked_sum(&[
+            sd_frame,
+            if effects == 1 { 0 } else { lsmr },
+            finishing,
+        ])?,
+        lsmr_peak_bytes: checked_sum(&[lsmr, finishing])?,
+        map_peak_bytes: finishing,
+    })
+}
+
 pub fn plan_ols_memory(
     requested: MemoryMode,
     estimate: MemoryEstimate,
@@ -614,6 +703,47 @@ mod tests {
     fn low_mode_is_smaller_for_wide_models() {
         let estimate = estimate_phase2_memory(1_000_000, 5, 100, 2, 2, 8).expect("estimate");
         assert!(estimate.low_bytes < estimate.fast_bytes);
+    }
+
+    #[test]
+    fn intercept_recovery_memory_covers_outputs_and_rejects_invalid_axes() {
+        let partial = estimate_intercept_recovery_memory(96, &[4, 3], 1, 4, Some(4)).unwrap();
+        let all = estimate_intercept_recovery_memory(96, &[4, 3], 2, 4, Some(4)).unwrap();
+        assert_eq!(
+            all.retained_peak_bytes - partial.retained_peak_bytes,
+            96 * 8
+        );
+        assert_eq!(all.cg_peak_bytes - partial.cg_peak_bytes, 96 * 8);
+        assert_eq!(all.sd_lsmr_peak_bytes - partial.sd_lsmr_peak_bytes, 96 * 8);
+        assert_eq!(all.lsmr_peak_bytes - partial.lsmr_peak_bytes, 96 * 8);
+        assert_eq!(all.map_peak_bytes - partial.map_peak_bytes, 96 * 8);
+        let solver = estimate_fe_solver_memory(96, 1, &[4, 3], 4, Some(4)).unwrap();
+        assert!(partial.cg_peak_bytes > solver.cg_bytes + 5 * solver.coefficient_batch_bytes);
+        assert!(partial.lsmr_peak_bytes > solver.lsmr_schwarz_bytes);
+        assert!(partial.sd_lsmr_peak_bytes > partial.lsmr_peak_bytes);
+        assert!(partial.map_peak_bytes < partial.cg_peak_bytes);
+        let direct = estimate_intercept_recovery_memory(96, &[4], 1, 4, Some(4)).unwrap();
+        assert!(direct.sd_lsmr_peak_bytes < direct.lsmr_peak_bytes);
+        assert!(!FeSolverMemoryBudget {
+            execution_bytes: u128::MAX,
+            usable_bytes: u128::MAX,
+        }
+        .fits(all.cg_peak_bytes));
+        for (n, levels, requested, workers) in [
+            (0, vec![1], 1, 1),
+            (96, vec![], 0, 1),
+            (96, vec![0], 1, 1),
+            (96, vec![97], 1, 1),
+            (96, vec![4, 3], 3, 1),
+            (96, vec![4, 3], 2, 0),
+        ] {
+            assert_eq!(
+                estimate_intercept_recovery_memory(n, &levels, requested, workers, Some(4))
+                    .unwrap_err()
+                    .code,
+                ErrorCode::InvalidArgument,
+            );
+        }
     }
 
     #[test]

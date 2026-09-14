@@ -1,0 +1,50 @@
+[
+  {
+    "name": "disconnected_blocks",
+    "oracle_sha256": "f3b23296f132e74145b9df82fa6bc833810000eff79749d31e938ff0fa30bfa1",
+    "outputs": {
+      "saved_e": 7.271960811294775e-15,
+      "saved_g": 6.217248937900877e-15,
+      "saved_h": 6.473988012345444e-15
+    },
+    "b_error": 1.1102230246251565e-15,
+    "V_error": 1.1429862590249529e-17,
+    "all_pass": true
+  },
+  {
+    "name": "unbalanced",
+    "oracle_sha256": "68e2e79a1fd7fab1482a59a8f847bcc3ab31e017a3f23d779a0c09eb930cb680",
+    "outputs": {
+      "saved_e": 3.4916514124461173e-14,
+      "saved_g": 5.558997706600621e-12,
+      "saved_h": 7.143785563101801e-12
+    },
+    "b_error": 1.5543122344752192e-15,
+    "V_error": 4.092496594685296e-17,
+    "all_pass": true
+  },
+  {
+    "name": "weak_d3",
+    "oracle_sha256": "3617a6c74c979d979f62928aa3dac7f8794ac2a9cc7facec5a353c7f25091ca3",
+    "outputs": {
+      "saved_e": 1.3313794511304877e-12,
+      "saved_g": 1.81729076231818e-11,
+      "saved_h": 2.7728153106920672e-11
+    },
+    "b_error": 8.326672684688674e-16,
+    "V_error": 4.137453794803104e-16,
+    "all_pass": true
+  },
+  {
+    "name": "auto_cmg_saved",
+    "oracle_sha256": "fce52fd829ab73a8c6709e89c346ea1c18402e8d9fc3832a1bccd7718b1a2776",
+    "outputs": {
+      "saved_e": 5.805078640008787e-14,
+      "saved_g": 5.014188717011869e-12,
+      "saved_h": 5.743780451261671e-12
+    },
+    "b_error": 6.938893903907228e-16,
+    "V_error": 9.737490761635437e-18,
+    "all_pass": true
+  }
+]

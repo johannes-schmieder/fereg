@@ -1,0 +1,16 @@
+{
+  "components": 16,
+  "finite_rank": 16,
+  "normal_correction_maxabs": 3.5466906358814445e-16,
+  "lsmr_residual_agreement_maxabs": 2.3925306180672123e-14,
+  "lsqr_residual_agreement_maxabs": 2.4369395390522186e-14,
+  "projection_normal_maxabs": 5.048184092970587e-13,
+  "reconstruction_maxabs": 8.049116928532385e-16,
+  "df_r": 20224,
+  "response_direction_checks": [
+    9.329559694237766e-17,
+    4.0657581468206416e-20
+  ],
+  "full_dimensions": 17,
+  "input_sha256": "9427b8ebe4149d564ba02a50131fe1a88ad04b9b55b63a61cdc5090f5deb12ac"
+}

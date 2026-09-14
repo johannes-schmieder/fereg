@@ -10,6 +10,58 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P6 saved OLS final-target recovery: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/saved-schur-adoption-local-2026-09-13/README.md)
+and [ADR 0064](docs/adr/0064-saved-ols-final-target-recovery.md) adopt the five-file
+saved-Schur/recovery extension against accepted `bc5a6ae`. Public one-shot OLS
+can recover requested categorical effects from its certified final target when
+an accepted Schur solve omits initial coefficient products. Rejected probes keep
+prior retention/routing; shared PPML defaults, weighted-operator/width guards,
+continuation budgets and independent final 1e-14 output precision remain.
+Intercept recovery attempts now enforce joint admission, including finishing
+and SD/LSMR overlap, with the existing cheaper MAP fallback. Slopes/PPML retain
+existing recovery policies; broader accounting remains open.
+
+All 23 pairs pass full science and saved-output comparisons. Three-seed unit/AW/
+PW command medians fall 3.012→0.809 / 83.397→68.675 / 3.641→2.676 seconds; median
+paired gains are 73.5%/17.7%/26.8%. Native peak medians fall 54.9%/31.2%/30.9%.
+Initial absorption supplies the main gains; final precision, recovery, complete
+64-step attempts and CG continuations are included. Rejecting unit/PW seeds add
+54/20 ms (1.80%/0.55%); rejecting AW adds 3.851 seconds/4.62%, mostly in unchanged
+CG for an unestablished reason. No pair exceeds both 5% and 10 ms added cost.
+The weighted cut rejects with exact science/peak and costs +10 ms/10.1%.
+Earlier standalone admission +36/+43 ms flags remain historical and unexplained.
+
+Disconnected/unbalanced/automatic-CMG saved controls improve 30–39% command time
+but native peaks rise 19.97→36.54 / 19.93→26.06 / 17.50→32.87 MB. An isolated
+allocator diagnostic reproduces exact candidate science and locates all these
+peaks in final LSMR absorption; recovery peaks near 8.05 MB. At 35,148,872 usable
+bytes, those three plus weak-d3 use the existing admitted final CG continuation
+and peak at 15.2–17.3 MB. Independent full b/V and saved-output checks pass;
+maximum cap/unrestricted output difference is 2.39e-12. The unrestricted memory
+tradeoff is accepted with the proven bounded alternative, without a seed-specific
+guard. Public execution-base reporting is still not a whole-action bound.
+
+Validation passes 124 focused core checks, 95 serial plugin tests, 48 saved dummy
+fits with eligible-Schur assertion, four weighted omission fits, exact/one-byte-
+short recovery/CG/generic and original unit/PW initial public boundaries, plus
+universal/static/native arm64 ABI. Initial unit/PW bounds are 827753800/831179336
+usable bytes with admitted peaks. The oracle harness's 16-versus-17-coordinate
+failure is preserved; independent grounded-dummy/SVD response influence extends
+weak/disconnected/unbalanced oracles to the normalized intercept/full covariance.
+Completed captures were reused by identity; independent LSQR/LSMR still agree.
+No seed/input/tolerance was replaced. All 178 candidate inputs match main and
+plugin `8bfa9fc2`; the diagnostic artifact is separate. The report archives 97
+capture entries (58 command calls and 39 oracle CSVs), source and log identities.
+Installed dist, 97 unrelated STATUS additions and 358 original untracked paths
+remain intact. No agents, cluster, upstream update, qualification or push.
+
+This closes only P6 final-target saved-FE recovery; 15 #27 items remain. Next
+continue P3's low-memory scratch/duplicate projection audit, then generated and
+sloped layouts, PPML pass/state/Schur work and R1–R5. Complete #27 before the
+user-authorized two-agent investigation, upstream CMG review and small SCC run.
+
 ## P6 final-output precision: adopted on repaired memory admission
 
 The [source-bound adoption](benchmarks/reports/development/ols-output-precision-adoption-local-2026-09-13/README.md)

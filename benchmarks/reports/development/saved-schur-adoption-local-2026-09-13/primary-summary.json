@@ -1,0 +1,23 @@
+{
+  "unit_saved": {
+    "seeds": 3,
+    "baseline_command_median": 3.012,
+    "candidate_command_median": 0.8089999999999999,
+    "median_paired_percent": -73.51015062213492,
+    "native_peak_median_reduction_percent": 54.86407026485052
+  },
+  "aw_saved": {
+    "seeds": 3,
+    "baseline_command_median": 83.397,
+    "candidate_command_median": 68.675,
+    "median_paired_percent": -17.652913174334817,
+    "native_peak_median_reduction_percent": 31.15143821348584
+  },
+  "pw_partial": {
+    "seeds": 3,
+    "baseline_command_median": 3.641,
+    "candidate_command_median": 2.676,
+    "median_paired_percent": -26.765188834154348,
+    "native_peak_median_reduction_percent": 30.936259566173263
+  }
+}

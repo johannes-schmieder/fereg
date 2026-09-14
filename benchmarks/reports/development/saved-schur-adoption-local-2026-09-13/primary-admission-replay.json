@@ -1,0 +1,200 @@
+{
+  "method": "Scalar replay of existing schur_ols_workspace_bytes and estimate_fe_solver_memory(CG) expressions, using captured finalized levels/N/worker counts and all 51 generated coordinates plus outcome. Cross-checked against both actually exercised exact/one-byte-short initial public caps. Not a new runtime memory trace or universal factor-storage bound.",
+  "corrected_diagnostic": "First draft assumed 51 RHS and a common 32768 row chunk. The captured shape/source use 52 RHS and Schur chunk 512 (CG chunk 32768). The exact-cap cross-check rejected that draft before reporting; all source values are now explicit. No fit, seed, tolerance or measured capture changed.",
+  "source_inputs": {
+    "crates/fereg-core/src/fe/borrowed_map.rs": "c96ca287d4f2fc280a48e2176fc924e28921ab8cca64372547e90fadcda05b0c",
+    "crates/fereg-core/src/memory.rs": "53684e364088d3753d5928bb87cce8eb148fe0b63d213531760f7519622f6489",
+    "crates/fereg-core/src/ols/prepared_fit.rs": "f25ce2608d888b7eb7b266af68dbd449adc2d976ab5123eaaf0789899f71e71c"
+  },
+  "rows": [
+    {
+      "name": "unit_saved_s104729",
+      "n": 245760,
+      "generated_columns": 51,
+      "rhs": 52,
+      "threads": 16,
+      "levels": [
+        122880,
+        3072
+      ],
+      "probe": 0.008776375065805782,
+      "accepted_probe": true,
+      "base": 418795848,
+      "initial_schur_cg_joint": 827753800,
+      "rejected_retained_cg_joint": 1089733960,
+      "actual_initial_route_joint": 827753800,
+      "native_peak": 378711510,
+      "fits": true,
+      "initial_iterations": 65.0,
+      "initial_fallback": 0.0
+    },
+    {
+      "name": "aw_saved_s104729",
+      "n": 983040,
+      "generated_columns": 51,
+      "rhs": 52,
+      "threads": 4,
+      "levels": [
+        491520,
+        12288
+      ],
+      "probe": 0.010614637091709987,
+      "accepted_probe": false,
+      "base": 1675120968,
+      "initial_schur_cg_joint": 3310918664,
+      "rejected_retained_cg_joint": 4358839304,
+      "actual_initial_route_joint": 4358839304,
+      "native_peak": 3363957262,
+      "fits": true,
+      "initial_iterations": 227.0,
+      "initial_fallback": 1.0
+    },
+    {
+      "name": "pw_partial_s104729",
+      "n": 244274,
+      "generated_columns": 51,
+      "rhs": 52,
+      "threads": 16,
+      "levels": [
+        122137,
+        3072
+      ],
+      "probe": 0.007946984718545142,
+      "accepted_probe": true,
+      "base": 424694088,
+      "initial_schur_cg_joint": 831179336,
+      "rejected_retained_cg_joint": 1091614056,
+      "actual_initial_route_joint": 831179336,
+      "native_peak": 581409185,
+      "fits": true,
+      "initial_iterations": 138.0,
+      "initial_fallback": 1.0
+    },
+    {
+      "name": "unit_saved_s8675309",
+      "n": 245760,
+      "generated_columns": 51,
+      "rhs": 52,
+      "threads": 16,
+      "levels": [
+        122880,
+        3072
+      ],
+      "probe": 0.012515360884834554,
+      "accepted_probe": false,
+      "base": 418795848,
+      "initial_schur_cg_joint": 827753800,
+      "rejected_retained_cg_joint": 1089733960,
+      "actual_initial_route_joint": 1089733960,
+      "native_peak": 839046658,
+      "fits": true,
+      "initial_iterations": 67.0,
+      "initial_fallback": 1.0
+    },
+    {
+      "name": "aw_saved_s8675309",
+      "n": 983040,
+      "generated_columns": 51,
+      "rhs": 52,
+      "threads": 4,
+      "levels": [
+        491520,
+        12288
+      ],
+      "probe": 0.00975155800276696,
+      "accepted_probe": true,
+      "base": 1675120968,
+      "initial_schur_cg_joint": 3310918664,
+      "rejected_retained_cg_joint": 4358839304,
+      "actual_initial_route_joint": 3310918664,
+      "native_peak": 2316036194,
+      "fits": true,
+      "initial_iterations": 291.0,
+      "initial_fallback": 1.0
+    },
+    {
+      "name": "pw_partial_s8675309",
+      "n": 244274,
+      "generated_columns": 51,
+      "rhs": 52,
+      "threads": 16,
+      "levels": [
+        122137,
+        3072
+      ],
+      "probe": 0.010977992816137185,
+      "accepted_probe": false,
+      "base": 424694088,
+      "initial_schur_cg_joint": 831179336,
+      "rejected_retained_cg_joint": 1091614056,
+      "actual_initial_route_joint": 1091614056,
+      "native_peak": 841844333,
+      "fits": true,
+      "initial_iterations": 74.0,
+      "initial_fallback": 1.0
+    },
+    {
+      "name": "unit_saved_s20260819",
+      "n": 245760,
+      "generated_columns": 51,
+      "rhs": 52,
+      "threads": 16,
+      "levels": [
+        122880,
+        3072
+      ],
+      "probe": 0.00881772328097654,
+      "accepted_probe": true,
+      "base": 418795848,
+      "initial_schur_cg_joint": 827753800,
+      "rejected_retained_cg_joint": 1089733960,
+      "actual_initial_route_joint": 827753800,
+      "native_peak": 378711510,
+      "fits": true,
+      "initial_iterations": 65.0,
+      "initial_fallback": 0.0
+    },
+    {
+      "name": "aw_saved_s20260819",
+      "n": 983040,
+      "generated_columns": 51,
+      "rhs": 52,
+      "threads": 4,
+      "levels": [
+        491520,
+        12288
+      ],
+      "probe": 0.009343701208886378,
+      "accepted_probe": true,
+      "base": 1675120968,
+      "initial_schur_cg_joint": 3310918664,
+      "rejected_retained_cg_joint": 4358839304,
+      "actual_initial_route_joint": 3310918664,
+      "native_peak": 2316036194,
+      "fits": true,
+      "initial_iterations": 291.0,
+      "initial_fallback": 1.0
+    },
+    {
+      "name": "pw_partial_s20260819",
+      "n": 244274,
+      "generated_columns": 51,
+      "rhs": 52,
+      "threads": 16,
+      "levels": [
+        122137,
+        3072
+      ],
+      "probe": 0.008531342561929884,
+      "accepted_probe": true,
+      "base": 424694088,
+      "initial_schur_cg_joint": 831179336,
+      "rejected_retained_cg_joint": 1091614056,
+      "actual_initial_route_joint": 831179336,
+      "native_peak": 581409185,
+      "fits": true,
+      "initial_iterations": 138.0,
+      "initial_fallback": 1.0
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+[
+  {
+    "name": "recovery-below",
+    "process_rc": 0,
+    "cap": 537252607,
+    "fixture_sha256": "b263d54f7583c33b8676a910949706eb3b58ffec628669a194fcf0260745de4d",
+    "log_sha256": "884da3e74946b912fdba7081473f79244fbabb717fe9b4c50cf6846b619289f1",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "8bfa9fc20a19de01055ac8c551266d9dba4ec6581a2f5a55364d29537a252f69"
+  },
+  {
+    "name": "recovery-exact",
+    "process_rc": 0,
+    "cap": 537252608,
+    "fixture_sha256": "b263d54f7583c33b8676a910949706eb3b58ffec628669a194fcf0260745de4d",
+    "log_sha256": "ab5e524e349ea0ddf888b9c8eecbc23afa12ffe93cda065165279f3b83d081a4",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "8bfa9fc20a19de01055ac8c551266d9dba4ec6581a2f5a55364d29537a252f69"
+  },
+  {
+    "name": "generic-exact",
+    "process_rc": 0,
+    "cap": 537677240,
+    "fixture_sha256": "739a86fe36983163a52ab8c8faffcb61284b74140abe321d23d17d841b7748f5",
+    "log_sha256": "0371f777ce73fdba79858492e93edfabfac3a46fb1241a7779ad2e8c9a7f25f3",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "8bfa9fc20a19de01055ac8c551266d9dba4ec6581a2f5a55364d29537a252f69"
+  },
+  {
+    "name": "generic-one-short",
+    "process_rc": 0,
+    "cap": 537677239,
+    "fixture_sha256": "739a86fe36983163a52ab8c8faffcb61284b74140abe321d23d17d841b7748f5",
+    "log_sha256": "f09287a3f917b9b208efc808bdebf587c088fa8b3b784ade833aafb43aad5ce9",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "8bfa9fc20a19de01055ac8c551266d9dba4ec6581a2f5a55364d29537a252f69"
+  },
+  {
+    "name": "cg-below",
+    "process_rc": 0,
+    "cap": 537182407,
+    "fixture_sha256": "fe5fbdd5d0c0f2dde3c4db312bd2dd5f3879b24c132613b423395633b259f0cf",
+    "log_sha256": "bdc3ba8b58da4c54e64deec11f932db1ec377934caec447b657ffd2a73cbf8ce",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "8bfa9fc20a19de01055ac8c551266d9dba4ec6581a2f5a55364d29537a252f69"
+  },
+  {
+    "name": "cg-exact",
+    "process_rc": 0,
+    "cap": 537182408,
+    "fixture_sha256": "fe5fbdd5d0c0f2dde3c4db312bd2dd5f3879b24c132613b423395633b259f0cf",
+    "log_sha256": "13d4c08e017bd22a302a31efb9dde540506203ca73da9f8b6876aaf5da660f7d",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "8bfa9fc20a19de01055ac8c551266d9dba4ec6581a2f5a55364d29537a252f69"
+  },
+  {
+    "name": "saved-oracle",
+    "process_rc": 0,
+    "cap": null,
+    "fixture_sha256": "f10bf0972abbadabbcf183f7ad650c87f10dac4376bb580746794e8e69114a51",
+    "log_sha256": "634a886bfc0f8a623a9c528cfff50a5798c618217d71b7b40d3245d1c4d4839c",
+    "sentinel": true,
+    "terminal_rc": [],
+    "plugin": "8bfa9fc20a19de01055ac8c551266d9dba4ec6581a2f5a55364d29537a252f69"
+  },
+  {
+    "name": "omission-oracle",
+    "process_rc": 0,
+    "cap": null,
+    "fixture_sha256": "c1d0276b69e67d886c93bfc027e19415ebd80a91410bbd98e08bc496b310cb45",
+    "log_sha256": "9797d45dd3ab9be8fb469781f95841912bd125e4fcaa02441d254914d4f63088",
+    "sentinel": true,
+    "terminal_rc": [
+      "0"
+    ],
+    "plugin": "8bfa9fc20a19de01055ac8c551266d9dba4ec6581a2f5a55364d29537a252f69"
+  }
+]

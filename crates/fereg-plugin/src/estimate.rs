@@ -792,6 +792,7 @@ impl EstimateActionSpec {
         let default_fit = PreparedOlsFitConfig::default();
         let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let fit = PreparedOlsFitConfig {
+            allow_final_fe_recovery: true,
             // Residual-derived outputs need pointwise accuracy even when low
             // memory deliberately omits retained FE coefficient products.
             final_residual_tolerance: (self.outputs.residual.is_some()
@@ -1728,6 +1729,7 @@ fn build_derived_observation_outputs_in_team(
                 check_every: 1,
                 symmetric: true,
             },
+            fit_config.absorb.solver_memory_budget,
         )?;
         let (absorbed_sum, channels) = recovered.into_optional_parts();
         recovered_absorbed = absorbed_sum;
