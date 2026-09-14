@@ -1,0 +1,418 @@
+--- a/crates/fereg-core/src/ols/linear_session.rs
++++ b/crates/fereg-core/src/ols/linear_session.rs
+@@ -1401,9 +1401,9 @@
+         Self::new_with_fe_design_mode(prepared, frame, config, generations, fe_design, false)
+     }
+ 
+-    /// PPML-only constructor which may select the reusable categorical MAP
+-    /// fast lane. Normal OLS and every existing generic session constructor
+-    /// continue to select the prior owned-design projector.
++    /// PPML-only categorical projector. Low memory projects bounded scratch
++    /// blocks; only dense storage can fuse the response with the design.
++    /// Generic session callers retain the owned-design projector.
+     pub(crate) fn new_with_ppml_fe_design(
+         prepared: &'a P,
+         frame: LinearSolveFrame<'_>,
+@@ -1435,7 +1435,11 @@
+                 .len()
+                 .checked_add(1)
+                 .ok_or_else(|| allocation("weighted-linear projection width overflows"))?,
+-            PreparedOlsExecutionMode::Low => config.execution.poolsize.max(1),
++            PreparedOlsExecutionMode::Low => config
++                .execution
++                .poolsize
++                .max(1)
++                .min(prepared.fit_model().columns.len().max(1)),
+         };
+         if fe_design.nobs() != response.len() {
+             return Err(invalid_argument(
+@@ -1443,10 +1447,7 @@
+             ));
+         }
+         let (fe_design, fe_projector, map_weights) = if config.absorb.solver == FeSolverKind::Map {
+-            let categorical = if admit_ppml_categorical_map
+-                && config.execution.mode == PreparedOlsExecutionMode::Fast
+-                && !config.absorb.retain_coefficients
+-            {
++            let categorical = if admit_ppml_categorical_map && !config.absorb.retain_coefficients {
+                 prepared.fit_borrowed_intercept_map_design()?
+             } else {
+                 None
+@@ -2335,6 +2336,7 @@
+                 report.warm_projection_attempted = true;
+                 let mut fused_response_report = None;
+                 if self.config.absorb.solver == FeSolverKind::Map
++                    && self.config.execution.mode == PreparedOlsExecutionMode::Fast
+                     && self
+                         .fe_projector
+                         .as_ref()
+@@ -2622,6 +2624,7 @@
+             }
+             report.warm_projection_attempted = true;
+             if reusable_map
++                && self.config.execution.mode == PreparedOlsExecutionMode::Fast
+                 && self
+                     .fe_projector
+                     .as_ref()
+--- a/crates/fereg-core/src/ppml/memory.rs
++++ b/crates/fereg-core/src/ppml/memory.rs
+@@ -1272,13 +1272,12 @@
+         PpmlMemoryRoute::Fast => 0,
+         PpmlMemoryRoute::Low => checked_mul(n, projection_rhs, "PPML low projection block")?,
+     };
+-    // The PPML-only categorical MAP fast lane allocates level-major group
+-    // means and weights once so large two/three-way projections can execute
+-    // inside the fit's bounded thread team. CG continuation also retains one
+-    // deterministic dot-reduction bank for narrow fused RHS blocks. Generic,
+-    // slope-bearing, and low-memory routes conservatively retain the same
+-    // preflight envelope or use less than it.
+-    let categorical_parallel_cells = if route == PpmlMemoryRoute::Fast
++    // Categorical MAP retains group reductions and certified acceleration in
++    // both modes. Low memory sizes every bank by the admitted projection pool;
++    // its retained design remains on scratch and its response is separate.
++    let low_categorical_map = matches!(dimensions.fe_dimensions, 1..=3)
++        && dimensions.fe_total_channels == dimensions.fe_dimensions;
++    let categorical_parallel_cells = if (route == PpmlMemoryRoute::Fast || low_categorical_map)
+         && dimensions.threads > 1
+         && dimensions.observations >= PARALLEL_PROJECTION_MIN_ROWS
+     {
+@@ -1302,8 +1301,7 @@
+     } else {
+         0
+     };
+-    let categorical_accelerator_cells = if route == PpmlMemoryRoute::Fast
+-        && matches!(dimensions.fe_dimensions, 2 | 3)
++    let categorical_accelerator_cells = if matches!(dimensions.fe_dimensions, 2 | 3)
+         && dimensions.fe_total_channels == dimensions.fe_dimensions
+         && projection_rhs <= CATEGORICAL_MAP_ACCELERATOR_MAX_RHS as u128
+     {
+@@ -3435,8 +3433,20 @@
+         );
+         assert_eq!(
+             estimate.low.fe_workspace_bytes,
+-            (4_u128 * 7 + 1 + 4 + 2 * 20 + 100_000 * 4) * size_of::<f64>() as u128,
+-            "low projects pool-width design blocks and the response separately",
++            (4_u128 * 7
++                + 1
++                + 4
++                + 2 * 20
++                + 100_000 * 4
++                + 20_000 * 4
++                + 20_000
++                + 100_000_u128.div_ceil(PARALLEL_DOT_CHUNK_ROWS as u128) * 4
++                + 30_000
++                + 2 * 20_000 * 4
++                + 4 * 10_000 * 4
++                + 5 * 4)
++                * size_of::<f64>() as u128,
++            "low admits pool-width categorical projection and level-PCG workspaces",
+         );
+         assert_eq!(estimate.fast.retained_within_io_buffer_bytes, 0);
+         assert_eq!(
+@@ -3449,6 +3459,37 @@
+             100_000_u128 * 20 * 8
+         );
+         assert!(estimate.low.peak_bytes < estimate.fast.peak_bytes);
++    }
++
++    #[test]
++    fn low_categorical_workspace_caps_oversized_pools_before_admission() {
++        let mut dimensions = dimensions();
++        dimensions.finite_columns = 3;
++        dimensions.coefficient_slots = 3;
++        dimensions.reported_coefficient_slots = 3;
++        dimensions.threads = 1;
++        let small = estimate_ppml_memory(
++            dimensions,
++            PpmlMemoryConfig {
++                poolsize: 3,
++                ..PpmlMemoryConfig::default()
++            },
++        )
++        .expect("bounded low pool");
++        let large = estimate_ppml_memory(
++            dimensions,
++            PpmlMemoryConfig {
++                poolsize: 10_000,
++                ..PpmlMemoryConfig::default()
++            },
++        )
++        .expect("oversized requested low pool");
++        assert_eq!(small.low.fe_workspace_bytes, large.low.fe_workspace_bytes);
++        assert_eq!(small.low.peak_bytes, large.low.peak_bytes);
++        let rhs = 3_u128;
++        let generic = rhs * 7 + 1 + rhs + 2 * 20 + 100_000 * rhs;
++        let graph = 30_000 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
++        assert_eq!(large.low.fe_workspace_bytes, (generic + graph) * 8);
+     }
+ 
+     #[test]
+--- a/crates/fereg-core/src/ppml/prepared_irls.rs
++++ b/crates/fereg-core/src/ppml/prepared_irls.rs
+@@ -4864,95 +4864,119 @@
+     }
+ 
+     #[test]
+-    fn strict_candidate_fuses_two_fe_map_design_and_response_projection() {
+-        let outcome = vec![1.2, 4.0, 0.5, 6.1, 2.7, 8.3, 5.5, 11.8];
+-        let x = vec![-2.0, 0.5, -1.0, 2.0, -0.25, 3.0, 1.0, 4.5];
+-        let response = vec![1.7, 3.6, 0.1, 6.8, 2.1, 9.0, 6.2, 12.4];
+-        let initial_weights = vec![1.0; outcome.len()];
+-        let refreshed_weights = vec![1.5, 0.75, 2.0, 1.25, 3.5, 0.6, 1.8, 2.2];
+-        let prepared = prepared_two_fe(&outcome, &x);
+-        let config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-10)
+-            .expect("two-FE linear config");
+-        let initial_scale =
+-            ppml_bread_weight_scale(&initial_weights).expect("initial weight scale");
+-        let initial_frame = LinearSolveFrame::from_parts(
+-            &outcome,
+-            BorrowedMapWeights::Provided(&initial_weights),
+-            initial_scale,
+-        )
+-        .expect("initial two-FE frame");
+-        let design = prepared.fit_owned_fe_design().expect("two-FE design");
+-        let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+-            &prepared,
+-            initial_frame,
+-            config,
+-            LinearSessionGenerations::new(1, 1, 1, 1, 1),
+-            design,
+-        )
+-        .expect("two-FE PPML session");
+-        assert!(session.uses_ppml_categorical_map_for_test());
+-        assert!(session.solve_fresh().expect("initial solve").certified());
+-        session
+-            .refresh_response(&response, 2)
+-            .expect("strict response refresh");
+-        let refreshed_scale =
+-            ppml_bread_weight_scale(&refreshed_weights).expect("refreshed weight scale");
+-        session
+-            .refresh_weights(
++    fn strict_candidate_categorical_projection_preserves_scratch_and_fresh_parity() {
++        for (mode, poolsize) in [
++            (PreparedOlsExecutionMode::Fast, 10),
++            (PreparedOlsExecutionMode::Low, 1),
++            (PreparedOlsExecutionMode::Low, 10_000),
++        ] {
++            let outcome = vec![1.2, 4.0, 0.5, 6.1, 2.7, 8.3, 5.5, 11.8];
++            let x = vec![-2.0, 0.5, -1.0, 2.0, -0.25, 3.0, 1.0, 4.5];
++            let response = vec![1.7, 3.6, 0.1, 6.8, 2.1, 9.0, 6.2, 12.4];
++            let initial_weights = vec![1.0; outcome.len()];
++            let refreshed_weights = vec![1.5, 0.75, 2.0, 1.25, 3.5, 0.6, 1.8, 2.2];
++            let prepared = prepared_two_fe(&outcome, &x);
++            let mut config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-10)
++                .expect("two-FE linear config");
++            config.execution.mode = mode;
++            config.execution.poolsize = poolsize;
++            let initial_scale =
++                ppml_bread_weight_scale(&initial_weights).expect("initial weight scale");
++            let initial_frame = LinearSolveFrame::from_parts(
++                &outcome,
++                BorrowedMapWeights::Provided(&initial_weights),
++                initial_scale,
++            )
++            .expect("initial two-FE frame");
++            let design = prepared.fit_owned_fe_design().expect("two-FE design");
++            let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
++                &prepared,
++                initial_frame,
++                config,
++                LinearSessionGenerations::new(1, 1, 1, 1, 1),
++                design,
++            )
++            .expect("two-FE PPML session");
++            assert!(session.uses_ppml_categorical_map_for_test());
++            assert!(session.solve_fresh().expect("initial solve").certified());
++            let scratch = session
++                .retained_scratch_identity()
++                .map(std::path::Path::to_owned);
++            assert_eq!(scratch.is_some(), mode == PreparedOlsExecutionMode::Low);
++            if mode == PreparedOlsExecutionMode::Low {
++                assert_eq!(
++                    session.workspace_capacities().fe_rhs_elements,
++                    poolsize.min(prepared.fit_model().columns.len().max(1))
++                );
++                assert_eq!(session.workspace_capacities().within_resident_elements, 0);
++            }
++            session
++                .refresh_response(&response, 2)
++                .expect("strict response refresh");
++            let refreshed_scale =
++                ppml_bread_weight_scale(&refreshed_weights).expect("refreshed weight scale");
++            session
++                .refresh_weights(
++                    BorrowedMapWeights::Provided(&refreshed_weights),
++                    refreshed_scale,
++                    2,
++                )
++                .expect("strict weight refresh");
++
++            let offset = vec![0.0; outcome.len()];
++            let transaction = session.strict_candidate().expect("fused strict candidate");
++            assert_eq!(
++                transaction.used_fused_projection_for_test(),
++                mode == PreparedOlsExecutionMode::Fast
++            );
++            let actual = transaction.candidate();
++            assert!(actual.certified());
++            assert!(actual.reuse_report().warm_projection_attempted);
++            let mut actual_eta = vec![0.0; outcome.len()];
++            fill_candidate_eta_from_linear_output(&actual, &offset, &mut actual_eta)
++                .expect("fused strict eta");
++            let mut actual_coefficients = vec![0.0; prepared.fit_model().coefficients.len()];
++            fill_candidate_coefficients_from_linear_output(&actual, &mut actual_coefficients)
++                .expect("fused strict coefficients");
++            let actual_bread = actual.fit().bread().values().to_vec();
++            transaction.commit();
++            assert_eq!(session.retained_scratch_identity(), scratch.as_deref());
++
++            let expected_frame = LinearSolveFrame::from_parts(
++                &response,
+                 BorrowedMapWeights::Provided(&refreshed_weights),
+                 refreshed_scale,
+-                2,
+             )
+-            .expect("strict weight refresh");
+-
+-        let offset = vec![0.0; outcome.len()];
+-        let transaction = session.strict_candidate().expect("fused strict candidate");
+-        assert!(transaction.used_fused_projection_for_test());
+-        let actual = transaction.candidate();
+-        assert!(actual.certified());
+-        assert!(actual.reuse_report().warm_projection_attempted);
+-        let mut actual_eta = vec![0.0; outcome.len()];
+-        fill_candidate_eta_from_linear_output(&actual, &offset, &mut actual_eta)
+-            .expect("fused strict eta");
+-        let mut actual_coefficients = vec![0.0; prepared.fit_model().coefficients.len()];
+-        fill_candidate_coefficients_from_linear_output(&actual, &mut actual_coefficients)
+-            .expect("fused strict coefficients");
+-        let actual_bread = actual.fit().bread().values().to_vec();
+-        transaction.commit();
+-
+-        let expected_frame = LinearSolveFrame::from_parts(
+-            &response,
+-            BorrowedMapWeights::Provided(&refreshed_weights),
+-            refreshed_scale,
+-        )
+-        .expect("fresh comparison frame");
+-        let expected_design = prepared
+-            .fit_owned_fe_design()
+-            .expect("comparison FE design");
+-        let mut expected_session = CertifiedLinearSession::new_with_ppml_fe_design(
+-            &prepared,
+-            expected_frame,
+-            config,
+-            LinearSessionGenerations::new(1, 1, 1, 1, 1),
+-            expected_design,
+-        )
+-        .expect("fresh comparison session");
+-        let expected = expected_session
+-            .solve_fresh()
+-            .expect("fresh comparison solve");
+-        let mut expected_eta = vec![0.0; outcome.len()];
+-        fill_candidate_eta_from_linear_output(&expected, &offset, &mut expected_eta)
+-            .expect("fresh comparison eta");
+-        let mut expected_coefficients = vec![0.0; prepared.fit_model().coefficients.len()];
+-        fill_candidate_coefficients_from_linear_output(&expected, &mut expected_coefficients)
+-            .expect("fresh comparison coefficients");
+-        assert!(relative_infinity_difference(&actual_eta, &expected_eta) <= 1e-11);
+-        assert!(
+-            relative_infinity_difference(&actual_coefficients, &expected_coefficients) <= 1e-11
+-        );
+-        assert!(
+-            relative_infinity_difference(&actual_bread, expected.fit().bread().values()) <= 1e-10
+-        );
++            .expect("fresh comparison frame");
++            let expected_design = prepared
++                .fit_owned_fe_design()
++                .expect("comparison FE design");
++            let mut expected_session = CertifiedLinearSession::new_with_fe_design(
++                &prepared,
++                expected_frame,
++                config,
++                LinearSessionGenerations::new(1, 1, 1, 1, 1),
++                expected_design,
++            )
++            .expect("fresh comparison session");
++            let expected = expected_session
++                .solve_fresh()
++                .expect("fresh comparison solve");
++            let mut expected_eta = vec![0.0; outcome.len()];
++            fill_candidate_eta_from_linear_output(&expected, &offset, &mut expected_eta)
++                .expect("fresh comparison eta");
++            let mut expected_coefficients = vec![0.0; prepared.fit_model().coefficients.len()];
++            fill_candidate_coefficients_from_linear_output(&expected, &mut expected_coefficients)
++                .expect("fresh comparison coefficients");
++            assert!(relative_infinity_difference(&actual_eta, &expected_eta) <= 1e-11);
++            assert!(
++                relative_infinity_difference(&actual_coefficients, &expected_coefficients) <= 1e-11
++            );
++            assert!(
++                relative_infinity_difference(&actual_bread, expected.fit().bread().values())
++                    <= 1e-10
++            );
++        }
+     }
+ 
+     #[test]
+--- /dev/null
++++ b/tests/stata/development/feppml_low_categorical.do
+@@ -0,0 +1,58 @@
++version 18.0
++clear all
++set more off
++set obs 512
++generate long row=_n
++generate int g=1+mod(floor((_n-1)/8),64)
++generate int h=1+mod(g-1+(mod(_n-1,8)==7),64)
++generate int j=1+mod(_n-1,3)
++generate double x=sin(_n*1.71)
++generate double z=cos(_n*0.53)
++generate double y=exp(.2*x-.1*z+.2*sin(g)+.1*cos(h))*(.9+.2*mod(_n,5)/4)
++generate double w=cond(mod(_n-1,8)==7,.001,1)
++// The scarce mobility edges carry little weight. Compare each categorical
++// topology with explicit dummy Poisson and preserve scratch-block boundaries.
++foreach terms in g "g h" "g h j" {
++    local dummy
++    foreach term of local terms {
++        local dummy `dummy' i.`term'
++    }
++    quietly poisson y x z `dummy' [pw=w], vce(robust) tolerance(1e-12) ltolerance(1e-12) nrtolerance(1e-12) iterate(200)
++    scalar oracle_x=_b[x]
++    scalar oracle_z=_b[z]
++    predict double oracle_mu, n
++    quietly feppml y x z [pw=w], absorb(`terms') memory(fast) solver(map) threads(4) mu(fast_mu)
++    matrix fast_b=e(b)
++    matrix fast_v=e(V)
++    matrix fast_status=e(feppml_status)
++    scalar fast_df=e(df_resid)
++    scalar fast_rank=e(rank)
++    foreach pool in 1 2 10000 {
++        quietly feppml y x z [pw=w], absorb(`terms') memory(low) poolsize(`pool') threads(4) mu(low_mu)
++        generate double oracle_difference=abs(low_mu-oracle_mu)
++        generate double mode_difference=abs(low_mu-fast_mu)
++        quietly summarize oracle_difference, meanonly
++        display as result "LOW_CATEGORICAL|terms=`terms'|pool=`pool'|oracle_mu_max=" %24.17e r(max) "|x_delta=" %24.17e abs(_b[x]-oracle_x) "|z_delta=" %24.17e abs(_b[z]-oracle_z)
++        quietly summarize mode_difference, meanonly
++        display as result "LOW_CATEGORICAL_MODES|mu_max=" %24.17e r(max)
++        drop oracle_difference mode_difference
++        assert e(sample)==1
++        assert row==_n
++        assert e(num_singletons)==0 & e(separated)==0
++        assert abs(_b[x]-oracle_x)<1e-8
++        assert abs(_b[z]-oracle_z)<1e-8
++        assert abs(low_mu-oracle_mu)<1e-7
++        assert abs(low_mu-fast_mu)<1e-7
++        assert mreldif(e(b),fast_b)<1e-8
++        assert mreldif(e(V),fast_v)<1e-8
++        assert mreldif(e(feppml_status),fast_status)==0
++        assert e(rank)==fast_rank & e(df_resid)==fast_df
++        assert e(feppml_certificate)[16,1]==1
++        assert e(feppml_memory_selected_code)==2
++        assert e(feppml_scratch_bytes)>0
++        assert e(feppml_allocation_peak)<=e(feppml_memory_selected_bytes)
++        drop low_mu
++    }
++    drop fast_mu oracle_mu
++}
++display as result "FEPPML_LOW_CATEGORICAL_COMPLETE"

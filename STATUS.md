@@ -10,6 +10,47 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## German PPML: smaller samples pass; low-memory categorical projection adopted
+
+The [source-bound report](benchmarks/reports/development/german-ppml-low-map-local-2026-09-14/README.md)
+adopts bounded categorical MAP projection in low memory, reusing existing guarded
+current-weight machinery. Dense response fusion stays fast-only; low retains
+scratch blocks. Projector capacity is capped by design width, and low preflight
+charges group/dot and accelerator banks before allocation. Parent native is
+`1e9581e` / `bc1e8909`; candidate universal plugin is `9d920101`. All 177 compiled
+inputs match the source transfer. Installed dist remains `4187efdf`.
+
+Using the selected `exp(logrwage2)` outcome, four German subsets retain 6,654,
+65,503, 132,691 and 338,054 rows with exact pinned-ppmlhdfe masks/order. Slopes
+agree within 1.1e-13 and covariance within 1.3e-12. Native means pass independent
+objective/score/model-space audits; independent FWL covariance agrees within
+5.8e-17. Reference reconstructed means do not certify model space; its reported
+objectives remain the authority under ADR 0026. Rank/absorbed-DoF normalization
+bookkeeping differs by one between commands, with equal total rank/residual DoF.
+
+The 75,350-row low fit completes in 9.824 s; parent low was interrupted at
+257.68 process seconds during generic weighted projection, without a fit.
+Small low falls 1.439→0.931 s. At 378,124 rows, low costs 86.049 s, fast 17.914 s
+and ppmlhdfe 82.414 s; low native peak is 599 MB versus fast 1,183 MB, with
+48.68 MB scratch. These are single local diagnostic timings, with tracing and
+a disclosed brief contention risk for the first 75,350-row comparison. They
+are not universal speed claims. All completed native solver fallback counts
+are zero. Phase costs, inner/outer counts and small-memory overhead are archived.
+
+347 PPML-related core tests, 213 OLS tests, 97 plugin tests, universal static
+audit and ARM64 ABI/self-test pass. Two licensed fixtures contain 26 native fits
+with one/two/three FE, tiny weighted mobility links, pools 1/2/10000, FW/PW,
+clustering/missingness and singleton/separation cascades. A 557 MB cap rejects
+fast before workspace allocation while low succeeds. The first dummy-Poisson
+oracle's loose stopping and the independent audit's insufficient scratch budget
+are preserved with their resolved reruns and unchanged candidate tolerances.
+
+Next: inspect full German PPML memory admission and a fitting bounded pool,
+then estimate and compare with pinned ppmlhdfe. The 8.37-billion wage in the
+largest subset was removed by ordinary singleton pruning in both commands;
+full-sample extremes remain untested. No extra sample exclusions, SCC work,
+installed-plugin replacement or push occurred. Unrelated work is preserved.
+
 ## German OLS: full fit certified after QR and macOS memory repairs
 
 The [source-bound report](benchmarks/reports/development/german-ols-qr-memory-local-2026-09-14/README.md)

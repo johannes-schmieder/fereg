@@ -1401,9 +1401,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Self::new_with_fe_design_mode(prepared, frame, config, generations, fe_design, false)
     }
 
-    /// PPML-only constructor which may select the reusable categorical MAP
-    /// fast lane. Normal OLS and every existing generic session constructor
-    /// continue to select the prior owned-design projector.
+    /// PPML-only categorical projector. Low memory projects bounded scratch
+    /// blocks; only dense storage can fuse the response with the design.
+    /// Generic session callers retain the owned-design projector.
     pub(crate) fn new_with_ppml_fe_design(
         prepared: &'a P,
         frame: LinearSolveFrame<'_>,
@@ -1435,7 +1435,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 .len()
                 .checked_add(1)
                 .ok_or_else(|| allocation("weighted-linear projection width overflows"))?,
-            PreparedOlsExecutionMode::Low => config.execution.poolsize.max(1),
+            PreparedOlsExecutionMode::Low => config
+                .execution
+                .poolsize
+                .max(1)
+                .min(prepared.fit_model().columns.len().max(1)),
         };
         if fe_design.nobs() != response.len() {
             return Err(invalid_argument(
@@ -1443,10 +1447,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             ));
         }
         let (fe_design, fe_projector, map_weights) = if config.absorb.solver == FeSolverKind::Map {
-            let categorical = if admit_ppml_categorical_map
-                && config.execution.mode == PreparedOlsExecutionMode::Fast
-                && !config.absorb.retain_coefficients
-            {
+            let categorical = if admit_ppml_categorical_map && !config.absorb.retain_coefficients {
                 prepared.fit_borrowed_intercept_map_design()?
             } else {
                 None
@@ -2335,6 +2336,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 report.warm_projection_attempted = true;
                 let mut fused_response_report = None;
                 if self.config.absorb.solver == FeSolverKind::Map
+                    && self.config.execution.mode == PreparedOlsExecutionMode::Fast
                     && self
                         .fe_projector
                         .as_ref()
@@ -2622,6 +2624,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             }
             report.warm_projection_attempted = true;
             if reusable_map
+                && self.config.execution.mode == PreparedOlsExecutionMode::Fast
                 && self
                     .fe_projector
                     .as_ref()

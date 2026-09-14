@@ -1,0 +1,11 @@
+{
+  "patch_replays_from": "1e9581e",
+  "changed_compiled_files": 3,
+  "new_stata_fixture": "tests/stata/development/feppml_low_categorical.do",
+  "replay_byte_exact": true,
+  "unchanged_parent_compiled_files": 174,
+  "main_matches_tested_compiled_inputs": 177,
+  "original_unrelated_status_patch_exact": true,
+  "original_untracked_paths_preserved": 358,
+  "installed_plugin_unchanged": true
+}

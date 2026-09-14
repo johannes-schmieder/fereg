@@ -1272,13 +1272,12 @@ fn estimate_route(
         PpmlMemoryRoute::Fast => 0,
         PpmlMemoryRoute::Low => checked_mul(n, projection_rhs, "PPML low projection block")?,
     };
-    // The PPML-only categorical MAP fast lane allocates level-major group
-    // means and weights once so large two/three-way projections can execute
-    // inside the fit's bounded thread team. CG continuation also retains one
-    // deterministic dot-reduction bank for narrow fused RHS blocks. Generic,
-    // slope-bearing, and low-memory routes conservatively retain the same
-    // preflight envelope or use less than it.
-    let categorical_parallel_cells = if route == PpmlMemoryRoute::Fast
+    // Categorical MAP retains group reductions and certified acceleration in
+    // both modes. Low memory sizes every bank by the admitted projection pool;
+    // its retained design remains on scratch and its response is separate.
+    let low_categorical_map = matches!(dimensions.fe_dimensions, 1..=3)
+        && dimensions.fe_total_channels == dimensions.fe_dimensions;
+    let categorical_parallel_cells = if (route == PpmlMemoryRoute::Fast || low_categorical_map)
         && dimensions.threads > 1
         && dimensions.observations >= PARALLEL_PROJECTION_MIN_ROWS
     {
@@ -1302,8 +1301,7 @@ fn estimate_route(
     } else {
         0
     };
-    let categorical_accelerator_cells = if route == PpmlMemoryRoute::Fast
-        && matches!(dimensions.fe_dimensions, 2 | 3)
+    let categorical_accelerator_cells = if matches!(dimensions.fe_dimensions, 2 | 3)
         && dimensions.fe_total_channels == dimensions.fe_dimensions
         && projection_rhs <= CATEGORICAL_MAP_ACCELERATOR_MAX_RHS as u128
     {
@@ -3435,8 +3433,20 @@ mod tests {
         );
         assert_eq!(
             estimate.low.fe_workspace_bytes,
-            (4_u128 * 7 + 1 + 4 + 2 * 20 + 100_000 * 4) * size_of::<f64>() as u128,
-            "low projects pool-width design blocks and the response separately",
+            (4_u128 * 7
+                + 1
+                + 4
+                + 2 * 20
+                + 100_000 * 4
+                + 20_000 * 4
+                + 20_000
+                + 100_000_u128.div_ceil(PARALLEL_DOT_CHUNK_ROWS as u128) * 4
+                + 30_000
+                + 2 * 20_000 * 4
+                + 4 * 10_000 * 4
+                + 5 * 4)
+                * size_of::<f64>() as u128,
+            "low admits pool-width categorical projection and level-PCG workspaces",
         );
         assert_eq!(estimate.fast.retained_within_io_buffer_bytes, 0);
         assert_eq!(
@@ -3449,6 +3459,37 @@ mod tests {
             100_000_u128 * 20 * 8
         );
         assert!(estimate.low.peak_bytes < estimate.fast.peak_bytes);
+    }
+
+    #[test]
+    fn low_categorical_workspace_caps_oversized_pools_before_admission() {
+        let mut dimensions = dimensions();
+        dimensions.finite_columns = 3;
+        dimensions.coefficient_slots = 3;
+        dimensions.reported_coefficient_slots = 3;
+        dimensions.threads = 1;
+        let small = estimate_ppml_memory(
+            dimensions,
+            PpmlMemoryConfig {
+                poolsize: 3,
+                ..PpmlMemoryConfig::default()
+            },
+        )
+        .expect("bounded low pool");
+        let large = estimate_ppml_memory(
+            dimensions,
+            PpmlMemoryConfig {
+                poolsize: 10_000,
+                ..PpmlMemoryConfig::default()
+            },
+        )
+        .expect("oversized requested low pool");
+        assert_eq!(small.low.fe_workspace_bytes, large.low.fe_workspace_bytes);
+        assert_eq!(small.low.peak_bytes, large.low.peak_bytes);
+        let rhs = 3_u128;
+        let generic = rhs * 7 + 1 + rhs + 2 * 20 + 100_000 * rhs;
+        let graph = 30_000 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
+        assert_eq!(large.low.fe_workspace_bytes, (generic + graph) * 8);
     }
 
     #[test]

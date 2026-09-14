@@ -79,11 +79,13 @@ path. Ordinary OLS subtraction keeps its separate absent-indicator arithmetic.
 See [ADR 0066](adr/0066-retained-numeric-predictor-tiles.md) and
 [ADR 0068](adr/0068-retained-generated-predictor-tiles.md).
 
-Fast PPML with one categorical intercept effect uses the existing reusable
-categorical projector and fused changing-response/retained-design projection.
-It preserves current-weight reference scales and independent certificates,
-allocates no accelerator matrices, and leaves low-memory and slope routes
-unchanged; see [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md).
+PPML with one through three categorical intercept effects can reuse the
+categorical projector in both memory modes. Fast storage fuses changing-response
+and retained-design projection; low storage projects bounded scratch blocks and
+the response separately. One FE needs no accelerator matrices. Current-weight
+reference scales and independent certificates remain authoritative; slope routes
+retain their generic projector. See [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md)
+and [ADR 0069](adr/0069-low-memory-ppml-categorical-projection.md).
 After a fused response/design projection, retained within-column norms must
 also use the current weight frame. Strict rank and score checks consume those
 norms even when the preceding frozen-basis solve did not need them; advancing

@@ -4864,95 +4864,119 @@ mod tests {
     }
 
     #[test]
-    fn strict_candidate_fuses_two_fe_map_design_and_response_projection() {
-        let outcome = vec![1.2, 4.0, 0.5, 6.1, 2.7, 8.3, 5.5, 11.8];
-        let x = vec![-2.0, 0.5, -1.0, 2.0, -0.25, 3.0, 1.0, 4.5];
-        let response = vec![1.7, 3.6, 0.1, 6.8, 2.1, 9.0, 6.2, 12.4];
-        let initial_weights = vec![1.0; outcome.len()];
-        let refreshed_weights = vec![1.5, 0.75, 2.0, 1.25, 3.5, 0.6, 1.8, 2.2];
-        let prepared = prepared_two_fe(&outcome, &x);
-        let config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-10)
-            .expect("two-FE linear config");
-        let initial_scale =
-            ppml_bread_weight_scale(&initial_weights).expect("initial weight scale");
-        let initial_frame = LinearSolveFrame::from_parts(
-            &outcome,
-            BorrowedMapWeights::Provided(&initial_weights),
-            initial_scale,
-        )
-        .expect("initial two-FE frame");
-        let design = prepared.fit_owned_fe_design().expect("two-FE design");
-        let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
-            &prepared,
-            initial_frame,
-            config,
-            LinearSessionGenerations::new(1, 1, 1, 1, 1),
-            design,
-        )
-        .expect("two-FE PPML session");
-        assert!(session.uses_ppml_categorical_map_for_test());
-        assert!(session.solve_fresh().expect("initial solve").certified());
-        session
-            .refresh_response(&response, 2)
-            .expect("strict response refresh");
-        let refreshed_scale =
-            ppml_bread_weight_scale(&refreshed_weights).expect("refreshed weight scale");
-        session
-            .refresh_weights(
+    fn strict_candidate_categorical_projection_preserves_scratch_and_fresh_parity() {
+        for (mode, poolsize) in [
+            (PreparedOlsExecutionMode::Fast, 10),
+            (PreparedOlsExecutionMode::Low, 1),
+            (PreparedOlsExecutionMode::Low, 10_000),
+        ] {
+            let outcome = vec![1.2, 4.0, 0.5, 6.1, 2.7, 8.3, 5.5, 11.8];
+            let x = vec![-2.0, 0.5, -1.0, 2.0, -0.25, 3.0, 1.0, 4.5];
+            let response = vec![1.7, 3.6, 0.1, 6.8, 2.1, 9.0, 6.2, 12.4];
+            let initial_weights = vec![1.0; outcome.len()];
+            let refreshed_weights = vec![1.5, 0.75, 2.0, 1.25, 3.5, 0.6, 1.8, 2.2];
+            let prepared = prepared_two_fe(&outcome, &x);
+            let mut config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-10)
+                .expect("two-FE linear config");
+            config.execution.mode = mode;
+            config.execution.poolsize = poolsize;
+            let initial_scale =
+                ppml_bread_weight_scale(&initial_weights).expect("initial weight scale");
+            let initial_frame = LinearSolveFrame::from_parts(
+                &outcome,
+                BorrowedMapWeights::Provided(&initial_weights),
+                initial_scale,
+            )
+            .expect("initial two-FE frame");
+            let design = prepared.fit_owned_fe_design().expect("two-FE design");
+            let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                &prepared,
+                initial_frame,
+                config,
+                LinearSessionGenerations::new(1, 1, 1, 1, 1),
+                design,
+            )
+            .expect("two-FE PPML session");
+            assert!(session.uses_ppml_categorical_map_for_test());
+            assert!(session.solve_fresh().expect("initial solve").certified());
+            let scratch = session
+                .retained_scratch_identity()
+                .map(std::path::Path::to_owned);
+            assert_eq!(scratch.is_some(), mode == PreparedOlsExecutionMode::Low);
+            if mode == PreparedOlsExecutionMode::Low {
+                assert_eq!(
+                    session.workspace_capacities().fe_rhs_elements,
+                    poolsize.min(prepared.fit_model().columns.len().max(1))
+                );
+                assert_eq!(session.workspace_capacities().within_resident_elements, 0);
+            }
+            session
+                .refresh_response(&response, 2)
+                .expect("strict response refresh");
+            let refreshed_scale =
+                ppml_bread_weight_scale(&refreshed_weights).expect("refreshed weight scale");
+            session
+                .refresh_weights(
+                    BorrowedMapWeights::Provided(&refreshed_weights),
+                    refreshed_scale,
+                    2,
+                )
+                .expect("strict weight refresh");
+
+            let offset = vec![0.0; outcome.len()];
+            let transaction = session.strict_candidate().expect("fused strict candidate");
+            assert_eq!(
+                transaction.used_fused_projection_for_test(),
+                mode == PreparedOlsExecutionMode::Fast
+            );
+            let actual = transaction.candidate();
+            assert!(actual.certified());
+            assert!(actual.reuse_report().warm_projection_attempted);
+            let mut actual_eta = vec![0.0; outcome.len()];
+            fill_candidate_eta_from_linear_output(&actual, &offset, &mut actual_eta)
+                .expect("fused strict eta");
+            let mut actual_coefficients = vec![0.0; prepared.fit_model().coefficients.len()];
+            fill_candidate_coefficients_from_linear_output(&actual, &mut actual_coefficients)
+                .expect("fused strict coefficients");
+            let actual_bread = actual.fit().bread().values().to_vec();
+            transaction.commit();
+            assert_eq!(session.retained_scratch_identity(), scratch.as_deref());
+
+            let expected_frame = LinearSolveFrame::from_parts(
+                &response,
                 BorrowedMapWeights::Provided(&refreshed_weights),
                 refreshed_scale,
-                2,
             )
-            .expect("strict weight refresh");
-
-        let offset = vec![0.0; outcome.len()];
-        let transaction = session.strict_candidate().expect("fused strict candidate");
-        assert!(transaction.used_fused_projection_for_test());
-        let actual = transaction.candidate();
-        assert!(actual.certified());
-        assert!(actual.reuse_report().warm_projection_attempted);
-        let mut actual_eta = vec![0.0; outcome.len()];
-        fill_candidate_eta_from_linear_output(&actual, &offset, &mut actual_eta)
-            .expect("fused strict eta");
-        let mut actual_coefficients = vec![0.0; prepared.fit_model().coefficients.len()];
-        fill_candidate_coefficients_from_linear_output(&actual, &mut actual_coefficients)
-            .expect("fused strict coefficients");
-        let actual_bread = actual.fit().bread().values().to_vec();
-        transaction.commit();
-
-        let expected_frame = LinearSolveFrame::from_parts(
-            &response,
-            BorrowedMapWeights::Provided(&refreshed_weights),
-            refreshed_scale,
-        )
-        .expect("fresh comparison frame");
-        let expected_design = prepared
-            .fit_owned_fe_design()
-            .expect("comparison FE design");
-        let mut expected_session = CertifiedLinearSession::new_with_ppml_fe_design(
-            &prepared,
-            expected_frame,
-            config,
-            LinearSessionGenerations::new(1, 1, 1, 1, 1),
-            expected_design,
-        )
-        .expect("fresh comparison session");
-        let expected = expected_session
-            .solve_fresh()
-            .expect("fresh comparison solve");
-        let mut expected_eta = vec![0.0; outcome.len()];
-        fill_candidate_eta_from_linear_output(&expected, &offset, &mut expected_eta)
-            .expect("fresh comparison eta");
-        let mut expected_coefficients = vec![0.0; prepared.fit_model().coefficients.len()];
-        fill_candidate_coefficients_from_linear_output(&expected, &mut expected_coefficients)
-            .expect("fresh comparison coefficients");
-        assert!(relative_infinity_difference(&actual_eta, &expected_eta) <= 1e-11);
-        assert!(
-            relative_infinity_difference(&actual_coefficients, &expected_coefficients) <= 1e-11
-        );
-        assert!(
-            relative_infinity_difference(&actual_bread, expected.fit().bread().values()) <= 1e-10
-        );
+            .expect("fresh comparison frame");
+            let expected_design = prepared
+                .fit_owned_fe_design()
+                .expect("comparison FE design");
+            let mut expected_session = CertifiedLinearSession::new_with_fe_design(
+                &prepared,
+                expected_frame,
+                config,
+                LinearSessionGenerations::new(1, 1, 1, 1, 1),
+                expected_design,
+            )
+            .expect("fresh comparison session");
+            let expected = expected_session
+                .solve_fresh()
+                .expect("fresh comparison solve");
+            let mut expected_eta = vec![0.0; outcome.len()];
+            fill_candidate_eta_from_linear_output(&expected, &offset, &mut expected_eta)
+                .expect("fresh comparison eta");
+            let mut expected_coefficients = vec![0.0; prepared.fit_model().coefficients.len()];
+            fill_candidate_coefficients_from_linear_output(&expected, &mut expected_coefficients)
+                .expect("fresh comparison coefficients");
+            assert!(relative_infinity_difference(&actual_eta, &expected_eta) <= 1e-11);
+            assert!(
+                relative_infinity_difference(&actual_coefficients, &expected_coefficients) <= 1e-11
+            );
+            assert!(
+                relative_infinity_difference(&actual_bread, expected.fit().bread().values())
+                    <= 1e-10
+            );
+        }
     }
 
     #[test]

@@ -1,0 +1,57 @@
+{
+  "core_ppml_related_tests": 347,
+  "core_ols_tests": 213,
+  "plugin_tests": 97,
+  "native_binary_audit": "universal static audit and actual ARM64 ABI/self-test passed",
+  "licensed_fixtures": {
+    "feppml_low_categorical": {
+      "native_fits": 12,
+      "status": "pass",
+      "coverage": "one/two/three intercept FE; pweights with 0.001 mobility links; low pools 1, 2, 10000; fast MAP; independent dummy Poisson; b/V/status/DoF/sample/means/scratch/capacity"
+    },
+    "feppml_singleton_index": {
+      "native_fits": 14,
+      "status": "pass",
+      "coverage": "unit/FW/PW; cluster missingness; singleton and post-separation cascades; interactions; fast/low; independent dummy Poisson"
+    }
+  },
+  "memory_boundary": {
+    "available_bytes": 557370912,
+    "fast_return_code": 909,
+    "failed_output_absent": true,
+    "low_return_code": 0,
+    "retained_rows": 6654
+  },
+  "failed_or_incomplete_attempts": [
+    {
+      "case": "baseline low, 75350 input rows",
+      "status": "SIGINT after 257.68 process seconds; no result",
+      "peak_rss_bytes": 104464384,
+      "one_second_stack_sample": true,
+      "stack": "frozen PPML solve, generic weighted FE projection",
+      "timing_caveat": "another short Stata process observed near the end; no completed-command speedup ratio inferred"
+    },
+    {
+      "case": "first weak-link fixture",
+      "status": "62 fitted-mean assertions failed with unchanged candidate plugin",
+      "resolution": "tighten dummy Poisson tolerance, ltolerance, nrtolerance to 1e-12; candidate thresholds unchanged; final maximum mean difference 2.60e-10"
+    },
+    {
+      "case": "338054-row independent model-space audit",
+      "status": "512 MiB audit budget refused modeled scratch",
+      "resolution": "rerun with explicit 1 GiB audit budget, unchanged numerical thresholds"
+    },
+    {
+      "case": "runtime isolation",
+      "status": "ftools compiled an auxiliary Mata cache under the earlier isolated candidate dist; native plugin and 177 compiled source inputs unchanged",
+      "resolution": "subsequent reference-capable runs use a private runtime copy; caches and historical evidence preserved"
+    }
+  ],
+  "limitations": [
+    "No full German PPML fit yet.",
+    "The first 75350-row fast timing may overlap a brief unrelated Stata process.",
+    "Solver trace was enabled for candidate timings; complete-command costs include it.",
+    "Reference predicted means are diagnostics under ADR 0026; they do not independently validate all reported objectives.",
+    "No SCC, installed-plugin replacement, push, or cross-platform scientific qualification."
+  ]
+}

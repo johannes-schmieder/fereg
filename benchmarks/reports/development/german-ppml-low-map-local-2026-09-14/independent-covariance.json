@@ -1,0 +1,118 @@
+{
+  "finite_rank": 18,
+  "inverse_error": 6.601237172229444e-16,
+  "projections": [
+    {
+      "iterations": 808,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 6.081829164903398e-14
+    },
+    {
+      "iterations": 796,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 8.566544605887862e-14
+    },
+    {
+      "iterations": 633,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 8.321683577561345e-14
+    },
+    {
+      "iterations": 611,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 7.010214902805922e-14
+    },
+    {
+      "iterations": 577,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 6.969241222042821e-14
+    },
+    {
+      "iterations": 563,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 1.096597752396272e-13
+    },
+    {
+      "iterations": 643,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 7.44599598901893e-14
+    },
+    {
+      "iterations": 633,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 9.023955124744653e-14
+    },
+    {
+      "iterations": 181,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 5.324627306101352e-14
+    },
+    {
+      "iterations": 176,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 5.25845649532473e-14
+    },
+    {
+      "iterations": 809,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 2.3673789174947086e-13
+    },
+    {
+      "iterations": 810,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 2.2425457508254923e-13
+    },
+    {
+      "iterations": 809,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 2.5980929589495504e-13
+    },
+    {
+      "iterations": 798,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 3.291397965876709e-13
+    },
+    {
+      "iterations": 802,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 2.687578894547258e-13
+    },
+    {
+      "iterations": 811,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 2.2555535567152744e-13
+    },
+    {
+      "iterations": 795,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 2.42731734123188e-13
+    },
+    {
+      "iterations": 812,
+      "stop": 2,
+      "method": "lsmr",
+      "fresh_normal_max": 3.2821984483445e-13
+    }
+  ],
+  "modeled_scratch_bytes": 182391456,
+  "maximum_absolute_covariance_difference": 5.702903427273753e-17,
+  "maximum_envelope_ratio": 2.081927888736088e-07,
+  "pass": true
+}

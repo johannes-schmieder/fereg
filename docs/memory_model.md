@@ -204,6 +204,14 @@ concurrent pairs included. Sparse construction reuses column correction
 storage for its edges. These corrections are released during construction;
 they do not increase fit-lifetime retained state or weaken graph validation.
 
+PPML low-memory categorical MAP projects bounded scratch blocks with the
+existing certified accelerator. Its RHS capacity is capped by generated model
+width, even for oversized requested pools. Preflight charges parallel group/dot
+banks and two-FE level-PCG or multiway observation-space recurrences at that
+width, together with the scratch projection buffer. The retained design stays
+on scratch; only fast storage fuses response and design. See
+[ADR 0069](adr/0069-low-memory-ppml-categorical-projection.md).
+
 ## PPML result and saved-FE ownership
 
 PPML publication retains observation-scale products strictly from the request
