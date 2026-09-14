@@ -10,7 +10,7 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## German PPML: bounded scratch moments adopted; full retry next
+## German PPML: scratch moments adopted; full retained count verified
 
 The [source-bound report](benchmarks/reports/development/german-ppml-scratch-moments-local-2026-09-14/README.md)
 adopts bounded complete-row reads in retained scratch moments. The same Gram
@@ -42,14 +42,16 @@ interrupted after 723.36 process seconds, 65.07 GB maximum RSS and no swaps.
 Its scratch is preserved; no estimate or authoritative retained count was
 published. The new validated IRLS-entry trace exposes that count before solving.
 
-Next: retry full German PPML with exp(logrwage2), all observed extremes,
-low memory, pool four and eight threads. Verify 88,876,264 retained rows and
-then assess certified estimation/reference outputs. Residual, QR and other
-scratch row loops remain possible bottlenecks. No full PPML success is claimed.
+The full retry now passes preparation/separation and its validated IRLS-entry
+trace confirms 91,045,290 original and **88,876,264 active rows**. It uses
+exp(logrwage2), all observed extremes, low memory, pool four and eight threads.
+See the separate full-row-check receipt in the report. Estimation is running;
+no full PPML result is published. Next assess certified estimation/reference
+outputs. Residual, QR and other scratch row loops remain possible bottlenecks.
 No installed-binary replacement, cluster work or push. Original separate STATUS
 changes and untracked evidence are preserved.
 
-Roadmap: [existing progress note](https://github.com/johannes-schmieder/fereg/issues/27#issuecomment-5671590033).
+Roadmap: [scratch-moment progress](https://github.com/johannes-schmieder/fereg/issues/27#issuecomment-5671859571).
 Detailed external benchmark payloads previously failed automatic approval review;
 only minimal generic roadmap updates have been approved.
 
