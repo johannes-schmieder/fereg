@@ -1,0 +1,54 @@
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -2121,6 +2121,7 @@
+     qr: &QrFit,
+     reservation: &mut R,
+ ) -> Result<Vec<f64>> {
++    let probe_started = std::time::Instant::now();
+     let rows = prepared.fit_sample().n_active();
+     if response.len() != rows {
+         return Err(invalid_argument(
+@@ -2133,6 +2134,8 @@
+         "unable to reserve prepared OLS independent raw residual",
+     )?;
+     residuals.extend_from_slice(response);
++    let initialize_seconds = probe_started.elapsed().as_secs_f64();
++    let accumulate_started = std::time::Instant::now();
+     if let Some(columns) =
+         super::prepared_rhs::NumericOlsColumns::bind(prepared.fit_model(), prepared.fit_sample())?
+     {
+@@ -2140,6 +2143,9 @@
+     } else {
+         prepared.fit_subtract_raw_columns(&qr.generated_coefficients, &mut residuals)?;
+     }
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
++        eprintln!("FEREG_PHASE|ols_raw_residual|mode=fast|rows={rows}|generated={}|initialize={initialize_seconds:.9}|accumulate={:.9}|total={:.9}", prepared.fit_model().columns.len(), accumulate_started.elapsed().as_secs_f64(), probe_started.elapsed().as_secs_f64());
++    }
+     Ok(residuals)
+ }
+ 
+@@ -2640,12 +2646,14 @@
+         perturbations.finite_bread,
+     )?;
+ 
++    let low_raw_started = std::time::Instant::now();
+     let mut raw_residuals = reserved_filled(
+         reservation,
+         rows,
+         0.0_f64,
+         "unable to reserve low-memory prepared OLS final residual",
+     )?;
++    let low_accumulate_started = std::time::Instant::now();
+     raw_residuals
+         .par_iter_mut()
+         .enumerate()
+@@ -2664,6 +2672,9 @@
+             *residual = value;
+             Ok(())
+         })?;
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
++        eprintln!("FEREG_PHASE|ols_raw_residual|mode=low|rows={rows}|generated={}|accumulate={:.9}|total={:.9}", prepared.fit_model().columns.len(), low_accumulate_started.elapsed().as_secs_f64(), low_raw_started.elapsed().as_secs_f64());
++    }
+     let bread = finalize_reported_bread_and_intercept(
+         prepared,
+         frame.response(),

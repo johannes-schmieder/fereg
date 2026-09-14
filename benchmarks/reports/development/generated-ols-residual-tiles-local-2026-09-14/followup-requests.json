@@ -1,0 +1,652 @@
+[
+  {
+    "name": "ols_fast_aw-s8675309",
+    "group": "primary",
+    "seed": 8675309,
+    "warm_seed": 8675310,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 16,
+      "vce": "",
+      "levels": 8,
+      "h_levels": 8,
+      "name": "ols_fast_aw",
+      "design": "one_fe",
+      "n": 491520,
+      "k": 8,
+      "weight": "[aw=w]",
+      "missing": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/ols_fast_aw-s8675309-data.dta",
+    "data_sha256": "20f9f4fc0cc293174a59b965ca9151b28c1de19d72ee9f560b39e6decd183cba",
+    "data_metadata_sha256": "c17602029e129caa8cb6ec5c3b33aa4e5947b418fe97ea904d3c8bf5c95d7641",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/ols_fast_aw-s8675309-warm.dta",
+    "warm_sha256": "991d600c225bbfb702240080862f7a96bb30a2e374ff79871d11deff67ce69e2",
+    "warm_metadata_sha256": "5c293b7ef1f5b566d7ef80a6679f5f61f73765178a65729ea5f458d0ef27eb96"
+  },
+  {
+    "name": "ols_fast_aw-s20260819",
+    "group": "primary",
+    "seed": 20260819,
+    "warm_seed": 20260820,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 16,
+      "vce": "",
+      "levels": 8,
+      "h_levels": 8,
+      "name": "ols_fast_aw",
+      "design": "one_fe",
+      "n": 491520,
+      "k": 8,
+      "weight": "[aw=w]",
+      "missing": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/ols_fast_aw-s20260819-data.dta",
+    "data_sha256": "b0e5c260728e9f3c89cf4f66f1e867eecb32abde35f1b3101ac170a7c7c9bd25",
+    "data_metadata_sha256": "465fd52b902604ad8f0b306dcbc95cebf86eae7d41a9defed27fea6d0c800e79",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/ols_fast_aw-s20260819-warm.dta",
+    "warm_sha256": "1e3caacdd03e96a96baa181283ef3f1fbba2462bbb3a21134d7f95fef1530c5b",
+    "warm_metadata_sha256": "70d866bb0aef9ae284d8f591cb88b62427d74c11f33d5146fe38c566ddfa592f"
+  },
+  {
+    "name": "generated_unit-s104729",
+    "group": "primary",
+    "seed": 104729,
+    "warm_seed": 104730,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 8,
+      "h_levels": 8,
+      "name": "generated_unit",
+      "design": "one_fe",
+      "n": 491520,
+      "k": 8,
+      "missing": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_unit-s104729-data.dta",
+    "data_sha256": "5a2b26fe3e43f2c34a0e2497fd37ebc6f33a7c48d9a4c8d0c36c5fc6d54b0426",
+    "data_metadata_sha256": "8a65a15117fe588d014dca8435a3a7e32a315cdeb9e7c1409aa201832ae15d56",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_unit-s104729-warm.dta",
+    "warm_sha256": "481c19c9ee47926b73ec30abeb7039da813276edeafdefb06869a2026dbbfea4",
+    "warm_metadata_sha256": "c1220997423d96ea77faead4d62b70807c7b97b949fe03caca66e888aaaa3ac4"
+  },
+  {
+    "name": "generated_unit-s8675309",
+    "group": "primary",
+    "seed": 8675309,
+    "warm_seed": 8675310,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 8,
+      "h_levels": 8,
+      "name": "generated_unit",
+      "design": "one_fe",
+      "n": 491520,
+      "k": 8,
+      "missing": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_unit-s8675309-data.dta",
+    "data_sha256": "aa9a0d92dfd2a719d77377ea771583d9037d466e9504834652f49d8081db313c",
+    "data_metadata_sha256": "dd5742debae989c4d947567703994d6106ec800cd278152c886d31dc2592737e",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_unit-s8675309-warm.dta",
+    "warm_sha256": "bb3222a771f88c93cc188dab2d9de09a6d9952bc7ebb5bee07c07dc7120207de",
+    "warm_metadata_sha256": "d45b94598c3d4d131719d758d65d6baa5c4b73df0a8cfa786c5fc8b9c2b1e8b6"
+  },
+  {
+    "name": "generated_unit-s20260819",
+    "group": "primary",
+    "seed": 20260819,
+    "warm_seed": 20260820,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 8,
+      "h_levels": 8,
+      "name": "generated_unit",
+      "design": "one_fe",
+      "n": 491520,
+      "k": 8,
+      "missing": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_unit-s20260819-data.dta",
+    "data_sha256": "a8cd6ded83d386c862b02d74c0814e37401931a80e01531b39c8ac55ebc915cc",
+    "data_metadata_sha256": "910833bd2e335f3aa67dd038936f9982f9851d8779ca7cbe1e21620b402c9abd",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_unit-s20260819-warm.dta",
+    "warm_sha256": "0da45055628d589378e72fb4be63572289a3b0cd791103b07c379ef30d0d32a8",
+    "warm_metadata_sha256": "4ea9ac489b23f0d785cd74f51ea652598d068ae699538ca9631becca285d8902"
+  },
+  {
+    "name": "generated_pw-s104729",
+    "group": "primary",
+    "seed": 104729,
+    "warm_seed": 104730,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "levels": 8,
+      "h_levels": 8,
+      "name": "generated_pw",
+      "design": "one_fe",
+      "n": 491520,
+      "k": 8,
+      "weight": "[pw=w]",
+      "missing": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_pw-s104729-data.dta",
+    "data_sha256": "5684d0ef5b63137d99ca430c766af57d9424ca24509f836921c0b7fce14e3916",
+    "data_metadata_sha256": "08822e52961852ad5ec20da0cbbc1e61438e71a171bfa02985b274387eb2accd",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_pw-s104729-warm.dta",
+    "warm_sha256": "13181878fb3fcb1f4f6bc65935ef9d0df0250348b986819417bf73e05c1332f5",
+    "warm_metadata_sha256": "ddc9163690ac42a18f82f52dd19537e2287f71c239a49d80cb0d1d79e51f255a"
+  },
+  {
+    "name": "generated_pw-s8675309",
+    "group": "primary",
+    "seed": 8675309,
+    "warm_seed": 8675310,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "levels": 8,
+      "h_levels": 8,
+      "name": "generated_pw",
+      "design": "one_fe",
+      "n": 491520,
+      "k": 8,
+      "weight": "[pw=w]",
+      "missing": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_pw-s8675309-data.dta",
+    "data_sha256": "30726c43df00e97ea984929d7ae1c9f151924499164dd1b96583cb1186be156e",
+    "data_metadata_sha256": "a13a93a3801c90bc43d3b340ee7fdbd2564f844e8fe42372cdbf5db97e29e11c",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_pw-s8675309-warm.dta",
+    "warm_sha256": "ca9e96dba9562e8bb8f6d4f2314b7c385d709404caca93aa395c39d9e5d35ede",
+    "warm_metadata_sha256": "eef18c52848eb8d7cbe3ce0076aee5858e0d6d96d534715033b99619a40be513"
+  },
+  {
+    "name": "generated_pw-s20260819",
+    "group": "primary",
+    "seed": 20260819,
+    "warm_seed": 20260820,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "levels": 8,
+      "h_levels": 8,
+      "name": "generated_pw",
+      "design": "one_fe",
+      "n": 491520,
+      "k": 8,
+      "weight": "[pw=w]",
+      "missing": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_pw-s20260819-data.dta",
+    "data_sha256": "8858f51fb7fb64dc15e5474d6ae53a767231629714cca4dc8e4f7b23a7836288",
+    "data_metadata_sha256": "5a790b7a0f4451cf55e5352bd692a14e38c14b99c487caeb146a6081aafddec4",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/generated_pw-s20260819-warm.dta",
+    "warm_sha256": "9f528e406ff04db6ad1e21ad3e4ec88ded82cb4a1184dc0057379eede29fce54",
+    "warm_metadata_sha256": "50a19c285aababc27933825c436337d4ce4d2a7cf830d584eb466fb2d5b5f7e0"
+  },
+  {
+    "name": "weak_d3-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "weak_d3",
+      "design": "weak_d3",
+      "n": 30720,
+      "k": 2,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "rhs": "x1-x2 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/weak_d3-s31415927-data.dta",
+    "data_sha256": "436690939184a0dbedf379444b51b59bce5d8b550a0568eb2c963d67ef404ffc",
+    "data_metadata_sha256": "b6b55aa3be3c31505a90f85f62fe855af75ea061f6228258d21e90d230b98300",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/weak_d3-s31415927-warm.dta",
+    "warm_sha256": "fdcf64ec31528911479a1806819e7ef91622e3e22640cb9d08badf7dba72ba73",
+    "warm_metadata_sha256": "9c978ee5dcf96e610d6f219278e46ea9c2f4cd09d520e736c8a8a4d3addb6b0a"
+  },
+  {
+    "name": "bottleneck_ring-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "bottleneck_ring",
+      "design": "bottleneck_ring",
+      "n": 30720,
+      "k": 2,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "rhs": "x1-x2 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/bottleneck_ring-s31415927-data.dta",
+    "data_sha256": "de61845388600d5d1810615be34f429aa16652618d3f5d19aaf6a1abfd0536e6",
+    "data_metadata_sha256": "790e8a2e2010ea4b35ce97273e31aefdf8b3ce148fa424120e3bf8941af99bda",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/bottleneck_ring-s31415927-warm.dta",
+    "warm_sha256": "9f1c1e4a2a7f45bd9d1913ab4d69f754e8e9982bd7012000b1f7202d161b0f53",
+    "warm_metadata_sha256": "57cab454c8b1f91c3de60cdb12bb8324b1e15345403158979615f8acac23600a"
+  },
+  {
+    "name": "cycle-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "cycle",
+      "design": "cycle",
+      "n": 30720,
+      "k": 2,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "rhs": "x1-x2 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/cycle-s31415927-data.dta",
+    "data_sha256": "11e13db70b983a7e86871a0e39ac43fd466cd37d6b77672319d50c5eeabec8b4",
+    "data_metadata_sha256": "d187c689a9bbced5b0ec606702b6f35f993c4b50627194a9d151fd488b6b1d40",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/cycle-s31415927-warm.dta",
+    "warm_sha256": "4bf141fdd246646f1217f298ddfd6858b13f0ce9e71c725c18d2325b37944f56",
+    "warm_metadata_sha256": "7c2edb208668c7ada32c9577ce185bf36048868ed5238b435715e1e00c4e3dc2"
+  },
+  {
+    "name": "disconnected_blocks-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "disconnected_blocks",
+      "design": "disconnected_blocks",
+      "n": 30720,
+      "k": 2,
+      "weight": "[fw=w]",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "rhs": "x1-x2 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/disconnected_blocks-s31415927-data.dta",
+    "data_sha256": "e4d97125f49879fbb777b26b59a7aa1c44b1383795b55986c71270b2ce3f613d",
+    "data_metadata_sha256": "027452f534741fb172bdd6cb8bcd52c2caf1fd8adf719136047b10ddbac68a0a",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/disconnected_blocks-s31415927-warm.dta",
+    "warm_sha256": "eab107541b1a78cdc140d6cccca25c0cb2d7dd94f11bcc38c4fe751778cc05a4",
+    "warm_metadata_sha256": "7132e352bd74c0a1ad98b77c854691875eb5716591145f5780a639d93901c152"
+  },
+  {
+    "name": "unbalanced-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "robust",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "unbalanced",
+      "design": "unbalanced",
+      "n": 30720,
+      "k": 2,
+      "weight": "[aw=w]",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "rhs": "x1-x2 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/unbalanced-s31415927-data.dta",
+    "data_sha256": "8d69c9f9bf5e29d373516680ebb24cc532e952471cf62cb07c0a9038d287819f",
+    "data_metadata_sha256": "0c82f203502591cecd05bb86470f7da2754e35cba23a98d83974194730234045",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/unbalanced-s31415927-warm.dta",
+    "warm_sha256": "a90ee634a1facb32924eaec1de36a87eb670f49d6c54ad349c0cfdf441257cfb",
+    "warm_metadata_sha256": "bfc4703bfc5e46c8ae1b09b6027284180f7d3e8ad64925565780d828bfae6a50"
+  },
+  {
+    "name": "three_fe-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "three_fe",
+      "design": "three_fe_sparse",
+      "n": 30720,
+      "k": 8,
+      "effects": [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "weight": "[fw=w]",
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/three_fe-s31415927-data.dta",
+    "data_sha256": "2ac59a3758b6a16aa974c876170e700ab2e1c583e234573a4fe4c755ae18e02b",
+    "data_metadata_sha256": "a34e80c9553721d630b0b161edf5303a9f0273affe8ec983772f21dbddc8fa5c",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/three_fe-s31415927-warm.dta",
+    "warm_sha256": "e3dcc224c1832a680e47985e345ab421d39815314797c50d746b36c6b03ee5bd",
+    "warm_metadata_sha256": "528b69f5a61d74e02c53de1a57bc9a184d929256e53b8cf817e2ca4e382f6b37"
+  },
+  {
+    "name": "slope-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "slope",
+      "design": "one_fe",
+      "n": 8193,
+      "k": 8,
+      "absorb": "g1##c.z",
+      "slope": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/slope-s31415927-data.dta",
+    "data_sha256": "455ddcbde69eb54ddebaafdd4fead743c54a3594859c142f3117c1eddc7f6d8f",
+    "data_metadata_sha256": "7dec6244841b94c5163b72e155365308f4c972669a384fd585db1d27ed7a56f4",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/slope-s31415927-warm.dta",
+    "warm_sha256": "ae90e8215cfd1d08c094ca72ce4f1ede9430a69c221ac3a013fcbd05cfbf9873",
+    "warm_metadata_sha256": "4ef8d639be3e552a4464551a1a9cc57feb025114ce8d0131cf0b896614de04f0"
+  },
+  {
+    "name": "saved-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "saved",
+      "design": "one_fe",
+      "n": 30720,
+      "k": 8,
+      "weight": "[aw=w]",
+      "absorb": "saved_g=g1",
+      "fit_options": "residuals(saved_e)",
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/saved-s31415927-data.dta",
+    "data_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+    "data_metadata_sha256": "cb6f806d5507da61712ee9078a3b205b9e6b467e7f6f147688243c58fd811527",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/saved-s31415927-warm.dta",
+    "warm_sha256": "5d4894bde81aa245a60da885f08f005d71bf1c912dc53f032d015c6c5d6f086e",
+    "warm_metadata_sha256": "a81a9ac8447899b63249871d724d74f34f9b0273148c5a506d37a6786de73510"
+  },
+  {
+    "name": "small_generated-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 8,
+      "name": "small_generated",
+      "design": "one_fe",
+      "n": 4095,
+      "k": 8,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/small_generated-s31415927-data.dta",
+    "data_sha256": "b22337f953ae079d9615b35b96f66e351dc06015a8358e7cee2ba400bce45380",
+    "data_metadata_sha256": "0f80f395dc043f143b3181594b96a5dca54f9a133f9fa06b19a40cc826d60736",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/small_generated-s31415927-warm.dta",
+    "warm_sha256": "076f056bf2340d22904b47ea1151e63ceac6195bd7cbf3fcaf771e1332f23a95",
+    "warm_metadata_sha256": "c7fed9fa9e9403c50487289aa04588c8a4bc2259939e11a91c6a0b57cc54c521"
+  },
+  {
+    "name": "small_numeric-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 1,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "small_numeric",
+      "design": "one_fe",
+      "n": 7680,
+      "k": 2,
+      "numeric_only": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x2"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/small_numeric-s31415927-data.dta",
+    "data_sha256": "35de656ba4b2849c3d2437f3d7f41d7b22f6c3b6ed3e2350c8e9506af77f7305",
+    "data_metadata_sha256": "09b48eb54528ed9fe8d3567b0939684c429f0481b17115ea5a503481f8facd5f",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/small_numeric-s31415927-warm.dta",
+    "warm_sha256": "20957e1d8db50b7e3d1f2e987163c85f349987719de4cbbe7c437f8d429a5782",
+    "warm_metadata_sha256": "32cac4562d8da2b307426c01c528fa43eed63052fe7e76bee809cffb69285324"
+  },
+  {
+    "name": "topology_rank-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "topology_rank",
+      "design": "one_fe",
+      "n": 30720,
+      "k": 3,
+      "absorb": "g1 f",
+      "effects": [
+        "g1",
+        "f"
+      ],
+      "rank_deficient": true,
+      "rhs": "x1-x3 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/topology_rank-s31415927-data.dta",
+    "data_sha256": "e759cea42ccc5e3f457af1b44dc6cd50fd423936ea280add9f6182216bd52815",
+    "data_metadata_sha256": "ad9bf20a5a71a03d1a51cbf14a33b104193bd388e4de1dae9e1f4766046f715b",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/topology_rank-s31415927-warm.dta",
+    "warm_sha256": "07e58edea6ad65de579af47e7c32c661acd38e48d9167d85095ddd24d212f76f",
+    "warm_metadata_sha256": "f131dbc02cf0fec6f2e2302f8fa5aea8abbb9335a6e6672e0872e9b1238abdd6"
+  },
+  {
+    "name": "width7-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 2,
+      "h_levels": 2,
+      "name": "width7",
+      "design": "one_fe",
+      "n": 8193,
+      "k": 3,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x3 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/width7-s31415927-data.dta",
+    "data_sha256": "90a67c183727bb55088b7bbdb7804012f6f92cec24a850a40c79f5d1df1d12e0",
+    "data_metadata_sha256": "438c70667029c09beeb83062c85d639ffc8b71635d8d765d001e7a66ac67a9fb",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/width7-s31415927-warm.dta",
+    "warm_sha256": "ebd4b61a9222300f0c9fabbbe50e8465a9dd4f7c4f1828e270015ed6105ae44f",
+    "warm_metadata_sha256": "07c6aed1fc5afbdd567c178b2ddd6a28ac450ddbca689b3eb476a9ed91ec1b33"
+  },
+  {
+    "name": "width8-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "",
+      "levels": 2,
+      "h_levels": 2,
+      "name": "width8",
+      "design": "one_fe",
+      "n": 8193,
+      "k": 4,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x4 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/width8-s31415927-data.dta",
+    "data_sha256": "23f454f9e04f8b58297941bc09e164b60c110e05ecabc8f208349454db0f8221",
+    "data_metadata_sha256": "9a97926dabe3f581875494b1bcc44540c4b2228df2bbd02cb8408bdeb3c34561",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/width8-s31415927-warm.dta",
+    "warm_sha256": "d9ef0b0e4283c36add97b7c9c8e6d0f6de2101f68c30d6259932d8f1b220b67a",
+    "warm_metadata_sha256": "f91e3816fef4dc0351f96f7809a889b11d3b2db19e65f1b520cb63e0ef1d4307"
+  },
+  {
+    "name": "weighted_cut-s31415927",
+    "group": "control",
+    "seed": 31415927,
+    "warm_seed": 31415928,
+    "cell": {
+      "section": "width",
+      "model": "ols",
+      "threads": 4,
+      "vce": "robust",
+      "levels": 4,
+      "h_levels": 4,
+      "name": "weighted_cut",
+      "design": "weighted_cut",
+      "n": 16384,
+      "k": 2,
+      "weight": "[pw=w]",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "rhs": "x1-x2 i.f##i.h"
+    },
+    "data": "${GENERATED_OLS_RESIDUAL_ROOT}/data/weighted_cut-s31415927-data.dta",
+    "data_sha256": "77498a67948ef4101eec046cb6a989be9219ef3287b6970056a02ff229d4062d",
+    "data_metadata_sha256": "137bb613f6a57551d936f1e4e60f8a32ae45ecbc97ab5877ca0a6f17436a58c8",
+    "warm": "${GENERATED_OLS_RESIDUAL_ROOT}/data/weighted_cut-s31415927-warm.dta",
+    "warm_sha256": "db6b60221c71fd3572b6d9cce63b518e24dc0880c17d40f348d3be9492a3d1e3",
+    "warm_metadata_sha256": "42b285d42af3953cc5e1c4460570632cc285eb9e99c96eed5915b3c27898cad4"
+  }
+]

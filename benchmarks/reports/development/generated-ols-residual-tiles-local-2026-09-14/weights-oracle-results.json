@@ -1,0 +1,32 @@
+[
+  {
+    "arm": "baseline",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "fits": [
+      "ppml_unit",
+      "ppml_pw"
+    ],
+    "sentinel": true,
+    "fixture_sha256": "d262160510d7f0f20c94c428adee3fff031160a9b28a97093cac96103aa4af6f",
+    "plugin": "e6978061081c90606a035da5f0cedd6c979f324e1eba2bf146860b057cdfd501",
+    "log_sha256": "374f0936b6b5084ae1d93fca3472a18ee2b093e33f8a22cf5bf14d26827017c2"
+  },
+  {
+    "arm": "candidate",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "fits": [
+      "ppml_unit",
+      "ppml_pw"
+    ],
+    "sentinel": true,
+    "fixture_sha256": "d262160510d7f0f20c94c428adee3fff031160a9b28a97093cac96103aa4af6f",
+    "plugin": "e97dee05c0ba3f98cfc02bb050b231b48a7f7ee403be8013047ac9c18ee4054e",
+    "log_sha256": "ccf0487e2bcddec8df9ef3f062c9d46cc5c9e9d905d829ef4be41024fc75cadf"
+  }
+]

@@ -10,6 +10,36 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P6 generated OLS residual tiles: rejected; P0 three-FE memory gap
+
+The [source-bound report](benchmarks/reports/development/generated-ols-residual-tiles-local-2026-09-14/README.md)
+rejects candidate `e97dee05` against accepted `25bf610`/plugin `e6978061`.
+Shared generated recipe tiles preserve each prepared layout's absent-indicator
+FMA semantics. All 16 core/95 plugin tests, eight independent licensed fits per
+artifact and universal/static/arm64 ABI checks pass. All 25 untraced pairs retain
+exact science/solver fields. Repeated AW/unit/PW command medians are
+1.095→1.039 / 1.252→1.195 / 1.553→1.484 seconds; median paired gains are
+5.18%/5.25%/4.44%. PW misses the predeclared 5% repeated-primary gate. Separate
+original-input diagnostics locate 77.978 ms in fast raw-residual accumulation;
+low construction stays about 4.2 ms. Largest control cost is low PW +48 ms/2.21%.
+
+All paired native peaks are exact, but the original actual-three-FE FW OLS
+control peaks at 50,265,168 bytes against a reported 22,983,168-byte selected model
+on both artifacts. This is a baseline P0 memory-accounting gap, not an admitted
+control. Other cases fit their models; PW sampled RSS rises. Both violations,
+all 56 captures and the summary's failed admission assertion remain. No extra
+repeats/public cap calls follow rejection. All 178 accepted source inputs are
+restored; the prototype source/patch/artifacts remain isolated and archived.
+
+Seven P0–P7 items remain. Next diagnose and repair that three-FE memory gap on its
+original full/warm inputs before broader timing work. Then finish generated/shared
+layouts, remaining PPML state/construction, P7 scheduling and P0 full accounting.
+Outer Stata work is also material in the generated targets (about 0.44–0.53 s)
+but is not yet attributed to a particular ado consumer. R1–R5 remain excluded;
+independent reviews, upstream CMG assessment and the bounded SCC campaign follow
+P0–P7. Installed dist, unrelated STATUS additions and original untracked files
+remain. No agents, upstream changes, cluster work or push occurred.
+
 ## P4/P6 generated finite-predictor tiles: adopted local checkpoint
 
 The [source-bound report](benchmarks/reports/development/generated-predictor-tiles-local-2026-09-14/README.md)

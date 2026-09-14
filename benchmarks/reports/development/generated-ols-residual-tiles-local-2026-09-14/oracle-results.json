@@ -1,0 +1,40 @@
+[
+  {
+    "arm": "baseline",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "fits": [
+      "aw_fast",
+      "aw_iid",
+      "pw_low",
+      "fw_three",
+      "unit_slope",
+      "ppml_fw"
+    ],
+    "sentinel": true,
+    "fixture_sha256": "4b330bd8d9a527a5d29d8b1aed459a8e4edec9024370dac9d9e5ddaf311a9812",
+    "plugin": "e6978061081c90606a035da5f0cedd6c979f324e1eba2bf146860b057cdfd501",
+    "log_sha256": "fb49e1b85782dae484001435eb99d5182b7111a4222fd5498c07e18f114d791d"
+  },
+  {
+    "arm": "candidate",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "fits": [
+      "aw_fast",
+      "aw_iid",
+      "pw_low",
+      "fw_three",
+      "unit_slope",
+      "ppml_fw"
+    ],
+    "sentinel": true,
+    "fixture_sha256": "4b330bd8d9a527a5d29d8b1aed459a8e4edec9024370dac9d9e5ddaf311a9812",
+    "plugin": "e97dee05c0ba3f98cfc02bb050b231b48a7f7ee403be8013047ac9c18ee4054e",
+    "log_sha256": "f9fbbef8e90f898dbde4f25fe3b1bd91395bfcf5ac6a7349934c487a9c310778"
+  }
+]
