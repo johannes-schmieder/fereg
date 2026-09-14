@@ -228,6 +228,17 @@ or slope cannot create an uncharged post-preflight vector.
 
 ## PPML separation memory
 
+The prepared singleton fixed point uses one N-capacity machine-word queue
+(reused for sorted output), two N-byte masks including its working activity
+mask, and one exact `u128` multiplicity per unique FE-partition level. It also
+reserves D+1 word offsets, D borrowed code/membership views and at most the
+loaded-source count of categorical views. The planner bounds unique partitions
+and levels by the declared FE dimensions/total levels and charges these concrete
+type widths for initial, replay and separation-induced cascades in both routes.
+The queue and selection mask are skipped when no singleton exists. Frequency
+weights retain exact integer counting; unit and probability weights count rows.
+No singleton observation state is allocated before memory admission.
+
 The PPML path adds its own fit-lifetime plan without changing OLS
 memory modes or thresholds. Its simplex detector operates on the complete
 prepared model span, including finite columns, one indicator per finalized

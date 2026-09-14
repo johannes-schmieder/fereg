@@ -1257,69 +1257,35 @@ fn singleton_fixed_point_all(
 fn singleton_fixed_point_owned(
     topology: &DetectorTopology<'_>,
     generation: &PreparedPpmlModelGeneration,
-    mut active: Vec<bool>,
+    active: Vec<bool>,
 ) -> Result<Vec<usize>> {
-    let mut dropped = Vec::new();
-    dropped
-        .try_reserve_exact(active.len())
-        .map_err(|_| allocation("unable to reserve prepared singleton drop rows"))?;
-    let mut pass = Vec::new();
-    pass.try_reserve_exact(active.len())
-        .map_err(|_| allocation("unable to reserve prepared singleton pass rows"))?;
-    let mut selected = fallible_filled(
-        active.len(),
-        false,
-        "unable to reserve prepared singleton pass selection mask",
+    let categorical = generation.prepared().categorical().ok_or_else(|| {
+        invalid_argument("prepared singleton model has no categorical topology")
+    })?;
+    let finalized = categorical.fe_topology();
+    let views = fallible_collect(
+        finalized.compacted_sources().iter().map(|source| source.view()),
+        finalized.compacted_sources().len(),
+        "unable to reserve prepared singleton categorical views",
     )?;
-    loop {
-        pass.clear();
-        selected.fill(false);
-        for source in &topology.sources {
-            for level in 0..source.n_levels() {
-                let mut multiplicity = 0_u128;
-                let mut sole_row = None;
-                for &row in source.checked_members(level)? {
-                    if !active[row] {
-                        continue;
-                    }
-                    let row_multiplicity =
-                        if generation.weight_report().kind == Some(WeightKind::Frequency) {
-                            generation.prior_weights()[row] as u128
-                        } else {
-                            1
-                        };
-                    multiplicity = multiplicity.checked_add(row_multiplicity).ok_or_else(|| {
-                        FeregError::new(
-                            ErrorCode::InvalidData,
-                            "prepared singleton multiplicity overflowed",
-                        )
-                    })?;
-                    sole_row = Some(row);
-                }
-                if multiplicity == 1 {
-                    let row = sole_row.expect("unit singleton has one active row");
-                    if !selected[row] {
-                        selected[row] = true;
-                        pass.push(row);
-                    }
-                }
-            }
-        }
-        pass.sort_unstable();
-        pass.dedup();
-        pass.retain(|row| active[*row]);
-        if pass.is_empty() {
-            break;
-        }
-        for &row in &pass {
-            active[row] = false;
-        }
-        dropped.extend(pass.iter().copied());
+    let mut sources = Vec::new();
+    sources.try_reserve_exact(topology.sources.len())
+        .map_err(|_| allocation("unable to reserve prepared singleton source views"))?;
+    for (source, members) in finalized.registry().sources().iter().zip(&topology.sources) {
+        bounded_push(
+            &mut sources,
+            topology.sources.len(),
+            (source.codes(&views)?, *members),
+            "prepared singleton source-view capacity exhausted",
+        )?;
     }
-    dropped.sort_unstable();
-    dropped.dedup();
-    Ok(dropped)
+    let frequency = (generation.weight_report().kind == Some(WeightKind::Frequency))
+        .then(|| generation.prior_weights());
+    singleton::prune(&sources, active, frequency)
 }
+
+#[path = "prepared_singleton.rs"]
+mod singleton;
 
 struct ExactFeProposal {
     rows: Vec<usize>,

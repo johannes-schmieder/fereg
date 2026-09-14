@@ -10,6 +10,50 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Universal singleton pruning: prepared PPML queue adopted locally
+
+The [incremental source-bound report](benchmarks/reports/development/ppml-singleton-index-local-2026-09-14/README.md)
+extends parent `73aef645edc2` to production prepared PPML, which previously used
+its own repeated membership-pass loop. Every production OLS/PPML singleton
+entry path now uses an amortized linear fixed-point algorithm, independently of
+fast/low/auto memory, solver, covariance or supported weight policy. PPML reuses
+its CSR and partition codes, maintains exact `u128` frequency counts, queues each
+deletion once and emits sorted proposals. Separation-triggered cascades use the
+same boundary. Concrete per-level/row/view costs are admitted before preparation;
+no-drop samples skip queue and selection-mask allocation. Ledger/reason ordering,
+interruption and transactional publication are unchanged.
+
+All 302 PPML core tests and three focused licensed fixtures pass. The new fixture
+includes 14 native fits, exact drop reasons and samples, rank/status, DoF, final
+weight normalization and covariance, with independent dummy Poisson coefficients
+and fitted means. 640 unit/frequency multiway cases match a pass oracle; cascade
+scale doubling bounds membership visits by 2*D*N. All 177 compiled inputs match
+the adopted main source; isolated universal plugin is `312c7546`. Installed dist
+remains `4187efdf` and was not rebuilt.
+
+In 36 local paired commands, the 36,864-row PPML cascade falls 2.123→0.298 s;
+its singleton/FE-separation phase falls 2.004218→0.001000 s. Recorded slope,
+variance, counts, rank, DoF, deviance and iteration/fallback fields match exactly.
+Fallback counts are zero. The largest cascade's native allocation peak increases
+by 46,176 bytes; other case peaks and all scratch/selected model values match.
+Balanced fast/low command medians are 1.1%/1.8% slower despite slightly faster
+separation; three pairs do not establish this small variation as systematic.
+A one-pass singleton kernel retains 0.03 ms overhead. Initial balanced-counter
+regression was rejected before adoption; all raw receipts remain local.
+
+Fresh pinned-reghdfe OLS screens on 75,350, 151,029 and 378,124 input rows pass
+in both memory modes, retaining 65,503, 132,691 and 338,054 rows with exact masks
+and DoF. Maximum coefficient difference is 1.11e-11. The largest subset costs
+57.512/56.901 s (low/fast) versus reghdfe's 31.613 s: a useful weak-graph control,
+not a speed win. These use the parent plugin and are single diagnostic timings.
+
+Next: resolve the full German OLS bread-inverse certificate failure without
+relaxing its tolerance, beginning with independent reduction/QR evidence. The
+full 88,876,264-row retained count is already verified, but full estimation has
+not succeeded. German PPML outcome clarification is pending; no empirical PPML
+success is claimed. #27 priorities and the unrelated action-memory/PPML repair
+work remain open. No cluster work, installed-binary replacement or push occurred.
+
 ## AKM singleton pruning: indexed linear-time fix, full retained count verified
 
 The [source-bound report](benchmarks/reports/development/singleton-index-local-2026-09-14/README.md)

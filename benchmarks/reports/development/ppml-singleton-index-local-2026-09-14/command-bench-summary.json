@@ -1,0 +1,152 @@
+[
+  {
+    "shape": "balanced",
+    "n": 135168,
+    "mode": "fast",
+    "baseline": {
+      "command_seconds": 0.262,
+      "feppml_time_preparation": 0.018839084,
+      "feppml_time_separation_fe": 0.000803833,
+      "feppml_allocation_peak_delta": 126218802.0,
+      "feppml_memory_selected_bytes": 239335624.0,
+      "feppml_scratch_bytes": 0.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    },
+    "candidate": {
+      "command_seconds": 0.265,
+      "feppml_time_preparation": 0.018969916,
+      "feppml_time_separation_fe": 0.000731833,
+      "feppml_allocation_peak_delta": 126218802.0,
+      "feppml_memory_selected_bytes": 239335624.0,
+      "feppml_scratch_bytes": 0.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    }
+  },
+  {
+    "shape": "balanced",
+    "n": 135168,
+    "mode": "low",
+    "baseline": {
+      "command_seconds": 1.848,
+      "feppml_time_preparation": 0.017982667,
+      "feppml_time_separation_fe": 0.000786208,
+      "feppml_allocation_peak_delta": 108448996.0,
+      "feppml_memory_selected_bytes": 137507864.0,
+      "feppml_scratch_bytes": 1081344.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    },
+    "candidate": {
+      "command_seconds": 1.882,
+      "feppml_time_preparation": 0.017841458,
+      "feppml_time_separation_fe": 0.000762166,
+      "feppml_allocation_peak_delta": 108448996.0,
+      "feppml_memory_selected_bytes": 137507864.0,
+      "feppml_scratch_bytes": 1081344.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    }
+  },
+  {
+    "shape": "chain",
+    "n": 12288,
+    "mode": "low",
+    "baseline": {
+      "command_seconds": 0.326,
+      "feppml_time_preparation": 0.000850584,
+      "feppml_time_separation_fe": 0.152934042,
+      "feppml_allocation_peak_delta": 8368958.0,
+      "feppml_memory_selected_bytes": 12669976.0,
+      "feppml_scratch_bytes": 32768.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    },
+    "candidate": {
+      "command_seconds": 0.297,
+      "feppml_time_preparation": 0.000860708,
+      "feppml_time_separation_fe": 0.000510541,
+      "feppml_allocation_peak_delta": 8368958.0,
+      "feppml_memory_selected_bytes": 12669976.0,
+      "feppml_scratch_bytes": 32768.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    }
+  },
+  {
+    "shape": "chain",
+    "n": 20480,
+    "mode": "low",
+    "baseline": {
+      "command_seconds": 0.653,
+      "feppml_time_preparation": 0.001119292,
+      "feppml_time_separation_fe": 0.539386834,
+      "feppml_allocation_peak_delta": 13685566.0,
+      "feppml_memory_selected_bytes": 21066776.0,
+      "feppml_scratch_bytes": 32768.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    },
+    "candidate": {
+      "command_seconds": 0.294,
+      "feppml_time_preparation": 0.001154875,
+      "feppml_time_separation_fe": 0.000674168,
+      "feppml_allocation_peak_delta": 13685566.0,
+      "feppml_memory_selected_bytes": 21066776.0,
+      "feppml_scratch_bytes": 32768.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    }
+  },
+  {
+    "shape": "chain",
+    "n": 36864,
+    "mode": "low",
+    "baseline": {
+      "command_seconds": 2.123,
+      "feppml_time_preparation": 0.001633749,
+      "feppml_time_separation_fe": 2.004218125,
+      "feppml_allocation_peak_delta": 24318782.0,
+      "feppml_memory_selected_bytes": 37860376.0,
+      "feppml_scratch_bytes": 32768.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    },
+    "candidate": {
+      "command_seconds": 0.298,
+      "feppml_time_preparation": 0.001646208,
+      "feppml_time_separation_fe": 0.001000208,
+      "feppml_allocation_peak_delta": 24364958.0,
+      "feppml_memory_selected_bytes": 37860376.0,
+      "feppml_scratch_bytes": 32768.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    }
+  },
+  {
+    "shape": "half",
+    "n": 36864,
+    "mode": "low",
+    "baseline": {
+      "command_seconds": 0.497,
+      "feppml_time_preparation": 0.003393293,
+      "feppml_time_separation_fe": 0.001929375,
+      "feppml_allocation_peak_delta": 25836884.0,
+      "feppml_memory_selected_bytes": 37860376.0,
+      "feppml_scratch_bytes": 163840.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    },
+    "candidate": {
+      "command_seconds": 0.494,
+      "feppml_time_preparation": 0.003242583,
+      "feppml_time_separation_fe": 0.001943542,
+      "feppml_allocation_peak_delta": 25836884.0,
+      "feppml_memory_selected_bytes": 37860376.0,
+      "feppml_scratch_bytes": 163840.0,
+      "feppml_fallback_count": 0.0,
+      "feppml_solver_fallback_count": 0.0
+    }
+  }
+]

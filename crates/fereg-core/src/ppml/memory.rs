@@ -17,7 +17,7 @@ use super::{
 use crate::data::DropReason;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    FeSolverKind, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS,
+    CategoricalCodeView, LevelIndex, FeSolverKind, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS,
     PARALLEL_DOT_CHUNK_ROWS, PARALLEL_PROJECTION_MIN_ROWS,
 };
 use crate::metadata::CoefficientSlot;
@@ -183,8 +183,8 @@ pub struct PpmlMemoryDimensions {
     /// Maximum observation-vector count required by any enabled detector.
     pub separation_workspace_vectors: usize,
     /// Whether the exact singleton fixed-point policy is requested. It has a
-    /// mixed bool/usize workspace that cannot be inferred from the numerical
-    /// detector's f64-vector count.
+    /// row queue, byte masks, and exact per-level u128 multiplicities that
+    /// cannot be inferred from the numerical detector's f64-vector count.
     pub separation_singleton_enabled: bool,
     /// Frozen count of requested singleton/FE/simplex/IR/Mu policies (0..=5).
     /// The exact retained execution-record ceiling is this count times the
@@ -1025,10 +1025,18 @@ fn estimate_route(
     )?;
     let separation_singleton_workspace_bytes = if dimensions.separation_singleton_enabled {
         checked_sum(&[
+            checked_mul(levels, size_of::<u128>() as u128,
+                "PPML singleton exact multiplicity bytes")?,
+            checked_mul(checked_sum(&[fe, 1])?, word,
+                "PPML singleton source offset bytes")?,
+            checked_mul(fe, size_of::<(&[u32], &LevelIndex)>() as u128,
+                "PPML singleton borrowed source views")?,
+            checked_mul(loaded, size_of::<CategoricalCodeView<'_>>() as u128,
+                "PPML singleton compact categorical views")?,
             checked_mul(
-                checked_mul(n, 2, "PPML singleton row workspaces")?,
+                n,
                 word,
-                "PPML singleton row-workspace bytes",
+                "PPML singleton queue and sorted output bytes",
             )?,
             checked_mul(
                 n,
@@ -4322,6 +4330,25 @@ mod tests {
             wider_inventory.preparation_peak_bytes,
             (wider_common + wider_staging).max(wider_inventory.iteration_peak_bytes),
         );
+    }
+
+    #[test]
+    fn singleton_queue_and_level_counters_are_admitted_for_both_routes() {
+        let mut dims = dimensions();
+        dims.separation_singleton_enabled = true;
+        let expected = dims.observations as u128
+            * (size_of::<usize>() + 2 * size_of::<bool>()) as u128
+            + dims.fe_total_levels as u128 * size_of::<u128>() as u128
+            + (dims.fe_dimensions as u128 + 1) * size_of::<usize>() as u128
+            + dims.fe_dimensions as u128 * size_of::<(&[u32], &LevelIndex)>() as u128
+            + dims.loaded_numeric_columns as u128 * size_of::<CategoricalCodeView<'_>>() as u128;
+        let estimate = estimate_ppml_memory(dims, PpmlMemoryConfig::default()).unwrap();
+        assert_eq!(estimate.fast.separation_singleton_workspace_bytes, expected);
+        assert_eq!(estimate.low.separation_singleton_workspace_bytes, expected);
+        dims.separation_singleton_enabled = false;
+        let disabled = estimate_ppml_memory(dims, PpmlMemoryConfig::default()).unwrap();
+        assert_eq!(disabled.fast.separation_singleton_workspace_bytes, 0);
+        assert_eq!(disabled.low.separation_singleton_workspace_bytes, 0);
     }
 
     #[test]

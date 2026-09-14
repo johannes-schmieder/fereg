@@ -32,7 +32,7 @@ identified combinations, residuals, absorbed sums, and normalization rules.
 
 ## Singleton pruning
 
-Pruning counts each effect's active multiplicity, then maintains the XOR of
+The shared OLS/legacy-ledger pruner counts each effect's active multiplicity, then maintains the XOR of
 active observation indices for each level. Validated multiplicities are positive
 integers: a level with unit mass contains exactly one physical row, whose index
 is its XOR. Deleting that row updates every affected level without searching
@@ -47,6 +47,24 @@ reservation is fallible. If the initial counts contain no singleton, pruning
 returns before allocating the XOR index, markers, queue or dropped-row list.
 Caller-thread interruption and transactional publication boundaries are unchanged;
 the pruning kernel does not call Stata SPI.
+
+Production prepared PPML uses its immutable generation's existing compressed
+membership and authoritative partition codes. It counts exact `u128` frequency
+multiplicity (physical rows for unit/probability weights), then queues each
+deleted row once. Counts decrease in all affected partitions. A level can reach
+unit mass at most once, so finding its survivor scans that level's membership
+at most once after counting. A final mask scan returns sorted compact-row
+proposals without a dropped-row sort. Each singleton fixed-point invocation is
+O(D*N + L), including cascades after certified separation. This does not assert
+that the complete multi-method separation/rebase sequence has that bound.
+
+This prepared path is common to fast, low and automatic memory modes, solver
+choices, weights, covariance choices, interactions and slope-bearing partitions.
+It reserves no observation-by-effect index and skips the queue/selection-mask
+allocation when no singleton exists. Its distinct per-level and row workspaces
+are charged before generation-zero admission; see `docs/memory_model.md`.
+Ledger generation, drop-reason precedence and interruption/publication boundaries
+are unchanged.
 
 ## Comparator-equivalent MAP and CG
 

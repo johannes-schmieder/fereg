@@ -1,0 +1,53 @@
+[
+  {
+    "worker_id_cap": 5100000,
+    "result": "STATA_RC=0",
+    "observations_and_comparisons": [
+      "GERMAN_OLS_SCREEN|cap=5100000|loaded=75350|mode=low|rc=0",
+      "GERMAN_OLS_RESOURCES|mode=low|N=          65503|native_peak=             55319071|selected_base=             31191464|scratch=              9956456|process_peak_rss=            189022208",
+      "GERMAN_OLS_SCREEN|cap=5100000|loaded=75350|mode=fast|rc=0",
+      "GERMAN_OLS_RESOURCES|mode=fast|N=          65503|native_peak=             58397957|selected_base=             47021288|scratch=                    0|process_peak_rss=            220577792",
+      "GERMAN_OLS_COMPARE|cap=5100000|mode=low|N=          65503|max_b= 1.77913239696181e-14|max_v= 1.37151574819416e-17|relative_rss= 1.00848941198650e-14",
+      "GERMAN_OLS_COMPARE|cap=5100000|mode=fast|N=          65503|max_b= 1.34753319613878e-14|max_v= 9.05308814025396e-18|relative_rss= 1.24779198432228e-14"
+    ],
+    "command_timer_lines": [
+      "2:      1.68 /        1 =       1.6760",
+      "2:      1.37 /        1 =       1.3660",
+      "3:      1.47 /        1 =       1.4680"
+    ]
+  },
+  {
+    "worker_id_cap": 5200000,
+    "result": "STATA_RC=0",
+    "observations_and_comparisons": [
+      "GERMAN_OLS_SCREEN|cap=5200000|loaded=151029|mode=low|rc=0",
+      "GERMAN_OLS_RESOURCES|mode=low|N=         132691|native_peak=            111832898|selected_base=             61463064|scratch=             20169032|process_peak_rss=            268664832",
+      "GERMAN_OLS_SCREEN|cap=5200000|loaded=151029|mode=fast|rc=0",
+      "GERMAN_OLS_RESOURCES|mode=fast|N=         132691|native_peak=            119211816|selected_base=             94244984|scratch=                    0|process_peak_rss=            401014784",
+      "GERMAN_OLS_COMPARE|cap=5200000|mode=low|N=         132691|max_b= 5.57914825449757e-13|max_v= 3.14757443199698e-16|relative_rss= 3.78937311861649e-14",
+      "GERMAN_OLS_COMPARE|cap=5200000|mode=fast|N=         132691|max_b= 5.57831558722910e-13|max_v= 3.10976288123155e-16|relative_rss= 9.83188701046440e-14"
+    ],
+    "command_timer_lines": [
+      "2:     10.20 /        1 =      10.2040",
+      "2:      9.77 /        1 =       9.7710",
+      "3:      8.05 /        1 =       8.0480"
+    ]
+  },
+  {
+    "worker_id_cap": 5500000,
+    "result": "STATA_RC=0",
+    "observations_and_comparisons": [
+      "GERMAN_OLS_SCREEN|cap=5500000|loaded=378124|mode=low|rc=0",
+      "GERMAN_OLS_RESOURCES|mode=low|N=         338054|native_peak=            276049933|selected_base=            152301064|scratch=             51384208|process_peak_rss=            513654784",
+      "GERMAN_OLS_SCREEN|cap=5500000|loaded=378124|mode=fast|rc=0",
+      "GERMAN_OLS_RESOURCES|mode=fast|N=         338054|native_peak=            296572083|selected_base=            235952264|scratch=                    0|process_peak_rss=            628539392",
+      "GERMAN_OLS_COMPARE|cap=5500000|mode=low|N=         338054|max_b= 1.10087772231537e-11|max_v= 4.93776162536000e-16|relative_rss= 5.39669746198960e-13",
+      "GERMAN_OLS_COMPARE|cap=5500000|mode=fast|N=         338054|max_b= 1.10214476434223e-11|max_v= 4.13064087058032e-16|relative_rss= 2.29027209585179e-12"
+    ],
+    "command_timer_lines": [
+      "2:     57.51 /        1 =      57.5120",
+      "2:     56.90 /        1 =      56.9010",
+      "3:     31.61 /        1 =      31.6130"
+    ]
+  }
+]
