@@ -10,6 +10,36 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 weighted Schur route screen: checkpoint opportunity, no new route
+
+The [source-bound existing-route screen](benchmarks/reports/development/ppml-weighted-schur-screen-local-2026-09-14/README.md)
+compares accepted native `7739e8e`/plugin `2689faf0` under auto/MAP/CMG. PPML MAP
+already calls the same weighted Schur recurrence as OLS after its pilot; no new
+engine is needed. Nine independent two-FE/16-control Poisson/Hessian/sandwich
+fits pass across unit/FW/PW and all three routes, including independently formed
+correction factors. Nine untraced calls at N122880/K50 preserve exact discrete
+science, registered b/V/objective tolerances and admitted native peaks.
+
+Auto/MAP/CMG seconds are 2.342/2.978/4.142 dense unit, 3.289/2.878/7.203 strong FW
+and 2.263/2.451/3.109 dense PW. MAP wins the strong FW screen by 12.5% and has
+lower peaks, but loses both dense screens. Strict/final scopes are markedly
+cheaper with MAP (0.594/0.549/0.483 s versus auto 0.933/1.610/0.985 s).
+Nine separate trace calls preserve exact original-route science. Full LSMR
+projection-attempt widths are 52/51/1 for unit and 52/51/51/1 for FW/PW: both
+weighted strict 51-RHS first attempts miss the unchanged 1e-12 certificate at
+about 1.16e-12 and the existing 1e-14 recurrence retry passes. All failed-attempt
+costs remain. Original missing checkpoint trace flags and display corrections
+are disclosed; aggregated solver observations are not literal attempt counts.
+
+All 18 captures and replay scripts are archived. This is a single-seed baseline
+screen, not an adopted optimization or completed P4 Schur item. Next implement a
+bounded current-weight Schur checkpoint candidate using the existing recurrence,
+retaining ordinary joint LSMR, original-input fallback, independent canonical
+certificates and joint memory admission. Then repeat the original comparisons
+and protected cases. Eight active P0–P7 items remain; R1–R5, independent reviews,
+upstream and SCC retain their previously stated scope/order. No source/artifact
+replacement, agents, cluster work or push occurred.
+
 ## P4 mean validity/reuse: standalone prototype rejected
 
 The [source-bound report](benchmarks/reports/development/ppml-mean-reuse-local-2026-09-14/README.md)

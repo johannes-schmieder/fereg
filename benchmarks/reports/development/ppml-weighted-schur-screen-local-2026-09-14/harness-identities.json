@@ -1,0 +1,20 @@
+{
+  "repository_files": {
+    "benchmarks/local_fixest_gap/measure.py": "6fc012df26a5dad7deda42659e91d67134aa82d4fd42f969311f6177b011488c",
+    "benchmarks/local_fixest_gap/run.py": "ba9fc4d4ef014889402ab3a62ff7ae563230adb08039a26771639253443715ea",
+    "benchmarks/local_fixest_gap/stata_worker.do": "d7d38e0cd5a4f4e1b7e9fa65f5c4b39779fae81ceec80df1b76c9907c06efdfe",
+    "benchmarks/local_fixest_gap/ppml_preparation_compare.py": "c5674d60d41d20375afa3aa43991967e31880bf424c3a9ea20551172d3199e00",
+    "benchmarks/local_fixest_gap/ppml_one_fe_compare.py": "671c4bdcefd49900b4a3733af07836c3c221abb826cb8e685fc8d2159162b32b",
+    "benchmarks/local_fixest_gap/preparation_compare.py": "4db2dfd612bacba05f4f402b5667d3659a1d0e6bf2f50ce9e3fa7c16a8b869b5",
+    "benchmarks/local_fixest_gap/route_holdouts.py": "a3fdcc92d3ec91721c0cc593f6c75c97bc8ed8508a6b2c39dfef9a1a4f35c523",
+    "benchmarks/systematic/manifest.json": "274be96e0a7ed6e800d923d0285b827108695fbff782fe1b0edd770dc9c386ac",
+    "benchmarks/systematic/generate.py": "2c4459582f46a183202ccf4a92a248ce27319c07309d80bab31308d1b42530ab"
+  },
+  "experiment_files": {
+    "prepare_inputs.py": "7553312a732094429dc1d38926bc31f429230e3a07da4e067aabeaad2fdc2f5d",
+    "run_oracle.py": "1f9ccaa3fcfd99142fc4a9380bad258b4618f4a69313b28f76f9d7b9199f28bf",
+    "compare_routes.py": "484d2eec9f79f99391ca7f25a99e150f9e8c736e7189ee70e0188f29e17ab475",
+    "run_baseline_routes.py": "a60f25fda071ba29a82e408c6a1aa4d94a8274c14ed96ee93e83d28e24295dc5"
+  },
+  "measurement_scope": "existing-route screen; hashes captured during execution with no edits to these files"
+}
