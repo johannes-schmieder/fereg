@@ -1,0 +1,82 @@
+[
+  {
+    "name": "dense_unit",
+    "cell": {
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "dense_unit",
+      "design": "two_fe_dense",
+      "n": 122880,
+      "k": 50,
+      "threads": 4,
+      "vce": "robust"
+    },
+    "seed": 104729,
+    "warm_seed": 104730,
+    "data": "${ROUTE_SCREEN_ROOT}/ppml-data/dense_unit-n122880-s104729.dta",
+    "warm": "${ROUTE_SCREEN_ROOT}/ppml-data/dense_unit-n7680-s104730.dta",
+    "data_sha256": "c6a6cb11b28267725aa663dcea470d8b125d74d714eaa59176b652497faf062b",
+    "warm_sha256": "37f46aded6a55c09c4fc5d4eb8d23aa3f5c41ebb6f10713a606ecb9310c1a8bb",
+    "data_metadata_sha256": "4052b7725260d4fa707fcab8294db5857ffd330774ccec530553c9123f1d7f9c",
+    "warm_metadata_sha256": "0fe831f9db710e722ad722e786a3663bb05f4fc3c16c93f24f9da558e76834d7"
+  },
+  {
+    "name": "strong_fw",
+    "cell": {
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "strong_fw",
+      "design": "strong_d3",
+      "n": 122880,
+      "k": 50,
+      "threads": 4,
+      "weight": "[fw=w]",
+      "vce": "robust",
+      "fit_options": "exposure(exposure)",
+      "missing": true
+    },
+    "seed": 104729,
+    "warm_seed": 104730,
+    "data": "${ROUTE_SCREEN_ROOT}/ppml-data/strong_fw-n122880-s104729.dta",
+    "warm": "${ROUTE_SCREEN_ROOT}/ppml-data/strong_fw-n7680-s104730.dta",
+    "data_sha256": "7cb6afe053d8fefdbf32d1de329c969a603c5703010d24942f40caf2b3f3f229",
+    "warm_sha256": "44236edd99ec178d15776b333fa6158b34ee204a6bab48fa759db4658d084689",
+    "data_metadata_sha256": "64a2bc5bb10818b34569849887c1f06a292998d2c065e4c78dcca91318c9a643",
+    "warm_metadata_sha256": "a69e875de7c4043be5ed16ba6bf17624a03a3ca7361bbfeb2e6fc5d088f6d600"
+  },
+  {
+    "name": "dense_pw",
+    "cell": {
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "dense_pw",
+      "design": "two_fe_dense",
+      "n": 122880,
+      "k": 50,
+      "threads": 16,
+      "weight": "[pw=w]",
+      "vce": "cluster c1 c2",
+      "fit_options": "offset(off)"
+    },
+    "seed": 104729,
+    "warm_seed": 104730,
+    "data": "${ROUTE_SCREEN_ROOT}/ppml-data/dense_pw-n122880-s104729.dta",
+    "warm": "${ROUTE_SCREEN_ROOT}/ppml-data/dense_pw-n7680-s104730.dta",
+    "data_sha256": "c6a6cb11b28267725aa663dcea470d8b125d74d714eaa59176b652497faf062b",
+    "warm_sha256": "37f46aded6a55c09c4fc5d4eb8d23aa3f5c41ebb6f10713a606ecb9310c1a8bb",
+    "data_metadata_sha256": "4e5580d3733a768629dc0d592fdb179b544de4c4136037b29f26ff7f9de47b4e",
+    "warm_metadata_sha256": "de69ddbe9f12eed93ea8fdb16c53d81805ad138377652a02af5c55abfa46a638"
+  }
+]

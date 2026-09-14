@@ -10,6 +10,49 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 guarded PPML Schur checkpoints: adopted local checkpoint
+
+The [final source-bound report](benchmarks/reports/development/ppml-schur-checkpoint-adoption-local-2026-09-14/README.md)
+and [ADR 0067](docs/adr/0067-guarded-ppml-schur-checkpoints.md) adopt candidate
+`f4cb7dee` against evidence `7996a5e`/accepted native `7739e8e`. Eligible admitted
+wide two-FE checkpoints reuse the actual-weight probe and retained Schur graph;
+a fallible transient copy preserves original-input LSMR/tighter retry/MAP fallback.
+Ordinary joint LSMR, canonical raw norms/exact tolerances, rank, weights, covariance,
+reconstruction and publication policies remain unchanged.
+
+Final review added combined capped-Schur and double-LSMR-certificate rejection,
+which exposed stale scalar energy in the later MAP recurrence. The final shared
+entry clears all scalar banks and preserves both fallback diagnostics. The
+original failed source/test and preliminary `cfeed644` measurements are archived;
+that artifact was not adopted. The unchanged 2e-10 independent test is green, and
+all comparisons/oracles were rerun on the corrected artifact without pooling.
+
+Nine primary pairs give unit/FW/PW command medians 2.312→1.679 / 3.186→1.910 /
+2.007→1.716 seconds; paired median reductions are 27.9%/40.1%/14.3%. Native peak
+medians fall 22–30% within unchanged models. Candidate auto beats accepted explicit
+MAP on all three FW inputs by 32.3–35.6%. Eleven protected controls preserve science;
+maximum added time is 6 ms on three FE. Separate exact-science traces show changing-
+weight probe rejection on weak/bottleneck graphs and both probes rejected on cycle/
+tiny-weight bridges. All attempted work remains included; P0's physical attempt,
+copy/build and complete reporting work remains open.
+
+All 67 distinct focused core and 95 serial plugin tests, nine native and three
+independent Poisson/Hessian/sandwich fits, universal static and actual arm64 ABI
+checks pass. Public explicit LSMR admits both artifacts at exactly 2,429,462,126
+usable bytes and rejects one byte below with r(909). A saved-two-FE/mean control
+improves 2.472→1.860 seconds; all 122880 original-row outputs match at unchanged
+tolerances (maximum absolute difference 3.28e-10). The final 52 main and six
+supplemental captures retain both expected admission errors and source/artifact
+identities; the preliminary 58 captures remain separate. Installed dist, 97 unrelated
+STATUS additions and 358 original untracked paths remain. No agents, cluster,
+upstream changes or push occurred.
+
+P4's weighted-Schur comparison is resolved; seven active P0–P7 items remain. Next
+continue generated/interacted block evaluation and shared slope/three-plus-FE
+layouts, remaining PPML construction/state work, P7 scheduling and P0 accounting.
+R1–R5 stay excluded; two independent reviews, upstream CMG assessment and the
+bounded SCC campaign follow P0–P7.
+
 ## P4 weighted Schur route screen: checkpoint opportunity, no new route
 
 The [source-bound existing-route screen](benchmarks/reports/development/ppml-weighted-schur-screen-local-2026-09-14/README.md)

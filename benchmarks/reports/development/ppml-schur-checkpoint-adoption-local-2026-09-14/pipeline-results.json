@@ -1,0 +1,37 @@
+[
+  {
+    "stage": "build",
+    "rc": 0,
+    "log_sha256": "682d20f4154a3dff485924110e6715c2998c76ca37118a4d52183449b2bf9580"
+  },
+  {
+    "stage": "oracle",
+    "rc": 0,
+    "log_sha256": "d1b631ae22deae659cd9b6f08a42bc0edfaf4498f2f26d11743b8c81ab925de3"
+  },
+  {
+    "stage": "screen",
+    "rc": 0,
+    "log_sha256": "76ec7b196f57f106922e6a1b8ef4699511ec8dec571eb71c7a6a093b00997d1c"
+  },
+  {
+    "stage": "followup",
+    "rc": 0,
+    "log_sha256": "38760e0283cb259e13361d9724375f7a986d30d0fff66dd4a0e8fb820e0df3f4"
+  },
+  {
+    "stage": "map_refs",
+    "rc": 0,
+    "log_sha256": "0b89fff663511d2d7cdb4a00f4162ddf61f92b4c991d1e5a265f3276ff2060b8"
+  },
+  {
+    "stage": "traces",
+    "rc": 0,
+    "log_sha256": "81ab5c39141024ea8690182d44a4431c5129a42835592421801d7ef55c628856"
+  },
+  {
+    "stage": "public_boundaries",
+    "rc": 0,
+    "log_sha256": "0dcb9f901fd021593078ecc7d2c7cc1c331cb644ffa6f8c4f086274df2dc683a"
+  }
+]

@@ -1,0 +1,140 @@
+[
+  {
+    "name": "checkpoint",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "checkpoint",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 813 filtered out; finished in 48.21s"
+    ],
+    "log_sha256": "f6f234d2a66af57103296bd18f5effd2767bb74343bf5fa10f8f75955107f8fd"
+  },
+  {
+    "name": "ols-schur",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols_schur",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 824 filtered out; finished in 21.45s"
+    ],
+    "log_sha256": "9901fe51695f19e09032cd23432d08bea7679222c90618acbd8cf83f9f13c8ed"
+  },
+  {
+    "name": "reusable",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "fe::borrowed_map::tests::reusable",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 823 filtered out; finished in 0.75s"
+    ],
+    "log_sha256": "f85701097217eb29dc0b1e49dd89cbf720e308595c6e0222ac26d8ad81ade5f0"
+  },
+  {
+    "name": "caller-rollback",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ppml::prepared_irls::tests::strict_caller",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 827 filtered out; finished in 0.01s"
+    ],
+    "log_sha256": "b9f08c9385b5981020853296041c706d046f36a79d6a34281b2691f6e50cdf9c"
+  },
+  {
+    "name": "solver-report",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ppml::solver::tests",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 822 filtered out; finished in 0.00s"
+    ],
+    "log_sha256": "48746184efefa39d1eb3b8d1752461669e352a2b5e7aefad7d1d02fbe6d8f7ca"
+  },
+  {
+    "name": "ppml-memory",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ppml::memory::tests",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 790 filtered out; finished in 0.01s"
+    ],
+    "log_sha256": "9915ce5852f4e6cc763dd722dd4a4da4bfca1ac21704692ba2b4eab95a748f43"
+  },
+  {
+    "name": "plugin-serial",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-plugin",
+      "--lib",
+      "",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.01s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 3.78s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 11.33s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.03s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.82s",
+      "test result: ok. 95 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.03s"
+    ],
+    "log_sha256": "cd0db7c777acc7d0f5d46158d243a1f452472c9d2072ef9a9d81194f6a0c8207"
+  }
+]

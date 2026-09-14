@@ -1,0 +1,286 @@
+{
+  "focused_core_distinct_count": 67,
+  "core_tests": [
+    "fe::borrowed_map::tests::checkpoint_lsmr_recertifies_and_numerical_failure_falls_back_transactionally",
+    "fe::borrowed_map::tests::checkpoint_schur_copy_respects_exact_transient_admission",
+    "fe::borrowed_map::tests::checkpoint_schur_reuses_probe_and_falls_back_on_untouched_inputs",
+    "fe::borrowed_map::tests::checkpoint_schur_weighted_cut_rejects_before_copying",
+    "fe::borrowed_map::tests::ols_schur_probe_solve_budget_and_order_match_independent_map",
+    "fe::borrowed_map::tests::ols_schur_probe_uses_weighted_cuts_and_preserves_common_scale",
+    "fe::borrowed_map::tests::ols_schur_readiness_includes_group_weight_certificate_scale",
+    "fe::borrowed_map::tests::reusable_categorical_map_matches_one_shot_across_weight_frames_and_rhs_widths",
+    "fe::borrowed_map::tests::reusable_one_fe_matches_weighted_group_means_and_reuses_warm_residual",
+    "fe::borrowed_map::tests::reusable_one_fe_trailing_norms_follow_current_values_weights_and_width",
+    "fe::borrowed_map::tests::reusable_selected_norms_preserve_mapping_and_reject_invalid_selections",
+    "fe::borrowed_map::tests::reusable_trailing_norms_do_not_publish_on_mismatch_or_failure",
+    "ols::prepared_fit::tests::initial_checkpoint_lsmr_falls_back_only_after_numerical_noncertification",
+    "ols::prepared_fit::tests::wide_ols_schur_guard_preserves_ineligible_routes_and_cycle_reports",
+    "ppml::categorical_lsmr::tests::checkpoint_memory_charges_batch_outputs_and_concurrent_recurrences",
+    "ppml::categorical_lsmr::tests::sparse_checkpoint_memory_includes_concurrent_dense_nuisance_pairs",
+    "ppml::memory::tests::allocation_audit_alone_charges_one_equivalence_refresh_vector",
+    "ppml::memory::tests::auto_falls_back_to_low_and_explicit_fast_fails_before_workspace",
+    "ppml::memory::tests::certified_memory_telemetry_rejects_mutated_modeled_and_observed_claims",
+    "ppml::memory::tests::embedding_resident_baseline_is_charged_to_every_phase_peak",
+    "ppml::memory::tests::finite_session_charges_inverse_lower_and_exact_route_moment_storage",
+    "ppml::memory::tests::fitted_start_mu_peak_retains_fit_and_detector_workspace",
+    "ppml::memory::tests::generation_zero_plan_rebases_only_to_a_bounded_final_generation",
+    "ppml::memory::tests::line_search_backtracks_a_finite_candidate_whose_mean_overflows",
+    "ppml::memory::tests::line_search_propagates_raw_domain_errors_instead_of_halving_them",
+    "ppml::memory::tests::low_route_replaces_resident_n_by_k_with_pool_and_scratch",
+    "ppml::memory::tests::low_scratch_io_buffer_covers_empty_bounded_and_wide_rows_exactly",
+    "ppml::memory::tests::malformed_and_overflowing_dimensions_fail_before_estimation",
+    "ppml::memory::tests::model_scales_session_vectors_slots_and_reusable_map_basis_separately",
+    "ppml::memory::tests::narrow_fast_two_fe_route_charges_level_pcg_state_exactly",
+    "ppml::memory::tests::no_route_fit_fails_closed",
+    "ppml::memory::tests::output_requests_increase_only_final_stage_peaks",
+    "ppml::memory::tests::partial_fe_save_models_complete_recovery_and_no_save_pays_nothing",
+    "ppml::memory::tests::phase_names_and_wire_order_are_frozen",
+    "ppml::memory::tests::post_solve_phases_charge_exact_residual_and_record_transient",
+    "ppml::memory::tests::preflight_probe_observes_rejection_before_workspace_allocation",
+    "ppml::memory::tests::preparation_staging_uses_exact_candidate_capacity",
+    "ppml::memory::tests::prepared_and_linear_metadata_use_registered_concrete_type_widths",
+    "ppml::memory::tests::probability_rebase_build_retains_only_source_positions_until_exact_restore",
+    "ppml::memory::tests::public_solver_workspace_fails_closed_one_byte_above_usable_memory",
+    "ppml::memory::tests::public_solver_workspace_is_bound_to_fit_and_nested_phase_peaks",
+    "ppml::memory::tests::publication_phase_models_independent_psd_and_wald_validation_scratch",
+    "ppml::memory::tests::rank_zero_cluster_inventory_charges_one_fallible_row_ordering",
+    "ppml::memory::tests::registered_diagnostic_record_fits_the_bounded_slot",
+    "ppml::memory::tests::retained_generation_zero_active_pweights_are_charged_exactly",
+    "ppml::memory::tests::reusable_workspace_has_stable_data_sized_capacities",
+    "ppml::memory::tests::row_axis_model_separates_steady_ledgers_from_atomic_rebase_overlap",
+    "ppml::memory::tests::saved_intercept_slope_preflight_has_one_transient_total_and_no_public_duplicate",
+    "ppml::memory::tests::simplex_preflight_charges_joint_live_design_and_kernel_ceiling",
+    "ppml::memory::tests::sparse_two_fe_fast_route_charges_level_pcg_state_exactly",
+    "ppml::memory::tests::stable_line_search_accepts_in_place_without_capacity_growth",
+    "ppml::memory::tests::steady_state_certificate_requires_zero_events_and_all_capacity_proofs",
+    "ppml::memory::tests::strict_final_solve_charges_four_vectors_and_exact_candidate_phase_maximum",
+    "ppml::memory::tests::telemetry_never_infers_unobserved_allocator_or_timer_values",
+    "ppml::prepared_estimator::tests::public_lsmr_checkpoint_workspace_is_required_before_canonical_work",
+    "ppml::prepared_irls::tests::cmg_nested_nuisance_preserves_full_weighted_checkpoint_and_retry_certificates",
+    "ppml::prepared_irls::tests::initial_checkpoint_lsmr_eligibility_is_narrow_and_route_explicit",
+    "ppml::prepared_irls::tests::same_rank_basis_pivot_resumes_first_checkpoint_and_fails_final_hessian_closed",
+    "ppml::prepared_irls::tests::strict_caller_error_and_unwind_restore_a_usable_prior_session",
+    "ppml::prepared_irls::tests::strict_candidate_rank_predicate_is_shared_by_both_checkpoints",
+    "ppml::prepared_irls::tests::strict_checkpoint_movement_resumes_bounded_irls_at_both_checkpoints",
+    "ppml::solver::tests::auto_is_reported_separately_from_its_map_selection",
+    "ppml::solver::tests::automatic_report_accepts_admitted_lsmr_but_not_untrained_cmg",
+    "ppml::solver::tests::certified_lsmr_checkpoint_has_independent_engine_identity",
+    "ppml::solver::tests::checkpoint_lsmr_numerical_fallback_is_row_local_and_nonpermanent",
+    "ppml::solver::tests::cmg_fallback_is_visible_and_permanent_in_the_report",
+    "ppml::solver::tests::lsmr_engine_selection_uses_only_the_active_control_boundary"
+  ],
+  "checks": [
+    {
+      "name": "checkpoint",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--lib",
+        "checkpoint",
+        "--",
+        "--test-threads=1"
+      ],
+      "rc": 0,
+      "summaries": [
+        "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 813 filtered out; finished in 46.93s"
+      ],
+      "log_sha256": "51bf2bd193fccea8d47234f5c3736fb503a8957d48aa601e9922ec7a68c572c1"
+    },
+    {
+      "name": "ols-schur",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--lib",
+        "ols_schur",
+        "--",
+        "--test-threads=1"
+      ],
+      "rc": 0,
+      "summaries": [
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 824 filtered out; finished in 21.59s"
+      ],
+      "log_sha256": "f53fea1136eca32d75eaaa38748c109cb8934f1ed2089180ab705dc3de0ad196"
+    },
+    {
+      "name": "reusable",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--lib",
+        "fe::borrowed_map::tests::reusable",
+        "--",
+        "--test-threads=1"
+      ],
+      "rc": 0,
+      "summaries": [
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 823 filtered out; finished in 0.74s"
+      ],
+      "log_sha256": "662585a127f2cdb82ba41b25e4a69b24653dedd61740d8c74ac06f00b0fe0959"
+    },
+    {
+      "name": "caller-rollback",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--lib",
+        "ppml::prepared_irls::tests::strict_caller",
+        "--",
+        "--test-threads=1"
+      ],
+      "rc": 0,
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 827 filtered out; finished in 0.01s"
+      ],
+      "log_sha256": "db6a4a9d4aa9a28264bec7ca316af953030b5d907c4a8066a6f3389abcac1b6d"
+    },
+    {
+      "name": "solver-report",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--lib",
+        "ppml::solver::tests",
+        "--",
+        "--test-threads=1"
+      ],
+      "rc": 0,
+      "summaries": [
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 822 filtered out; finished in 0.00s"
+      ],
+      "log_sha256": "e2fd1f7d78715214354c3117c9770a88fbc4519bd373fd629a202bacc4c4d23c"
+    },
+    {
+      "name": "ppml-memory",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-core",
+        "--lib",
+        "ppml::memory::tests",
+        "--",
+        "--test-threads=1"
+      ],
+      "rc": 0,
+      "summaries": [
+        "test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 790 filtered out; finished in 0.01s"
+      ],
+      "log_sha256": "f2bf7b808f7cf7e2506b7e78d329c2686af0f81aef052ca6cbcf216cdf0700a3"
+    },
+    {
+      "name": "plugin-serial",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "fereg-plugin",
+        "--lib",
+        "",
+        "--",
+        "--test-threads=1"
+      ],
+      "rc": 0,
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.01s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 3.84s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 11.49s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.03s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.81s",
+        "test result: ok. 95 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.29s"
+      ],
+      "log_sha256": "e3f7787fcd4634e0c0a9c4b879c4c16d13eeaeb8a947d3ee4b40f7d6d2d7a079"
+    }
+  ],
+  "initial_v1_core_tests": 3,
+  "v1_log_sha256": "0d043cc5187f535a993808502c6beae81c4e882b29e5140e66fa96cd8fdc0e1a",
+  "status": "pass",
+  "universal_static_and_native_arm64_abi": true,
+  "candidate_plugin": "cfeed64403304b45db83ae35496cd8117fa74eebf61f517ac697561f77fddd50",
+  "licensed_oracle": {
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "fits": [
+      [
+        "unit",
+        "auto"
+      ],
+      [
+        "unit",
+        "map"
+      ],
+      [
+        "unit",
+        "cmg"
+      ],
+      [
+        "fw",
+        "auto"
+      ],
+      [
+        "fw",
+        "map"
+      ],
+      [
+        "fw",
+        "cmg"
+      ],
+      [
+        "pw",
+        "auto"
+      ],
+      [
+        "pw",
+        "map"
+      ],
+      [
+        "pw",
+        "cmg"
+      ]
+    ],
+    "sentinel": true,
+    "fixture_sha256": "b2917bcf69b340ed5b001089f17dd109047351615ae521fdd20fc17cce50a1f6",
+    "plugin": "cfeed64403304b45db83ae35496cd8117fa74eebf61f517ac697561f77fddd50",
+    "log_sha256": "cce918209fc8e52a0c40d0f7a6c951ca4eba088c7f1245fa1601baca33ae2630"
+  },
+  "comparison_counts": {
+    "primary_pairs": 9,
+    "protected_pairs": 11,
+    "untraced_commands": 43,
+    "separate_diagnostic_commands": 9,
+    "independent_native_oracle_fits": 9,
+    "independent_dummy_poisson_fits": 3
+  },
+  "all_native_models_admit_untraced_peaks": true,
+  "all_diagnostic_science_and_solver_fields_exact": true,
+  "public_boundary_supplement": {
+    "commands": 6,
+    "expected_admission_errors": 2,
+    "available_exact_bytes": 3036827657,
+    "usable_exact_bytes": 2429462126,
+    "exact_bound_both_artifacts_pass": true,
+    "one_byte_below_both_artifacts_rc909": true,
+    "saved_original_rows": 122880,
+    "saved_max_absolute_difference": 3.282032423612691e-10,
+    "receipt": "public-boundaries/boundary-results.json"
+  }
+}

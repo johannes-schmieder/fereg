@@ -54,7 +54,7 @@ pub struct SolveReport {
     pub used_solver: FeSolverKind,
     /// Iteration count reported by the selected solver.
     pub iterations: usize,
-    /// Independently recertified, tighter PPML checkpoint batches after the first.
+    /// Additional PPML checkpoint attempts after a rejected Schur or LSMR candidate.
     pub checkpoint_retries: usize,
     /// Stop reason after the independently recomputed certificate.
     pub stop_reason: SolveStopReason,

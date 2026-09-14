@@ -1,0 +1,438 @@
+[
+  {
+    "name": "dense_unit-s8675309",
+    "cell": {
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "dense_unit",
+      "design": "two_fe_dense",
+      "n": 122880,
+      "k": 50,
+      "threads": 4,
+      "vce": "robust"
+    },
+    "kind": "repeat",
+    "seed": 8675309,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/dense_unit-n122880-s8675309.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/dense_unit-n7680-s8675310.dta",
+    "data_sha256": "79044b76add31d04c8cadd6d207f029eb8cda0b1fc60c252ac0b97d87b082b84",
+    "data_metadata_sha256": "4c4b05d30043ebb36b39eb02ce7a2172f574db35a2053886b8605da9cc3ac85f",
+    "warm_sha256": "58e507b2829abc3fc3c95d19f09e731f7a63964e0cae165aba36d845a7f85642",
+    "warm_metadata_sha256": "2cad3726e75cef730bb1918ee695ffaca8f697b4c474c72f7ec0bfd531414ca2"
+  },
+  {
+    "name": "dense_unit-s20260819",
+    "cell": {
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "dense_unit",
+      "design": "two_fe_dense",
+      "n": 122880,
+      "k": 50,
+      "threads": 4,
+      "vce": "robust"
+    },
+    "kind": "repeat",
+    "seed": 20260819,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/dense_unit-n122880-s20260819.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/dense_unit-n7680-s20260820.dta",
+    "data_sha256": "5856a0e9d0e4afdd881b34d43e7dc542dba20effdbcb780011b135047db562aa",
+    "data_metadata_sha256": "660f7de7341b22632c0c109a583230b2e7c021cb5ab337de29091ed90b52fc00",
+    "warm_sha256": "d8a1201fb62bf6b33c8d31257f57a55d37fbfda138812c304eedbff7615fe79f",
+    "warm_metadata_sha256": "bf37a51b5492f265d2d235291720485e1f8999e63ff2bd0eeb284b4a38d25c69"
+  },
+  {
+    "name": "strong_fw-s8675309",
+    "cell": {
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "strong_fw",
+      "design": "strong_d3",
+      "n": 122880,
+      "k": 50,
+      "threads": 4,
+      "weight": "[fw=w]",
+      "vce": "robust",
+      "fit_options": "exposure(exposure)",
+      "missing": true
+    },
+    "kind": "repeat",
+    "seed": 8675309,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/strong_fw-n122880-s8675309.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/strong_fw-n7680-s8675310.dta",
+    "data_sha256": "f125fda0e112beedd342f0e0ac926511c8fea12f2cf310b5b973d61ca021b3e3",
+    "data_metadata_sha256": "dd3bd4816f6251186c6fe48374c14c8b9aa6db42054923b0d3c563007f29590d",
+    "warm_sha256": "ca16a41911de90f27f3daa255ecdcfc51f279fb438c72954a599baa9355b87cb",
+    "warm_metadata_sha256": "dc8502ba6ace2049bf831b690b02d4c5faf9e7fd0b6fb0740b0eefc838588953"
+  },
+  {
+    "name": "strong_fw-s20260819",
+    "cell": {
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "strong_fw",
+      "design": "strong_d3",
+      "n": 122880,
+      "k": 50,
+      "threads": 4,
+      "weight": "[fw=w]",
+      "vce": "robust",
+      "fit_options": "exposure(exposure)",
+      "missing": true
+    },
+    "kind": "repeat",
+    "seed": 20260819,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/strong_fw-n122880-s20260819.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/strong_fw-n7680-s20260820.dta",
+    "data_sha256": "898b298dd2917892a0acad9d145569b886b7e6e255b5550cb2bae7744c79de18",
+    "data_metadata_sha256": "adc0325088f2aaf6caa68b8d10883964bf04db6edd872a5084ca6d1b9d9a4c95",
+    "warm_sha256": "e2d2ff8cc9f4ccd16898813395afc5a9988d97f776b49f86eec65827b178b9ba",
+    "warm_metadata_sha256": "a91ca8e195d7027f97466aeb8455891ba1cf21404413c06b156b0a6afb831ccd"
+  },
+  {
+    "name": "dense_pw-s8675309",
+    "cell": {
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "dense_pw",
+      "design": "two_fe_dense",
+      "n": 122880,
+      "k": 50,
+      "threads": 16,
+      "weight": "[pw=w]",
+      "vce": "cluster c1 c2",
+      "fit_options": "offset(off)"
+    },
+    "kind": "repeat",
+    "seed": 8675309,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/dense_pw-n122880-s8675309.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/dense_pw-n7680-s8675310.dta",
+    "data_sha256": "79044b76add31d04c8cadd6d207f029eb8cda0b1fc60c252ac0b97d87b082b84",
+    "data_metadata_sha256": "e95913276ff962a090019e78f1ddd0ecec6a9cafa903f6a9df1748fed4a5eb4e",
+    "warm_sha256": "58e507b2829abc3fc3c95d19f09e731f7a63964e0cae165aba36d845a7f85642",
+    "warm_metadata_sha256": "99df7efaf947700eb439d36d7d0694b79e37ac550837eaa3aeb662597589d2a8"
+  },
+  {
+    "name": "dense_pw-s20260819",
+    "cell": {
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "name": "dense_pw",
+      "design": "two_fe_dense",
+      "n": 122880,
+      "k": 50,
+      "threads": 16,
+      "weight": "[pw=w]",
+      "vce": "cluster c1 c2",
+      "fit_options": "offset(off)"
+    },
+    "kind": "repeat",
+    "seed": 20260819,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/dense_pw-n122880-s20260819.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/dense_pw-n7680-s20260820.dta",
+    "data_sha256": "5856a0e9d0e4afdd881b34d43e7dc542dba20effdbcb780011b135047db562aa",
+    "data_metadata_sha256": "1cf221d6aa54083e9090d5b0e0ade715b3574535d0b3db918bb65a95f362698d",
+    "warm_sha256": "d8a1201fb62bf6b33c8d31257f57a55d37fbfda138812c304eedbff7615fe79f",
+    "warm_metadata_sha256": "738a10eabfe429e8c37b96eb3c9c6b4b574846f58d3f84d465c4ad7f81b405da"
+  },
+  {
+    "name": "weak_d3_wide",
+    "cell": {
+      "name": "weak_d3_wide",
+      "design": "weak_d3",
+      "n": 30720,
+      "k": 17,
+      "threads": 4,
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "vce": "robust"
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/weak_d3_wide-n30720-s31415927.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/weak_d3_wide-n7680-s31415928.dta",
+    "data_sha256": "09437711cdfa99d120d0d7bef9b81299498dd158c2f0e91098a98a6e5781e284",
+    "data_metadata_sha256": "03487c608bca63efaf0aa0d9ea9ed6f219540b4110ef78eca9cebda54c453f62",
+    "warm_sha256": "202f6389e2bb363eb86da22a72b156455d7d2ff0f7823b1ce2b4be363703abd1",
+    "warm_metadata_sha256": "9d9bb0ed804333991b962a2d452ef418fcc562dca7f738de7245cc380f1ca464"
+  },
+  {
+    "name": "bottleneck_ring_wide",
+    "cell": {
+      "name": "bottleneck_ring_wide",
+      "design": "bottleneck_ring",
+      "n": 30720,
+      "k": 17,
+      "threads": 4,
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "vce": "robust"
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/bottleneck_ring_wide-n30720-s31415927.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/bottleneck_ring_wide-n7680-s31415928.dta",
+    "data_sha256": "e03a47c04a2a4a5dd7ea7249810e049cb6d6f0e359ede04f05712d40d2414227",
+    "data_metadata_sha256": "02d798b5dbe26adc331b0cf41f65ce965dbfc06bbb8afa265e3c5e5d300d4ed7",
+    "warm_sha256": "246224200aefbcec12e5117f4233cbde282d5ec3552d2068100e866828e10f88",
+    "warm_metadata_sha256": "5f7c11571985b035057ac1ae1cd57a80602cf3c4459412cb2be418a3116c4667"
+  },
+  {
+    "name": "cycle_wide",
+    "cell": {
+      "name": "cycle_wide",
+      "design": "cycle",
+      "n": 30720,
+      "k": 17,
+      "threads": 4,
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "vce": "robust"
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/cycle_wide-n30720-s31415927.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/cycle_wide-n7680-s31415928.dta",
+    "data_sha256": "adaac962ab41be8b6b34d79fd638de0ef2a636ca2973f86c3c919d6200cb9cf0",
+    "data_metadata_sha256": "1179655511ebc0a54520f39cb44e1d5f0e48d7c735f705c5dc216de60a327e68",
+    "warm_sha256": "016cc9fffa4dbf1a1f484fccac71cc65eb681977082fa7accb5e093f03266ed2",
+    "warm_metadata_sha256": "3dd8faece293f768efb5a6ea45d496a500dbe0ca125b0a7667bd6e6435bae3a2"
+  },
+  {
+    "name": "disconnected_blocks_wide",
+    "cell": {
+      "name": "disconnected_blocks_wide",
+      "design": "disconnected_blocks",
+      "n": 30720,
+      "k": 17,
+      "threads": 4,
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "vce": "robust"
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/disconnected_blocks_wide-n30720-s31415927.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/disconnected_blocks_wide-n7680-s31415928.dta",
+    "data_sha256": "d40d7254d6e5d725f864ab3083cf602c42ce18517f9c5ff81464e1722944332f",
+    "data_metadata_sha256": "b12128233e16a4a0b316a0b791b76f278f7c6217379ca70b2e10f0704adeead5",
+    "warm_sha256": "8dd770ca3dac496bea2a5a8858a9b10134a24ff51807b6091b9431ae1585dcfc",
+    "warm_metadata_sha256": "de4a871360780f98aa4134d674654d6202a882d7a71514f5102903b95e6e74a9"
+  },
+  {
+    "name": "unbalanced_wide",
+    "cell": {
+      "name": "unbalanced_wide",
+      "design": "unbalanced",
+      "n": 30720,
+      "k": 17,
+      "threads": 4,
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "vce": "robust"
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/unbalanced_wide-n30720-s31415927.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/unbalanced_wide-n7680-s31415928.dta",
+    "data_sha256": "1da322f3c0cc52ec657c3e64bf3b6984ab8864e12f187652d13a5ed092b783c9",
+    "data_metadata_sha256": "7d01a01ce5be4c68a59be1f0a12acaf20d7fb74db7d6a6972d3476f994afe93c",
+    "warm_sha256": "2b5df329931f869025466c89e10a5c3f1f3a2a24b6a90f9417e57b783b02a6dc",
+    "warm_metadata_sha256": "466bd677704f3274de36abd16d273aaa308d844858c73244e430d9c31ac0829a"
+  },
+  {
+    "name": "three_fe_sparse_wide",
+    "cell": {
+      "name": "three_fe_sparse_wide",
+      "design": "three_fe_sparse",
+      "n": 30720,
+      "k": 17,
+      "threads": 4,
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "vce": "robust"
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${CHECKPOINT_ROOT}/ppml-data/three_fe_sparse_wide-n30720-s31415927.dta",
+    "warm": "${CHECKPOINT_ROOT}/ppml-data/three_fe_sparse_wide-n7680-s31415928.dta",
+    "data_sha256": "d00ae76489a605bc7ef7c1b52291a9dc40f18d5a5f95d1189d14b39de43356b8",
+    "data_metadata_sha256": "af4989357bb495e0f7b1dad0c6ab0c1728ef65e46852925b0c39c363776f9f9c",
+    "warm_sha256": "4113c2e577a51d7e91b4ede55ca7c2d88e6398a7f0e483978101fad01cc3d2fc",
+    "warm_metadata_sha256": "129d5da4c0c426141896951b8cce4c71172f2ad3606d6a99a8028c95c3f6c233"
+  },
+  {
+    "name": "weighted_cut",
+    "cell": {
+      "name": "weighted_cut",
+      "design": "two_fe_dense",
+      "n": 16384,
+      "k": 17,
+      "threads": 4,
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "vce": "robust",
+      "weight": "[pw=w]"
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${CHECKPOINT_ROOT}/derived-data/weighted_cut-n16384-s31415927.dta",
+    "warm": "${CHECKPOINT_ROOT}/derived-data/weighted_cut-n7680-s31415928.dta",
+    "data_sha256": "e0a4c5b29b1afa8b71693ac5f7cf3569d5651d8d93d15e8436943ce439b10f87",
+    "data_metadata_sha256": "71398c8c4325af9a55ea9940e750f0e8a92eb6759861d8589c4acb31d03511cd",
+    "warm_sha256": "7705a783c50c09c1c3505612a73bfc49c4e173dd57e071cb052e46771cadce68",
+    "warm_metadata_sha256": "af7093df638bea5862be5abdec0547ef65d91744afea8066296fbeebfe7dc0a6"
+  },
+  {
+    "name": "rank_deficient",
+    "cell": {
+      "name": "rank_deficient",
+      "design": "two_fe_dense",
+      "n": 30720,
+      "k": 17,
+      "threads": 4,
+      "model": "ppml",
+      "section": "width",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "vce": "robust"
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${CHECKPOINT_ROOT}/derived-data/rank_deficient-n30720-s31415927.dta",
+    "warm": "${CHECKPOINT_ROOT}/derived-data/rank_deficient-n7680-s31415928.dta",
+    "data_sha256": "cb7da8b5606687217cc85e6337e27f92ed281b4b38592971e4fc12c01459e0fa",
+    "data_metadata_sha256": "2fc716ffdc581aba1688614a2dcffa96d76f3a3efbf8ee050fbfe4ec20a0fd86",
+    "warm_sha256": "be801a0ef2083a8d87f9265cabb2ea36eb7acecb68aa7d55b79106ce1ec386fc",
+    "warm_metadata_sha256": "8ec66109c642f35b3a0c8fa2a56f500abb4e4035329285d078748737b36f502b"
+  },
+  {
+    "name": "small_narrow",
+    "cell": {
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "k": 2,
+      "model": "ppml",
+      "n": 7680,
+      "name": "small_narrow",
+      "section": "width",
+      "threads": 1
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${MOMENTS_ROOT}/ppml-data/small_narrow-n7680-s31415927.dta",
+    "warm": "${MOMENTS_ROOT}/ppml-data/small_narrow-n7680-s31415928.dta",
+    "data_sha256": "b47ae0b361a9ec2b04ce8a319e1894444a21333eb3844a532e146fa38c5bedd6",
+    "data_metadata_sha256": "fbab612ff07cbe5b8220acd5f7a70914ddcc9b12c2835f255f1b9e03674edc0b",
+    "warm_sha256": "ebafd8d4cc4ccd3ee2a5614c0277b0a17e328a9ec314e15b53d7544fb2511837",
+    "warm_metadata_sha256": "f74753db82e42e51e4256b906df8a6ca6bd4a17f271daa24e3839c54d6740775"
+  },
+  {
+    "name": "low_fw",
+    "cell": {
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "memory(low) exposure(exposure)",
+      "k": 10,
+      "missing": true,
+      "model": "ppml",
+      "n": 30720,
+      "name": "low_fw",
+      "section": "width",
+      "threads": 4,
+      "vce": "cluster c1",
+      "weight": "[fw=w]"
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${MOMENTS_ROOT}/ppml-data/low_fw-n30720-s31415927.dta",
+    "warm": "${MOMENTS_ROOT}/ppml-data/low_fw-n7680-s31415928.dta",
+    "data_sha256": "b3bd36066c9c8d50ecbf4ac095007e194a346abe832fb204b34209b6af1f006e",
+    "data_metadata_sha256": "827f440c38a71a0ad4a20214dc6838f7ff2656597cdcb22dac93cf9f01e756bf",
+    "warm_sha256": "02fcaaf9b0b83e0177eb7339ac6c997541e502a04e776368bc24c97d6e19cfe4",
+    "warm_metadata_sha256": "f55777949a2ebb36104e0b737fb16cd24c5708cd729c8e32f402fe7f658d8478"
+  },
+  {
+    "name": "slope_numeric",
+    "cell": {
+      "design": "weak_d3",
+      "effects": [
+        "g1"
+      ],
+      "k": 10,
+      "model": "ppml",
+      "n": 7680,
+      "name": "slope_numeric",
+      "section": "width",
+      "threads": 4,
+      "absorb": "g1##c.x1"
+    },
+    "kind": "control",
+    "seed": 31415927,
+    "data": "${MOMENTS_ROOT}/ppml-data/weak_d3-n7680-s31415927.dta",
+    "warm": "${MOMENTS_ROOT}/ppml-data/weak_d3-n7680-s31415928.dta",
+    "data_sha256": "4c6c0fa9c5979a6adc1e7efed44c4d23d261b6f454c1e2e3b19736f9849ae7e9",
+    "data_metadata_sha256": "6d9619bde322f5a7e55576fa9c000fa8cd2a8152a77f59f017e9c5b25f29db90",
+    "warm_sha256": "7763550a5428ee9efd569a9d6c86674ba6f076dd60dd239c14d0df30fbd28118",
+    "warm_metadata_sha256": "1fee049ecf11ccda9298fea16abf3e394069bedf3fb8e4533f23b8b5a7dec99d"
+  }
+]
