@@ -16,7 +16,7 @@ use crate::ols::{
 };
 use crate::options::MemoryMode;
 use crate::ppml_separation::{
-    separation_method_count, separation_workspace_requirements, SeparationConfig, SeparationMethod,
+    separation_generation_capacity, separation_method_count, separation_workspace_requirements, SeparationConfig, SeparationMethod,
 };
 
 use super::memory::{begin_phase_allocation, end_phase_allocation, plan_ppml_memory_with_probe};
@@ -233,7 +233,7 @@ pub fn fit_prepared_ppml_interruptible(
     // compact column. ADR 0018 freezes route selection at this boundary.
     let numeric_input = borrowed_numeric_input(&request, &loaded)?;
     let numeric_classification = classify_ppml_numeric_data(&numeric_input.as_input())?;
-    let preflight_dimensions = conservative_preflight_dimensions_from_classification(
+    let mut preflight_dimensions = conservative_preflight_dimensions_from_classification(
         &request,
         numeric_classification,
         numeric_input.numeric_sources.len(),
@@ -247,6 +247,20 @@ pub fn fit_prepared_ppml_interruptible(
         ),
         requested_saved_channel_count,
     )?;
+    // This scalar refinement reads raw outcome values only after the row
+    // classifier has resolved domain/error precedence. Excluded nonpositive
+    // rows can only retain the wider envelope. No sample state is allocated.
+    let mut all_positive = true;
+    for chunk in loaded.ols.outcome.values.chunks(65_536) {
+        interrupt(PpmlInterruptPoint::Preparation)?;
+        if !chunk.iter().all(|value| *value > 0.0) {
+            all_positive = false;
+            break;
+        }
+    }
+    preflight_dimensions.separation_generation_capacity = separation_generation_capacity(
+        numeric_classification.n_active, all_positive, request.separation.drop_singletons,
+    );
     let preliminary_plan = plan_ppml_memory_with_probe(
         preflight_dimensions,
         request.memory,
@@ -261,7 +275,7 @@ pub fn fit_prepared_ppml_interruptible(
 
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
     let numeric = select_ppml_numeric_data(&numeric_input.as_input(), numeric_classification)?;
-    let prepared_dimensions = conservative_preflight_dimensions_from_classification(
+    let mut prepared_dimensions = conservative_preflight_dimensions_from_classification(
         &request,
         numeric.classification,
         numeric_input.numeric_sources.len(),
@@ -269,6 +283,8 @@ pub fn fit_prepared_ppml_interruptible(
         numeric.weights.kind == Some(WeightKind::Probability),
         requested_saved_channel_count,
     )?;
+    prepared_dimensions.separation_generation_capacity =
+        preflight_dimensions.separation_generation_capacity;
     drop(numeric_input);
     // The exact materialized shape may only bind within the earlier envelope;
     // it cannot silently reselect a route after canonical allocation.
@@ -996,6 +1012,7 @@ fn conservative_preflight_dimensions_from_classification(
         separation_workspace_vectors: separation_workspace.observation_vectors,
         separation_singleton_enabled: request.separation.drop_singletons,
         separation_method_count: separation_method_count(request.separation),
+        separation_generation_capacity: observations,
         separation_rebase_enabled: separation_can_rebase(request.separation),
         separation_exact_fe_enabled: request.separation.methods.fixed_effects,
         separation_mu_enabled: request.separation.methods.mu,
@@ -1090,6 +1107,11 @@ fn final_memory_dimensions(
         separation_workspace_vectors: separation_workspace.observation_vectors,
         separation_singleton_enabled: separation.drop_singletons,
         separation_method_count: separation_method_count(separation),
+        separation_generation_capacity: separation_generation_capacity(
+            prepared.original_rows().len(),
+            prepared.outcome().iter().all(|value| *value > 0.0),
+            separation.drop_singletons,
+        ),
         separation_rebase_enabled: separation_can_rebase(separation),
         separation_exact_fe_enabled: separation.methods.fixed_effects,
         separation_mu_enabled: separation.methods.mu,
@@ -1473,6 +1495,70 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static FIT_PHASE_BEGINS: AtomicUsize = AtomicUsize::new(0);
+
+    #[test]
+    fn positive_outcomes_bound_report_banks_across_routes_weights_and_singletons() {
+        for route in [MemoryMode::Fast, MemoryMode::Low] {
+            for weight in [None, Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
+                for singletons in [false, true] {
+                    let (mut request, mut loaded) = fixture(
+                        2, false, false, weight == Some(WeightKind::Probability), false, false,
+                    );
+                    request.memory.requested = route;
+                    request.memory.poolsize = 1;
+                    request.separation = SeparationConfig::default();
+                    if weight == Some(WeightKind::Frequency) {
+                        request.ols.bindings.push(OlsInputBinding {
+                            stata_var_position: 6, role: OlsInputRole::FrequencyWeight,
+                        });
+                        loaded.ols.frequency_weight = Some(column(
+                            &[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.0, 1.0],
+                        ));
+                    }
+                    if singletons {
+                        loaded.ols.numeric_sources[1].1.values[11] = 99.0;
+                    }
+                    let result = fit_prepared_ppml(request, loaded).expect("positive PPML");
+                    assert_eq!(result.memory().plan.preflight_dimensions.separation_generation_capacity, 2);
+                    assert_eq!(result.separation().methods.capacity(), 8);
+                    assert_eq!(result.separation().generation_hashes.capacity(), 2);
+                    assert_eq!(result.separation().generations, usize::from(singletons));
+                    assert_eq!(result.sample().original_rows().len(), if singletons { 10 } else { 12 });
+                    assert!(result.certificate().passed);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn excluded_zero_keeps_conservative_admission_but_compact_report_bank() {
+        let (mut request, mut loaded) = fixture(2, false, false, false, false, false);
+        request.separation = SeparationConfig::default();
+        loaded.ols.candidate[11] = false;
+        loaded.ols.outcome.values[11] = 0.0;
+        let result = fit_prepared_ppml(request, loaded).expect("excluded zero");
+        assert_eq!(result.memory().plan.preflight_dimensions.separation_generation_capacity, 11);
+        assert_eq!(result.separation().methods.capacity(), 8);
+        assert_eq!(result.separation().generation_hashes.capacity(), 2);
+        assert_eq!(result.sample().original_rows().len(), 10);
+    }
+
+    #[test]
+    fn positive_outcome_scan_remains_interruptible_before_admission() {
+        let (request, loaded) = fixture(2, false, false, false, false, false);
+        let mut checks = 0;
+        let error = fit_prepared_ppml_interruptible(request, loaded, &mut |point| {
+            if point == PpmlInterruptPoint::Preparation {
+                checks += 1;
+                if checks == 2 {
+                    return Err(FeregError::new(ErrorCode::Interrupted, "preflight interrupt"));
+                }
+            }
+            Ok(())
+        }).expect_err("scan interrupt");
+        assert_eq!(error.code, ErrorCode::Interrupted);
+        assert_eq!(checks, 2);
+    }
 
     #[test]
     fn publication_capacity_failure_is_allocation_r909() {

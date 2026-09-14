@@ -188,8 +188,12 @@ pub struct PpmlMemoryDimensions {
     pub separation_singleton_enabled: bool,
     /// Frozen count of requested singleton/FE/simplex/IR/Mu policies (0..=5).
     /// The exact retained execution-record ceiling is this count times the
-    /// generation-zero prepared observation count.
+    /// admitted generation capacity.
     pub separation_method_count: usize,
+    /// Initial plus committed generation capacity. All-positive outcomes need
+    /// at most two generations (initial singleton fixed point and replay);
+    /// samples with any zero retain the observation-count envelope.
+    pub separation_generation_capacity: usize,
     /// Whether any requested singleton or separation method can accept rows
     /// and therefore construct an atomic old-plus-new prepared generation.
     /// This policy is frozen at generation-zero admission.
@@ -245,6 +249,11 @@ impl PpmlMemoryDimensions {
             return Err(invalid_argument(
                 "PPML retained base adjustment must be absent or reserve the immutable candidate capacity",
             ));
+        }
+        if self.separation_generation_capacity == 0
+            || self.separation_generation_capacity > self.observations
+        {
+            return Err(invalid_argument("PPML separation generation capacity must lie in 1..=N"));
         }
         if self.separation_method_count > 5 {
             return Err(invalid_argument(
@@ -347,6 +356,7 @@ fn validate_final_dimensions_within_preflight(
     final_dimensions: PpmlMemoryDimensions,
 ) -> Result<()> {
     let bounded = final_dimensions.observations <= preflight.observations
+        && final_dimensions.separation_generation_capacity <= preflight.separation_generation_capacity
         && final_dimensions.loaded_numeric_columns <= preflight.loaded_numeric_columns
         && final_dimensions.finite_columns <= preflight.finite_columns
         && final_dimensions.coefficient_slots <= preflight.coefficient_slots
@@ -524,7 +534,8 @@ pub struct PpmlMemoryInventory {
     /// those records (accepted rows/levels) are charged separately above.
     pub separation_method_report_record_bytes: u128,
     /// Initial plus every committed generation hash. Since a valid commit
-    /// leaves at least one row, at most generation-zero N hashes persist.
+    /// leaves at least one row, at most generation-zero N hashes persist;
+    /// all-positive outcomes use the tighter admitted generation capacity.
     pub separation_generation_hash_bytes: u128,
     /// Incremental detector/cascade level capacity beyond the retained report
     /// envelope. An outer cascade accumulator, an inner full-level scan, and
@@ -1006,7 +1017,7 @@ fn estimate_route(
     };
     let separation_method_report_record_bytes = checked_mul(
         checked_mul(
-            n,
+            dimensions.separation_generation_capacity as u128,
             dimensions.separation_method_count as u128,
             "PPML separation method execution records",
         )?,
@@ -1014,7 +1025,7 @@ fn estimate_route(
         "PPML separation method execution-record bytes",
     )?;
     let separation_generation_hash_bytes = checked_mul(
-        n,
+        dimensions.separation_generation_capacity as u128,
         size_of::<u64>() as u128,
         "PPML separation generation-hash bytes",
     )?;
@@ -3342,6 +3353,7 @@ mod tests {
             separation_workspace_vectors: 8,
             separation_singleton_enabled: true,
             separation_method_count: 4,
+            separation_generation_capacity: 100_000,
             separation_rebase_enabled: true,
             separation_exact_fe_enabled: true,
             separation_mu_enabled: false,
@@ -3389,6 +3401,30 @@ mod tests {
                 passed: true,
             },
         }
+    }
+
+    #[test]
+    fn all_positive_report_capacity_reduces_both_route_peaks_by_exact_storage() {
+        let general = dimensions();
+        let mut positive = general;
+        positive.separation_generation_capacity = 2;
+        let config = PpmlMemoryConfig::default();
+        let wide = estimate_ppml_memory(general, config).expect("general plan");
+        let narrow = estimate_ppml_memory(positive, config).expect("positive plan");
+        let saving = (general.observations - 2) as u128
+            * (4 * size_of::<SeparationMethodReport>() + size_of::<u64>()) as u128;
+        for (before, after) in [(wide.fast, narrow.fast), (wide.low, narrow.low)] {
+            assert_eq!(before.peak_bytes - after.peak_bytes, saving);
+            assert_eq!(after.separation_method_report_record_bytes,
+                (8 * size_of::<SeparationMethodReport>()) as u128);
+            assert_eq!(after.separation_generation_hash_bytes, 16);
+        }
+        let mut plan = plan_ppml_memory(positive, config).expect("positive plan");
+        let mut enlarged = positive;
+        enlarged.separation_generation_capacity = 3;
+        assert!(plan.with_final_dimensions(enlarged).is_err());
+        plan = plan.with_final_dimensions(positive).expect("same envelope");
+        assert_eq!(plan.preflight_dimensions.separation_generation_capacity, 2);
     }
 
     #[test]
@@ -3514,6 +3550,7 @@ mod tests {
     fn sparse_two_fe_fast_route_charges_level_pcg_state_exactly() {
         let mut sparse = dimensions();
         sparse.observations = 256;
+        sparse.separation_generation_capacity = 256;
         sparse.original_observations = 256;
         sparse.candidate_observations = 256;
         sparse.finite_columns = 1;
@@ -3540,6 +3577,7 @@ mod tests {
     fn low_scratch_io_buffer_covers_empty_bounded_and_wide_rows_exactly() {
         let mut empty = dimensions();
         empty.observations = 1;
+        empty.separation_generation_capacity = 1;
         empty.candidate_observations = 1;
         empty.original_observations = 1;
         empty.loaded_numeric_columns = 0;
@@ -3630,6 +3668,7 @@ mod tests {
         let preliminary = plan_ppml_memory(dimensions(), config).expect("preliminary plan");
         let mut final_dimensions = dimensions();
         final_dimensions.observations = 80_000;
+        final_dimensions.separation_generation_capacity = 80_000;
         final_dimensions.finite_columns = 16;
         final_dimensions.coefficient_slots = 16;
         final_dimensions.reported_coefficient_slots = 18;
@@ -3653,6 +3692,7 @@ mod tests {
 
         let mut growing = final_dimensions;
         growing.observations = dimensions().observations + 1;
+        growing.separation_generation_capacity = dimensions().observations + 1;
         let error = preliminary
             .with_final_dimensions(growing)
             .expect_err("final generation cannot exceed generation zero");
@@ -3773,6 +3813,7 @@ mod tests {
             .expect("generation-zero pweight plan");
         let mut final_dimensions = probability_dimensions;
         final_dimensions.observations /= 2;
+        final_dimensions.separation_generation_capacity = final_dimensions.observations;
         let rebased = preliminary
             .with_final_dimensions(final_dimensions)
             .expect("smaller final pweight generation");
@@ -4093,6 +4134,7 @@ mod tests {
     fn row_axis_model_separates_steady_ledgers_from_atomic_rebase_overlap() {
         let mut row_dimensions = dimensions();
         row_dimensions.observations = 80_000;
+        row_dimensions.separation_generation_capacity = 80_000;
         row_dimensions.candidate_observations = 90_000;
         row_dimensions.original_observations = 100_000;
         let inventory = estimate_ppml_memory(row_dimensions, PpmlMemoryConfig::default())
@@ -4255,6 +4297,7 @@ mod tests {
     fn probability_rebase_build_retains_only_source_positions_until_exact_restore() {
         let mut probability = dimensions();
         probability.observations = 80_000;
+        probability.separation_generation_capacity = 80_000;
         probability.candidate_observations = 90_000;
         probability.original_observations = 100_000;
         probability.retained_raw_preseparation_probability_weight_elements = 80_000;
@@ -4293,6 +4336,7 @@ mod tests {
     fn preparation_staging_uses_exact_candidate_capacity() {
         let mut compact = dimensions();
         compact.observations = 40_000;
+        compact.separation_generation_capacity = 40_000;
         compact.candidate_observations = 60_000;
         compact.retained_base_adjustment_capacity_elements = 60_000;
         compact.original_observations = 100_000;
@@ -4634,6 +4678,7 @@ mod tests {
     fn publication_phase_models_independent_psd_and_wald_validation_scratch() {
         let mut validator_dimensions = dimensions();
         validator_dimensions.observations = 1_000;
+        validator_dimensions.separation_generation_capacity = 1_000;
         validator_dimensions.finite_columns = 7;
         validator_dimensions.coefficient_slots = 11;
         validator_dimensions.reported_coefficient_slots = 11;
@@ -4721,6 +4766,7 @@ mod tests {
     fn partial_fe_save_models_complete_recovery_and_no_save_pays_nothing() {
         let mut recovery_dimensions = dimensions();
         recovery_dimensions.observations = 1_000;
+        recovery_dimensions.separation_generation_capacity = 1_000;
         recovery_dimensions.loaded_numeric_columns = 0;
         recovery_dimensions.finite_columns = 0;
         recovery_dimensions.coefficient_slots = 0;
@@ -4786,6 +4832,7 @@ mod tests {
     fn saved_intercept_slope_preflight_has_one_transient_total_and_no_public_duplicate() {
         let mut saved = dimensions();
         saved.observations = 1_000;
+        saved.separation_generation_capacity = 1_000;
         saved.original_observations = 1_000;
         saved.candidate_observations = 1_000;
         saved.loaded_numeric_columns = 0;
@@ -4867,6 +4914,7 @@ mod tests {
     fn reusable_workspace_has_stable_data_sized_capacities() {
         let mut small_dimensions = dimensions();
         small_dimensions.observations = 4;
+        small_dimensions.separation_generation_capacity = 4;
         small_dimensions.fe_max_level_members = 4;
         small_dimensions.finite_columns = 2;
         small_dimensions.coefficient_slots = 2;
@@ -4936,6 +4984,7 @@ mod tests {
     fn stable_line_search_accepts_in_place_without_capacity_growth() {
         let mut small_dimensions = dimensions();
         small_dimensions.observations = 4;
+        small_dimensions.separation_generation_capacity = 4;
         small_dimensions.fe_max_level_members = 4;
         small_dimensions.finite_columns = 2;
         small_dimensions.coefficient_slots = 3;
@@ -4981,6 +5030,7 @@ mod tests {
     fn line_search_backtracks_a_finite_candidate_whose_mean_overflows() {
         let mut small_dimensions = dimensions();
         small_dimensions.observations = 2;
+        small_dimensions.separation_generation_capacity = 2;
         small_dimensions.fe_max_level_members = 2;
         small_dimensions.finite_columns = 1;
         small_dimensions.coefficient_slots = 1;
@@ -5030,6 +5080,7 @@ mod tests {
     fn line_search_propagates_raw_domain_errors_instead_of_halving_them() {
         let mut small_dimensions = dimensions();
         small_dimensions.observations = 2;
+        small_dimensions.separation_generation_capacity = 2;
         small_dimensions.fe_max_level_members = 2;
         small_dimensions.finite_columns = 1;
         small_dimensions.coefficient_slots = 1;
@@ -5282,6 +5333,7 @@ mod tests {
 
         let mut overflowing = dimensions();
         overflowing.observations = usize::MAX;
+        overflowing.separation_generation_capacity = usize::MAX;
         overflowing.original_observations = usize::MAX;
         overflowing.candidate_observations = usize::MAX;
         overflowing.loaded_numeric_columns = usize::MAX;
@@ -5297,6 +5349,7 @@ mod tests {
     fn rank_zero_cluster_inventory_charges_one_fallible_row_ordering() {
         let mut rank_zero_candidate = dimensions();
         rank_zero_candidate.observations = 100;
+        rank_zero_candidate.separation_generation_capacity = 100;
         rank_zero_candidate.original_observations = 100;
         rank_zero_candidate.candidate_observations = 100;
         rank_zero_candidate.finite_columns = 1;

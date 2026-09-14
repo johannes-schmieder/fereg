@@ -21,7 +21,7 @@ use crate::ols::{
     PreparedOlsFitConfig,
 };
 use crate::ppml_separation::{
-    model_simplex_interruptible, separation_method_count, simplex_workspace_peak_cells,
+    model_simplex_interruptible, separation_generation_capacity, separation_method_count, simplex_workspace_peak_cells,
 };
 use crate::ppml_separation::{
     DetectionProposal, ExactFeLevelIdentity, ExactFeSeparationCertificate, MethodStatus,
@@ -430,8 +430,13 @@ where
 {
     let candidate_original_rows = coordinator.candidate_original_rows();
     let candidate_observations = candidate_original_rows.len();
+    let generation_capacity = separation_generation_capacity(
+        candidate_observations,
+        coordinator.view().prepared.outcome().iter().all(|value| *value > 0.0),
+        config.drop_singletons,
+    );
     let method_report_capacity =
-        checked_method_report_capacity(candidate_observations, separation_method_count(config))?;
+        checked_method_report_capacity(generation_capacity, separation_method_count(config))?;
     #[cfg(test)]
     if FAIL_REPORT_BANK_RESERVATION.replace(false) {
         return Err(allocation(
@@ -444,7 +449,7 @@ where
         .map_err(|_| allocation("unable to reserve prepared separation method reports"))?;
     let mut generation_hashes = Vec::new();
     generation_hashes
-        .try_reserve_exact(candidate_observations)
+        .try_reserve_exact(generation_capacity)
         .map_err(|_| allocation("unable to reserve prepared separation generation hashes"))?;
     generation_hashes.push(candidate_ledger_hash_original_axis(
         &candidate_original_rows,
@@ -503,7 +508,7 @@ where
                         )?;
                         bounded_push(
                             &mut generation_hashes,
-                            candidate_observations,
+                            generation_capacity,
                             candidate_ledger_hash_original_axis(
                                 &candidate_original_rows,
                                 coordinator.active(),
@@ -613,7 +618,7 @@ where
                         }
                         bounded_push(
                             &mut generation_hashes,
-                            candidate_observations,
+                            generation_capacity,
                             candidate_ledger_hash_original_axis(
                                 &candidate_original_rows,
                                 coordinator.active(),
@@ -724,7 +729,7 @@ where
                         &mut reports,
                         &mut generation_hashes,
                         method_report_capacity,
-                        candidate_observations,
+                        generation_capacity,
                         &candidate_original_rows,
                         certified,
                         started,
@@ -790,7 +795,7 @@ where
                         &mut reports,
                         &mut generation_hashes,
                         method_report_capacity,
-                        candidate_observations,
+                        generation_capacity,
                         &candidate_original_rows,
                         certified,
                         started,
@@ -891,7 +896,7 @@ where
                         &mut reports,
                         &mut generation_hashes,
                         method_report_capacity,
-                        candidate_observations,
+                        generation_capacity,
                         &candidate_original_rows,
                         certified,
                         started,

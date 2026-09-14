@@ -10,6 +10,44 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## German PPML: positive-outcome report capacity adopted; full retry running
+
+The [source-bound report](benchmarks/reports/development/german-ppml-report-capacity-local-2026-09-14/README.md)
+bounds separation records/hashes by at most two generations for positive outcomes,
+including initial recursive singleton removal and final replay. Zero-containing
+samples retain N. The scan follows authoritative classification, allocates no
+observation state and polls interruption. Actual reservations/appends obey the
+same bound. Parent is `a1d0fd6` / `9d920101`; isolated plugin is `e1c72f56`.
+All 177 inputs match the transfer; installed dist remains `4187efdf`.
+
+Full N=91,045,290 probes reduce the low/pool1 plan from 156.87 to 68.74 GB,
+an 88.13 GB modeled reservation saving. Pool4 needs 88.41 GB. Headroom and FE
+bounds are unchanged. Both intentional one-byte-cap probes reject before fit
+workspace allocation, with zero planner allocator growth. The prior normal
+pool1 run returned r(909), against about 104.40 GB usable after headroom.
+
+351 core PPML tests, 97 plugin tests on final rerun, two memory-contract tests,
+universal static/ARM64 ABI checks and 26 licensed native fits pass. The first
+plugin suite had one intermittent warmed-allocation event; isolated and whole
+reruns passed unchanged. Baseline constrained-memory expectations were stale
+for the prior low-projector adoption and are repaired; historical receipts stay.
+
+Six paired German comparisons preserve all scientific outputs exactly, with
+independent score/model-space checks and pinned reference parity. Native allocated
+peaks fall 12.52→5.01 MB and 112.89→39.95 MB; RSS does not fall correspondingly.
+Command medians are 1.172→1.246 s (+6.31%) and 12.281→12.307 s (+0.21%). Three
+pairs do not establish systematic runtime changes. This is an admission/capacity
+improvement, not a demonstrated speed gain. Fallbacks/retries are zero.
+
+Pool1 takes 28.694 s on the larger subset; pool4 median is 12.307 s. The full
+pool4 retry uses the unchanged physical-memory guard and exp(logrwage2), with
+all extremes retained subject to ordinary sample rules. Attempt1 stopped before
+estimation due to an incompatible diagnostic option; attempt2 removes it and is
+running. Full PPML retained count and estimates remain unverified. Raw evidence
+is under the local root named in the report. Continue the full fit/comparator
+investigation. Separate work, original untracked paths and STATUS additions are
+preserved; no installed binary replacement, cluster work or push.
+
 ## German PPML: smaller samples pass; low-memory categorical projection adopted
 
 The [source-bound report](benchmarks/reports/development/german-ppml-low-map-local-2026-09-14/README.md)

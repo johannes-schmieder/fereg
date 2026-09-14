@@ -3956,6 +3956,7 @@ mod tests {
             separation_workspace_vectors: 0,
             separation_singleton_enabled: false,
             separation_method_count: 0,
+            separation_generation_capacity: 1,
             separation_rebase_enabled: false,
             separation_exact_fe_enabled: false,
             separation_mu_enabled: false,

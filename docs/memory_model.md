@@ -254,6 +254,18 @@ The queue and selection mask are skipped when no singleton exists. Frequency
 weights retain exact integer counting; unit and probability weights count rows.
 No singleton observation state is allocated before memory admission.
 
+Separation method records and generation hashes reserve the admitted generation
+capacity. With strictly positive outcomes, no separation detector can accept a
+row; only the initial recursive singleton fixed point can commit a deletion.
+At most two generations (one with singleton removal disabled) are therefore
+needed. The raw outcome scan runs after authoritative classification, retains
+only a scalar flag and polls interruption before each bounded chunk. An excluded
+zero/nonpositive value can retain the general N-generation bound but cannot
+understate it. Samples containing any zero keep that general bound. The prepared
+coordinator independently bounds its actual fallible reservations on the numeric
+sample and uses bounded appends. Detector replay, reports, row reasons, and
+transactional publication remain mandatory in either case.
+
 The PPML path adds its own fit-lifetime plan without changing OLS
 memory modes or thresholds. Its simplex detector operates on the complete
 prepared model span, including finite columns, one indicator per finalized

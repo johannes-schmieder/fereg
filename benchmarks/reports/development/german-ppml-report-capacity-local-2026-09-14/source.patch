@@ -1,0 +1,625 @@
+--- a/crates/fereg-core/src/ppml/memory.rs
++++ b/crates/fereg-core/src/ppml/memory.rs
+@@ -188,8 +188,12 @@
+     pub separation_singleton_enabled: bool,
+     /// Frozen count of requested singleton/FE/simplex/IR/Mu policies (0..=5).
+     /// The exact retained execution-record ceiling is this count times the
+-    /// generation-zero prepared observation count.
++    /// admitted generation capacity.
+     pub separation_method_count: usize,
++    /// Initial plus committed generation capacity. All-positive outcomes need
++    /// at most two generations (initial singleton fixed point and replay);
++    /// samples with any zero retain the observation-count envelope.
++    pub separation_generation_capacity: usize,
+     /// Whether any requested singleton or separation method can accept rows
+     /// and therefore construct an atomic old-plus-new prepared generation.
+     /// This policy is frozen at generation-zero admission.
+@@ -246,6 +250,11 @@
+                 "PPML retained base adjustment must be absent or reserve the immutable candidate capacity",
+             ));
+         }
++        if self.separation_generation_capacity == 0
++            || self.separation_generation_capacity > self.observations
++        {
++            return Err(invalid_argument("PPML separation generation capacity must lie in 1..=N"));
++        }
+         if self.separation_method_count > 5 {
+             return Err(invalid_argument(
+                 "PPML separation method count exceeds the five registered policies",
+@@ -347,6 +356,7 @@
+     final_dimensions: PpmlMemoryDimensions,
+ ) -> Result<()> {
+     let bounded = final_dimensions.observations <= preflight.observations
++        && final_dimensions.separation_generation_capacity <= preflight.separation_generation_capacity
+         && final_dimensions.loaded_numeric_columns <= preflight.loaded_numeric_columns
+         && final_dimensions.finite_columns <= preflight.finite_columns
+         && final_dimensions.coefficient_slots <= preflight.coefficient_slots
+@@ -524,7 +534,8 @@
+     /// those records (accepted rows/levels) are charged separately above.
+     pub separation_method_report_record_bytes: u128,
+     /// Initial plus every committed generation hash. Since a valid commit
+-    /// leaves at least one row, at most generation-zero N hashes persist.
++    /// leaves at least one row, at most generation-zero N hashes persist;
++    /// all-positive outcomes use the tighter admitted generation capacity.
+     pub separation_generation_hash_bytes: u128,
+     /// Incremental detector/cascade level capacity beyond the retained report
+     /// envelope. An outer cascade accumulator, an inner full-level scan, and
+@@ -1006,7 +1017,7 @@
+     };
+     let separation_method_report_record_bytes = checked_mul(
+         checked_mul(
+-            n,
++            dimensions.separation_generation_capacity as u128,
+             dimensions.separation_method_count as u128,
+             "PPML separation method execution records",
+         )?,
+@@ -1014,7 +1025,7 @@
+         "PPML separation method execution-record bytes",
+     )?;
+     let separation_generation_hash_bytes = checked_mul(
+-        n,
++        dimensions.separation_generation_capacity as u128,
+         size_of::<u64>() as u128,
+         "PPML separation generation-hash bytes",
+     )?;
+@@ -3342,6 +3353,7 @@
+             separation_workspace_vectors: 8,
+             separation_singleton_enabled: true,
+             separation_method_count: 4,
++            separation_generation_capacity: 100_000,
+             separation_rebase_enabled: true,
+             separation_exact_fe_enabled: true,
+             separation_mu_enabled: false,
+@@ -3389,6 +3401,30 @@
+                 passed: true,
+             },
+         }
++    }
++
++    #[test]
++    fn all_positive_report_capacity_reduces_both_route_peaks_by_exact_storage() {
++        let general = dimensions();
++        let mut positive = general;
++        positive.separation_generation_capacity = 2;
++        let config = PpmlMemoryConfig::default();
++        let wide = estimate_ppml_memory(general, config).expect("general plan");
++        let narrow = estimate_ppml_memory(positive, config).expect("positive plan");
++        let saving = (general.observations - 2) as u128
++            * (4 * size_of::<SeparationMethodReport>() + size_of::<u64>()) as u128;
++        for (before, after) in [(wide.fast, narrow.fast), (wide.low, narrow.low)] {
++            assert_eq!(before.peak_bytes - after.peak_bytes, saving);
++            assert_eq!(after.separation_method_report_record_bytes,
++                (8 * size_of::<SeparationMethodReport>()) as u128);
++            assert_eq!(after.separation_generation_hash_bytes, 16);
++        }
++        let mut plan = plan_ppml_memory(positive, config).expect("positive plan");
++        let mut enlarged = positive;
++        enlarged.separation_generation_capacity = 3;
++        assert!(plan.with_final_dimensions(enlarged).is_err());
++        plan = plan.with_final_dimensions(positive).expect("same envelope");
++        assert_eq!(plan.preflight_dimensions.separation_generation_capacity, 2);
+     }
+ 
+     #[test]
+@@ -3514,6 +3550,7 @@
+     fn sparse_two_fe_fast_route_charges_level_pcg_state_exactly() {
+         let mut sparse = dimensions();
+         sparse.observations = 256;
++        sparse.separation_generation_capacity = 256;
+         sparse.original_observations = 256;
+         sparse.candidate_observations = 256;
+         sparse.finite_columns = 1;
+@@ -3540,6 +3577,7 @@
+     fn low_scratch_io_buffer_covers_empty_bounded_and_wide_rows_exactly() {
+         let mut empty = dimensions();
+         empty.observations = 1;
++        empty.separation_generation_capacity = 1;
+         empty.candidate_observations = 1;
+         empty.original_observations = 1;
+         empty.loaded_numeric_columns = 0;
+@@ -3630,6 +3668,7 @@
+         let preliminary = plan_ppml_memory(dimensions(), config).expect("preliminary plan");
+         let mut final_dimensions = dimensions();
+         final_dimensions.observations = 80_000;
++        final_dimensions.separation_generation_capacity = 80_000;
+         final_dimensions.finite_columns = 16;
+         final_dimensions.coefficient_slots = 16;
+         final_dimensions.reported_coefficient_slots = 18;
+@@ -3653,6 +3692,7 @@
+ 
+         let mut growing = final_dimensions;
+         growing.observations = dimensions().observations + 1;
++        growing.separation_generation_capacity = dimensions().observations + 1;
+         let error = preliminary
+             .with_final_dimensions(growing)
+             .expect_err("final generation cannot exceed generation zero");
+@@ -3773,6 +3813,7 @@
+             .expect("generation-zero pweight plan");
+         let mut final_dimensions = probability_dimensions;
+         final_dimensions.observations /= 2;
++        final_dimensions.separation_generation_capacity = final_dimensions.observations;
+         let rebased = preliminary
+             .with_final_dimensions(final_dimensions)
+             .expect("smaller final pweight generation");
+@@ -4093,6 +4134,7 @@
+     fn row_axis_model_separates_steady_ledgers_from_atomic_rebase_overlap() {
+         let mut row_dimensions = dimensions();
+         row_dimensions.observations = 80_000;
++        row_dimensions.separation_generation_capacity = 80_000;
+         row_dimensions.candidate_observations = 90_000;
+         row_dimensions.original_observations = 100_000;
+         let inventory = estimate_ppml_memory(row_dimensions, PpmlMemoryConfig::default())
+@@ -4255,6 +4297,7 @@
+     fn probability_rebase_build_retains_only_source_positions_until_exact_restore() {
+         let mut probability = dimensions();
+         probability.observations = 80_000;
++        probability.separation_generation_capacity = 80_000;
+         probability.candidate_observations = 90_000;
+         probability.original_observations = 100_000;
+         probability.retained_raw_preseparation_probability_weight_elements = 80_000;
+@@ -4293,6 +4336,7 @@
+     fn preparation_staging_uses_exact_candidate_capacity() {
+         let mut compact = dimensions();
+         compact.observations = 40_000;
++        compact.separation_generation_capacity = 40_000;
+         compact.candidate_observations = 60_000;
+         compact.retained_base_adjustment_capacity_elements = 60_000;
+         compact.original_observations = 100_000;
+@@ -4634,6 +4678,7 @@
+     fn publication_phase_models_independent_psd_and_wald_validation_scratch() {
+         let mut validator_dimensions = dimensions();
+         validator_dimensions.observations = 1_000;
++        validator_dimensions.separation_generation_capacity = 1_000;
+         validator_dimensions.finite_columns = 7;
+         validator_dimensions.coefficient_slots = 11;
+         validator_dimensions.reported_coefficient_slots = 11;
+@@ -4721,6 +4766,7 @@
+     fn partial_fe_save_models_complete_recovery_and_no_save_pays_nothing() {
+         let mut recovery_dimensions = dimensions();
+         recovery_dimensions.observations = 1_000;
++        recovery_dimensions.separation_generation_capacity = 1_000;
+         recovery_dimensions.loaded_numeric_columns = 0;
+         recovery_dimensions.finite_columns = 0;
+         recovery_dimensions.coefficient_slots = 0;
+@@ -4786,6 +4832,7 @@
+     fn saved_intercept_slope_preflight_has_one_transient_total_and_no_public_duplicate() {
+         let mut saved = dimensions();
+         saved.observations = 1_000;
++        saved.separation_generation_capacity = 1_000;
+         saved.original_observations = 1_000;
+         saved.candidate_observations = 1_000;
+         saved.loaded_numeric_columns = 0;
+@@ -4867,6 +4914,7 @@
+     fn reusable_workspace_has_stable_data_sized_capacities() {
+         let mut small_dimensions = dimensions();
+         small_dimensions.observations = 4;
++        small_dimensions.separation_generation_capacity = 4;
+         small_dimensions.fe_max_level_members = 4;
+         small_dimensions.finite_columns = 2;
+         small_dimensions.coefficient_slots = 2;
+@@ -4936,6 +4984,7 @@
+     fn stable_line_search_accepts_in_place_without_capacity_growth() {
+         let mut small_dimensions = dimensions();
+         small_dimensions.observations = 4;
++        small_dimensions.separation_generation_capacity = 4;
+         small_dimensions.fe_max_level_members = 4;
+         small_dimensions.finite_columns = 2;
+         small_dimensions.coefficient_slots = 3;
+@@ -4981,6 +5030,7 @@
+     fn line_search_backtracks_a_finite_candidate_whose_mean_overflows() {
+         let mut small_dimensions = dimensions();
+         small_dimensions.observations = 2;
++        small_dimensions.separation_generation_capacity = 2;
+         small_dimensions.fe_max_level_members = 2;
+         small_dimensions.finite_columns = 1;
+         small_dimensions.coefficient_slots = 1;
+@@ -5030,6 +5080,7 @@
+     fn line_search_propagates_raw_domain_errors_instead_of_halving_them() {
+         let mut small_dimensions = dimensions();
+         small_dimensions.observations = 2;
++        small_dimensions.separation_generation_capacity = 2;
+         small_dimensions.fe_max_level_members = 2;
+         small_dimensions.finite_columns = 1;
+         small_dimensions.coefficient_slots = 1;
+@@ -5282,6 +5333,7 @@
+ 
+         let mut overflowing = dimensions();
+         overflowing.observations = usize::MAX;
++        overflowing.separation_generation_capacity = usize::MAX;
+         overflowing.original_observations = usize::MAX;
+         overflowing.candidate_observations = usize::MAX;
+         overflowing.loaded_numeric_columns = usize::MAX;
+@@ -5297,6 +5349,7 @@
+     fn rank_zero_cluster_inventory_charges_one_fallible_row_ordering() {
+         let mut rank_zero_candidate = dimensions();
+         rank_zero_candidate.observations = 100;
++        rank_zero_candidate.separation_generation_capacity = 100;
+         rank_zero_candidate.original_observations = 100;
+         rank_zero_candidate.candidate_observations = 100;
+         rank_zero_candidate.finite_columns = 1;
+--- a/crates/fereg-core/src/ppml/prepared_estimator.rs
++++ b/crates/fereg-core/src/ppml/prepared_estimator.rs
+@@ -16,7 +16,7 @@
+ };
+ use crate::options::MemoryMode;
+ use crate::ppml_separation::{
+-    separation_method_count, separation_workspace_requirements, SeparationConfig, SeparationMethod,
++    separation_generation_capacity, separation_method_count, separation_workspace_requirements, SeparationConfig, SeparationMethod,
+ };
+ 
+ use super::memory::{begin_phase_allocation, end_phase_allocation, plan_ppml_memory_with_probe};
+@@ -233,7 +233,7 @@
+     // compact column. ADR 0018 freezes route selection at this boundary.
+     let numeric_input = borrowed_numeric_input(&request, &loaded)?;
+     let numeric_classification = classify_ppml_numeric_data(&numeric_input.as_input())?;
+-    let preflight_dimensions = conservative_preflight_dimensions_from_classification(
++    let mut preflight_dimensions = conservative_preflight_dimensions_from_classification(
+         &request,
+         numeric_classification,
+         numeric_input.numeric_sources.len(),
+@@ -247,6 +247,20 @@
+         ),
+         requested_saved_channel_count,
+     )?;
++    // This scalar refinement reads raw outcome values only after the row
++    // classifier has resolved domain/error precedence. Excluded nonpositive
++    // rows can only retain the wider envelope. No sample state is allocated.
++    let mut all_positive = true;
++    for chunk in loaded.ols.outcome.values.chunks(65_536) {
++        interrupt(PpmlInterruptPoint::Preparation)?;
++        if !chunk.iter().all(|value| *value > 0.0) {
++            all_positive = false;
++            break;
++        }
++    }
++    preflight_dimensions.separation_generation_capacity = separation_generation_capacity(
++        numeric_classification.n_active, all_positive, request.separation.drop_singletons,
++    );
+     let preliminary_plan = plan_ppml_memory_with_probe(
+         preflight_dimensions,
+         request.memory,
+@@ -261,7 +275,7 @@
+ 
+     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
+     let numeric = select_ppml_numeric_data(&numeric_input.as_input(), numeric_classification)?;
+-    let prepared_dimensions = conservative_preflight_dimensions_from_classification(
++    let mut prepared_dimensions = conservative_preflight_dimensions_from_classification(
+         &request,
+         numeric.classification,
+         numeric_input.numeric_sources.len(),
+@@ -269,6 +283,8 @@
+         numeric.weights.kind == Some(WeightKind::Probability),
+         requested_saved_channel_count,
+     )?;
++    prepared_dimensions.separation_generation_capacity =
++        preflight_dimensions.separation_generation_capacity;
+     drop(numeric_input);
+     // The exact materialized shape may only bind within the earlier envelope;
+     // it cannot silently reselect a route after canonical allocation.
+@@ -996,6 +1012,7 @@
+         separation_workspace_vectors: separation_workspace.observation_vectors,
+         separation_singleton_enabled: request.separation.drop_singletons,
+         separation_method_count: separation_method_count(request.separation),
++        separation_generation_capacity: observations,
+         separation_rebase_enabled: separation_can_rebase(request.separation),
+         separation_exact_fe_enabled: request.separation.methods.fixed_effects,
+         separation_mu_enabled: request.separation.methods.mu,
+@@ -1090,6 +1107,11 @@
+         separation_workspace_vectors: separation_workspace.observation_vectors,
+         separation_singleton_enabled: separation.drop_singletons,
+         separation_method_count: separation_method_count(separation),
++        separation_generation_capacity: separation_generation_capacity(
++            prepared.original_rows().len(),
++            prepared.outcome().iter().all(|value| *value > 0.0),
++            separation.drop_singletons,
++        ),
+         separation_rebase_enabled: separation_can_rebase(separation),
+         separation_exact_fe_enabled: separation.methods.fixed_effects,
+         separation_mu_enabled: separation.methods.mu,
+@@ -1473,6 +1495,70 @@
+     use std::sync::atomic::{AtomicUsize, Ordering};
+ 
+     static FIT_PHASE_BEGINS: AtomicUsize = AtomicUsize::new(0);
++
++    #[test]
++    fn positive_outcomes_bound_report_banks_across_routes_weights_and_singletons() {
++        for route in [MemoryMode::Fast, MemoryMode::Low] {
++            for weight in [None, Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
++                for singletons in [false, true] {
++                    let (mut request, mut loaded) = fixture(
++                        2, false, false, weight == Some(WeightKind::Probability), false, false,
++                    );
++                    request.memory.requested = route;
++                    request.memory.poolsize = 1;
++                    request.separation = SeparationConfig::default();
++                    if weight == Some(WeightKind::Frequency) {
++                        request.ols.bindings.push(OlsInputBinding {
++                            stata_var_position: 6, role: OlsInputRole::FrequencyWeight,
++                        });
++                        loaded.ols.frequency_weight = Some(column(
++                            &[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.0, 1.0],
++                        ));
++                    }
++                    if singletons {
++                        loaded.ols.numeric_sources[1].1.values[11] = 99.0;
++                    }
++                    let result = fit_prepared_ppml(request, loaded).expect("positive PPML");
++                    assert_eq!(result.memory().plan.preflight_dimensions.separation_generation_capacity, 2);
++                    assert_eq!(result.separation().methods.capacity(), 8);
++                    assert_eq!(result.separation().generation_hashes.capacity(), 2);
++                    assert_eq!(result.separation().generations, usize::from(singletons));
++                    assert_eq!(result.sample().original_rows().len(), if singletons { 10 } else { 12 });
++                    assert!(result.certificate().passed);
++                }
++            }
++        }
++    }
++
++    #[test]
++    fn excluded_zero_keeps_conservative_admission_but_compact_report_bank() {
++        let (mut request, mut loaded) = fixture(2, false, false, false, false, false);
++        request.separation = SeparationConfig::default();
++        loaded.ols.candidate[11] = false;
++        loaded.ols.outcome.values[11] = 0.0;
++        let result = fit_prepared_ppml(request, loaded).expect("excluded zero");
++        assert_eq!(result.memory().plan.preflight_dimensions.separation_generation_capacity, 11);
++        assert_eq!(result.separation().methods.capacity(), 8);
++        assert_eq!(result.separation().generation_hashes.capacity(), 2);
++        assert_eq!(result.sample().original_rows().len(), 10);
++    }
++
++    #[test]
++    fn positive_outcome_scan_remains_interruptible_before_admission() {
++        let (request, loaded) = fixture(2, false, false, false, false, false);
++        let mut checks = 0;
++        let error = fit_prepared_ppml_interruptible(request, loaded, &mut |point| {
++            if point == PpmlInterruptPoint::Preparation {
++                checks += 1;
++                if checks == 2 {
++                    return Err(FeregError::new(ErrorCode::Interrupted, "preflight interrupt"));
++                }
++            }
++            Ok(())
++        }).expect_err("scan interrupt");
++        assert_eq!(error.code, ErrorCode::Interrupted);
++        assert_eq!(checks, 2);
++    }
+ 
+     #[test]
+     fn publication_capacity_failure_is_allocation_r909() {
+--- a/crates/fereg-core/src/ppml/prepared_irls.rs
++++ b/crates/fereg-core/src/ppml/prepared_irls.rs
+@@ -4249,6 +4249,7 @@
+             separation_workspace_vectors: 0,
+             separation_singleton_enabled: false,
+             separation_method_count: 0,
++            separation_generation_capacity: 1,
+             separation_rebase_enabled: false,
+             separation_exact_fe_enabled: false,
+             separation_mu_enabled: false,
+@@ -4646,6 +4647,7 @@
+             separation_workspace_vectors: 0,
+             separation_singleton_enabled: false,
+             separation_method_count: 0,
++            separation_generation_capacity: 1,
+             separation_rebase_enabled: false,
+             separation_exact_fe_enabled: false,
+             separation_mu_enabled: false,
+--- a/crates/fereg-core/src/ppml/prepared_separation.rs
++++ b/crates/fereg-core/src/ppml/prepared_separation.rs
+@@ -21,7 +21,7 @@
+     PreparedOlsFitConfig,
+ };
+ use crate::ppml_separation::{
+-    model_simplex_interruptible, separation_method_count, simplex_workspace_peak_cells,
++    model_simplex_interruptible, separation_generation_capacity, separation_method_count, simplex_workspace_peak_cells,
+ };
+ use crate::ppml_separation::{
+     DetectionProposal, ExactFeLevelIdentity, ExactFeSeparationCertificate, MethodStatus,
+@@ -430,8 +430,13 @@
+ {
+     let candidate_original_rows = coordinator.candidate_original_rows();
+     let candidate_observations = candidate_original_rows.len();
++    let generation_capacity = separation_generation_capacity(
++        candidate_observations,
++        coordinator.view().prepared.outcome().iter().all(|value| *value > 0.0),
++        config.drop_singletons,
++    );
+     let method_report_capacity =
+-        checked_method_report_capacity(candidate_observations, separation_method_count(config))?;
++        checked_method_report_capacity(generation_capacity, separation_method_count(config))?;
+     #[cfg(test)]
+     if FAIL_REPORT_BANK_RESERVATION.replace(false) {
+         return Err(allocation(
+@@ -444,7 +449,7 @@
+         .map_err(|_| allocation("unable to reserve prepared separation method reports"))?;
+     let mut generation_hashes = Vec::new();
+     generation_hashes
+-        .try_reserve_exact(candidate_observations)
++        .try_reserve_exact(generation_capacity)
+         .map_err(|_| allocation("unable to reserve prepared separation generation hashes"))?;
+     generation_hashes.push(candidate_ledger_hash_original_axis(
+         &candidate_original_rows,
+@@ -503,7 +508,7 @@
+                         )?;
+                         bounded_push(
+                             &mut generation_hashes,
+-                            candidate_observations,
++                            generation_capacity,
+                             candidate_ledger_hash_original_axis(
+                                 &candidate_original_rows,
+                                 coordinator.active(),
+@@ -613,7 +618,7 @@
+                         }
+                         bounded_push(
+                             &mut generation_hashes,
+-                            candidate_observations,
++                            generation_capacity,
+                             candidate_ledger_hash_original_axis(
+                                 &candidate_original_rows,
+                                 coordinator.active(),
+@@ -724,7 +729,7 @@
+                         &mut reports,
+                         &mut generation_hashes,
+                         method_report_capacity,
+-                        candidate_observations,
++                        generation_capacity,
+                         &candidate_original_rows,
+                         certified,
+                         started,
+@@ -790,7 +795,7 @@
+                         &mut reports,
+                         &mut generation_hashes,
+                         method_report_capacity,
+-                        candidate_observations,
++                        generation_capacity,
+                         &candidate_original_rows,
+                         certified,
+                         started,
+@@ -891,7 +896,7 @@
+                         &mut reports,
+                         &mut generation_hashes,
+                         method_report_capacity,
+-                        candidate_observations,
++                        generation_capacity,
+                         &candidate_original_rows,
+                         certified,
+                         started,
+--- a/crates/fereg-core/src/ppml/result.rs
++++ b/crates/fereg-core/src/ppml/result.rs
+@@ -3956,6 +3956,7 @@
+             separation_workspace_vectors: 0,
+             separation_singleton_enabled: false,
+             separation_method_count: 0,
++            separation_generation_capacity: 1,
+             separation_rebase_enabled: false,
+             separation_exact_fe_enabled: false,
+             separation_mu_enabled: false,
+--- a/crates/fereg-core/src/ppml_separation/mod.rs
++++ b/crates/fereg-core/src/ppml_separation/mod.rs
+@@ -288,10 +288,27 @@
+     }
+ }
+ 
++/// All-positive Poisson outcomes admit no separation deletion. Recursive
++/// singleton pruning reaches its fixed point in one initial commit, and the
++/// remaining generation only replays the enabled policies. Samples containing
++/// any zero retain the general one-generation-per-row envelope.
++pub(crate) const fn separation_generation_capacity(
++    observations: usize,
++    all_positive: bool,
++    drop_singletons: bool,
++) -> usize {
++    if all_positive {
++        let bound = 1 + drop_singletons as usize;
++        if observations < bound { observations } else { bound }
++    } else {
++        observations
++    }
++}
++
+ /// Number of independently requested separation policies. Each immutable
+ /// generation executes a policy at most once before either committing a
+ /// deletion or reaching the terminal stable generation. This count freezes
+-/// the exact `policies * generation_zero_rows` report-record envelope.
++/// the `policies * admitted_generations` report-record envelope.
+ #[must_use]
+ pub const fn separation_method_count(config: SeparationConfig) -> usize {
+     config.drop_singletons as usize
+--- a/crates/fereg-core/tests/feppml_constrained_memory_contract.rs
++++ b/crates/fereg-core/tests/feppml_constrained_memory_contract.rs
+@@ -6,9 +6,10 @@
+ const OBSERVATIONS: usize = 10_000_000;
+ const DEFAULT_POOLSIZE: usize = 10;
+ // With the full retained-session, report, rollback, and accepted-rebase
+-// lifetimes modeled, this limit leaves room for Low while still rejecting
++// lifetimes and low categorical projector banks modeled, this limit leaves
++// room for Low while still rejecting
+ // Fast after the embedded input floor is included.
+-const LOW_FAST_LIMIT_BYTES: u128 = 33_100_000_000;
++const LOW_FAST_LIMIT_BYTES: u128 = 36_300_000_000;
+ const NO_ROUTE_LIMIT_BYTES: u128 = 1_500_000_000;
+ 
+ // The complete-input loader keeps outcome plus every source as an f64 vector
+@@ -40,6 +41,7 @@
+         separation_workspace_vectors: 8,
+         separation_singleton_enabled: true,
+         separation_method_count: 4,
++        separation_generation_capacity: OBSERVATIONS,
+         separation_rebase_enabled: true,
+         separation_exact_fe_enabled: true,
+         separation_mu_enabled: false,
+@@ -78,9 +80,9 @@
+     // plus five recurrence scalars per RHS.
+     assert_eq!(base.fast.peak_bytes, 47_400_233_650);
+     assert_eq!(base.fast.separation_peak_bytes, 47_170_268_279);
+-    assert_eq!(base.low.peak_bytes, 21_430_045_694);
+-    assert_eq!(base.low.separation_peak_bytes, 21_430_045_694);
+-    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 25_970_187_956);
++    assert_eq!(base.low.peak_bytes, 24_681_278_266);
++    assert_eq!(base.low.separation_peak_bytes, 24_451_312_895);
++    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 22_718_955_384);
+ 
+     let numeric_vector_bytes = 53_u128 * OBSERVATIONS as u128 * 8;
+     let bit_vector_bytes = 54_u128 * OBSERVATIONS as u128 / 8;
+@@ -99,7 +101,7 @@
+     )
+     .expect("embedded governing estimate");
+     assert_eq!(embedded.fast.peak_bytes, 51_707_733_650);
+-    assert_eq!(embedded.low.peak_bytes, 25_737_545_694);
++    assert_eq!(embedded.low.peak_bytes, 28_988_778_266);
+ 
+     let auto = plan_ppml_memory(
+         dimensions,
+@@ -111,15 +113,15 @@
+     )
+     .expect("auto must fall back to the low route");
+     assert_eq!(auto.selected, PpmlMemoryRoute::Low);
+-    assert_eq!(auto.safety_headroom_bytes, 6_620_000_000);
+-    assert_eq!(auto.usable_bytes, Some(26_480_000_000));
++    assert_eq!(auto.safety_headroom_bytes, 7_260_000_000);
++    assert_eq!(auto.usable_bytes, Some(29_040_000_000));
+     assert_eq!(
+         auto.usable_bytes.expect("imposed usable memory") - embedded.low.peak_bytes,
+-        742_454_306
++        51_221_734
+     );
+     assert_eq!(
+         embedded.fast.peak_bytes - auto.usable_bytes.expect("imposed usable memory"),
+-        25_227_733_650
++        22_667_733_650
+     );
+ 
+     let low = plan_ppml_memory(
+@@ -170,8 +172,8 @@
+     let base = estimate_ppml_memory(dimensions, PpmlMemoryConfig::default())
+         .expect("previous constrained estimate");
+     assert_eq!(base.fast.peak_bytes, 21_800_051_330);
+-    assert_eq!(base.low.peak_bytes, 16_521_099_386);
+-    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 5_278_951_944);
++    assert_eq!(base.low.peak_bytes, 21_481_099_786);
++    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 318_951_544);
+ 
+     // Outcome plus twelve sources and their missingness masks, plus candidate.
+     let old_embedding_resident_floor_bytes =
+--- a/docs/memory_model.md
++++ b/docs/memory_model.md
+@@ -254,6 +254,18 @@
+ weights retain exact integer counting; unit and probability weights count rows.
+ No singleton observation state is allocated before memory admission.
+ 
++Separation method records and generation hashes reserve the admitted generation
++capacity. With strictly positive outcomes, no separation detector can accept a
++row; only the initial recursive singleton fixed point can commit a deletion.
++At most two generations (one with singleton removal disabled) are therefore
++needed. The raw outcome scan runs after authoritative classification, retains
++only a scalar flag and polls interruption before each bounded chunk. An excluded
++zero/nonpositive value can retain the general N-generation bound but cannot
++understate it. Samples containing any zero keep that general bound. The prepared
++coordinator independently bounds its actual fallible reservations on the numeric
++sample and uses bounded appends. Detector replay, reports, row reasons, and
++transactional publication remain mandatory in either case.
++
+ The PPML path adds its own fit-lifetime plan without changing OLS
+ memory modes or thresholds. Its simplex detector operates on the complete
+ prepared model span, including finite columns, one indicator per finalized

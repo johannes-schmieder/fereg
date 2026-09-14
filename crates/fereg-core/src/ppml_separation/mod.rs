@@ -288,10 +288,27 @@ pub const fn separation_workspace_requirements(
     }
 }
 
+/// All-positive Poisson outcomes admit no separation deletion. Recursive
+/// singleton pruning reaches its fixed point in one initial commit, and the
+/// remaining generation only replays the enabled policies. Samples containing
+/// any zero retain the general one-generation-per-row envelope.
+pub(crate) const fn separation_generation_capacity(
+    observations: usize,
+    all_positive: bool,
+    drop_singletons: bool,
+) -> usize {
+    if all_positive {
+        let bound = 1 + drop_singletons as usize;
+        if observations < bound { observations } else { bound }
+    } else {
+        observations
+    }
+}
+
 /// Number of independently requested separation policies. Each immutable
 /// generation executes a policy at most once before either committing a
 /// deletion or reaching the terminal stable generation. This count freezes
-/// the exact `policies * generation_zero_rows` report-record envelope.
+/// the `policies * admitted_generations` report-record envelope.
 #[must_use]
 pub const fn separation_method_count(config: SeparationConfig) -> usize {
     config.drop_singletons as usize
