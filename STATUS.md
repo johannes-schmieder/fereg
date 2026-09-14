@@ -10,6 +10,35 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P0 compact action-memory carrier: implemented prototype, not adopted
+
+The [source-bound checkpoint](benchmarks/reports/development/action-memory-carrier-local-2026-09-14/README.md)
+archives patch `082e1625` against evidence `d0c0e86`/accepted native `25bf610`.
+It adds an eight-byte workspace-peak carrier with a distinct unmodeled state,
+reuses generic/owned/direct-CG admission quantities, counts fixed borrowed-MAP
+capacities, and preserves admitted versus rejected/fallback attempt envelopes.
+Low-memory report merges propagate unknown coverage. Warm retained LSMR overlap,
+CMG/Schur construction, specialized slopes, recovery/inference and whole-action
+transport remain explicitly unmodeled; public selected-memory reporting is unchanged.
+
+All 41 distinct focused core tests and 95 serial plugin unit tests pass on the
+final frozen source; an isolated patch replay matches all 179 candidate inputs.
+Tests cover closed-form residuals, exact/one-byte-short bounds, weak-chain routing,
+capacity over-reservation, discarded LSMR fallback and cold/warm reuse. Review found
+and guarded retained-operator overlap and deferred compact conversion for an unused
+CG route. Formatter/archive-parser findings remain recorded. No release-plugin
+build, licensed oracle or performance measurement ran; avoiding the earlier
+weak-wide overhead remains a hypothesis. Main retains all 178 accepted native
+inputs and installed dist. The prototype stays isolated, with its replayable
+patch/evidence archived here rather than adopted as complete reporting.
+
+Next finish CMG/Schur construction and retained solver/pool accounting, saved
+coefficient/recovery and inference propagation, then aggregate and publish the
+complete model. Verify the original three-FE joint cap and the earlier weak-wide
+cost controls. P0 pass/copy/build/physical-attempt work and the seven active P0–P7
+items remain open; R1–R5 are excluded. Reviews, upstream assessment and SCC follow
+P0–P7. No agents, cluster work, upstream change or push occurred.
+
 ## P6 generated OLS residual tiles: rejected; P0 three-FE memory gap
 
 The [source-bound report](benchmarks/reports/development/generated-ols-residual-tiles-local-2026-09-14/README.md)

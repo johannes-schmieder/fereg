@@ -1,0 +1,7 @@
+{
+  "inputs": 179,
+  "patch_sha256": "082e1625ce6cdfdbbb553efd5128a7872ead52aec1ed87be1264c8b3b6eeb233",
+  "git_apply_check_returncode": 0,
+  "git_apply_returncode": 0,
+  "hash_mismatches": []
+}
