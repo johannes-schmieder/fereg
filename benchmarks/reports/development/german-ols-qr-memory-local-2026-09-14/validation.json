@@ -1,0 +1,58 @@
+{
+  "numerical_scope": "one-shot QR long-vector norms and serial reflector sums; short-vector retained-compatible arithmetic unchanged",
+  "rows_threshold": 65536,
+  "rank_and_bread_tolerances_changed": false,
+  "additional_observation_sized_allocations": false,
+  "pre_absorption_reference_scale_policy_changed": false,
+  "ols_core_tests": {
+    "passed": 71,
+    "failed": 0,
+    "source_note": "Core checks precede rustfmt; formatting replay exactly matches final prepared_fit.rs. Production algorithms unchanged."
+  },
+  "ppml_core_tests": {
+    "passed": 302,
+    "failed": 0,
+    "source_note": "Core checks precede rustfmt; formatting replay exactly matches final prepared_fit.rs. Production algorithms unchanged."
+  },
+  "plugin_tests_final": {
+    "passed": 97,
+    "failed": 0,
+    "warnings": false
+  },
+  "final_licensed_fixtures": {
+    "ols_qr_reductions": {
+      "native_fits": 8,
+      "status": "PASS"
+    },
+    "feppml_singleton_index": {
+      "native_fits": 14,
+      "status": "PASS"
+    }
+  },
+  "macos_memory_independent_probe": {
+    "old_available_bytes": 80077963264,
+    "mach_available_bytes": 136663531520,
+    "inactive_pages": 3453709,
+    "page_size": 16384,
+    "old_inactive_sysctl_rc": -1,
+    "mach_rc": 0,
+    "mach_port_release_rc": 0
+  },
+  "rejected_drafts": [
+    "unconditional small-vector QR summation changed a protected near-collinear checkpoint comparison beyond its existing tolerance",
+    "retained Givens compensated-sum trial worsened that comparison; restored exact baseline",
+    "strict equality with latest libc Mach structure length rejected older kernel revisions; checked original field prefix instead"
+  ],
+  "preserved_execution_mistakes": [
+    "first test invocation selected main manifest and ran zero matching tests in an external target; no dist change",
+    "shared test target returned an old binary and zero matching tests despite explicit candidate manifest; dedicated target used for all accepted results"
+  ],
+  "full_run_status": "PASS",
+  "environment": {
+    "os": "macOS 26.6.2 (25G83)",
+    "physical_ram_bytes": 206158430208,
+    "architecture_runtime": "arm64",
+    "rust": "1.85.1",
+    "stata": "Stata/MP 19"
+  }
+}

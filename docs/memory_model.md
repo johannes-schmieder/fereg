@@ -18,6 +18,13 @@ limit for constrained-memory qualification; it is not a public Stata option.
 A future `maxmemory()` option will feed the same planner; this release adds no
 public memory-cap syntax or action-wire field.
 
+On macOS, automatic availability uses free plus inactive pages from
+`HOST_VM_INFO64`. Mach's free count already includes speculative pages.
+The original statistics prefix supports older kernel revisions, and each
+query releases its host send right. If Mach statistics are unavailable, the
+conservative free/speculative sysctl fallback remains. This changes neither
+the planner's safety headroom nor an explicitly supplied test limit.
+
 After FE topology is known, the selected execution plan is combined with a
 route-specific solver estimate. The estimate separately accounts for CG
 residual/direction/projection matrices, LSMR RHS and Krylov storage, diagonal

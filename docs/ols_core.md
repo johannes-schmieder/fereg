@@ -48,6 +48,13 @@ mean_w(y) - mean_w(X) b
 It is a normalization coordinate, not an additional rank direction. Pure
 all-slope-only absorbed models therefore do not report a structural constant.
 
+For QR segments of at least 65,536 entries, reflector norms use a fixed
+maximum scale and compensated squared-value sum, and serial reflector dot
+products use compensated accumulation. Short checkpoint arithmetic and
+pre-absorption reference scales remain unchanged. Both memory layouts reject
+nonfinite transformed values, including the leading entry. Inverse-certificate
+failures report rank, both errors and the unchanged tolerance.
+
 For raw matrices wider than 64 columns, ADR 0031 groups adjacent columns in
 blocks of eight when enough blocks exist for the native worker team. Raw
 maxima, scaled norms and compensated means retain their prior per-column

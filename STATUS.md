@@ -10,6 +10,52 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## German OLS: full fit certified after QR and macOS memory repairs
+
+The [source-bound report](benchmarks/reports/development/german-ols-qr-memory-local-2026-09-14/README.md)
+adopts long-vector compensated QR reductions and repairs macOS availability
+through Mach free/inactive statistics, against `0af4321`. Rank/reference-scale,
+weight, covariance, certificate and memory-headroom policies remain unchanged.
+The isolated universal plugin is `bc1e8909`; installed dist remains `4187efdf`.
+Patch replay matches 177 compiled inputs and the added licensed fixture. There
+are 71 passing OLS fit tests, 302 PPML core tests, 97 final plugin tests, two
+licensed fixtures (8 OLS and 14 PPML native fits), universal static audit and
+actual ARM64 ABI/self-test. No Windows/x86 scientific runtime claim is made.
+
+The original full German OLS specification now publishes certified estimates:
+91,045,290 input rows, 2,169,026 singleton drops and **88,876,264 retained**.
+All 18 slopes agree with the completed owner reghdfe result within 2.569e-11;
+covariance maximum difference is 5.679e-20 and relative RSS difference 7.286e-13.
+Rank is 18, absorbed DoF 14,702,025 and residual DoF 74,174,221 in both results.
+Finite inverse errors are about 1e-16 under the unchanged 5e-10 tolerance.
+
+Command time is **1,708.530 s (28.48 min)** versus the saved reghdfe run's
+6,699.551 s (111.66 min), a single unpaired local ratio of 3.92. Preparation
+including singleton pruning is 28.717 s. Maximum process RSS is 78.48 GB,
+native allocation peak 44.55 GB and scratch 13.51 GB, with zero swaps. Initial
+absorption uses three CG fallbacks (1,136.138 s solve); final residual absorption
+uses one (132.160 s). A one-second stack sample is disclosed. No isolated QR
+performance gain or full-reference mask comparison is claimed.
+
+The old macOS sysctl omitted inactive pages; it can also fail under a restricted
+invocation. The final plan keeps its original headroom. CMG's existing conservative
+bound is about 731 GB before the 36.42 GB execution reserve, so certified CG is
+selected. Tightening that broad bound without weakening admission is a next P0
+candidate; no CMG sizing or hierarchy changes are adopted. The native peak is
+22.33% above the published base execution estimate, within the joint solver plan.
+
+The QR-only full attempt's r(909), earlier r(459), rejected short-vector/Givens
+arithmetic, first Mach layout-length failure and zero-test launches remain
+preserved. The successful full run uses CG whereas the earlier r(459) used CMG;
+independent power-of-two oracles isolate the QR bug, but the full runs do not
+isolate its sole causality. German subsets and exact small masks remain controls.
+
+Next: resolve the pending PPML outcome choice (`exp(logrwage2)` versus censored
+`rwage`), then test the German PPML subsets before any full run. Universal
+singleton pruning is already adopted for OLS/PPML and all memory modes; no German
+PPML result is claimed. Broader #27 work and the separate action-memory/PPML repair
+remain open. No cluster work, installed-binary replacement or push occurred.
+
 ## Universal singleton pruning: prepared PPML queue adopted locally
 
 The [incremental source-bound report](benchmarks/reports/development/ppml-singleton-index-local-2026-09-14/README.md)

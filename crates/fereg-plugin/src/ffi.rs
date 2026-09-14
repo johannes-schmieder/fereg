@@ -387,11 +387,70 @@ fn parse_linux_memory_field(path: &str, field: &str, multiplier: u64) -> Option<
 #[cfg(target_os = "macos")]
 pub(crate) fn system_available_memory_bytes() -> Option<u64> {
     let page_size = apple_sysctl_u64(c"hw.pagesize")?;
+    if let Some(available) = apple_vm_available_memory_bytes(page_size) {
+        return Some(available);
+    }
+    // Keep a conservative fallback when Mach statistics are unavailable.
+    // This sysctl free count excludes speculative pages, unlike HOST_VM_INFO64.
     let free = apple_sysctl_u64(c"vm.page_free_count")?;
-    let inactive = apple_sysctl_u64(c"vm.page_inactive_count").unwrap_or(0);
     let speculative = apple_sysctl_u64(c"vm.page_speculative_count").unwrap_or(0);
-    free.checked_add(inactive)?
-        .checked_add(speculative)?
+    free.checked_add(speculative)?.checked_mul(page_size)
+}
+
+#[cfg(target_os = "macos")]
+fn apple_vm_available_memory_bytes(page_size: u64) -> Option<u64> {
+    // libc exposes the statistics call but not the matching send-right release.
+    unsafe extern "C" {
+        fn mach_port_deallocate(
+            task: libc::mach_port_t,
+            name: libc::mach_port_t,
+        ) -> libc::kern_return_t;
+    }
+    let mut statistics = std::mem::MaybeUninit::<libc::vm_statistics64>::zeroed();
+    let mut count = libc::HOST_VM_INFO64_COUNT;
+    // SAFETY: mach_host_self returns an owned send right. The output is sized
+    // for count integer words, and the right is released on every return path.
+    #[allow(deprecated)]
+    let result = unsafe {
+        let host = libc::mach_host_self();
+        let result = libc::host_statistics64(
+            host,
+            libc::HOST_VM_INFO64,
+            statistics.as_mut_ptr().cast(),
+            &mut count,
+        );
+        let _ = mach_port_deallocate(libc::mach_task_self(), host);
+        result
+    };
+    // Older kernels can return a shorter revision than libc's current layout.
+    // Only the original free/active/inactive prefix is consumed here.
+    let required_words = (std::mem::offset_of!(libc::vm_statistics64, inactive_count)
+        + std::mem::size_of::<libc::natural_t>())
+        / std::mem::size_of::<libc::integer_t>();
+    if result != libc::KERN_SUCCESS
+        || (count as usize) < required_words
+        || count > libc::HOST_VM_INFO64_COUNT
+    {
+        return None;
+    }
+    // SAFETY: all fields are integers and were zero-initialized. The successful
+    // call wrote the checked prefix; any later-revision fields remain zero.
+    let statistics = unsafe { statistics.assume_init() };
+    apple_available_memory_from_statistics(&statistics, page_size)
+}
+
+#[cfg(target_os = "macos")]
+fn apple_available_memory_from_statistics(
+    statistics: &libc::vm_statistics64,
+    page_size: u64,
+) -> Option<u64> {
+    if page_size == 0 {
+        return None;
+    }
+    // HOST_VM_INFO64 includes speculative pages in free_count already.
+    // vm.page_inactive_count is not a supported sysctl on current macOS.
+    u64::from(statistics.free_count)
+        .checked_add(u64::from(statistics.inactive_count))?
         .checked_mul(page_size)
 }
 
@@ -712,7 +771,10 @@ impl SpiSession {
 impl SpiApi for SpiSession {
     fn read_estimate_bundle(&mut self, buffer: &mut [u8]) -> Result<(), FeregError> {
         let maximum = buffer.len().checked_sub(1).ok_or_else(|| {
-            FeregError::new(ErrorCode::Syntax, "request buffer has no terminator capacity")
+            FeregError::new(
+                ErrorCode::Syntax,
+                "request buffer has no terminator capacity",
+            )
         })?;
         let length = c_int::try_from(maximum).map_err(|_| {
             FeregError::new(
@@ -1220,6 +1282,44 @@ fn panic_message(payload: &(dyn Any + Send)) -> String {
 mod tests {
     use super::*;
     use std::ffi::CString;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_available_memory_counts_inactive_without_double_counting_speculative() {
+        // SAFETY: every field of this Mach C structure is an integer.
+        let mut statistics: libc::vm_statistics64 = unsafe { std::mem::zeroed() };
+        statistics.free_count = 10;
+        statistics.inactive_count = 7;
+        statistics.speculative_count = 3;
+        statistics.active_count = 100;
+        statistics.purgeable_count = 5;
+        assert_eq!(
+            apple_available_memory_from_statistics(&statistics, 16_384),
+            Some(17 * 16_384)
+        );
+        assert_eq!(apple_available_memory_from_statistics(&statistics, 0), None);
+        statistics.free_count = u32::MAX;
+        statistics.inactive_count = u32::MAX;
+        assert_eq!(
+            apple_available_memory_from_statistics(&statistics, u64::MAX),
+            None
+        );
+        assert_eq!(
+            apple_available_memory_from_statistics(&statistics, 4096),
+            Some(2 * u64::from(u32::MAX) * 4096)
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_vm_memory_probe_returns_a_physical_bound() {
+        let page_size = apple_sysctl_u64(c"hw.pagesize").expect("macOS page size");
+        let physical = apple_sysctl_u64(c"hw.memsize").expect("physical memory");
+        for _ in 0..8 {
+            let available = apple_vm_available_memory_bytes(page_size).expect("Mach VM statistics");
+            assert!(available > 0 && available <= physical);
+        }
+    }
 
     #[test]
     fn exported_boundary_catches_injected_panic() {

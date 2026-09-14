@@ -1,0 +1,9 @@
+{
+  "compiled_inputs_matched": 177,
+  "new_fixture_matched": true,
+  "unrelated_status_patch_replay_exact": true,
+  "unrelated_status_added_lines_preserved": 97,
+  "original_untracked_files_preserved": 358,
+  "installed_dist_unchanged": true,
+  "core_tested_QR_source_rustfmt_replays_exactly": true
+}

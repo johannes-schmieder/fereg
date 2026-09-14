@@ -545,6 +545,10 @@ trait FitReservation {
 struct SystemFitReservation;
 
 const PARALLEL_QR_MIN_ROWS: usize = 65_536;
+// Above this length, a single naive reduction can consume a material share
+// of the default bread-certificate error budget. Keep short checkpoint
+// arithmetic consistent with the established retained-session path.
+const COMPENSATED_QR_MIN_ROWS: usize = 65_536;
 const PARALLEL_REDUCTION_CHUNK_ROWS: usize = 16_384;
 const FUSED_MOMENT_MAX_COLUMNS: usize = 64;
 const FUSED_MOMENT_MAX_BLOCKS: usize = 64;
@@ -2526,9 +2530,8 @@ fn fit_with_controls_low_internal_with_frame<
         None
     };
     let trace_copy = std::env::var_os("FEREG_PHASE_TIMING").is_some();
-    let mut copy_failures = usize::from(
-        retained_scratch.is_some() && generated_columns > 0 && score_scratch.is_none(),
-    );
+    let mut copy_failures =
+        usize::from(retained_scratch.is_some() && generated_columns > 0 && score_scratch.is_none());
     let mut copy_columns = 0_usize;
     let mut copy_seconds = 0.0_f64;
     let scratch_bytes = scratch
@@ -4514,12 +4517,7 @@ fn stable_slice_segment_norm(values: &[f64], start: usize) -> Result<f64> {
             "prepared OLS low-memory norm segment is out of range",
         ));
     }
-    let mut scale = 0.0_f64;
-    let mut scaled_square_sum = 1.0_f64;
-    for value in values.iter().copied().skip(start) {
-        update_scaled_sum_of_squares(value, &mut scale, &mut scaled_square_sum)?;
-    }
-    checked_norm(scale, scaled_square_sum)
+    stable_qr_segment_norm(values.iter().copied().skip(start))
 }
 
 fn apply_householder_slices(
@@ -4534,8 +4532,20 @@ fn apply_householder_slices(
         ));
     }
     let mut projection = target[start];
-    for row in (start + 1)..target.len() {
-        projection = reflector[row].mul_add(target[row], projection);
+    if target.len() - start >= COMPENSATED_QR_MIN_ROWS {
+        let mut correction = 0.0;
+        for row in (start + 1)..target.len() {
+            compensated_add(
+                reflector[row] * target[row],
+                &mut projection,
+                &mut correction,
+            )?;
+        }
+        projection += correction;
+    } else {
+        for row in (start + 1)..target.len() {
+            projection = reflector[row].mul_add(target[row], projection);
+        }
     }
     projection *= tau;
     if !projection.is_finite() {
@@ -4544,6 +4554,11 @@ fn apply_householder_slices(
         ));
     }
     target[start] -= projection;
+    if !target[start].is_finite() {
+        return Err(invalid_data(
+            "prepared OLS low-memory transformed value is not finite",
+        ));
+    }
     for row in (start + 1)..target.len() {
         target[row] = (-reflector[row]).mul_add(projection, target[row]);
         if !target[row].is_finite() {
@@ -4843,8 +4858,11 @@ fn finalize_finite_bread_draft<R: FitReservation>(
     if left_inverse_relative_infinity_norm > tolerance
         || right_inverse_relative_infinity_norm > tolerance
     {
-        return Err(invalid_data(
-            "prepared OLS bread inverse certificate did not pass",
+        return Err(FeregError::new(
+            ErrorCode::InvalidData,
+            format!(
+                "prepared OLS bread inverse certificate did not pass (rank={rank}, left={left_inverse_relative_infinity_norm:e}, right={right_inverse_relative_infinity_norm:e}, tolerance={tolerance:e})"
+            ),
         ));
     }
 
@@ -6044,12 +6062,37 @@ fn stable_matrix_segment_norm(
             "prepared OLS matrix norm segment is out of range",
         ));
     }
-    let mut scale = 0.0_f64;
-    let mut scaled_square_sum = 1.0_f64;
-    for row in start_row..matrix.nrows() {
-        update_scaled_sum_of_squares(matrix[(row, column)], &mut scale, &mut scaled_square_sum)?;
+    stable_qr_segment_norm((start_row..matrix.nrows()).map(|row| matrix[(row, column)]))
+}
+
+/// QR reflector norms need accurate tail energy even when each squared term is
+/// below one ulp of a large leading term. A fixed scale and compensated sum
+/// avoid N-dependent loss; the pre-absorption reference-norm policy is separate.
+fn stable_qr_segment_norm(values: impl ExactSizeIterator<Item = f64> + Clone) -> Result<f64> {
+    if values.len() < COMPENSATED_QR_MIN_ROWS {
+        let mut scale = 0.0;
+        let mut sum = 1.0;
+        for value in values {
+            update_scaled_sum_of_squares(value, &mut scale, &mut sum)?;
+        }
+        return checked_norm(scale, sum);
     }
-    checked_norm(scale, scaled_square_sum)
+    let scale = values.clone().try_fold(0.0_f64, |scale, value| {
+        if !value.is_finite() {
+            return Err(invalid_data("prepared OLS QR norm value is not finite"));
+        }
+        Ok(scale.max(value.abs()))
+    })?;
+    if scale == 0.0 {
+        return Ok(0.0);
+    }
+    let mut sum = 0.0;
+    let mut correction = 0.0;
+    for value in values {
+        let scaled = value / scale;
+        compensated_add(scaled * scaled, &mut sum, &mut correction)?;
+    }
+    checked_norm(scale, sum + correction)
 }
 
 fn apply_householder(
@@ -6064,6 +6107,16 @@ fn apply_householder(
         let tail =
             parallel_matrix_column_dot(matrix, reflector_column, target_column, start_row + 1)?;
         projection += tail;
+    } else if matrix.nrows() - start_row >= COMPENSATED_QR_MIN_ROWS {
+        let mut correction = 0.0;
+        for row in (start_row + 1)..matrix.nrows() {
+            compensated_add(
+                matrix[(row, reflector_column)] * matrix[(row, target_column)],
+                &mut projection,
+                &mut correction,
+            )?;
+        }
+        projection += correction;
     } else {
         for row in (start_row + 1)..matrix.nrows() {
             projection =
@@ -7043,6 +7096,91 @@ mod tests {
             },
         )
         .expect("prepared data")
+    }
+
+    #[test]
+    fn qr_reduction_rejects_an_unrepresentable_transformed_head() {
+        // v=(1,1/2,1/2), tau=4/3 is an orthogonal reflector. The first
+        // transformed entry is 1.02*MAX while both trailing entries are finite.
+        let reflector = [1.0, 0.5, 0.5];
+        let values = [0.9 * f64::MAX, -0.99 * f64::MAX, -0.99 * f64::MAX];
+        let mut target = values;
+        let error = apply_householder_slices(&reflector, &mut target, 0, 4.0 / 3.0)
+            .expect_err("unrepresentable leading entry must fail immediately");
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        let mut matrix = DenseMatrix::zeros(3, 2).unwrap();
+        for row in 0..3 {
+            matrix[(row, 0)] = reflector[row];
+            matrix[(row, 1)] = values[row];
+        }
+        assert_eq!(
+            apply_householder(&mut matrix, 0, 0, 1, 4.0 / 3.0)
+                .expect_err("same finite-output boundary in both layouts")
+                .code,
+            ErrorCode::InvalidData
+        );
+    }
+
+    #[test]
+    fn qr_reduction_norm_retains_small_tail_energy_in_both_layouts() {
+        let n = 65_536;
+        let tiny = 2.0_f64.powi(-27);
+        let expected_unit = (1.0 + 2.0_f64.powi(-38)).sqrt();
+        for scale in [1.0, 1e150, 1e-150] {
+            let mut values = vec![tiny * scale; n + 4];
+            values[..3].fill(f64::NAN);
+            values[3] = scale;
+            let expected = scale * expected_unit;
+            let observed = stable_slice_segment_norm(&values, 3).unwrap();
+            assert!(
+                (observed / expected - 1.0).abs() <= 4.0 * f64::EPSILON,
+                "slice scale={scale}: observed={observed:e}, oracle={expected:e}"
+            );
+            let mut matrix = DenseMatrix::zeros(n + 4, 2).unwrap();
+            for row in 0..values.len() {
+                matrix[(row, 1)] = values[row];
+            }
+            let observed = stable_matrix_segment_norm(&matrix, 1, 3).unwrap();
+            assert!(
+                (observed / expected - 1.0).abs() <= 4.0 * f64::EPSILON,
+                "matrix scale={scale}: observed={observed:e}, oracle={expected:e}"
+            );
+        }
+    }
+
+    #[test]
+    fn qr_reduction_householder_maps_its_own_vector_to_its_negative() {
+        // v=(1, 2^-27, ..., 2^-27), with exactly 2^16 tail entries.
+        // Its squared norm is exactly 1+2^-38. H=I-2vv'/v'v maps v to -v.
+        let n = 65_536;
+        let tiny = 2.0_f64.powi(-27);
+        let tau = 2.0 / (1.0 + 2.0_f64.powi(-38));
+        let mut reflector = vec![tiny; n + 1];
+        reflector[0] = 1.0;
+        let mut target = reflector.clone();
+        apply_householder_slices(&reflector, &mut target, 0, tau).unwrap();
+        assert!(
+            (target[0] + 1.0).abs() <= 4.0 * f64::EPSILON,
+            "slice Householder leading error {}",
+            target[0] + 1.0
+        );
+        assert!(target[1..]
+            .iter()
+            .all(|&v| (v / tiny + 1.0).abs() <= 4.0 * f64::EPSILON));
+        let team = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .unwrap();
+        team.install(|| {
+            let mut matrix = DenseMatrix::zeros(n + 1, 2).unwrap();
+            for row in 0..=n {
+                matrix[(row, 0)] = reflector[row];
+                matrix[(row, 1)] = reflector[row];
+            }
+            apply_householder(&mut matrix, 0, 0, 1, tau).unwrap();
+            assert!((matrix[(0, 1)] + 1.0).abs() <= 4.0 * f64::EPSILON);
+            assert!((1..=n).all(|row| (matrix[(row, 1)] / tiny + 1.0).abs() <= 4.0 * f64::EPSILON));
+        });
     }
 
     #[test]
@@ -11360,9 +11498,12 @@ mod tests {
                 let mut scale = canonical.bread_weight_scale();
                 scale.solver_weight_divisor *= factor;
                 scale.reference_weight_multiplier *= factor;
-                let frame =
-                    LinearSolveFrame::from_parts(canonical.response(), canonical.raw_weights(), scale)
-                        .unwrap();
+                let frame = LinearSolveFrame::from_parts(
+                    canonical.response(),
+                    canonical.raw_weights(),
+                    scale,
+                )
+                .unwrap();
                 let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
                     &data,
                     frame,
@@ -11387,7 +11528,8 @@ mod tests {
                     expected.dropped_generated_columns()
                 );
                 assert_eq!(actual.coefficients().len(), expected.coefficients().len());
-                for (actual, expected) in actual.coefficients().iter().zip(expected.coefficients()) {
+                for (actual, expected) in actual.coefficients().iter().zip(expected.coefficients())
+                {
                     assert_eq!(actual.coefficient_slot, expected.coefficient_slot);
                     assert_eq!(
                         actual.generated_column_index,
