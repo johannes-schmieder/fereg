@@ -1,0 +1,64 @@
+{
+  "low-one-fe": {
+    "log_sha256": "c7a8ea713dac9ed5542c06ca004ed496f5721f4d89d3db7a03bcb991668e70f9",
+    "stderr_sha256": "ebae4cba82257f0ff5adef0a94191f9cf9a1038e6646304bb00d2f371539973a",
+    "sentinels": [
+      "END_FIXTURE|ols_low_one_fe|rc=0",
+      "LOW_SCORE_VALIDATION_RC=0"
+    ]
+  },
+  "generated-baseline": {
+    "log_sha256": "bae4d7ffe53813d7d19231016360803d6632d68ba6b99327cf951f333bdc179f",
+    "stderr_sha256": "c54c5c71695e13d314b79257fe53a8cf551e73e0592dc71e87a09056ab63a247",
+    "sentinels": [
+      "LOW_SCORE_LAYOUT|case=generated|rc=0",
+      "END_FIXTURE|low_score_generated_supported|fits=1|rc=0",
+      "LAYOUT_SUPPLEMENT_RC=0"
+    ]
+  },
+  "generated-candidate": {
+    "log_sha256": "ac1f30147f0d4799dea7f77d666c845229d5c4efe5c2ec7766e1ed888823ac09",
+    "stderr_sha256": "c6b55c321ee712d6885bc90cdab094ffcb1a25a29ea73c1d25feec35220851fc",
+    "sentinels": [
+      "LOW_SCORE_LAYOUT|case=generated|rc=0",
+      "END_FIXTURE|low_score_generated_supported|fits=1|rc=0",
+      "LAYOUT_SUPPLEMENT_RC=0"
+    ]
+  },
+  "low-cluster": {
+    "log_sha256": "f48ba5efb3d786dd6f722fe0a2eea27ac46b4e403965767956f40ee2e60fbbe0",
+    "stderr_sha256": "96d349d8b98dec7c3bac58c94e4b93099d048469d8204ca730ca486c543f80fb",
+    "sentinels": [
+      "END_FIXTURE|ols_cluster_low_memory|rc=0",
+      "LOW_SCORE_VALIDATION_RC=0"
+    ]
+  },
+  "layouts": {
+    "log_sha256": "99473d0e8b321d3668b0c0a5edd2de01b9b4e84de130d1476c30a394ecdf05b4",
+    "stderr_sha256": "d32a177bea050bd669780daa64078998a56abd217f413ecde6c0edc6d4152429",
+    "sentinels": [
+      "LOW_SCORE_LAYOUT|case=two|rc=0",
+      "LOW_SCORE_LAYOUT|case=three|rc=0",
+      "LOW_SCORE_LAYOUT|case=slope|rc=0",
+      "LOW_SCORE_VALIDATION_RC=498"
+    ]
+  },
+  "two-way": {
+    "log_sha256": "d27329fb49b6e36aead92778ab054f3deb95408d34f3cf0e69a06ed742a30c05",
+    "stderr_sha256": "15ad72d9da904e52778bd5baeb0066ebfdf2619896ad19ff71d79a63ff07695d",
+    "sentinels": [
+      "END_FIXTURE|ols_cluster_batch|rc=0",
+      "LOW_SCORE_VALIDATION_RC=0"
+    ]
+  },
+  "unsupported-baseline": {
+    "log_sha256": "a2be04787096f4fe65cdca8dad104e97de75051c13fbed7845581bf4746b0149",
+    "stderr_sha256": "49d2c7d582b2054ed4bc8ab117b0d32c8bf34d2969f8d5bbd8d28bb0653b0014",
+    "sentinels": [
+      "LOW_SCORE_LAYOUT|case=two|rc=0",
+      "LOW_SCORE_LAYOUT|case=three|rc=0",
+      "LOW_SCORE_LAYOUT|case=slope|rc=0",
+      "LAYOUT_SUPPLEMENT_RC=498"
+    ]
+  }
+}

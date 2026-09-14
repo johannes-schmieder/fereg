@@ -1,0 +1,9 @@
+{
+  "source": "9561f76492f33ff9baa46757cf4d2a76c780593de6c6aebd3477e8d035282f1e",
+  "rlib": {
+    "file": "libfereg_core-32ec65feffb5a417.rlib",
+    "sha256": "a30a686352151b3e64401aaff61597f57724622d1f3e9632f5ca44bbd861f6af"
+  },
+  "executable": "f5b7b283864fb41485b848380127257c8d8e729ebb91e65c97def65c4156a906",
+  "returncode": 0
+}

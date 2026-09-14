@@ -23,6 +23,7 @@ use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
     PreparedInferenceReservation, SystemPreparedInferenceReservation,
 };
+use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{
     build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
     compensated_add, exact_integer_as_f64, relative_difference, validate_sum_of_squares,
@@ -581,7 +582,7 @@ fn fit_clustered_view_with_reservation<
 ) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
 {
     validate_config(prepared, config)?;
-    let fit =
+    let (fit, score_scratch) =
         fit_prepared_ols_coefficients_view_map_for_inference(prepared.clustered_ols(), config.fit)?;
     compose_clustered_view(
         prepared,
@@ -589,6 +590,7 @@ fn fit_clustered_view_with_reservation<
         config,
         reservation,
         ClusteredPerturbations::default(),
+        score_scratch,
     )
 }
 
@@ -600,7 +602,8 @@ fn compose<R: PreparedInferenceReservation>(
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
 ) -> Result<CertifiedPreparedOlsClustered> {
-    let components = compose_clustered_view(prepared, fit, config, reservation, perturbations)?;
+    let components =
+        compose_clustered_view(prepared, fit, config, reservation, perturbations, None)?;
     Ok(CertifiedPreparedOlsClustered {
         fit: components.fit,
         absorbed_dof: components.absorbed_dof,
@@ -620,6 +623,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
+    score_scratch: Option<PreparedOlsScratch>,
 ) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
 {
     let ols = prepared.clustered_ols();
@@ -690,6 +694,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
         config.fit.absorb,
         config.certificate_tolerance,
         reservation,
+        score_scratch,
     )?;
     if perturbations.score_design {
         scores.certificate.passed = false;

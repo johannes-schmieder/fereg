@@ -45,6 +45,20 @@ impl PreparedOlsScratch {
     }
 
     fn create_with_layout(rows: usize, columns: usize, layout: ScratchLayout) -> Result<Self> {
+        Self::create_with_buffer(rows, columns, layout, true)
+    }
+
+    /// A retained copy borrows the working file's buffer until QR releases it.
+    pub(crate) fn create_unbuffered(rows: usize, columns: usize) -> Result<Self> {
+        Self::create_with_buffer(rows, columns, ScratchLayout::ColumnMajor, false)
+    }
+
+    fn create_with_buffer(
+        rows: usize,
+        columns: usize,
+        layout: ScratchLayout,
+        buffered: bool,
+    ) -> Result<Self> {
         let elements = rows
             .checked_mul(columns)
             .ok_or_else(|| allocation("prepared OLS scratch dimensions overflow usize"))?;
@@ -65,6 +79,7 @@ impl PreparedOlsScratch {
             .min(addressable_bytes)
             .max(minimum_row_bytes)
             .max(8);
+        let buffer_bytes = if buffered { buffer_bytes } else { 0 };
         io_buffer
             .try_reserve_exact(buffer_bytes)
             .map_err(|_| allocation("unable to reserve prepared OLS scratch I/O buffer"))?;
@@ -152,6 +167,32 @@ impl PreparedOlsScratch {
         self.validate_column(column, values.len())?;
         let offset = self.column_element_offset(column, 0)?;
         self.write_values_at(offset, values)
+    }
+
+    pub(crate) fn write_column_with_borrowed_buffer(
+        &mut self,
+        column: usize,
+        values: &[f64],
+        donor: &mut Self,
+    ) -> Result<()> {
+        self.take_io_buffer_from(donor)?;
+        let result = self.write_column(column, values);
+        // Ordinary errors return the bank; panic unwinding drops both private
+        // files and their buffers with the enclosing failed fit.
+        std::mem::swap(&mut self.io_buffer, &mut donor.io_buffer);
+        result
+    }
+
+    pub(crate) fn take_io_buffer_from(&mut self, donor: &mut Self) -> Result<()> {
+        if !self.io_buffer.is_empty() || donor.io_buffer.len() < 8 {
+            return Err(invalid(
+                "scratch buffer transfer requires an empty recipient",
+            ));
+        }
+        self.require_healthy()?;
+        donor.require_healthy()?;
+        std::mem::swap(&mut self.io_buffer, &mut donor.io_buffer);
+        Ok(())
     }
 
     pub(crate) fn read_column(&mut self, column: usize, values: &mut [f64]) -> Result<()> {
@@ -535,6 +576,9 @@ impl PreparedOlsScratch {
         }
         self.seek_element(offset)?;
         let values_per_chunk = self.io_buffer.len() / 8;
+        if values_per_chunk == 0 {
+            return Err(invalid("prepared OLS scratch has no active I/O buffer"));
+        }
         for chunk in values.chunks(values_per_chunk) {
             let byte_count = chunk
                 .len()
@@ -561,6 +605,9 @@ impl PreparedOlsScratch {
     fn read_values_at(&mut self, offset: usize, values: &mut [f64]) -> Result<()> {
         self.seek_element(offset)?;
         let values_per_chunk = self.io_buffer.len() / 8;
+        if values_per_chunk == 0 {
+            return Err(invalid("prepared OLS scratch has no active I/O buffer"));
+        }
         for chunk in values.chunks_mut(values_per_chunk) {
             let byte_count = chunk
                 .len()
@@ -778,6 +825,58 @@ fn io_error(context: &str, error: std::io::Error) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn retained_columns_survive_working_mutation_without_another_io_bank() {
+        let n = IO_BUFFER_BYTES / 8 + 3;
+        let values = (0..n).map(|row| row as f64 * 0.125).collect::<Vec<_>>();
+        let paths;
+        {
+            let mut working = PreparedOlsScratch::create(n, 1).unwrap();
+            let mut retained = PreparedOlsScratch::create_unbuffered(n, 1).unwrap();
+            paths = [working.path.clone(), retained.path.clone()];
+            let capacity = working.io_buffer_capacity();
+            assert_eq!(retained.io_buffer_capacity(), 0);
+            working.write_column(0, &values).unwrap();
+            retained
+                .write_column_with_borrowed_buffer(0, &values, &mut working)
+                .unwrap();
+            assert_eq!(working.io_buffer_capacity(), capacity);
+            assert_eq!(retained.io_buffer_capacity(), 0);
+            working.write_column(0, &vec![0.0; n]).unwrap();
+            retained.take_io_buffer_from(&mut working).unwrap();
+            assert_eq!(working.io_buffer_capacity(), 0);
+            assert_eq!(retained.io_buffer_capacity(), capacity);
+            let mut actual = vec![0.0; n];
+            retained.read_column(0, &mut actual).unwrap();
+            assert_eq!(actual, values);
+            assert!(working.read_column(0, &mut actual).is_err());
+        }
+        assert!(paths.iter().all(|path| !path.exists()));
+    }
+
+    #[test]
+    fn failed_retained_write_returns_the_working_buffer_and_removes_its_file() {
+        let paths;
+        {
+            let mut working = PreparedOlsScratch::create(3, 1).unwrap();
+            let mut retained = PreparedOlsScratch::create_unbuffered(3, 1).unwrap();
+            paths = [working.path.clone(), retained.path.clone()];
+            let capacity = working.io_buffer_capacity();
+            let values = [1.0, -2.0, 3.0];
+            working.write_column(0, &values).unwrap();
+            retained.file = Some(File::open(&retained.path).unwrap());
+            assert!(retained
+                .write_column_with_borrowed_buffer(0, &values, &mut working)
+                .is_err());
+            assert_eq!(working.io_buffer_capacity(), capacity);
+            assert_eq!(retained.io_buffer_capacity(), 0);
+            let mut actual = [0.0; 3];
+            working.read_column(0, &mut actual).unwrap();
+            assert_eq!(actual, values);
+        }
+        assert!(paths.iter().all(|path| !path.exists()));
+    }
 
     #[test]
     fn scratch_round_trips_columns_and_cleans_up() {

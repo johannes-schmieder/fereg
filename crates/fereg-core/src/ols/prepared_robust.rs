@@ -19,6 +19,7 @@ use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
     PreparedInferenceReservation, PreparedOlsDenseScoreView, SystemPreparedInferenceReservation,
 };
+use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{
     build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
     compensated_add, exact_integer_as_f64, relative_difference, validate_fit_and_absorbed_dof_view,
@@ -365,7 +366,8 @@ pub fn fit_prepared_ols_robust_map(
     config: PreparedOlsRobustConfig,
 ) -> Result<CertifiedPreparedOlsRobust> {
     validate_config(config)?;
-    let fit = fit_prepared_ols_coefficients_view_map_for_inference(prepared, config.fit)?;
+    let (fit, score_scratch) =
+        fit_prepared_ols_coefficients_view_map_for_inference(prepared, config.fit)?;
     let absorbed_dof = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
     ThreadTeam::new(config.fit.execution.threads).install(|| {
         let mut reservation = SystemPreparedInferenceReservation;
@@ -376,6 +378,7 @@ pub fn fit_prepared_ols_robust_map(
             config,
             &mut reservation,
             RobustPerturbations::default(),
+            score_scratch,
         )
     })?
 }
@@ -387,7 +390,8 @@ pub fn fit_prepared_categorical_ols_robust_map(
     config: PreparedOlsRobustConfig,
 ) -> Result<CertifiedPreparedCategoricalOlsRobust> {
     validate_config(config)?;
-    let fit = fit_prepared_ols_coefficients_view_map_for_inference(prepared, config.fit)?;
+    let (fit, score_scratch) =
+        fit_prepared_ols_coefficients_view_map_for_inference(prepared, config.fit)?;
     let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let absorbed_summary =
         prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
@@ -400,6 +404,7 @@ pub fn fit_prepared_categorical_ols_robust_map(
             config,
             &mut reservation,
             RobustPerturbations::default(),
+            score_scratch,
         )
     })??;
     Ok(CertifiedPreparedCategoricalOlsRobust {
@@ -420,6 +425,7 @@ fn compose_internal<R: PreparedInferenceReservation>(
     config: PreparedOlsRobustConfig,
     reservation: &mut R,
     perturbations: RobustPerturbations,
+    score_scratch: Option<PreparedOlsScratch>,
 ) -> Result<CertifiedPreparedOlsRobust> {
     let absorbed_summary =
         prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
@@ -430,6 +436,7 @@ fn compose_internal<R: PreparedInferenceReservation>(
         config,
         reservation,
         perturbations,
+        score_scratch,
     )?;
     Ok(CertifiedPreparedOlsRobust {
         fit: components.fit,
@@ -449,6 +456,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     config: PreparedOlsRobustConfig,
     reservation: &mut R,
     perturbations: RobustPerturbations,
+    score_scratch: Option<PreparedOlsScratch>,
 ) -> Result<PreparedOlsRobustComponents> {
     let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
     let total_started = Instant::now();
@@ -499,6 +507,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
         config.fit.absorb,
         config.certificate_tolerance,
         reservation,
+        score_scratch,
     )?;
     if perturbations.score_design && score_design.finite_rank() > 0 {
         score_design.certificate.passed = false;
@@ -1579,6 +1588,105 @@ mod tests {
         Frequency(&'a [u32]),
     }
 
+    #[test]
+    fn retained_low_scores_preserve_rank_selection_and_reject_corrupt_columns() {
+        let n = 96;
+        let group = (0..n).map(|row| (row / 12) as f64).collect::<Vec<_>>();
+        let x = (0..n)
+            .map(|row| (row as f64 * 0.7).sin())
+            .collect::<Vec<_>>();
+        let z = (0..n)
+            .map(|row| (row as f64 * 0.3).cos())
+            .collect::<Vec<_>>();
+        let columns = [
+            x.clone(),
+            x.iter().map(|value| 2.0 * value).collect(),
+            z.clone(),
+        ];
+        let y = (0..n)
+            .map(|row| 1.7 * x[row] - 0.4 * z[row] + group[row] + 0.1 * (row as f64).cos())
+            .collect::<Vec<_>>();
+        let weights = (0..n).map(|row| 0.5 + (row % 5) as f64).collect::<Vec<_>>();
+        let frequencies = (0..n).map(|row| 1 + (row % 3) as u32).collect::<Vec<_>>();
+        for kind in [
+            TestWeights::Unit,
+            TestWeights::Analytic(&weights),
+            TestWeights::Frequency(&frequencies),
+            TestWeights::Probability(&weights),
+        ] {
+            let prepared = prepared(&y, &columns, Some(&group), true, kind);
+            let mut config = PreparedOlsRobustConfig::default();
+            config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
+            config.fit.execution.poolsize = 1;
+            let (fit, scratch) =
+                fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit)
+                    .unwrap();
+            assert_eq!(fit.finite_rank(), 2);
+            let scratch = scratch.expect("original low-memory columns retained");
+            assert!(scratch.columns() > fit.finite_rank());
+            assert_eq!(fit.execution().scratch_bytes, 2 * scratch.bytes());
+            let absorbed =
+                compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
+            let cached = compose_internal(
+                &prepared,
+                fit,
+                absorbed,
+                config,
+                &mut CountingReservation::default(),
+                RobustPerturbations::default(),
+                Some(scratch),
+            )
+            .unwrap();
+            let fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
+                &prepared, config.fit, 0,
+            )
+            .unwrap();
+            let absorbed =
+                compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
+            let reference = compose_internal(
+                &prepared,
+                fit,
+                absorbed,
+                config,
+                &mut CountingReservation::default(),
+                RobustPerturbations::default(),
+                None,
+            )
+            .unwrap();
+            assert_eq!(cached.fit().coefficients(), reference.fit().coefficients());
+            for (actual, expected) in cached
+                .covariance()
+                .values()
+                .iter()
+                .zip(reference.covariance().values())
+            {
+                assert!((actual - expected).abs() <= 1e-12 * (1.0 + expected.abs()));
+            }
+            let (fit, scratch) =
+                fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit)
+                    .unwrap();
+            let selected = fit.kept_generated_columns()[0];
+            let mut scratch = scratch.unwrap();
+            scratch.write_column(selected, &vec![0.0; n]).unwrap();
+            let absorbed =
+                compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
+            let error = compose_internal(
+                &prepared,
+                fit,
+                absorbed,
+                config,
+                &mut CountingReservation::default(),
+                RobustPerturbations::default(),
+                Some(scratch),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("score-design certificate"),
+                "{error:?}"
+            );
+        }
+    }
+
     #[derive(Default)]
     struct CountingReservation {
         calls: usize,
@@ -1652,6 +1760,7 @@ mod tests {
                 config,
                 &mut reservation,
                 RobustPerturbations::default(),
+                None,
             )
             .expect("strided robust fit");
             assert!(strided.certificate().passed);
@@ -1773,6 +1882,7 @@ mod tests {
             config.fit.absorb,
             config.certificate_tolerance,
             &mut reservation,
+            None,
         )
         .expect("low-memory score design");
         assert!(scores.dense_view().is_none());
@@ -2130,7 +2240,15 @@ mod tests {
         let config = PreparedOlsRobustConfig::default();
         let fit = fit_prepared_ols_coefficients_view_map(prepared, config.fit)?;
         let absorbed = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
-        compose_internal(prepared, fit, absorbed, config, reservation, perturbations)
+        compose_internal(
+            prepared,
+            fit,
+            absorbed,
+            config,
+            reservation,
+            perturbations,
+            None,
+        )
     }
 
     fn prepared(

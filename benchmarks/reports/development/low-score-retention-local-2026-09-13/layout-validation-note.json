@@ -1,0 +1,12 @@
+{
+  "original_fixture": "layout_oracle.do",
+  "original_sha256": "b4018623dcf18c797d646a93ead5bb816148efe790d2b9c80d46ecc5570b6aa7",
+  "candidate_passed_cases": [
+    "two",
+    "three",
+    "slope"
+  ],
+  "last_case": "i.f##c.x1 x2 x3",
+  "observed_rc": 498,
+  "message": "Current adapter only supports continuous main effects, numeric factor main effects and numeric all-categorical interactions. Verify accepted-source rejection; preserve original failure. Add a distinct supported all-categorical interaction oracle without changing the original fixture or claiming it passed."
+}

@@ -363,6 +363,7 @@ pub(super) fn build_prepared_ols_score_design<
     absorb: AbsorbConfig,
     tolerance: f64,
     reservation: &mut R,
+    retained_scratch: Option<PreparedOlsScratch>,
 ) -> Result<CertifiedPreparedOlsScoreDesign<'a>> {
     let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
     let total_started = Instant::now();
@@ -446,7 +447,10 @@ pub(super) fn build_prepared_ols_score_design<
     } else {
         None
     };
-    let mut cmg = if let (Some(requested_solver), true) = (score_cmg_solver, cached.is_none()) {
+    let mut cmg = if let (Some(requested_solver), true) = (
+        score_cmg_solver,
+        cached.is_none() && retained_scratch.is_none(),
+    ) {
         let built = prepared.fit_build_cmg_absorber(
             map_weights,
             CmgConfig {
@@ -513,6 +517,7 @@ pub(super) fn build_prepared_ols_score_design<
             fit.execution().poolsize,
             &mut cmg,
             reservation,
+            retained_scratch,
         )?,
     };
     fit.record_additional_scratch_peak(scratch_peak_bytes);
@@ -611,6 +616,7 @@ fn build_scratch_score_storage<
     poolsize: usize,
     cmg: &mut Option<CmgAbsorber<'_>>,
     reservation: &mut R,
+    retained_scratch: Option<PreparedOlsScratch>,
 ) -> Result<(PreparedOlsScoreStorage<'a>, Vec<f64>, u64)> {
     let nrows = prepared.fit_sample().n_active();
     let rank = generated_columns.len();
@@ -625,10 +631,21 @@ fn build_scratch_score_storage<
         return Ok((PreparedOlsScoreStorage::Dense(empty), means, 0));
     }
     let block_width = poolsize.max(1).min(rank);
-    let mut columns = PreparedOlsScratch::create(nrows, rank)?;
+    let reused = retained_scratch.is_some();
+    let mut columns = match retained_scratch {
+        Some(columns) => {
+            if columns.rows() != nrows || columns.columns() != prepared.fit_model().columns.len() {
+                return Err(invalid_argument(
+                    "retained low-memory score scratch has a different model frame",
+                ));
+            }
+            columns
+        }
+        None => PreparedOlsScratch::create(nrows, rank)?,
+    };
     let mut column = reserved_filled(
         reservation,
-        nrows,
+        if reused { 0 } else { nrows },
         0.0_f64,
         "unable to reserve prepared robust scratch score column",
     )?;
@@ -649,6 +666,9 @@ fn build_scratch_score_storage<
             means[start + local] =
                 weighted_matrix_column_mean(&raw_values, nrows, block_rank, local, weights)?;
         }
+        if reused {
+            continue;
+        }
         let raw = DenseMatrix::from_row_major(nrows, block_rank, raw_values)?;
         let within = absorb_score_block(prepared, raw, absorb, cmg)?;
         for local in 0..block_rank {
@@ -658,7 +678,13 @@ fn build_scratch_score_storage<
             columns.write_column(start + local, &column)?;
         }
     }
-    let (rows, cache_values) = transpose_score_scratch(&mut columns, nrows, rank, reservation)?;
+    let (rows, cache_values) = transpose_score_scratch(
+        &mut columns,
+        nrows,
+        rank,
+        reservation,
+        reused.then_some(generated_columns),
+    )?;
     let scratch_peak_bytes = columns
         .bytes()
         .checked_add(rows.bytes())
@@ -753,7 +779,13 @@ fn transpose_score_scratch<R: PreparedInferenceReservation>(
     nrows: usize,
     rank: usize,
     reservation: &mut R,
+    selected_columns: Option<&[usize]>,
 ) -> Result<(PreparedOlsScratch, Vec<f64>)> {
+    if selected_columns.is_some_and(|selected| selected.len() != rank) {
+        return Err(invalid_argument(
+            "retained score selection differs from finite rank",
+        ));
+    }
     let mut rows = PreparedOlsScratch::create(nrows, rank)?;
     let target_elements = (TRANSPOSE_BUFFER_BYTES / 8).max(rank);
     let tile_rows = (target_elements / rank).max(1).min(nrows);
@@ -775,7 +807,8 @@ fn transpose_score_scratch<R: PreparedInferenceReservation>(
     for start_row in (0..nrows).step_by(tile_rows) {
         let rows_in_tile = (nrows - start_row).min(tile_rows);
         for finite in 0..rank {
-            columns.read_column_range(finite, start_row, &mut column[..rows_in_tile])?;
+            let stored = selected_columns.map_or(finite, |selected| selected[finite]);
+            columns.read_column_range(stored, start_row, &mut column[..rows_in_tile])?;
             for row in 0..rows_in_tile {
                 tile[row * rank + finite] = column[row];
             }

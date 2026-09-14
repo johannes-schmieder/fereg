@@ -1,0 +1,12 @@
+{
+  "first_compile_log_sha256": "ede4b6ea4ce9a403440a13a5b189318d6ba660838e73d9096dea70620bf937f7",
+  "first_compile_errors": [
+    "error[E0412]: cannot find type `PreparedOlsScratch` in this scope",
+    "error[E0412]: cannot find type `PreparedOlsScratch` in this scope",
+    "error[E0412]: cannot find type `PreparedOlsScratch` in this scope",
+    "error: could not compile `fereg-core` (lib test) due to 3 previous errors"
+  ],
+  "disposition": "Three missing imports after selective formatting; fixed before all final-source tests and plugin build. Original source snapshot identities and pre-format patch retained.",
+  "layout_failure": "Original factor-by-continuous request fails closed with r(498) on both plugins after three passing layout cases. Distinct supported categorical-interaction fixture passes both.",
+  "rank_coverage_gap": "Original saved rank-deficient pair used IID. Preserved as control and supplemented prospectively with robust covariance on the same data."
+}

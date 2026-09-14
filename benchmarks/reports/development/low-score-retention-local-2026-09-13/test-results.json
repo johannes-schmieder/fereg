@@ -1,0 +1,140 @@
+[
+  {
+    "label": "scratch",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_scratch::tests",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 812 filtered out; finished in 0.06s"
+    ],
+    "log_sha256": "086c96abf61591f466525bab3bbd7f03baf54221503382d860c1a875160790cc"
+  },
+  {
+    "label": "robust",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_robust::tests",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 814 filtered out; finished in 0.09s"
+    ],
+    "log_sha256": "52e61f1cec6d9b6fb6ffc88044b3787323e49b78a1a803bf516e03815a0b0cc6"
+  },
+  {
+    "label": "clustered",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_clustered::tests",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 815 filtered out; finished in 2.85s"
+    ],
+    "log_sha256": "fbd28a734e463111eab3a88d17411a506407d453ad16e963bdc0a6ee0c64acde"
+  },
+  {
+    "label": "low-fit",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_fit::tests::low_",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 819 filtered out; finished in 1.11s"
+    ],
+    "log_sha256": "0713bf9820c6f898321f64171c74066b1771c35f2f191302fa26806ba3783598"
+  },
+  {
+    "label": "wide-low",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_fit::tests::wide_fast_and_low_agree",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 823 filtered out; finished in 5.38s"
+    ],
+    "log_sha256": "caae56297e033f091287150cdc37f53fae671e5df5ad0f0ea808f0d8765114ef"
+  },
+  {
+    "label": "zero-rank",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_fit::tests::rank_zero_fast_path",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 823 filtered out; finished in 0.00s"
+    ],
+    "log_sha256": "10a7ee679507c84325bfcd98741a270cef0034a8228200905acc053f133d4ce3"
+  },
+  {
+    "label": "plugin-serial",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-plugin",
+      "--lib",
+      "",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.01s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 3.82s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 11.32s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.03s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.79s",
+      "test result: ok. 95 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.02s"
+    ],
+    "log_sha256": "455b896155f797ed5c20eae07bbe373d091bc6fb0aff7dfc0aae274321656e3e"
+  }
+]

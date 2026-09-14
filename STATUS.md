@@ -10,6 +10,51 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P3/P6 low-memory OLS score retention: adopted local checkpoint
+
+The [source-bound report](benchmarks/reports/development/low-score-retention-local-2026-09-13/README.md)
+and [ADR 0065](docs/adr/0065-low-memory-ols-score-retention.md) adopt original
+projected-column scratch retention against `26d05b0`. Ordinary low robust and
+clustered OLS hand a private owner from fit to inference, outside the certified
+result. The copy borrows the existing I/O bank before QR and takes it afterward;
+actual post-QR identities select columns for bounded row tiles. Independent raw
+means and score/covariance certificates remain. Optional file/copy failures keep
+the uncached path. IID, fast and shared PPML session policies are unchanged.
+
+Thirteen untraced pairs and eight diagnostic/cap calls pass science, with exact
+paired full b and maximum V difference 1.58e-15. Three same-input weak two-FE AW
+repeats improve medians 0.198→0.148 seconds (25.25% paired median); score storage
+falls 56.40→4.37 ms for 0.40 ms copy cost. Single slope/three-FE saved/rank-deficient
+robust controls improve 15.2%/17.3%/11.0%. Wide AW 40.737→38.702 is 4.99546%, below
+the declared 5% gain gate; PW 0.929→0.962 costs 33 ms/3.55% and sampled RSS rises
+0.157→0.207 GiB. No untraced pair exceeds both 5% and 10 ms added cost. The original
+rank-deficient saved control used IID; it is preserved and supplemented by robust
+inference on the exact same data, with rank 49 selected from 51 generated columns.
+
+The larger scratch footprint is accepted: logical peak becomes 16*N*G rather
+than 8*N*max(G,2*R). The rank-deficient robust case rises 24.08→25.07 MB scratch
+while native peak falls 40.59→38.20 MB. There is no general native/RSS saving claim
+or new resident N-by-K copy. The weak public 9.41 MB execution base excludes
+solver reservations. Current-model replay gives 75,268,168 usable bytes for LSMR
+and 13,911,784 for CG; both original plugins pass both shared caps. At the smaller
+cap both select CG and peak near 11.63 MB, with full science preserved and capped
+versus unrestricted V difference at most 1.92e-13. Broader P0 reporting remains.
+
+Validation passes 38 focused core checks, 95 serial plugin tests, 49 candidate
+positive licensed fits, four baseline supplement fits and universal/static/native
+arm64 ABI. Rank-selected/corrupt scratch, donor-buffer return after failed writes,
+cleanup and independent dummy/sandwich/CGM checks are covered. The original
+unsupported factor-by-continuous request fails closed on both plugins; a distinct
+supported generated-interaction fixture passes both. Initial missing-import and
+archive fixture-lookup errors are preserved separately. All 178 candidate inputs
+match main and plugin `365bee73`; installed dist and unrelated work are unchanged.
+
+This closes P3 low-memory duplicate residualization and P6 bounded column/scratch
+handoff. Thirteen #27 items remain. Next examine remaining PPML construction,
+weight/response/predictor passes and generation-valid reuse, then its weighted
+Schur comparison, remaining P6/P7 and R1–R5. Complete #27 before the authorized
+agents, upstream CMG assessment and small SCC campaign. No push or cluster work.
+
 ## P6 saved OLS final-target recovery: adopted local checkpoint
 
 The [source-bound report](benchmarks/reports/development/saved-schur-adoption-local-2026-09-13/README.md)

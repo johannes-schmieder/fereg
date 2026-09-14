@@ -83,6 +83,17 @@ omission status, result wire, and Stata transaction. Registered tests require
 scientific identity. Deterministic routes additionally require
 same-architecture, same-thread-count bitwise reproducibility.
 
+Ordinary low-memory robust/clustered OLS retains original projected generated
+columns before QR mutates its working scratch. The optional file borrows the
+working I/O bank and takes it after QR, then replaces inference's former column
+scratch. Actual post-QR identities select the columns for bounded row tiles;
+independent raw means and score/covariance certificates remain. No additional
+resident N-by-K matrix is created. Logical scratch peak is `16*N*G` bytes for
+G generated columns, including omitted columns; this can exceed the previous
+`8*N*max(G,2*R)` peak at finite rank R. File/copy failure releases the optional
+file and preserves the existing uncached path. See
+[ADR 0065](adr/0065-low-memory-ols-score-retention.md).
+
 Low-memory OLS cluster subsets may replace their `N*sizeof(usize)` tuple-order
 allocation with compensated group scores and presence flags only when the
 entire table fits within that same byte budget. The two representations do not

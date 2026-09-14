@@ -1,0 +1,10 @@
+{
+  "zip_sha256": "c8048ca1a7438d537f921e823afd4f96b4d9e797c496b5469c5296875a387932",
+  "changed_inputs": {
+    "crates/fereg-core/src/ols/prepared_clustered.rs": "3d5c92b20ce4d90b5ee8d1416796396c67fe575280b5340690c40f6f1c334efa",
+    "crates/fereg-core/src/ols/prepared_fit.rs": "f8863525627e0124123c150fa10b84e6784424afa283d4a33f493fcf7d562444",
+    "crates/fereg-core/src/ols/prepared_robust.rs": "f383a4e21ca267145eaa18ddcbad1c8192bb55c165dcf3463aa9aee0496f1b65",
+    "crates/fereg-core/src/ols/prepared_scores.rs": "b791b189b3ba00cfc55cf64ddebd6a689ff647c671bb7210a9992515dc786e17",
+    "crates/fereg-core/src/ols/prepared_scratch.rs": "3da884044df172877be1de4130e6a1db2ecea9695b861f5265b4c62b8ce4ccad"
+  }
+}

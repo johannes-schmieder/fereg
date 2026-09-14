@@ -1,0 +1,106 @@
+[
+  {
+    "name": "low-one-fe",
+    "fixture_sha256": "7e3c8170f832fa6c18ff8d4c04bf0f1a0ed45d655de9009a27fc641e3a83184b",
+    "plugin": "365bee73f4b08ceacd1f6feef35b8fbb8ddeb97462f573c6a5e41bc731b24e0c",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "sentinel": true,
+    "log_sha256": "c7a8ea713dac9ed5542c06ca004ed496f5721f4d89d3db7a03bcb991668e70f9",
+    "stderr_sha256": "ebae4cba82257f0ff5adef0a94191f9cf9a1038e6646304bb00d2f371539973a",
+    "retention_trace": [
+      "FEREG_PHASE|low_score_retention|retained=0|scratch_peak_bytes=2245632|copy_columns=0|copy_failures=0|copy_seconds=0.000000000",
+      "FEREG_PHASE|low_score_retention|retained=0|scratch_peak_bytes=2245632|copy_columns=0|copy_failures=0|copy_seconds=0.000000000",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000347667",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000405877",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000352166",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000376334",
+      "FEREG_PHASE|low_score_retention|retained=0|scratch_peak_bytes=2245632|copy_columns=0|copy_failures=0|copy_seconds=0.000000000",
+      "FEREG_PHASE|low_score_retention|retained=0|scratch_peak_bytes=2245632|copy_columns=0|copy_failures=0|copy_seconds=0.000000000",
+      "FEREG_PHASE|low_score_retention|retained=0|scratch_peak_bytes=2245632|copy_columns=0|copy_failures=0|copy_seconds=0.000000000",
+      "FEREG_PHASE|low_score_retention|retained=0|scratch_peak_bytes=2245632|copy_columns=0|copy_failures=0|copy_seconds=0.000000000",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000341875",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000379957",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000364042",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000359669",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000327040",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000344331",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000337458",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000393376",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000341709",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000361750",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000381208",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000340748",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000340501",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000364040",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000415877",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000412166",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=4491264|copy_columns=17|copy_failures=0|copy_seconds=0.000413250",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=5019648|copy_columns=19|copy_failures=0|copy_seconds=0.000408541",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=5019648|copy_columns=19|copy_failures=0|copy_seconds=0.000463790"
+    ]
+  },
+  {
+    "name": "low-cluster",
+    "fixture_sha256": "36ef7719f7e17fc908ee642f86dd1857b5ec3d2d88bc83292a2555fd7440550d",
+    "plugin": "365bee73f4b08ceacd1f6feef35b8fbb8ddeb97462f573c6a5e41bc731b24e0c",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "sentinel": true,
+    "log_sha256": "f48ba5efb3d786dd6f722fe0a2eea27ac46b4e403965767956f40ee2e60fbbe0",
+    "stderr_sha256": "96d349d8b98dec7c3bac58c94e4b93099d048469d8204ca730ca486c543f80fb",
+    "retention_trace": [
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=80215248|copy_columns=51|copy_failures=0|copy_seconds=0.026597415",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=80215248|copy_columns=51|copy_failures=0|copy_seconds=0.020468999",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=80215248|copy_columns=51|copy_failures=0|copy_seconds=0.009274579",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=80215248|copy_columns=51|copy_failures=0|copy_seconds=0.036690545",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=80215248|copy_columns=51|copy_failures=0|copy_seconds=0.009671953",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=80215248|copy_columns=51|copy_failures=0|copy_seconds=0.009135501",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=80215248|copy_columns=51|copy_failures=0|copy_seconds=0.017911291",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=80215248|copy_columns=51|copy_failures=0|copy_seconds=0.017915588"
+    ]
+  },
+  {
+    "name": "two-way",
+    "fixture_sha256": "d2d8b995ed37eb7d3d346cded6b94135c9e6ad9400a798a1755de37bc427c25e",
+    "plugin": "365bee73f4b08ceacd1f6feef35b8fbb8ddeb97462f573c6a5e41bc731b24e0c",
+    "process_rc": 0,
+    "terminal_rc": [
+      "0"
+    ],
+    "sentinel": true,
+    "log_sha256": "d27329fb49b6e36aead92778ab054f3deb95408d34f3cf0e69a06ed742a30c05",
+    "stderr_sha256": "15ad72d9da904e52778bd5baeb0066ebfdf2619896ad19ff71d79a63ff07695d",
+    "retention_trace": [
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=5766992|copy_columns=11|copy_failures=0|copy_seconds=0.000686625",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=5766992|copy_columns=11|copy_failures=0|copy_seconds=0.000447499",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=5766992|copy_columns=11|copy_failures=0|copy_seconds=0.000467500",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=5766992|copy_columns=11|copy_failures=0|copy_seconds=0.000404503",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=5766992|copy_columns=11|copy_failures=0|copy_seconds=0.000428126",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=5766992|copy_columns=11|copy_failures=0|copy_seconds=0.000409167",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=5766992|copy_columns=11|copy_failures=0|copy_seconds=0.000432960",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=5766992|copy_columns=11|copy_failures=0|copy_seconds=0.000422083"
+    ]
+  },
+  {
+    "name": "layouts",
+    "fixture_sha256": "b4018623dcf18c797d646a93ead5bb816148efe790d2b9c80d46ecc5570b6aa7",
+    "plugin": "365bee73f4b08ceacd1f6feef35b8fbb8ddeb97462f573c6a5e41bc731b24e0c",
+    "process_rc": 0,
+    "terminal_rc": [
+      "498"
+    ],
+    "sentinel": false,
+    "log_sha256": "99473d0e8b321d3668b0c0a5edd2de01b9b4e84de130d1476c30a394ecdf05b4",
+    "stderr_sha256": "d32a177bea050bd669780daa64078998a56abd217f413ecde6c0edc6d4152429",
+    "retention_trace": [
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=163760|copy_columns=5|copy_failures=0|copy_seconds=0.000123959",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=163760|copy_columns=5|copy_failures=0|copy_seconds=0.000111583",
+      "FEREG_PHASE|low_score_retention|retained=1|scratch_peak_bytes=163760|copy_columns=5|copy_failures=0|copy_seconds=0.000119209"
+    ]
+  }
+]

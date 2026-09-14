@@ -1,0 +1,47 @@
+{
+  "source_commit": "26d05b01a0bdfb2125ba502adcbd06ccb623cde2",
+  "files": {
+    "crates/fereg-core/src/ols/prepared_fit.rs": "f25ce2608d888b7eb7b266af68dbd449adc2d976ab5123eaaf0789899f71e71c",
+    "crates/fereg-core/src/ols/prepared_scores.rs": "66e559f4769aeaee0c50d5f4d1f1bb6a827dedc749a188b2dc62494866691060",
+    "crates/fereg-core/src/ols/prepared_scratch.rs": "bb5a077585bae270322224705fbaa0ddfc1bc54ea92bfaaaa7c6a483105c9831",
+    "crates/fereg-core/src/ols/prepared_robust.rs": "03fa3d246ef96fb490e4476b5ce5408eac024a0333227096ac9e893741fcb711",
+    "crates/fereg-core/src/ols/prepared_clustered.rs": "c2b53521aac64840c2063bae12368131d3cdccc3da1282ca7957ec72abe9aded",
+    "crates/fereg-core/src/memory.rs": "53684e364088d3753d5928bb87cce8eb148fe0b63d213531760f7519622f6489"
+  },
+  "production_call_sites": {
+    "ordinary_robust": 368,
+    "categorical_robust": 390,
+    "clustered": 585
+  },
+  "scratch_payload_examples": [
+    {
+      "N": 98304,
+      "generated": 51,
+      "rank": 50,
+      "current_peak_bytes": 78643200,
+      "retention_peak_bytes": 80216064
+    },
+    {
+      "N": 98304,
+      "generated": 51,
+      "rank": 25,
+      "current_peak_bytes": 40108032,
+      "retention_peak_bytes": 80216064
+    },
+    {
+      "N": 245760,
+      "generated": 51,
+      "rank": 50,
+      "current_peak_bytes": 196608000,
+      "retention_peak_bytes": 200540160
+    },
+    {
+      "N": 30720,
+      "generated": 17,
+      "rank": 16,
+      "current_peak_bytes": 7864320,
+      "retention_peak_bytes": 8355840
+    }
+  ],
+  "status": "source-derived pass/capacity audit; no new implementation, tests or measured gain"
+}

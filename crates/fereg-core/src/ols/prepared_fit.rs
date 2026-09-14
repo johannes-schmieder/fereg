@@ -878,6 +878,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + Syn
                 config,
                 &mut reservation,
                 FitPerturbations::default(),
+                None,
             ),
         }
     })?
@@ -937,6 +938,7 @@ pub(crate) fn fit_prepared_weighted_linear_once<'a, P: PreparedOlsFitView + Sync
                 FitPerturbations::default(),
                 phase_probe,
                 phase_observation,
+                None,
             ),
         }
     })?
@@ -1314,20 +1316,33 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
 >(
     prepared: &P,
     config: PreparedOlsFitConfig,
-) -> Result<CertifiedPreparedOlsFit> {
-    fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
+) -> Result<(CertifiedPreparedOlsFit, Option<PreparedOlsScratch>)> {
+    let mut scratch = None;
+    let fit = fit_for_inference_with_scratch(
         prepared,
         config,
         MAX_FAST_SCORE_CACHE_BYTES.min(32 * 1024 * 1024),
-    )
+        Some(&mut scratch),
+    )?;
+    Ok((fit, scratch))
 }
 
+#[cfg(test)]
 pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit<
     P: PreparedOlsFitView + Sync + ?Sized,
 >(
     prepared: &P,
     config: PreparedOlsFitConfig,
     max_fast_score_cache_bytes: usize,
+) -> Result<CertifiedPreparedOlsFit> {
+    fit_for_inference_with_scratch(prepared, config, max_fast_score_cache_bytes, None)
+}
+
+fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &P,
+    config: PreparedOlsFitConfig,
+    max_fast_score_cache_bytes: usize,
+    retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
 ) -> Result<CertifiedPreparedOlsFit> {
     let team = ThreadTeam::new(config.execution.threads);
     // Inference needs the projected columns again. Prefer a packed cache when
@@ -1351,6 +1366,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_cache_li
                 config,
                 &mut reservation,
                 FitPerturbations::default(),
+                retained_scratch,
             ),
         }
     })?
@@ -2405,6 +2421,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
     config: PreparedOlsFitConfig,
     reservation: &mut R,
     perturbations: FitPerturbations,
+    retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
 ) -> Result<CertifiedPreparedOlsFit> {
     validate_config(prepared, config)?;
     let frame = LinearSolveFrame::from_prepared_ols(prepared)?;
@@ -2416,6 +2433,7 @@ fn fit_with_controls_low_internal<P: PreparedOlsFitView + ?Sized, R: FitReservat
         perturbations,
         None,
         None,
+        retained_scratch,
     )
 }
 
@@ -2431,6 +2449,7 @@ fn fit_with_controls_low_internal_with_frame<
     perturbations: FitPerturbations,
     phase_probe: Option<LinearSessionPhaseAllocatorProbe>,
     mut phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
+    retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
 ) -> Result<CertifiedPreparedOlsFit> {
     frame.validate_for(prepared)?;
     let weights = frame.weights();
@@ -2498,6 +2517,25 @@ fn fit_with_controls_low_internal_with_frame<
         "unable to reserve low-memory prepared OLS within score norms",
     )?;
     let mut scratch = PreparedOlsScratch::create(rows, generated_columns)?;
+    // Keep original within columns outside the numerical fit result. The copy
+    // borrows this file's I/O bank while QR still needs the working columns.
+    // Optional file creation failure leaves the established uncached route.
+    let mut score_scratch = if retained_scratch.is_some() && generated_columns > 0 {
+        PreparedOlsScratch::create_unbuffered(rows, generated_columns).ok()
+    } else {
+        None
+    };
+    let trace_copy = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let mut copy_failures = usize::from(
+        retained_scratch.is_some() && generated_columns > 0 && score_scratch.is_none(),
+    );
+    let mut copy_columns = 0_usize;
+    let mut copy_seconds = 0.0_f64;
+    let scratch_bytes = scratch
+        .bytes()
+        .checked_mul(if score_scratch.is_some() { 2 } else { 1 })
+        .ok_or_else(|| allocation("retained low-memory scratch capacity overflows"))?;
+
     let mut column_buffer = reserved_filled(
         reservation,
         rows,
@@ -2562,6 +2600,22 @@ fn fit_with_controls_low_internal_with_frame<
                 ));
             }
             scratch.write_column(generated, &column_buffer)?;
+            if let Some(original) = score_scratch.as_mut() {
+                let started = trace_copy.then(std::time::Instant::now);
+                copy_columns += 1;
+                let copied = original
+                    .write_column_with_borrowed_buffer(generated, &column_buffer, &mut scratch)
+                    .is_ok();
+                if let Some(started) = started {
+                    copy_seconds += started.elapsed().as_secs_f64();
+                }
+                if !copied {
+                    // The working QR column and its buffer survive an optional
+                    // copy failure. Dropping the partial copy removes its file.
+                    copy_failures += 1;
+                    score_scratch = None;
+                }
+            }
         }
     }
     // Retained setup belongs only to projection. Do not overlap it with QR,
@@ -2576,7 +2630,6 @@ fn fit_with_controls_low_internal_with_frame<
     );
     let normalized_initial_within_sum_of_squares =
         initial_within_sum_of_squares_low(prepared, within_outcome_norm, intercept_cross)?;
-    let scratch_bytes = scratch.bytes();
     let mut qr = fit_scaled_pivoted_qr_low(
         prepared,
         &mut scratch,
@@ -2684,6 +2737,16 @@ fn fit_with_controls_low_internal_with_frame<
     let coefficients = build_coefficient_slots(prepared, &qr, reservation)?;
     qr.kept.sort_unstable();
     qr.dropped.sort_unstable();
+    if trace_copy {
+        eprintln!(
+            "FEREG_PHASE|low_score_retention|retained={}|scratch_peak_bytes={scratch_bytes}|copy_columns={copy_columns}|copy_failures={copy_failures}|copy_seconds={copy_seconds:.9}",
+            usize::from(score_scratch.is_some())
+        );
+    }
+    if let (Some(destination), Some(mut original)) = (retained_scratch, score_scratch) {
+        original.take_io_buffer_from(&mut scratch)?;
+        *destination = Some(original);
+    }
     Ok(CertifiedPreparedOlsFit {
         coefficients,
         kept_generated_columns: qr.kept,
