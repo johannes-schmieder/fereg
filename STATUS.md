@@ -10,6 +10,32 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 complete-frame refresh: standalone prototype rejected
+
+The [source-bound screen](benchmarks/reports/development/ppml-frame-refresh-local-2026-09-14/README.md)
+rejects combined response/weight refresh against accepted `7739e8e`. Candidate
+`ddb302c6` removed duplicate old-weight/response validation and applied the exact
+weight-bit/all-scale identity rule to ordinary calls, retaining invalidation and
+prior-response storage. Eleven core checks, 95 serial plugin tests, ten independent
+Poisson/Hessian/sandwich/generated/narrow fits per arm and universal/static/native
+arm64 ABI pass. All four complete-command pairs preserve exact science and solver
+fields, with exact admitted native peaks.
+
+Complete/FW/PW/narrow screens are 7.408→7.496 / 2.509→2.419 / 2.219→2.214 /
+1.427→1.458 seconds (+1.19%/-3.59%/-0.23%/+2.17%). None meets the prospective
+5% and 10 ms gain gate. Weight/response phases move only a few milliseconds;
+most FW savings are in unchanged finite work. No extra seeds/holdout timings,
+tracing or private allocation audit followed rejection. The distinct one-control
+request was fixed before timing on unchanged original full/warm data.
+
+The candidate patch and eight captures remain archived; all 178 accepted inputs
+are restored. The predictor optimization remains adopted. Eight active P0–P7
+items remain. Next examine mean reuse across accepted/trial swaps and strict
+scratch reuse, including bounds/error invalidation, then the remaining P4/P6/P7
+and P0 work. R1–R5 are excluded; the two independent reviews, upstream CMG
+assessment and bounded SCC campaign remain later steps. Installed dist and
+unrelated work are preserved; no agents, cluster work or push occurred.
+
 ## P4 retained numeric predictor tiles: adopted local checkpoint
 
 The [source-bound report](benchmarks/reports/development/ppml-predictor-tiles-local-2026-09-14/README.md)

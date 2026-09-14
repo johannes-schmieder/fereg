@@ -1,0 +1,20 @@
+{
+  "baseline": "7739e8e",
+  "boundary": "CertifiedLinearSession::refresh_frame and PPML caller",
+  "removed_per_changed_frame": [
+    "one full new-response finite scan",
+    "one full old-weight positive/divisor scan",
+    "one duplicate output invalidation/recycling sequence"
+  ],
+  "retained": [
+    "new response finite scan",
+    "new positive normalized weight scan",
+    "old response copy for categorical warm projector",
+    "new response and changed weight copies",
+    "exact all-weight-bits/all-scale-fields comparison",
+    "sample/topology/current-within-generation match"
+  ],
+  "reuse_change": "Ordinary calls share the pre-existing exact-weight-identity rule with final-Hessian calls; changed weights still require re-projection.",
+  "observed_count_status": "Source-derived passes only until isolated timing/counters are run.",
+  "independent_reference": "Established separate response/weight test path remains test-only, with changed-frame certified b/bread/residual comparison plus existing stale-weight and independent public Poisson oracles."
+}
