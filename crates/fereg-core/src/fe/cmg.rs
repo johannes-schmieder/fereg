@@ -1341,25 +1341,42 @@ impl<'a> CmgAbsorber<'a> {
     /// coordinates and are normally FE-orthogonal. Running graph PCG on that
     /// near-zero right-hand side can exhaust its relative iteration budget.
     /// Certify first and perform a CG correction only when one is actually
-    /// required; the retained CMG hierarchy remains available for all earlier
-    /// outcome and regressor blocks.
+    /// required. This terminal call releases the hierarchy before reserving
+    /// the correction workspace; earlier outcome/regressor blocks retain it.
     pub(crate) fn absorb_final_residual(
-        &mut self,
+        self,
         values: DenseMatrix,
+        tolerance: f64,
     ) -> Result<CertifiedBorrowedMap> {
         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
             return Err(invalid_argument(
                 "CMG final-residual design and matrix dimensions are inconsistent",
             ));
         }
-        let certificate = certify_borrowed_intercept_candidate(
-            &self.design,
-            self.weights,
-            &values,
-            self.config.map,
-        )?;
+        let mut config = self.config;
+        config.map.tolerance = config.map.tolerance.min(tolerance);
+        let certificate =
+            certify_borrowed_intercept_candidate(&self.design, self.weights, &values, config.map)?;
         if !certificate.passed {
-            return self.absorb(values);
+            drop(self.route);
+            ensure_cg_fallback_fits(&self.design, values.ncols(), config)?;
+            let reference_norms = weighted_column_norms(&values, self.weights, self.weight_scale)?;
+            let corrected = polish_borrowed_intercept_cg_with_reference_norms_certified(
+                &self.design,
+                self.weights,
+                values,
+                config.map,
+                &reference_norms,
+            )?;
+            let (residualized, mut report) = corrected.into_parts();
+            report.requested_solver = config.requested_solver;
+            report.used_solver = FeSolverKind::Cg;
+            report.fallback_used = true;
+            report.setup_seconds += self.pending_setup_seconds;
+            report
+                .warnings
+                .push("final CMG residual required a certified CG correction".to_owned());
+            return CertifiedBorrowedMap::from_certified_parts(residualized, report);
         }
         let normal_equation_residual = certificate.relative_two_norm;
         CertifiedBorrowedMap::from_certified_parts(
@@ -4963,6 +4980,64 @@ mod tests {
         };
         assert_eq!(error.code, ErrorCode::Allocation);
         assert!(error.message.contains("joint execution/solver memory plan"));
+    }
+
+    #[test]
+    fn terminal_residual_correction_checks_its_cg_budget() {
+        let n = 4 * 3 * 4;
+        let left = (0..n).map(|row| (row % 4) as u32).collect::<Vec<_>>();
+        let right = (0..n).map(|row| ((row / 4) % 3) as u32).collect::<Vec<_>>();
+        let li = LevelIndex::from_codes(&left, 4).unwrap();
+        let ri = LevelIndex::from_codes(&right, 3).unwrap();
+        let noise = (0..n)
+            .map(|row| if (row / 12) % 2 == 0 { -1.0 } else { 1.0 })
+            .collect::<Vec<_>>();
+        let input = || {
+            DenseMatrix::from_columns(&[(0..n)
+                .map(|row| noise[row] + if left[row] == 0 { 2e-9 } else { 0.0 })
+                .collect()])
+            .unwrap()
+        };
+        let incremental = estimate_fe_solver_memory(n, 1, &[4, 3], 1, None)
+            .unwrap()
+            .cg_bytes;
+        for short in [true, false] {
+            let design = BorrowedInterceptFeDesign::new(
+                n,
+                vec![effect(&left, 4, &li), effect(&right, 3, &ri)],
+            )
+            .unwrap();
+            let mut options = config(1);
+            options.map.tolerance = 1e-8;
+            let mut session =
+                CmgAbsorber::build(design, BorrowedMapWeights::Unit, options, false).unwrap();
+            assert!(matches!(&session.route, CmgRoute::Graph(_)));
+            // Isolate admission of the terminal correction after construction.
+            // Its hierarchy is released before this independent reserve.
+            session.config.solver_memory_budget = Some(FeSolverMemoryBudget {
+                execution_bytes: 512,
+                usable_bytes: 512 + incremental - u128::from(short),
+            });
+            let result = session.absorb_final_residual(input(), 1e-12);
+            if short {
+                let error = result.unwrap_err();
+                assert_eq!(error.code, ErrorCode::Allocation);
+                assert!(error.message.contains("certified CG fallback requires"));
+            } else {
+                let result = result.unwrap();
+                assert!(result.report().certified());
+                assert_eq!(result.report().requested_solver, FeSolverKind::Cmg);
+                assert_eq!(result.report().used_solver, FeSolverKind::Cg);
+                assert!(result.report().fallback_used);
+                assert_eq!(result.report().checkpoint_retries, 0);
+                let (residual, _) = result.into_parts();
+                assert!(residual
+                    .as_slice()
+                    .iter()
+                    .zip(&noise)
+                    .all(|(a, b)| (a - b).abs() < 1e-12));
+            }
+        }
     }
 
     #[test]

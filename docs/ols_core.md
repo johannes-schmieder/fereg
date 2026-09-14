@@ -92,6 +92,14 @@ checks. QR fits that cannot retain valid score storage use the existing certifie
 reconstruction path. This is a layout/cost cutoff, not a rank or memory-admission
 policy; see [ADR 0043](adr/0043-ols-inference-strided-cache-policy.md).
 
+Requested residual, absorbed, combined-prediction and saved-FE outputs use a
+separate final projection target of at most 1e-14, independent of whether fast
+or low execution retains FE coefficients. Initial absorption and rank/reference
+policies keep their configured precision. A terminal CMG correction releases its
+hierarchy before admitting certified CG; generic projection admits its actual
+solver and any continuation. See
+[ADR 0063](adr/0063-ols-derived-output-final-precision.md).
+
 Rust returns complete b/V/status, fit, DoF, solver, FE, cluster, subset,
 certificate, sample, residual, absorbed, saved-FE, resource, and timing
 structures. The public ado makes one substantive plugin call and posts only

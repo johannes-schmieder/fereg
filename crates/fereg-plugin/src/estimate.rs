@@ -792,6 +792,13 @@ impl EstimateActionSpec {
         let default_fit = PreparedOlsFitConfig::default();
         let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let fit = PreparedOlsFitConfig {
+            // Residual-derived outputs need pointwise accuracy even when low
+            // memory deliberately omits retained FE coefficient products.
+            final_residual_tolerance: (self.outputs.residual.is_some()
+                || self.outputs.absorbed.is_some()
+                || self.outputs.xbd.is_some()
+                || self.outputs.saved_channels.iter().any(Option::is_some))
+            .then_some(1e-14),
             absorb: AbsorbConfig {
                 solver: self.solver,
                 map: MapConfig {

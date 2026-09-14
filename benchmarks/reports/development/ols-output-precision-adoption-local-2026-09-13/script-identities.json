@@ -1,0 +1,37 @@
+{
+  "check_weighted_cut.py": {
+    "executed_sha256": "3ba779ee3d83d055512c0382802ac2ae61917e611faafa47e6b509cf232bf207",
+    "archived_sha256": "4d9c22d2bf6d1c805dae9fb4292d5361e9fe6bd54017c36ae8466fd747b95ac5",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "cost_compare.py": {
+    "executed_sha256": "9749bd06de4d2cd0e2f44a419ef3a7dd7654794819a1777fe746776c63159ecc",
+    "archived_sha256": "adb51deacd0d454d690c472188050a7e7923a3c6731aaad12d201d72aa659757",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "run_build.py": {
+    "executed_sha256": "e9102b2ac8c3ec9d5aec16457f6d1d31ede61a52acaf086d451089c3760beb91",
+    "archived_sha256": "05dbe371a22c3632aa85a355416aa8161a5ec1680650662b6e4b97d8b7b35f0f",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "run_slope_cap.py": {
+    "executed_sha256": "0f216a9c5130268cd1e83be18a7c9642d2d2f33f967fc4a42fb4484b4b71c8b1",
+    "archived_sha256": "e887fb3dfe943d37f5c6f429a2be3d67644efc8fa2425d8ac47e803105ee4aac",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "run_tests.py": {
+    "executed_sha256": "b6dc11bb6cfa9b3ad297b356760ba80d56fa59afbd9bfa1ff17d29b1f8b26536",
+    "archived_sha256": "7494c26f890fb0e338460ae08342c4e25f653da1b7fdd7202e30d431bcf620ae",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "run_validation.py": {
+    "executed_sha256": "3100a0550504a31667f2cf76dc81a443d07cbebad1f4c69ac2b39bb441b030a4",
+    "archived_sha256": "eecfda45bb7782d1faade21fd4fc3f7bfd88e88cce1a095efd8e841d085af655",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  },
+  "summarize.py": {
+    "executed_sha256": "e4fe1949c39db56c2b4d547e282b84a03b2139b9b2dfdfb010573ead59d1f664",
+    "archived_sha256": "c7808904748be11b557f9cb7cf1b5c25588548e8c7204ce10cb8db88eb8fa798",
+    "changes": "absolute path literals replaced by environment roles; os import added"
+  }
+}

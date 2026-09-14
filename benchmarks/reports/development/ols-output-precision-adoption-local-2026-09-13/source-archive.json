@@ -1,0 +1,8 @@
+{
+  "zip_sha256": "0cbcdd18d028d545f436ae8f56a19181bc14a49911ca93551ad1bf4b0e384096",
+  "changed_inputs": {
+    "crates/fereg-core/src/fe/cmg.rs": "4fb33fb90763804311b722f12b6e0e18683562ae21e2f3eb3411b9e66a0cae94",
+    "crates/fereg-core/src/ols/prepared_fit.rs": "b308aedf590a46ce8a520c425441766feb6a4aaff5394c6b96f0b0bbd243c7df",
+    "crates/fereg-plugin/src/estimate.rs": "930ada0d8d00978990e9fc36e62aa4c43e127d7248f994be71d38ded65007747"
+  }
+}

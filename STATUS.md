@@ -10,6 +10,46 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P6 final-output precision: adopted on repaired memory admission
+
+The [source-bound adoption](benchmarks/reports/development/ols-output-precision-adoption-local-2026-09-13/README.md)
+and [ADR 0063](docs/adr/0063-ols-derived-output-final-precision.md) adopt the
+three-file precision repair against `58bcf3a`. Isolated universal plugin
+`14b396c7` binds 178 inputs. Requested residual/absorbed/combined-prediction/saved-FE
+outputs use a separate final target at most 1e-14 in fast/low/projection-only fits,
+independent of coefficient retention. Terminal CMG releases its hierarchy before
+an admitted certified CG correction. Initial projection, reference scales, rank,
+weights/sample/DoF and public tolerances remain unchanged.
+
+All 109 focused core checks, 95 serial plugin tests, 48 saved dummy fits, four
+weighted omission cases and universal/static/native arm64 ABI checks pass. Public
+CG/generic exact and one-byte-short boundaries pass with admitted native peaks.
+The original saved slope succeeds at 33268760 usable bytes with 28906404 observed,
+using certified CG after memory-rejected final LSMR. One byte below rejects with
+prior estimates/sample/order/output absence preserved; constrained saved values
+match the previous unrestricted strict candidate within 1e-14. The original tiny
+weighted cut passes all 30720 rows against the preserved high-precision/direct
+oracles: maximum residual error 3.05e-13, full b/V and both saved FE pass.
+
+All 19 paired commands pass candidate science, including the original thirteen
+cases and six prescribed reversed follow-ups. Six baseline saved-output errors
+remain independently adjudicated and excluded from accuracy-matched speed claims.
+Repeated slope/weighted-cut/automatic-CMG added costs are 28/53/18 ms medians.
+Unit/PW add 91/116 ms in their original pairs, largely final LSMR setup/solve.
+Unrestricted slope native peak rises 28.87 to 38.54 MB; the constrained route
+above fits. Other original peaks are exact except three FE +78933 bytes, low FW
++149 bytes and weak -1072016 bytes, without causal attribution. Base/scratch
+models are unchanged and RSS moves both ways. This is a correctness adoption,
+not a speed or general memory improvement. Earlier failed candidates/concurrent
+plugin failure remain historical evidence, not fixes claimed by the serial run.
+
+Next rebase the saved-Schur/final-target recovery prototype on this precision
+baseline and repeat its original comparison. It remains unadopted; all 16 open
+#27 items, broader memory reporting and specialized slope/recovery accounting
+remain. The installed plugin, 97 unrelated STATUS additions and 358 original
+untracked paths are preserved. No agents, SCC, upstream update, qualification
+or push occurred.
+
 ## P0 generic owned-FE admission: adopted local repair
 
 The [source-bound report](benchmarks/reports/development/generic-owned-fe-admission-local-2026-09-13/README.md)

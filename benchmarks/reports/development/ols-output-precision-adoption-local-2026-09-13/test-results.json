@@ -1,0 +1,83 @@
+[
+  {
+    "label": "prepared-fit",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "ols::prepared_fit::tests",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 67 passed; 0 failed; 0 ignored; 0 measured; 752 filtered out; finished in 32.05s"
+    ],
+    "log_sha256": "c31f437504f4cede4d91942dd3d622baeeeb8319f16de2b039ba72e2e3365042"
+  },
+  {
+    "label": "cmg",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "fe::cmg::tests",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 788 filtered out; finished in 9.46s"
+    ],
+    "log_sha256": "802caa541286bb225a934df36a70ebebda0cec875dd58288f7ec7a81d9f8f10f"
+  },
+  {
+    "label": "generic-auto",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-core",
+      "--lib",
+      "fe::auto::",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 808 filtered out; finished in 0.01s"
+    ],
+    "log_sha256": "083d881bbf8855d4f24e3e51ff5cc8e6fab6806088208003a6346c48c7f625cc"
+  },
+  {
+    "label": "plugin-serial",
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "fereg-plugin",
+      "--lib",
+      "",
+      "--",
+      "--test-threads=1"
+    ],
+    "rc": 0,
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.01s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 3.81s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 12.22s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.03s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.83s",
+      "test result: ok. 95 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.99s"
+    ],
+    "log_sha256": "161b262e3a102f985fedf1a3e3bfd8bb2616cddbd5003a32e4ebe545dfdc4d87"
+  }
+]
