@@ -1,0 +1,6 @@
+{
+  "zip_sha256": "a260d695e5d8edc9752e414bc6ef2b2988482229c2cc43f05133bdcfe9322afb",
+  "changed_inputs": {
+    "crates/fereg-core/src/ppml/memory.rs": "5c8d8b51d1bba239870858a839fecf243b97c661665b467bbf8bcc03430f8355"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "exploratory_display_failure": {
+    "exception": "TypeError: type NoneType does not define __round__ method",
+    "scope": "A read-only phase display attempted to round time_separation_mu, which is unavailable. The display was corrected to skip None values. No measurements, scientific checks or acceptance rules changed.",
+    "tool_chunk_id": "83ec0c"
+  },
+  "experiment_test_build_oracle_measurement_failures": []
+}

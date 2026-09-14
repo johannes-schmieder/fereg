@@ -1,0 +1,16 @@
+{
+  "core_tests": 58,
+  "serial_plugin_tests": 95,
+  "independent_positive_licensed_fits_per_arm": 10,
+  "universal_static_and_actual_arm64_ABI": true,
+  "untraced_pairs": 4,
+  "diagnostic_pairs": 3,
+  "exact_science_and_solver_decisions": true,
+  "untraced_native_peaks_exact_and_admitted": true,
+  "complete_and_FW_pass_time_only_screen": true,
+  "no_target_has_commensurate_changed_phase_savings_for_2_percent_and_10_ms_gain_gate": true,
+  "no_untraced_pair_crosses_protected_cost_gate": true,
+  "additional_seed_holdout_timing_allocation_audit_runs": false,
+  "fixed_workspace_byte_increment_measured_arm64": 80,
+  "disposition": "Rejected standalone mean validity/reuse prototype; restore accepted native 7739e8e after archiving."
+}

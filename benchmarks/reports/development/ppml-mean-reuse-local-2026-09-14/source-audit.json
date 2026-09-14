@@ -1,0 +1,23 @@
+{
+  "baseline": "ebf038f; native 7739e8e",
+  "file": "crates/fereg-core/src/ppml/memory.rs",
+  "accepted_eta_mutations": [
+    "from_initial_state_with_diagnostics owns initializer eta; mean starts uncomputed",
+    "accept_trial swaps eta and mean; validity must swap with them"
+  ],
+  "trial_eta_mutations": [
+    "fill_line_search_trial invalidates first; may write only a prefix before error",
+    "accept_trial swaps in former accepted eta/mean/tag"
+  ],
+  "trial_mean_other_writes": [
+    "evaluate_candidate_objective reuses trial_mean for candidate_eta and invalidates the trial tag before mean writes; partial/error exits remain invalid"
+  ],
+  "mean_consumers": [
+    "refresh_working_state may reuse only matching checked bounds; changed bounds force established domain/exponential checks",
+    "working weights and responses always recomputed from current outcome, prior weights, offset, eta and mean",
+    "score residuals, objective, strict checkpoint, final synchronization and inference retain their checks"
+  ],
+  "memory": "Two Option<PoissonBounds> fields, 40 bytes each in actual arm64 diagnostic artifacts. Workspace size is 336 -> 416 bytes. No new heap/vector; current/trial workspace remains locally owned by the prepared driver. All four untraced native action peaks and models are exact and admitted. This is no peak-memory saving.",
+  "scope": "Mean validity only; no weighted design, basis, moment, topology, or certificate authority is inferred from the tag.",
+  "source_derived_cost": "Each valid reuse skips one N-element eta read, N-element mean write, N exponentials and their domain tests. Working weights/response/score still refresh. Observed full-data reused call counts are 4 complete, 5 FW, 4 narrow. Payload counts are logical work, not hardware bandwidth."
+}

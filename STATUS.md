@@ -10,6 +10,33 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## P4 mean validity/reuse: standalone prototype rejected
+
+The [source-bound report](benchmarks/reports/development/ppml-mean-reuse-local-2026-09-14/README.md)
+rejects mean reuse against evidence `ebf038f`, accepted native `7739e8e`.
+Candidate `8a85e77c` tracks paired eta/mean bounds validity through accepted/trial
+swaps, invalidating before partial writes and strict-candidate scratch use.
+All 58 focused core tests, 95 serial plugin tests, ten independent licensed
+Poisson/Hessian/sandwich/generated/narrow fits per arm and universal/static/actual
+arm64 ABI pass. Four untraced pairs and three separate diagnostic pairs preserve
+exact science and solver decisions; all untraced native peaks/models are exact
+and admitted. The actual workspace adds 80 fixed bytes, with no heap/vector.
+
+Complete/FW/PW/narrow screens are 7.600→7.251 / 2.458→2.375 / 2.198→2.177 /
+1.446→1.432 seconds. Complete/FW meet the time-only 2% and 10 ms gate, but direct
+all-call diagnostics show only 11.724/3.613 ms saved in mean construction; narrow
+saves 11.583 ms. The entire baseline mean scope is only 0.20%/0.18%/1.02% of
+those command times. Most apparent wide-target gain is in unchanged finite work,
+so the attribution gate fails. No extra seeds/holdout timings or private audit
+follow. Narrow sampled RSS rises about 51 MiB despite its exact native peak.
+
+The rejected patch, diagnostic identities and all 14 captures are archived;
+all 178 accepted inputs and installed dist are restored/unchanged. Eight active
+P0–P7 items remain. Next compare weighted Schur with actual joint LSMR/MAP/CMG
+PPML workloads, then finish generated/slope/three-plus-FE layout, P7 and P0 work.
+R1–R5 remain excluded. Independent reviews, upstream CMG assessment and the
+bounded SCC campaign follow P0–P7. No agents, cluster work or push occurred.
+
 ## P4 complete-frame refresh: standalone prototype rejected
 
 The [source-bound screen](benchmarks/reports/development/ppml-frame-refresh-local-2026-09-14/README.md)
