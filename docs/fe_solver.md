@@ -5,7 +5,7 @@ performance qualification remains pending.
 
 The safe core provides:
 
-- queue-based singleton deletion to a fixed point;
+- indexed queue-based singleton deletion to a fixed point;
 - multipartite connected-component labeling;
 - one-/multiway weighted projections;
 - intercept, slope-only, intercept-plus-slope, and multiple-slope local blocks;
@@ -29,6 +29,24 @@ Hitting an iteration limit or failing the fresh certificate is fatal. Solver
 threads operate only on Rust-owned storage; no Stata SPI call occurs off the
 calling thread. Independent explicit-dummy fits validate small designs,
 identified combinations, residuals, absorbed sums, and normalization rules.
+
+## Singleton pruning
+
+Pruning counts each effect's active multiplicity, then maintains the XOR of
+active observation indices for each level. Validated multiplicities are positive
+integers: a level with unit mass contains exactly one physical row, whose index
+is its XOR. Deleting that row updates every affected level without searching
+the observation array. Initial sample masks, frequency multiplicity, queue order
+and the recursive fixed point remain authoritative.
+
+For N observations, D effects and L total levels, work is O(D*N + L). The XOR
+index needs one machine word per level; storing global level indices in the
+queue instead of effect/level pairs removes one word per queue slot. Counts,
+masks and the dropped-row list retain their existing allocation bounds. Every
+reservation is fallible. If the initial counts contain no singleton, pruning
+returns before allocating the XOR index, markers, queue or dropped-row list.
+Caller-thread interruption and transactional publication boundaries are unchanged;
+the pruning kernel does not call Stata SPI.
 
 ## Comparator-equivalent MAP and CG
 

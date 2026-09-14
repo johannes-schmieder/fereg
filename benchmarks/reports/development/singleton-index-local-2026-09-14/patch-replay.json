@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "compiled_inputs_matching": 176,
+  "licensed_oracle_source_matches": true,
+  "implementation_patch_sha256": "13cac5d5997507f75365eb2a4e8deaa969507879aa8f0a6f47caa764c7cb13b6",
+  "scale_replay_syntax": "PASS"
+}

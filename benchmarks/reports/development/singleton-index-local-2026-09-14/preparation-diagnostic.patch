@@ -1,0 +1,23 @@
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -216,6 +216,20 @@
+             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                 prepare_ols_data_owned(&action.request, loaded)
+             })?;
++            if std::env::var_os("FEREG_SINGLETON_AUDIT_ONLY").is_some() {
++                eprintln!(
++                    "FEREG_SINGLETON_AUDIT|original={}|candidate={}|retained={}|dropped={}|seconds={:.9}",
++                    prepared.sample.n_original,
++                    prepared.sample.n_candidate,
++                    prepared.sample.n_active(),
++                    prepared.singletons.num_singletons,
++                    trace_started.elapsed().as_secs_f64(),
++                );
++                return Err(FeregError::new(
++                    ErrorCode::Interrupted,
++                    "intentional preparation-only singleton audit stop; no estimation attempted",
++                ));
++            }
+             let prepare_seconds = trace_started.elapsed().as_secs_f64();
+             let inference_started = Instant::now();
+             let inference = fit_prepared_ols_unadjusted_map(

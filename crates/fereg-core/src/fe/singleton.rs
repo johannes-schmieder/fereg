@@ -1,4 +1,8 @@
-//! Iterative singleton pruning using level counts and a deletion queue.
+//! Iterative singleton pruning using level counts, active-row XORs and a queue.
+//!
+//! For D effects, N rows and L total levels, construction and recursive deletion
+//! take O(D*N + L) work. A level's XOR identifies its last active row directly;
+//! deletion never searches the observation array.
 
 use std::collections::VecDeque;
 
@@ -178,6 +182,27 @@ fn prune_singletons_with_reservation<R: SingletonReservation>(
         });
     }
 
+    // All validated multiplicities are positive integers, so unit mass means
+    // exactly one active physical row. XOR cancels each deleted row's identity
+    // and therefore identifies that last row without an adjacency list or scan.
+    // Allocate only after the no-singleton certificate above. A global level
+    // index replaces each queue's (effect, level) pair, paying for this word per
+    // level within the previous queue-plus-count allocation envelope.
+    let mut active_rows_xor = reserved_filled(
+        reservation,
+        counts_len,
+        0_usize,
+        "unable to reserve singleton active-row index",
+    )?;
+    for (effect, codes) in effect_codes.iter().enumerate() {
+        let offset = effect_offsets[effect];
+        for (observation, &code) in codes.iter().enumerate() {
+            if initially_active[observation] {
+                active_rows_xor[offset + code as usize] ^= observation;
+            }
+        }
+    }
+
     let queued_len = counts_len;
     let mut queued = reserved_filled(
         reservation,
@@ -197,7 +222,7 @@ fn prune_singletons_with_reservation<R: SingletonReservation>(
             if is_singleton(counts[index]) {
                 queue_push_reserved(
                     &mut queue,
-                    (effect, level),
+                    index,
                     "singleton level queue capacity exhausted",
                 )?;
                 queued[index] = true;
@@ -212,22 +237,23 @@ fn prune_singletons_with_reservation<R: SingletonReservation>(
         "unable to reserve singleton dropped-observation list",
     )?;
     let mut cascade_events = 0_usize;
-    while let Some((effect, level)) = queue.pop_front() {
-        let index = effect_offsets[effect]
-            .checked_add(level)
-            .ok_or_else(|| allocation("singleton queue count index overflows"))?;
+    while let Some(index) = queue.pop_front() {
         queued[index] = false;
         if !is_singleton(counts[index]) {
             continue;
         }
-        let observation =
-            find_active_observation(effect_codes[effect], level, &active, multiplicity)?
-                .ok_or_else(|| {
-                    FeregError::new(
-                        ErrorCode::Internal,
-                        "singleton level count has no matching active observation",
-                    )
-                })?;
+        let observation = active_rows_xor[index];
+        let effect = effect_offsets.partition_point(|&offset| offset <= index) - 1;
+        let level = index - effect_offsets[effect];
+        if active.get(observation) != Some(&true)
+            || effect_codes[effect][observation] as usize != level
+            || multiplicity.contribution(observation)? != 1.0
+        {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "singleton level count has no matching active observation",
+            ));
+        }
         active[observation] = false;
         push_reserved(
             &mut dropped_observations,
@@ -243,6 +269,7 @@ fn prune_singletons_with_reservation<R: SingletonReservation>(
             let affected_index = effect_offsets[affected_effect]
                 .checked_add(affected_level)
                 .ok_or_else(|| allocation("singleton affected count index overflows"))?;
+            active_rows_xor[affected_index] ^= observation;
             counts[affected_index] -= contribution;
             if counts[affected_index].abs() <= singleton_tolerance(counts[affected_index]) {
                 counts[affected_index] = 0.0;
@@ -256,7 +283,7 @@ fn prune_singletons_with_reservation<R: SingletonReservation>(
             if is_singleton(counts[affected_index]) && !queued[affected_index] {
                 queue_push_reserved(
                     &mut queue,
-                    (affected_effect, affected_level),
+                    affected_index,
                     "singleton level queue capacity exhausted",
                 )?;
                 queued[affected_index] = true;
@@ -343,23 +370,6 @@ fn validate_inputs(
         }
     }
     Ok(())
-}
-
-fn find_active_observation(
-    codes: &[u32],
-    level: usize,
-    active: &[bool],
-    multiplicity: SingletonMultiplicity<'_>,
-) -> Result<Option<usize>> {
-    for observation in 0..codes.len() {
-        if active[observation]
-            && codes[observation] as usize == level
-            && multiplicity.contribution(observation)? > 0.0
-        {
-            return Ok(Some(observation));
-        }
-    }
-    Ok(None)
 }
 
 fn is_singleton(count: f64) -> bool {
@@ -573,7 +583,7 @@ mod tests {
         )
         .expect("successful singleton reservation audit");
         assert_eq!(result.active, vec![false; 4]);
-        assert_eq!(successful.calls, 6);
+        assert_eq!(successful.calls, 7);
 
         for fail_at in 0..successful.calls {
             let mut injected = InjectedReservation {
@@ -612,7 +622,7 @@ mod tests {
             &mut successful,
         )
         .expect("successful singleton capacity audit");
-        assert_eq!(successful.calls, 6);
+        assert_eq!(successful.calls, 7);
 
         for skip_at in 0..successful.calls {
             let mut injected = InjectedReservation {
@@ -650,3 +660,7 @@ mod tests {
         assert_eq!(error.code, ErrorCode::Allocation);
     }
 }
+
+#[cfg(test)]
+#[path = "singleton_index_tests.rs"]
+mod index_tests;

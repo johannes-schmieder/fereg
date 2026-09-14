@@ -1,0 +1,9 @@
+{
+  "original_sha256": "8c4cb22e527f755ff82283ce7b9e9e4ad4baad9312115e3c27dd6ff8d1713870",
+  "adapted_sha256": "485ffb4538d59d2d57ed75c894d48bc832b9f5bc881cc00ea6311f1c5dda40fa",
+  "changes": [
+    "isolated package root",
+    "distinct output paths",
+    "exact expected loaded and retained row assertions"
+  ]
+}

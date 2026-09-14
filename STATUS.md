@@ -10,6 +10,43 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## AKM singleton pruning: indexed linear-time fix, full retained count verified
+
+The [source-bound report](benchmarks/reports/development/singleton-index-local-2026-09-14/README.md)
+fixes the diagnosed observation-zero scan in `fe/singleton.rs` against `681634d`.
+Each level keeps an active-row XOR; queue entries become global level indices,
+paying for the index within the previous allocation envelope. Work is O(D*N+L).
+The original no-singleton exit, queue/deletion order, masks, weight multiplicity,
+fallible allocations, worker/SPI and interruption/publication boundaries remain.
+The adopted isolated universal plugin is `253bf9eb`; installed dist is unchanged.
+
+All 33 focused shared core tests, 95 serial plugin tests and four licensed fixtures
+pass. New checks compare 640 cases with the old scanner and an independent mask
+oracle, cover one-to-five effects and frequencies, long cascades, all seven
+reservation/capacity failures, fast/low OLS and cluster exclusions. Patch replay
+matches all 176 archived compiled inputs. In 108 bounded pruning calls, doubling
+singleton-heavy inputs gives approximately 2x time versus the scanner's 4x;
+65,540-row cascading pruning falls 1.106749→0.001242 s with exactly equal live
+allocation peaks. No-singleton performance/allocations remain unchanged.
+
+The original full AKM command clears all native preparation in 27.574 s, then
+fails closed with r(459), `prepared OLS bread inverse certificate did not pass`,
+in the unchanged low-memory numerical path. No full estimates are produced.
+A separately archived diagnostic plugin (`e9b2141e`) reports the unchanged
+prepared sample and deliberately stops before solving: 91,045,290 original and
+candidate rows, 2,169,026 singleton drops, **88,876,264 retained**, exactly matching
+reghdfe. Preparation is 29.582 s; process maximum RSS is 48.16 GB. Its expected
+r(1) and no-public-coefficients assertion pass. This diagnostic hook is not adopted.
+The normal candidate smoke retains 65,503 rows; its 18 coefficient and V maxima
+against saved reghdfe results are 1.77913e-14 and 1.37152e-17, with exact N/DoF.
+
+The full-model bread-inverse certificate remains an unresolved empirical blocker;
+do not claim full-sample estimation success or relax it. All failed runs/builds,
+original data/scripts and historical receipts remain. This fix leaves #27's seven
+P0–P7 items and the isolated action-memory prototype open; it does not add solver
+changes, agents, cluster work or a push. Unrelated STATUS additions and all 358
+original untracked paths are preserved.
+
 ## P0 CMG/Schur memory lifetimes: tested prototype continuation, not adopted
 
 The [source-bound report](benchmarks/reports/development/action-memory-cmg-schur-local-2026-09-14/README.md)
