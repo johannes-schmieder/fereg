@@ -1,0 +1,107 @@
+{
+  "status": "focused-development-pass",
+  "primary_job_id": 7586299,
+  "source_identity": "identity.json",
+  "test_artifacts": [
+    {
+      "name": "fereg_plugin-e651ae9cfb533d78",
+      "sha256": "4ea874f96dc81b15dc6b94c336810fe1b394523e3e8c27ce287ad12018bd8b0b",
+      "bytes": 123935288
+    },
+    {
+      "name": "fereg_core-4c03e1651c8d97f4",
+      "sha256": "c68dc4ebd19579c8364e2b537b3337b23f1ed928e519dfb2282415124cc6a738",
+      "bytes": 170407208
+    }
+  ],
+  "log_sha256": "ff75375fe5d7fe5ab7c1c66bdcd2033c97460ef498538421478f9ec795f1058f",
+  "terminal_sentinel": "PPML_RECOVERY_TEAM_EXACT_ARTIFACTS_PASS",
+  "test_results": [
+    "test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 804 filtered out; finished in 0.74s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 95 filtered out; finished in 8.63s",
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 95 filtered out; finished in 8.64s"
+  ],
+  "negative_control": {
+    "job_id": 7586289,
+    "artifact_sha256": "f31fca541ff147313fecb3f2f7ef1c01fd89bee33c8b975781632a24cd5dd7e1",
+    "source_identity": "control-identity.json",
+    "log_sha256": "3e36fb930530c38e898a5ab639d840e9ad97c347b106c071507270a85ee43e4b",
+    "expected_error": "PPML FE recovery worker count differs from memory admission",
+    "disposition": "Expected rejection under the prior direct call, with the new guard enabled."
+  },
+  "preserved_failure": {
+    "job_id": 7586289,
+    "log_sha256": "2e97bee4339a040bc4d329d8e1f0c5094eb408875d6e02571bdedca5c9d5525d",
+    "reason": "After compiling the correct candidate executable with a combined feature set, the cargo test command selected the cached single-package control executable.",
+    "wrong_candidate_artifact_sha256": "f31fca541ff147313fecb3f2f7ef1c01fd89bee33c8b975781632a24cd5dd7e1",
+    "disposition": "Failed wrapper run; not a scientific failure or candidate pass. One focused correction ran the already-built correct candidate binaries by their verified hashes."
+  },
+  "phase_observations": [
+    {
+      "mode": "fast",
+      "threads": 1,
+      "phase": "inference",
+      "observed_bytes": 3756458,
+      "modeled_bytes": 5740564
+    },
+    {
+      "mode": "fast",
+      "threads": 1,
+      "phase": "fe_recovery",
+      "observed_bytes": 3887803,
+      "modeled_bytes": 5477620
+    },
+    {
+      "mode": "fast",
+      "threads": 1,
+      "phase": "publication",
+      "observed_bytes": 4854319,
+      "modeled_bytes": 6530748
+    },
+    {
+      "mode": "low",
+      "threads": 4,
+      "phase": "inference",
+      "observed_bytes": 3507998,
+      "modeled_bytes": 6147468
+    },
+    {
+      "mode": "low",
+      "threads": 4,
+      "phase": "fe_recovery",
+      "observed_bytes": 3639343,
+      "modeled_bytes": 5884428
+    },
+    {
+      "mode": "low",
+      "threads": 4,
+      "phase": "publication",
+      "observed_bytes": 4605859,
+      "modeled_bytes": 6937556
+    },
+    {
+      "mode": "fast",
+      "threads": 1,
+      "phase": "inference",
+      "observed_bytes": 3736082,
+      "modeled_bytes": 5724612
+    },
+    {
+      "mode": "fast",
+      "threads": 1,
+      "phase": "fe_recovery",
+      "observed_bytes": 3867427,
+      "modeled_bytes": 5461668
+    },
+    {
+      "mode": "fast",
+      "threads": 1,
+      "phase": "publication",
+      "observed_bytes": 4833943,
+      "modeled_bytes": 6514796
+    }
+  ],
+  "whole_action_coverage_complete": false,
+  "performance_claim": false,
+  "candidate_frozen": false
+}

@@ -4325,6 +4325,63 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "ffi")]
+    #[test]
+    fn saved_fe_memory_covers_measured_final_phases_across_repeated_calls() {
+        const CHILD_ENV: &str = "FEREG_PPML_SAVED_FE_MEMORY_CHILD";
+        if std::env::var_os(CHILD_ENV).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .env(CHILD_ENV, "1")
+                .arg("ppml_estimate::tests::saved_fe_memory_covers_measured_final_phases_across_repeated_calls")
+                .args(["--exact", "--nocapture", "--test-threads=1"])
+                .status().expect("isolated saved-FE allocator check");
+            assert!(status.success());
+            return;
+        }
+        // Repeat an independently certified factor/FW/cluster fixture at an
+        // axis large enough to enter parallel recovery. Allocate the fake SPI
+        // cells and event log before the measured action, as the real SPI
+        // stores do not allocate Rust observation storage.
+        for (mode, threads) in [("fast", 1), ("low", 4), ("fast", 1)] {
+            let (mut args, mut spi) = categorical_absorb_cluster_weight_fixture();
+            let initial = spi.nobs;
+            let rows = 16_384;
+            for row in initial + 1..=rows {
+                for variable in 1..=u32::try_from(spi.nvars).unwrap() {
+                    let original = spi.numeric[&(variable, (row - 1) % initial + 1)];
+                    spi.numeric.insert((variable, row), original);
+                }
+            }
+            spi.nobs = rows;
+            spi.stores = Vec::with_capacity(rows * 8 + 1_024);
+            replace_argument(&mut args, "memory", format!("memory={mode}"));
+            replace_argument(&mut args, "threads", format!("threads={threads}"));
+            args.push("allocation_audit=1".to_owned());
+            estimate_ppml_test(&args, &mut spi).expect("saved-FE phase memory fit");
+            let runtime = &spi.matrices["RRUNTIME"];
+            for phase in [
+                PpmlPhase::Inference,
+                PpmlPhase::FeRecovery,
+                PpmlPhase::Publication,
+            ] {
+                let modeled = runtime[82 + phase as usize][0];
+                let observed = runtime[95 + phase as usize][0];
+                assert!(crate::ppml_result::is_stata_publishable(modeled));
+                assert!(crate::ppml_result::is_stata_publishable(observed));
+                assert!(
+                    observed <= modeled,
+                    "{mode}/{threads} {}: observed={observed}, modeled={modeled}",
+                    phase.name()
+                );
+                eprintln!(
+                    "saved_fe_memory {mode}/{threads} {} observed={observed} modeled={modeled}",
+                    phase.name()
+                );
+            }
+            assert_eq!(spi.receipt_complete(), 1.0);
+        }
+    }
+
     #[test]
     fn active_factor_level_that_vanishes_on_rebase_is_syntax_omitted() {
         let (mut args, mut spi) = categorical_absorb_cluster_weight_fixture();

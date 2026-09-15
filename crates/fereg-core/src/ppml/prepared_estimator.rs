@@ -1477,20 +1477,39 @@ fn recover_saved_effects(
     lsmr.tolerance = lsmr.tolerance.min(tolerance);
     let mut map = linear.absorb.map;
     map.tolerance = map.tolerance.min(tolerance);
-    let recovered = recover_ppml_fixed_effects(
-        model,
-        report,
-        fit.linear().weights(),
-        // These two independent inputs let the recovery bridge verify that
-        // the explicit linear-frame weights are exactly q*mu.
-        prior_weights,
-        fit.mean(),
-        fit.linear().absorbed_predictor(),
-        fit.linear().fit().recovered_fe_coefficients(),
-        lsmr,
-        map,
-        inject_allocation_failure,
-    )?;
+    let saves_requested = requested.iter().any(|&saved| saved);
+    let effective_threads = fit.diagnostics().memory.effective_threads;
+    let recover = || {
+        if saves_requested && rayon::current_num_threads() != effective_threads {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "PPML FE recovery worker count differs from memory admission",
+            ));
+        }
+        recover_ppml_fixed_effects(
+            model,
+            report,
+            fit.linear().weights(),
+            // These independent inputs verify the explicit weights are q*mu.
+            prior_weights,
+            fit.mean(),
+            fit.linear().absorbed_predictor(),
+            fit.linear().fit().recovered_fe_coefficients(),
+            lsmr,
+            map,
+            inject_allocation_failure,
+        )
+    };
+    let recovered = if saves_requested {
+        // Recovery uses Rayon for CG and normalization. Keep it in the
+        // admitted fit's team; the process-global default can have a different
+        // size and allocate a second registry after fitting has completed.
+        let mut threads = linear.execution.threads;
+        threads.requested = std::num::NonZeroUsize::new(effective_threads);
+        crate::parallel::ThreadTeam::new(threads).install(recover)??
+    } else {
+        recover()?
+    };
     if recovered.reconstruction_relative_infinity_norm > tolerance {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
@@ -2883,6 +2902,31 @@ mod tests {
         assert!(result.fixed_effects()[0].normalization_certified);
         assert_eq!(result.fixed_effects()[1].saved_channel, None);
         assert!(!result.fixed_effects()[1].normalization_applied);
+    }
+
+    #[test]
+    fn saved_effect_recovery_honors_admission_inside_a_different_outer_pool() {
+        let outer = rayon::ThreadPoolBuilder::new()
+            .num_threads(3)
+            .build()
+            .unwrap();
+        for threads in [1, 2, 1] {
+            let (mut request, loaded) = fixture(2, true, false, false, false, false);
+            request.linear.execution.threads =
+                crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+            let result = outer
+                .install(|| fit_prepared_ppml(request, loaded))
+                .expect("recovery must use the fit's admitted team, not the enclosing pool");
+            assert_eq!(result.memory().effective_threads, threads);
+            assert!(
+                result
+                    .output()
+                    .saved_effects()
+                    .unwrap()
+                    .full_decomposition_certified
+            );
+            assert!(result.certificate().passed);
+        }
     }
 
     #[test]

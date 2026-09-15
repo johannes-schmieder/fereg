@@ -12,6 +12,18 @@ completed optimization/calibration investigation chronology formerly here.
 
 ## Candidate preparation: memory accounting checkpoints
 
+The [isolated PPML recovery-team repair](benchmarks/reports/development/candidate-ppml-recovery-team-2026-09-15/README.md)
+keeps saved-effect CG/normalization on the accepted fit's worker team. A guard
+rejects a count differing from memory admission before allocation, and no-save
+calls retain their fast path. The unrouted control fails as expected; the
+correctly hashed candidate passes all 55 estimator checks and a repeated
+16,384-row generated/FW/clustered saved-output allocator test. All nine final
+phase peaks fit their estimates across fast/1, low/4, fast/1 calls. The first
+wrapper accidentally reused the control executable; its failure is preserved,
+and one direct run of the verified candidate artifacts passes. Shared-target
+checkpoint receipts remain development diagnostics; subsequent combined checks
+use a distinct target and compiler-reported executable identities as required.
+
 The [isolated PPML inference repair](benchmarks/reports/development/candidate-ppml-inference-memory-2026-09-15/README.md)
 adds the retained full-axis covariance/statistics and cluster/Wald identities to
 inference, saved-effect recovery and publication admission. All 42 memory tests
