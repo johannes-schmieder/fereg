@@ -10,6 +10,29 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Full German PPML: native completed, pinned reference running
+
+The [full fast report](benchmarks/reports/development/german-ppml-full-fast-local-2026-09-15/README.md)
+records source `ece0db4` / isolated plugin `156f3835`. The unchanged full
+exp(logrwage2) command completes in **9,454.604 s (2h 37m 35s)** with
+**88,876,264 retained rows**, 2,169,026 singleton drops and 14 iterations.
+Process/FIT_RC/STATA_RC, output header/hash and all public certificates pass;
+zero strict-profile rejections, retries and fallbacks. Native tracked peak is
+65.31 GB against the 72.69 GB selected model; process RSS peaks at 83.68 GB,
+with zero swaps or scratch. Auto reports MAP-family execution with fast storage.
+FE projection consumes 8,235.32 s; full phase/solver costs are retained.
+This is successful native publication, with independent full-data science still
+pending. The old interrupted low run is not a paired speed baseline. Disclose
+the overlapping SCC transfer in the native timing.
+
+The prepared full ppmlhdfe reference is now running sequentially after its
+18-file pinned preflight passes: local time PID 3547/Stata 3548, runner session 46176.
+Continue full all-row/sample/b/V/DoF/objective and public-mean audits after it
+finishes; use the previously calibrated bounded scripts and check the separate
+full audit memory allowance. Keep the combined 15-minute monitor on both this
+reference and the independent SCC workflow. No local build or numerical audit
+should overlap the timed reference.
+
 ## German 5% SCC comparison launched
 
 The user authorized a new bounded SCC comparison and project storage. The
@@ -35,7 +58,12 @@ pass. OLS job 7580025 then fails during ftools bootstrap (r693 creating the
 shared compilation directory), before any estimator runs; scheduler exit is 1.
 See the source-bound ols-bootstrap-failure receipt. SCC PPML 7580026 is still
 running and analysis 7580041 is dependency-held. Preserve their in-use references;
-no OLS retry or scientific reclassification has been performed.
+no OLS retry or scientific reclassification has been performed. The first SCC
+PPML pair finishes in 1,369.344 s native and 4,904.909 s reference with equal
+reported N=4,361,733. See first-pair-application.json; b/V/full-mean audit and
+repetitions remain pending. Two pairs at that cost exceed the running 3h limit;
+resource changes apply only after restart/migration, so preserve all completed
+outputs and disclose any truncated repetition rather than restarting live fits.
 The existing 15-minute monitor now covers both independent workflows.
 This does not restart the stopped SCC campaign. Keep the full local PPML run
 and monitor separate; disclose the overlapping transfer when reporting its
@@ -61,8 +89,9 @@ records bounded exact integer FE counts before admission, without N-sized state
 or reduced headroom. Full-data rejection probes reduce the fast base estimate
 184.58→72.69 GB and low/pool4 88.41→55.93 GB. Constrained-auto subset medians
 improve 2.240→1.381 s; explicit-low preparation overhead is disclosed.
-Actual full fast admission/RSS, 88,876,264 retained rows, full PPML certificates
-and sequential pinned-reference comparison remain pending. The combined isolated
+Full native fast admission/RSS, 88,876,264 retained rows and public PPML
+certificates now pass; the full report above records the completed run.
+Independent full-data validation and the pinned-reference comparison remain pending. The combined isolated
 plugin is `156f3835`; installed dist remains `4187efdf`.
 
 The old low/pool4 run was stopped after 33,956.40 process seconds, 66.28 GB max
@@ -72,14 +101,10 @@ full-output comparison and mean audit are now calibrated on the 65,503-row
 subset. No push or cluster work; original unrelated STATUS and untracked work
 remain intact.
 
-The full fast-memory retry is launched with committed native `ece0db4` and
-isolated plugin `156f3835`, eight threads, pool four and unchanged
-exp(logrwage2). See the source-bound full-fast-launch receipt. Generation-zero fast admission
-and the IRLS-entry count of **88,876,264 active rows** are verified in the
-full-fast-row-check receipt. Full convergence/outputs remain pending. The active
-15-minute monitor will continue full-fit validation and then the prepared
-sequential pinned reference comparison. Preserve failed launch/previous-run
-receipts and do not overlap the timed fit with builds or numerical audits.
+The full fast retry and retained-count receipts remain preserved; completion
+and the sequential reference launch are recorded in the full report above.
+Preserve failed launch/previous-run receipts and do not overlap the timed
+reference with builds or numerical audits.
 
 ## German PPML: changing-weight scratch block transport adopted
 

@@ -1,0 +1,52 @@
+{
+  "stage": "first pair application receipts; repetitions and independent cross-estimator science pending",
+  "qualification_eligible": false,
+  "job_id": 7580026,
+  "source_commit": "06609452bab13516a84a48363014c6685482f7d4",
+  "native": {
+    "command_seconds": 1369.344,
+    "process_seconds": 1374.005304813385,
+    "process_rc": 0,
+    "stata_rc": 0,
+    "fit_rc": 0,
+    "application_accepted": true,
+    "N": 4361733,
+    "N_full": 4553489,
+    "num_singletons": 191756,
+    "converged": 1,
+    "iterations": 14,
+    "inner_iterations": 4530,
+    "strict_profile_rejections": 0,
+    "fallback_count": 0,
+    "public_composite_certificate_passed": true,
+    "process_maxrss_kib": 4066400,
+    "native_allocation_peak_bytes": 3387040464,
+    "modeled_selected_bytes": 3893887557,
+    "fe_projection_seconds": 1129.194844371,
+    "strict_final_seconds": 126.221185467,
+    "finite_solve_seconds": 70.875205706
+  },
+  "reference": {
+    "command_seconds": 4904.909,
+    "process_seconds": 4908.795549869537,
+    "process_rc": 0,
+    "stata_rc": 0,
+    "fit_rc": 0,
+    "application_accepted": true,
+    "N": 4361733,
+    "N_full": 4553489,
+    "num_singletons": 191756,
+    "num_separated": 0,
+    "converged": 1,
+    "iterations": 10,
+    "inner_iterations": 689,
+    "process_maxrss_kib": 5489372
+  },
+  "second_pair": "second reference running; second native not yet started",
+  "resource_risk": {
+    "h_rt_seconds": 10800,
+    "two_pairs_at_first_pair_cost_seconds": 12548.506,
+    "active_limit_unchanged": true,
+    "reason": "Installed qalter documentation says changed resource requests take effect only after restart or migration; no ineffective limit change or live-job restart was performed. Preserve complete pairs and report any truncated repetition."
+  }
+}
