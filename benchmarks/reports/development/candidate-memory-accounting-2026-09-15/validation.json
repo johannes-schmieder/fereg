@@ -1,0 +1,15 @@
+{
+  "status": "development-checkpoint-only",
+  "source_policy": "Each test binds to its own immutable source snapshot; the full regression predates the CMG follow-up.",
+  "complete_action_memory_coverage": false,
+  "performance_adoption": false,
+  "candidate_frozen": false,
+  "installed_artifact_replaced": false,
+  "remaining": [
+    "saved-effect solver and PPML parent/frame accounting",
+    "versioned complete-action diagnostics and protocol/package metadata",
+    "three-FE and German action-memory reproduction",
+    "fixed alternating fresh-process performance controls",
+    "licensed exact-candidate Mac/Linux and extracted-package installation checks"
+  ]
+}

@@ -2415,6 +2415,20 @@ mod tests {
             5
         );
         assert!(result.memory().plan.dimensions.coefficient_slots < 5);
+        let inference = result.inference();
+        let retained_inference = (inference.vce.covariance.capacity()
+            + inference.vce.standard_errors.capacity()
+            + inference.vce.z_statistics.capacity()) as u128
+            * std::mem::size_of::<f64>() as u128
+            + inference.wald.tested_columns.capacity() as u128 * std::mem::size_of::<usize>() as u128;
+        assert!(
+            result
+                .memory()
+                .plan
+                .selected_inventory()
+                .inference_result_bytes
+                >= retained_inference
+        );
         assert!(result.certificate().passed);
     }
 

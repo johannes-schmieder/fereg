@@ -10,6 +10,31 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Candidate preparation: memory accounting checkpoints
+
+The [isolated PPML inference repair](benchmarks/reports/development/candidate-ppml-inference-memory-2026-09-15/README.md)
+adds the retained full-axis covariance/statistics and cluster/Wald identities to
+inference, saved-effect recovery and publication admission. All 42 memory tests
+and 54 prepared-estimator checks pass on a clean snapshot without the larger
+memory prototype. Exact and one-byte-short admission, actual rebased-output
+capacities, saved slopes, allocation failure and interruption are covered. This
+repairs a phase-inventory omission; it does not establish an empirical cap breach.
+
+The [larger memory checkpoint](benchmarks/reports/development/candidate-memory-accounting-2026-09-15/README.md)
+remains uncommitted and unadopted pending complete-action and performance gates.
+Its tested snapshot passes 878 core, 95 plugin and 3 top-level library checks.
+The later no-budget CMG reporting follow-up passes 35 CMG and 35 PPML IRLS
+checks against a separate source identity. Failed setup, fallback, inference
+reconstruction and intercept recovery envelopes now propagate through a compact
+8-byte carrier; unknown scopes remain unknown. Earlier failed fixtures and the
+baseline PPML warm-allocation failure are preserved in the receipts.
+
+Current implementation work is the PPML saved-effect solver envelope and
+parent/frame lifetimes. Versioned public action diagnostics, original
+three-FE/German allocation reproduction, fixed paired command comparisons and
+exact-candidate Mac/Linux installation remain open. No complete-action coverage,
+performance adoption, candidate freeze or release qualification is claimed.
+
 ## Candidate preparation: PPML warm-allocation repair
 
 The [focused Linux repair](benchmarks/reports/development/candidate-ppml-thread-freeze-2026-09-15/README.md)
@@ -65,8 +90,8 @@ The [focused report](benchmarks/reports/development/candidate-audit-local-2026-0
 records the user-authorized spanning-forest witness and grounded, degree-scaled
 LSMR fallback. All 35 audit/calibration tests pass at unchanged scientific
 thresholds. Singleton-heavy 40k–320k audit scaling is approximately 2x per
-doubling. This changes independent validation only; native source/artifacts
-are unchanged and German empirical audit acceptance remains pending.
+doubling. This checker changes independent validation only. The completed
+German native PPML audit and pending OLS review decision are recorded above.
 Mac builds await owner acceptance of the updated Xcode license.
 
 ## Full German PPML: native completed, reference stopped by user
@@ -80,8 +105,9 @@ zero strict-profile rejections, retries and fallbacks. Native tracked peak is
 65.31 GB against the 72.69 GB selected model; process RSS peaks at 83.68 GB,
 with zero swaps or scratch. Auto reports MAP-family execution with fast storage.
 FE projection consumes 8,235.32 s; full phase/solver costs are retained.
-This is successful native publication, with independent full-data science still
-pending. The old interrupted low run is not a paired speed baseline. Disclose
+This is successful native publication; the saved full output now passes the
+independent audit recorded above. The old interrupted low run is not a paired
+speed baseline. Disclose
 the overlapping SCC transfer in the native timing.
 
 The user stopped the full ppmlhdfe reference because it was taking too long.
@@ -92,8 +118,9 @@ Stata receipt or numerical exports. Elapsed process time is 17,269.615 s
 completed benchmark or observed convergence failure. Peak RSS is 106.37 GB,
 peak footprint 115.05 GB, zero reported swaps. Partial logs are preserved.
 The monitor was deleted and no automatic restart is scheduled. All work in this
-comparison is stopped or terminal. Full reference comparison and independent
-native model-space acceptance remain unresolved; the 5% gaps below are retained.
+comparison is stopped or terminal. Full reference comparison remains unavailable;
+independent native model-space acceptance now passes. The 5% historical gaps
+below retain their original source-specific status.
 
 ## German 5% SCC comparison: commands complete, scientific gaps unresolved
 

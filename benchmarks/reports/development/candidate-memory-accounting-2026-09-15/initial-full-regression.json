@@ -1,0 +1,31 @@
+{
+  "source_snapshot": {
+    "base_source": "1ba5ef98c46fe049a08a9e6bbcc4a3d57052d38b",
+    "snapshot": "memory-core-plugin-1",
+    "patch_sha256": "cecf6c6da9a2b4ead2ea7e82ee9226e50342ffb3725ee60004bf072079860605",
+    "files": {
+      "crates/fereg-core/src/fe/accelerated_map.rs": "b0271cdbc3664087fabd321693bea250d95cf027426c1571c73b97031b15aa69",
+      "crates/fereg-core/src/fe/auto.rs": "c973b841d2489eb76d4c42de1b942fa9b7b469bb1c2ecf312073f7daa026faec",
+      "crates/fereg-core/src/fe/borrowed_map.rs": "dfc99e367606e828d74f89e0345492717fe7bef67ab7e3121d2b331adf99c0c8",
+      "crates/fereg-core/src/fe/cmg.rs": "73c5a089dead65a751eef32d13cf2709698d419922c5753def5167b8f98868a9",
+      "crates/fereg-core/src/fe/lsmr.rs": "a111ab35bd61e4f1bdef7cc132109b2d46c1075ef371c67420af3df410b1aced",
+      "crates/fereg-core/src/fe/map.rs": "c746373126fee85d4d8600c4fea672c90816531ec2c1cf180cf38bb9caa14bd3",
+      "crates/fereg-core/src/fe/mod.rs": "dc0dbf5f490b50fa52962eb57f4071b999265f2cc774addb627967b1b1822102",
+      "crates/fereg-core/src/fe/report.rs": "dfbae359b5c8724fb26852305e13673c6e86a0ac6af4559bb14b692b4a3bf55c",
+      "crates/fereg-core/src/fe/topology_finalize.rs": "3642c2a6c124a8de36dc50adac1d24e73bb042c42dffd1b10dab6c83619021f5",
+      "crates/fereg-core/src/fe/topology_slope_map.rs": "e6f459d6140db763fcf74becfbb19ccae432fa44dc517afc6ce87ed5c8d86bbb",
+      "crates/fereg-core/src/memory.rs": "1f9838595e7b1118177d098b63ed308cf40425945cd6d979b08c1887e2b18b90",
+      "crates/fereg-core/src/ols/prepared_fit.rs": "86310c78ec1833c012b921c2c8fca3f40421e53b54c4c216333b2552f4520f6d",
+      "crates/fereg-core/src/ols/prepared_fit_view.rs": "590c4c83daa5f3542eaf4d2a07b8dc2609b9cf1fe123844de3a1800055367519",
+      "crates/fereg-core/src/memory/workspace_peak.rs": "25eec47612bd6c7c7134acbbbbb0f89e7476014f9de3a92639d125797fbe0a26"
+    }
+  },
+  "log_sha256": "7638fc85b7e2e24b244cf4bb4d6c456968ac0179c52d059026def148e4f640e2",
+  "core_result": [
+    "test result: ok. 877 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 333.15s"
+  ],
+  "plugin_result": [
+    "test result: FAILED. 94 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 40.94s"
+  ],
+  "failure": "PPML automatic thread discovery allocated 80 events in 16 warm iterations; independently reproduced on 9ecf47d, then repaired in 3f7ea55. This original run remains failed."
+}
