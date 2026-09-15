@@ -1,0 +1,23 @@
+{
+  "time_pid": 67700,
+  "started_unix": 1789466503.654239,
+  "plugin_sha256": "156f3835f6c8349a336a48fb732ed6e4068e501710c4daa3c1e74012d424d31f",
+  "committed_source": "ece0db4e3167041ade3c817f7b48b118946643ae",
+  "row_order_capture": "long obs_id added before timer; same on reference",
+  "post_timer_outputs": "sample, absorbed, fitted_mu and original data columns",
+  "outcome": "exp(logrwage2)",
+  "native_threads": 8,
+  "memory": "fast",
+  "poolsize": 4,
+  "imposed_cap": false,
+  "trace": true,
+  "checkpoint_recovery": "preserved refinement; one canonical rebuild and bounded strict attempts",
+  "harness_sha256": {
+    "fit.do": "40e7411370a85ce0f0ace8ba29412cbfbd98b65e4c9f6ab5817ddf5eb9c3a5c3",
+    "run.do": "cee19f6e7529bd716665eef593df3be493bdb45a7deeae99a4269e3717c8fe79"
+  },
+  "full_fit_complete": false,
+  "retained_count_revalidated": false,
+  "independent_full_comparison_pending": true,
+  "execution_session": 7090
+}

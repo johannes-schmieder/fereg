@@ -41,6 +41,15 @@ full-output comparison and mean audit are now calibrated on the 65,503-row
 subset. No push or cluster work; original unrelated STATUS and untracked work
 remain intact.
 
+The full fast-memory retry is launched with committed native `ece0db4` and
+isolated plugin `156f3835`, eight threads, pool four and unchanged
+exp(logrwage2). See the source-bound full-fast-launch receipt. Generation-zero fast admission
+and the IRLS-entry count of **88,876,264 active rows** are verified in the
+full-fast-row-check receipt. Full convergence/outputs remain pending. The active
+15-minute monitor will continue full-fit validation and then the prepared
+sequential pinned reference comparison. Preserve failed launch/previous-run
+receipts and do not overlap the timed fit with builds or numerical audits.
+
 ## German PPML: changing-weight scratch block transport adopted
 
 The [source-bound report](benchmarks/reports/development/german-ppml-block-transport-local-2026-09-14/README.md)
