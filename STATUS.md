@@ -33,8 +33,10 @@ The full exp(logrwage2) retry is running with low memory, pool four and eight
 threads; see the source-bound full-retry-launch receipt. The isolated tested
 plugin matches committed `fad7a5c`. Its validated IRLS-entry trace confirms
 91,045,290 original and **88,876,264 active rows**; see full-row-check.json. The
-first IRLS iteration completed with exact parent checkpoint values, but no full
-fit is published yet. One one-second sample shows changing-weight projection
+first two IRLS iterations have completed; the second accepts a full step. The
+first checkpoint matches the parent exactly. Convergence has not passed and no
+full fit is published yet; see full-second-iteration.json. One one-second sample
+shows changing-weight projection
 in the existing parallel Schur/PCG workers. The harness preserves sample/order
 and means/absorbed outputs after the timer. The pending reference runner now
 verifies all 18 frozen capture files, including archive-backed ppmlhdfe rather

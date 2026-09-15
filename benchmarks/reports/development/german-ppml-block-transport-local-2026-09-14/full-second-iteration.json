@@ -1,0 +1,19 @@
+{
+  "observed_utc": "2026-09-15T00:07:31.610801+00:00",
+  "source": "fad7a5c",
+  "plugin_sha256": "fdaf3e16361542cf04ee2c535a7468e3fe13ab4739f0686f837d6b7fc0f1a10d",
+  "traces": [
+    "FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=1|deviance_change=3.41282511271906952e-1|score=1.15865958186640514e-1|passed=0|step=1.25000000000000000e-1",
+    "FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=2|deviance_change=1.49754628690664693e0|score=1.32892399701911190e-1|passed=0|step=1.00000000000000000e0"
+  ],
+  "last_completed_irls_iteration": 2,
+  "full_estimation_accepted": false,
+  "stata_pid": 63440,
+  "observed_process_elapsed": "29:42",
+  "observed_cpu_percent": 710.5,
+  "observed_rss_kib": 64030928,
+  "resource_sample_is_peak": false,
+  "stack_samples_so_far": 1,
+  "local_root_basename": "fereg-german-ppml-block-transport-20260914",
+  "relative_directory": "full-low-pool4-attempt1"
+}
