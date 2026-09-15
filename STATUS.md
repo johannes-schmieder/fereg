@@ -10,6 +10,18 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Candidate preparation: PPML warm-allocation repair
+
+The [focused Linux repair](benchmarks/reports/development/candidate-ppml-thread-freeze-2026-09-15/README.md)
+resolves automatic execution threads once per admitted IRLS fit while retaining
+the original requested count in public diagnostics. A same-host clean-baseline
+comparison records 80 warm allocations before the fix and zero afterward.
+All 22 PPML plugin checks and 35 focused core IRLS checks pass, including
+allocation/interrupt rollback, reconstruction and final-Hessian synchronization.
+The initial clean snapshot's missing test CSV and failed compile remain in the
+receipt; its one focused fixture repair passes. This is an allocation repair,
+with no complete-command speed or candidate qualification claim.
+
 ## Candidate preparation: saved native PPML audit closed
 
 The [saved-output report](benchmarks/reports/development/candidate-german-reaudit-2026-09-15/README.md)

@@ -948,6 +948,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .unwrap_or(0);
     let effective_threads = config.linear.execution.threads.resolved();
     let mut memory = PpmlMemoryTelemetry::new(memory_plan, requested_threads, effective_threads)?;
+    // Admission and telemetry bind this fit to one resolved team. Repeated
+    // automatic resolution may allocate while querying OS CPU quotas (Linux),
+    // and must not change the team behind the admitted workspace dimensions.
+    // Keep the caller's requested value in telemetry, then use this explicit
+    // count for every ordinary, fallback and strict linear frame in the fit.
+    config.linear.execution.threads.requested = std::num::NonZeroUsize::new(effective_threads);
+
     let (coefficient_values, eta) = initialize(
         prepared,
         outcome,

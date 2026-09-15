@@ -1,0 +1,144 @@
+{
+  "baseline-allocation-control.log": {
+    "sha256": "d2ab0faccc1fad533c6fa52ad3c9558f923eeb3236726ac72a849e955e85b06e",
+    "test_results": [
+      "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.06s",
+      "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.07s"
+    ],
+    "passed_tests": []
+  },
+  "warm-diagnostic.log": {
+    "sha256": "486c2c3221396406bd8d9b6929f606826bdb1b4fd1a82f3828239d181a55ae08",
+    "test_results": [
+      "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.03s",
+      "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.04s"
+    ],
+    "passed_tests": [],
+    "stage_observation": "Every observed warm iteration incurred five allocation events inside the linear-solve segment; disabled trace environment lookups incurred zero."
+  },
+  "warm-fix.log": {
+    "sha256": "05e2930c337d4ba03f76983d6601133f95b731d2a36b68232972e64bbb1d2644",
+    "test_results": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.02s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.03s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.02s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 5.46s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 16.32s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.06s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.95s",
+      "test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 73 filtered out; finished in 25.08s"
+    ],
+    "passed_tests": [
+      "ppml_estimate::tests::active_factor_level_that_vanishes_on_rebase_is_syntax_omitted",
+      "ppml_estimate::tests::allocation_audit_preflights_worker_team_switches_one_four_one",
+      "ppml_estimate::tests::bounded_evidence_and_receipt_tampering_fail_before_any_store",
+      "ppml_estimate::tests::default_request_binds_separation_and_fit_to_one_linear_policy",
+      "ppml_estimate::tests::every_ppml_store_failure_leaves_receipt_incomplete",
+      "ppml_estimate::tests::finite_valid_unrepresentable_result_fails_r430_atomically",
+      "ppml_estimate::tests::hidden_ppml_action_carries_factor_absorb_cluster_weight_and_saved_fe",
+      "ppml_estimate::tests::hidden_ppml_action_commits_a_distinct_receipt_last",
+      "ppml_estimate::tests::licensed_allocation_hook_reaches_fallible_fe_recovery_and_is_action_local",
+      "ppml_estimate::tests::malformed_wire_and_output_conflicts_fail_before_observation_reads",
+      "ppml_estimate::tests::native_break_marker_is_emitted_after_core_entry_and_interrupts_before_stores",
+      "ppml_estimate::tests::native_break_rejects_missing_or_path_like_marker_tokens_before_reads",
+      "ppml_estimate::tests::no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing",
+      "ppml_estimate::tests::ppml_bundle_decoder_accepts_the_closed_83_field_protocol_only",
+      "ppml_estimate::tests::ppml_local_bundle_preserves_science_and_rejects_incomplete_input_before_reads",
+      "ppml_estimate::tests::public_solver_names_decode_to_typed_families",
+      "ppml_estimate::tests::saved_fe_recovery_uses_the_accepted_hessian_for_nonexact_counts",
+      "ppml_estimate::tests::stale_receipt_interrupt_and_panic_leave_complete_zero",
+      "ppml_estimate::tests::unknown_and_retired_solver_spellings_fail_closed"
+    ],
+    "standalone_cpu_query_observation": "Main-thread available_parallelism query incurred zero events on this host; it is not a general per-query allocation guarantee."
+  },
+  "warm-clean.log": {
+    "sha256": "e16e933b9d2f9f84271c8a2512586ce02253a7673ed6d5bddfa169910365cd3d",
+    "test_results": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.02s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 5.44s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 16.57s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.05s",
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.92s",
+      "test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 73 filtered out; finished in 25.14s"
+    ],
+    "passed_tests": [
+      "ppml_estimate::tests::active_factor_level_that_vanishes_on_rebase_is_syntax_omitted",
+      "ppml_estimate::tests::allocation_audit_is_opt_in_and_publishes_real_phase_evidence",
+      "ppml_estimate::tests::allocation_audit_preflights_worker_team_switches_one_four_one",
+      "ppml_estimate::tests::bounded_evidence_and_receipt_tampering_fail_before_any_store",
+      "ppml_estimate::tests::default_request_binds_separation_and_fit_to_one_linear_policy",
+      "ppml_estimate::tests::every_ppml_store_failure_leaves_receipt_incomplete",
+      "ppml_estimate::tests::finite_valid_unrepresentable_result_fails_r430_atomically",
+      "ppml_estimate::tests::hidden_ppml_action_carries_factor_absorb_cluster_weight_and_saved_fe",
+      "ppml_estimate::tests::hidden_ppml_action_commits_a_distinct_receipt_last",
+      "ppml_estimate::tests::licensed_allocation_hook_reaches_fallible_fe_recovery_and_is_action_local",
+      "ppml_estimate::tests::malformed_wire_and_output_conflicts_fail_before_observation_reads",
+      "ppml_estimate::tests::native_break_marker_is_emitted_after_core_entry_and_interrupts_before_stores",
+      "ppml_estimate::tests::native_break_rejects_missing_or_path_like_marker_tokens_before_reads",
+      "ppml_estimate::tests::no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing",
+      "ppml_estimate::tests::ppml_bundle_decoder_accepts_the_closed_83_field_protocol_only",
+      "ppml_estimate::tests::ppml_local_bundle_preserves_science_and_rejects_incomplete_input_before_reads",
+      "ppml_estimate::tests::public_solver_names_decode_to_typed_families",
+      "ppml_estimate::tests::saved_fe_recovery_uses_the_accepted_hessian_for_nonexact_counts",
+      "ppml_estimate::tests::stale_receipt_interrupt_and_panic_leave_complete_zero",
+      "ppml_estimate::tests::unknown_and_retired_solver_spellings_fail_closed"
+    ],
+    "packaging_failure": "Plugin checks passed; subsequent core compile lacked committed tests/fixtures/ppml/reconstruction.csv. No core scientific test ran in that attempt."
+  },
+  "same-host-baseline.log": {
+    "sha256": "0fab69b85cc44cf2b842261817cc16e6d740098ef45f3f9fe9c3974f76e2c479",
+    "test_results": [
+      "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.03s",
+      "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.03s"
+    ],
+    "passed_tests": [],
+    "failure": {
+      "test": "ppml_estimate::tests::allocation_audit_is_opt_in_and_publishes_real_phase_evidence",
+      "observed_warm_events": 80,
+      "required_warm_events": 0
+    }
+  },
+  "warm-clean-core-retest.log": {
+    "sha256": "e323bd49896c467bd9c578096b191320ab47e50ddd89a7972641a751907921da",
+    "test_results": [
+      "test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 822 filtered out; finished in 2.15s"
+    ],
+    "passed_tests": [
+      "ppml::prepared_irls::tests::allocator_event_inside_warmed_solve_fails_even_with_zero_net_growth",
+      "ppml::prepared_irls::tests::bitwise_identical_weights_skip_final_frame_control_reprojection",
+      "ppml::prepared_irls::tests::cmg_nested_nuisance_preserves_full_weighted_checkpoint_and_retry_certificates",
+      "ppml::prepared_irls::tests::cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work",
+      "ppml::prepared_irls::tests::cmg_nuisance_batches_preserve_weighted_fits_and_deterministic_certificates",
+      "ppml::prepared_irls::tests::cmg_warm_seed_requires_complete_certification_and_survives_no_failed_frame",
+      "ppml::prepared_irls::tests::complete_warmed_map_window_certifies_stable_fake_allocator",
+      "ppml::prepared_irls::tests::constant_offset_seed_uses_weighted_means_and_falls_back_on_raw_overflow",
+      "ppml::prepared_irls::tests::domain_and_interrupt_failures_never_enter_the_canonical_fallback",
+      "ppml::prepared_irls::tests::experimental_strict_guard_ignores_only_nonestimable_coefficient_slots",
+      "ppml::prepared_irls::tests::explicit_three_fe_solver_roles_are_permutation_invariant_and_certified",
+      "ppml::prepared_irls::tests::failed_canonical_retry_after_warm_invalidation_is_atomic",
+      "ppml::prepared_irls::tests::initial_checkpoint_lsmr_eligibility_is_narrow_and_route_explicit",
+      "ppml::prepared_irls::tests::intercept_initialization_and_backtracking_move_beta_and_eta_together",
+      "ppml::prepared_irls::tests::invalid_warm_projection_falls_back_to_independently_certified_canonical_solve",
+      "ppml::prepared_irls::tests::line_search_reuses_buffers_and_rejects_overflow",
+      "ppml::prepared_irls::tests::one_effect_seed_does_not_admit_slopes_or_multiple_effects",
+      "ppml::prepared_irls::tests::one_effect_seed_is_group_optimal_weighted_stable_and_deterministic",
+      "ppml::prepared_irls::tests::owned_intercept_fe_design_peak_covers_the_allocated_topology",
+      "ppml::prepared_irls::tests::persistent_strict_profile_failure_rebuilds_then_returns_bounded_nonconvergence",
+      "ppml::prepared_irls::tests::prepared_driver_matches_explicit_dense_poisson_without_fixed_effects",
+      "ppml::prepared_irls::tests::prepared_driver_reports_nonconvergence_atomically",
+      "ppml::prepared_irls::tests::prepared_iteration_report_fits_registered_memory_slot",
+      "ppml::prepared_irls::tests::profile_recovery_is_bounded_but_does_not_penalize_progress_or_changed_bases",
+      "ppml::prepared_irls::tests::rebuilt_strict_candidate_preserves_storage_and_fresh_science",
+      "ppml::prepared_irls::tests::refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model",
+      "ppml::prepared_irls::tests::same_rank_basis_pivot_resumes_first_checkpoint_and_fails_final_hessian_closed",
+      "ppml::prepared_irls::tests::stable_initialization_handles_large_offsets",
+      "ppml::prepared_irls::tests::strict_caller_error_and_unwind_restore_a_usable_prior_session",
+      "ppml::prepared_irls::tests::strict_candidate_categorical_projection_preserves_scratch_and_fresh_parity",
+      "ppml::prepared_irls::tests::strict_candidate_rank_predicate_is_shared_by_both_checkpoints",
+      "ppml::prepared_irls::tests::strict_checkpoint_movement_resumes_bounded_irls_at_both_checkpoints",
+      "ppml::prepared_irls::tests::strict_profile_movement_never_weakens_a_tiny_user_tolerance",
+      "ppml::prepared_irls::tests::strict_projection_refinement_is_bounded_and_never_loosens_a_target",
+      "ppml::prepared_irls::tests::unusable_one_effect_seed_restores_global_start_and_mu_keeps_global_start"
+    ]
+  }
+}

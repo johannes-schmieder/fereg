@@ -1,0 +1,87 @@
+[
+  {
+    "job": 7585885,
+    "query_rc": 0,
+    "accounting": {
+      "jobnumber": "7585885",
+      "start_time": "Tue Sep 15 17:13:38 2026",
+      "end_time": "Tue Sep 15 17:14:16 2026",
+      "slots": "8",
+      "failed": "0",
+      "exit_status": "101",
+      "ru_wallclock": "38",
+      "ru_maxrss": "1118976",
+      "ru_nswap": "0",
+      "cpu": "73.101",
+      "maxvmem": "2.271G"
+    }
+  },
+  {
+    "job": 7585922,
+    "query_rc": 0,
+    "accounting": {
+      "jobnumber": "7585922",
+      "start_time": "Tue Sep 15 17:21:44 2026",
+      "end_time": "Tue Sep 15 17:22:11 2026",
+      "slots": "8",
+      "failed": "0",
+      "exit_status": "101",
+      "ru_wallclock": "27",
+      "ru_maxrss": "1121556",
+      "ru_nswap": "0",
+      "cpu": "36.120",
+      "maxvmem": "1.892G"
+    }
+  },
+  {
+    "job": 7585951,
+    "query_rc": 0,
+    "accounting": {
+      "jobnumber": "7585951",
+      "start_time": "Tue Sep 15 17:24:41 2026",
+      "end_time": "Tue Sep 15 17:25:34 2026",
+      "slots": "8",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "53",
+      "ru_maxrss": "1073736",
+      "ru_nswap": "0",
+      "cpu": "92.362",
+      "maxvmem": "2.708G"
+    }
+  },
+  {
+    "job": 7586016,
+    "query_rc": 0,
+    "accounting": {
+      "jobnumber": "7586016",
+      "start_time": "Tue Sep 15 17:28:39 2026",
+      "end_time": "Tue Sep 15 17:29:45 2026",
+      "slots": "8",
+      "failed": "0",
+      "exit_status": "101",
+      "ru_wallclock": "66",
+      "ru_maxrss": "1136724",
+      "ru_nswap": "0",
+      "cpu": "78.777",
+      "maxvmem": "1.890G"
+    }
+  },
+  {
+    "job": 7586031,
+    "query_rc": 0,
+    "accounting": {
+      "jobnumber": "7586031",
+      "start_time": "Tue Sep 15 17:32:43 2026",
+      "end_time": "Tue Sep 15 17:33:49 2026",
+      "slots": "8",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "66",
+      "ru_maxrss": "1818084",
+      "ru_nswap": "0",
+      "cpu": "68.944",
+      "maxvmem": "3.274G"
+    }
+  }
+]

@@ -4078,6 +4078,8 @@ mod tests {
         audited_args.push("allocation_audit=1".to_owned());
         estimate_ppml_test(&audited_args, &mut audited).expect("audited PPML estimate");
         let runtime = &audited.matrices["RRUNTIME"];
+        assert_eq!(runtime[9][0], 0.0, "automatic thread request stays public");
+        assert_eq!(runtime[10][0], ThreadConfig::available() as f64);
         assert_eq!(runtime[40][0], 1.0);
         assert!(runtime[41][0] >= 16.0);
         assert!(runtime[1][0] > normal_outer);

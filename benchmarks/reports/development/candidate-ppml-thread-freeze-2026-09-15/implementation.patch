@@ -1,0 +1,31 @@
+diff --git a/crates/fereg-core/src/ppml/prepared_irls.rs b/crates/fereg-core/src/ppml/prepared_irls.rs
+index d67ddae..3b9d9d3 100644
+--- a/crates/fereg-core/src/ppml/prepared_irls.rs
++++ b/crates/fereg-core/src/ppml/prepared_irls.rs
+@@ -948,6 +948,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
+         .unwrap_or(0);
+     let effective_threads = config.linear.execution.threads.resolved();
+     let mut memory = PpmlMemoryTelemetry::new(memory_plan, requested_threads, effective_threads)?;
++    // Admission and telemetry bind this fit to one resolved team. Repeated
++    // automatic resolution may allocate while querying OS CPU quotas (Linux),
++    // and must not change the team behind the admitted workspace dimensions.
++    // Keep the caller's requested value in telemetry, then use this explicit
++    // count for every ordinary, fallback and strict linear frame in the fit.
++    config.linear.execution.threads.requested = std::num::NonZeroUsize::new(effective_threads);
++
+     let (coefficient_values, eta) = initialize(
+         prepared,
+         outcome,
+diff --git a/crates/fereg-plugin/src/ppml_estimate.rs b/crates/fereg-plugin/src/ppml_estimate.rs
+index a8ea2c2..186bc06 100644
+--- a/crates/fereg-plugin/src/ppml_estimate.rs
++++ b/crates/fereg-plugin/src/ppml_estimate.rs
+@@ -4078,6 +4078,8 @@ mod tests {
+         audited_args.push("allocation_audit=1".to_owned());
+         estimate_ppml_test(&audited_args, &mut audited).expect("audited PPML estimate");
+         let runtime = &audited.matrices["RRUNTIME"];
++        assert_eq!(runtime[9][0], 0.0, "automatic thread request stays public");
++        assert_eq!(runtime[10][0], ThreadConfig::available() as f64);
+         assert_eq!(runtime[40][0], 1.0);
+         assert!(runtime[41][0] >= 16.0);
+         assert!(runtime[1][0] > normal_outer);
