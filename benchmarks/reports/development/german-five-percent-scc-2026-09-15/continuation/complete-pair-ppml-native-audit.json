@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "qualification_eligible": false,
+  "campaign_admission": false,
+  "directory_basename": "ppml-native-1",
+  "input_rows": 4553489,
+  "retained_rows": 4361733,
+  "sample_uint8_sha256": "578d8317ac6197901d6a6a78b914541f7d7ae6aa4675dbb279eaee940a45d6f5",
+  "log_outcome_input_max": 106.4660873413086,
+  "log_outcome_retained_max": 8.831121444702148,
+  "input_log_outcomes_above_20": 155,
+  "retained_log_outcomes_above_20": 0,
+  "objective_score": {
+    "log_likelihood": -21209243.579301655,
+    "deviance": 14890581.069983646,
+    "score_scale": 21227.335704995523,
+    "finite_score_max": 7.510332146397082e-15,
+    "fe_score_maxima": [
+      2.374131213261222e-15,
+      2.1903112243560342e-14
+    ],
+    "stationarity_pass": true
+  },
+  "model_space": {
+    "method": "lsmr",
+    "recurrence_stop": 7,
+    "iterations": 5000,
+    "recurrence_converged": false,
+    "fresh_residual_relative": 3.3016382784772468e-06,
+    "fresh_normal_max": 1.3283938075876585e-08,
+    "modeled_scratch_bytes": 5722593696,
+    "coefficient_binding_pass": false
+  },
+  "reported_objective": {
+    "ll": -21209243.579301402,
+    "deviance": 14890581.069983646
+  },
+  "public_mean_replays_reported_objective": {
+    "ll": true,
+    "deviance": true
+  },
+  "full_public_mean_pass": false,
+  "model_space_above_threshold_is_indeterminate": true,
+  "finite_score_terms": [
+    "age2_ed10",
+    "age3_ed10",
+    "age2_ed13",
+    "age3_ed13",
+    "age2_ed16",
+    "age3_ed16",
+    "age2_ed18",
+    "age3_ed18",
+    "age2_ed99",
+    "age3_ed99",
+    "2002.year",
+    "2003.year",
+    "2004.year",
+    "2005.year",
+    "2006.year",
+    "2007.year",
+    "2008.year",
+    "2009.year",
+    "_cons"
+  ],
+  "binding_input": "complete fixed 18-column X beta represented as one predictor",
+  "chunk_rows": 65536,
+  "modeled_audit_bytes": 5964171880,
+  "calibration": null,
+  "local_audit_sha256": "eabf3c003a1530704617d7340049e7121ee81db2fa5b8c14885e918f611546be",
+  "registered_helper_sha256": "a73b94b09297ddc04c278ef740117983825cafe8d25987270d73d0da45b41762"
+}

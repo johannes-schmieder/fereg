@@ -1,0 +1,15 @@
+{
+  "passed": false,
+  "qualification_eligible": false,
+  "results": {},
+  "issues": [
+    {
+      "family": "ols",
+      "error": "[Errno 2] No such file or directory: '/projectnb/welfgr/fereg/dev/20260915T102313Z-german5-0660945/comparison-ols/runs.json'"
+    },
+    {
+      "family": "ppml",
+      "error": "[Errno 2] No such file or directory: '/projectnb/welfgr/fereg/dev/20260915T102313Z-german5-0660945/comparison-ppml/runs.json'"
+    }
+  ]
+}

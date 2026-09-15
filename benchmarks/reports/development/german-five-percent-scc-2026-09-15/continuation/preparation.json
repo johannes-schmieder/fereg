@@ -1,0 +1,19 @@
+{
+  "native_source_unchanged": true,
+  "original_failed_attempts_untouched": true,
+  "paired_scientific_helpers_ast_equal": true,
+  "fix": "Each OLS process receives private pinned source copies, private precreated compilation paths, BASE-only explicit package search and verified private ftools compilation before the timer.",
+  "jobs_to_submit": [
+    "completed PPML pair audit only",
+    "isolated OLS bootstrap/9k fit+oracle smoke",
+    "isolated OLS comparison dependent on smoke"
+  ],
+  "files": {
+    "run-ols-isolated.py": "dfcb371957e7d0a51dbb96a109dcfdbf5fb529b406526f3609b58174e639b341",
+    "fit-isolated.do": "cdea4ec0d072c3f371deb3c06fbc79973ddc0bbf782297700e20e60d33d37a46",
+    "analyze-selected.py": "4e11caf86cd263091334b9d1a6f3549a655b1baefc6907920370c361d0dc1c1d",
+    "audit-complete-pair.sh": "50de47ee450e36959937d91e210b787d46f6c4161bf0afecac116fb60d8a30ae",
+    "ols-isolation-smoke.sh": "6904f953f2f31b69b4cbdd0e35a0c24ab169e02f4cd909a10f8e5231ea91d059",
+    "ols-isolated.sh": "3af41e1ee67f5351b72faa0cf765477485fd503b27f7797b9dd0731ac61ce0da"
+  }
+}

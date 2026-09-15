@@ -33,41 +33,50 @@ full audit memory allowance. Keep the combined 15-minute monitor on both this
 reference and the independent SCC workflow. No local build or numerical audit
 should overlap the timed reference.
 
-## German 5% SCC comparison launched
+## German 5% SCC comparison: OLS running, PPML independent audit unresolved
 
-The user authorized a new bounded SCC comparison and project storage. The
-[source-bound submission and smoke report](benchmarks/reports/development/german-five-percent-scc-2026-09-15/README.md)
-records committed source `0660945` and isolated Linux plugin `83d27773`.
-A deterministic 5% worker draw retains each selected worker's 2001–2009 history.
-The common input preserves original ordering, exp(logrwage2) extremes and default
-singleton removal. OLS uses logrwage2/conventional VCE; PPML uses
-exp(logrwage2)/robust VCE. Each family runs two alternating native/pinned-reference
-pairs, four application threads (the SCC Stata license limit), 16 reserved
-slots/48 GiB, native fast/auto
-with a 40 GiB cap; PPML pool four.
+The user authorized a bounded SCC comparison and project storage. The
+[source-bound report](benchmarks/reports/development/german-five-percent-scc-2026-09-15/README.md)
+records source `0660945` / isolated Linux plugin `83d27773`. The deterministic
+5% worker draw yields 4,553,489 rows from 774,281 workers, preserving selected
+2001–2009 histories, ordering, extremes and default singleton removal. Checksum,
+roundtrip and sample job 7580024 pass. OLS uses logrwage2/conventional VCE;
+PPML uses exp(logrwage2)/robust VCE. Four application threads match SCC's license;
+each family reserves 16 slots/48 GiB with native fast/auto and a 40 GiB cap.
+Build, launcher and initial 9,000-row scientific smokes pass.
 
-Build and both launcher smokes pass. The 9,000-row independent audit passes
-sample/b/V/DoF, OLS normal equations/model space, native PPML public-mean
-certification and ADR 0026 objective adjudication. The reference predicted mean
-remains an indeterminate model-space diagnostic. Empirical comparisons and
-resource results are pending: sample 7580024, OLS 7580025, PPML 7580026,
-analysis 7580041. Input transfer completed with exit zero and expected bytes;
-the compute job verifies the checksum and produces 4,553,489 rows from
-774,281 workers; roundtrip, application sentinel and failed=0/exit=0 accounting
-pass. OLS job 7580025 then fails during ftools bootstrap (r693 creating the
-shared compilation directory), before any estimator runs; scheduler exit is 1.
-See the source-bound ols-bootstrap-failure receipt. SCC PPML 7580026 is still
-running and analysis 7580041 is dependency-held. Preserve their in-use references;
-no OLS retry or scientific reclassification has been performed. The first SCC
-PPML pair finishes in 1,369.344 s native and 4,904.909 s reference with equal
-reported N=4,361,733. See first-pair-application.json; b/V/full-mean audit and
-repetitions remain pending. Two pairs at that cost exceed the running 3h limit;
-resource changes apply only after restart/migration, so preserve all completed
-outputs and disclose any truncated repetition rather than restarting live fits.
-The existing 15-minute monitor now covers both independent workflows.
-This does not restart the stopped SCC campaign. Keep the full local PPML run
-and monitor separate; disclose the overlapping transfer when reporting its
-full-run timing. No push, installed-dist change or qualification claim.
+The [continuation receipt](benchmarks/reports/development/german-five-percent-scc-2026-09-15/continuation/README.md)
+preserves both original failures. OLS 7580025 fails before estimation in shared
+ftools compilation. PPML 7580026 reaches its 3-hour allocation (10,801 s,
+failed=100/exit=137): first native and both references finish; second native is
+interrupted without a fit result. Analysis 7580041 fails on missing final
+manifests before scientific checks. No completed two-pair PPML campaign is claimed.
+
+One narrow OLS launcher fix gives each process private pinned sources and a
+private compilation directory, verified before both command timers. The focused
+retest 7580500 passes two concurrent bootstrap checks, both 9,000-row OLS calls,
+independent score/model-space checks and complete failed=0/exit=0 accounting
+(4 s, 1.190G maxvmem); shared libraries are unchanged. Empirical OLS job 7580504
+now runs two alternating pairs and independent checks in comparison-ols-isolated-1.
+The native source/artifacts and reference numerical policies are unchanged.
+
+Complete PPML pair audit 7580499 fails its native model-space gate after 607 s
+(failed=0/exit=1, 1.841G maxvmem). Exact rows/sample/order, normalized rank/DoF,
+b and V pass; maximum absolute b/V differences are 2.7700e-14/2.7228e-15.
+Native public means replay the objective and pass scores (maximum 2.1903e-14),
+but independent LSMR reaches 5,000 iterations/stop 7: fresh relative residual
+3.3016e-6 and normal 1.3284e-8 exceed unchanged 1e-10/1e-12 thresholds.
+This leaves model space indeterminate and the full comparison unaccepted;
+it does not prove prediction infeasibility. Reference public-mean diagnostics
+and objective adjudication are not reached. Preserve this failure; localize
+the projection limitation before another expensive model-space audit, including
+on the full local sample. No estimator/audit retry or tolerance relaxation.
+
+The single complete pair takes 1,369.344 s native versus 4,904.909 s reference;
+these remain diagnostic timings, not an accepted speed claim. Continue the
+combined 15-minute monitor for OLS and the full local reference. No local builds
+or numerical audits overlap the timed reference. This does not restart the
+stopped SCC campaign; no push, installed-dist change or qualification claim.
 
 ## German PPML: memory bounds and consistency-loop repair adopted
 
