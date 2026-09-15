@@ -1,0 +1,11 @@
+{
+  "local_root_basename": "fereg-german-ppml-block-transport-20260914",
+  "script": "compare-full.py",
+  "sha256": "1946fc1f70bc9151bd81098f9eab4c510b59f8d77e77e446f9b3495dd6b47c81",
+  "status": "prepared; syntax checked only",
+  "numerical_validation": "pending after active timed estimation",
+  "planned_calibration": "existing 65,503-row German native/reference exports, using several chunk sizes and sentinel overrides",
+  "full_scope": "all original rows, common finite b/V, sample/order/raw inputs and DoF; descriptive means",
+  "independent_full_mean_audit": "separate pending work",
+  "native_estimator_or_artifact_changed": false
+}

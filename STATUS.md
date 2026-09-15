@@ -42,7 +42,10 @@ and means/absorbed outputs after the timer. The pending reference runner now
 verifies all 18 frozen capture files, including archive-backed ppmlhdfe rather
 than assuming every source has Git metadata. See full-progress-checkpoint.json.
 Run the prepared pinned reference sequentially after native completion, then
-independently compare outputs.
+independently compare outputs. A bounded all-row public comparison script is
+prepared and syntax-checked; calibrate it on existing German subset exports
+after timed estimation ends before using it on the full outputs. Its preparation
+receipt records the local source hash and the separate pending full-mean audit.
 The preceding full run verified 88,876,264 active rows but was interrupted after
 one completed IRLS iteration and 1,453.38 process seconds; no full PPML estimate
 or full-data speed claim exists. Its scratch, logs and three samples are preserved.
