@@ -1,0 +1,82 @@
+{
+  "source_label": "4396bf0-memory-screen-1",
+  "source_identity_sha256": "db0b50ceec367f37703fc13e954ecd2d2c64d5eda9448c3a4f67fe7c97aa37f3",
+  "plugin_sha256": "4782babab9875814045d12f4f93d4107065ffca0b855c218ee2114d5061d4642",
+  "input_sha256": "6498d6051aac8cce1ff545c1a0228f655fcf7d6e88845b0c6f1ce564e6e7f59e",
+  "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+  "process_rc": 0,
+  "process_seconds": 393.06489984400105,
+  "job_id": "7586503",
+  "host": "scc-sb4",
+  "slots": 16,
+  "threads": 4,
+  "native_limit_bytes": 42949672960,
+  "accepted": true,
+  "no_reference_estimation": true,
+  "no_qualification": true,
+  "exact_scientific_tables": [
+    "b",
+    "V",
+    "fereg_status",
+    "fereg_fit",
+    "fereg_dof",
+    "fereg_fe",
+    "fereg_certificate"
+  ],
+  "all_saved_columns_exact": true,
+  "sample_order_exact": true,
+  "retained_rows": 4361733,
+  "output_hashes": {
+    "V.tsv": "90c06a6f737a178f27286f80801689dca40eded210a273d49b8aad479b8a1c36",
+    "fereg_status.tsv": "ac884a761c274c216e07a3c1dd7ca6f2ea2b6a207d15b10a2e486339dd092e6b",
+    "fereg_solver.tsv": "52dc83a786e7e86e05704e90bc8a060d8e779cf4c30682197b921f1bcf455b05",
+    "fereg_runtime.tsv": "968b19965660e4ceea4376e811a473f468798b4a35b75eaf38062fabaf5c4428",
+    "fereg_dof.tsv": "006d08aa4cf87c53ccd45928e646c3beaca8d0e2bdea7e75ad86024ffad549ac",
+    "fereg_receipt.tsv": "bc0d487d2d4e283bf24201109d19900d88331ba6635552f9014d15a5328088b9",
+    "b.tsv": "e1ab1efdf1a036c56972d8adff061afe3b21f89ebbc0363b198ce5606ccbcee6",
+    "fereg_fit.tsv": "61733a2a41d74e8a50df4cfd62af596ca44c0bda940729adf98b5bdcb4f682a6",
+    "fereg_fe.tsv": "67d5860072510d55bf890b1475ef3f29f365f8543ea105b15724269fe06bcb89",
+    "scalars.tsv": "d618b10fb39ecac247274cc99dbabdf1ec8f29e353e627abff1c2a8af767a04e",
+    "fereg_certificate.tsv": "ecb05b388cb470cdb1f7e6315470ba921a3dcaf0bd6adbb9e13ffe45c994a4d2"
+  },
+  "literal_harness_hashes": {
+    "run.py": "399514c868a379d0552436120220f413b3d522b77f13eb38fd9bd9626f4cbde5",
+    "fit.do": "b3ce697b375d074dcd97dc7d8a086d41f79d21af44f03bc296947f9bbb818576",
+    "run.sh": "aa59727f46c9d8423febd2973dd170d548f9cef5e822cc5eac7a1cff13ed2bfb"
+  },
+  "raw_log_hashes": {
+    "run.log": "4dfa643d0d6f10e5fc9475c7756aa0008d2c4abfdce78af2866bbb774b205aec",
+    "process.stderr": "f58fc468328cbdf615e41354e5f30f7a60fc785db01cd6a801bedc8c8bf9dadc",
+    "fit-result.txt": "48242d159bef582dbd84eafeda3b27e056645442d8a87cc2ee0cad3c290c9927",
+    "result.txt": "785f1d89d99b60c488581cfcfd57f87d7b0d23eeadcb40f9080315bdd3f2be85"
+  },
+  "scheduler": {
+    "jobnumber": "7586503",
+    "hostname": "scc-sb4.scc.bu.edu",
+    "qname": "qonos-pub",
+    "slots": "16",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "414",
+    "maxvmem": "5.236G",
+    "start_time": "Tue Sep 15 19:18:10 2026",
+    "end_time": "Tue Sep 15 19:25:04 2026"
+  },
+  "command_seconds": 385.325,
+  "tracked_action_peak_bytes": 3570575392,
+  "public_base_bytes": 2841380024,
+  "separately_admitted_cg_bytes": 2191388408,
+  "execution_plus_cg_bytes": 5032768432,
+  "usable_bytes": 34359738368,
+  "scratch_bytes": 0,
+  "process_peak_rss_bytes": 4421021696,
+  "whole_action_coverage_complete": false,
+  "action_peak_ratio": null,
+  "earlier_reference_parity_failure_unchanged": true,
+  "source_identity_report": "../candidate-memory-costs-linux-2026-09-15/identity.json",
+  "qacct_sha256": "91c91d30f3f16069cd741522c1eae1092f576ace1d2c986e9003bc81bca4713e",
+  "compared_saved_output_sha256": {
+    "accounting_snapshot": "8ef214daaeb27c6e4509df1dcd879760307a896336e10e88b11b04d4519d72d2",
+    "preserved_native": "586f5dd09d000cd125f82a5f7047e05257711351b9a9dcd34464239f14cacc2a"
+  }
+}

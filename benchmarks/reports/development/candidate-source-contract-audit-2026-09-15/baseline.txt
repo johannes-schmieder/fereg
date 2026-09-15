@@ -1,0 +1,81 @@
+fereg allocation source contract: FAIL
+ - allocation syntax inventory changed: crates/fereg-core/src/fe/auto.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/fe/borrowed_map.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/fe/cmg.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/fe/interaction.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/fe/lsmr.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/fe/projection.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/fe/singleton.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/ols/prepared.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/ols/prepared_categorical_data.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/ols/prepared_fit.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/ols/prepared_fit_view.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/ols/prepared_scores.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/ols/prepared_scratch.rs
+ - allocation syntax inventory changed: crates/fereg-core/src/sandwich/qualified_cluster.rs
+ - allocation syntax inventory changed: crates/fereg-plugin/src/estimate.rs
+ - allocation syntax inventory changed: crates/fereg-plugin/src/ffi.rs
+ - exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_fit.rs:fit_prepared_ols_coefficients_view_map
+ - exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_fit.rs:fit_prepared_weighted_linear_once
+ - exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_robust.rs:fit_prepared_categorical_ols_robust_map
+ - exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_robust.rs:fit_prepared_ols_robust_map
+ - exact fereg adapter/one-shot boundary changed: crates/fereg-plugin/src/estimate.rs:estimate_ols_test
+ - guarded production token structure changed: crates/fereg-core/src/data/mod.rs
+ - guarded production token structure changed: crates/fereg-core/src/data/sample.rs
+ - guarded production token structure changed: crates/fereg-core/src/fe/auto.rs
+ - guarded production token structure changed: crates/fereg-core/src/fe/borrowed_map.rs
+ - guarded production token structure changed: crates/fereg-core/src/fe/cmg.rs
+ - guarded production token structure changed: crates/fereg-core/src/fe/interaction.rs
+ - guarded production token structure changed: crates/fereg-core/src/fe/lsmr.rs
+ - guarded production token structure changed: crates/fereg-core/src/fe/mod.rs
+ - guarded production token structure changed: crates/fereg-core/src/fe/projection.rs
+ - guarded production token structure changed: crates/fereg-core/src/fe/singleton.rs
+ - guarded production token structure changed: crates/fereg-core/src/lib.rs
+ - guarded production token structure changed: crates/fereg-core/src/memory.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/finite_wls_kernel.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/mod.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared_categorical_clusters.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared_categorical_data.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared_clustered.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared_clusters.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared_fit.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared_fit_view.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared_rhs.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared_robust.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared_scores.rs
+ - guarded production token structure changed: crates/fereg-core/src/ols/prepared_scratch.rs
+ - guarded production token structure changed: crates/fereg-core/src/sandwich.rs
+ - guarded production token structure changed: crates/fereg-core/src/sandwich/qualified_cluster.rs
+ - guarded production token structure changed: crates/fereg-plugin/src/estimate.rs
+ - guarded production token structure changed: crates/fereg-plugin/src/ffi.rs
+ - guarded production token structure changed: crates/fereg-plugin/src/input.rs
+ - module-path binding changed: crates/fereg-core/src/fe/singleton.rs
+ - module-path binding changed: crates/fereg-core/src/ols/linear_session.rs
+ - native ABI/build route changed: plugin/stata_bridge.c
+ - native ABI/build route changed: plugin/stata_bridge.h
+ - pre-existing F0 fereg boundary changed: crates/fereg-core/src/ols/prepared_fit.rs:fit_prepared_ols_coefficients_view_map
+ - pre-existing F0 fereg boundary changed: crates/fereg-core/src/ols/prepared_robust.rs:fit_prepared_categorical_ols_robust_map
+ - pre-existing F0 fereg boundary changed: crates/fereg-core/src/ols/prepared_robust.rs:fit_prepared_ols_robust_map
+ - pre-existing F0 fereg boundary changed: crates/fereg-plugin/src/estimate.rs:estimate_ols_test
+ - production literal payload changed: crates/fereg-core/src/data/sample.rs
+ - production literal payload changed: crates/fereg-core/src/fe/auto.rs
+ - production literal payload changed: crates/fereg-core/src/fe/borrowed_map.rs
+ - production literal payload changed: crates/fereg-core/src/fe/cmg.rs
+ - production literal payload changed: crates/fereg-core/src/fe/interaction.rs
+ - production literal payload changed: crates/fereg-core/src/fe/lsmr.rs
+ - production literal payload changed: crates/fereg-core/src/fe/projection.rs
+ - production literal payload changed: crates/fereg-core/src/fe/singleton.rs
+ - production literal payload changed: crates/fereg-core/src/memory.rs
+ - production literal payload changed: crates/fereg-core/src/ols/prepared.rs
+ - production literal payload changed: crates/fereg-core/src/ols/prepared_categorical_data.rs
+ - production literal payload changed: crates/fereg-core/src/ols/prepared_fit.rs
+ - production literal payload changed: crates/fereg-core/src/ols/prepared_fit_view.rs
+ - production literal payload changed: crates/fereg-core/src/ols/prepared_rhs.rs
+ - production literal payload changed: crates/fereg-core/src/ols/prepared_scores.rs
+ - production literal payload changed: crates/fereg-core/src/ols/prepared_scratch.rs
+ - production literal payload changed: crates/fereg-core/src/sandwich/qualified_cluster.rs
+ - production literal payload changed: crates/fereg-plugin/src/estimate.rs
+ - production literal payload changed: crates/fereg-plugin/src/ffi.rs
+ - production literal payload changed: crates/fereg-plugin/src/input.rs
+ - watched fereg allocation source set changed; added=['crates/fereg-core/src/fe/lsmr_batch.rs', 'crates/fereg-core/src/fe/singleton_index_tests.rs'], removed=[]

@@ -10,6 +10,43 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Candidate preparation: empirical memory reproduction and remaining gates
+
+The [new German OLS memory reproduction](benchmarks/reports/development/candidate-german-ols-memory-2026-09-15/README.md)
+passes on the unchanged 5% input and the tested accounting artifact: 385.325 s,
+4,361,733 retained rows, all saved columns and scientific tables exactly matching
+the preserved native result. The tracked peak is again 3,570,575,392 bytes versus
+2,841,380,024 public base bytes. Base plus separately admitted CG is
+5,032,768,432 bytes, below the 34,359,738,368-byte usable budget. RSS is
+4,421,021,696 bytes and scratch zero. Job 7586503 has successful scheduler,
+process, FIT and Stata receipts plus its terminal sentinel. No reference or full
+estimation was restarted. This is a memory reproduction, not a timing comparison
+or complete-action memory certificate. All task jobs are now terminal.
+
+The [static allocation-source audit](benchmarks/reports/development/candidate-source-contract-audit-2026-09-15/README.md)
+fails against the unchanged frozen v17 inventory: 80 violations already exist
+at requested baseline 9ecf47d, and 87 at native checkpoint a765c33. Seven new
+reported categories concern intentional memory-carrier/admission changes; other
+changes can share an already-failing file category. Both failures are preserved.
+Review the allocation/one-call changes and new helper coverage before versioning
+the inventory; numerical tests cannot substitute for this gate.
+
+The Mac/Linux review candidate is not ready. The remaining checklist is:
+
+- [ ] Complete parent/frame, metadata and whole-action capacity/admission coverage;
+  add versioned public peak/coverage diagnostics and protocol/package metadata.
+  Undefined coverage must keep the action ratio undefined.
+- [ ] Review and version the structural allocation inventory without rewriting F0.
+- [ ] Obtain the separate case-specific decision on proposed ADR 0073; preserve
+  the failed reference residual-parity receipts.
+- [ ] Resolve the Xcode license prerequisite, then freeze one exact SHA and run
+  focused Mac/Linux checks, universal-slice audit and Rosetta loading.
+- [ ] Produce repeatable deterministic Mac/Linux review archives with dependency
+  audit, SBOM, licenses and publication eligibility false; validate installation
+  using only the extracted package with explicit fixtures and terminal sentinels.
+- [ ] Keep Windows artifacts, formal qualification and any publication as later
+  explicit gates. Do not install, push, tag or release this checkpoint.
+
 ## Candidate preparation: memory accounting checkpoints
 
 The [fixed Linux cost check](benchmarks/reports/development/candidate-memory-costs-linux-2026-09-15/README.md)
@@ -67,8 +104,8 @@ baseline PPML warm-allocation failure are preserved in the receipts.
 
 The compact internal solver carrier, failed-attempt/fallback propagation,
 specialized slope-MAP admission and PPML saved-effect solver envelope are
-implemented. Whole-action parent/frame and metadata coverage, versioned public
-action diagnostics and a new German OLS allocation reproduction remain open.
+implemented. Whole-action parent/frame and metadata coverage and versioned public
+action diagnostics remain open; the new German OLS reproduction is recorded above.
 The public base-memory fields and result wires are unchanged. No whole-action
 ratio or complete-action coverage is claimed. Mac builds still fail on the
 unaccepted Xcode license; ADR 0073 still needs the owner's decision. Exact-SHA

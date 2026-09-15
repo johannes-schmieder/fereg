@@ -1,0 +1,20 @@
+{
+  "status": "failed-pending-reviewed-inventory-update",
+  "baseline_source": "9ecf47d3550a10db059ef3605e4f8c4aeacd5511",
+  "checkpoint_source": "a765c338f252350d0a9f5bf496330181dfbdb4b8",
+  "source_hashes": {
+    "scripts/fereg_allocation_source_contract.py": "64163f74c4ae0d5e2b197f7cd470cc9f429c6cb35d00bf9d78019d1bc8a99925",
+    "benchmarks/manifests/fereg_allocation_source_contract_v17.json": "a3aeed9291c61912c042f57cd592abb5369fa412e3cf6a5cbcf3d3d58042f936"
+  },
+  "baseline_returncode": 1,
+  "checkpoint_returncode": 1,
+  "baseline_violations": 80,
+  "checkpoint_violations": 87,
+  "initial_baseline_attempt": {
+    "status": "invalid-missing-manifest-in-build-only-snapshot",
+    "log_sha256": "44af00ce1095a444f8d959d255fb41b1359e033af9c962bbded1de9b519f9488",
+    "correction": "Read-only audit rerun against exact Git source closure, including the frozen manifest; no estimator or test policy changed"
+  },
+  "contract_modified": false,
+  "guard_weakened": false
+}

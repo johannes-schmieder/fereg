@@ -335,6 +335,15 @@ peak bytes, allocation delta/ratio, process RSS start/current/peak/delta where
 the OS exposes them, and action timings. `timeit` displays the registered
 summary without changing computation.
 
+For OLS, selected-model bytes and the existing allocation ratio use the base
+execution estimate. The separately admitted topology-specific solver workspace
+is not included in that denominator. A ratio above one therefore does not by
+itself establish a breach of the execution-plus-solver budget. The internal
+optional solver peak is also insufficient to certify the whole action: its
+preparation, inference, saved-output and publication parents must be reconciled
+before a complete-action peak or ratio can be reported. Unknown coverage must
+remain distinct from a known zero-byte scope.
+
 Instrumentation is evidence, not a self-certifying claim. Exact-SHA
 qualification must show:
 
