@@ -1,0 +1,149 @@
+{
+  "purpose": "localize preserved comparison failure; no fit or acceptance retry",
+  "qualification_eligible": false,
+  "comparison_accepted": false,
+  "job_id": "7580896",
+  "host": "scc-ei3",
+  "helper_sha256": "4e11caf86cd263091334b9d1a6f3549a655b1baefc6907920370c361d0dc1c1d",
+  "script_sha256": "0f4f4a44c9c6841513982e23ac384c12415cbd81ccde3e08c8482cf09563bec9",
+  "pairs": [
+    {
+      "rep": 1,
+      "dof": {
+        "N": {
+          "native": 4361733.0,
+          "reference": 4361733.0,
+          "equal": true
+        },
+        "df_m": {
+          "native": 18.0,
+          "reference": 18.0,
+          "equal": true
+        },
+        "df_r": {
+          "native": 3499683.0,
+          "reference": 3499683.0,
+          "equal": true
+        },
+        "df_a": {
+          "native": 862032.0,
+          "reference": 862032.0,
+          "equal": true
+        }
+      },
+      "b": {
+        "max_abs": 9.942463519152511e-13,
+        "envelope_ratio": 0.0004713574035771986,
+        "passed": true
+      },
+      "V": {
+        "max_abs": 5.916525136571288e-19,
+        "envelope_ratio": 5.825521753932369e-09,
+        "passed": true
+      },
+      "input_rows": 4553489,
+      "retained_rows": 4361733,
+      "all_raw_and_sample_equal": {
+        "obs_id": true,
+        "persid": true,
+        "betnr": true,
+        "year": true,
+        "logrwage2": true,
+        "age": true,
+        "edyrs": true,
+        "sample": true
+      },
+      "residual": {
+        "max_abs": 6.365727595920623e-05,
+        "envelope_ratio": 63254.61382693372,
+        "rows_outside_envelope": 699592,
+        "passed": false,
+        "l2_difference": 0.0002534300175593217,
+        "native_rss": 79135.31456255841,
+        "reference_rss": 79135.31456262042
+      }
+    },
+    {
+      "rep": 2,
+      "dof": {
+        "N": {
+          "native": 4361733.0,
+          "reference": 4361733.0,
+          "equal": true
+        },
+        "df_m": {
+          "native": 18.0,
+          "reference": 18.0,
+          "equal": true
+        },
+        "df_r": {
+          "native": 3499683.0,
+          "reference": 3499683.0,
+          "equal": true
+        },
+        "df_a": {
+          "native": 862032.0,
+          "reference": 862032.0,
+          "equal": true
+        }
+      },
+      "b": {
+        "max_abs": 9.942463519152511e-13,
+        "envelope_ratio": 0.0004713574035771986,
+        "passed": true
+      },
+      "V": {
+        "max_abs": 5.916525136571288e-19,
+        "envelope_ratio": 5.825521753932369e-09,
+        "passed": true
+      },
+      "input_rows": 4553489,
+      "retained_rows": 4361733,
+      "all_raw_and_sample_equal": {
+        "obs_id": true,
+        "persid": true,
+        "betnr": true,
+        "year": true,
+        "logrwage2": true,
+        "age": true,
+        "edyrs": true,
+        "sample": true
+      },
+      "residual": {
+        "max_abs": 6.365727595920623e-05,
+        "envelope_ratio": 63254.61382693372,
+        "rows_outside_envelope": 699592,
+        "passed": false,
+        "l2_difference": 0.0002534300175593217,
+        "native_rss": 79135.31456255841,
+        "reference_rss": 79135.31456262042
+      }
+    }
+  ],
+  "scores": {
+    "native": {
+      "finite_max": 2.00105635192527e-15,
+      "fe_maxima": [
+        1.2828223390684031e-18,
+        2.8682390596159766e-16
+      ],
+      "stationarity_pass": true,
+      "rss": 79135.31456255841,
+      "reported_rss": 79135.31456255312,
+      "modeled_bytes": 1183712512
+    },
+    "reference": {
+      "finite_max": 2.3854377947704072e-11,
+      "fe_maxima": [
+        2.7722506702860017e-17,
+        2.881254296837927e-10
+      ],
+      "stationarity_pass": true,
+      "rss": 79135.31456262042,
+      "reported_rss": 79135.31456262044,
+      "modeled_bytes": 1183712512
+    }
+  },
+  "model_space": "not evaluated; independent feasibility remains required",
+  "elapsed_seconds": 9.59817910194397
+}

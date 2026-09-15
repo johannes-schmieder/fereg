@@ -1,0 +1,11 @@
+{
+  "passed": false,
+  "qualification_eligible": false,
+  "results": {},
+  "issues": [
+    {
+      "family": "ols",
+      "error": ""
+    }
+  ]
+}

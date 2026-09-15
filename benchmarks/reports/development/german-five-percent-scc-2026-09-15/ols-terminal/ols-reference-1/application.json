@@ -1,0 +1,11 @@
+{
+  "arm": "reference",
+  "rep": 1,
+  "command_seconds": 1315.637,
+  "process_seconds": 1319.2744464874268,
+  "application_accepted": true,
+  "process_maxrss_kib": 3587880,
+  "swaps": 0,
+  "N": 4361733.0,
+  "num_singletons": 191756.0
+}

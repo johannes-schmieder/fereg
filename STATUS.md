@@ -29,11 +29,12 @@ The prepared full ppmlhdfe reference is now running sequentially after its
 18-file pinned preflight passes: local time PID 3547/Stata 3548, runner session 46176.
 Continue full all-row/sample/b/V/DoF/objective and public-mean audits after it
 finishes; use the previously calibrated bounded scripts and check the separate
-full audit memory allowance. Keep the combined 15-minute monitor on both this
-reference and the independent SCC workflow. No local build or numerical audit
-should overlap the timed reference.
+full audit memory allowance. The 5% SCC audits below expose unresolved
+model-space/residual issues; localize these before another expensive projection
+audit. Keep the 15-minute monitor on this reference. No local build or numerical
+audit should overlap the timed reference.
 
-## German 5% SCC comparison: OLS running, PPML independent audit unresolved
+## German 5% SCC comparison: commands complete, scientific gaps unresolved
 
 The user authorized a bounded SCC comparison and project storage. The
 [source-bound report](benchmarks/reports/development/german-five-percent-scc-2026-09-15/README.md)
@@ -57,8 +58,26 @@ private compilation directory, verified before both command timers. The focused
 retest 7580500 passes two concurrent bootstrap checks, both 9,000-row OLS calls,
 independent score/model-space checks and complete failed=0/exit=0 accounting
 (4 s, 1.190G maxvmem); shared libraries are unchanged. Empirical OLS job 7580504
-now runs two alternating pairs and independent checks in comparison-ols-isolated-1.
-The native source/artifacts and reference numerical policies are unchanged.
+finishes all four commands, then fails the comparison (failed=0/exit=1,
+3,189 s, 4.764G maxvmem). The [terminal OLS report](benchmarks/reports/development/german-five-percent-scc-2026-09-15/ols-terminal/README.md)
+records command times 293.338/301.054 s native and 1,315.637/1,259.514 s
+reference. Both pairs have exact input/sample/order/DoF and passing b/V;
+maximum absolute b/V differences are 9.9425e-13/5.9166e-19. Saved residuals
+fail the pointwise envelope: max difference 6.3657e-5, 699,592 rows outside.
+Independent normal-equation diagnostics pass both arms, with smaller native
+scores; this alone does not settle prediction accuracy or model space.
+Diagnostic 7580896 passes failed=0/exit=0 in 12 s, 853.215M maxvmem, without
+re-estimation or changing thresholds. Original failure remains preserved.
+Native auto reports CG in design/residual stages (221/254 iterations), both
+flagging fallback use; full stage costs are retained. The large-auto-LSMR
+exception is not assumed applicable. Comparison acceptance remains blocked.
+
+Both native OLS runs expose a separate memory-model underestimate: 3.5706 GB
+tracked allocation versus 2.8414 GB selected model (ratio 1.256634). Native
+process peak RSS is about 4.416 GB, reference about 3.674 GB; zero swaps/scratch.
+The 40 GiB cap has headroom but does not establish tight-cap admission safety.
+Preserve this OLS model gap for focused repair; it is separate from the adopted
+PPML bounds. Native source/artifacts and reference policies are unchanged.
 
 Complete PPML pair audit 7580499 fails its native model-space gate after 607 s
 (failed=0/exit=1, 1.841G maxvmem). Exact rows/sample/order, normalized rank/DoF,
@@ -73,9 +92,9 @@ the projection limitation before another expensive model-space audit, including
 on the full local sample. No estimator/audit retry or tolerance relaxation.
 
 The single complete pair takes 1,369.344 s native versus 4,904.909 s reference;
-these remain diagnostic timings, not an accepted speed claim. Continue the
-combined 15-minute monitor for OLS and the full local reference. No local builds
-or numerical audits overlap the timed reference. This does not restart the
+these remain diagnostic timings, not an accepted speed claim. All SCC jobs
+are now terminal. Continue the 15-minute monitor for the full local reference.
+No local builds or numerical audits overlap the timed reference. This does not restart the
 stopped SCC campaign; no push, installed-dist change or qualification claim.
 
 ## German PPML: memory bounds and consistency-loop repair adopted

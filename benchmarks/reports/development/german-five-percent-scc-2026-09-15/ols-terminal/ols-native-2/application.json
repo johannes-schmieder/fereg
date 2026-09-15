@@ -1,0 +1,20 @@
+{
+  "arm": "native",
+  "rep": 2,
+  "command_seconds": 301.054,
+  "process_seconds": 304.7195794582367,
+  "application_accepted": true,
+  "process_maxrss_kib": 4312580,
+  "swaps": 0,
+  "N": 4361733.0,
+  "num_singletons": 191756.0,
+  "native_allocation_delta_bytes": 3570575392.0,
+  "selected_model_bytes": 2841380024.0,
+  "allocation_model_ratio": 1.2566342276783742,
+  "scratch_bytes": 0.0,
+  "input_seconds": 0.748660454,
+  "native_seconds": 297.20546598399994,
+  "precommit_seconds": 297.954490757,
+  "solver_used": "CG (published solver code4)",
+  "iterations": 221.0
+}

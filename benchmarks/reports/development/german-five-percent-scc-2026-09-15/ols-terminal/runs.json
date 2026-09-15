@@ -1,0 +1,42 @@
+{
+  "job_id": "7580504",
+  "host": "scc-ei3",
+  "slots": 16,
+  "threads": 4,
+  "native_memory_limit_bytes": 42949672960,
+  "harness_sha256": "dfcb371957e7d0a51dbb96a109dcfdbf5fb529b406526f3609b58174e639b341",
+  "fit_do_sha256": "cdea4ec0d072c3f371deb3c06fbc79973ddc0bbf782297700e20e60d33d37a46",
+  "plugin_sha256": "83d27773042bea0f6096d4f27eef21b1f08b4a449f8caf0dcd4ca72e723af550",
+  "expected_commands": 4,
+  "runs": [
+    {
+      "family": "ols",
+      "arm": "native",
+      "rep": 1,
+      "directory": "ols-native-1",
+      "accepted": true
+    },
+    {
+      "family": "ols",
+      "arm": "reference",
+      "rep": 1,
+      "directory": "ols-reference-1",
+      "accepted": true
+    },
+    {
+      "family": "ols",
+      "arm": "reference",
+      "rep": 2,
+      "directory": "ols-reference-2",
+      "accepted": true
+    },
+    {
+      "family": "ols",
+      "arm": "native",
+      "rep": 2,
+      "directory": "ols-native-2",
+      "accepted": true
+    }
+  ],
+  "complete": true
+}

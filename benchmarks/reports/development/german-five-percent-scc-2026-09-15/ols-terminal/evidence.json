@@ -1,0 +1,149 @@
+{
+  "source_commit": "06609452bab13516a84a48363014c6685482f7d4",
+  "plugin_sha256": "83d27773042bea0f6096d4f27eef21b1f08b4a449f8caf0dcd4ca72e723af550",
+  "scope": "two alternating 4-thread OLS pairs, preserved comparison failure and diagnostic; no qualification",
+  "comparison_accepted": false,
+  "commands": [
+    {
+      "arm": "native",
+      "rep": 1,
+      "command_seconds": 293.338,
+      "process_seconds": 296.947448015213,
+      "application_accepted": true,
+      "process_maxrss_kib": 4312712,
+      "swaps": 0,
+      "N": 4361733.0,
+      "num_singletons": 191756.0,
+      "native_allocation_delta_bytes": 3570575392.0,
+      "selected_model_bytes": 2841380024.0,
+      "allocation_model_ratio": 1.2566342276783742,
+      "scratch_bytes": 0.0,
+      "input_seconds": 0.72859438,
+      "native_seconds": 289.524575782,
+      "precommit_seconds": 290.253516332,
+      "solver_used": "CG (published solver code4)",
+      "iterations": 221.0,
+      "solver_stages": [
+        {
+          "stage": "design_absorption",
+          "requested_code": 1.0,
+          "used_code": 4.0,
+          "iterations": 221.0,
+          "setup_seconds": 2.0474109389999997,
+          "solve_seconds": 230.56374920099998,
+          "fallback_used": true,
+          "warning_count": 1,
+          "pilot_iterations": 8
+        },
+        {
+          "stage": "residual_absorption",
+          "requested_code": 1.0,
+          "used_code": 4.0,
+          "iterations": 254.0,
+          "setup_seconds": 0.148039815,
+          "solve_seconds": 50.938533565,
+          "fallback_used": true,
+          "warning_count": 1,
+          "pilot_iterations": 0
+        }
+      ],
+      "fallback_cost_disclosure": "Both stages flag fallback_used; separate retry cost is not isolated by this receipt. Reported setup/solve and command times include it."
+    },
+    {
+      "arm": "native",
+      "rep": 2,
+      "command_seconds": 301.054,
+      "process_seconds": 304.7195794582367,
+      "application_accepted": true,
+      "process_maxrss_kib": 4312580,
+      "swaps": 0,
+      "N": 4361733.0,
+      "num_singletons": 191756.0,
+      "native_allocation_delta_bytes": 3570575392.0,
+      "selected_model_bytes": 2841380024.0,
+      "allocation_model_ratio": 1.2566342276783742,
+      "scratch_bytes": 0.0,
+      "input_seconds": 0.748660454,
+      "native_seconds": 297.20546598399994,
+      "precommit_seconds": 297.954490757,
+      "solver_used": "CG (published solver code4)",
+      "iterations": 221.0,
+      "solver_stages": [
+        {
+          "stage": "design_absorption",
+          "requested_code": 1.0,
+          "used_code": 4.0,
+          "iterations": 221.0,
+          "setup_seconds": 2.010046676,
+          "solve_seconds": 239.373542637,
+          "fallback_used": true,
+          "warning_count": 1,
+          "pilot_iterations": 8
+        },
+        {
+          "stage": "residual_absorption",
+          "requested_code": 1.0,
+          "used_code": 4.0,
+          "iterations": 254.0,
+          "setup_seconds": 0.13753395,
+          "solve_seconds": 49.785183033,
+          "fallback_used": true,
+          "warning_count": 1,
+          "pilot_iterations": 0
+        }
+      ],
+      "fallback_cost_disclosure": "Both stages flag fallback_used; separate retry cost is not isolated by this receipt. Reported setup/solve and command times include it."
+    },
+    {
+      "arm": "reference",
+      "rep": 1,
+      "command_seconds": 1315.637,
+      "process_seconds": 1319.2744464874268,
+      "application_accepted": true,
+      "process_maxrss_kib": 3587880,
+      "swaps": 0,
+      "N": 4361733.0,
+      "num_singletons": 191756.0
+    },
+    {
+      "arm": "reference",
+      "rep": 2,
+      "command_seconds": 1259.514,
+      "process_seconds": 1263.1482479572296,
+      "application_accepted": true,
+      "process_maxrss_kib": 3588028,
+      "swaps": 0,
+      "N": 4361733.0,
+      "num_singletons": 191756.0
+    }
+  ],
+  "median_seconds": {
+    "native": 297.196,
+    "reference": 1287.5755
+  },
+  "descriptive_reference_over_native_ratio": 4.332411943633157,
+  "scheduler": {
+    "7580504": {
+      "hostname": "scc-ei3.scc.bu.edu",
+      "slots": 16,
+      "failed": "0",
+      "exit_status": 1,
+      "wallclock_seconds": 3189,
+      "maxvmem": "4.764G",
+      "start_time": "2026-09-15 10:28:37 ET",
+      "end_time": "2026-09-15 11:21:46 ET"
+    },
+    "7580896": {
+      "hostname": "scc-ei3.scc.bu.edu",
+      "slots": 4,
+      "failed": "0",
+      "exit_status": 0,
+      "wallclock_seconds": 12,
+      "maxvmem": "853.215M",
+      "start_time": "2026-09-15 11:38:56 ET",
+      "end_time": "2026-09-15 11:39:08 ET"
+    }
+  },
+  "diagnosis_job": 7580896,
+  "diagnosis_accounting": "complete: failed0/exit0"
+}

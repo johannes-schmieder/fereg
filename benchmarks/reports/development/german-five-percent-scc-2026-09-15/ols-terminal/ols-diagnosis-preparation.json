@@ -1,0 +1,7 @@
+{
+  "scope": "diagnose saved outputs; no estimation, unchanged helper functions and thresholds, no acceptance reclassification",
+  "files": {
+    "diagnose-ols-comparison.py": "0f4f4a44c9c6841513982e23ac384c12415cbd81ccde3e08c8482cf09563bec9",
+    "diagnose-ols-comparison.sh": "0f818bab51e94627ac6ffc03882183948bcac41eb7685d6466c64f1b0c9d0920"
+  }
+}
