@@ -1,0 +1,19 @@
+{
+  "core_ppml_and_separation_tests": 354,
+  "plugin_tests": 97,
+  "licensed_native_fits": 26,
+  "paired_commands": 18,
+  "independent_scores_and_binding": true,
+  "full_preflight": true,
+  "full_fit": false,
+  "fixed_stack_bytes": 262144,
+  "maximum_integer_passes": 128,
+  "local_receipt_sha256": {
+    "memory-bitmap-unit.log": "92ab867018aab34fd38e5e3ef2bfb401233141febc377fbcf7295d56f923bb22",
+    "memory-plugin-unit.log": "fee382cd825dea34c30ef95954c2ea5a3090120776522f5a436d9f4d51e253de",
+    "memory-bitmap-build.log": "fc71dae45d1ee00bc9b3b6dfbcf1644d62691dad6adee3645eba192e3a1c220c",
+    "memory-screen-analysis-validated.log": "0f6ebb51700cc29a09672bbc9077560b0c4e8b8bd9facf5fa8ecc35c482f2722",
+    "memory-screens-driver.log": "9842cbc3bb1f010df1dfe51e9edf256a1bd3fe9934e6b98cacf3ec62c3957f35",
+    "interruption-result.json": "171a9a7d2d64ab691fc1b376eb2f490334cb5c5dd9afd5f680b407869455b252"
+  }
+}

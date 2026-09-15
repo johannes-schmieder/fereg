@@ -145,6 +145,12 @@ shrinkage and does not create observation-sized preparation state or another
 retained design. Positional I/O keeps its existing bounded encoded stack buffer;
 see [ADR 0070](adr/0070-bounded-retained-scratch-moment-tiles.md).
 
+PPML may tighten generation-zero FE cardinalities using tuple-run bounds and
+bounded exact integer counts over borrowed inputs. This uses a fixed 256 KiB
+stack bitmap, at most 128 passes per source, and no observation-sized pre-admission
+allocation. Unsupported domains retain conservative bounds; the selected route
+and headroom remain fixed. See [ADR 0071](adr/0071-bounded-ppml-fe-cardinality-preflight.md).
+
 ## Allocation discipline
 
 Long estimation metadata uses one fallibly reserved transport buffer bounded by

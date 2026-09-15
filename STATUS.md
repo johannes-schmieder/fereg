@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-14
+**Last updated:** 2026-09-15
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,28 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
+
+## German PPML: tighter preflight bounds adopted; consistency repair in progress
+
+The [source-bound memory report](benchmarks/reports/development/german-ppml-preflight-bounds-local-2026-09-15/README.md)
+records bounded exact integer FE counts after authoritative classification.
+No observation-sized state precedes admission; route freezing, headroom and
+science are unchanged. A fixed 256 KiB stack bitmap replaces N-level pessimism
+where the integer domain is bounded; other inputs retain safe run/N bounds.
+354 PPML/separation tests, 97 plugin tests, binary/ABI checks and 26 licensed
+native fits pass. Three-pair constrained-auto German medians improve
+2.240→1.381 s with independent scores/model-space and unchanged sample/rank/DoF.
+Explicit-low changes 2.218→2.231 s; preparation overhead and RSS costs are disclosed.
+Full-data one-byte rejection probes reduce the fast base estimate 184.58→72.69 GB,
+low/pool4 88.41→55.93 GB. They add about nine seconds to diagnostic commands;
+selected solver admission, actual fast RSS and full-fit certificates remain pending.
+
+The prior full low/pool4 run was stopped after 33,956.40 process seconds,
+66.28 GB maximum RSS, zero swaps and repeated strict-profile rejection through
+iteration 36. No result was accepted; its logs/scratch are preserved and its
+obsolete monitor deleted. The scheduler was found to loosen a checkpoint-refined
+1e-14 target back to 1e-12. Its isolated repair and bounded recovery are being
+validated separately; no new full PPML success is claimed.
 
 ## German PPML: changing-weight scratch block transport adopted
 
