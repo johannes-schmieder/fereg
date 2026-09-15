@@ -443,9 +443,9 @@ def coefficient_binding(x, beta, mu, groups, *, memory_bytes=512 * 1024**2,
                         max_iterations=100000, ring_multiplier=None):
     """Project log(mu)-X beta onto FE indicators, holding published beta fixed.
 
-    Redundant FE coordinates need no arbitrary normalization: LSMR operates on
-    their observation-space span. Every residual below is freshly reconstructed
-    from the returned coefficients, not taken from recurrence diagnostics.
+    Two categorical effects first use an independent grounded forest witness.
+    Other cases keep their redundant-coordinate projection. Every acceptance
+    residual is freshly reconstructed, not taken from recurrence diagnostics.
     """
     x = np.asarray(x)
     beta = np.asarray(beta)
@@ -467,8 +467,14 @@ def coefficient_binding(x, beta, mu, groups, *, memory_bytes=512 * 1024**2,
         raise MemoryError("independent projection scratch exceeds audit budget")
     if not isinstance(max_iterations, int) or max_iterations < 1:
         raise ValueError("invalid projection iteration budget")
-    design = _indicator_design(groups)
     target = np.log(mu.astype(float)) - np.asarray(x, dtype=float) @ beta
+    if groups.shape[1] == 2 and ring_multiplier is None:
+        from two_fe_span_audit import audit_two_fe_span
+        result = audit_two_fe_span(target, groups, memory_bytes=memory_bytes,
+                                  max_iterations=max_iterations)
+        result['modeled_scratch_bytes'] = modeled_bytes
+        return result
+    design = _indicator_design(groups)
     if ring_multiplier is None:
         solution = lsmr(design, target, atol=1e-13, btol=1e-13,
                         conlim=1e14, maxiter=max_iterations)

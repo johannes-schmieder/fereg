@@ -10,6 +10,16 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Candidate preparation: independent two-FE audit implemented
+
+The [focused report](benchmarks/reports/development/candidate-audit-local-2026-09-15/README.md)
+records the user-authorized spanning-forest witness and grounded, degree-scaled
+LSMR fallback. All 35 audit/calibration tests pass at unchanged scientific
+thresholds. Singleton-heavy 40k–320k audit scaling is approximately 2x per
+doubling. This changes independent validation only; native source/artifacts
+are unchanged and German empirical audit acceptance remains pending.
+Mac builds await owner acceptance of the updated Xcode license.
+
 ## Full German PPML: native completed, reference stopped by user
 
 The [full fast report](benchmarks/reports/development/german-ppml-full-fast-local-2026-09-15/README.md)
