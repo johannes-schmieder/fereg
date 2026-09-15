@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import tempfile
 import unittest
 import zipfile
@@ -68,6 +69,45 @@ class StagedStataRunnerTests(unittest.TestCase):
                 run_staged_stata_tests.extract_staged_release(
                     archive, "0" * 64, root / "extracted"
                 )
+
+    def test_review_archive_needs_explicit_mode_and_reports_its_scope(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            staging = self.make_staging(root)
+            (staging / 'fereg_windows.plugin').unlink()
+            (staging / 'fereg_windows.plugin.sha256').unlink()
+            stage_release.write_manifest(staging, 'a'*40, False,
+                                         review_platforms=('macos', 'linux'))
+            archive = root / 'review.zip'
+            stage_release.write_zip(staging, archive, stage_release.PACKAGE_NAME+'-review')
+            digest = stage_release.digest(archive)
+            with self.assertRaisesRegex(run_staged_stata_tests.StagedReleaseError, 'explicit review'):
+                run_staged_stata_tests.extract_staged_release(archive, digest, root/'refused')
+            extracted = run_staged_stata_tests.extract_staged_release(
+                archive, digest, root/'accepted', allow_review=True)
+            self.assertTrue(extracted.review_only)
+
+    def test_review_manifest_cannot_claim_publication_or_hide_missing_platform(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            staging = self.make_staging(root)
+            (staging / 'fereg_windows.plugin').unlink()
+            (staging / 'fereg_windows.plugin.sha256').unlink()
+            for i, change in enumerate(({'publication_eligible': True},
+                                        {'missing_platforms': []},
+                                        {'included_platforms': ['macos', 'linux', 'windows']},
+                                        {'plugins': [{'path': []}, {'path': 'fereg_linux.plugin'}]},
+                                        {'schema': 2, 'review_only': False, 'phase': 'beta'})):
+                stage_release.write_manifest(staging, 'a'*40, False,
+                                             review_platforms=('macos', 'linux'))
+                path = staging/'RELEASE_MANIFEST.json'
+                manifest = json.loads(path.read_text()); manifest.update(change)
+                path.write_text(json.dumps(manifest))
+                archive = root/f'tampered-{i}.zip'
+                stage_release.write_zip(staging, archive, stage_release.PACKAGE_NAME+'-review')
+                with self.assertRaises(run_staged_stata_tests.StagedReleaseError):
+                    run_staged_stata_tests.extract_staged_release(
+                        archive, stage_release.digest(archive), root/f'extracted-{i}', allow_review=True)
 
     def test_rejects_path_traversal_and_multiple_roots(self):
         with tempfile.TemporaryDirectory() as raw:

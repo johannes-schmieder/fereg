@@ -45,6 +45,21 @@
 Sanitized qualification receipts may be committed. Generated archives and raw
 logs remain outside the repository.
 
+## Review-only platform subset
+
+An explicitly requested development review may use
+`stage_release.py --review-platforms macos linux` with the same clean source,
+checksummed artifacts, dependency audit, SBOM and license inputs as production
+staging. This creates `fereg-0.5.0-review`, with a schema-3 manifest that names
+the included and missing platforms and sets `publication_eligible` to false.
+Only the staged copy of `fereg.pkg` excludes missing binaries. The default
+production packager still requires all three platform binaries.
+
+`run_staged_stata_tests.py --review-only` explicitly admits such an archive for
+extracted-package checks. Its receipt is marked review-only and ineligible for
+qualification or publication. Normal staged validation rejects review archives.
+Passing these checks does not satisfy the three-platform release gates above.
+
 ## PPML qualification
 
 The public `feppml` wrapper is part of the production package inventory. A

@@ -159,6 +159,40 @@ class ReleaseStagingTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 stage_release.verify_plugins(plugins)
 
+    def test_review_subset_is_reproducible_and_cannot_replace_full_release(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            plugins = root / "plugins"
+            plugins.mkdir()
+            self.make_plugins(plugins)
+            (plugins / "fereg_windows.plugin").unlink()
+            (plugins / "fereg_windows.plugin.sha256").unlink()
+            audit = self.make_audit(root)
+            with self.assertRaisesRegex(RuntimeError, "missing or empty"):
+                stage_release.create(ROOT, plugins, audit, root / "release.zip", allow_dirty=True)
+            for name, order in (("first.zip", ("macos", "linux")),
+                                ("second.zip", ("linux", "macos"))):
+                stage_release.create(ROOT, plugins, audit, root / name, allow_dirty=True,
+                                     review_platforms=order)
+            self.assertEqual((root / "first.zip").read_bytes(), (root / "second.zip").read_bytes())
+            with zipfile.ZipFile(root / "first.zip") as archive:
+                prefix = stage_release.PACKAGE_NAME + "-review/"
+                manifest = json.loads(archive.read(prefix + "RELEASE_MANIFEST.json"))
+                package = archive.read(prefix + "fereg.pkg").decode()
+                self.assertNotIn(prefix + "fereg_windows.plugin", archive.namelist())
+                self.assertNotIn("f fereg_windows.plugin", package)
+                for platform in ("macos", "linux"):
+                    self.assertIn(f"f fereg_{platform}.plugin", package)
+                self.assertEqual(manifest['schema'], 3)
+                self.assertIs(manifest['review_only'], True)
+                self.assertIs(manifest['publication_eligible'], False)
+                self.assertEqual(manifest['missing_platforms'], ['windows'])
+
+    def test_invalid_review_selections_fail_closed(self):
+        for selection in ((), ('macos', 'macos'), ('plan9',)):
+            with self.assertRaises(RuntimeError):
+                stage_release.selected_plugins(selection)
+
     def test_dependency_audit_must_match_source(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -53,6 +53,7 @@ class StagedRelease:
     plugin: Path
     plugin_sha256: str
     plugin_bytes: int
+    review_only: bool = False
 
 
 def _safe_members(archive: zipfile.ZipFile) -> tuple[str, list[zipfile.ZipInfo]]:
@@ -100,7 +101,7 @@ def _safe_members(archive: zipfile.ZipFile) -> tuple[str, list[zipfile.ZipInfo]]
 
 
 def _records_by_path(manifest: object) -> dict[str, tuple[str, int]]:
-    if not isinstance(manifest, dict) or manifest.get("schema") != 2:
+    if not isinstance(manifest, dict) or manifest.get("schema") not in (2, 3):
         raise StagedReleaseError("release manifest has the wrong schema")
     records = manifest.get("files")
     if not isinstance(records, list):
@@ -152,6 +153,7 @@ def extract_staged_release(
     archive_path: Path,
     expected_sha256: str,
     destination: Path,
+    *, allow_review: bool = False,
 ) -> StagedRelease:
     """Safely extract and byte-validate one deterministic binary release."""
     archive_path = archive_path.resolve()
@@ -191,6 +193,36 @@ def extract_staged_release(
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise StagedReleaseError("release manifest is not valid JSON") from error
     records = _records_by_path(manifest)
+    review_only = manifest.get("schema") == 3
+    if review_only:
+        if not allow_review:
+            raise StagedReleaseError("review-only archive requires explicit review mode")
+        if (manifest.get("review_only") is not True
+                or manifest.get("publication_eligible") is not False
+                or manifest.get("phase") != "beta-review"
+                or package_name != "fereg-0.5.0-review"):
+            raise StagedReleaseError("invalid review-only publication boundary")
+        included = manifest.get("included_platforms")
+        missing = manifest.get("missing_platforms")
+        platforms = {"linux", "macos", "windows"}
+        if (not isinstance(included, list) or not included
+                or not isinstance(missing, list)
+                or not all(isinstance(value, str) for value in included+missing)
+                or len(set(included+missing)) != len(included+missing)
+                or set(included+missing) != platforms):
+            raise StagedReleaseError("invalid review platform coverage")
+        expected_plugins = {f"fereg_{platform}.plugin" for platform in included}
+        actual_plugins = {name for name in records if name.endswith(".plugin")}
+        declared = manifest.get("plugins")
+        if (actual_plugins != expected_plugins or not isinstance(declared, list)
+                or len(declared) != len(expected_plugins)
+                or any(not isinstance(item, dict)
+                       or not isinstance(item.get("path"), str) for item in declared)
+                or {item.get("path") for item in declared} != expected_plugins):
+            raise StagedReleaseError("review platform inventory is inconsistent")
+    elif (manifest.get("review_only") or manifest.get("phase") == "beta-review"
+          or package_name.endswith("-review")):
+        raise StagedReleaseError("review-only package must use the review schema")
     if manifest.get("package") != package_name or manifest.get("version") != "0.5.0":
         raise StagedReleaseError("release manifest package identity is inconsistent")
     source_sha = manifest.get("source_sha")
@@ -239,6 +271,7 @@ def extract_staged_release(
         plugin=plugin,
         plugin_sha256=plugin_sha256,
         plugin_bytes=plugin.stat().st_size,
+        review_only=review_only,
     )
 
 
@@ -249,6 +282,8 @@ def main() -> None:
     parser.add_argument("--archive-sha256", required=True)
     parser.add_argument("--log-dir", type=Path)
     parser.add_argument("--summary-json", type=Path)
+    parser.add_argument("--review-only", action="store_true",
+                        help="validate a review subset without producing release evidence")
     parser.add_argument("fixtures", nargs="+", type=Path)
     args = parser.parse_args()
     if not args.stata:
@@ -270,6 +305,7 @@ def main() -> None:
                 args.archive,
                 args.archive_sha256,
                 Path(temporary) / "extracted",
+                allow_review=args.review_only,
             )
         except StagedReleaseError as error:
             raise SystemExit(str(error)) from error
@@ -332,6 +368,9 @@ def main() -> None:
                 for result in results
             ],
         }
+        if staged.review_only:
+            summary.update(review_only=True, publication_eligible=False,
+                           qualification_eligible=False)
         if args.summary_json is not None:
             write_json_atomic(args.summary_json, summary)
         if failures:

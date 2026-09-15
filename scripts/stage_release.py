@@ -22,6 +22,11 @@ EXPECTED_PLUGINS = (
     "fereg_windows.plugin",
     "fereg_macos.plugin",
 )
+PLATFORM_PLUGINS = {
+    "linux": "fereg_linux.plugin",
+    "windows": "fereg_windows.plugin",
+    "macos": "fereg_macos.plugin",
+}
 PRODUCTION_STATA_FILES = (
     "fereg.ado",
     "fereg_run.ado",
@@ -104,9 +109,11 @@ def expected_digest(checksum_path: Path) -> str:
     return fields[0].lower()
 
 
-def verify_plugins(directory: Path) -> list[tuple[Path, Path]]:
+def verify_plugins(
+    directory: Path, names: tuple[str, ...] = EXPECTED_PLUGINS
+) -> list[tuple[Path, Path]]:
     verified: list[tuple[Path, Path]] = []
-    for name in EXPECTED_PLUGINS:
+    for name in names:
         plugin = directory / name
         checksum = directory / f"{name}.sha256"
         if not plugin.is_file() or plugin.stat().st_size == 0:
@@ -276,7 +283,11 @@ def file_records(staging: Path, excluded: set[str]) -> list[dict[str, object]]:
     return records
 
 
-def write_manifest(staging: Path, source_sha: str, source_dirty: bool) -> None:
+def write_manifest(
+    staging: Path, source_sha: str, source_dirty: bool,
+    *, review_platforms: Optional[tuple[str, ...]] = None,
+) -> None:
+    plugin_names = selected_plugins(review_platforms)
     records = file_records(
         staging, {"MANIFEST.sha256", "RELEASE_MANIFEST.json"}
     )
@@ -302,14 +313,39 @@ def write_manifest(staging: Path, source_sha: str, source_dirty: bool) -> None:
                 "path": plugin,
                 "sha256": expected_digest(staging / f"{plugin}.sha256"),
             }
-            for plugin in EXPECTED_PLUGINS
+            for plugin in plugin_names
         ],
         "support_caveats": list(SUPPORT_CAVEATS),
         "files": records,
     }
+    if review_platforms is not None:
+        metadata.update(
+            schema=3,
+            package=f"{PACKAGE_NAME}-review",
+            phase="beta-review",
+            review_only=True,
+            publication_eligible=False,
+            included_platforms=[p for p in PLATFORM_PLUGINS if p in review_platforms],
+            missing_platforms=[p for p in PLATFORM_PLUGINS if p not in review_platforms],
+            support_caveats=[
+                "Review-only package; not a qualified release or publication candidate.",
+                "Only the explicitly included platform binaries are present.",
+                "Licensed Windows and native Intel-host Mac qualification remain deferred.",
+            ],
+        )
     (staging / "RELEASE_MANIFEST.json").write_text(
         json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
+
+
+def selected_plugins(review_platforms: Optional[tuple[str, ...]]) -> tuple[str, ...]:
+    if review_platforms is None:
+        return EXPECTED_PLUGINS
+    if (not review_platforms or len(set(review_platforms)) != len(review_platforms)
+            or not set(review_platforms) <= PLATFORM_PLUGINS.keys()):
+        raise RuntimeError("review platforms must be a nonempty unique supported selection")
+    return tuple(name for platform, name in PLATFORM_PLUGINS.items()
+                 if platform in review_platforms)
 
 
 def write_zip(staging: Path, output: Path, package_name: str = PACKAGE_NAME) -> None:
@@ -335,21 +371,30 @@ def create(
     output: Path,
     *,
     allow_dirty: bool = False,
+    review_platforms: Optional[tuple[str, ...]] = None,
 ) -> None:
     require_external_output(source, output)
     source_sha, source_dirty = source_identity(source)
     if source_dirty and not allow_dirty:
         raise RuntimeError("tracked source is dirty; commit before staging a release")
-    plugins = verify_plugins(plugin_directory)
+    plugins = verify_plugins(plugin_directory, selected_plugins(review_platforms))
     validate_dependency_audit(source, audit_path, source_sha)
     with tempfile.TemporaryDirectory(prefix="fereg-release-") as temporary:
-        staging = Path(temporary) / PACKAGE_NAME
+        package_name = PACKAGE_NAME if review_platforms is None else f"{PACKAGE_NAME}-review"
+        staging = Path(temporary) / package_name
         staging.mkdir()
         copy_release_files(source, staging, plugins)
+        if review_platforms is not None:
+            omitted = set(EXPECTED_PLUGINS) - set(selected_plugins(review_platforms))
+            package = staging / "fereg.pkg"
+            lines = package.read_text(encoding="utf-8").splitlines(keepends=True)
+            package.write_text("".join(line for line in lines
+                                      if line.strip() not in {f"f {name}" for name in omitted}),
+                               encoding="utf-8")
         shutil.copy2(audit_path, staging / "DEPENDENCY_AUDIT.json")
         write_sbom(source, staging / "SBOM.spdx.json", source_sha)
-        write_manifest(staging, source_sha, source_dirty)
-        write_zip(staging, output)
+        write_manifest(staging, source_sha, source_dirty, review_platforms=review_platforms)
+        write_zip(staging, output, package_name)
     print(f"created {output}")
     print(f"sha256 {digest(output)}")
 
@@ -360,12 +405,15 @@ def main() -> None:
     parser.add_argument("--plugins", type=Path, required=True)
     parser.add_argument("--dependency-audit", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--review-platforms", nargs="+", choices=tuple(PLATFORM_PLUGINS),
+                        help="create a visibly review-only subset; never a release package")
     args = parser.parse_args()
     create(
         args.source.resolve(),
         args.plugins.resolve(),
         args.dependency_audit.resolve(),
         args.output.resolve(),
+        review_platforms=None if args.review_platforms is None else tuple(args.review_platforms),
     )
 
 
