@@ -10,6 +10,29 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## German 5% SCC comparison launched
+
+The user authorized a new bounded SCC comparison and project storage. The
+[source-bound submission and smoke report](benchmarks/reports/development/german-five-percent-scc-2026-09-15/README.md)
+records committed source `0660945` and isolated Linux plugin `83d27773`.
+A deterministic 5% worker draw retains each selected worker's 2001–2009 history.
+The common input preserves original ordering, exp(logrwage2) extremes and default
+singleton removal. OLS uses logrwage2/conventional VCE; PPML uses
+exp(logrwage2)/robust VCE. Each family runs two alternating native/pinned-reference
+pairs, four application threads (the SCC Stata license limit), 16 reserved
+slots/48 GiB, native fast/auto
+with a 40 GiB cap; PPML pool four.
+
+Build and both launcher smokes pass. The 9,000-row independent audit passes
+sample/b/V/DoF, OLS normal equations/model space, native PPML public-mean
+certification and ADR 0026 objective adjudication. The reference predicted mean
+remains an indeterminate model-space diagnostic. Empirical comparisons and
+resource results are pending: sample 7580024, OLS 7580025, PPML 7580026,
+analysis 7580041. Sample preparation is initially held for input transfer.
+This does not restart the stopped SCC campaign. Keep the full local PPML run
+and monitor separate; disclose the overlapping transfer when reporting its
+full-run timing. No push, installed-dist change or qualification claim.
+
 ## German PPML: memory bounds and consistency-loop repair adopted
 
 The [checkpoint report](benchmarks/reports/development/german-ppml-checkpoint-recovery-local-2026-09-15/README.md)

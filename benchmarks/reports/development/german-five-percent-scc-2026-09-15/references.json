@@ -1,0 +1,40 @@
+{
+  "reghdfe": {
+    "commit": "29b2b203f534413369d675d0c0f674d61291f536",
+    "required_files": {
+      "src/reghdfe.ado": "e9b96033602a6f1785f1be0b6393b44d48ef0974009ee2bffee308bc251a6abc",
+      "src/reghdfe.mata": "55827e1e3c9bec3a0c9310c1147a24c3b997ca0a5dd256a353d98407f876dcf6"
+    }
+  },
+  "ftools": {
+    "commit": "d6e24d66fd02ba1b37325c82c5040444c5b4c636",
+    "required_files": {
+      "src/ftools.ado": "c7eba3272b5fcd1dfa157e65c37840a051c6e2bf327d5ee31d42df65cf330b00",
+      "src/ftools.mata": "4af859bca19614684d3dd45566e13e17c6cf44df951ecca538bda5a44ebd1744",
+      "src/ftools.pkg": "2f1f75711b3bf12980bdf9503b0ac9a73d5455863da966ae27a610f6fc07f5ae",
+      "src/ms_parse_vce.ado": "99af53ca13f325a917b7377762feab140914a5a6534c0953ea9ce6d55dcfa678"
+    }
+  },
+  "require": {
+    "commit": "f4760b86e55cf73b82041ce59cf20e8e8224afb0",
+    "required_files": {
+      "src/require.ado": "0f5a7bad374ade6c6ba0f05973666bb06b63d4acc36ddb0e277a060249a0e6de",
+      "src/require.pkg": "d9965f30b072949f7012fe3f0e6e83baf20dd6317ff2e21b15e185085a36ed62"
+    }
+  },
+  "ppmlhdfe": {
+    "commit": "b85665d8f674e93c1e07446a9a2b29be7f797910",
+    "required_files": {
+      "src/ppmlhdfe.ado": "0c1f65bb13e2a8a7ceb157a6fc38b70fd4de16b97412b5de0aef46c86e1a91b0",
+      "src/ppmlhdfe.mata": "20246794d857a76c96eeb8d5e2ddce0787e26da9169f8d2e9158799bc4b66135",
+      "src/ppmlhdfe.pkg": "f285b4fce23f5058288ebd614019b006cc805a594bc97daa21f748e621c212cc",
+      "src/ppmlhdfe.sthlp": "28baa95bd5b6d2887736d1fe334edec95f40f9defdc1cb87ff70b0e22da8ea30",
+      "src/ppmlhdfe_functions.mata": "dcedc8070f2224572b1832b1d0b3e2c04d8c15ea92aa6357ef784e58330bbc23",
+      "src/ppmlhdfe_header.ado": "ed4ecd016b75635fb6c970f1b5a6fd43f2dd89ab6829b8e75110a224ea8aa851",
+      "src/ppmlhdfe_p.ado": "49a276f6c9f9099831c17d7e0b4c8f66b479af4036970a10453d052c52502e73",
+      "src/ppmlhdfe_separation_relu.mata": "e7b7f8d58fb578255a76a7a79b430860956e7af0ea399f7b1dea73d9b3329c21",
+      "src/ppmlhdfe_separation_simplex.mata": "ea1c5f342080011fe870d19c88340f0a7ec554ac7eec6902ad65b2f0b5038fd9",
+      "src/stata.toc": "713a1933cee2519aa4725288ca7894ca6f3b7738fa07d2900a62ab9937ba5744"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "qualification_eligible": false,
+  "campaign_admission": false,
+  "directory_basename": "ppml-native-1",
+  "input_rows": 9000,
+  "retained_rows": 9000,
+  "sample_uint8_sha256": "307dacd492dc27b1e36ea55958cb30210eb2ab2e781736d4fd85969703342c2f",
+  "log_outcome_input_max": 4.825725231298438,
+  "log_outcome_retained_max": 4.825725231298438,
+  "input_log_outcomes_above_20": 0,
+  "retained_log_outcomes_above_20": 0,
+  "objective_score": {
+    "log_likelihood": -28827.95728904631,
+    "deviance": 4021.7954494240166,
+    "score_scale": 753.1690949682402,
+    "finite_score_max": 5.672282523485949e-16,
+    "fe_score_maxima": [
+      1.3276186442768185e-16,
+      8.041692340974382e-16
+    ],
+    "stationarity_pass": true
+  },
+  "model_space": {
+    "method": "lsmr",
+    "recurrence_stop": 1,
+    "iterations": 22,
+    "recurrence_converged": true,
+    "fresh_residual_relative": 4.7561057934827165e-14,
+    "fresh_normal_max": 3.0418088058148155e-15,
+    "modeled_scratch_bytes": 11808000,
+    "coefficient_binding_pass": true
+  },
+  "reported_objective": {
+    "ll": -28827.95728904594,
+    "deviance": 4021.795449424019
+  },
+  "public_mean_replays_reported_objective": {
+    "ll": true,
+    "deviance": true
+  },
+  "full_public_mean_pass": true,
+  "model_space_above_threshold_is_indeterminate": true,
+  "finite_score_terms": [
+    "age2_ed10",
+    "age3_ed10",
+    "age2_ed13",
+    "age3_ed13",
+    "age2_ed16",
+    "age3_ed16",
+    "age2_ed18",
+    "age3_ed18",
+    "age2_ed99",
+    "age3_ed99",
+    "2002.year",
+    "2003.year",
+    "2004.year",
+    "2005.year",
+    "2006.year",
+    "2007.year",
+    "2008.year",
+    "2009.year",
+    "_cons"
+  ],
+  "binding_input": "complete fixed 18-column X beta represented as one predictor",
+  "chunk_rows": 65536,
+  "modeled_audit_bytes": 79276864,
+  "calibration": null,
+  "local_audit_sha256": "eabf3c003a1530704617d7340049e7121ee81db2fa5b8c14885e918f611546be",
+  "registered_helper_sha256": "a73b94b09297ddc04c278ef740117983825cafe8d25987270d73d0da45b41762"
+}
