@@ -1850,6 +1850,101 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
     }
 
+    /// Replace a stagnated retained projection with untouched generated
+    /// inputs, without a second design allocation. Poll on the caller thread;
+    /// the installed worker team only materializes Rust-owned numeric tiles.
+    pub(crate) fn rebuild_retained_inputs_interruptible(
+        &mut self,
+        interrupt: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<()> {
+        self.ensure_bound()?;
+        let team = ThreadTeam::new(self.config.execution.threads).acquire()?;
+        let prepared = self.prepared;
+        let within = self.within.as_mut().ok_or_else(|| {
+            invalid_argument("canonical profile rebuild requires a retained design")
+        })?;
+        let generated = &within.stored_generated_columns;
+        let columns = generated.len();
+        let rows = self.response.len();
+        if within.storage.rows() != rows || within.storage.columns() != columns {
+            return Err(invalid_argument(
+                "canonical profile rebuild dimensions disagree",
+            ));
+        }
+        let fill = |values: &mut [f64], start_row: usize, ids: &[usize]| -> Result<()> {
+            values
+                .par_chunks_mut(ids.len())
+                .enumerate()
+                .try_for_each(|(row, target)| {
+                    for (value, &column) in target.iter_mut().zip(ids) {
+                        *value = prepared.fit_column_value(column, start_row + row)?;
+                    }
+                    Ok(())
+                })
+        };
+        if columns > 0 {
+            match &mut within.storage {
+                RetainedWithinStorage::Dense(values) => {
+                    let tile_rows = (65_536 / columns).max(1);
+                    for (tile, values) in values
+                        .as_mut_slice()
+                        .chunks_mut(tile_rows * columns)
+                        .enumerate()
+                    {
+                        interrupt()?;
+                        team.install(|| fill(values, tile * tile_rows, generated))?;
+                    }
+                }
+                RetainedWithinStorage::Scratch(scratch) => {
+                    let width = self.config.execution.poolsize.max(1).min(columns);
+                    for start in (0..columns).step_by(width) {
+                        let end = (start + width).min(columns);
+                        let block = end - start;
+                        resize_zeroed(
+                            &mut self.projection_block,
+                            checked_elements(rows, block)?,
+                            "unable to reserve canonical profile rebuild block",
+                        )?;
+                        let tile_rows = (65_536 / block).max(1);
+                        for (tile, values) in self
+                            .projection_block
+                            .chunks_mut(tile_rows * block)
+                            .enumerate()
+                        {
+                            interrupt()?;
+                            team.install(|| {
+                                fill(values, tile * tile_rows, &generated[start..end])
+                            })?;
+                        }
+                        interrupt()?;
+                        scratch.patch_row_major_block(start, block, &self.projection_block)?;
+                    }
+                }
+            }
+        }
+        // A fused response refresh now starts from z itself: z + (z-z).
+        // This removes the prior residual from this independently rebuilt
+        // checkpoint while retaining exactly the existing two vector banks.
+        if self.config.execution.mode == PreparedOlsExecutionMode::Fast
+            && self
+                .fe_projector
+                .as_ref()
+                .is_some_and(ReusableLinearMapProjector::is_ppml_categorical)
+        {
+            if self.frozen_workspace.response.len() != rows || self.map_weights.len() != rows {
+                return Err(invalid_argument(
+                    "canonical profile rebuild response banks disagree",
+                ));
+            }
+            self.frozen_workspace
+                .response
+                .copy_from_slice(&self.response);
+            self.map_weights.copy_from_slice(&self.response);
+        }
+        self.projection_refresh_required = true;
+        Ok(())
+    }
+
     /// Build a canonical strict candidate while explicitly authorizing a new
     /// rank decision. The returned flag compares the complete canonical basis
     /// identity (kept/dropped coordinates and every coefficient-slot status)
@@ -4376,18 +4471,24 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     .par_iter_mut()
                     .zip(self.frozen_workspace.solve.par_iter_mut())
                     .zip(retained.reference_means.par_iter_mut())
-                    .zip(self.frozen_workspace.reference_mean_corrections.par_iter_mut())
+                    .zip(
+                        self.frozen_workspace
+                            .reference_mean_corrections
+                            .par_iter_mut(),
+                    )
                     .enumerate()
-                    .try_for_each(|(column, (((scale, sum), mean), correction))| -> Result<()> {
-                        let generated = generated_columns[column];
-                        for row in 0..rows {
-                            let weight = normalized_solver_weight(weights, weight_scale, row)?;
-                            let raw_value = prepared.fit_column_value(generated, row)?;
-                            update_scaled_square(weight.sqrt() * raw_value, scale, sum)?;
-                            compensated_add(weight * raw_value, mean, correction)?;
-                        }
-                        Ok(())
-                    })?;
+                    .try_for_each(
+                        |(column, (((scale, sum), mean), correction))| -> Result<()> {
+                            let generated = generated_columns[column];
+                            for row in 0..rows {
+                                let weight = normalized_solver_weight(weights, weight_scale, row)?;
+                                let raw_value = prepared.fit_column_value(generated, row)?;
+                                update_scaled_square(weight.sqrt() * raw_value, scale, sum)?;
+                                compensated_add(weight * raw_value, mean, correction)?;
+                            }
+                            Ok(())
+                        },
+                    )?;
             } else {
                 for row in 0..self.response.len() {
                     let weight = normalized_solver_weight(weights, weight_scale, row)?;
@@ -4935,9 +5036,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 let generated = coefficient.generated_column_index.ok_or_else(|| {
                     invalid_argument("kept weighted-linear coefficient has no generated column")
                 })?;
-                let value = coefficient
-                    .value
-                    .ok_or_else(|| invalid_argument("kept weighted-linear coefficient has no value"))?;
+                let value = coefficient.value.ok_or_else(|| {
+                    invalid_argument("kept weighted-linear coefficient has no value")
+                })?;
                 if numeric.is_some() {
                     let target = selected.get_mut(selected_count).ok_or_else(|| {
                         invalid_argument("numeric predictor selection exceeds its bound")
@@ -4954,8 +5055,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 }
             }
             if let Some(numeric) = numeric {
-                numeric
-                    .add_selected_columns(&selected[..selected_count], &mut self.finite_predictor)?;
+                numeric.add_selected_columns(
+                    &selected[..selected_count],
+                    &mut self.finite_predictor,
+                )?;
             }
         }
         let mut certificate = LinearReconstructionCertificate::new();

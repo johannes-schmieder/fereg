@@ -16,7 +16,8 @@ use crate::ols::{
 };
 use crate::options::MemoryMode;
 use crate::ppml_separation::{
-    separation_generation_capacity, separation_method_count, separation_workspace_requirements, SeparationConfig, SeparationMethod,
+    separation_generation_capacity, separation_method_count, separation_workspace_requirements,
+    SeparationConfig, SeparationMethod,
 };
 
 use super::memory::{begin_phase_allocation, end_phase_allocation, plan_ppml_memory_with_probe};
@@ -259,9 +260,16 @@ pub fn fit_prepared_ppml_interruptible(
         }
     }
     preflight_dimensions.separation_generation_capacity = separation_generation_capacity(
-        numeric_classification.n_active, all_positive, request.separation.drop_singletons,
+        numeric_classification.n_active,
+        all_positive,
+        request.separation.drop_singletons,
     );
-    refine_preflight_fe_bounds(&request.ols, &loaded.ols, &mut preflight_dimensions, interrupt)?;
+    refine_preflight_fe_bounds(
+        &request.ols,
+        &loaded.ols,
+        &mut preflight_dimensions,
+        interrupt,
+    )?;
     let preliminary_plan = plan_ppml_memory_with_probe(
         preflight_dimensions,
         request.memory,
@@ -943,10 +951,13 @@ fn refine_preflight_fe_bounds(
     let mut max_directions = 0_usize;
     for term in &request.absorbed_terms {
         let mut columns = Vec::new();
-        columns.try_reserve_exact(term.categorical_sources.len())
+        columns
+            .try_reserve_exact(term.categorical_sources.len())
             .map_err(|_| allocation("unable to reserve PPML FE bound source views"))?;
         for source in &term.categorical_sources {
-            let column = loaded.numeric_sources.iter()
+            let column = loaded
+                .numeric_sources
+                .iter()
                 .find(|(id, _)| id == source)
                 .ok_or_else(|| invalid_argument("PPML FE bound source is missing"))?;
             columns.push(column.1.values.as_slice());
@@ -954,13 +965,20 @@ fn refine_preflight_fe_bounds(
         let mut runs = usize::from(n != 0);
         for start in (1..loaded.outcome.values.len()).step_by(65_536) {
             interrupt(PpmlInterruptPoint::Preparation)?;
-            if runs >= n { break; }
-            let end = start.saturating_add(65_536).min(loaded.outcome.values.len());
+            if runs >= n {
+                break;
+            }
+            let end = start
+                .saturating_add(65_536)
+                .min(loaded.outcome.values.len());
             for row in start..end {
                 if columns.iter().any(|column| column[row] != column[row - 1]) {
-                    runs = runs.checked_add(1)
+                    runs = runs
+                        .checked_add(1)
                         .ok_or_else(|| allocation("PPML FE run count overflows"))?;
-                    if runs >= n { break; }
+                    if runs >= n {
+                        break;
+                    }
                 }
             }
         }
@@ -976,13 +994,17 @@ fn refine_preflight_fe_bounds(
             }
             levels = levels.min(product);
         }
-        let channels = usize::from(term.intercept).checked_add(term.slope_sources.len())
+        let channels = usize::from(term.intercept)
+            .checked_add(term.slope_sources.len())
             .ok_or_else(|| allocation("PPML FE bound channel count overflows"))?;
-        let directions = levels.checked_mul(channels)
+        let directions = levels
+            .checked_mul(channels)
             .ok_or_else(|| allocation("PPML FE bound direction count overflows"))?;
-        total_levels = total_levels.checked_add(levels)
+        total_levels = total_levels
+            .checked_add(levels)
             .ok_or_else(|| allocation("PPML FE bound total levels overflow"))?;
-        total_directions = total_directions.checked_add(directions)
+        total_directions = total_directions
+            .checked_add(directions)
             .ok_or_else(|| allocation("PPML FE bound total directions overflow"))?;
         max_levels = max_levels.max(levels);
         max_directions = max_directions.max(directions);
@@ -1008,7 +1030,9 @@ fn bounded_integer_level_count(
     cap: usize,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<Option<usize>> {
-    if values.is_empty() || cap == 0 { return Ok(Some(0)); }
+    if values.is_empty() || cap == 0 {
+        return Ok(Some(0));
+    }
     let mut minimum = f64::INFINITY;
     let mut maximum = f64::NEG_INFINITY;
     for chunk in values.chunks(65_536) {
@@ -1023,7 +1047,9 @@ fn bounded_integer_level_count(
     }
     let span = (maximum - minimum) as u64;
     let passes = span / PREFLIGHT_INTEGER_WINDOW as u64 + 1;
-    if passes > PREFLIGHT_INTEGER_MAX_PASSES as u64 { return Ok(None); }
+    if passes > PREFLIGHT_INTEGER_MAX_PASSES as u64 {
+        return Ok(None);
+    }
     let mut bitmap = [0_u64; PREFLIGHT_INTEGER_BITMAP_WORDS];
     let mut count = 0_usize;
     for pass in 0..passes {
@@ -1039,8 +1065,15 @@ fn bounded_integer_level_count(
                 }
             }
         }
-        count = count.saturating_add(bitmap.iter().map(|word| word.count_ones() as usize).sum::<usize>());
-        if count >= cap { return Ok(Some(cap)); }
+        count = count.saturating_add(
+            bitmap
+                .iter()
+                .map(|word| word.count_ones() as usize)
+                .sum::<usize>(),
+        );
+        if count >= cap {
+            return Ok(Some(cap));
+        }
     }
     Ok(Some(count))
 }
@@ -1612,31 +1645,51 @@ mod tests {
     #[test]
     fn positive_outcomes_bound_report_banks_across_routes_weights_and_singletons() {
         for route in [MemoryMode::Fast, MemoryMode::Low] {
-            for weight in [None, Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
+            for weight in [
+                None,
+                Some(WeightKind::Frequency),
+                Some(WeightKind::Probability),
+            ] {
                 for singletons in [false, true] {
                     let (mut request, mut loaded) = fixture(
-                        2, false, false, weight == Some(WeightKind::Probability), false, false,
+                        2,
+                        false,
+                        false,
+                        weight == Some(WeightKind::Probability),
+                        false,
+                        false,
                     );
                     request.memory.requested = route;
                     request.memory.poolsize = 1;
                     request.separation = SeparationConfig::default();
                     if weight == Some(WeightKind::Frequency) {
                         request.ols.bindings.push(OlsInputBinding {
-                            stata_var_position: 6, role: OlsInputRole::FrequencyWeight,
+                            stata_var_position: 6,
+                            role: OlsInputRole::FrequencyWeight,
                         });
-                        loaded.ols.frequency_weight = Some(column(
-                            &[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.0, 1.0],
-                        ));
+                        loaded.ols.frequency_weight = Some(column(&[
+                            2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 1.0, 1.0,
+                        ]));
                     }
                     if singletons {
                         loaded.ols.numeric_sources[1].1.values[11] = 99.0;
                     }
                     let result = fit_prepared_ppml(request, loaded).expect("positive PPML");
-                    assert_eq!(result.memory().plan.preflight_dimensions.separation_generation_capacity, 2);
+                    assert_eq!(
+                        result
+                            .memory()
+                            .plan
+                            .preflight_dimensions
+                            .separation_generation_capacity,
+                        2
+                    );
                     assert_eq!(result.separation().methods.capacity(), 8);
                     assert_eq!(result.separation().generation_hashes.capacity(), 2);
                     assert_eq!(result.separation().generations, usize::from(singletons));
-                    assert_eq!(result.sample().original_rows().len(), if singletons { 10 } else { 12 });
+                    assert_eq!(
+                        result.sample().original_rows().len(),
+                        if singletons { 10 } else { 12 }
+                    );
                     assert!(result.certificate().passed);
                 }
             }
@@ -1650,7 +1703,14 @@ mod tests {
         loaded.ols.candidate[11] = false;
         loaded.ols.outcome.values[11] = 0.0;
         let result = fit_prepared_ppml(request, loaded).expect("excluded zero");
-        assert_eq!(result.memory().plan.preflight_dimensions.separation_generation_capacity, 11);
+        assert_eq!(
+            result
+                .memory()
+                .plan
+                .preflight_dimensions
+                .separation_generation_capacity,
+            11
+        );
         assert_eq!(result.separation().methods.capacity(), 8);
         assert_eq!(result.separation().generation_hashes.capacity(), 2);
         assert_eq!(result.sample().original_rows().len(), 10);
@@ -1664,11 +1724,15 @@ mod tests {
             if point == PpmlInterruptPoint::Preparation {
                 checks += 1;
                 if checks == 2 {
-                    return Err(FeregError::new(ErrorCode::Interrupted, "preflight interrupt"));
+                    return Err(FeregError::new(
+                        ErrorCode::Interrupted,
+                        "preflight interrupt",
+                    ));
                 }
             }
             Ok(())
-        }).expect_err("scan interrupt");
+        })
+        .expect_err("scan interrupt");
         assert_eq!(error.code, ErrorCode::Interrupted);
         assert_eq!(checks, 2);
     }
@@ -3049,6 +3113,31 @@ mod tests {
     }
 
     #[test]
+    fn canonical_profile_recovery_preserves_composite_publication_and_failure_atomicity() {
+        for route in [MemoryMode::Fast, MemoryMode::Low] {
+            for injections in [4, 100] {
+                let (mut request, loaded) = fixture(0, false, false, false, false, false);
+                request.memory.requested = route;
+                request.memory.poolsize = 1;
+                super::super::prepared_irls::inject_repeated_strict_resume(injections);
+                let result = fit_prepared_ppml(request, loaded);
+                super::super::prepared_irls::inject_repeated_strict_resume(0);
+                if injections == 4 {
+                    let result =
+                        result.expect("canonical recovery must publish a valid composite result");
+                    assert!(result.output().certificate().passed);
+                    assert_eq!(result.memory().fallback_count, 1);
+                } else {
+                    let error =
+                        result.expect_err("exhausted recovery must return no composite result");
+                    assert_eq!(error.code, ErrorCode::NonConvergence);
+                    assert!(error.message.contains("canonical rebuild"));
+                }
+            }
+        }
+    }
+
+    #[test]
     fn domain_and_memory_failures_return_no_composite_value() {
         let (request, mut loaded) = fixture(0, false, false, false, false, false);
         loaded.ols.outcome.values[3] = -1.0;
@@ -3089,24 +3178,53 @@ mod tests {
         use std::collections::BTreeSet;
         for shift in [-4_503_599_627_370_490_i64, -7, 0, 4_503_599_625_000_000_i64] {
             let values: Vec<f64> = [0, 2, 63, 64, 65, 2_097_151, 2_097_152, 2_097_153, 0, 64]
-                .into_iter().map(|value| (shift + value) as f64).collect();
-            let expected = values.iter().map(|value| *value as i64).collect::<BTreeSet<_>>().len();
+                .into_iter()
+                .map(|value| (shift + value) as f64)
+                .collect();
+            let expected = values
+                .iter()
+                .map(|value| *value as i64)
+                .collect::<BTreeSet<_>>()
+                .len();
             for cap in [0, 1, 4, 100] {
-                assert_eq!(bounded_integer_level_count(&values, cap, &mut |_| Ok(())).unwrap(), Some(expected.min(cap)));
+                assert_eq!(
+                    bounded_integer_level_count(&values, cap, &mut |_| Ok(())).unwrap(),
+                    Some(expected.min(cap))
+                );
             }
         }
-        for values in [vec![0.5, 1.0], vec![0.0, f64::NAN], vec![0.0, f64::INFINITY],
-            vec![0.0, (PREFLIGHT_INTEGER_MAX_PASSES * PREFLIGHT_INTEGER_WINDOW) as f64],
-            vec![0.0, 4_503_599_627_370_497.0]] {
-            assert_eq!(bounded_integer_level_count(&values, 100, &mut |_| Ok(())).unwrap(), None);
+        for values in [
+            vec![0.5, 1.0],
+            vec![0.0, f64::NAN],
+            vec![0.0, f64::INFINITY],
+            vec![
+                0.0,
+                (PREFLIGHT_INTEGER_MAX_PASSES * PREFLIGHT_INTEGER_WINDOW) as f64,
+            ],
+            vec![0.0, 4_503_599_627_370_497.0],
+        ] {
+            assert_eq!(
+                bounded_integer_level_count(&values, 100, &mut |_| Ok(())).unwrap(),
+                None
+            );
         }
-        assert_eq!(bounded_integer_level_count(&[-0.0, 0.0], 2, &mut |_| Ok(())).unwrap(), Some(1));
+        assert_eq!(
+            bounded_integer_level_count(&[-0.0, 0.0], 2, &mut |_| Ok(())).unwrap(),
+            Some(1)
+        );
         let mut polls = 0;
         let error = bounded_integer_level_count(&[0.0, 2_097_152.0], 10, &mut |_| {
             polls += 1;
-            if polls == 3 { Err(FeregError::new(ErrorCode::Interrupted, "bitmap interrupted")) }
-            else { Ok(()) }
-        }).unwrap_err();
+            if polls == 3 {
+                Err(FeregError::new(
+                    ErrorCode::Interrupted,
+                    "bitmap interrupted",
+                ))
+            } else {
+                Ok(())
+            }
+        })
+        .unwrap_err();
         assert_eq!(error.code, ErrorCode::Interrupted);
     }
 
@@ -3117,43 +3235,86 @@ mod tests {
             let (mut request, mut loaded) = fixture(2, false, false, false, false, false);
             if case & 1 != 0 {
                 let source = request.ols.absorbed_terms[1].categorical_sources[0];
-                request.ols.absorbed_terms[0].categorical_sources.push(source);
+                request.ols.absorbed_terms[0]
+                    .categorical_sources
+                    .push(source);
             }
             if case & 2 != 0 {
-                request.ols.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
+                request.ols.absorbed_terms[0]
+                    .slope_sources
+                    .push(SourceId::new(1).unwrap());
             }
-            for (dimension, (_, column)) in loaded.ols.numeric_sources.iter_mut().enumerate().skip(1) {
+            for (dimension, (_, column)) in
+                loaded.ols.numeric_sources.iter_mut().enumerate().skip(1)
+            {
                 for (row, value) in column.values.iter_mut().enumerate() {
-                    *value = if case & 4 == 0 { (row / (dimension + 1)) as f64 }
-                        else { ((row * (case + 3) + row * row * dimension) % 7) as f64 };
+                    *value = if case & 4 == 0 {
+                        (row / (dimension + 1)) as f64
+                    } else {
+                        ((row * (case + 3) + row * row * dimension) % 7) as f64
+                    };
                 }
             }
             for mask in 0..16_usize {
                 let active: Vec<_> = (0..12).filter(|row| ((row * 7 + mask) % 5) != 0).collect();
                 let mut bound = conservative_preflight_dimensions_from_classification(
-                    &request, PpmlNumericClassification { n_original: 12, n_candidate: 12, n_active: active.len() },
-                    3, false, false, 0,
-                ).unwrap();
-                refine_preflight_fe_bounds(&request.ols, &loaded.ols, &mut bound, &mut |_| Ok(())).unwrap();
+                    &request,
+                    PpmlNumericClassification {
+                        n_original: 12,
+                        n_candidate: 12,
+                        n_active: active.len(),
+                    },
+                    3,
+                    false,
+                    false,
+                    0,
+                )
+                .unwrap();
+                refine_preflight_fe_bounds(&request.ols, &loaded.ols, &mut bound, &mut |_| Ok(()))
+                    .unwrap();
                 let mut exact = bound;
                 exact.fe_total_levels = 0;
                 exact.fe_max_levels = 0;
                 exact.fe_coefficient_directions = 0;
                 exact.fe_max_effect_directions = 0;
                 for term in &request.ols.absorbed_terms {
-                    let groups: BTreeSet<Vec<u64>> = active.iter().map(|&row| {
-                        term.categorical_sources.iter().map(|source| {
-                            loaded.ols.numeric_sources.iter().find(|(id, _)| id == source).unwrap().1.values[row].to_bits()
-                        }).collect()
-                    }).collect();
+                    let groups: BTreeSet<Vec<u64>> = active
+                        .iter()
+                        .map(|&row| {
+                            term.categorical_sources
+                                .iter()
+                                .map(|source| {
+                                    loaded
+                                        .ols
+                                        .numeric_sources
+                                        .iter()
+                                        .find(|(id, _)| id == source)
+                                        .unwrap()
+                                        .1
+                                        .values[row]
+                                        .to_bits()
+                                })
+                                .collect()
+                        })
+                        .collect();
                     let levels = groups.len();
-                    let directions = levels * (usize::from(term.intercept) + term.slope_sources.len());
+                    let directions =
+                        levels * (usize::from(term.intercept) + term.slope_sources.len());
                     exact.fe_total_levels += levels;
                     exact.fe_max_levels = exact.fe_max_levels.max(levels);
                     exact.fe_coefficient_directions += directions;
                     exact.fe_max_effect_directions = exact.fe_max_effect_directions.max(directions);
                 }
-                plan_ppml_memory(bound, PpmlMemoryConfig { available_bytes: None, ..request.memory }).unwrap().with_final_dimensions(exact).unwrap();
+                plan_ppml_memory(
+                    bound,
+                    PpmlMemoryConfig {
+                        available_bytes: None,
+                        ..request.memory
+                    },
+                )
+                .unwrap()
+                .with_final_dimensions(exact)
+                .unwrap();
                 let upper = super::super::estimate_ppml_memory(bound, request.memory).unwrap();
                 let actual = super::super::estimate_ppml_memory(exact, request.memory).unwrap();
                 assert!(upper.fast.peak_bytes >= actual.fast.peak_bytes);
@@ -3168,12 +3329,18 @@ mod tests {
         let numeric = prepare_numeric_input(&request, &loaded).unwrap();
         let mut dimensions = conservative_preflight_dimensions(&request, &numeric, 0).unwrap();
         let original = dimensions;
-        let error = refine_preflight_fe_bounds(&request.ols, &loaded.ols, &mut dimensions, &mut |_| {
-            Err(FeregError::new(ErrorCode::Interrupted, "injected run-bound interrupt"))
-        }).unwrap_err();
+        let error =
+            refine_preflight_fe_bounds(&request.ols, &loaded.ols, &mut dimensions, &mut |_| {
+                Err(FeregError::new(
+                    ErrorCode::Interrupted,
+                    "injected run-bound interrupt",
+                ))
+            })
+            .unwrap_err();
         assert_eq!(error.code, ErrorCode::Interrupted);
         assert_eq!(dimensions, original);
-        refine_preflight_fe_bounds(&request.ols, &loaded.ols, &mut dimensions, &mut |_| Ok(())).unwrap();
+        refine_preflight_fe_bounds(&request.ols, &loaded.ols, &mut dimensions, &mut |_| Ok(()))
+            .unwrap();
         assert_eq!(dimensions.fe_total_levels, 18); // six ordered groups plus twelve alternating runs
         assert_eq!(dimensions.fe_max_levels, 12);
         assert_eq!(dimensions.fe_max_level_members, 12);

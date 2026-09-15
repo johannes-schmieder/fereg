@@ -55,6 +55,59 @@ use super::{
 
 const MAX_RETAINED_ITERATION_REPORTS: usize = 256;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ProfileRecoveryAction {
+    Continue,
+    Rebuild,
+    Exhausted,
+}
+
+#[derive(Default)]
+struct ProfileRecovery {
+    discrepancies: [f64; 3],
+    count: usize,
+    // The rebuilt checkpoint and at most two further strict corrections.
+    attempts_left: Option<usize>,
+}
+
+impl ProfileRecovery {
+    fn observe(
+        &mut self,
+        eligible: bool,
+        same_basis: bool,
+        difference: f64,
+    ) -> ProfileRecoveryAction {
+        if !same_basis {
+            *self = Self::default();
+        }
+        if !eligible {
+            self.count = 0;
+            return ProfileRecoveryAction::Continue;
+        }
+        if let Some(left) = &mut self.attempts_left {
+            *left = left.saturating_sub(1);
+            return if *left == 0 {
+                ProfileRecoveryAction::Exhausted
+            } else {
+                ProfileRecoveryAction::Continue
+            };
+        }
+        self.discrepancies[self.count] = difference;
+        self.count += 1;
+        if self.count < self.discrepancies.len() {
+            return ProfileRecoveryAction::Continue;
+        }
+        if difference < 0.5 * self.discrepancies[0] {
+            self.discrepancies[0] = difference;
+            self.count = 1;
+            return ProfileRecoveryAction::Continue;
+        }
+        self.count = 0;
+        self.attempts_left = Some(3);
+        ProfileRecoveryAction::Rebuild
+    }
+}
+
 fn refined_checkpoint_tolerance(current: f64) -> f64 {
     // A certified warm residual may retain an old profile whose movement is
     // too large for publication. Refine computation, never the acceptance
@@ -84,9 +137,15 @@ fn use_initial_checkpoint_lsmr_accelerator(
 #[cfg(test)]
 thread_local! {
     static STRICT_RESUME_INJECTION: Cell<u8> = const { Cell::new(0) };
+    static REPEATED_STRICT_RESUME_INJECTION: Cell<usize> = const { Cell::new(0) };
     static STRICT_BASIS_CHANGE_INJECTION: Cell<u8> = const { Cell::new(0) };
     static CANONICAL_FRAME_REFRESH_COUNT: Cell<usize> = const { Cell::new(0) };
     static CMG_EARLY_MEMORY_PEAKS: Cell<Option<(u128, u128)>> = const { Cell::new(None) };
+}
+
+#[cfg(test)]
+pub(super) fn inject_repeated_strict_resume(count: usize) {
+    REPEATED_STRICT_RESUME_INJECTION.set(count);
 }
 
 #[cfg(test)]
@@ -96,6 +155,10 @@ fn inject_strict_resume(first_strict: bool, final_hessian: bool) {
 
 #[cfg(test)]
 fn take_strict_resume(bit: u8) -> bool {
+    if bit == 1 && REPEATED_STRICT_RESUME_INJECTION.get() > 0 {
+        REPEATED_STRICT_RESUME_INJECTION.set(REPEATED_STRICT_RESUME_INJECTION.get() - 1);
+        return true;
+    }
     let state = STRICT_RESUME_INJECTION.get();
     let selected = state & bit != 0;
     STRICT_RESUME_INJECTION.set(state & !bit);
@@ -942,6 +1005,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .map_err(|_| allocation("unable to reserve prepared PPML diagnostics"))?;
     let mut total_step_halvings = 0_usize;
     let mut strict_profile_rejections = 0_usize;
+    let mut profile_recovery = ProfileRecovery::default();
+    let mut profile_rebuild_pending = false;
     let mut checkpoint_tolerance = strict_inner_tolerance(config.ppml);
     let mut checkpoint_refinement_pending = false;
     let mut consecutive_converged = 0_usize;
@@ -1534,6 +1599,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             } else {
                 None
             };
+            if profile_rebuild_pending {
+                let mut poll = || interrupt(PpmlInterruptPoint::StrictFinalSolve);
+                session.rebuild_retained_inputs_interruptible(&mut poll)?;
+                memory.record_fallback(PpmlFallbackKind::WarmProjection);
+                checkpoint_refinement_pending = true;
+                profile_rebuild_pending = false;
+            }
             let strict_transaction = session.strict_candidate()?;
             let strict_basis_unchanged = strict_transaction.basis_unchanged();
             #[cfg(test)]
@@ -1612,6 +1684,38 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             ) == FinalHessianSynchronization::Certified;
 
             if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+                let mut worst_row = 0_usize;
+                let mut worst_difference = 0.0_f64;
+                let mut failing_rows = 0_usize;
+                let tolerance = config
+                    .ppml
+                    .tolerance
+                    .min(config.ppml.score_tolerance)
+                    .min(1e-8);
+                for (row, (&accepted, &candidate)) in workspace
+                    .eta()
+                    .iter()
+                    .zip(workspace.candidate_eta())
+                    .enumerate()
+                {
+                    let difference = relative_scalar_difference(accepted, candidate);
+                    failing_rows += usize::from(difference > tolerance);
+                    if difference > worst_difference {
+                        worst_row = row;
+                        worst_difference = difference;
+                    }
+                }
+                let strict = strict_transaction.candidate();
+                let row = worst_row;
+                super::categorical_lsmr::emit_solver_trace_line(&format!(
+                    "FEREG_SOLVER_TRACE|phase=strict_worst_row|iteration={iteration}|seconds={:.6}|original_row={}|failing_rows={failing_rows}|tolerance={tolerance:.17e}|accepted_eta={:.17e}|candidate_eta={:.17e}|working_response={:.17e}|residual={:.17e}|finite_predictor={:.17e}|absorbed_predictor={:.17e}|outcome={:.17e}|mean={:.17e}|hessian_weight={:.17e}|deviance_change={:.17e}|ll_change={:.17e}",
+                    strict_clock.elapsed().as_secs_f64(), prepared.fit_sample().retained_rows()[row] + 1,
+                    workspace.eta()[row], workspace.candidate_eta()[row], strict.response()[row],
+                    strict.fit().residuals()[row], strict.finite_predictor()[row], strict.absorbed_predictor()[row],
+                    outcome[row], workspace.mean()[row], workspace.hessian_weights()[row],
+                    strict_objective.map_or(f64::INFINITY, |candidate| relative_scalar_difference(objective.deviance, candidate.deviance)),
+                    strict_objective.map_or(f64::INFINITY, |candidate| relative_scalar_difference(objective.log_likelihood, candidate.log_likelihood)),
+                ));
                 super::categorical_lsmr::emit_solver_trace_line(&format!(
                     "FEREG_SOLVER_TRACE|phase=strict_decision|iteration={iteration}|certified={}|basis_unchanged={}|rank={strict_rank}|eta_change={:.17e}|beta_change={:.17e}|consistent={}",
                     u8::from(strict_certified), u8::from(strict_basis_unchanged),
@@ -1621,6 +1725,21 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 ));
             }
 
+            let mut profile_difference = if strict_consistent {
+                0.0
+            } else {
+                strict_objective.map_or(f64::INFINITY, |candidate| {
+                    strict_profile_difference(
+                        workspace.eta(),
+                        workspace.coefficients(),
+                        objective,
+                        workspace.candidate_eta(),
+                        workspace.candidate_coefficients(),
+                        candidate,
+                        active_coefficient_slots,
+                    )
+                })
+            };
             let mut accepted_strict_basis_change = false;
             let mut profile_rejected = strict_certified
                 && strict_basis_unchanged
@@ -1758,6 +1877,20 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     converged = true;
                 } else if synchronized == FinalHessianSynchronization::ResumeWithCandidate {
                     profile_rejected = true;
+                    let candidate_objective = workspace.evaluate_candidate_objective(
+                        outcome,
+                        prior_weights,
+                        config.ppml.bounds,
+                    )?;
+                    profile_difference = strict_profile_difference(
+                        workspace.eta(),
+                        workspace.coefficients(),
+                        objective,
+                        workspace.candidate_eta(),
+                        workspace.candidate_coefficients(),
+                        candidate_objective,
+                        None,
+                    );
                     let mut poll_line_search =
                         || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
                     match workspace.accept_candidate_interruptible(
@@ -1819,6 +1952,37 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     ));
                 }
                 checkpoint_tolerance = refined;
+                previous_inner_tolerance = previous_inner_tolerance.min(refined);
+            }
+            // Entry already required two accepted objective/score passes.
+            // A rejected candidate may move its own score away from the root;
+            // that must not erase evidence of this repeated checkpoint cycle.
+            let recovery_action = profile_recovery.observe(
+                profile_rejected
+                    && strict_basis_unchanged
+                    && strict_rank == finite_rank
+                    && refined_checkpoint_tolerance(strict_tolerance) == strict_tolerance,
+                strict_basis_unchanged && strict_rank == finite_rank,
+                profile_difference,
+            );
+            if std::env::var_os("FEREG_SOLVER_TRACE").is_some()
+                && recovery_action != ProfileRecoveryAction::Continue
+            {
+                super::categorical_lsmr::emit_solver_trace_line(&format!(
+                    "FEREG_SOLVER_TRACE|phase=profile_recovery|iteration={iteration}|action={recovery_action:?}|difference={profile_difference:.17e}|tolerance={checkpoint_tolerance:.17e}",
+                ));
+            }
+            match recovery_action {
+                ProfileRecoveryAction::Continue => {}
+                ProfileRecoveryAction::Rebuild => {
+                    profile_rebuild_pending = true;
+                }
+                ProfileRecoveryAction::Exhausted => {
+                    return Err(FeregError::new(ErrorCode::NonConvergence, format!(
+                        "prepared PPML strict profile stagnated after canonical rebuild and two further strict attempts; iteration={iteration}, difference={profile_difference:.16e}, inner_tolerance={checkpoint_tolerance:.3e}, score={:.3e}",
+                        final_score.relative_infinity_norm,
+                    )));
+                }
             }
             strict_profile_rejections =
                 strict_profile_rejections.checked_add(1).ok_or_else(|| {
@@ -3160,17 +3324,45 @@ fn strict_profile_consistent(
     // floor. In that case fail closed instead of silently weakening the
     // caller's requested outer/score tolerance.
     let tolerance = config.tolerance.min(config.score_tolerance).min(1e-8);
-    relative_infinity_difference(eta, strict_eta) <= tolerance
-        && coefficient_slots.map_or_else(
-            || relative_infinity_difference(coefficients, strict_coefficients) <= tolerance,
-            |slots| {
-                relative_infinity_difference_at_slots(coefficients, strict_coefficients, slots)
-                    <= tolerance
-            },
-        )
-        && relative_scalar_difference(objective.deviance, strict_objective.deviance) <= tolerance
-        && relative_scalar_difference(objective.log_likelihood, strict_objective.log_likelihood)
-            <= tolerance
+    strict_profile_difference(
+        eta,
+        coefficients,
+        objective,
+        strict_eta,
+        strict_coefficients,
+        strict_objective,
+        coefficient_slots,
+    ) <= tolerance
+}
+
+#[allow(clippy::too_many_arguments)]
+fn strict_profile_difference(
+    eta: &[f64],
+    coefficients: &[f64],
+    objective: PoissonObjective,
+    strict_eta: &[f64],
+    strict_coefficients: &[f64],
+    strict_objective: PoissonObjective,
+    coefficient_slots: Option<&[usize]>,
+) -> f64 {
+    let differences = [
+        relative_infinity_difference(eta, strict_eta),
+        coefficient_slots.map_or_else(
+            || relative_infinity_difference(coefficients, strict_coefficients),
+            |slots| relative_infinity_difference_at_slots(coefficients, strict_coefficients, slots),
+        ),
+        relative_scalar_difference(objective.deviance, strict_objective.deviance),
+        relative_scalar_difference(objective.log_likelihood, strict_objective.log_likelihood),
+    ];
+    differences
+        .into_iter()
+        .fold(0.0_f64, |maximum, difference| {
+            if difference.is_finite() {
+                maximum.max(difference)
+            } else {
+                f64::INFINITY
+            }
+        })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -3649,6 +3841,20 @@ mod tests {
 
     fn prepared_two_fe(outcome: &[f64], regressor: &[f64]) -> PreparedOlsData {
         assert_eq!(outcome.len(), 8);
+        prepared_two_fe_with_codes(
+            outcome,
+            regressor,
+            &[1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0],
+            &[1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0],
+        )
+    }
+
+    fn prepared_two_fe_with_codes(
+        outcome: &[f64],
+        regressor: &[f64],
+        first: &[f64],
+        second: &[f64],
+    ) -> PreparedOlsData {
         assert_eq!(regressor.len(), outcome.len());
         let x = source(1, "x");
         let g = source(2, "g");
@@ -3707,8 +3913,8 @@ mod tests {
                 outcome: loaded(outcome),
                 numeric_sources: vec![
                     (x.id, loaded(regressor)),
-                    (g.id, loaded(&[1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0])),
-                    (h.id, loaded(&[1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0])),
+                    (g.id, loaded(first)),
+                    (h.id, loaded(second)),
                 ],
                 analytic_weight: None,
                 frequency_weight: None,
@@ -3716,6 +3922,71 @@ mod tests {
             },
         )
         .expect("prepared two-FE fixture")
+    }
+
+    #[test]
+    fn refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model() {
+        for hot in [30.0_f64] {
+            let mut x = Vec::new();
+            let mut g = Vec::new();
+            let mut h = Vec::new();
+            let mut truth = Vec::new();
+            let mut initial = Vec::new();
+            for worker in 0..40 {
+                for repeat in 0..4 {
+                    let firm = if worker < 8 {
+                        (worker + repeat % 2) % 8
+                    } else {
+                        8 + (worker - 8 + repeat % 2) % 32
+                    };
+                    let value = ((worker * 2 + repeat % 2) as f64 * 1.31).sin();
+                    x.push(value);
+                    g.push(worker as f64);
+                    h.push(firm as f64);
+                    let eta = if worker < 8 { hot } else { 1.0 }
+                        + 0.2 * value
+                        + 0.3 * (firm as f64).cos();
+                    truth.push(eta);
+                    initial.push(
+                        eta + if worker < 8 {
+                            0.0
+                        } else {
+                            0.4 * (worker as f64).sin()
+                        },
+                    );
+                }
+            }
+            let y: Vec<_> = truth
+                .iter()
+                .enumerate()
+                .map(|(row, eta)| eta.exp() * if row % 4 < 2 { 0.9 } else { 1.1 })
+                .collect();
+            let prepared = prepared_two_fe_with_codes(&y, &x, &g, &h);
+            let mut config = PreparedPpmlIrlsConfig::default();
+            config.ppml.max_iterations = 6;
+            config.memory.requested = crate::options::MemoryMode::Low;
+            config.memory.poolsize = 1;
+            config.linear.execution.mode = PreparedOlsExecutionMode::Low;
+            config.linear.execution.poolsize = 1;
+            let start = PreparedPpmlStart {
+                coefficient_values: vec![0.2, 0.0],
+                eta: initial,
+            };
+            let fitted = fit_prepared_ppml_irls(
+                &prepared,
+                &y,
+                &vec![1.0; y.len()],
+                &vec![0.0; y.len()],
+                config,
+                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                Some(&start),
+            );
+            let fit = fitted.expect("refined ordinary solves must preserve strict progress");
+            assert!(fit.diagnostics().converged);
+            assert_eq!(fit.diagnostics().strict_profile_rejections, 1);
+            assert!(relative_infinity_difference(fit.eta(), &truth) < 1e-10);
+            assert!(fit.diagnostics().iterations <= 6);
+        }
     }
 
     fn prepared_three_fe(
@@ -4876,6 +5147,15 @@ mod tests {
 
     #[test]
     fn strict_candidate_categorical_projection_preserves_scratch_and_fresh_parity() {
+        check_strict_candidate_categorical_projection(false);
+    }
+
+    #[test]
+    fn rebuilt_strict_candidate_preserves_storage_and_fresh_science() {
+        check_strict_candidate_categorical_projection(true);
+    }
+
+    fn check_strict_candidate_categorical_projection(rebuild: bool) {
         for (mode, poolsize) in [
             (PreparedOlsExecutionMode::Fast, 10),
             (PreparedOlsExecutionMode::Low, 1),
@@ -4935,6 +5215,41 @@ mod tests {
                 .expect("strict weight refresh");
 
             let offset = vec![0.0; outcome.len()];
+            if rebuild {
+                let error = session
+                    .rebuild_retained_inputs_interruptible(&mut || {
+                        Err(FeregError::new(
+                            ErrorCode::Interrupted,
+                            "rebuild interrupt test",
+                        ))
+                    })
+                    .expect_err("rebuild must propagate caller interruption");
+                assert_eq!(error.code, ErrorCode::Interrupted);
+                let original_thread = std::thread::current().id();
+                let capacities = session.workspace_capacities();
+                let mut polls = 0;
+                session
+                    .rebuild_retained_inputs_interruptible(&mut || {
+                        assert_eq!(std::thread::current().id(), original_thread);
+                        polls += 1;
+                        Ok(())
+                    })
+                    .expect("canonical input rebuild");
+                assert!(polls > 0);
+                assert_eq!(session.retained_scratch_identity(), scratch.as_deref());
+                let after_rebuild = session.workspace_capacities();
+                let mut allowed = capacities;
+                if mode == PreparedOlsExecutionMode::Low {
+                    allowed.projection_block_elements = allowed
+                        .projection_block_elements
+                        .max(outcome.len() * poolsize.min(1));
+                }
+                assert_eq!(after_rebuild, allowed);
+                session
+                    .rebuild_retained_inputs_interruptible(&mut || Ok(()))
+                    .expect("warm rebuild");
+                assert_eq!(session.workspace_capacities(), after_rebuild);
+            }
             let transaction = session.strict_candidate().expect("fused strict candidate");
             assert_eq!(
                 transaction.used_fused_projection_for_test(),
@@ -5061,6 +5376,114 @@ mod tests {
         fill_candidate_eta_from_linear_output(&expected, &offset, &mut expected_eta)
             .expect("comparison eta");
         assert!(relative_infinity_difference(&actual_eta, &expected_eta) <= 1e-11);
+    }
+
+    #[test]
+    fn persistent_strict_profile_failure_rebuilds_then_returns_bounded_nonconvergence() {
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let x = vec![-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
+            let y: Vec<_> = x
+                .iter()
+                .enumerate()
+                .map(|(row, x)| (0.35_f64 + 0.42 * x).exp() + (row % 3) as f64 * 0.03)
+                .collect();
+            let prepared = prepared(&y, &[x]);
+            let mut config = PreparedPpmlIrlsConfig::default();
+            config.linear.execution.mode = mode;
+            config.linear.execution.poolsize = 1;
+            config.memory.requested = if mode == PreparedOlsExecutionMode::Fast {
+                crate::options::MemoryMode::Fast
+            } else {
+                crate::options::MemoryMode::Low
+            };
+            config.memory.poolsize = 1;
+            let plan =
+                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
+            REPEATED_STRICT_RESUME_INJECTION.set(100);
+            let mut iterations = 0;
+            let result = fit_prepared_ppml_irls_interruptible(
+                &prepared,
+                &y,
+                &[1.0; 8],
+                &[0.0; 8],
+                config,
+                plan,
+                None,
+                &mut |point| {
+                    if point == PpmlInterruptPoint::IrlsIteration {
+                        iterations += 1;
+                    }
+                    Ok(())
+                },
+            );
+            REPEATED_STRICT_RESUME_INJECTION.set(0);
+            let error = result
+                .err()
+                .expect("persistent profile corruption must publish nothing");
+            assert_eq!(error.code, ErrorCode::NonConvergence);
+            assert!(
+                error
+                    .message
+                    .contains("canonical rebuild and two further strict attempts"),
+                "{error:?}"
+            );
+            assert!(iterations < 40, "unbounded retry count: {iterations}");
+        }
+    }
+
+    #[test]
+    fn profile_recovery_is_bounded_but_does_not_penalize_progress_or_changed_bases() {
+        let mut recovery = ProfileRecovery::default();
+        for difference in [1e-3, 5e-4, 2e-4, 1e-4, 3e-5, 1e-5] {
+            assert_eq!(
+                recovery.observe(true, true, difference),
+                ProfileRecoveryAction::Continue
+            );
+        }
+        recovery = ProfileRecovery::default();
+        assert_eq!(
+            recovery.observe(true, true, 1e-4),
+            ProfileRecoveryAction::Continue
+        );
+        assert_eq!(
+            recovery.observe(true, true, 2e-4),
+            ProfileRecoveryAction::Continue
+        );
+        assert_eq!(
+            recovery.observe(true, true, 1e-4),
+            ProfileRecoveryAction::Rebuild
+        );
+        assert_eq!(
+            recovery.observe(true, true, 1e-4),
+            ProfileRecoveryAction::Continue
+        );
+        assert_eq!(
+            recovery.observe(true, true, 1e-4),
+            ProfileRecoveryAction::Continue
+        );
+        assert_eq!(
+            recovery.observe(true, true, 1e-4),
+            ProfileRecoveryAction::Exhausted
+        );
+        assert_eq!(
+            recovery.observe(false, false, 1e-4),
+            ProfileRecoveryAction::Continue
+        );
+        assert_eq!(
+            recovery.observe(true, true, 1e-4),
+            ProfileRecoveryAction::Continue
+        );
+        assert_eq!(
+            recovery.observe(false, true, 1e-4),
+            ProfileRecoveryAction::Continue
+        );
+        assert_eq!(
+            recovery.observe(true, true, 1e-4),
+            ProfileRecoveryAction::Continue
+        );
     }
 
     #[test]

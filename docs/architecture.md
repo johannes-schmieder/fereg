@@ -71,6 +71,12 @@ are fixed by
 [ADR 0020](adr/0020-retained-ppml-session-execution-boundary.md).
 Canonical PPML predictors and their cancellation-aware arithmetic check are
 specified in [working-response reconstruction](ppml_reconstruction.md).
+Ordinary PPML tolerances preserve tighter requirements established by rejected
+strict checkpoints. A stagnated same-basis profile at the inner floor permits
+one rebuild from canonical generated inputs into existing storage, followed by
+bounded strict attempts; persistent failure returns no result. All certificates
+and reference scales remain authoritative. See ADR 0072 for the recovery budget.
+
 Fresh/strict numeric predictors use bounded row tiles under the existing worker
 team while preserving selected-column FMA order and the independent reconstruction
 check. Eligible generated predictors borrow ordinary/topology factor codes into

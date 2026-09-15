@@ -232,7 +232,7 @@ pub(crate) fn scheduled_inner_tolerance(
         ((1.0 - fraction) * config.inner_tolerance_initial.ln() + fraction * floor.ln()).exp()
     };
     let previous_target = if previous_tolerance.is_finite() && previous_tolerance > 0.0 {
-        previous_tolerance.clamp(floor, config.inner_tolerance_initial)
+        previous_tolerance.min(config.inner_tolerance_initial)
     } else {
         floor
     };
@@ -243,10 +243,13 @@ pub(crate) fn scheduled_inner_tolerance(
             .unwrap_or(floor),
         None => config.inner_tolerance_initial,
     };
-    previous_target
-        .min(staged_target)
+    // The nominal scheduling floor bounds newly chosen targets, not an
+    // accuracy already required by a rejected strict checkpoint. Loosening
+    // that accepted requirement recreates the profile the checkpoint rejected.
+    staged_target
         .min(progress_target)
         .max(floor)
+        .min(previous_target)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -736,6 +739,26 @@ mod tests {
             Some(PpmlInnerToleranceProgress::new(1e-2, 1e-2)),
         );
         assert_eq!(resumed_after_strict, floor);
+    }
+
+    #[test]
+    fn checkpoint_refinement_survives_ordinary_scheduling() {
+        let config = PpmlConfig::default();
+        for previous in [1e-14, 1e-15] {
+            for iteration in [1, 3, 8, 20, 100] {
+                for progress in [
+                    None,
+                    Some(PpmlInnerToleranceProgress::new(1e-2, 1e-2)),
+                    Some(PpmlInnerToleranceProgress::new(f64::NAN, 1e-2)),
+                ] {
+                    let next = scheduled_inner_tolerance(config, iteration, previous, progress);
+                    assert!(
+                        next <= previous,
+                        "checkpoint {previous:e} loosened to {next:e}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]
