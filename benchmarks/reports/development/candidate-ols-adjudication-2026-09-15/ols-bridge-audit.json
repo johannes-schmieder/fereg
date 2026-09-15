@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "job_id": "7585567",
+  "qualification_eligible": false,
+  "calibration": {
+    "graphs": 50,
+    "method": "exact edge-deletion component count, including parallel observations and disconnected components",
+    "passed": true
+  },
+  "components": 119607,
+  "rows": 4361733,
+  "bridge_rows": 45019,
+  "outside_rows": 8687,
+  "outside_on_bridges": 4874,
+  "outside_off_bridges": 3813,
+  "arms": {
+    "native": {
+      "bridge_max_abs": 1.1767973787601205e-10,
+      "outside_bridge_rows": 0,
+      "passed": true
+    },
+    "reference": {
+      "bridge_max_abs": 3.81934907706028e-07,
+      "outside_bridge_rows": 4876,
+      "passed": false
+    }
+  },
+  "largest_difference_is_bridge": true,
+  "source_sha256": "cbed6258ad1cc4f666d4ba290264bae916279e73166a72bb17bce4474e9a8e1b",
+  "elapsed_seconds": 10.357553145033307
+}

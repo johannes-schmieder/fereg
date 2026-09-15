@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "purpose": "Fixed bounded development controls for the 0.5.0 Mac/Linux review candidate; not formal qualification",
+  "baseline_source": "9ecf47d3550a10db059ef3605e4f8c4aeacd5511",
+  "candidate_source_policy": "One frozen reviewed SHA; every artifact and result records source, build, input and reference hashes",
+  "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+  "measurement": {
+    "pairs": 3,
+    "arm_orders": [
+      [
+        "baseline",
+        "candidate"
+      ],
+      [
+        "candidate",
+        "baseline"
+      ],
+      [
+        "baseline",
+        "candidate"
+      ]
+    ],
+    "process": "fresh process per arm, serial complete commands; no concurrent task-owned build or workload on the measurement host",
+    "seed": 31415927,
+    "generated_inputs": "Materialize and hash once before either arm; identical file per pair",
+    "regression_gate": {
+      "relative_slowdown": 0.05,
+      "absolute_seconds": 0.01,
+      "rule": "Investigate median slowdown exceeding both thresholds; unresolved regressions block adoption"
+    },
+    "record": [
+      "complete_command_seconds",
+      "phase_seconds",
+      "allocation_peak",
+      "rss",
+      "scratch",
+      "route",
+      "retries",
+      "discarded_attempt_costs"
+    ],
+    "missing_cost_policy": "Do not replace unobserved counters with zero; disclose unavailable coverage"
+  },
+  "paired_cases": [
+    {
+      "id": "small_narrow",
+      "model": "ols",
+      "design": "one_fe",
+      "n": 7680,
+      "k": 2,
+      "threads": 1,
+      "weight": "unit",
+      "vce": "conventional",
+      "memory": "fast"
+    },
+    {
+      "id": "wide_one_fe",
+      "model": "ols",
+      "design": "one_fe",
+      "n": 122880,
+      "k": 50,
+      "threads": 4,
+      "weight": "unit",
+      "vce": "robust",
+      "memory": "fast"
+    },
+    {
+      "id": "strong_two_fe_cmg",
+      "model": "ols",
+      "design": "strong_d2",
+      "n": 61440,
+      "k": 50,
+      "threads": 4,
+      "weight": "unit",
+      "vce": "conventional",
+      "memory": "fast",
+      "solver": "cmg"
+    },
+    {
+      "id": "weak_wide",
+      "model": "ols",
+      "design": "weak_d3",
+      "n": 122880,
+      "k": 65,
+      "threads": 4,
+      "weight": "aw",
+      "vce": "robust",
+      "memory": "fast",
+      "protected_prior": "benchmarks/reports/development/solver-memory-reporting-expanded-local-2026-09-13/protocol.md"
+    },
+    {
+      "id": "tiny_weighted_bridge",
+      "model": "ols",
+      "threads": 4,
+      "memory": "fast",
+      "archived_input": {
+        "request_manifest": "benchmarks/reports/development/generated-ols-residual-tiles-local-2026-09-14/followup-requests.json",
+        "request_manifest_sha256": "1801d89a222a3708dcf4a4953bca91d96786ccd58f41ef1986f5aaae194d003b",
+        "request_name": "weighted_cut-s31415927",
+        "data_sha256": "77498a67948ef4101eec046cb6a989be9219ef3287b6970056a02ff229d4062d",
+        "data_metadata_sha256": "137bb613f6a57551d936f1e4e60f8a32ae45ecbc97ab5877ca0a6f17436a58c8"
+      }
+    },
+    {
+      "id": "three_fe_fw_generated",
+      "model": "ols",
+      "threads": 4,
+      "memory": "fast",
+      "archived_input": {
+        "request_manifest": "benchmarks/reports/development/generated-ols-residual-tiles-local-2026-09-14/followup-requests.json",
+        "request_manifest_sha256": "1801d89a222a3708dcf4a4953bca91d96786ccd58f41ef1986f5aaae194d003b",
+        "request_name": "three_fe-s31415927",
+        "data_sha256": "2ac59a3758b6a16aa974c876170e700ab2e1c583e234573a4fe4c755ae18e02b",
+        "data_metadata_sha256": "a34e80c9553721d630b0b161edf5303a9f0273affe8ec983772f21dbddc8fa5c"
+      }
+    },
+    {
+      "id": "absorbed_slopes",
+      "model": "ols",
+      "threads": 4,
+      "memory": "fast",
+      "archived_input": {
+        "request_manifest": "benchmarks/reports/development/generated-ols-residual-tiles-local-2026-09-14/followup-requests.json",
+        "request_manifest_sha256": "1801d89a222a3708dcf4a4953bca91d96786ccd58f41ef1986f5aaae194d003b",
+        "request_name": "slope-s31415927",
+        "data_sha256": "455ddcbde69eb54ddebaafdd4fead743c54a3594859c142f3117c1eddc7f6d8f",
+        "data_metadata_sha256": "7dec6244841b94c5163b72e155365308f4c972669a384fd585db1d27ed7a56f4"
+      }
+    },
+    {
+      "id": "saved_generated_aw",
+      "model": "ols",
+      "threads": 4,
+      "memory": "low",
+      "archived_input": {
+        "request_manifest": "benchmarks/reports/development/generated-ols-residual-tiles-local-2026-09-14/followup-requests.json",
+        "request_manifest_sha256": "1801d89a222a3708dcf4a4953bca91d96786ccd58f41ef1986f5aaae194d003b",
+        "request_name": "saved-s31415927",
+        "data_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+        "data_metadata_sha256": "cb6f806d5507da61712ee9078a3b205b9e6b467e7f6f147688243c58fd811527"
+      }
+    },
+    {
+      "id": "ppml_german_small_fast",
+      "model": "ppml",
+      "threads": 4,
+      "memory": "fast",
+      "input_manifest": "benchmarks/reports/development/german-ppml-checkpoint-recovery-local-2026-09-15/inputs.json",
+      "input": "German subset with 65,503 retained observations; exp(logrwage2)",
+      "vce": "robust"
+    },
+    {
+      "id": "ppml_german_small_low",
+      "model": "ppml",
+      "threads": 4,
+      "memory": "low",
+      "input_manifest": "benchmarks/reports/development/german-ppml-checkpoint-recovery-local-2026-09-15/inputs.json",
+      "input": "same unchanged subset as ppml_german_small_fast",
+      "vce": "robust"
+    }
+  ],
+  "functional_fixtures": [
+    {
+      "path": "tests/stata/development/ols_singleton_index.do",
+      "sha256": "893c4219821da3f92b61188172a0ef69e5b232fca418f6a402f851d53647df38"
+    },
+    {
+      "path": "tests/stata/development/feppml_singleton_index.do",
+      "sha256": "482f3cafaea2e3994bd3ca84083e3b3b4d754952285a45a5b6b4042bced96b2f"
+    },
+    {
+      "path": "tests/stata/development/ols_weighted_schur.do",
+      "sha256": "d181c95374b7c8eae13cace2f10b9e753c23a1f3291f198a86a6d321a0de7dcd"
+    },
+    {
+      "path": "tests/stata/development/ols_cluster_low_memory.do",
+      "sha256": "36ef7719f7e17fc908ee642f86dd1857b5ec3d2d88bc83292a2555fd7440550d"
+    },
+    {
+      "path": "tests/stata/parity_reghdfe/estimate_ols_iweight_parity.do",
+      "sha256": "dfa0eed768f29f4ec9e86478872583ba42b89b14b8d44bbde2f91c9cba944b81"
+    },
+    {
+      "path": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_fweight_parity.do",
+      "sha256": "91995b11bdeca6e139ecc0d54d6e1e41304408acba5ef198d3dd8c526e3a9db4"
+    },
+    {
+      "path": "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+      "sha256": "be1dfe0ec2ce0002a894b30c7a922d2be2ad97b1f1649a88ba64bd4d0be85fc8"
+    },
+    {
+      "path": "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
+      "sha256": "33cbf439fd83dafd0ed37265140e8319175d796db86b576d89ddffa8df248742"
+    },
+    {
+      "path": "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+      "sha256": "041717cbec29f19d2a921885c5f5bddee6728e6bb1e93064e992268eea5f9d1d"
+    },
+    {
+      "path": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+      "sha256": "2ee25d9d437e9b3fa20bb36cfe58d53047a4e2f3d22759014f6e4c6b0ea8b7bd"
+    },
+    {
+      "path": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+      "sha256": "bad00d8e382606f548b835f3eff8332b14ad4a0d9e7eb3170e8e67a3fd938a5c"
+    }
+  ],
+  "native_boundaries": [
+    "exact and one-byte-short memory admission",
+    "allocation failure and interruption atomicity",
+    "repeated calls and retained capacities",
+    "singleton-heavy scale doubling (65,536 and 131,072 rows; half initially singleton, plus a recursive cascade)",
+    "PPML repeated iterations, predictor consistency recovery, final-Hessian synchronization",
+    "disconnected three-FE, unequal weights, weak/tiny-bridge graphs"
+  ],
+  "empirical_controls": {
+    "german_ols": "Saved 5% input/output identities; reproduce whole-action/base-plus-solver accounting discrepancy, no full reference restart",
+    "three_fe": "Reuse three_fe_fw_generated archived input; original 50,265,168 observed versus 22,983,168 base bytes remains historical evidence",
+    "full_ppml": "Audit saved output only; no estimation rerun"
+  },
+  "no_automatic_expansion": true
+}

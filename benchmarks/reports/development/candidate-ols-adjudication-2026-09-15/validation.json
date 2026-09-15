@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "qualification_eligible": false,
+  "policy_exception_approved": false,
+  "original_comparisons_changed": false,
+  "baseline_source": "9ecf47d3550a10db059ef3605e4f8c4aeacd5511",
+  "saved_native_source": "0660945",
+  "saved_native_plugin_sha256": "83d27773042bea0f6096d4f27eef21b1f08b4a449f8caf0dcd4ca72e723af550",
+  "input_receipt": "benchmarks/reports/development/german-five-percent-scc-2026-09-15/sample-receipt.json",
+  "input_receipt_sha256": "dcc1bf02f1495566efba72e49add5f72f9d207aa1b96c9b818f0e416515685b7",
+  "reference_receipt": "benchmarks/reports/development/german-five-percent-scc-2026-09-15/references.json",
+  "reference_receipt_sha256": "568ed811b3aaafb8279acf12d7ea4537ea9214f5d5214152e06e6862270caf99",
+  "reference_tolerance": 1e-14,
+  "reference_command_seconds": 1712.825,
+  "decisions": {
+    "native_independent_residual_projection": "pass on all 4,361,733 retained rows, conditional on published beta; both original and tighter reference b/V/sample/DoF checks already pass",
+    "tighter_reference_pointwise_comparison": "fail: 8,687 rows outside original envelope",
+    "reference_independent_residual_projection": "fail: 8,691 rows outside original envelope",
+    "native_defect_demonstrated": false,
+    "candidate_admission": "blocked pending separate scientific adjudication and memory/platform gates"
+  },
+  "files": {
+    "tighter-fit-result.txt": "3d3c019bd53118b85b2e2d2cd9a2ef4af67ec18c60387bd4819b113e14600021",
+    "ols-components-tighter.json": "9123bfe24e7a177e7649535aadfb0d4a16426cd6f5d0d104fcd40f853d3f93b8",
+    "ols-bridge-audit.json": "f901373092368221c591c214fb571fc5706392985ff0f5146eb98bd982a59f42",
+    "ols-cut-cell-audit.json": "87001b175ae5d5deb6f5f03d4431a93c80a51097bdcca0c96afb868254a62854",
+    "tighter-stata-result.txt": "785f1d89d99b60c488581cfcfd57f87d7b0d23eeadcb40f9080315bdd3f2be85",
+    "tighter-empirical-audit.json": "1f2d6dc693ee199390680c43f02dd3aeb0478ff2ecf664c8f9140b91480f49e8",
+    "ols-cycle-projection-audit.json": "e74595a2c6b2f9cd629b6f890d8eba9a36557f25e18b5b541fb051cc1f256508",
+    "tighter-command.json": "d6ae8ca391a102cb1e4d60bbc74f81c1c336ac5264935511bd6946b472cad9a7",
+    "tighter-smoke-audit.json": "f6c0b6eb67fe6ba940c47be537974f60dd90a98988d19c7bfd60f429983b99dc",
+    "scheduler.json": "a0979f61af41f57b31c0822fb5b2b5d174bc3665d6120d47660e938d59ffa792",
+    "projection_oracles.py": "600dfc120bc279439c03e6bd5aa3b720c8d9f100ecad16afd43e26e1f6ac6c63",
+    "portable-calibration.json": "0baf1c9914cec2385bf143fe781dbee4afd26b4f0e6cb330cb8d150f751a459d"
+  }
+}

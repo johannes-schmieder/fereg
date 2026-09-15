@@ -20,12 +20,15 @@ rows. The 5% native objective passes ADR 0026's existing rules. The reference
 public-mean witness remains indeterminate and fails replay/stationarity checks.
 No estimation or stopped full reference was restarted; original failures remain.
 
-Both OLS arms pass model-space checks. Twelve complete small components match
-100-digit independent projections for native residuals but fail for the saved
-reference residuals. The largest component remains unresolved, so the original
-pointwise comparison is still blocked. A single bounded tighter-reference run
-is in progress after its smoke passed; this is diagnostic, not a new campaign.
-No CG reference exception or tolerance relaxation was introduced.
+The [completed OLS adjudication report](benchmarks/reports/development/candidate-ols-adjudication-2026-09-15/README.md)
+records the one permitted tighter reference fit and independent all-row
+conditional projection. Native residuals pass on all 4,361,733 retained rows
+(maximum error 1.177e-10); the tighter reference still misses the existing
+pointwise envelope. Sample/order, coefficients, covariance and DoF parity pass.
+No native numerical defect was demonstrated. [Proposed ADR 0073](docs/adr/0073-german-ols-review-adjudication.md)
+requires Johannes's explicit decision before this evidence can close the
+case-specific review gate. No CG exception or tolerance relaxation is active;
+original failed comparisons remain failed. No further estimation is planned.
 
 The earlier OLS 25.7% difference compares whole-action allocation with base
 execution storage. Its separately admitted CG workspace is 2,191,388,408 bytes;
@@ -33,6 +36,16 @@ base plus CG is 5,032,768,432 bytes, above observed 3,570,575,392 bytes. That
 comparison does not demonstrate a cap breach. Complete action accounting and
 coverage remain required; the memory prototype is not yet adopted. Mac builds
 still await owner acceptance of the Xcode license. No candidate is qualified.
+
+## Candidate preparation: packaging and fixed development controls
+
+The [review packaging tests](benchmarks/reports/development/candidate-review-packaging-2026-09-15/README.md)
+pass all 17 synthetic checks. Production staging still requires all three
+binaries. The explicit Mac/Linux review mode marks Windows missing and
+publication ineligible; actual candidate archives and clean installation checks
+remain pending. The [fixed development case list](benchmarks/manifests/candidate_review_development_v1.json)
+was established before new timing measurements. Three alternating fresh-process
+pairs per affected case and the stated regression gate remain required.
 
 ## Candidate preparation: independent two-FE audit implemented
 
