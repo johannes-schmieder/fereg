@@ -10,6 +10,30 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Candidate preparation: saved native PPML audit closed
+
+The [saved-output report](benchmarks/reports/development/candidate-german-reaudit-2026-09-15/README.md)
+binds independent audit source `e6ae50e` to the preserved 5% and full native
+outputs. Both native public-mean audits pass coefficient binding, fresh model
+space, objective replay and scores, including all 88,876,264 full-sample retained
+rows. The 5% native objective passes ADR 0026's existing rules. The reference
+public-mean witness remains indeterminate and fails replay/stationarity checks.
+No estimation or stopped full reference was restarted; original failures remain.
+
+Both OLS arms pass model-space checks. Twelve complete small components match
+100-digit independent projections for native residuals but fail for the saved
+reference residuals. The largest component remains unresolved, so the original
+pointwise comparison is still blocked. A single bounded tighter-reference run
+is in progress after its smoke passed; this is diagnostic, not a new campaign.
+No CG reference exception or tolerance relaxation was introduced.
+
+The earlier OLS 25.7% difference compares whole-action allocation with base
+execution storage. Its separately admitted CG workspace is 2,191,388,408 bytes;
+base plus CG is 5,032,768,432 bytes, above observed 3,570,575,392 bytes. That
+comparison does not demonstrate a cap breach. Complete action accounting and
+coverage remain required; the memory prototype is not yet adopted. Mac builds
+still await owner acceptance of the Xcode license. No candidate is qualified.
+
 ## Candidate preparation: independent two-FE audit implemented
 
 The [focused report](benchmarks/reports/development/candidate-audit-local-2026-09-15/README.md)
