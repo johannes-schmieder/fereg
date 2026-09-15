@@ -30,8 +30,12 @@ remains an indeterminate model-space diagnostic. Empirical comparisons and
 resource results are pending: sample 7580024, OLS 7580025, PPML 7580026,
 analysis 7580041. Input transfer completed with exit zero and expected bytes;
 the compute job verifies the checksum and produces 4,553,489 rows from
-774,281 workers (roundtrip/sentinel pass; scheduler accounting pending).
-Both family jobs are running on scc-gd4; their cross-family overlap is recorded.
+774,281 workers; roundtrip, application sentinel and failed=0/exit=0 accounting
+pass. OLS job 7580025 then fails during ftools bootstrap (r693 creating the
+shared compilation directory), before any estimator runs; scheduler exit is 1.
+See the source-bound ols-bootstrap-failure receipt. SCC PPML 7580026 is still
+running and analysis 7580041 is dependency-held. Preserve their in-use references;
+no OLS retry or scientific reclassification has been performed.
 The existing 15-minute monitor now covers both independent workflows.
 This does not restart the stopped SCC campaign. Keep the full local PPML run
 and monitor separate; disclose the overlapping transfer when reporting its

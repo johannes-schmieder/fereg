@@ -1,0 +1,53 @@
+{
+  "observed_utc": "2026-09-15T11:18:28Z",
+  "source_commit": "06609452bab13516a84a48363014c6685482f7d4",
+  "jobs": {
+    "7580025": {
+      "jobnumber": "7580025",
+      "hostname": "scc-gd4.scc.bu.edu",
+      "slots": "16",
+      "failed": "0",
+      "exit_status": "1",
+      "ru_wallclock": "2",
+      "ru_maxrss": "35760",
+      "maxvmem": "335.844M",
+      "start_time": "Tue Sep 15 07:01:14 2026",
+      "end_time": "Tue Sep 15 07:01:16 2026"
+    },
+    "7580024": {
+      "jobnumber": "7580024",
+      "hostname": "scc-ei3.scc.bu.edu",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "40",
+      "ru_maxrss": "2749956",
+      "maxvmem": "4.333G",
+      "start_time": "Tue Sep 15 06:58:14 2026",
+      "end_time": "Tue Sep 15 06:58:54 2026"
+    }
+  },
+  "ols_failure": {
+    "stage": "reference bootstrap, before estimation",
+    "stata_rc": 693,
+    "process_rc": 0,
+    "wrapper_accepted": false,
+    "command": "ftools, check",
+    "message": "could not create directory references/ppmlhdfe/src/l/",
+    "reported_recompile": "existing lftools.mlib compiled with Stata ???; need to recompile for Stata 19",
+    "empirical_estimation_started": false,
+    "root_cause_scope": "shared dependency directory initialization; concurrency is a suspected mechanism, not yet proven",
+    "automatic_retry_performed": false
+  },
+  "remaining_scc_jobs": [
+    7580026,
+    7580041
+  ],
+  "local_full": {
+    "iterations_completed": 7,
+    "elapsed_seconds": 4624,
+    "rss_kib": 81717696,
+    "convergence": false
+  },
+  "disposition": "Preserve failed evidence; keep monitoring active local and SCC PPML. Investigate one isolated dependency/bootstrap repair after active SCC reference use ends; no scientific rerun is authorized by this bootstrap diagnosis."
+}
