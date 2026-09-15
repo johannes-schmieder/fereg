@@ -28,7 +28,11 @@ sample/b/V/DoF, OLS normal equations/model space, native PPML public-mean
 certification and ADR 0026 objective adjudication. The reference predicted mean
 remains an indeterminate model-space diagnostic. Empirical comparisons and
 resource results are pending: sample 7580024, OLS 7580025, PPML 7580026,
-analysis 7580041. Sample preparation is initially held for input transfer.
+analysis 7580041. Input transfer completed with exit zero and expected bytes;
+the compute job verifies the checksum and produces 4,553,489 rows from
+774,281 workers (roundtrip/sentinel pass; scheduler accounting pending).
+Both family jobs are running on scc-gd4; their cross-family overlap is recorded.
+The existing 15-minute monitor now covers both independent workflows.
 This does not restart the stopped SCC campaign. Keep the full local PPML run
 and monitor separate; disclose the overlapping transfer when reporting its
 full-run timing. No push, installed-dist change or qualification claim.

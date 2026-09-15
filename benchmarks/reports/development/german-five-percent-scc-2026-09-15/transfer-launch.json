@@ -1,0 +1,24 @@
+{
+  "recorded_utc": "2026-09-15T11:01:45.750261+00:00",
+  "source_sha256": "bcada1475fefa468d351422c3399ed8698f15b2c09a54bcc33b0b100d454f7e8",
+  "transfer_process_rc": 0,
+  "remote_bytes": 5748973250,
+  "remote_hash_verification": "passed on sample compute before sampling",
+  "sample_job_id": 7580024,
+  "user_hold_released": true,
+  "monitor_id": "monitor-german-ppml-fast-repair",
+  "monitor_interval_minutes": 15,
+  "monitor_mode": "one combined same-thread heartbeat for independent local and SCC workflows",
+  "roadmap_progress_url": "https://github.com/johannes-schmieder/fereg/issues/27#issuecomment-5679030679",
+  "scc_empirical_results": "pending",
+  "report_commit": "ae7b0f6",
+  "source_commit": "06609452bab13516a84a48363014c6685482f7d4",
+  "sample_application_passed": true,
+  "sample_terminal_scheduler_accounting": "pending at this handover",
+  "comparison_jobs_observed_running": [
+    7580025,
+    7580026
+  ],
+  "comparison_host": "scc-gd4.scc.bu.edu",
+  "cross_family_execution": "OLS and PPML family jobs overlap on the same host; the two alternating arms within each family are sequential"
+}

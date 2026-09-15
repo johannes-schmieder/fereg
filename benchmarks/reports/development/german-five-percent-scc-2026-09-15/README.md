@@ -49,7 +49,7 @@ The final capture adds OLS solver/FE/runtime/receipt matrices to the already
 exercised post-timing export loop. Its pre-timer and estimation bytes match
 the successful launcher. The exact smoke and final capture files are preserved.
 
-## Empirical run pending
+## Empirical comparisons running
 
 - 7580024: verified input and common worker-sample preparation; initially held
   until the data transfer completes.
@@ -57,8 +57,15 @@ the successful launcher. The exact smoke and final capture files are preserved.
 - 7580026: feppml versus ppmlhdfe, with the same dependencies.
 - 7580041: independent comparisons after both families and audit smoke.
 
-No empirical sample count, estimator success, speed ratio or full-data PPML
-convergence is established here. Collect complete scheduler accounting, explicit
+Preparation produced **4,553,489 observations from 774,281 workers**
+(4.9994% of workers, 5.0013% of rows). Source checksum and sample Stata
+roundtrip pass, with 155 sampled log wages above 20 preserved; see
+`sample-receipt.json`. The application sentinel is present; sample scheduler
+accounting remains to be collected. Both family jobs were observed running
+on scc-gd4. Their execution overlaps; each family’s alternating arms remain
+sequential. Treat timing as a bounded development comparison with this
+shared-host limitation. No empirical estimator success, speed ratio or
+full-data PPML convergence is established here. Collect complete scheduler accounting, explicit
 application receipts and scientific outputs before accepting any comparison.
 Report command/phase times, process and native memory, fallback/retry costs,
 common sample/rank/DoF, b/V and independent certificates. GNU time logs and

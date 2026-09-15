@@ -1,0 +1,23 @@
+{
+  "source_sha256": "bcada1475fefa468d351422c3399ed8698f15b2c09a54bcc33b0b100d454f7e8",
+  "sample_sha256": "6498d6051aac8cce1ff545c1a0228f655fcf7d6e88845b0c6f1ce564e6e7f59e",
+  "sample_bytes": 145717323,
+  "window_rows": 91045290,
+  "window_workers": 15487374,
+  "sample_rows": 4553489,
+  "sample_workers": 774281,
+  "worker_fraction": 0.049994337322776604,
+  "row_fraction": 0.050013449350317846,
+  "sampling_unit": "worker",
+  "seed": 20260915,
+  "rule": "splitmix64(persid xor seed) < floor(2^64/20)",
+  "full_window_row_sha256": "c74aeb87284ccc61c3fc1e1d4fe3051b16c4046075677fa04a9a606edb60df4b",
+  "window_logwage_above_20": 3336,
+  "sample_logwage_above_20": 155,
+  "all_selected_worker_years": true,
+  "external_singleton_pruning": false,
+  "roundtrip_passed": true,
+  "elapsed_seconds": 35.36808967590332,
+  "job_id": "7580024",
+  "host": "scc-ei3"
+}
