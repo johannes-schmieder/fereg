@@ -583,6 +583,9 @@ pub struct PpmlMemoryInventory {
     /// identities retained after the sandwich temporaries are released.
     /// These remain live through saved-effect recovery and publication.
     pub inference_result_bytes: u128,
+    /// Incremental complete-channel recovery envelope. The final fit and
+    /// inference result are parents charged separately in the phase peak.
+    pub fe_recovery_workspace_bytes: u128,
     /// Distinct requested observation vectors live at publication. Requested
     /// mu is excluded because it reuses the mandatory composite-replay mean;
     /// saved channels, xb, residual, absorbed, and eta are included exactly.
@@ -1591,17 +1594,7 @@ fn estimate_route(
         separately_allocated_output_columns as u128,
         "PPML separately allocated requested observation outputs",
     )?)?;
-    let fe_recovery_workspace_bytes = if dimensions.requested_saved_fe_channels == 0 {
-        0
-    } else {
-        bytes_f64(checked_mul(
-            n,
-            total_fe_channels
-                .checked_add(1)
-                .ok_or_else(|| allocation("PPML FE recovery channel count overflows"))?,
-            "PPML complete saved-FE recovery",
-        )?)?
-    };
+    let fe_recovery_workspace_bytes = owned_fe_recovery_workspace_bytes(dimensions)?;
     let publication_bytes = bytes_f64(dimensions.publication_matrix_cells as u128)?;
     let publication_result_bytes = checked_sum(&[
         bytes_f64(checked_mul(
@@ -1938,6 +1931,7 @@ fn estimate_route(
         mu_exploration_retained_bytes,
         inference_workspace_bytes,
         inference_result_bytes,
+        fe_recovery_workspace_bytes,
         saved_output_bytes,
         publication_bytes,
         publication_result_bytes,
@@ -1960,6 +1954,150 @@ fn estimate_route(
         publication_peak_bytes,
         peak_bytes,
     })
+}
+
+/// PPML admits only retained-product, repository-owned CG and slope-MAP
+/// recovery. Failed attempts release their workspaces before the next route;
+/// normalization and finishing are also sequential. No observation-sized
+/// state is allocated to calculate this envelope.
+fn owned_fe_recovery_workspace_bytes(shape: PpmlMemoryDimensions) -> Result<u128> {
+    if shape.requested_saved_fe_channels == 0 {
+        return Ok(0);
+    }
+    let n = shape.observations as u128;
+    let effects = shape.fe_dimensions as u128;
+    let channels = shape.fe_total_channels as u128;
+    let levels = shape.fe_total_levels as u128;
+    let max_levels = shape.fe_max_levels as u128;
+    let directions = shape.fe_coefficient_directions as u128;
+    let word = size_of::<usize>() as u128;
+    let source_views = checked_mul(
+        shape.loaded_numeric_columns.max(shape.fe_dimensions) as u128,
+        size_of::<CategoricalCodeView<'_>>() as u128,
+        "PPML recovery categorical source views",
+    )?;
+    let offsets = checked_mul(effects + 1, word, "PPML recovery effect offsets")?;
+    let coefficient = bytes_f64(directions)?;
+    let slope_workspace = crate::fe::slope_map_workspace_bytes(shape.fe_max_channels, 1)?;
+    let output = checked_sum(&[
+        bytes_f64(checked_mul(
+            n,
+            channels + 2,
+            "PPML recovery channels, total and residual",
+        )?)?,
+        checked_mul(
+            channels,
+            size_of::<Option<Vec<f64>>>() as u128,
+            "PPML recovery channel registry",
+        )?,
+    ])?;
+    let views = checked_sum(&[
+        checked_mul(
+            effects,
+            size_of::<crate::fe::CategoricalAbsorbedEffectView<'_>>() as u128,
+            "PPML recovery effect views",
+        )?,
+        checked_mul(
+            channels,
+            size_of::<&[f64]>() as u128,
+            "PPML recovery slope views",
+        )?,
+        // The full decomposition mask remains live throughout every attempt.
+        channels,
+    ])?;
+    // Topology revalidation can re-factor one interaction at a time. Its
+    // row ordering and output codes precede recovery numeric construction.
+    let validation = checked_sum(&[
+        checked_mul(
+            n,
+            word + size_of::<u32>() as u128,
+            "PPML recovery topology validation",
+        )?,
+        checked_mul(source_views, 2, "PPML recovery validation source tables")?,
+    ])?;
+    let normalization_metadata = checked_sum(&[
+        source_views,
+        checked_mul(
+            effects,
+            4 * word,
+            "PPML recovery intercept indices and component views",
+        )?,
+        offsets,
+        checked_mul(
+            effects,
+            size_of::<Vec<usize>>() as u128,
+            "PPML recovery component registry",
+        )?,
+    ])?;
+    // Union-find parents/ranks/observed flags coexist with returned labels.
+    // Once the union-find drops, three per-component numeric banks coexist
+    // with labels. Component count cannot exceed any participating level axis.
+    let components = checked_mul(levels, 2 * word + 2, "PPML recovery component construction")?
+        .max(checked_sum(&[
+            checked_mul(levels, word, "PPML recovery component labels")?,
+            bytes_f64(checked_mul(max_levels, 3, "PPML recovery component means")?)?,
+        ])?);
+    let normalization = checked_sum(&[coefficient, normalization_metadata, components])?;
+    let row_partials = checked_mul(
+        shape.observations.div_ceil(32_768) as u128,
+        32,
+        "PPML recovery row certificates",
+    )?;
+    let level_partials = checked_mul(
+        shape.fe_max_levels.div_ceil(4_096) as u128,
+        32,
+        "PPML recovery level certificates",
+    )?;
+    let finishing = checked_sum(&[
+        coefficient,
+        offsets,
+        source_views,
+        checked_mul(
+            effects,
+            3 * word,
+            "PPML recovery finishing code and level views",
+        )?,
+        output,
+        slope_workspace.max(row_partials).max(level_partials),
+    ])?;
+    let retained = validation.max(normalization).max(finishing);
+    let map = validation.max(checked_sum(&[
+        coefficient,
+        offsets,
+        output,
+        slope_workspace,
+    ])?);
+    let cg = if shape.fe_dimensions > 1 && shape.fe_total_channels == shape.fe_dimensions {
+        let design = checked_sum(&[
+            source_views,
+            checked_mul(
+                effects,
+                size_of::<crate::fe::BorrowedInterceptEffect<'_>>() as u128,
+                "PPML recovery borrowed CG design",
+            )?,
+        ])?;
+        let cg_coefficients = checked_sum(&[
+            bytes_f64(levels)?,
+            checked_mul(effects * 3 + 1, word, "PPML recovery CG coefficient layout")?,
+        ])?;
+        let recurrence = crate::fe::borrowed_cg_recovery_workspace_bytes(
+            shape.observations,
+            shape.fe_dimensions,
+            shape.fe_total_levels,
+            shape.fe_max_levels,
+            shape.threads,
+        )?;
+        validation.max(checked_sum(&[
+            design,
+            recurrence.max(checked_sum(&[
+                cg_coefficients,
+                normalization.max(finishing),
+            ])?),
+        ])?)
+    } else {
+        0
+    };
+    checked_sum(&[views, retained.max(map).max(cg)])
 }
 
 /// Capacity fingerprint proving that the PPML-owned steady-state buffers did
@@ -4900,14 +5038,28 @@ mod tests {
         let partial = estimate_ppml_memory(partial_dimensions, PpmlMemoryConfig::default())
             .expect("partial-save estimate");
         let complete_recovery_bytes = 1_000_u128 * (100 + 1) * size_of::<f64>() as u128;
+        let required = partial.fast.fe_recovery_workspace_bytes;
+        assert_eq!(no_save.fast.fe_recovery_workspace_bytes, 0);
+        assert!(
+            required >= complete_recovery_bytes + (1_000 + 100_000) * 8,
+            "the residual and coefficient bank coexist with the complete output"
+        );
         assert_eq!(
             partial.fast.fe_recovery_peak_bytes - no_save.fast.fe_recovery_peak_bytes,
-            complete_recovery_bytes,
+            required,
             "one requested channel still recovers the total and all declared channels",
         );
         assert_eq!(
             partial.low.fe_recovery_peak_bytes - no_save.low.fe_recovery_peak_bytes,
-            complete_recovery_bytes,
+            required,
+        );
+        let mut all_dimensions = partial_dimensions;
+        all_dimensions.requested_saved_fe_channels = 100;
+        all_dimensions.requested_output_columns = 100;
+        let all = estimate_ppml_memory(all_dimensions, PpmlMemoryConfig::default()).unwrap();
+        assert_eq!(
+            all.fast.fe_recovery_workspace_bytes, required,
+            "partial and full saves certify the same complete-channel decomposition"
         );
         let plan = plan_ppml_memory(
             partial_dimensions,
@@ -4976,9 +5128,10 @@ mod tests {
         assert_eq!(estimate.low.saved_output_bytes, 2 * vector);
         assert_eq!(
             estimate.fast.fe_recovery_peak_bytes - no_save_estimate.fast.fe_recovery_peak_bytes,
-            3 * vector,
-            "recovery owns exactly total + intercept + slope until certification",
+            estimate.fast.fe_recovery_workspace_bytes,
+            "recovery retains numeric and coefficient work beside total + intercept + slope",
         );
+        assert!(estimate.fast.fe_recovery_workspace_bytes > 4 * vector + 200 * 8);
         assert_eq!(
             estimate.fast.publication_peak_bytes - no_save_estimate.fast.publication_peak_bytes,
             2 * vector,

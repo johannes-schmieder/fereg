@@ -1,0 +1,42 @@
+{
+  "job_id": 7586305,
+  "source_identity_sha256": "77492e432f39dd4c28010ebb583f6d29489758664fa04110b6a2822ce7cec3c7",
+  "artifact_selection": "Separate target directory; compiler-reported executable identities; exact hashes checked before direct invocation",
+  "results": {
+    "fereg_core": {
+      "passed": 880,
+      "failed": 0,
+      "seconds": 237.78
+    },
+    "fereg_plugin": {
+      "passed": 96,
+      "failed": 0,
+      "seconds": 34.42
+    },
+    "fereg_testkit": {
+      "passed": 3,
+      "failed": 0,
+      "seconds": 0.01
+    }
+  },
+  "sentinel": "ISOLATED_NATIVE_MEMORY_TESTS_PASS",
+  "log_sha256": "0d7874d908f0b91071841dd64951617d4c5ac0c1c9de4c2592d14070411761e8",
+  "scheduler": {
+    "failed": 0,
+    "exit_status": 0,
+    "slots": 8,
+    "wall_seconds": 323,
+    "maxvmem": "4.487G",
+    "queue": "econ",
+    "host": "scc-gd4"
+  },
+  "earlier_shared_target_receipts": "Preserved as diagnostic checkpoints; not promoted to exact-candidate acceptance",
+  "unresolved": [
+    "whole-action coverage and protocol diagnostics",
+    "original memory discrepancy reproduction",
+    "fixed complete-command performance checks",
+    "Mac license and universal/Rosetta checks",
+    "pending ADR 0073 decision",
+    "candidate freeze, deterministic archives and extracted-package checks"
+  ]
+}

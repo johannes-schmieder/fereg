@@ -113,6 +113,7 @@ pub fn absorb_lsmr(
         )?;
         return Ok(SolveReport {
             checkpoint_retries: 0,
+            solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
             requested_solver: FeSolverKind::Lsmr,
             used_solver: FeSolverKind::Lsmr,
             iterations: 0,
@@ -249,6 +250,7 @@ pub fn absorb_lsmr(
 
     Ok(SolveReport {
         checkpoint_retries: 0,
+        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
         requested_solver: FeSolverKind::Lsmr,
         used_solver: FeSolverKind::Lsmr,
         iterations: solved.iterations.iter().copied().max().unwrap_or(0),

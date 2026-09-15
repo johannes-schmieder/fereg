@@ -447,11 +447,13 @@ pub(super) fn build_prepared_ols_score_design<
     } else {
         None
     };
+    let mut solver_peak = crate::memory::SolverWorkspacePeak::ZERO;
     let mut cmg = if let (Some(requested_solver), true) = (
         score_cmg_solver,
         cached.is_none() && retained_scratch.is_none(),
     ) {
-        let built = prepared.fit_build_cmg_absorber(
+        let built = CmgAbsorber::build_with_workspace(
+            prepared.fit_borrowed_cmg_design()?,
             map_weights,
             CmgConfig {
                 map: absorb.map,
@@ -464,6 +466,8 @@ pub(super) fn build_prepared_ols_score_design<
                 requested_solver,
                 solver_memory_budget: absorb.solver_memory_budget,
             },
+            prepared.fit_structural_intercept(),
+            &mut solver_peak,
         );
         match built {
             Ok(session) => Some(session),
@@ -507,6 +511,7 @@ pub(super) fn build_prepared_ols_score_design<
             weights,
             absorb,
             &mut cmg,
+            &mut solver_peak,
             reservation,
         )?,
         (PreparedOlsExecutionMode::Low, _) => build_scratch_score_storage(
@@ -516,11 +521,13 @@ pub(super) fn build_prepared_ols_score_design<
             absorb,
             fit.execution().poolsize,
             &mut cmg,
+            &mut solver_peak,
             reservation,
             retained_scratch,
         )?,
     };
     fit.record_additional_scratch_peak(scratch_peak_bytes);
+    fit.record_additional_solver_workspace_peak(solver_peak);
     let storage_seconds = phase_started.elapsed().as_secs_f64();
 
     let phase_started = Instant::now();
@@ -584,6 +591,7 @@ fn build_dense_score_storage<
     weights: ReferenceWeightView<'a>,
     absorb: AbsorbConfig,
     cmg: &mut Option<CmgAbsorber<'_>>,
+    solver_peak: &mut crate::memory::SolverWorkspacePeak,
     reservation: &mut R,
 ) -> Result<(PreparedOlsScoreStorage<'a>, Vec<f64>, u64)> {
     let nrows = prepared.fit_sample().n_active();
@@ -600,7 +608,7 @@ fn build_dense_score_storage<
     fill_raw_score_block(prepared, generated_columns, &mut raw_values)?;
     let means = score_block_means(&raw_values, nrows, rank, weights, reservation)?;
     let raw = DenseMatrix::from_row_major(nrows, rank, raw_values)?;
-    let within = absorb_score_block(prepared, raw, absorb, cmg)?;
+    let within = absorb_score_block(prepared, raw, absorb, cmg, solver_peak)?;
     Ok((PreparedOlsScoreStorage::Dense(within), means, 0))
 }
 
@@ -615,6 +623,7 @@ fn build_scratch_score_storage<
     absorb: AbsorbConfig,
     poolsize: usize,
     cmg: &mut Option<CmgAbsorber<'_>>,
+    solver_peak: &mut crate::memory::SolverWorkspacePeak,
     reservation: &mut R,
     retained_scratch: Option<PreparedOlsScratch>,
 ) -> Result<(PreparedOlsScoreStorage<'a>, Vec<f64>, u64)> {
@@ -670,7 +679,7 @@ fn build_scratch_score_storage<
             continue;
         }
         let raw = DenseMatrix::from_row_major(nrows, block_rank, raw_values)?;
-        let within = absorb_score_block(prepared, raw, absorb, cmg)?;
+        let within = absorb_score_block(prepared, raw, absorb, cmg, solver_peak)?;
         for local in 0..block_rank {
             for row in 0..nrows {
                 column[row] = within[(row, local)];
@@ -753,6 +762,7 @@ fn absorb_score_block<P: PreparedOlsFitView + ?Sized>(
     raw: DenseMatrix,
     absorb: AbsorbConfig,
     cmg: &mut Option<CmgAbsorber<'_>>,
+    solver_peak: &mut crate::memory::SolverWorkspacePeak,
 ) -> Result<DenseMatrix> {
     if raw.ncols() == 0 {
         return Ok(raw);
@@ -771,6 +781,7 @@ fn absorb_score_block<P: PreparedOlsFitView + ?Sized>(
             "prepared robust score-design absorption did not certify",
         ));
     }
+    *solver_peak = solver_peak.max(absorbed.report().solver_workspace_peak);
     Ok(absorbed.into_parts().0)
 }
 

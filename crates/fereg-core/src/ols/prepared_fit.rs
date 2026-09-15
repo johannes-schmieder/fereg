@@ -280,6 +280,7 @@ pub struct CertifiedPreparedOlsFit {
     recovered_fe_coefficients: Option<FeCoefficientBatch>,
     fast_score_cache: Option<PreparedOlsFastScoreCache>,
     execution: PreparedOlsExecutionReport,
+    additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak,
 }
 
 /// Certified projection onto the complete prepared finite-plus-FE model span.
@@ -522,6 +523,23 @@ impl CertifiedPreparedOlsFit {
         } else {
             None
         }
+    }
+
+    /// Includes sequential inference projections without changing the fit's
+    /// scientific solver reports or summing workspaces released between stages.
+    #[must_use]
+    pub fn solver_workspace_peak(&self) -> crate::memory::SolverWorkspacePeak {
+        self.absorption_report
+            .solver_workspace_peak
+            .max(self.residual_absorption_report.solver_workspace_peak)
+            .max(self.additional_solver_workspace_peak)
+    }
+
+    pub(super) fn record_additional_solver_workspace_peak(
+        &mut self,
+        peak: crate::memory::SolverWorkspacePeak,
+    ) {
+        self.additional_solver_workspace_peak = self.additional_solver_workspace_peak.max(peak);
     }
 
     pub(super) fn record_additional_scratch_peak(&mut self, bytes: u64) {
@@ -1101,6 +1119,7 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
     qr.kept.sort_unstable();
     qr.dropped.sort_unstable();
     Ok(CertifiedPreparedOlsFit {
+        additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
         coefficients,
         kept_generated_columns: qr.kept,
         dropped_generated_columns: qr.dropped,
@@ -1381,6 +1400,7 @@ struct FitFeAbsorber<'a> {
     lsmr: Option<crate::fe::BorrowedLsmrAbsorber<'a>>,
     auto_direct_solver: Option<FeSolverKind>,
     auto_discarded_setup_seconds: f64,
+    auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak,
     auto_setup_warning: Option<String>,
     schur_config: Option<PreparedOlsFitConfig>,
     schur_probe: Option<f64>,
@@ -1432,6 +1452,7 @@ fn build_fit_fe_absorber<'a, P: PreparedOlsFitView + ?Sized>(
                     lsmr: None,
                     auto_direct_solver: None,
                     auto_discarded_setup_seconds: 0.0,
+                    auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
                     auto_setup_warning: None,
                     schur_probe: None,
                     schur_config: Some(config),
@@ -1457,6 +1478,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             lsmr: None,
             auto_direct_solver: None,
             auto_discarded_setup_seconds: 0.0,
+            auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
             auto_setup_warning: None,
         });
     }
@@ -1469,6 +1491,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             lsmr: None,
             auto_direct_solver: None,
             auto_discarded_setup_seconds: 0.0,
+            auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
             auto_setup_warning: None,
         });
     }
@@ -1481,6 +1504,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             lsmr: None,
             auto_direct_solver: Some(FeSolverKind::Lsmr),
             auto_discarded_setup_seconds: 0.0,
+            auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
             auto_setup_warning: None,
         });
     }
@@ -1500,6 +1524,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
         .ok_or_else(|| {
             FeregError::new(ErrorCode::Allocation, "prepared OLS RHS width overflows")
         })?;
+    let mut attempted_peak = crate::memory::SolverWorkspacePeak::ZERO;
     let built = if config.absorb.solver == FeSolverKind::Auto {
         CmgAbsorber::build_profiled_auto_guarded(
             design,
@@ -1508,6 +1533,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             prepared.fit_structural_intercept(),
             profile,
             initial_rhs_columns,
+            &mut attempted_peak,
         )
     } else {
         CmgAbsorber::build_profiled(
@@ -1527,6 +1553,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             lsmr: None,
             auto_direct_solver: None,
             auto_discarded_setup_seconds: 0.0,
+            auto_discarded_workspace_peak: attempted_peak,
             auto_setup_warning: None,
         }),
         Ok(CmgAutoBuildOutcome::HierarchyRejected { setup_seconds }) => Ok(FitFeAbsorber {
@@ -1536,6 +1563,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             lsmr: None,
             auto_direct_solver: Some(FeSolverKind::Lsmr),
             auto_discarded_setup_seconds: setup_seconds,
+            auto_discarded_workspace_peak: attempted_peak,
             auto_setup_warning: None,
         }),
         Ok(CmgAutoBuildOutcome::DirectCgPreferred { setup_seconds }) => Ok(FitFeAbsorber {
@@ -1545,6 +1573,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             lsmr: None,
             auto_direct_solver: Some(FeSolverKind::Cg),
             auto_discarded_setup_seconds: setup_seconds,
+            auto_discarded_workspace_peak: attempted_peak,
             auto_setup_warning: None,
         }),
         Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitFeAbsorber {
@@ -1554,6 +1583,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             lsmr: None,
             auto_direct_solver: Some(FeSolverKind::Lsmr),
             auto_discarded_setup_seconds: 0.0,
+            auto_discarded_workspace_peak: attempted_peak,
             auto_setup_warning: Some(format!(
                 "automatic CMG setup was unavailable ({error}); used certified direct LSMR"
             )),
@@ -1575,7 +1605,8 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
         if let Some(mut fit_config) = cmg.schur_config.take() {
             let started = std::time::Instant::now();
             let design = prepared.fit_borrowed_cmg_design()?;
-            let contraction = crate::fe::schur_ols_probe(&design, weights, &values)?;
+            let (contraction, probe_peak) =
+                crate::fe::schur_ols_probe_with_workspace(&design, weights, &values)?;
             let probe_seconds = started.elapsed().as_secs_f64();
             if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
                 eprintln!("FEREG_PHASE|schur_route|contraction={contraction:.9}|probe={probe_seconds:.9}|selected={}", contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION);
@@ -1597,6 +1628,7 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
             fit_config.absorb.map.max_iterations = config.map.max_iterations;
             *cmg = build_fit_fe_absorber_legacy(prepared, weights, fit_config)?;
             cmg.auto_discarded_setup_seconds += probe_seconds;
+            cmg.auto_discarded_workspace_peak = cmg.auto_discarded_workspace_peak.max(probe_peak);
             cmg.schur_probe = Some(contraction);
         }
     }
@@ -1627,10 +1659,15 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
         }
     }?;
     let discarded_setup_seconds = std::mem::take(&mut cmg.auto_discarded_setup_seconds);
+    let discarded_peak = std::mem::replace(
+        &mut cmg.auto_discarded_workspace_peak,
+        crate::memory::SolverWorkspacePeak::ZERO,
+    );
     let warning = cmg.auto_setup_warning.take();
     let probe = cmg.schur_probe.take();
     if cmg.auto_direct_solver.is_none()
         && discarded_setup_seconds == 0.0
+        && discarded_peak == crate::memory::SolverWorkspacePeak::ZERO
         && warning.is_none()
         && probe.is_none()
     {
@@ -1641,6 +1678,7 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
     if cmg.auto_direct_solver.is_some() {
         report.requested_solver = FeSolverKind::Auto;
     }
+    report.solver_workspace_peak = report.solver_workspace_peak.max(discarded_peak);
     report.setup_seconds += discarded_setup_seconds;
     if let Some(contraction) = probe {
         report.iterations += crate::fe::OLS_SCHUR_PROBE_ITERATIONS;
@@ -2091,6 +2129,7 @@ fn fit_with_controls_internal_mode_with_frame<
         );
     }
     Ok(CertifiedPreparedOlsFit {
+        additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
         coefficients,
         kept_generated_columns: qr.kept,
         dropped_generated_columns: qr.dropped,
@@ -2751,6 +2790,7 @@ fn fit_with_controls_low_internal_with_frame<
         *destination = Some(original);
     }
     Ok(CertifiedPreparedOlsFit {
+        additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
         coefficients,
         kept_generated_columns: qr.kept,
         dropped_generated_columns: qr.dropped,
@@ -2840,6 +2880,9 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
     target.normal_equation_residual = target
         .normal_equation_residual
         .max(source.normal_equation_residual);
+    target.solver_workspace_peak = target
+        .solver_workspace_peak
+        .max(source.solver_workspace_peak);
     target.setup_seconds += source.setup_seconds;
     target.solve_seconds += source.solve_seconds;
     target.certification_seconds += source.certification_seconds;
@@ -7184,6 +7227,47 @@ mod tests {
     }
 
     #[test]
+    fn discarded_workspace_is_merged_once_even_without_a_setup_timer_or_warning() {
+        use crate::memory::SolverWorkspacePeak;
+        let y = [1.0, -1.0, 2.0, -2.0];
+        let g = [0.0, 0.0, 1.0, 1.0];
+        let data = prepared(&y, &[], &[], Some(&g), false, TestWeights::Unit);
+        let config = PreparedOlsFitConfig::default();
+        for discarded in [
+            SolverWorkspacePeak::from_bytes(1 << 28).unwrap(),
+            SolverWorkspacePeak::UNMODELED,
+        ] {
+            let mut session =
+                build_fit_fe_absorber(&data, BorrowedMapWeights::Unit, config).unwrap();
+            assert!(session.session.is_none() && session.auto_direct_solver.is_none());
+            session.auto_discarded_workspace_peak = discarded;
+            for first in [true, false] {
+                let result = absorb_fit_matrix(
+                    &data,
+                    BorrowedMapWeights::Unit,
+                    DenseMatrix::from_columns(&[y.to_vec()]).unwrap(),
+                    config.absorb,
+                    &mut session,
+                    false,
+                    false,
+                )
+                .unwrap();
+                assert!(result.report().certified());
+                assert_eq!(result.residualized().as_slice(), &y);
+                if first {
+                    assert_eq!(result.report().solver_workspace_peak, discarded);
+                } else {
+                    assert!(result.report().solver_workspace_peak.bytes().unwrap() < 1 << 28);
+                }
+                assert_eq!(
+                    session.auto_discarded_workspace_peak,
+                    SolverWorkspacePeak::ZERO
+                );
+            }
+        }
+    }
+
+    #[test]
     fn direct_prepared_cg_checks_joint_budget_with_retained_coefficients() {
         let n = 96;
         let effects = [
@@ -7271,6 +7355,8 @@ mod tests {
                                                 lsmr: None,
                                                 auto_direct_solver: Some(FeSolverKind::Cg),
                                                 auto_discarded_setup_seconds: 0.0,
+                                                auto_discarded_workspace_peak:
+                                                    crate::memory::SolverWorkspacePeak::ZERO,
                                                 auto_setup_warning: None,
                                                 schur_config: None,
                                                 schur_probe: None,
@@ -7293,6 +7379,10 @@ mod tests {
                                 assert!(error.message.contains("joint execution/CG memory plan"));
                                 let fit = run(execution + incremental).unwrap();
                                 assert!(fit.report().certified());
+                                assert_eq!(
+                                    fit.report().solver_workspace_peak.bytes(),
+                                    Some(incremental as u64)
+                                );
                                 let (residual, _, coefficients) = fit.into_full_parts();
                                 assert_eq!(coefficients.is_some(), retain);
                                 for (&actual, &expected) in residual.as_slice().iter().zip(&noise) {
@@ -7380,6 +7470,35 @@ mod tests {
             } else {
                 0
             };
+            let map_config = AbsorbConfig {
+                solver: FeSolverKind::Map,
+                ..AbsorbConfig::default()
+            };
+            let map = prepared
+                .fit_absorb_matrix(
+                    weights,
+                    DenseMatrix::from_columns(&[y.clone()]).unwrap(),
+                    map_config,
+                )
+                .unwrap();
+            let map_bytes = map.report().solver_workspace_peak.bytes().unwrap() as u128;
+            for missing in [0, 1] {
+                let mut bounded = map_config;
+                bounded.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+                    execution_bytes: 137,
+                    usable_bytes: 137 + map_bytes - missing,
+                });
+                let result = prepared.fit_absorb_matrix(
+                    weights,
+                    DenseMatrix::from_columns(&[y.clone()]).unwrap(),
+                    bounded,
+                );
+                if missing == 0 {
+                    assert_eq!(result.unwrap().residualized(), map.residualized());
+                } else {
+                    assert_eq!(result.unwrap_err().code, ErrorCode::Allocation);
+                }
+            }
             for solver in [
                 FeSolverKind::Auto,
                 FeSolverKind::Cg,
@@ -7418,6 +7537,10 @@ mod tests {
                     } else {
                         let output = result.unwrap();
                         assert!(output.report().certified());
+                        assert_eq!(
+                            output.report().solver_workspace_peak.bytes(),
+                            Some(required as u64)
+                        );
                         assert!(output
                             .residualized()
                             .as_slice()
@@ -7559,10 +7682,18 @@ mod tests {
                         recovered.recovery_method(),
                         crate::fe::CategoricalRecoveryMethod::Cg
                     );
+                    assert_eq!(
+                        recovered.solver_workspace_peak().bytes(),
+                        Some(memory.cg_peak_bytes as u64)
+                    );
                     let tight = run(execution + memory.map_peak_bytes).unwrap();
                     assert_eq!(
                         tight.recovery_method(),
                         crate::fe::CategoricalRecoveryMethod::Map
+                    );
+                    assert_eq!(
+                        tight.solver_workspace_peak().bytes(),
+                        Some(memory.map_peak_bytes as u64)
                     );
                     assert!(tight
                         .absorbed_sum()
@@ -7612,6 +7743,10 @@ mod tests {
                         normalized.recovery_method(),
                         crate::fe::CategoricalRecoveryMethod::RetainedCoefficients
                     );
+                    assert_eq!(
+                        normalized.solver_workspace_peak().bytes(),
+                        Some(memory.retained_peak_bytes as u64)
+                    );
                     assert!(normalized
                         .absorbed_sum()
                         .iter()
@@ -7635,12 +7770,20 @@ mod tests {
                         fallback.recovery_method(),
                         crate::fe::CategoricalRecoveryMethod::Map
                     );
+                    assert_eq!(
+                        fallback.solver_workspace_peak().bytes(),
+                        Some(memory.map_peak_bytes as u64)
+                    );
                     assert!(fallback
                         .absorbed_sum()
                         .iter()
                         .zip(&target)
                         .all(|(actual, expected)| (actual - expected).abs() <= 1e-10));
                     let corrected = retained_run(&incorrect, workspace).unwrap();
+                    assert_eq!(
+                        corrected.solver_workspace_peak().bytes(),
+                        Some(memory.cg_peak_bytes as u64)
+                    );
                     assert!(corrected
                         .absorbed_sum()
                         .iter()
@@ -9012,6 +9155,7 @@ mod tests {
             used_solver: FeSolverKind::Lsmr,
             iterations: 12,
             checkpoint_retries: 0,
+            solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
             stop_reason: SolveStopReason::Certified,
             certificate: FeCertificate {
                 absolute_infinity_norm: 2e-8,
@@ -9029,6 +9173,21 @@ mod tests {
             pilot_iterations: 0,
             pilot_contraction: 0.0,
             warnings: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn merged_solver_memory_preserves_largest_attempt_and_unmodeled_scope() {
+        use crate::memory::SolverWorkspacePeak;
+        let mut first = automatic_lsmr_report_for_merge();
+        first.solver_workspace_peak = SolverWorkspacePeak::from_bytes(400).unwrap();
+        let mut second = first.clone();
+        second.solver_workspace_peak = SolverWorkspacePeak::from_bytes(200).unwrap();
+        for (mut target, source) in [(first.clone(), second.clone()), (second, first)] {
+            merge_solve_report(&mut target, source).unwrap();
+            assert_eq!(target.solver_workspace_peak.bytes(), Some(400));
+            merge_solve_report(&mut target, automatic_lsmr_report_for_merge()).unwrap();
+            assert_eq!(target.solver_workspace_peak.bytes(), None);
         }
     }
 

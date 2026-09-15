@@ -1,0 +1,6 @@
+{
+  "stage": "Local archive assembly",
+  "collector_sha256": "6107b90276d3f7a228f033c5ef64aad4ee4602e78a7e40b06629a281977bd68d",
+  "failure": "qacct exit_status=0 has trailing spaces; exact comparison rejected it",
+  "impact": "No estimation or fixture retry. Original raw scheduler receipts remain unchanged; normalize field whitespace in local collector."
+}

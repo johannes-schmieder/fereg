@@ -15,7 +15,7 @@ use crate::fe::{
     absorb_borrowed_intercept_cg_with_structural_constant_certified,
     absorb_borrowed_intercept_irons_tuck_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
-    absorb_finalized_categorical_slope_map_certified,
+    absorb_finalized_categorical_slope_map_with_budget_certified,
     absorb_finalized_categorical_topology_auto_direct_lsmr_certified,
     absorb_finalized_categorical_topology_auto_routed_certified,
     absorb_finalized_categorical_topology_cg_certified,
@@ -26,8 +26,9 @@ use crate::fe::{
     absorb_finalized_categorical_topology_map_retaining_certified, absorb_fixed_effects,
     borrow_categorical_topology_design, AbsorbConfig, BorrowedInterceptFeDesign,
     BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig, EffectTerm, FeDesign,
-    FeSolverKind, MapConfig,
+    FeSolverKind,
 };
+use crate::memory::SolverWorkspacePeak;
 use crate::memory::{owned_fe_matrix_bytes, OwnedFeDesignMemoryEstimate};
 use crate::options::ThreadConfig;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
@@ -320,8 +321,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
         &self,
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
-        config: MapConfig,
-        retain_coefficients: bool,
+        config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap>;
 
     fn fit_absorb_lsmr(
@@ -405,35 +405,42 @@ pub(crate) trait PreparedOlsFitView: Sync {
         values: DenseMatrix,
         mut config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        let memory = self.fit_owned_fe_design_memory()?;
+        // With no finite controls the base has no resident-X/parallel-RHS
+        // allowance. The normalized weight frame, retained within outcome
+        // and final residual can coexist at the second owned projection.
+        let caller_outcome_bytes = if self.fit_model().columns.is_empty() {
+            owned_fe_matrix_bytes(values.nrows(), 3)?
+        } else {
+            0
+        };
+        let unit_bytes = match weights {
+            BorrowedMapWeights::Unit => owned_fe_matrix_bytes(values.nrows(), 1)?,
+            BorrowedMapWeights::Provided(_) => 0,
+        };
+        let construction = memory
+            .construction_bytes
+            .checked_add(unit_bytes)
+            .and_then(|bytes| bytes.checked_add(caller_outcome_bytes))
+            .ok_or_else(|| allocation("owned FE construction bytes overflow"))?;
+        if config
+            .solver_memory_budget
+            .is_some_and(|budget| !budget.fits(construction))
+        {
+            return Err(allocation(
+                "owned FE design construction exceeds the joint memory budget",
+            ));
+        }
+        let construction_peak = SolverWorkspacePeak::from_bytes(construction)?;
+        let retained_bytes = memory
+            .resident_bytes
+            .checked_add(unit_bytes)
+            .and_then(|bytes| bytes.checked_add(caller_outcome_bytes))
+            .ok_or_else(|| allocation("owned FE resident execution bytes overflow"))?;
         if let Some(mut budget) = config.solver_memory_budget {
-            let memory = self.fit_owned_fe_design_memory()?;
-            // With no finite controls the base has no resident-X/parallel-RHS
-            // allowance. The normalized weight frame, retained within outcome
-            // and final residual can coexist at the second owned projection.
-            let caller_outcome_bytes = if self.fit_model().columns.is_empty() {
-                owned_fe_matrix_bytes(values.nrows(), 3)?
-            } else {
-                0
-            };
-            let unit_bytes = match weights {
-                BorrowedMapWeights::Unit => owned_fe_matrix_bytes(values.nrows(), 1)?,
-                BorrowedMapWeights::Provided(_) => 0,
-            };
-            let construction = memory
-                .construction_bytes
-                .checked_add(unit_bytes)
-                .and_then(|bytes| bytes.checked_add(caller_outcome_bytes))
-                .ok_or_else(|| allocation("owned FE construction bytes overflow"))?;
-            if !budget.fits(construction) {
-                return Err(allocation(
-                    "owned FE design construction exceeds the joint memory budget",
-                ));
-            }
             budget.execution_bytes = budget
                 .execution_bytes
-                .checked_add(memory.resident_bytes)
-                .and_then(|bytes| bytes.checked_add(unit_bytes))
-                .and_then(|bytes| bytes.checked_add(caller_outcome_bytes))
+                .checked_add(retained_bytes)
                 .ok_or_else(|| allocation("owned FE resident execution bytes overflow"))?;
             config.solver_memory_budget = Some(budget);
         }
@@ -451,7 +458,9 @@ pub(crate) trait PreparedOlsFitView: Sync {
             }
             BorrowedMapWeights::Provided(values) => values,
         };
-        let report = absorb_fixed_effects(&design, weights, &mut residualized, config)?;
+        let mut report = absorb_fixed_effects(&design, weights, &mut residualized, config)?;
+        report.solver_workspace_peak =
+            construction_peak.max(report.solver_workspace_peak.with_retained(retained_bytes)?);
         CertifiedBorrowedMap::from_certified_parts(residualized, report)
     }
 
@@ -465,7 +474,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
             return self.fit_absorb_auto(weights, values, config);
         }
         if config.solver == FeSolverKind::Map {
-            return self.fit_absorb_map(weights, values, config.map, config.retain_coefficients);
+            return self.fit_absorb_map(weights, values, config);
         }
         if config.solver == FeSolverKind::Lsmr {
             return self.fit_absorb_lsmr(weights, values, config);
@@ -513,12 +522,12 @@ fn admit_prepared_intercept_cg(
     rhs_columns: usize,
     budget: Option<crate::memory::FeSolverMemoryBudget>,
     retain_coefficients: bool,
-) -> Result<()> {
+) -> Result<SolverWorkspacePeak> {
     let Some(budget) = budget else {
-        return Ok(());
+        return Ok(SolverWorkspacePeak::UNMODELED);
     };
     if design.effects().is_empty() {
-        return Ok(());
+        return Ok(SolverWorkspacePeak::UNMODELED);
     }
     let mut levels = Vec::new();
     levels
@@ -556,7 +565,7 @@ fn admit_prepared_intercept_cg(
             "prepared CG does not fit the joint execution/CG memory plan",
         ));
     }
-    Ok(())
+    SolverWorkspacePeak::from_bytes(required)
 }
 
 impl PreparedOlsFitView for PreparedOlsData {
@@ -709,12 +718,11 @@ impl PreparedOlsFitView for PreparedOlsData {
         &self,
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
-        config: MapConfig,
-        _retain_coefficients: bool,
+        config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
         let design = self.borrowed_intercept_fe_design()?;
         absorb_borrowed_intercept_map_with_structural_constant_certified(
-            &design, weights, values, config,
+            &design, weights, values, config.map,
         )
     }
 
@@ -725,10 +733,17 @@ impl PreparedOlsFitView for PreparedOlsData {
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
         let design = self.borrowed_intercept_fe_design()?;
-        admit_prepared_intercept_cg(&design, values.ncols(), config.solver_memory_budget, false)?;
-        absorb_borrowed_intercept_cg_with_structural_constant_certified(
+        let peak = admit_prepared_intercept_cg(
+            &design,
+            values.ncols(),
+            config.solver_memory_budget,
+            false,
+        )?;
+        let mut result = absorb_borrowed_intercept_cg_with_structural_constant_certified(
             &design, weights, values, config.map,
-        )
+        )?;
+        result.set_solver_workspace_peak(peak);
+        Ok(result)
     }
 
     fn fit_absorb_irons_tuck(
@@ -944,31 +959,31 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         &self,
         weights: BorrowedMapWeights<'_>,
         values: DenseMatrix,
-        config: MapConfig,
-        retain_coefficients: bool,
+        config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
         if self.has_absorbed_slope() {
             let effects = self.effect_views()?;
-            absorb_finalized_categorical_slope_map_certified(
+            absorb_finalized_categorical_slope_map_with_budget_certified(
                 self.fe_topology(),
                 &effects,
                 weights,
                 values,
-                self.slope_map_config(config),
+                self.slope_map_config(config.map),
+                config.solver_memory_budget,
             )
-        } else if retain_coefficients {
+        } else if config.retain_coefficients {
             absorb_finalized_categorical_topology_map_retaining_certified(
                 self.fe_topology(),
                 weights,
                 values,
-                config,
+                config.map,
             )
         } else {
             absorb_finalized_categorical_topology_map_certified(
                 self.fe_topology(),
                 weights,
                 values,
-                config,
+                config.map,
             )
         }
     }
@@ -1001,15 +1016,17 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         if self.has_absorbed_slope() {
             return self.fit_absorb_owned_matrix(weights, values, config);
         }
-        if config.solver_memory_budget.is_some() {
+        let peak = if config.solver_memory_budget.is_some() {
             admit_prepared_intercept_cg(
                 &self.fit_borrowed_cmg_design()?,
                 values.ncols(),
                 config.solver_memory_budget,
                 config.retain_coefficients,
-            )?;
-        }
-        if config.retain_coefficients {
+            )?
+        } else {
+            SolverWorkspacePeak::UNMODELED
+        };
+        let mut result = if config.retain_coefficients {
             absorb_finalized_categorical_topology_cg_retaining_certified(
                 self.fe_topology(),
                 weights,
@@ -1023,7 +1040,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
                 values,
                 config.map,
             )
-        }
+        }?;
+        result.set_solver_workspace_peak(peak);
+        Ok(result)
     }
 
     fn fit_absorb_irons_tuck(

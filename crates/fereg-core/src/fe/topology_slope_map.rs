@@ -9,6 +9,7 @@ use std::time::Instant;
 
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
 use rayon::prelude::*;
 
 use super::{
@@ -56,6 +57,7 @@ pub struct RecoveredCategoricalEffects {
     iterations: usize,
     reconstruction_relative_infinity: f64,
     recovery_method: CategoricalRecoveryMethod,
+    solver_workspace_peak: SolverWorkspacePeak,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,6 +72,18 @@ pub(crate) enum CategoricalRecoveryMethod {
 }
 
 impl RecoveredCategoricalEffects {
+    /// Incremental recovery envelope, including every earlier failed attempt.
+    /// Unsupported recovery models stay explicitly unknown.
+    #[must_use]
+    pub const fn solver_workspace_peak(&self) -> SolverWorkspacePeak {
+        self.solver_workspace_peak
+    }
+
+    pub(crate) fn with_solver_workspace_peak(mut self, peak: SolverWorkspacePeak) -> Self {
+        self.solver_workspace_peak = peak;
+        self
+    }
+
     #[must_use]
     pub fn absorbed_sum(&self) -> &[f64] {
         self.absorbed_sum
@@ -192,6 +206,10 @@ impl SlopeWorkspaceReservation for SystemSlopeWorkspaceReservation {
     }
 }
 
+pub(crate) fn slope_map_workspace_bytes(channels: usize, rhs: usize) -> Result<u128> {
+    SlopeWorkspace::modeled_bytes(channels, rhs)
+}
+
 struct SlopeWorkspace {
     max_channels: usize,
     reference_norms: Vec<f64>,
@@ -210,6 +228,57 @@ struct SlopeWorkspace {
 }
 
 impl SlopeWorkspace {
+    fn modeled_bytes(channels: usize, rhs: usize) -> Result<u128> {
+        let channels = channels as u128;
+        let rhs = rhs as u128;
+        let cells = channels
+            .checked_mul(channels)
+            .and_then(|square| square.checked_mul(3))
+            .and_then(|square| {
+                channels
+                    .checked_mul(rhs)
+                    .and_then(|cross| cross.checked_mul(4))
+                    .and_then(|cross| square.checked_add(cross))
+            })
+            .and_then(|cells| rhs.checked_mul(4).and_then(|rhs| cells.checked_add(rhs)))
+            .and_then(|cells| cells.checked_add(channels))
+            .ok_or_else(|| allocation("categorical slope MAP workspace overflows"))?;
+        cells
+            .checked_mul(std::mem::size_of::<f64>() as u128)
+            .and_then(|bytes| {
+                channels
+                    .checked_mul(std::mem::size_of::<usize>() as u128)
+                    .and_then(|indices| bytes.checked_add(indices))
+            })
+            .ok_or_else(|| allocation("categorical slope MAP workspace bytes overflow"))
+    }
+
+    fn payload_bytes(&self) -> Result<u128> {
+        let vectors = [
+            &self.reference_norms,
+            &self.residual_norms,
+            &self.rhs_scales,
+            &self.value_scales,
+            &self.channel_scales,
+            &self.gram,
+            &self.gram_corrections,
+            &self.factor,
+            &self.cross,
+            &self.cross_corrections,
+            &self.factor_cross,
+            &self.coefficients,
+        ];
+        let bytes = vectors.iter().try_fold(0_u128, |sum, values| {
+            sum.checked_add((values.capacity() as u128) * std::mem::size_of::<f64>() as u128)
+                .ok_or_else(|| allocation("categorical slope MAP capacities overflow"))
+        })?;
+        bytes
+            .checked_add(
+                (self.permutation.capacity() as u128) * std::mem::size_of::<usize>() as u128,
+            )
+            .ok_or_else(|| allocation("categorical slope MAP permutation capacity overflows"))
+    }
+
     fn new<R: SlopeWorkspaceReservation>(
         max_channels: usize,
         rhs: usize,
@@ -333,8 +402,29 @@ pub fn absorb_finalized_categorical_slope_map_certified(
     values: DenseMatrix,
     config: MapConfig,
 ) -> Result<CertifiedBorrowedMap> {
+    absorb_finalized_categorical_slope_map_with_budget_certified(
+        topology, effects, weights, values, config, None,
+    )
+}
+
+pub(crate) fn absorb_finalized_categorical_slope_map_with_budget_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+    budget: Option<FeSolverMemoryBudget>,
+) -> Result<CertifiedBorrowedMap> {
     let mut reservation = SystemSlopeWorkspaceReservation;
-    absorb_with_reservation(topology, effects, weights, values, config, &mut reservation)
+    absorb_with_reservation(
+        topology,
+        effects,
+        weights,
+        values,
+        config,
+        budget,
+        &mut reservation,
+    )
 }
 
 /// Recover one normalized MAP decomposition of an absorbed contribution.
@@ -1159,6 +1249,7 @@ fn finish_channel_major_recovery(
         ));
     }
     Ok(RecoveredCategoricalEffects {
+        solver_workspace_peak: SolverWorkspacePeak::UNMODELED,
         absorbed_sum: Some(absorbed_sum),
         channels,
         iterations,
@@ -1449,6 +1540,7 @@ fn finish_intercept_only_recovery(
         ));
     }
     Ok(RecoveredCategoricalEffects {
+        solver_workspace_peak: SolverWorkspacePeak::UNMODELED,
         absorbed_sum,
         channels,
         iterations,
@@ -1795,6 +1887,7 @@ fn finish_one_intercept_recovery(
         (false, false) => None,
     };
     Ok(RecoveredCategoricalEffects {
+        solver_workspace_peak: SolverWorkspacePeak::UNMODELED,
         absorbed_sum,
         channels,
         iterations,
@@ -2352,6 +2445,7 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
         }
     }
     Ok(RecoveredCategoricalEffects {
+        solver_workspace_peak: SolverWorkspacePeak::UNMODELED,
         absorbed_sum: Some(absorbed_sum),
         channels,
         iterations,
@@ -2410,9 +2504,23 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
     weights: BorrowedMapWeights<'_>,
     mut values: DenseMatrix,
     config: MapConfig,
+    budget: Option<FeSolverMemoryBudget>,
     reservation: &mut R,
 ) -> Result<CertifiedBorrowedMap> {
     validate_config(config)?;
+    let max_channels = effects
+        .iter()
+        .map(CategoricalAbsorbedEffectView::channels)
+        .max()
+        .unwrap_or(0);
+    let validation_bytes = topology.validation_workspace_bytes()?;
+    let workspace_bytes = SlopeWorkspace::modeled_bytes(max_channels, values.ncols())?;
+    let planned_peak = validation_bytes.max(workspace_bytes);
+    if budget.is_some_and(|budget| !budget.fits(planned_peak)) {
+        return Err(allocation(
+            "categorical slope MAP exceeds the joint execution/solver budget",
+        ));
+    }
     topology.validate()?;
     let nobs = topology.retained_rows().len();
     if values.nrows() != nobs || effects.len() != topology.effect_to_topology().len() {
@@ -2460,6 +2568,13 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
 
     let setup_started = Instant::now();
     let mut workspace = SlopeWorkspace::new(max_channels, values.ncols(), reservation)?;
+    let payload_peak = validation_bytes.max(workspace.payload_bytes()?);
+    if budget.is_some_and(|budget| !budget.fits(payload_peak)) {
+        return Err(allocation(
+            "categorical slope MAP reserved capacities exceed the joint budget",
+        ));
+    }
+    let workspace_peak = SolverWorkspacePeak::from_bytes(payload_peak)?;
     weighted_norms(
         &values,
         weights,
@@ -2485,6 +2600,7 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
             initial,
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
+            workspace_peak,
         );
     }
 
@@ -2527,6 +2643,7 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
                     certificate,
                     setup_seconds,
                     solve_started.elapsed().as_secs_f64(),
+                    workspace_peak,
                 );
             }
         }
@@ -2967,11 +3084,13 @@ fn finish(
     certificate: FeCertificate,
     setup_seconds: f64,
     solve_seconds: f64,
+    workspace_peak: SolverWorkspacePeak,
 ) -> Result<CertifiedBorrowedMap> {
     CertifiedBorrowedMap::from_certified_parts(
         values,
         SolveReport {
             checkpoint_retries: 0,
+            solver_workspace_peak: workspace_peak,
             requested_solver: FeSolverKind::Map,
             used_solver: FeSolverKind::Map,
             iterations,
@@ -3106,6 +3225,7 @@ mod tests {
         calls: usize,
         fail_at: Option<usize>,
         undersize_at: Option<usize>,
+        excess: usize,
     }
 
     impl SlopeWorkspaceReservation for InjectedReservation {
@@ -3124,7 +3244,7 @@ mod tests {
             }
             if self.undersize_at != Some(call) {
                 target
-                    .try_reserve_exact(elements)
+                    .try_reserve_exact(elements + self.excess)
                     .map_err(|_| allocation("test intercept-slope MAP reservation failed"))?;
             }
             Ok(())
@@ -3145,11 +3265,157 @@ mod tests {
             }
             if self.undersize_at != Some(call) {
                 target
-                    .try_reserve_exact(elements)
+                    .try_reserve_exact(elements + self.excess)
                     .map_err(|_| allocation("test categorical slope MAP reservation failed"))?;
             }
             Ok(())
         }
+    }
+
+    #[test]
+    fn slope_memory_model_covers_every_numeric_capacity_and_overflow() {
+        for channels in [1, 2, 7] {
+            for rhs in [1, 3, 19] {
+                let workspace =
+                    SlopeWorkspace::new(channels, rhs, &mut SystemSlopeWorkspaceReservation)
+                        .unwrap();
+                assert_eq!(
+                    workspace.payload_bytes().unwrap(),
+                    SlopeWorkspace::modeled_bytes(channels, rhs).unwrap()
+                );
+            }
+        }
+        assert_eq!(
+            SlopeWorkspace::modeled_bytes(usize::MAX, usize::MAX)
+                .unwrap_err()
+                .code,
+            ErrorCode::Allocation
+        );
+    }
+
+    #[test]
+    fn slope_memory_exact_budget_shortfall_and_capacity_growth_fail_closed() {
+        let group = [0, 0, 0, 1, 1, 1];
+        let topology = finalize_categorical_topology(
+            &[CategoricalCodeView::new(&group, 2)],
+            &[&[0]],
+            &[true; 6],
+        )
+        .unwrap();
+        let slope = [0.0, 1.0, 2.0, 0.0, 1.5, 3.0];
+        let effects = [CategoricalAbsorbedEffectView::new(true, vec![&slope]).unwrap()];
+        let values = DenseMatrix::from_columns(&[vec![1.0, 2.0, 4.0, 3.0, 5.0, 8.0]]).unwrap();
+        let required = SlopeWorkspace::modeled_bytes(2, 1)
+            .unwrap()
+            .max(topology.validation_workspace_bytes().unwrap());
+        let base = 1234;
+        for weights in [
+            BorrowedMapWeights::Unit,
+            BorrowedMapWeights::Provided(&[1.0, 3.0, 2.0, 5.0, 1.0, 2.0]),
+        ] {
+            let expected = absorb_finalized_categorical_slope_map_certified(
+                &topology,
+                &effects,
+                weights,
+                values.clone(),
+                config(),
+            )
+            .unwrap();
+            let exact = FeSolverMemoryBudget {
+                execution_bytes: base,
+                usable_bytes: base + required,
+            };
+            let actual = absorb_finalized_categorical_slope_map_with_budget_certified(
+                &topology,
+                &effects,
+                weights,
+                values.clone(),
+                config(),
+                Some(exact),
+            )
+            .unwrap();
+            assert_eq!(actual.residualized(), expected.residualized());
+            assert_eq!(
+                actual.report().solver_workspace_peak.bytes(),
+                Some(required as u64)
+            );
+            let mut denied = InjectedReservation::default();
+            let error = absorb_with_reservation(
+                &topology,
+                &effects,
+                weights,
+                values.clone(),
+                config(),
+                Some(FeSolverMemoryBudget {
+                    usable_bytes: exact.usable_bytes - 1,
+                    ..exact
+                }),
+                &mut denied,
+            )
+            .unwrap_err();
+            assert_eq!(error.code, ErrorCode::Allocation);
+            assert_eq!(denied.calls, 0);
+            let mut oversized = InjectedReservation {
+                excess: 1,
+                ..InjectedReservation::default()
+            };
+            assert_eq!(
+                absorb_with_reservation(
+                    &topology,
+                    &effects,
+                    weights,
+                    values.clone(),
+                    config(),
+                    Some(exact),
+                    &mut oversized,
+                )
+                .unwrap_err()
+                .code,
+                ErrorCode::Allocation
+            );
+        }
+    }
+
+    #[test]
+    fn slope_memory_charges_interaction_validation_as_a_sequential_peak() {
+        let left: Vec<u32> = (0..100).map(|row| row % 5).collect();
+        let right: Vec<u32> = (0..100).map(|row| row % 7).collect();
+        let topology = finalize_categorical_topology(
+            &[
+                CategoricalCodeView::new(&left, 5),
+                CategoricalCodeView::new(&right, 7),
+            ],
+            &[&[0, 1]],
+            &[true; 100],
+        )
+        .unwrap();
+        let validation = topology.validation_workspace_bytes().unwrap();
+        assert_eq!(
+            validation,
+            (4 * std::mem::size_of::<super::super::CategoricalCodeView<'_>>()
+                + 100 * (std::mem::size_of::<usize>() + std::mem::size_of::<u32>()))
+                as u128
+        );
+        assert!(validation > SlopeWorkspace::modeled_bytes(2, 1).unwrap());
+        let slope: Vec<f64> = (0..100).map(|row| row as f64).collect();
+        let effects = [CategoricalAbsorbedEffectView::new(true, vec![&slope]).unwrap()];
+        let values = DenseMatrix::from_columns(&[slope.clone()]).unwrap();
+        let result = absorb_finalized_categorical_slope_map_with_budget_certified(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Unit,
+            values,
+            config(),
+            Some(FeSolverMemoryBudget {
+                execution_bytes: 0,
+                usable_bytes: validation,
+            }),
+        )
+        .unwrap();
+        assert_eq!(
+            result.report().solver_workspace_peak.bytes(),
+            Some(validation as u64)
+        );
     }
 
     #[test]
@@ -3872,6 +4138,7 @@ mod tests {
             BorrowedMapWeights::Unit,
             values.clone(),
             config(),
+            None,
             &mut successful,
         )
         .expect("allocation audit baseline");
@@ -3887,6 +4154,7 @@ mod tests {
                 BorrowedMapWeights::Unit,
                 values.clone(),
                 config(),
+                None,
                 &mut injected,
             )
             .expect_err("injected allocation failure");
@@ -3902,6 +4170,7 @@ mod tests {
                 BorrowedMapWeights::Unit,
                 values.clone(),
                 config(),
+                None,
                 &mut undersized,
             )
             .expect_err("undersized allocation");

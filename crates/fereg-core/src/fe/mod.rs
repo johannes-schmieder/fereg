@@ -49,8 +49,8 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
     absorb_borrowed_intercept_map_retaining_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified, absorb_ols_schur_certified,
-    certify_borrowed_intercept_candidate, recover_borrowed_intercept_sd_lsmr_coefficients,
-    schur_ols_probe, schur_ols_workspace_bytes, BorrowedInterceptRecoveryMethod,
+    borrowed_cg_recovery_workspace_bytes, recover_borrowed_intercept_sd_lsmr_coefficients,
+    schur_ols_probe_with_workspace, schur_ols_workspace_bytes, BorrowedInterceptRecoveryMethod,
     BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS,
     FUSED_PARALLEL_MAX_RHS, OLS_SCHUR_MAX_CONTRACTION, OLS_SCHUR_MAX_ITERATIONS,
     OLS_SCHUR_PROBE_ITERATIONS, PARALLEL_DOT_CHUNK_ROWS, PARALLEL_PROJECTION_MIN_ROWS,
@@ -117,9 +117,13 @@ pub use topology_slope_map::{
     RecoveredCategoricalEffects,
 };
 pub(crate) use topology_slope_map::{
+    absorb_finalized_categorical_slope_map_with_budget_certified,
     recover_finalized_categorical_effects_cg_certified,
     recover_finalized_categorical_effects_from_coefficients_selected_certified,
     recover_finalized_categorical_effects_lsmr_certified,
-    recover_finalized_categorical_effects_sd_lsmr_certified,
+    recover_finalized_categorical_effects_sd_lsmr_certified, slope_map_workspace_bytes,
 };
 pub use topology_source::CategoricalTopologySource;
+
+#[cfg(test)]
+pub(crate) use borrowed_map::{certify_borrowed_intercept_candidate, schur_ols_probe};

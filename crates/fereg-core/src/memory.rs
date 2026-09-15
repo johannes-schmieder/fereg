@@ -4,6 +4,7 @@ use crate::options::MemoryMode;
 
 mod categorical_schwarz;
 mod owned_fe;
+mod workspace_peak;
 pub(crate) use categorical_schwarz::{
     categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
     CategoricalSchwarzMemoryEstimate,
@@ -11,6 +12,7 @@ pub(crate) use categorical_schwarz::{
 pub(crate) use owned_fe::{
     generic_fe_solver_bytes, owned_fe_matrix_bytes, OwnedFeDesignMemoryEstimate,
 };
+pub use workspace_peak::SolverWorkspacePeak;
 
 const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
 const LOW_MODE_TRANSPOSE_BUFFER_BYTES: u128 = 1024 * 1024;
@@ -51,6 +53,11 @@ pub struct FeSolverMemoryEstimate {
     pub lsmr_off_bytes: u128,
     pub lsmr_diagonal_bytes: u128,
     pub lsmr_schwarz_bytes: u128,
+    /// Owned operator and bounded lazy pools retained between RHS batches.
+    pub(crate) lsmr_off_retained_bytes: u128,
+    pub(crate) lsmr_diagonal_retained_bytes: u128,
+    pub(crate) lsmr_schwarz_retained_bytes: u128,
+    pub(crate) lsmr_result_metadata_bytes: u128,
     pub rhs_copy_bytes: u128,
     pub krylov_bytes: u128,
     pub topology_bytes: u128,
@@ -61,6 +68,16 @@ pub struct FeSolverMemoryEstimate {
 }
 
 impl FeSolverMemoryEstimate {
+    pub(crate) const fn lsmr_retained_bytes(self, preconditioner: LsmrPreconditioner) -> u128 {
+        match preconditioner {
+            LsmrPreconditioner::Off => self.lsmr_off_retained_bytes,
+            LsmrPreconditioner::Diagonal => self.lsmr_diagonal_retained_bytes,
+            LsmrPreconditioner::Schwarz | LsmrPreconditioner::Auto => {
+                self.lsmr_schwarz_retained_bytes
+            }
+        }
+    }
+
     #[must_use]
     pub const fn lsmr_bytes(self, preconditioner: LsmrPreconditioner) -> u128 {
         match preconditioner {
@@ -310,11 +327,18 @@ fn estimate_fe_solver_memory_for_channels(
         "solver thread-reduction bytes",
     )?;
     let scalar_rhs_bytes = checked_mul(rhs, 8 * 16, "CG scalar RHS workspace")?;
-    let coefficient_batch_bytes = checked_mul(
-        checked_mul(levels, rhs, "FE retained coefficient axis")?,
-        8,
-        "FE retained coefficient bytes",
-    )?;
+    let coefficient_batch_bytes = checked_sum(&[
+        checked_mul(
+            checked_mul(levels, rhs, "FE retained coefficient axis")?,
+            8,
+            "FE retained coefficient bytes",
+        )?,
+        checked_mul(
+            checked_sum(&[checked_mul(effects, 3, "FE coefficient layouts")?, 1])?,
+            std::mem::size_of::<usize>() as u128,
+            "FE coefficient layout bytes",
+        )?,
+    ])?;
     let cg_bytes = checked_sum(&[
         cg_matrix_bytes,
         group_workspace_bytes,
@@ -431,12 +455,39 @@ fn estimate_fe_solver_memory_for_channels(
         signed_cover,
     )?;
     let diagonal_bytes = checked_mul(levels, 16, "LSMR diagonal build and retained inverse")?;
-    let lsmr_off_bytes = checked_sum(&[common(off_krylov_bytes)?, schwarz.solver_frame_bytes])?;
+    let lsmr_off_retained_bytes = checked_sum(&[
+        schwarz.solver_frame_bytes,
+        checked_mul(effects, 128, "retained LSMR effect and layout metadata")?,
+    ])?;
+    let lsmr_diagonal_retained_bytes = checked_sum(&[lsmr_off_retained_bytes, diagonal_bytes])?;
+    let lsmr_schwarz_retained_bytes =
+        checked_sum(&[lsmr_off_retained_bytes, schwarz.retained_bytes])?;
+    // A retained operator survives conversion to row-major results and the
+    // fresh MAP certificate. Krylov work and these stages are sequential.
+    // Charge the coefficient bank even when the caller will discard it: the
+    // upstream batch returns it before conversion can release it.
+    let postprocess = |retained| -> Result<u128> {
+        let conversion = checked_sum(&[
+            checked_mul(matrix_bytes, 2, "LSMR result conversion banks")?,
+            coefficient_batch_bytes,
+        ])?;
+        let certification = checked_sum(&[
+            matrix_bytes,
+            coefficient_batch_bytes,
+            group_workspace_bytes,
+            scalar_rhs_bytes,
+            thread_reduction_bytes,
+        ])?;
+        checked_sum(&[retained, metadata_bytes, conversion.max(certification)])
+    };
+    let lsmr_off_bytes = checked_sum(&[common(off_krylov_bytes)?, schwarz.solver_frame_bytes])?
+        .max(postprocess(lsmr_off_retained_bytes)?);
     let lsmr_diagonal_bytes = checked_sum(&[
         common(krylov_bytes)?,
         schwarz.solver_frame_bytes,
         diagonal_bytes,
-    ])?;
+    ])?
+    .max(postprocess(lsmr_diagonal_retained_bytes)?);
     let topology_bytes = schwarz.build_peak_bytes;
     let schwarz_setup_peak = checked_sum(&[rhs_copy_bytes, topology_bytes, metadata_bytes])?;
     // The shared retained estimate charges up to four complete pooled objects.
@@ -452,7 +503,9 @@ fn estimate_fe_solver_memory_for_channels(
         schwarz.retained_bytes,
         schwarz_batch_apply_bytes,
     ])?;
-    let lsmr_schwarz_bytes = schwarz_setup_peak.max(schwarz_solve_peak);
+    let lsmr_schwarz_bytes = schwarz_setup_peak
+        .max(schwarz_solve_peak)
+        .max(postprocess(lsmr_schwarz_retained_bytes)?);
     let borrowed_code_copy_avoided_bytes = checked_sum(&[
         checked_mul(
             checked_mul(n, effects, "avoided FE codes")?,
@@ -476,6 +529,10 @@ fn estimate_fe_solver_memory_for_channels(
         lsmr_off_bytes,
         lsmr_diagonal_bytes,
         lsmr_schwarz_bytes,
+        lsmr_off_retained_bytes,
+        lsmr_diagonal_retained_bytes,
+        lsmr_schwarz_retained_bytes,
+        lsmr_result_metadata_bytes: metadata_bytes,
         rhs_copy_bytes,
         krylov_bytes,
         topology_bytes,

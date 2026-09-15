@@ -118,6 +118,37 @@ impl FinalizedCategoricalTopology {
         self.registry.validate_all(&views)
     }
 
+    /// Validation releases each re-factorized interaction before checking the
+    /// next source. Dense mappings are bounded by the displaced row ordering.
+    pub(crate) fn validation_workspace_bytes(&self) -> Result<u128> {
+        let view_bytes = std::mem::size_of::<CategoricalCodeView<'_>>() as u128;
+        let views = (self.compacted_sources.len() as u128)
+            .checked_mul(view_bytes)
+            .ok_or_else(|| allocation("categorical validation views overflow"))?;
+        let mut peak = 0;
+        for source in self.registry.sources() {
+            if source.partition().is_interaction() {
+                let component_views = (source.partition().categorical_source_indices().len()
+                    as u128)
+                    .checked_mul(view_bytes)
+                    .ok_or_else(|| allocation("categorical validation components overflow"))?;
+                let factorization = (source.nobs() as u128)
+                    .checked_mul(
+                        (std::mem::size_of::<usize>() + std::mem::size_of::<u32>()) as u128,
+                    )
+                    .ok_or_else(|| allocation("categorical validation factorization overflows"))?;
+                peak = peak.max(
+                    component_views
+                        .checked_add(factorization)
+                        .ok_or_else(|| allocation("categorical validation peak overflows"))?,
+                );
+            }
+        }
+        views
+            .checked_add(peak)
+            .ok_or_else(|| allocation("categorical validation workspace overflows"))
+    }
+
     fn source_views(&self) -> Result<Vec<CategoricalCodeView<'_>>> {
         let mut views = Vec::new();
         views

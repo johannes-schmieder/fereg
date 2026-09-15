@@ -49,8 +49,10 @@ an admitted MAP pilot can finish without reserving LSMR, and an unaffordable
 LSMR attempt can use the separately admitted existing CG continuation. LSMR
 planning includes slope-channel whitening and signed Schur covers while leaving
 the intercept-only model unchanged. See
-[ADR 0062](adr/0062-generic-owned-fe-memory-admission.md). Specialized slope MAP,
-recovery and public whole-action reporting remain separate accounting boundaries.
+[ADR 0062](adr/0062-generic-owned-fe-memory-admission.md). Specialized slope MAP
+also admits topology validation and numeric workspace before allocation, then
+checks their actual capacities. Recovery and public whole-action reporting
+remain separate accounting boundaries.
 
 Topology-selected CMG uses the same joint budget. Before hierarchy
 construction, fereg consumes CMG's upstream checked conservative estimate for
@@ -210,6 +212,15 @@ Public OLS selected-memory reporting still omits topology-specific solver
 increments; the source-bound development evidence does not close that gap or
 prove universal bounds for opaque upstream factor storage.
 
+Native solver reports carry a compact optional incremental workspace peak.
+Construction, failed attempts, retained operator state, lazy pools, coefficient
+conversion and fresh certification contribute to that peak. Storage retained
+across a nested call is added; sequential attempts contribute their maximum.
+Prepared OLS also propagates additional inference projections and discarded
+Schur attempts. An unmodeled attempt makes its enclosing report unmodeled; it
+cannot be reported as a zero-byte fallback. This internal report does not change
+the public base-memory fields or establish a complete action-memory model.
+
 PPML joint and checkpoint LSMR preflight also charges the pinned Schwarz
 builder's dense cross-tabulation scratch. Its dispatch depends on both the
 product of retained FE level counts and the sparse observation-count cost;
@@ -261,6 +272,17 @@ publication owns only the requested channels (and the authoritative absorbed
 predictor only when it was itself requested). Preflight and final planning use
 the same saved-channel and requested-output dimensions, so a saved intercept
 or slope cannot create an uncharged post-preflight vector.
+
+The retained full reporting-axis covariance, standard errors, test statistics
+and cluster/Wald identities coexist with final inference, recovery and
+publication workspaces. Each of those phase sums includes the retained result;
+the action envelope takes the maximum across the sequential phases. Saved-effect
+recovery additionally admits its owned CG or slope-MAP workspaces, component
+normalization, coefficient banks and complete-channel output construction.
+Partial saves still require the complete decomposition certificate. The final
+fit and prepared parent storage remain charged beside recovery. Recovery uses
+the worker count admitted by the accepted fit and rejects a team mismatch
+before allocating its workspace; all SPI calls remain on the caller thread.
 
 ## PPML separation memory
 

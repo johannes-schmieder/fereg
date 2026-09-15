@@ -408,7 +408,7 @@ impl PreparedCategoricalOlsData {
     ) -> Result<RecoveredCategoricalEffects> {
         self.validate()?;
         let effects = self.effect_views()?;
-        let recovery_memory = if memory_budget.is_some()
+        let recovery_memory = if !effects.is_empty()
             && effects
                 .iter()
                 .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
@@ -437,6 +437,18 @@ impl PreparedCategoricalOlsData {
             None
         };
         let fits = |bytes| memory_budget.is_none_or(|budget| budget.fits(bytes));
+        let mut attempted_peak = crate::memory::SolverWorkspacePeak::ZERO;
+        fn record_attempt(
+            peak: &mut crate::memory::SolverWorkspacePeak,
+            bytes: Option<u128>,
+        ) -> Result<()> {
+            *peak = peak.max(match bytes {
+                Some(bytes) => crate::memory::SolverWorkspacePeak::from_bytes(bytes)?,
+                None => crate::memory::SolverWorkspacePeak::UNMODELED,
+            });
+            Ok(())
+        }
+
         // A budget excludes only that attempted route. In particular, a valid
         // retained product or the bounded MAP fallback need not reserve an
         // unused Schwarz hierarchy. Each failed attempt drops its workspace
@@ -444,6 +456,10 @@ impl PreparedCategoricalOlsData {
         if let Some(coefficients) = retained
             .filter(|_| recovery_memory.is_none_or(|memory| fits(memory.retained_peak_bytes)))
         {
+            record_attempt(
+                &mut attempted_peak,
+                recovery_memory.map(|memory| memory.retained_peak_bytes),
+            )?;
             match recover_finalized_categorical_effects_from_coefficients_selected_certified(
                 &self.fe_topology,
                 &effects,
@@ -455,7 +471,7 @@ impl PreparedCategoricalOlsData {
                 known_connected,
                 materialize_absorbed_sum,
             ) {
-                Ok(recovered) => return Ok(recovered),
+                Ok(recovered) => return Ok(recovered.with_solver_workspace_peak(attempted_peak)),
                 Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
                     return Err(error);
                 }
@@ -468,6 +484,10 @@ impl PreparedCategoricalOlsData {
         {
             if effects.len() > 1 && recovery_memory.is_none_or(|memory| fits(memory.cg_peak_bytes))
             {
+                record_attempt(
+                    &mut attempted_peak,
+                    recovery_memory.map(|memory| memory.cg_peak_bytes),
+                )?;
                 match recover_finalized_categorical_effects_cg_certified(
                     &self.fe_topology,
                     &effects,
@@ -481,7 +501,9 @@ impl PreparedCategoricalOlsData {
                         ..categorical_slope_map_config(map)
                     },
                 ) {
-                    Ok(recovered) => return Ok(recovered),
+                    Ok(recovered) => {
+                        return Ok(recovered.with_solver_workspace_peak(attempted_peak))
+                    }
                     Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
                         return Err(error);
                     }
@@ -489,6 +511,10 @@ impl PreparedCategoricalOlsData {
                 }
             }
             if allow_lsmr && recovery_memory.is_none_or(|memory| fits(memory.sd_lsmr_peak_bytes)) {
+                record_attempt(
+                    &mut attempted_peak,
+                    recovery_memory.map(|memory| memory.sd_lsmr_peak_bytes),
+                )?;
                 match recover_finalized_categorical_effects_sd_lsmr_certified(
                     &self.fe_topology,
                     &effects,
@@ -498,7 +524,9 @@ impl PreparedCategoricalOlsData {
                     lsmr,
                     categorical_slope_map_config(map),
                 ) {
-                    Ok(recovered) => return Ok(recovered),
+                    Ok(recovered) => {
+                        return Ok(recovered.with_solver_workspace_peak(attempted_peak))
+                    }
                     Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
                         return Err(error);
                     }
@@ -507,6 +535,10 @@ impl PreparedCategoricalOlsData {
             }
         }
         if allow_lsmr && recovery_memory.is_none_or(|memory| fits(memory.lsmr_peak_bytes)) {
+            record_attempt(
+                &mut attempted_peak,
+                recovery_memory.map(|memory| memory.lsmr_peak_bytes),
+            )?;
             match recover_finalized_categorical_effects_lsmr_certified(
                 &self.fe_topology,
                 &effects,
@@ -516,7 +548,7 @@ impl PreparedCategoricalOlsData {
                 lsmr,
                 map.tolerance,
             ) {
-                Ok(recovered) => return Ok(recovered),
+                Ok(recovered) => return Ok(recovered.with_solver_workspace_peak(attempted_peak)),
                 Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
                     return Err(error);
                 }
@@ -532,6 +564,10 @@ impl PreparedCategoricalOlsData {
                 ),
             ));
         }
+        record_attempt(
+            &mut attempted_peak,
+            recovery_memory.map(|memory| memory.map_peak_bytes),
+        )?;
         recover_finalized_categorical_effects_map_certified(
             &self.fe_topology,
             &effects,
@@ -540,6 +576,7 @@ impl PreparedCategoricalOlsData {
             requested_channels,
             categorical_slope_map_config(map),
         )
+        .map(|recovered| recovered.with_solver_workspace_peak(attempted_peak))
     }
 
     /// Compute absorbed rank from the finalized interaction-aware topology.

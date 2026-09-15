@@ -494,6 +494,7 @@ fn cg_report(
 ) -> SolveReport {
     SolveReport {
         checkpoint_retries: 0,
+        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
         requested_solver: FeSolverKind::Cg,
         used_solver: FeSolverKind::Cg,
         iterations,
@@ -615,6 +616,7 @@ fn report(
 ) -> SolveReport {
     SolveReport {
         checkpoint_retries: 0,
+        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
         requested_solver: solver,
         used_solver: solver,
         iterations,

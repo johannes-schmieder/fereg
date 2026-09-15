@@ -18,16 +18,16 @@ use cmg::{
 
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget};
+use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget, SolverWorkspacePeak};
 use crate::options::ThreadConfig;
 
 use super::{
     absorb_borrowed_intercept_map_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified,
     borrowed_map::polish_borrowed_intercept_cg_with_reference_norms_certified,
-    certify_borrowed_intercept_candidate, retained_effect_order_by_levels,
-    BorrowedInterceptFeDesign, BorrowedMapWeights, CertifiedBorrowedMap, FeCoefficientBatch,
-    FeSolverKind, MapConfig, SolveReport, SolveStopReason,
+    retained_effect_order_by_levels, BorrowedInterceptFeDesign, BorrowedMapWeights,
+    CertifiedBorrowedMap, FeCoefficientBatch, FeSolverKind, MapConfig, SolveReport,
+    SolveStopReason,
 };
 
 pub(crate) const MAX_NUISANCE_COLUMNS: usize = 64;
@@ -315,6 +315,22 @@ pub(crate) struct CmgAbsorber<'a> {
     pending_setup_seconds: f64,
     pending_setup_metrics: CmgSolveMetrics,
     structural_constant_if_empty: bool,
+    memory: CmgWorkspacePlan,
+}
+
+// The projection envelope excludes the variable-width coefficient output;
+// construction retains the exact preflight quantity used for admission.
+#[derive(Clone, Copy)]
+struct CmgWorkspacePlan {
+    construction: SolverWorkspacePeak,
+    projection: SolverWorkspacePeak,
+}
+
+impl CmgWorkspacePlan {
+    const EMPTY: Self = Self {
+        construction: SolverWorkspacePeak::ZERO,
+        projection: SolverWorkspacePeak::ZERO,
+    };
 }
 
 /// Private outcome of post-topology automatic CMG setup. A rejected hierarchy
@@ -902,14 +918,42 @@ impl<'a> CmgAbsorber<'a> {
         config: CmgConfig,
         structural_constant_if_empty: bool,
     ) -> Result<Self> {
+        let mut attempted_peak = SolverWorkspacePeak::ZERO;
+        Self::build_with_workspace(
+            design,
+            weights,
+            config,
+            structural_constant_if_empty,
+            &mut attempted_peak,
+        )
+    }
+
+    pub(crate) fn build_with_workspace(
+        design: BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'a>,
+        config: CmgConfig,
+        structural_constant_if_empty: bool,
+        attempted_peak: &mut SolverWorkspacePeak,
+    ) -> Result<Self> {
         let profile = CmgTopologyProfile::analyze(&design)?;
-        Self::build_profiled(
+        match Self::build_profiled_internal(
             design,
             weights,
             config,
             structural_constant_if_empty,
             profile,
-        )
+            false,
+            None,
+            true,
+            None,
+            attempted_peak,
+        )? {
+            CmgAutoBuildOutcome::Ready(session) => Ok(session),
+            CmgAutoBuildOutcome::HierarchyRejected { .. }
+            | CmgAutoBuildOutcome::DirectCgPreferred { .. } => {
+                unreachable!("unguarded CMG setup cannot reject a hierarchy")
+            }
+        }
     }
 
     /// Build the PPML-only unpolished session from a topology prepared before
@@ -923,6 +967,7 @@ impl<'a> CmgAbsorber<'a> {
         prepared: &mut PreparedCmgTopology,
     ) -> Result<Self> {
         let profile = CmgTopologyProfile::analyze(&design)?;
+        let mut attempted_peak = SolverWorkspacePeak::ZERO;
         match Self::build_profiled_internal(
             design,
             weights,
@@ -933,6 +978,7 @@ impl<'a> CmgAbsorber<'a> {
             None,
             false,
             Some(prepared),
+            &mut attempted_peak,
         )? {
             CmgAutoBuildOutcome::Ready(session) => Ok(session),
             CmgAutoBuildOutcome::HierarchyRejected { .. }
@@ -949,6 +995,7 @@ impl<'a> CmgAbsorber<'a> {
         structural_constant_if_empty: bool,
         profile: CmgTopologyProfile,
     ) -> Result<Self> {
+        let mut attempted_peak = SolverWorkspacePeak::ZERO;
         match Self::build_profiled_internal(
             design,
             weights,
@@ -959,6 +1006,7 @@ impl<'a> CmgAbsorber<'a> {
             None,
             true,
             None,
+            &mut attempted_peak,
         )? {
             CmgAutoBuildOutcome::Ready(session) => Ok(session),
             CmgAutoBuildOutcome::HierarchyRejected { .. }
@@ -975,6 +1023,7 @@ impl<'a> CmgAbsorber<'a> {
         structural_constant_if_empty: bool,
         profile: CmgTopologyProfile,
         initial_rhs_columns: usize,
+        attempted_peak: &mut SolverWorkspacePeak,
     ) -> Result<CmgAutoBuildOutcome<'a>> {
         if config.requested_solver != FeSolverKind::Auto {
             return Err(invalid_argument(
@@ -996,6 +1045,7 @@ impl<'a> CmgAbsorber<'a> {
             Some(initial_rhs_columns),
             true,
             None,
+            attempted_peak,
         )
     }
 
@@ -1010,10 +1060,12 @@ impl<'a> CmgAbsorber<'a> {
         initial_rhs_columns: Option<usize>,
         retain_setup_failure: bool,
         prepared: Option<&mut PreparedCmgTopology>,
+        attempted_peak: &mut SolverWorkspacePeak,
     ) -> Result<CmgAutoBuildOutcome<'a>> {
         validate_config(config)?;
         let weight_scale = validate_weights(weights, design.nobs())?;
         let setup_started = Instant::now();
+        let mut memory = CmgWorkspacePlan::EMPTY;
         let route = if design.effects().len() < 2 {
             CmgRoute::Direct
         } else {
@@ -1025,18 +1077,24 @@ impl<'a> CmgAbsorber<'a> {
                         "prepared PPML CMG cannot use the OLS automatic hierarchy guard",
                     ));
                 }
-                preflight_prepared_cmg_memory(&design, &profile, config, prepared).and_then(|()| {
-                    build_prepared_graph_route(
-                        &design,
-                        weights,
-                        weight_scale,
-                        config,
-                        &profile,
-                        prepared,
-                    )
-                })
+                preflight_prepared_cmg_memory(&design, &profile, config, prepared).and_then(
+                    |plan| {
+                        memory = plan;
+                        *attempted_peak = attempted_peak.max(plan.construction);
+                        build_prepared_graph_route(
+                            &design,
+                            weights,
+                            weight_scale,
+                            config,
+                            &profile,
+                            prepared,
+                        )
+                    },
+                )
             } else {
-                preflight_cmg_memory(&design, &profile, config).and_then(|()| {
+                preflight_cmg_memory(&design, &profile, config).and_then(|plan| {
+                    memory = plan;
+                    *attempted_peak = attempted_peak.max(plan.construction);
                     build_graph_route(
                         &design,
                         weights,
@@ -1087,6 +1145,7 @@ impl<'a> CmgAbsorber<'a> {
             pending_setup_seconds: setup_started.elapsed().as_secs_f64(),
             pending_setup_metrics,
             structural_constant_if_empty,
+            memory,
         }))
     }
 
@@ -1187,6 +1246,24 @@ impl<'a> CmgAbsorber<'a> {
         })
     }
 
+    fn retained_workspace_peak(&self) -> Result<SolverWorkspacePeak> {
+        match &self.route {
+            CmgRoute::Graph(graph)
+                if matches!(graph.workspace, GraphCmgWorkspace::OwnedResults(_)) =>
+            {
+                SolverWorkspacePeak::from_bytes(cmg_exact_retained_workspace_bytes(
+                    graph,
+                    self.config,
+                    None,
+                )?)
+            }
+            CmgRoute::Direct | CmgRoute::Failed(_) => Ok(SolverWorkspacePeak::ZERO),
+            // Prepared PPML topology and caller buffers require their parent
+            // action carrier; they do not enter owned OLS absorption.
+            _ => Ok(SolverWorkspacePeak::UNMODELED),
+        }
+    }
+
     /// Residualize one owned matrix. Failure never exposes a partially updated
     /// matrix to the caller; a valid partial CMG projection can still seed the
     /// existing certified CG fallback.
@@ -1200,7 +1277,13 @@ impl<'a> CmgAbsorber<'a> {
         if values.as_slice().iter().any(|value| !value.is_finite()) {
             return Err(invalid_data("CMG input values must be finite"));
         }
-        let reference_norms = weighted_column_norms(&values, self.weights, self.weight_scale)?;
+        let (reference_norms, norm_workspace) =
+            weighted_column_norms(&values, self.weights, self.weight_scale)?;
+        let norm_peak = match self.retained_workspace_peak()?.bytes() {
+            Some(bytes) => norm_workspace.with_retained(bytes as u128)?,
+            None => SolverWorkspacePeak::UNMODELED,
+        };
+        let norm_bytes = reference_norms.capacity() as u128 * 8;
         let norm_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
         let setup_seconds = std::mem::take(&mut self.pending_setup_seconds);
         let setup_metrics = std::mem::take(&mut self.pending_setup_metrics);
@@ -1222,6 +1305,11 @@ impl<'a> CmgAbsorber<'a> {
                 )?
             };
             let (residualized, mut report, coefficients) = direct.into_full_parts();
+            report.solver_workspace_peak = self
+                .memory
+                .construction
+                .max(report.solver_workspace_peak.with_retained(norm_bytes)?)
+                .max(norm_peak);
             report.requested_solver = self.config.requested_solver;
             report.setup_seconds += setup_seconds;
             return if let Some(coefficients) = coefficients {
@@ -1245,6 +1333,11 @@ impl<'a> CmgAbsorber<'a> {
                 &reference_norms,
             )?;
             let (residualized, mut report) = fallback.into_parts();
+            report.solver_workspace_peak = self
+                .memory
+                .construction
+                .max(report.solver_workspace_peak.with_retained(norm_bytes)?)
+                .max(norm_peak);
             report.requested_solver = self.config.requested_solver;
             report.used_solver = FeSolverKind::Cg;
             report.fallback_used = true;
@@ -1273,6 +1366,11 @@ impl<'a> CmgAbsorber<'a> {
 
         match bulk {
             Ok((mut metrics, coefficients)) => {
+                let coefficient_bytes = coefficients
+                    .as_ref()
+                    .map_or(0, FeCoefficientBatch::retained_bytes);
+                let graph_retained = self.retained_workspace_peak()?;
+                let bulk_peak = self.memory.projection.with_retained(coefficient_bytes)?;
                 metrics.include_from(setup_metrics);
                 let polished = polish_borrowed_intercept_cg_with_reference_norms_certified(
                     &self.design,
@@ -1288,6 +1386,17 @@ impl<'a> CmgAbsorber<'a> {
                         solve_started.elapsed().as_secs_f64() - bulk_seconds,
                     );
                 }
+                let polish_peak = match graph_retained.bytes() {
+                    Some(bytes) => report
+                        .solver_workspace_peak
+                        .with_retained(bytes as u128 + coefficient_bytes)?,
+                    None => SolverWorkspacePeak::UNMODELED,
+                };
+                report.solver_workspace_peak = self
+                    .memory
+                    .construction
+                    .max(bulk_peak.max(polish_peak).with_retained(norm_bytes)?)
+                    .max(norm_peak);
                 let polish_iterations = report.iterations;
                 report.requested_solver = self.config.requested_solver;
                 report.used_solver = FeSolverKind::Cmg;
@@ -1314,6 +1423,13 @@ impl<'a> CmgAbsorber<'a> {
             }
             Err(error) => {
                 ensure_cg_fallback_fits(&self.design, candidate.ncols(), self.config)?;
+                // The failed bulk has released its temporary arrays before
+                // CG. Conservatively retain its admitted projection envelope.
+                let bulk_peak = if self.config.retain_coefficients {
+                    SolverWorkspacePeak::UNMODELED
+                } else {
+                    self.memory.projection
+                };
                 let failure = error.to_string();
                 self.route = CmgRoute::Failed(failure.clone());
                 let fallback = polish_borrowed_intercept_cg_with_reference_norms_certified(
@@ -1324,6 +1440,15 @@ impl<'a> CmgAbsorber<'a> {
                     &reference_norms,
                 )?;
                 let (residualized, mut report) = fallback.into_parts();
+                report.solver_workspace_peak = self
+                    .memory
+                    .construction
+                    .max(
+                        bulk_peak
+                            .max(report.solver_workspace_peak)
+                            .with_retained(norm_bytes)?,
+                    )
+                    .max(norm_peak);
                 report.requested_solver = self.config.requested_solver;
                 report.used_solver = FeSolverKind::Cg;
                 report.fallback_used = true;
@@ -1355,12 +1480,23 @@ impl<'a> CmgAbsorber<'a> {
         }
         let mut config = self.config;
         config.map.tolerance = config.map.tolerance.min(tolerance);
-        let certificate =
-            certify_borrowed_intercept_candidate(&self.design, self.weights, &values, config.map)?;
+        let retained = self.retained_workspace_peak()?;
+        let (certificate, certificate_workspace) =
+            super::borrowed_map::certify_borrowed_intercept_candidate_with_workspace(
+                &self.design,
+                self.weights,
+                &values,
+                config.map,
+            )?;
+        let certificate_peak = match retained.bytes() {
+            Some(bytes) => certificate_workspace.with_retained(bytes as u128)?,
+            None => SolverWorkspacePeak::UNMODELED,
+        };
         if !certificate.passed {
             drop(self.route);
             ensure_cg_fallback_fits(&self.design, values.ncols(), config)?;
-            let reference_norms = weighted_column_norms(&values, self.weights, self.weight_scale)?;
+            let (reference_norms, norm_peak) =
+                weighted_column_norms(&values, self.weights, self.weight_scale)?;
             let corrected = polish_borrowed_intercept_cg_with_reference_norms_certified(
                 &self.design,
                 self.weights,
@@ -1369,6 +1505,15 @@ impl<'a> CmgAbsorber<'a> {
                 &reference_norms,
             )?;
             let (residualized, mut report) = corrected.into_parts();
+            let correction_peak = report
+                .solver_workspace_peak
+                .with_retained(reference_norms.capacity() as u128 * 8)?;
+            report.solver_workspace_peak = self
+                .memory
+                .construction
+                .max(certificate_peak)
+                .max(correction_peak)
+                .max(norm_peak);
             report.requested_solver = config.requested_solver;
             report.used_solver = FeSolverKind::Cg;
             report.fallback_used = true;
@@ -1383,6 +1528,7 @@ impl<'a> CmgAbsorber<'a> {
             values,
             SolveReport {
                 checkpoint_retries: 0,
+                solver_workspace_peak: self.memory.construction.max(certificate_peak),
                 requested_solver: self.config.requested_solver,
                 used_solver: FeSolverKind::Cmg,
                 iterations: 0,
@@ -2264,10 +2410,7 @@ fn preflight_cmg_memory(
     design: &BorrowedInterceptFeDesign<'_>,
     profile: &CmgTopologyProfile,
     config: CmgConfig,
-) -> Result<()> {
-    let Some(budget) = config.solver_memory_budget else {
-        return Ok(());
-    };
+) -> Result<CmgWorkspacePlan> {
     let parallel = ParallelOptions {
         threads: config.threads.resolved(),
         ..ParallelOptions::default()
@@ -2318,8 +2461,14 @@ fn preflight_cmg_memory(
         .and_then(|value| value.checked_add(nuisance_projection as u128))
         .and_then(|value| value.checked_add(retained_coefficients as u128))
         .ok_or_else(|| allocation("CMG complete memory estimate overflows"))?;
-    if budget.fits(required) {
-        Ok(())
+    if config
+        .solver_memory_budget
+        .is_none_or(|budget| budget.fits(required))
+    {
+        Ok(CmgWorkspacePlan {
+            construction: SolverWorkspacePeak::from_bytes(required)?,
+            projection: SolverWorkspacePeak::from_bytes(required - retained_coefficients as u128)?,
+        })
     } else {
         Err(allocation(format!(
             "CMG requires {required} incremental bytes and does not fit the joint execution/solver memory plan"
@@ -2332,11 +2481,8 @@ fn preflight_prepared_cmg_memory(
     profile: &CmgTopologyProfile,
     config: CmgConfig,
     prepared: &PreparedCmgTopology,
-) -> Result<()> {
+) -> Result<CmgWorkspacePlan> {
     prepared.ensure_matches(design, profile)?;
-    let Some(budget) = config.solver_memory_budget else {
-        return Ok(());
-    };
     let problem = CmgProblemSize {
         vertices: prepared.topology.vertex_count(),
         input_edges: prepared.topology.input_edge_count(),
@@ -2344,8 +2490,17 @@ fn preflight_prepared_cmg_memory(
         right_hand_sides: config.batch_size,
     };
     let required = conservative_prepared_cmg_frame_bytes(design, profile, config, problem)?;
-    if budget.fits(required) {
-        Ok(())
+    if config
+        .solver_memory_budget
+        .is_none_or(|budget| budget.fits(required))
+    {
+        // Prepared PPML does not retain an OLS coefficient output. Its
+        // separately owned topology remains charged by the PPML caller.
+        let peak = SolverWorkspacePeak::from_bytes(required)?;
+        Ok(CmgWorkspacePlan {
+            construction: peak,
+            projection: peak,
+        })
     } else {
         Err(allocation(format!(
             "prepared CMG requires {required} incremental bytes and does not fit the joint execution/solver memory plan"
@@ -2536,6 +2691,21 @@ fn ensure_cmg_exact_retained_memory_fits(
     let Some(budget) = config.solver_memory_budget else {
         return Ok(());
     };
+    let required = cmg_exact_retained_workspace_bytes(graph, config, prepared)?;
+    if budget.fits(required) {
+        Ok(())
+    } else {
+        Err(allocation(format!(
+            "CMG retained hierarchy and workspace require {required} incremental bytes and do not fit the joint execution/solver memory plan"
+        )))
+    }
+}
+
+fn cmg_exact_retained_workspace_bytes(
+    graph: &GraphCmg,
+    config: CmgConfig,
+    prepared: Option<&PreparedCmgTopology>,
+) -> Result<u128> {
     let upstream_bytes = match &graph.workspace {
         GraphCmgWorkspace::OwnedResults(workspace) => {
             graph.solver.memory_report(workspace).total_retained_bytes() as u128
@@ -2590,13 +2760,7 @@ fn ensure_cmg_exact_retained_memory_fits(
     let required = upstream_bytes
         .checked_add(nuisance_bytes as u128)
         .ok_or_else(|| allocation("CMG exact retained-memory report overflows"))?;
-    if budget.fits(required) {
-        Ok(())
-    } else {
-        Err(allocation(format!(
-            "CMG retained hierarchy and workspace require {required} incremental bytes and do not fit the joint execution/solver memory plan"
-        )))
-    }
+    Ok(required)
 }
 
 fn nuisance_projection_workspace_bytes(
@@ -3100,7 +3264,7 @@ fn weighted_column_norms(
     values: &DenseMatrix,
     weights: BorrowedMapWeights<'_>,
     weight_scale: f64,
-) -> Result<Vec<f64>> {
+) -> Result<(Vec<f64>, SolverWorkspacePeak)> {
     let mut scales = zero_vec(values.ncols(), "unable to reserve CMG column scales")?;
     for row in 0..values.nrows() {
         for column in 0..values.ncols() {
@@ -3131,7 +3295,10 @@ fn weighted_column_norms(
             return Err(invalid_data("CMG reference norm is nonfinite"));
         }
     }
-    Ok(sums)
+    let peak = SolverWorkspacePeak::from_bytes(
+        (scales.capacity() as u128 + sums.capacity() as u128 + corrections.capacity() as u128) * 8,
+    )?;
+    Ok((sums, peak))
 }
 
 struct PivotedPsdFactor {
@@ -3430,6 +3597,7 @@ fn allocation(message: impl Into<String>) -> FeregError {
 
 #[cfg(test)]
 mod tests {
+    use super::super::certify_borrowed_intercept_candidate;
     use super::*;
     use crate::fe::{absorb_borrowed_intercept_cg_certified, BorrowedInterceptEffect, LevelIndex};
 
@@ -3832,7 +4000,15 @@ mod tests {
         let mixed_profile = CmgTopologyProfile::analyze(&mixed_design).expect("mixed profile");
         assert!(mixed_profile.auto_favorable());
         let mut auto_config = config(5);
+        auto_config.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: 1 << 40,
+        });
         auto_config.requested_solver = FeSolverKind::Auto;
+        let expected = preflight_cmg_memory(&mixed_design, &mixed_profile, auto_config)
+            .unwrap()
+            .construction;
+        let mut attempted_peak = SolverWorkspacePeak::ZERO;
         assert!(matches!(
             CmgAbsorber::build_profiled_auto_guarded(
                 mixed_design,
@@ -3841,10 +4017,13 @@ mod tests {
                 false,
                 mixed_profile,
                 5,
+                &mut attempted_peak,
             )
             .expect("guarded mixed setup"),
             CmgAutoBuildOutcome::HierarchyRejected { .. }
         ));
+        assert_eq!(attempted_peak, expected);
+        assert!(attempted_peak.bytes().unwrap() > 0);
 
         let (tiny_worker, tiny_firm) = build_codes(1_100, true);
         let tiny_worker_index =
@@ -3867,6 +4046,7 @@ mod tests {
                 false,
                 tiny_profile,
                 5,
+                &mut attempted_peak,
             )
             .expect("guarded all-tiny setup"),
             CmgAutoBuildOutcome::Ready(_)
@@ -4980,6 +5160,318 @@ mod tests {
         };
         assert_eq!(error.code, ErrorCode::Allocation);
         assert!(error.message.contains("joint execution/solver memory plan"));
+    }
+
+    #[test]
+    fn cmg_workspace_failed_nuisance_construction_retains_its_admitted_attempt() {
+        let n = 6000;
+        let worker = (0..n).map(|row| (row / 3) as u32).collect::<Vec<_>>();
+        let firm = (0..n)
+            .map(|row| ((row / 3 * 7 + row % 3 * 13) % 200) as u32)
+            .collect::<Vec<_>>();
+        let nuisance = (0..n)
+            .map(|row| ((row / 7 + row % 3) % 3) as u32)
+            .collect::<Vec<_>>();
+        let wi = LevelIndex::from_codes(&worker, 2000).unwrap();
+        let fi = LevelIndex::from_codes(&firm, 200).unwrap();
+        let ni = LevelIndex::from_codes(&nuisance, 3).unwrap();
+        let design = BorrowedInterceptFeDesign::new(
+            n,
+            vec![
+                effect(&worker, 2000, &wi),
+                effect(&firm, 200, &fi),
+                effect(&nuisance, 3, &ni),
+            ],
+        )
+        .unwrap();
+        let profile = CmgTopologyProfile::analyze(&design).unwrap();
+        let mut options = config(2);
+        options.map.max_iterations = 1;
+        options.requested_solver = FeSolverKind::Auto;
+        let unbounded = preflight_cmg_memory(&design, &profile, options).unwrap();
+        options.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 512,
+            usable_bytes: 1 << 30,
+        });
+        let expected = preflight_cmg_memory(&design, &profile, options)
+            .unwrap()
+            .construction;
+        assert_eq!(unbounded.construction, expected);
+        assert!(unbounded.projection.bytes().is_some());
+        let mut attempted = SolverWorkspacePeak::ZERO;
+        let result = CmgAbsorber::build_profiled_internal(
+            design,
+            BorrowedMapWeights::Unit,
+            options,
+            false,
+            profile,
+            false,
+            None,
+            false,
+            None,
+            &mut attempted,
+        );
+        match result {
+            Err(error) => assert_eq!(error.code, ErrorCode::NonConvergence, "{}", error.message),
+            Ok(_) => panic!("one-iteration nuisance construction unexpectedly succeeded"),
+        }
+        assert_eq!(attempted, expected);
+        assert!(attempted.bytes().unwrap() > 0);
+    }
+
+    #[test]
+    fn cmg_workspace_report_observes_lazy_pool_growth() {
+        let n = 400;
+        let left = (0..n).map(|row| (row % 20) as u32).collect::<Vec<_>>();
+        let right = (0..n)
+            .map(|row| ((row / 20) % 10) as u32)
+            .collect::<Vec<_>>();
+        let li = LevelIndex::from_codes(&left, 20).unwrap();
+        let ri = LevelIndex::from_codes(&right, 10).unwrap();
+        let design = BorrowedInterceptFeDesign::new(
+            n,
+            vec![effect(&left, 20, &li), effect(&right, 10, &ri)],
+        )
+        .unwrap();
+        let mut options = config(4);
+        options.threads = ThreadConfig::from_requested(4, true).unwrap();
+        options.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: 1 << 30,
+        });
+        let mut session =
+            CmgAbsorber::build(design, BorrowedMapWeights::Unit, options, false).unwrap();
+        let before = session.retained_workspace_peak().unwrap().bytes().unwrap();
+        match &session.route {
+            CmgRoute::Graph(graph) => match &graph.workspace {
+                GraphCmgWorkspace::OwnedResults(pool) => assert_eq!(pool.workspace_count(), 1),
+                _ => panic!("expected owned workspace pool"),
+            },
+            _ => panic!("expected CMG graph"),
+        }
+        let values = DenseMatrix::from_columns(
+            &(0..4)
+                .map(|rhs| {
+                    (0..n)
+                        .map(|row| {
+                            (rhs + 1) as f64
+                                * ((row % 20) as f64 + if row < 200 { -1.0 } else { 1.0 })
+                        })
+                        .collect()
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap();
+        let result = session.absorb(values).unwrap();
+        let after = session.retained_workspace_peak().unwrap().bytes().unwrap();
+        assert!(after > before);
+        match &session.route {
+            CmgRoute::Graph(graph) => match &graph.workspace {
+                GraphCmgWorkspace::OwnedResults(pool) => assert_eq!(pool.workspace_count(), 4),
+                _ => panic!("expected owned workspace pool"),
+            },
+            _ => panic!("expected CMG graph"),
+        }
+        assert!(result.report().solver_workspace_peak.bytes().unwrap() >= after);
+        for row in 0..n {
+            for rhs in 0..4 {
+                assert!(
+                    (result.residualized()[(row, rhs)]
+                        - (rhs + 1) as f64 * if row < 200 { -1.0 } else { 1.0 })
+                    .abs()
+                        < 1e-10
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn cmg_workspace_preflight_rejection_does_not_charge_an_unallocated_attempt() {
+        let left = [0, 0, 1, 1];
+        let right = [0, 1, 0, 1];
+        let li = LevelIndex::from_codes(&left, 2).unwrap();
+        let ri = LevelIndex::from_codes(&right, 2).unwrap();
+        let design =
+            BorrowedInterceptFeDesign::new(4, vec![effect(&left, 2, &li), effect(&right, 2, &ri)])
+                .unwrap();
+        let profile = CmgTopologyProfile::analyze(&design).unwrap();
+        let mut options = config(1);
+        options.requested_solver = FeSolverKind::Auto;
+        options.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 512,
+            usable_bytes: 513,
+        });
+        let mut attempted = SolverWorkspacePeak::ZERO;
+        let result = CmgAbsorber::build_profiled_auto_guarded(
+            design,
+            BorrowedMapWeights::Unit,
+            options,
+            false,
+            profile,
+            1,
+            &mut attempted,
+        );
+        assert!(matches!(
+            result,
+            Err(FeregError {
+                code: ErrorCode::Allocation,
+                ..
+            })
+        ));
+        assert_eq!(attempted, SolverWorkspacePeak::ZERO);
+    }
+
+    #[test]
+    fn cmg_workspace_retained_polish_and_released_final_correction_have_different_peaks() {
+        let n = 4 * 3 * 128;
+        let left = (0..n).map(|row| (row % 4) as u32).collect::<Vec<_>>();
+        let right = (0..n).map(|row| ((row / 4) % 3) as u32).collect::<Vec<_>>();
+        let li = LevelIndex::from_codes(&left, 4).unwrap();
+        let ri = LevelIndex::from_codes(&right, 3).unwrap();
+        let design = || {
+            BorrowedInterceptFeDesign::new(n, vec![effect(&left, 4, &li), effect(&right, 3, &ri)])
+                .unwrap()
+        };
+        let noise = (0..n)
+            .map(|row| if (row / 12) % 2 == 0 { -1.0 } else { 1.0 })
+            .collect::<Vec<_>>();
+        let mut options = config(2);
+        options.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 512,
+            usable_bytes: 1 << 30,
+        });
+        options.retain_coefficients = true;
+        let input = DenseMatrix::from_columns(
+            &(0..5)
+                .map(|rhs| {
+                    (0..n)
+                        .map(|row| {
+                            (rhs + 1) as f64
+                                * (noise[row] + left[row] as f64 + 0.5 * right[row] as f64)
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap();
+        let mut session =
+            CmgAbsorber::build(design(), BorrowedMapWeights::Unit, options, false).unwrap();
+        let construction = session.memory.construction.bytes().unwrap();
+        let before = session.retained_workspace_peak().unwrap().bytes().unwrap();
+        let result = session.absorb(input).unwrap();
+        assert_eq!(result.report().used_solver, FeSolverKind::Cmg);
+        assert!(result.report().certified());
+        let after = session.retained_workspace_peak().unwrap().bytes().unwrap();
+        assert!(after >= before);
+        let (within, report, coefficients) = result.into_full_parts();
+        let coefficients = coefficients.expect("exact crossed projection retains coefficients");
+        assert_eq!(coefficients.rhs_count(), 5); // Wider than the admitted CMG batch.
+        let (norms, _) = weighted_column_norms(&within, BorrowedMapWeights::Unit, 1.0).unwrap();
+        let polish = polish_borrowed_intercept_cg_with_reference_norms_certified(
+            &design(),
+            BorrowedMapWeights::Unit,
+            within.clone(),
+            options.map,
+            &norms,
+        )
+        .unwrap();
+        assert_eq!(polish.report().iterations, 0);
+        let retained_polish = after
+            + coefficients.retained_bytes() as u64
+            + 5 * 8
+            + polish.report().solver_workspace_peak.bytes().unwrap();
+        assert!(report.solver_workspace_peak.bytes().unwrap() >= construction.max(retained_polish));
+        assert_coefficients_reconstruct(
+            &DenseMatrix::from_columns(
+                &(0..5)
+                    .map(|rhs| {
+                        (0..n)
+                            .map(|row| {
+                                (rhs + 1) as f64
+                                    * (noise[row] + left[row] as f64 + 0.5 * right[row] as f64)
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .unwrap(),
+            &within,
+            &[&left, &right],
+            &coefficients,
+            1e-10,
+        );
+
+        let mut terminal =
+            CmgAbsorber::build(design(), BorrowedMapWeights::Unit, options, false).unwrap();
+        terminal.memory = CmgWorkspacePlan::EMPTY;
+        let terminal_retained = terminal.retained_workspace_peak().unwrap().bytes().unwrap();
+        let (certificate, workspace) =
+            super::super::borrowed_map::certify_borrowed_intercept_candidate_with_workspace(
+                &design(),
+                BorrowedMapWeights::Unit,
+                &within,
+                options.map,
+            )
+            .unwrap();
+        assert!(certificate.passed);
+        let terminal_result = terminal
+            .absorb_final_residual(within.clone(), options.map.tolerance)
+            .unwrap();
+        assert_eq!(
+            terminal_result.report().solver_workspace_peak.bytes(),
+            Some(terminal_retained + workspace.bytes().unwrap())
+        );
+        assert_eq!(terminal_result.residualized(), &within);
+        assert_eq!(terminal_result.report().iterations, 0);
+        assert!(!terminal_result.report().fallback_used);
+
+        // Isolate the final phase after construction has already been reported.
+        // This test does not change the production admission decision.
+        session.memory = CmgWorkspacePlan::EMPTY;
+        let input = DenseMatrix::from_columns(&[(0..n)
+            .map(|row| noise[row] + if left[row] == 0 { 2e-9 } else { 0.0 })
+            .collect()])
+        .unwrap();
+        let mut strict = options.map;
+        strict.tolerance = 1e-12;
+        let (cert, cert_work) =
+            super::super::borrowed_map::certify_borrowed_intercept_candidate_with_workspace(
+                &design(),
+                BorrowedMapWeights::Unit,
+                &input,
+                strict,
+            )
+            .unwrap();
+        assert!(!cert.passed);
+        let (norms, norm_work) =
+            weighted_column_norms(&input, BorrowedMapWeights::Unit, 1.0).unwrap();
+        let reference = polish_borrowed_intercept_cg_with_reference_norms_certified(
+            &design(),
+            BorrowedMapWeights::Unit,
+            input.clone(),
+            strict,
+            &norms,
+        )
+        .unwrap();
+        assert!(reference.report().iterations > 0);
+        let correction =
+            reference.report().solver_workspace_peak.bytes().unwrap() + norms.capacity() as u64 * 8;
+        let expected = (after + cert_work.bytes().unwrap())
+            .max(correction)
+            .max(norm_work.bytes().unwrap());
+        assert!(
+            expected < after + correction,
+            "the released hierarchy must not be added to CG"
+        );
+        let result = session.absorb_final_residual(input, 1e-12).unwrap();
+        assert_eq!(
+            result.report().solver_workspace_peak.bytes(),
+            Some(expected)
+        );
+        assert!(result.report().fallback_used);
+        for (residual, expected) in result.residualized().as_slice().iter().zip(noise) {
+            assert!((residual - expected).abs() < 1e-12);
+        }
     }
 
     #[test]

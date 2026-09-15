@@ -1717,6 +1717,78 @@ mod tests {
     }
 
     #[test]
+    fn score_reconstruction_retains_its_separate_solver_memory_report() {
+        let rows = 48;
+        let groups = (0..rows).map(|r| (r / 6) as f64).collect::<Vec<_>>();
+        let x1 = (0..rows)
+            .map(|r| (r as f64 * 0.31).sin())
+            .collect::<Vec<_>>();
+        let x2 = (0..rows)
+            .map(|r| (r as f64 * 0.71).cos())
+            .collect::<Vec<_>>();
+        let weights = (0..rows).map(|r| 0.5 + (r % 5) as f64).collect::<Vec<_>>();
+        let y = (0..rows)
+            .map(|r| 1.7 * x1[r] - 0.4 * x2[r] + groups[r] + 0.07 * (r as f64 * 1.13).sin())
+            .collect::<Vec<_>>();
+        for test_weights in [TestWeights::Unit, TestWeights::Analytic(&weights)] {
+            let prepared = prepared(
+                &y,
+                &[x1.clone(), x2.clone()],
+                Some(&groups),
+                true,
+                test_weights,
+            );
+            for mode in [
+                super::super::PreparedOlsExecutionMode::Fast,
+                super::super::PreparedOlsExecutionMode::Low,
+            ] {
+                let mut config = PreparedOlsRobustConfig::default();
+                config.fit.execution.mode = mode;
+                config.fit.execution.poolsize = 1;
+                config.fit.absorb.solver = crate::fe::FeSolverKind::Map;
+                let expected = fit_prepared_ols_robust_map(&prepared, config).unwrap();
+                let mut fit =
+                    fit_prepared_ols_coefficients_view_map(&prepared, config.fit).unwrap();
+                // Exercise the uncached branch even when this finite solve
+                // can retain its ordinary fast-inference score bank.
+                let generated = fit.kept_generated_columns().to_vec();
+                drop(fit.take_fast_score_cache(&generated));
+                let initial_peak = fit.solver_workspace_peak().bytes();
+                let absorbed =
+                    compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
+                // Reconstruct scores with a separate solver session, while the
+                // coefficient fit keeps its original reports and numerical state.
+                config.fit.absorb.solver = crate::fe::FeSolverKind::Lsmr;
+                config.fit.absorb.lsmr.tolerance = 1e-12;
+                let result = compose_internal(
+                    &prepared,
+                    fit,
+                    absorbed,
+                    config,
+                    &mut CountingReservation::default(),
+                    RobustPerturbations::default(),
+                    None,
+                )
+                .unwrap();
+                assert!(result.certificate().passed);
+                assert_eq!(result.fit().coefficients(), expected.fit().coefficients());
+                let final_peak = result.fit().solver_workspace_peak().bytes();
+                assert!(initial_peak.is_some() && final_peak > initial_peak,
+                    "score reconstruction must add its known larger peak: {initial_peak:?} -> {final_peak:?}");
+                assert_eq!(
+                    result.fit().absorption_report().used_solver,
+                    crate::fe::FeSolverKind::Map
+                );
+                assert_slice_close(
+                    result.covariance().values(),
+                    expected.covariance().values(),
+                    2e-11,
+                );
+            }
+        }
+    }
+
+    #[test]
     fn strided_score_storage_matches_packed_robust_inference() {
         let group = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
         let x1 = vec![-2.0, 0.5, 1.0, 3.0, -1.5, 2.0, 0.25, 4.0];

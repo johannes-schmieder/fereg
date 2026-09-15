@@ -56,6 +56,8 @@ pub struct SolveReport {
     pub iterations: usize,
     /// Additional PPML checkpoint attempts after a rejected Schur or LSMR candidate.
     pub checkpoint_retries: usize,
+    /// Modeled workspace over all attempts, excluding the caller execution base.
+    pub solver_workspace_peak: crate::memory::SolverWorkspacePeak,
     /// Stop reason after the independently recomputed certificate.
     pub stop_reason: SolveStopReason,
     /// True fixed-effect moment certificate on the returned residuals.

@@ -9,7 +9,7 @@ use crate::fe::{
     BorrowedInterceptFeDesign, FeCertificate, FeSolverKind, LsmrConfig, LsmrPreconditioner,
     MapConfig, SolveReport, SolveStopReason,
 };
-use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget};
+use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget, SolverWorkspacePeak};
 use rayon::prelude::*;
 use within::{Effect, LsmrOptions, PreconditionerConfig};
 
@@ -132,6 +132,14 @@ pub(crate) struct BorrowedInterceptRecoveryCoefficients {
 }
 
 impl FeCoefficientBatch {
+    pub(crate) fn retained_bytes(&self) -> u128 {
+        self.values.capacity() as u128 * std::mem::size_of::<f64>() as u128
+            + (self.effect_channels.capacity() as u128
+                + self.level_counts.capacity() as u128
+                + self.effect_offsets.capacity() as u128)
+                * std::mem::size_of::<usize>() as u128
+    }
+
     pub(crate) fn zeros(
         effect_channels: Vec<usize>,
         level_counts: Vec<usize>,
@@ -565,7 +573,7 @@ impl MapCoefficientAccumulator {
         })
     }
 
-    fn into_batch(self) -> Result<FeCoefficientBatch> {
+    fn into_batch(self) -> Result<(FeCoefficientBatch, u128)> {
         let Self {
             values,
             level_counts,
@@ -620,7 +628,14 @@ impl MapCoefficientAccumulator {
             .try_reserve_exact(level_counts.len())
             .map_err(|_| allocation("unable to reserve canonical MAP coefficient channels"))?;
         effect_channels.resize(level_counts.len(), 1);
-        FeCoefficientBatch::from_values(effect_channels, level_counts, rhs_count, rhs_major)
+        let batch =
+            FeCoefficientBatch::from_values(effect_channels, level_counts, rhs_count, rhs_major)?;
+        // The level layout moves into the result, while the original value and
+        // offset banks coexist with the canonical RHS-major batch.
+        let conversion_bytes = values.capacity() as u128 * std::mem::size_of::<f64>() as u128
+            + effect_offsets.capacity() as u128 * std::mem::size_of::<usize>() as u128
+            + batch.retained_bytes();
+        Ok((batch, conversion_bytes))
     }
 }
 
@@ -756,6 +771,10 @@ impl CertifiedBorrowedMap {
     #[must_use]
     pub const fn report(&self) -> &SolveReport {
         &self.report
+    }
+
+    pub(crate) fn set_solver_workspace_peak(&mut self, peak: crate::memory::SolverWorkspacePeak) {
+        self.report.solver_workspace_peak = peak;
     }
 
     #[must_use]
@@ -909,6 +928,26 @@ impl WorkspaceReservation for SystemWorkspaceReservation {
     }
 }
 
+/// Complete owned one-RHS CG recovery frame: its input, three recurrence
+/// matrices, four coefficient banks, MAP banks and eight recurrence scalars.
+/// The prepared topology, target and enclosing recovery views belong to the
+/// caller. This shares the allocation planner used by the actual MAP banks.
+pub(crate) fn borrowed_cg_recovery_workspace_bytes(
+    observations: usize,
+    effects: usize,
+    total_levels: usize,
+    maximum_levels: usize,
+    threads: usize,
+) -> Result<u128> {
+    let counts = BorrowedMapWorkspace::planned_counts(maximum_levels, observations, 1, threads)?;
+    let numeric = (15 + counts.into_iter().map(|count| count as u128).sum::<u128>()) * 8;
+    let coefficient =
+        total_levels as u128 * 8 + (effects as u128 * 3 + 1) * std::mem::size_of::<usize>() as u128;
+    // These are linear expressions in usize axes with fixed coefficients;
+    // their sum is representable in u128 on every supported 64-bit target.
+    Ok(observations as u128 * 32 + coefficient * 4 + numeric)
+}
+
 struct BorrowedMapWorkspace {
     ols_norm_reduction: bool,
     reference_norms: Vec<f64>,
@@ -924,6 +963,89 @@ struct BorrowedMapWorkspace {
 }
 
 impl BorrowedMapWorkspace {
+    // Every MAP numeric bank is reserved at construction and never grows
+    // during projection/certification. Count capacities rather than lengths
+    // so moved norms and subsequent narrow RHS views do not shrink the peak.
+    fn payload_peak(&self) -> Result<SolverWorkspacePeak> {
+        let elements = [
+            &self.reference_norms,
+            &self.residual_norms,
+            &self.rhs_scales,
+            &self.rhs_relative_infinity_norms,
+            &self.value_scales,
+            &self.group_sums,
+            &self.group_corrections,
+            &self.parallel_group_means,
+            &self.parallel_group_weights,
+            &self.parallel_dot_sums,
+        ]
+        .iter()
+        .map(|bank| bank.capacity() as u128)
+        .sum::<u128>();
+        SolverWorkspacePeak::from_bytes(elements * std::mem::size_of::<f64>() as u128)
+    }
+
+    fn planned_counts(
+        maximum_levels: usize,
+        observation_count: usize,
+        rhs_count: usize,
+        parallel_threads: usize,
+    ) -> Result<[usize; 3]> {
+        let parallel_group_levels =
+            if observation_count >= PARALLEL_PROJECTION_MIN_ROWS && parallel_threads > 1 {
+                maximum_levels
+            } else {
+                0
+            };
+        let parallel_group_mean_count = if rhs_count > 1 || parallel_group_levels > 0 {
+            parallel_group_levels
+                .checked_mul(rhs_count)
+                .ok_or_else(|| allocation("borrowed MAP parallel group-mean dimensions overflow"))?
+        } else {
+            0
+        };
+        let parallel_dot_sum_count = if observation_count >= PARALLEL_PROJECTION_MIN_ROWS
+            && rhs_count <= FUSED_PARALLEL_MAX_RHS
+            && parallel_threads > 1
+        {
+            observation_count
+                .div_ceil(PARALLEL_DOT_CHUNK_ROWS)
+                .checked_mul(rhs_count)
+                .ok_or_else(|| allocation("borrowed CG parallel dot dimensions overflow"))?
+        } else {
+            0
+        };
+        Ok([
+            parallel_group_levels,
+            parallel_group_mean_count,
+            parallel_dot_sum_count,
+        ])
+    }
+
+    fn planned_payload_bytes(
+        design: &BorrowedInterceptFeDesign<'_>,
+        observations: usize,
+        rhs: usize,
+        threads: usize,
+    ) -> Result<u128> {
+        let maximum_levels = design
+            .effects()
+            .iter()
+            .map(crate::fe::BorrowedInterceptEffect::n_levels)
+            .max()
+            .unwrap_or(0);
+        let counts = Self::planned_counts(maximum_levels, observations, rhs, threads)?;
+        let cells = counts
+            .into_iter()
+            .try_fold((rhs as u128) * 7, |sum, count| {
+                sum.checked_add(count as u128)
+                    .ok_or_else(|| allocation("MAP planned capacities overflow"))
+            })?;
+        cells
+            .checked_mul(8)
+            .ok_or_else(|| allocation("MAP planned byte count overflows"))
+    }
+
     fn new<R: WorkspaceReservation>(
         design: &BorrowedInterceptFeDesign<'_>,
         observation_count: usize,
@@ -946,35 +1068,19 @@ impl BorrowedMapWorkspace {
         parallel_threads: usize,
         reservation: &mut R,
     ) -> Result<Self> {
-        let parallel_group_levels =
-            if observation_count >= PARALLEL_PROJECTION_MIN_ROWS && parallel_threads > 1 {
-                design
-                    .effects()
-                    .iter()
-                    .map(crate::fe::BorrowedInterceptEffect::n_levels)
-                    .max()
-                    .unwrap_or(0)
-            } else {
-                0
-            };
-        let parallel_group_mean_count = if rhs_count > 1 || parallel_group_levels > 0 {
-            parallel_group_levels
-                .checked_mul(rhs_count)
-                .ok_or_else(|| allocation("borrowed MAP parallel group-mean dimensions overflow"))?
-        } else {
-            0
-        };
-        let parallel_dot_sum_count = if observation_count >= PARALLEL_PROJECTION_MIN_ROWS
-            && rhs_count <= FUSED_PARALLEL_MAX_RHS
-            && parallel_threads > 1
-        {
-            observation_count
-                .div_ceil(PARALLEL_DOT_CHUNK_ROWS)
-                .checked_mul(rhs_count)
-                .ok_or_else(|| allocation("borrowed CG parallel dot dimensions overflow"))?
-        } else {
-            0
-        };
+        let maximum_levels = design
+            .effects()
+            .iter()
+            .map(crate::fe::BorrowedInterceptEffect::n_levels)
+            .max()
+            .unwrap_or(0);
+        let [parallel_group_levels, parallel_group_mean_count, parallel_dot_sum_count] =
+            Self::planned_counts(
+                maximum_levels,
+                observation_count,
+                rhs_count,
+                parallel_threads,
+            )?;
         Ok(Self {
             ols_norm_reduction: false,
             reference_norms: reserved_zeros(
@@ -3817,12 +3923,23 @@ pub(crate) fn polish_borrowed_intercept_cg_with_reference_norms_certified(
 /// certificate used at solver entry. This performs no projection or solver
 /// iteration and is used when a caller expects a residual to already lie in
 /// the within space.
+#[cfg(test)]
 pub(crate) fn certify_borrowed_intercept_candidate(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
     values: &DenseMatrix,
     config: MapConfig,
 ) -> Result<FeCertificate> {
+    certify_borrowed_intercept_candidate_with_workspace(design, weights, values, config)
+        .map(|(certificate, _)| certificate)
+}
+
+pub(crate) fn certify_borrowed_intercept_candidate_with_workspace(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: &DenseMatrix,
+    config: MapConfig,
+) -> Result<(FeCertificate, SolverWorkspacePeak)> {
     validate_config(config)?;
     if design.nobs() != values.nrows() || values.nrows() == 0 || values.ncols() == 0 {
         return Err(invalid_argument(
@@ -3845,7 +3962,9 @@ pub(crate) fn certify_borrowed_intercept_candidate(
         &mut workspace.value_scales,
         &mut workspace.group_sums,
     )?;
-    certify_initial(design, weights, values, config.tolerance, &mut workspace)
+    let peak = workspace.payload_peak()?;
+    let certificate = certify_initial(design, weights, values, config.tolerance, &mut workspace)?;
+    Ok((certificate, peak))
 }
 
 pub(crate) fn absorb_borrowed_intercept_auto_with_structural_constant_certified(
@@ -4006,11 +4125,74 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
 
     let weights = validate_weights(weights, values.nrows())?;
     let setup_started = Instant::now();
+    let level_counts = design
+        .effects()
+        .iter()
+        .map(|effect| effect.n_levels())
+        .collect::<Vec<_>>();
+    let solver_memory = estimate_fe_solver_memory(
+        values.nrows(),
+        values.ncols(),
+        &level_counts,
+        lsmr_config
+            .map_or(rayon::current_num_threads(), |lsmr| lsmr.threads.resolved())
+            .max(rayon::current_num_threads()),
+        lsmr_config.and_then(|lsmr| lsmr.local_size),
+    )?;
+    let pilot_coefficients = if retain_coefficients {
+        solver_memory.coefficient_batch_bytes
+    } else {
+        0
+    };
+    let pilot_workspace = BorrowedMapWorkspace::planned_payload_bytes(
+        design,
+        values.nrows(),
+        values.ncols(),
+        rayon::current_num_threads(),
+    )?
+    .checked_add(pilot_coefficients)
+    .ok_or_else(|| allocation("automatic MAP pilot memory overflows"))?;
+    let mut retained_operator = lsmr_prepared
+        .as_ref()
+        .map_or(0, |prepared| prepared.retained_bytes);
+    if let Some(budget) = solver_memory_budget {
+        let warm_peak = pilot_workspace
+            .checked_add(retained_operator)
+            .ok_or_else(|| allocation("retained LSMR pilot overlap overflows"))?;
+        if !budget.fits(warm_peak) && retained_operator != 0 {
+            // Release the reusable operator before a cold pilot when their
+            // overlap no longer fits. The same certified solver remains available.
+            if let Some(prepared) = lsmr_prepared.as_deref_mut() {
+                prepared.solver = None;
+                prepared.retained_bytes = 0;
+            }
+            retained_operator = 0;
+        }
+        if !budget.fits(pilot_workspace) {
+            return Err(allocation(
+                "automatic MAP pilot exceeds the joint execution/solver budget",
+            ));
+        }
+    }
     let mut workspace =
         BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), reservation)?;
     let mut retained_coefficients = retain_coefficients
         .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
         .transpose()?;
+    let retained_coefficient_bytes = retained_coefficients
+        .as_ref()
+        .map_or(0, FeCoefficientBatch::retained_bytes);
+    let mut attempted_peak = workspace
+        .payload_peak()?
+        .with_retained(retained_operator)?
+        .with_retained(retained_coefficient_bytes)?;
+    if solver_memory_budget
+        .is_some_and(|budget| !budget.fits(attempted_peak.bytes().unwrap() as u128))
+    {
+        return Err(allocation(
+            "automatic MAP reserved capacities exceed the joint budget",
+        ));
+    }
     weighted_column_norms(
         &values,
         weights,
@@ -4031,7 +4213,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
             pilot_setup_seconds,
             0.0,
         )?;
-        let result = if let Some(coefficients) = retained_coefficients {
+        let mut result = if let Some(coefficients) = retained_coefficients {
             let (residualized, report) = result.into_parts();
             CertifiedBorrowedMap::from_certified_parts_with_coefficients(
                 residualized,
@@ -4041,6 +4223,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
         } else {
             result
         };
+        result.set_solver_workspace_peak(attempted_peak);
         return mark_auto(result, 0, 0.0, 0.0, 0.0);
     }
 
@@ -4091,7 +4274,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
                 pilot_setup_seconds,
                 pilot_seconds,
             )?;
-            let result = if let Some(coefficients) = retained_coefficients {
+            let mut result = if let Some(coefficients) = retained_coefficients {
                 let (residualized, report) = result.into_parts();
                 CertifiedBorrowedMap::from_certified_parts_with_coefficients(
                     residualized,
@@ -4101,6 +4284,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
             } else {
                 result
             };
+            result.set_solver_workspace_peak(attempted_peak);
             return mark_auto(result, pilot_iteration, contraction, 0.0, 0.0);
         }
     }
@@ -4129,6 +4313,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
     // erase the pilot's benefit on slow graphs.
     let original_reference_norms = std::mem::take(&mut workspace.reference_norms);
     drop(workspace);
+    let original_norm_bytes = original_reference_norms.capacity() as u128 * 8;
     let mut remaining_iterations = config.max_iterations - pilot_budget;
     let mut candidate_failure = None;
     let mut attempted_lsmr = None;
@@ -4137,51 +4322,32 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
             .checked_add(effect.n_levels())
             .ok_or_else(|| invalid_data("borrowed auto FE coefficient count overflows usize"))
     })?;
-    let level_counts = design
-        .effects()
-        .iter()
-        .map(crate::fe::BorrowedInterceptEffect::n_levels)
-        .collect::<Vec<_>>();
-    let solver_memory = if solver_memory_budget.is_some() {
-        let local_size = lsmr_config.and_then(|lsmr| lsmr.local_size);
-        Some(estimate_fe_solver_memory(
-            values.nrows(),
-            values.ncols(),
-            &level_counts,
-            lsmr_config.map_or(1, |lsmr| lsmr.threads.resolved()),
-            local_size,
-        )?)
+    let coefficient_bytes = if retain_coefficients {
+        solver_memory
+            .coefficient_batch_bytes
+            .checked_mul(5)
+            .ok_or_else(|| allocation("automatic CG retained coefficient memory overflows"))?
     } else {
-        None
+        0
     };
-    let cg_fits = if let (Some(budget), Some(estimate)) = (solver_memory_budget, solver_memory) {
-        let coefficient_bytes = if retain_coefficients {
-            estimate
-                .coefficient_batch_bytes
-                .checked_mul(5)
-                .ok_or_else(|| allocation("automatic CG retained coefficient memory overflows"))?
-        } else {
-            0
-        };
-        let required = estimate
-            .cg_bytes
-            .checked_add(coefficient_bytes)
-            .ok_or_else(|| allocation("automatic CG workspace memory overflows"))?;
-        budget.fits(required)
-    } else {
-        true
-    };
+    let cg_workspace_bytes = solver_memory
+        .cg_bytes
+        .checked_add(coefficient_bytes)
+        .and_then(|bytes| bytes.checked_add(original_norm_bytes))
+        .ok_or_else(|| allocation("automatic CG workspace memory overflows"))?;
+    let cg_fits = solver_memory_budget.is_none_or(|budget| budget.fits(cg_workspace_bytes));
     if let Some(lsmr_config) = lsmr_config {
         let resolved_preconditioner = resolve_borrowed_lsmr_preconditioner(
             design.effects().len(),
             total_fe_coefficients,
             lsmr_config.preconditioner,
         );
-        let lsmr_fits = solver_memory_budget
-            .zip(solver_memory)
-            .is_none_or(|(budget, estimate)| {
-                budget.fits(estimate.lsmr_bytes(resolved_preconditioner))
-            });
+        let lsmr_workspace_bytes = solver_memory
+            .lsmr_bytes(resolved_preconditioner)
+            .checked_add(retained_coefficient_bytes)
+            .and_then(|bytes| bytes.checked_add(original_norm_bytes))
+            .ok_or_else(|| allocation("LSMR and pilot coefficient overlap overflows"))?;
+        let lsmr_fits = solver_memory_budget.is_none_or(|budget| budget.fits(lsmr_workspace_bytes));
         let route = if skip_map_pilot {
             AutoLsmrRoute::Direct
         } else {
@@ -4195,9 +4361,15 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
         } else {
             match route {
                 AutoLsmrRoute::Direct => {
+                    let mut memory = BorrowedLsmrCallMemory::new(
+                        solver_memory,
+                        resolved_preconditioner,
+                        solver_memory_budget,
+                        retained_coefficient_bytes + original_norm_bytes,
+                    )?;
                     let lsmr_tolerance = direct_lsmr_tolerance(config.tolerance);
                     let lsmr_started = solver_trace.then(Instant::now);
-                    match run_borrowed_lsmr_with_prepared(
+                    let solved = run_borrowed_lsmr_with_prepared(
                         design,
                         weights,
                         &values,
@@ -4207,7 +4379,10 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
                         Some(&original_reference_norms),
                         retain_coefficients,
                         lsmr_prepared.as_deref_mut(),
-                    ) {
+                        &mut memory,
+                    );
+                    attempted_peak = attempted_peak.max(memory.peak);
+                    match solved {
                         Ok((lsmr_values, mut report, owned_setup_seconds, lsmr_coefficients))
                             if report.certified() =>
                         {
@@ -4226,6 +4401,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
                                     report.normal_equation_residual,
                                 );
                             }
+                            report.solver_workspace_peak = attempted_peak;
                             report.requested_solver = FeSolverKind::Auto;
                             report.iterations = report.iterations.saturating_add(pilot_budget);
                             report.pilot_iterations = pilot_budget;
@@ -4311,6 +4487,9 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
                     }
                 }
                 AutoLsmrRoute::CgPolish => {
+                    // This developer-only continuation keeps additional input
+                    // banks; do not publish the ordinary-route envelope for it.
+                    attempted_peak = SolverWorkspacePeak::UNMODELED;
                     let bulk_tolerance = lsmr_cg_bulk_tolerance(config.tolerance);
                     match run_borrowed_lsmr(
                         design,
@@ -4352,6 +4531,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
                                 Ok(polished) => {
                                     let (residualized, mut report) = polished.into_parts();
                                     let polish_iterations = report.iterations;
+                                    report.solver_workspace_peak = attempted_peak;
                                     report.requested_solver = FeSolverKind::Auto;
                                     report.requested_preconditioner = requested_preconditioner;
                                     report.used_preconditioner = used_preconditioner;
@@ -4445,6 +4625,11 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
         pilot_seconds,
     )?;
     let (residualized, mut report, coefficients) = marked.into_full_parts();
+    let cg_model = SolverWorkspacePeak::from_bytes(cg_workspace_bytes)?;
+    let cg_peak = report
+        .solver_workspace_peak
+        .with_retained(original_norm_bytes + retained_coefficient_bytes)?;
+    report.solver_workspace_peak = attempted_peak.max(cg_model).max(cg_peak);
     if let Some(attempt) = attempted_lsmr {
         report.iterations = report.iterations.saturating_add(attempt.iterations);
         report.setup_seconds += attempt.setup_seconds;
@@ -4537,31 +4722,34 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
             );
         }
         let weights = validate_weights(self.weights, values.nrows())?;
-        if let Some(budget) = self.config.solver_memory_budget {
-            let levels = self
-                .design
-                .effects()
-                .iter()
-                .map(|e| e.n_levels())
-                .collect::<Vec<_>>();
-            let estimate = estimate_fe_solver_memory(
-                values.nrows(),
-                values.ncols(),
-                &levels,
-                self.config.lsmr.threads.resolved(),
-                self.config.lsmr.local_size,
-            )?;
-            let preconditioner = resolve_borrowed_lsmr_preconditioner(
-                levels.len(),
-                self.design.total_term_slots(),
-                self.config.lsmr.preconditioner,
-            );
-            if !budget.fits(estimate.lsmr_bytes(preconditioner)) {
-                return Err(allocation(
-                    "retained LSMR workspace exceeds the joint execution plan",
-                ));
-            }
-        }
+        let levels = self
+            .design
+            .effects()
+            .iter()
+            .map(|effect| effect.n_levels())
+            .collect::<Vec<_>>();
+        let estimate = estimate_fe_solver_memory(
+            values.nrows(),
+            values.ncols(),
+            &levels,
+            self.config
+                .lsmr
+                .threads
+                .resolved()
+                .max(rayon::current_num_threads()),
+            self.config.lsmr.local_size,
+        )?;
+        let preconditioner = resolve_borrowed_lsmr_preconditioner(
+            levels.len(),
+            self.design.total_term_slots(),
+            self.config.lsmr.preconditioner,
+        );
+        let mut memory = BorrowedLsmrCallMemory::new(
+            estimate,
+            preconditioner,
+            self.config.solver_memory_budget,
+            0,
+        )?;
         let (residualized, report, _, coefficients) = run_borrowed_lsmr_with_prepared(
             &self.design,
             weights,
@@ -4572,6 +4760,7 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
             None,
             self.config.retain_coefficients,
             Some(&mut self.prepared),
+            &mut memory,
         )?;
         if let Some(coefficients) = coefficients {
             CertifiedBorrowedMap::from_certified_parts_with_coefficients(
@@ -4585,9 +4774,58 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
     }
 }
 
+// Keep the maximum even if postprocessing fails and auto continues to CG.
+struct BorrowedLsmrCallMemory {
+    peak: SolverWorkspacePeak,
+    metadata_bytes: u128,
+    budget: Option<FeSolverMemoryBudget>,
+    parent_bytes: u128,
+}
+
+impl BorrowedLsmrCallMemory {
+    fn new(
+        estimate: crate::memory::FeSolverMemoryEstimate,
+        preconditioner: LsmrPreconditioner,
+        budget: Option<FeSolverMemoryBudget>,
+        parent_bytes: u128,
+    ) -> Result<Self> {
+        let mut memory = Self {
+            peak: SolverWorkspacePeak::ZERO,
+            metadata_bytes: estimate.lsmr_result_metadata_bytes,
+            budget,
+            parent_bytes,
+        };
+        memory.include(estimate.lsmr_bytes(preconditioner))?;
+        Ok(memory)
+    }
+
+    fn include(&mut self, bytes: u128) -> Result<()> {
+        let bytes = bytes
+            .checked_add(self.parent_bytes)
+            .ok_or_else(|| allocation("LSMR parent overlap overflows"))?;
+        if self.budget.is_some_and(|budget| !budget.fits(bytes)) {
+            return Err(allocation(
+                "LSMR workspace exceeds the joint execution plan",
+            ));
+        }
+        self.peak = self.peak.max(SolverWorkspacePeak::from_bytes(bytes)?);
+        Ok(())
+    }
+
+    fn include_payload(&mut self, retained: u128, payload: u128) -> Result<()> {
+        self.include(
+            retained
+                .checked_add(payload)
+                .and_then(|bytes| bytes.checked_add(self.metadata_bytes))
+                .ok_or_else(|| allocation("LSMR result overlap overflows"))?,
+        )
+    }
+}
+
 #[derive(Default)]
 struct BorrowedLsmrPrepared<'a> {
     solver: Option<within::Solver<'a>>,
+    retained_bytes: u128,
     preconditioner_fallback: bool,
     builds: usize,
     batches: usize,
@@ -4597,6 +4835,7 @@ struct BorrowedLsmrPrepared<'a> {
 impl<'a> BorrowedLsmrPrepared<'a> {
     fn release_before_cg(&mut self) {
         self.solver = None;
+        self.retained_bytes = 0;
         self.disabled = true;
     }
 
@@ -4609,15 +4848,42 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         requested: LsmrPreconditioner,
         preconditioner: PreconditionerConfig,
     ) -> Result<(within::BatchSolveResult, bool)> {
+        let levels = design
+            .effects()
+            .iter()
+            .map(|effect| effect.n_levels())
+            .collect::<Vec<_>>();
+        let memory = estimate_fe_solver_memory(
+            design.nobs(),
+            rhs.len(),
+            &levels,
+            rayon::current_num_threads(),
+            options.local_size,
+        )?;
+        let resolved = resolve_borrowed_lsmr_preconditioner(
+            levels.len(),
+            design.total_term_slots(),
+            requested,
+        );
         let started = Instant::now();
         let mut setup_seconds = 0.0;
         if self.solver.is_none() {
             let setup = Instant::now();
+            let preconditioner = if self.preconditioner_fallback {
+                PreconditionerConfig::Off
+            } else {
+                preconditioner
+            };
             self.solver = Some(build_retained_borrowed_lsmr(
                 design,
                 weights,
                 preconditioner,
             )?);
+            self.retained_bytes = memory.lsmr_retained_bytes(if self.preconditioner_fallback {
+                LsmrPreconditioner::Off
+            } else {
+                resolved
+            });
             self.builds += 1;
             setup_seconds += setup.elapsed().as_secs_f64();
         }
@@ -4635,17 +4901,21 @@ impl<'a> BorrowedLsmrPrepared<'a> {
             {
                 // Release the rejected preconditioner before constructing its replacement.
                 self.solver = None;
+                self.retained_bytes = 0;
                 let setup = Instant::now();
                 self.solver = Some(build_retained_borrowed_lsmr(
                     design,
                     weights,
                     PreconditionerConfig::Off,
                 )?);
+                self.retained_bytes = memory.lsmr_retained_bytes(LsmrPreconditioner::Off);
                 self.builds += 1;
                 self.preconditioner_fallback = true;
                 setup_seconds += setup.elapsed().as_secs_f64();
                 super::lsmr_batch::solve_prepared_batch(
-                    self.solver.as_ref().expect("fallback LSMR preparation exists"),
+                    self.solver
+                        .as_ref()
+                        .expect("fallback LSMR preparation exists"),
                     rhs,
                     options,
                 )
@@ -4724,6 +4994,27 @@ fn run_borrowed_lsmr(
     certificate_reference_norms: Option<&[f64]>,
     retain_coefficients: bool,
 ) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
+    let levels = design
+        .effects()
+        .iter()
+        .map(|effect| effect.n_levels())
+        .collect::<Vec<_>>();
+    let estimate = estimate_fe_solver_memory(
+        values.nrows(),
+        values.ncols(),
+        &levels,
+        lsmr_config
+            .threads
+            .resolved()
+            .max(rayon::current_num_threads()),
+        lsmr_config.local_size,
+    )?;
+    let preconditioner = resolve_borrowed_lsmr_preconditioner(
+        levels.len(),
+        design.total_term_slots(),
+        lsmr_config.preconditioner,
+    );
+    let mut memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, None, 0)?;
     run_borrowed_lsmr_with_prepared(
         design,
         weights,
@@ -4734,6 +5025,7 @@ fn run_borrowed_lsmr(
         certificate_reference_norms,
         retain_coefficients,
         None,
+        &mut memory,
     )
 }
 
@@ -4748,6 +5040,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     certificate_reference_norms: Option<&[f64]>,
     retain_coefficients: bool,
     prepared: Option<&mut BorrowedLsmrPrepared<'a>>,
+    memory: &mut BorrowedLsmrCallMemory,
 ) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
     let total_started = Instant::now();
     let effective_max_iterations = lsmr_config.max_iterations.min(max_iterations);
@@ -4784,9 +5077,8 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     );
     let preconditioner = borrowed_within_preconditioner(resolved_preconditioner);
     let owned_setup_seconds = lsmr_setup_started.elapsed().as_secs_f64();
-    let (mut solved, preconditioner_fallback) = if let Some(prepared) =
-        prepared.filter(|p| !p.disabled)
-    {
+    let mut prepared = prepared.filter(|p| !p.disabled);
+    let (mut solved, preconditioner_fallback) = if let Some(prepared) = prepared.as_deref_mut() {
         prepared.solve(
             design,
             weights,
@@ -4831,9 +5123,22 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     // The candidate is wholly overwritten by the returned residuals. Allocate
     // it after Krylov work, once the RHS transport can be released; preserve
     // the caller's values for independent reference norms and any continuation.
+    let retained = prepared.as_ref().map_or(0, |p| p.retained_bytes);
     drop(rhs_views);
     drop(rhs);
+    let result_cells = (values.nrows() as u128) * (values.ncols() as u128);
+    memory.include_payload(
+        retained,
+        (result_cells + solved.demeaned.capacity() as u128 + solved.x.capacity() as u128) * 8,
+    )?;
     let mut lsmr_values = DenseMatrix::zeros(values.nrows(), values.ncols())?;
+    memory.include_payload(
+        retained,
+        (lsmr_values.storage_capacity() as u128
+            + solved.demeaned.capacity() as u128
+            + solved.x.capacity() as u128)
+            * 8,
+    )?;
     for column in 0..lsmr_values.ncols() {
         for (row, value) in solved.demeaned(column).iter().copied().enumerate() {
             lsmr_values[(row, column)] = value;
@@ -4843,12 +5148,28 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     if !retain_coefficients {
         drop(std::mem::take(&mut solved.x));
     }
+    memory.include_payload(
+        retained,
+        (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
+            + BorrowedMapWorkspace::planned_payload_bytes(
+                design,
+                values.nrows(),
+                values.ncols(),
+                rayon::current_num_threads(),
+            )?,
+    )?;
     let mut reservation = SystemWorkspaceReservation;
     let mut certificate_workspace = BorrowedMapWorkspace::new(
         design,
         lsmr_values.nrows(),
         lsmr_values.ncols(),
         &mut reservation,
+    )?;
+    let certificate_bytes = certificate_workspace.payload_peak()?.bytes().unwrap() as u128;
+    memory.include_payload(
+        retained,
+        (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
+            + certificate_bytes,
     )?;
     weighted_column_norms(
         values,
@@ -4918,8 +5239,9 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     }
     let accounted_seconds = owned_setup_seconds + solved.time_total + certification_seconds;
     let postprocess_seconds = (total_started.elapsed().as_secs_f64() - accounted_seconds).max(0.0);
-    let report = SolveReport {
+    let mut report = SolveReport {
         checkpoint_retries: 0,
+        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
         requested_solver: FeSolverKind::Lsmr,
         used_solver: FeSolverKind::Lsmr,
         iterations: solved.iterations.iter().copied().max().unwrap_or(0),
@@ -4940,6 +5262,16 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         pilot_contraction: 0.0,
         warnings,
     };
+    let layout_bytes =
+        (design.effects().len() as u128 * 3 + 1) * std::mem::size_of::<usize>() as u128;
+    if retain_coefficients {
+        memory.include_payload(
+            retained,
+            (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
+                + certificate_bytes
+                + layout_bytes,
+        )?;
+    }
     let coefficients = if retain_coefficients {
         Some(FeCoefficientBatch::from_values(
             vec![1; design.effects().len()],
@@ -4954,6 +5286,15 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     } else {
         None
     };
+    memory.include_payload(
+        retained,
+        lsmr_values.storage_capacity() as u128 * 8
+            + certificate_bytes
+            + coefficients
+                .as_ref()
+                .map_or(0, FeCoefficientBatch::retained_bytes),
+    )?;
+    report.solver_workspace_peak = memory.peak;
     Ok((lsmr_values, report, owned_setup_seconds, coefficients))
 }
 
@@ -5037,15 +5378,20 @@ fn attach_optional_coefficients(
 }
 
 fn attach_optional_map_coefficients(
-    result: CertifiedBorrowedMap,
+    mut result: CertifiedBorrowedMap,
     coefficients: Option<MapCoefficientAccumulator>,
 ) -> Result<CertifiedBorrowedMap> {
-    attach_optional_coefficients(
-        result,
-        coefficients
-            .map(MapCoefficientAccumulator::into_batch)
-            .transpose()?,
-    )
+    let coefficients = if let Some(coefficients) = coefficients {
+        let (batch, conversion_bytes) = coefficients.into_batch()?;
+        result.report.solver_workspace_peak = result
+            .report
+            .solver_workspace_peak
+            .with_retained(conversion_bytes)?;
+        Some(batch)
+    } else {
+        None
+    };
+    attach_optional_coefficients(result, coefficients)
 }
 
 fn absorb_cg_with_reservation<R: WorkspaceReservation>(
@@ -5166,11 +5512,26 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         reservation,
         "unable to reserve borrowed CG dot corrections",
     )?;
+    let scalar_bytes = [
+        &improvement_potential,
+        &residual_square,
+        &initial_residual_square,
+        &direction_projection,
+        &next_residual_square,
+        &alpha,
+        &beta,
+        &dot_corrections,
+    ]
+    .iter()
+    .map(|bank| bank.capacity() as u128)
+    .sum::<u128>()
+        * 8;
+    let mut workspace_peak = workspace.payload_peak()?.with_retained(scalar_bytes)?;
     let setup_seconds = setup_started.elapsed().as_secs_f64();
     let solve_started = Instant::now();
 
     if design.effects().is_empty() && !empty_design_is_structural_constant {
-        return certified_solver_result(
+        let mut result = certified_solver_result(
             values,
             FeSolverKind::Cg,
             SolveStopReason::NoFixedEffects,
@@ -5179,13 +5540,20 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             0.0,
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
-        );
+        )?;
+        result.set_solver_workspace_peak(workspace_peak);
+        return Ok(result);
     }
 
     let mut solution_coefficients = retain_coefficients
         .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
         .transpose()?;
 
+    workspace_peak = workspace_peak.with_retained(
+        solution_coefficients
+            .as_ref()
+            .map_or(0, FeCoefficientBatch::retained_bytes),
+    )?;
     let initial_certificate = if design.effects().is_empty() {
         certify_structural_constant(weights, &values, config.tolerance, &mut workspace)?
     } else {
@@ -5204,7 +5572,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         && initial_reconstruction_passed
         && refinement.minimum_iterations == 0
     {
-        let result = certified_solver_result(
+        let mut result = certified_solver_result(
             values,
             FeSolverKind::Cg,
             SolveStopReason::Certified,
@@ -5214,6 +5582,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
         )?;
+        result.set_solver_workspace_peak(workspace_peak);
         return attach_optional_coefficients(result, solution_coefficients);
     }
 
@@ -5226,7 +5595,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                 "borrowed CG structural-constant projection failed certification",
             ));
         }
-        return certified_solver_result(
+        let mut result = certified_solver_result(
             values,
             FeSolverKind::Cg,
             SolveStopReason::Certified,
@@ -5235,7 +5604,9 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             0.0,
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
-        );
+        )?;
+        result.set_solver_workspace_peak(workspace_peak);
+        return Ok(result);
     }
 
     let mut residual = fallible_matrix_zeros(
@@ -5268,6 +5639,21 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     let mut projection_coefficients = retain_coefficients
         .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
         .transpose()?;
+    // These banks coexist for the recurrence and are never resized. The
+    // solution coefficient bank was already charged before the early exit.
+    let matrix_bytes = (residual.storage_capacity() as u128
+        + direction.storage_capacity() as u128
+        + projection.storage_capacity() as u128)
+        * 8;
+    let coefficient_bytes = [
+        &residual_coefficients,
+        &direction_coefficients,
+        &projection_coefficients,
+    ]
+    .iter()
+    .map(|bank| bank.as_ref().map_or(0, FeCoefficientBatch::retained_bytes))
+    .sum::<u128>();
+    workspace_peak = workspace_peak.with_retained(matrix_bytes + coefficient_bytes)?;
     weighted_dot_columns_into(
         &residual,
         &residual,
@@ -5329,7 +5715,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                 && reconstruction_passed
                 && iteration.saturating_sub(1) >= refinement.minimum_iterations
             {
-                let result = certified_solver_result(
+                let mut result = certified_solver_result(
                     values,
                     FeSolverKind::Cg,
                     SolveStopReason::Certified,
@@ -5339,6 +5725,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                     setup_seconds,
                     solve_started.elapsed().as_secs_f64(),
                 )?;
+                result.set_solver_workspace_peak(workspace_peak);
                 return attach_optional_coefficients(result, solution_coefficients);
             }
             let mut recovered = false;
@@ -5461,7 +5848,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         if recurrence_ready || iteration == config.max_iterations {
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
             if certificate.passed && recurrence_ready {
-                let result = certified_solver_result(
+                let mut result = certified_solver_result(
                     values,
                     FeSolverKind::Cg,
                     SolveStopReason::Certified,
@@ -5471,6 +5858,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                     setup_seconds,
                     solve_started.elapsed().as_secs_f64(),
                 )?;
+                result.set_solver_workspace_peak(workspace_peak);
                 return attach_optional_coefficients(result, solution_coefficients);
             }
         }
@@ -5571,12 +5959,13 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     update_ols_workspace_norms(&values, weights, &mut workspace, true)?;
     let setup_seconds = setup_started.elapsed().as_secs_f64();
     let solve_started = Instant::now();
+    let workspace_peak = workspace.payload_peak()?;
     let mut coefficients = retain_coefficients
         .then(|| MapCoefficientAccumulator::zeros(design, values.ncols()))
         .transpose()?;
 
     if design.effects().is_empty() && !empty_design_is_structural_constant {
-        let result = certified_result(
+        let mut result = certified_result(
             values,
             SolveStopReason::NoFixedEffects,
             0,
@@ -5584,6 +5973,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
         )?;
+        result.set_solver_workspace_peak(workspace_peak);
         return attach_optional_map_coefficients(result, coefficients);
     }
 
@@ -5594,7 +5984,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             certify_initial(design, weights, &values, config.tolerance, &mut workspace)?
         };
         if initial_certificate.passed {
-            let result = certified_result(
+            let mut result = certified_result(
                 values,
                 SolveStopReason::Certified,
                 0,
@@ -5602,6 +5992,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
                 setup_seconds,
                 solve_started.elapsed().as_secs_f64(),
             )?;
+            result.set_solver_workspace_peak(workspace_peak);
             return attach_optional_map_coefficients(
                 result.with_residual_norms(std::mem::take(&mut workspace.residual_norms))?,
                 coefficients,
@@ -5618,7 +6009,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
                 "borrowed MAP structural-constant projection failed certification",
             ));
         }
-        let result = certified_result(
+        let mut result = certified_result(
             values,
             SolveStopReason::Certified,
             1,
@@ -5626,6 +6017,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             setup_seconds,
             solve_started.elapsed().as_secs_f64(),
         )?;
+        result.set_solver_workspace_peak(workspace_peak);
         return attach_optional_map_coefficients(
             result.with_residual_norms(std::mem::take(&mut workspace.residual_norms))?,
             coefficients,
@@ -5650,7 +6042,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
         {
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
             if certificate.passed {
-                let result = certified_result(
+                let mut result = certified_result(
                     values,
                     SolveStopReason::Certified,
                     iteration,
@@ -5658,6 +6050,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
                     setup_seconds,
                     solve_started.elapsed().as_secs_f64(),
                 )?;
+                result.set_solver_workspace_peak(workspace_peak);
                 return attach_optional_map_coefficients(
                     result.with_residual_norms(std::mem::take(&mut workspace.residual_norms))?,
                     coefficients,
@@ -7921,6 +8314,7 @@ fn certified_solver_result(
 ) -> Result<CertifiedBorrowedMap> {
     let report = SolveReport {
         checkpoint_retries: 0,
+        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
         requested_solver: solver,
         used_solver: solver,
         iterations,
@@ -8083,11 +8477,20 @@ pub(crate) fn schur_ols_workspace_bytes(
     Ok(8 * elements.max(probe_elements))
 }
 
+#[cfg(test)]
 pub(crate) fn schur_ols_probe(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
     values: &DenseMatrix,
 ) -> Result<f64> {
+    schur_ols_probe_with_workspace(design, weights, values).map(|(contraction, _)| contraction)
+}
+
+pub(crate) fn schur_ols_probe_with_workspace(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: &DenseMatrix,
+) -> Result<(f64, SolverWorkspacePeak)> {
     if design.effects().len() != 2 || design.nobs() != values.nrows() || values.ncols() < 3 {
         return Err(invalid_argument(
             "OLS Schur probe dimensions are unsupported",
@@ -8098,7 +8501,9 @@ pub(crate) fn schur_ols_probe(
     let weights = validate_weights(weights, values.nrows())?;
     let mut reservation = SystemWorkspaceReservation;
     let mut graph = TwoFePcgWorkspace::new(design, 3, &mut reservation)?;
-    schur_probe_reusing(design, weights, values, &mut graph, 3)
+    let peak = SolverWorkspacePeak::from_bytes(graph.capacity_elements() as u128 * 8)?;
+    let contraction = schur_probe_reusing(design, weights, values, &mut graph, 3)?;
+    Ok((contraction, peak))
 }
 
 fn schur_probe_reusing(
@@ -8288,6 +8693,7 @@ fn absorb_ols_schur_at_cap(
             "OLS Schur workspace exceeds the joint memory budget",
         ));
     }
+    let attempted_peak = SolverWorkspacePeak::from_bytes(planned)?;
     let started = Instant::now();
     let mut absorber =
         ReusableCategoricalMapAbsorber::new(design, values.ncols(), rayon::current_num_threads())?;
@@ -8329,6 +8735,7 @@ fn absorb_ols_schur_at_cap(
     )?;
     match outcome {
         SchurAttempt::Certified(mut result) => {
+            result.report.solver_workspace_peak = attempted_peak;
             result.report.requested_solver = FeSolverKind::Auto;
             result.report.used_solver = FeSolverKind::Cg;
             result.report.iterations += OLS_SCHUR_PROBE_ITERATIONS;
@@ -8387,6 +8794,12 @@ fn absorb_ols_schur_at_cap(
                 },
                 &mut reservation,
             )?;
+            result.report.solver_workspace_peak = attempted_peak.max(
+                result
+                    .report
+                    .solver_workspace_peak
+                    .with_retained(reference_norms.capacity() as u128 * 8)?,
+            );
             result.report.requested_solver = FeSolverKind::Auto;
             result.report.iterations += iterations + OLS_SCHUR_PROBE_ITERATIONS;
             result.report.setup_seconds += setup_seconds + probe_seconds;
@@ -8857,8 +9270,10 @@ mod tests {
                     .build()
                     .unwrap()
                     .install(|| {
-                        let contraction =
-                            schur_ols_probe(&design(false), weights, &values()).unwrap();
+                        let (contraction, probe_peak) =
+                            schur_ols_probe_with_workspace(&design(false), weights, &values())
+                                .unwrap();
+                        assert!(probe_peak.bytes().unwrap() > 0);
                         assert!(contraction <= OLS_SCHUR_MAX_CONTRACTION, "{contraction}");
                         if let Some(expected) = serial_probe {
                             assert_eq!(contraction, expected);
@@ -8904,6 +9319,11 @@ mod tests {
                                 cap,
                             )
                             .unwrap();
+                            let peak = result.report.solver_workspace_peak.bytes().unwrap() as u128;
+                            assert!(peak >= planned);
+                            if !fallback {
+                                assert_eq!(peak, planned);
+                            }
                             assert_eq!(result.report.fallback_used, fallback);
                             assert_eq!(result.report.requested_solver, FeSolverKind::Auto);
                             assert!(result.report.iterations <= config.map.max_iterations);
@@ -9176,6 +9596,204 @@ mod tests {
             DenseMatrix::from_columns(&[vec![f64::MAX; rows], vec![0.0; rows], vec![0.0; rows]])
                 .unwrap();
         assert!(update_ols_workspace_norms(&invalid, weights, &mut workspace, false).is_err());
+    }
+
+    #[test]
+    fn retained_lsmr_reports_reused_operator_overlap_and_preserves_results() {
+        let rows = 256;
+        let first = (0..rows).map(|row| (row % 8) as u32).collect::<Vec<_>>();
+        let second = (0..rows)
+            .map(|row| ((row / 8) % 7) as u32)
+            .collect::<Vec<_>>();
+        let first_index = LevelIndex::from_codes(&first, 8).unwrap();
+        let second_index = LevelIndex::from_codes(&second, 7).unwrap();
+        let first_source = ValidatedBorrowedInterceptSource::new(&first, 8, &first_index).unwrap();
+        let second_source =
+            ValidatedBorrowedInterceptSource::new(&second, 7, &second_index).unwrap();
+        for solver in [FeSolverKind::Lsmr, FeSolverKind::Auto] {
+            let design = BorrowedInterceptFeDesign::new(
+                rows,
+                vec![first_source.effect(), second_source.effect()],
+            )
+            .unwrap();
+            let config = crate::fe::AbsorbConfig {
+                solver,
+                solver_memory_budget: Some(FeSolverMemoryBudget {
+                    execution_bytes: 137,
+                    usable_bytes: 1 << 30,
+                }),
+                ..crate::fe::AbsorbConfig::default()
+            };
+            let input = DenseMatrix::from_columns(&[(0..rows)
+                .map(|row| (row as f64 * 0.17).sin())
+                .collect::<Vec<_>>()])
+            .unwrap();
+            let mut session =
+                BorrowedLsmrAbsorber::new(design, BorrowedMapWeights::Unit, config).unwrap();
+            if solver == FeSolverKind::Lsmr {
+                let estimate = estimate_fe_solver_memory(
+                    rows,
+                    1,
+                    &[8, 7],
+                    session
+                        .config
+                        .lsmr
+                        .threads
+                        .resolved()
+                        .max(rayon::current_num_threads()),
+                    session.config.lsmr.local_size,
+                )
+                .unwrap();
+                let required = estimate.lsmr_bytes(LsmrPreconditioner::Diagonal);
+                session.config.solver_memory_budget = Some(FeSolverMemoryBudget {
+                    execution_bytes: 137,
+                    usable_bytes: 136 + required,
+                });
+                assert_eq!(
+                    session.absorb(input.clone()).unwrap_err().code,
+                    ErrorCode::Allocation
+                );
+                assert_eq!(session.prepared.builds, 0);
+                session
+                    .config
+                    .solver_memory_budget
+                    .as_mut()
+                    .unwrap()
+                    .usable_bytes += 1;
+            }
+            let cold = session.absorb(input.clone()).unwrap();
+            assert_eq!(session.prepared.builds, 1);
+            assert!(cold.report().solver_workspace_peak.bytes().is_some());
+            let warm = session.absorb(input).unwrap();
+            assert_eq!(session.prepared.builds, 1);
+            assert!(warm.report().solver_workspace_peak.bytes().is_some());
+            assert!(session.prepared.retained_bytes > 0);
+            let pilot = BorrowedMapWorkspace::planned_payload_bytes(
+                &session.design,
+                rows,
+                1,
+                rayon::current_num_threads(),
+            )
+            .unwrap();
+            assert!(
+                warm.report().solver_workspace_peak.bytes().unwrap() as u128
+                    >= pilot + session.prepared.retained_bytes
+            );
+            assert_eq!(cold.residualized(), warm.residualized());
+            assert_eq!(cold.report().certificate, warm.report().certificate);
+            if solver == FeSolverKind::Auto {
+                session.config.solver_memory_budget = Some(FeSolverMemoryBudget {
+                    execution_bytes: 137,
+                    usable_bytes: 137 + pilot,
+                });
+                let already_projected = warm.residualized().clone();
+                let bounded = session.absorb(already_projected.clone()).unwrap();
+                assert!(session.prepared.solver.is_none());
+                assert_eq!(session.prepared.retained_bytes, 0);
+                assert_eq!(bounded.residualized(), &already_projected);
+                assert_eq!(
+                    bounded.report().solver_workspace_peak.bytes(),
+                    Some(pilot as u64)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn lsmr_postprocess_admission_preserves_attempt_peak_and_checks_parent_overlap() {
+        let estimate = estimate_fe_solver_memory(128, 3, &[16, 8], 1, Some(4)).unwrap();
+        let required = estimate.lsmr_bytes(LsmrPreconditioner::Off);
+        let parent = 137;
+        let base = 211;
+        let budget = FeSolverMemoryBudget {
+            execution_bytes: base,
+            usable_bytes: base + parent + required,
+        };
+        let mut memory =
+            BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Off, Some(budget), parent)
+                .unwrap();
+        assert_eq!(memory.peak.bytes(), Some((parent + required) as u64));
+        memory.include(required).unwrap();
+        let prior = memory.peak;
+        assert_eq!(
+            memory.include(required + 1).unwrap_err().code,
+            ErrorCode::Allocation
+        );
+        assert_eq!(memory.peak, prior);
+        assert_eq!(
+            memory.include(u128::MAX).unwrap_err().code,
+            ErrorCode::Allocation
+        );
+        assert_eq!(memory.peak, prior);
+        let short = FeSolverMemoryBudget {
+            usable_bytes: budget.usable_bytes - 1,
+            ..budget
+        };
+        assert!(BorrowedLsmrCallMemory::new(
+            estimate,
+            LsmrPreconditioner::Off,
+            Some(short),
+            parent
+        )
+        .is_err());
+        memory.budget = None;
+        memory.include_payload(123, required).unwrap();
+        assert_eq!(
+            memory.peak.bytes(),
+            Some((parent + required + 123 + estimate.lsmr_result_metadata_bytes) as u64)
+        );
+    }
+
+    #[test]
+    fn memory_plan_includes_coefficient_layouts_and_all_map_banks() {
+        let codes = [0, 0, 1, 1];
+        let index = LevelIndex::from_codes(&codes, 2).unwrap();
+        let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
+        for effects in [1, 3, 512] {
+            let design =
+                BorrowedInterceptFeDesign::new(4, (0..effects).map(|_| source.effect()).collect())
+                    .unwrap();
+            for rhs in [1, 19] {
+                let batch = FeCoefficientBatch::intercept_zeros(&design, rhs).unwrap();
+                let estimate =
+                    estimate_fe_solver_memory(4, rhs, &vec![2; effects], 1, Some(4)).unwrap();
+                assert_eq!(estimate.coefficient_batch_bytes, batch.retained_bytes());
+                assert!(estimate.coefficient_batch_bytes > (effects * 2 * rhs * 8) as u128);
+            }
+        }
+        let rows = 16_384;
+        let codes: Vec<u32> = (0..rows).map(|r| (r % 127) as u32).collect();
+        let index = LevelIndex::from_codes(&codes, 127).unwrap();
+        let source = ValidatedBorrowedInterceptSource::new(&codes, 127, &index).unwrap();
+        let design = BorrowedInterceptFeDesign::new(rows, vec![source.effect()]).unwrap();
+        for threads in [1, 4] {
+            for rhs in [1, 19, 65] {
+                let workspace = BorrowedMapWorkspace::new_with_parallelism(
+                    &design,
+                    rows,
+                    rhs,
+                    threads,
+                    &mut SystemWorkspaceReservation,
+                )
+                .unwrap();
+                assert_eq!(
+                    workspace.payload_peak().unwrap().bytes().unwrap() as u128,
+                    BorrowedMapWorkspace::planned_payload_bytes(&design, rows, rhs, threads)
+                        .unwrap()
+                );
+                if rhs == 1 {
+                    let matrix = DenseMatrix::zeros(rows, 1).unwrap();
+                    let coefficient = FeCoefficientBatch::intercept_zeros(&design, 1).unwrap();
+                    assert_eq!(
+                        borrowed_cg_recovery_workspace_bytes(rows, 1, 127, 127, threads).unwrap(),
+                        workspace.payload_peak().unwrap().bytes().unwrap() as u128
+                            + 4 * matrix.storage_capacity() as u128 * 8
+                            + 4 * coefficient.retained_bytes()
+                            + 8 * 8,
+                    );
+                }
+            }
+        }
     }
 
     #[test]
@@ -9964,6 +10582,173 @@ mod tests {
             assert_eq!(serial.report().iterations, parallel.report().iterations);
             assert_eq!(serial.report().stop_reason, parallel.report().stop_reason);
             assert_eq!(serial.report().certificate, parallel.report().certificate);
+        }
+    }
+
+    #[test]
+    fn map_workspace_report_counts_reserved_capacity_before_norm_handoff() {
+        struct RecordingReservation {
+            bytes: u64,
+        }
+        impl WorkspaceReservation for RecordingReservation {
+            fn reserve_f64(
+                &mut self,
+                values: &mut Vec<f64>,
+                elements: usize,
+                label: &'static str,
+            ) -> Result<()> {
+                SystemWorkspaceReservation.reserve_f64(values, elements + 7, label)?;
+                self.bytes += (values.capacity() * std::mem::size_of::<f64>()) as u64;
+                Ok(())
+            }
+        }
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for rows in [32, 16_384] {
+                        let codes = (0..rows).map(|row| (row % 4) as u32).collect::<Vec<_>>();
+                        let index = LevelIndex::from_codes(&codes, 4).unwrap();
+                        let source =
+                            ValidatedBorrowedInterceptSource::new(&codes, 4, &index).unwrap();
+                        for effects in [vec![], vec![source.effect()]] {
+                            let design = BorrowedInterceptFeDesign::new(rows, effects).unwrap();
+                            let input = (0..rows)
+                                .map(|row| {
+                                    2.0 * (row % 4) as f64
+                                        + if (row / 4) % 2 == 0 { -1.0 } else { 1.0 }
+                                })
+                                .collect::<Vec<_>>();
+                            let mut reservation = RecordingReservation { bytes: 0 };
+                            let result = absorb_with_reservation(
+                                &design,
+                                BorrowedMapWeights::Unit,
+                                DenseMatrix::from_columns(&[input]).unwrap(),
+                                config(),
+                                false,
+                                &mut reservation,
+                            )
+                            .unwrap();
+                            assert_eq!(
+                                result.report().solver_workspace_peak.bytes(),
+                                Some(reservation.bytes)
+                            );
+                            assert!(reservation.bytes > 7 * 8);
+                            assert!(result.report().certified());
+                            if !design.effects().is_empty() {
+                                for (row, residual) in
+                                    result.residualized().as_slice().iter().enumerate()
+                                {
+                                    assert_eq!(
+                                        *residual,
+                                        if (row / 4) % 2 == 0 { -1.0 } else { 1.0 }
+                                    );
+                                }
+                            }
+                        }
+                    }
+                });
+        }
+    }
+
+    #[test]
+    fn cg_workspace_report_counts_capacity_early_exit_and_retained_coefficients() {
+        struct RecordingReservation {
+            bytes: u64,
+        }
+        impl WorkspaceReservation for RecordingReservation {
+            fn reserve_f64(
+                &mut self,
+                values: &mut Vec<f64>,
+                elements: usize,
+                label: &'static str,
+            ) -> Result<()> {
+                SystemWorkspaceReservation.reserve_f64(values, elements + 7, label)?;
+                self.bytes += (values.capacity() * 8) as u64;
+                Ok(())
+            }
+        }
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    let rows = 1024;
+                    let codes = (0..rows).map(|row| (row % 4) as u32).collect::<Vec<_>>();
+                    let index = LevelIndex::from_codes(&codes, 4).unwrap();
+                    let source = ValidatedBorrowedInterceptSource::new(&codes, 4, &index).unwrap();
+                    let design =
+                        BorrowedInterceptFeDesign::new(rows, vec![source.effect()]).unwrap();
+                    for already_within in [false, true] {
+                        for retain_coefficients in [false, true] {
+                            let columns = (0..2)
+                                .map(|rhs| {
+                                    (0..rows)
+                                        .map(|row| {
+                                            let noise = if (row / 4) % 2 == 0 { -1.0 } else { 1.0 };
+                                            (rhs + 1) as f64
+                                                * (noise
+                                                    + if already_within {
+                                                        0.0
+                                                    } else {
+                                                        2.0 * codes[row] as f64
+                                                    })
+                                        })
+                                        .collect::<Vec<_>>()
+                                })
+                                .collect::<Vec<_>>();
+                            let mut reservation = RecordingReservation { bytes: 0 };
+                            let result = absorb_cg_with_reservation(
+                                &design,
+                                BorrowedMapWeights::Unit,
+                                DenseMatrix::from_columns(&columns).unwrap(),
+                                config(),
+                                false,
+                                CgContinuation {
+                                    retain_coefficients,
+                                    ..CgContinuation::ORDINARY
+                                },
+                                &mut reservation,
+                            )
+                            .unwrap();
+                            assert!(result.report().certified());
+                            assert_eq!(result.report().iterations == 0, already_within);
+                            let matrices = if already_within {
+                                0
+                            } else {
+                                3 * rows as u64 * 2 * 8
+                            };
+                            // Four levels times two RHSs, plus channel/count/offset metadata.
+                            let one_coefficient_bank =
+                                4 * 2 * 8 + (1 + 1 + 2) * std::mem::size_of::<usize>() as u64;
+                            let coefficients = if !retain_coefficients {
+                                0
+                            } else if already_within {
+                                one_coefficient_bank
+                            } else {
+                                4 * one_coefficient_bank
+                            };
+                            assert_eq!(
+                                result.report().solver_workspace_peak.bytes(),
+                                Some(reservation.bytes + matrices + coefficients)
+                            );
+                            for row in 0..rows {
+                                let noise = if (row / 4) % 2 == 0 { -1.0 } else { 1.0 };
+                                for rhs in 0..2 {
+                                    assert!(
+                                        (result.residualized()[(row, rhs)]
+                                            - (rhs + 1) as f64 * noise)
+                                            .abs()
+                                            < 1e-12
+                                    );
+                                }
+                            }
+                        }
+                    }
+                });
         }
     }
 
@@ -11056,6 +11841,31 @@ mod tests {
     }
 
     #[test]
+    fn map_conversion_peak_preserves_overreservation_and_moved_layout() {
+        let codes = [0_u32, 0, 1, 1];
+        let index = LevelIndex::from_codes(&codes, 2).unwrap();
+        let source = ValidatedBorrowedInterceptSource::new(&codes, 2, &index).unwrap();
+        let design = BorrowedInterceptFeDesign::new(4, vec![source.effect()]).unwrap();
+        let mut accumulator = MapCoefficientAccumulator::zeros(&design, 3).unwrap();
+        accumulator.values.try_reserve_exact(17).unwrap();
+        accumulator.effect_offsets.try_reserve_exact(11).unwrap();
+        accumulator.level_counts.try_reserve_exact(7).unwrap();
+        accumulator
+            .values
+            .copy_from_slice(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        let source_bytes = accumulator.values.capacity() as u128 * 8
+            + accumulator.effect_offsets.capacity() as u128 * std::mem::size_of::<usize>() as u128;
+        let level_capacity = accumulator.level_counts.capacity();
+        let (batch, conversion_peak) = accumulator.into_batch().unwrap();
+        assert_eq!(batch.rhs(0).unwrap(), &[1.0, 4.0]);
+        assert_eq!(batch.rhs(1).unwrap(), &[2.0, 5.0]);
+        assert_eq!(batch.rhs(2).unwrap(), &[3.0, 6.0]);
+        assert_eq!(batch.level_counts.capacity(), level_capacity);
+        assert_eq!(conversion_peak, source_bytes + batch.retained_bytes());
+        assert!(conversion_peak > 2 * 6 * 8);
+    }
+
+    #[test]
     fn retained_map_level_major_accumulator_reconstructs_every_rhs() {
         let worker_codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
         let firm_codes = [0_u32, 1, 1, 2, 2, 0, 0, 2];
@@ -11087,6 +11897,10 @@ mod tests {
         let (residualized, report, coefficients) = retained.into_full_parts();
         assert!(report.certified());
         let coefficients = coefficients.expect("MAP coefficient product");
+        assert!(
+            report.solver_workspace_peak.bytes().unwrap() as u128
+                >= coefficients.retained_bytes() + 2 * 7 * 3 * 8
+        );
         for rhs_index in 0..input.ncols() {
             let rhs = coefficients.rhs(rhs_index).expect("coefficient RHS");
             for row in 0..input.nrows() {
@@ -11514,9 +12328,14 @@ mod tests {
             threads: crate::options::ThreadConfig::from_requested(1, true).expect("threads"),
             ..LsmrConfig::default()
         };
-        let memory =
-            estimate_fe_solver_memory(observations, 1, &[workers, workers + 1], 1, lsmr.local_size)
-                .expect("solver memory");
+        let memory = estimate_fe_solver_memory(
+            observations,
+            1,
+            &[workers, workers + 1],
+            rayon::current_num_threads(),
+            lsmr.local_size,
+        )
+        .expect("solver memory");
         assert!(memory.cg_bytes < memory.lsmr_schwarz_bytes);
         let weights: Vec<f64> = (0..observations)
             .map(|row| 0.5 + (row % 19) as f64 / 19.0)
@@ -11535,9 +12354,15 @@ mod tests {
                 false,
             )
         };
-        let cg = run(memory.cg_bytes).expect("memory-routed CG");
+        // The original certificate norm remains live beside the CG continuation.
+        let cg_required = memory.cg_bytes + std::mem::size_of::<f64>() as u128;
+        let cg = run(cg_required).expect("memory-routed CG");
         assert_eq!(cg.report().used_solver, FeSolverKind::Cg);
         assert!(cg.report().fallback_used);
+        assert_eq!(
+            cg.report().solver_workspace_peak.bytes(),
+            Some(cg_required as u64)
+        );
         assert!(cg
             .report()
             .warnings
@@ -11549,12 +12374,18 @@ mod tests {
         let bounded = run(327_680).expect("small budget must use certified CG");
         assert_eq!(bounded.report().used_solver, FeSolverKind::Cg);
         assert!(bounded.report().fallback_used);
-        assert!(bounded.report().warnings.iter().any(|warning| {
-            warning.contains("joint execution/solver memory plan")
-        }));
+        assert!(bounded
+            .report()
+            .warnings
+            .iter()
+            .any(|warning| { warning.contains("joint execution/solver memory plan") }));
         assert_eq!(bounded.residualized(), cg.residualized());
+        assert_eq!(
+            bounded.report().solver_workspace_peak,
+            cg.report().solver_workspace_peak
+        );
 
-        let error = run(memory.cg_bytes - 1).expect_err("neither route may allocate");
+        let error = run(cg_required - 1).expect_err("neither route may allocate");
         assert_eq!(error.code, ErrorCode::Allocation);
         assert!(error.message.contains("neither LSMR nor CG"));
     }

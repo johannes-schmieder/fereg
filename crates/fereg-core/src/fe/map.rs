@@ -52,6 +52,7 @@ pub fn absorb_map(
         )?;
         return Ok(SolveReport {
             checkpoint_retries: 0,
+            solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
             requested_solver: FeSolverKind::Map,
             used_solver: FeSolverKind::Map,
             iterations: 0,
@@ -98,6 +99,7 @@ pub fn absorb_map(
             if final_certificate.passed {
                 return Ok(SolveReport {
                     checkpoint_retries: 0,
+                    solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
                     requested_solver: FeSolverKind::Map,
                     used_solver: FeSolverKind::Map,
                     iterations: iteration,
@@ -120,6 +122,7 @@ pub fn absorb_map(
 
     Ok(SolveReport {
         checkpoint_retries: 0,
+        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
         requested_solver: FeSolverKind::Map,
         used_solver: FeSolverKind::Map,
         iterations: config.max_iterations,
@@ -674,6 +677,7 @@ fn reusable_map_report(
 ) -> SolveReport {
     SolveReport {
         checkpoint_retries: 0,
+        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
         requested_solver: FeSolverKind::Map,
         used_solver: FeSolverKind::Map,
         iterations,

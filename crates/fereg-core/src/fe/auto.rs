@@ -5,6 +5,7 @@ use crate::fe::{
     weighted_column_norms, FeDesign, FeSolverKind, LsmrConfig, MapConfig, SolveReport,
     SolveStopReason,
 };
+use crate::memory::SolverWorkspacePeak;
 use crate::memory::{generic_fe_solver_bytes, owned_fe_matrix_bytes, FeSolverMemoryBudget};
 
 /// Frozen automatic-routing threshold selected from the registered AKM matrix.
@@ -103,11 +104,13 @@ pub fn absorb_fixed_effects(
 ) -> Result<SolveReport> {
     match config.solver {
         FeSolverKind::Map => {
-            admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
-            absorb_map(design, weights, values, config.map)
+            let peak = admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
+            let mut report = absorb_map(design, weights, values, config.map)?;
+            report.solver_workspace_peak = peak;
+            Ok(report)
         }
         FeSolverKind::Lsmr => {
-            admit_generic_solver(
+            let attempted_peak = admit_generic_solver(
                 design,
                 values,
                 config,
@@ -120,15 +123,18 @@ pub fn absorb_fixed_effects(
                     fallible_matrix_copy(values, "unable to reserve explicit LSMR fallback matrix")
                 })
                 .transpose()?;
-            let report = absorb_lsmr(design, weights, values, config.lsmr)?;
+            let mut report = absorb_lsmr(design, weights, values, config.lsmr)?;
+            report.solver_workspace_peak = attempted_peak;
             if report.certified() || !config.certified_fallback {
                 return Ok(report);
             }
             if let Some(original) = original {
                 *values = original;
             }
-            admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
+            let fallback_peak =
+                admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
             let mut fallback = absorb_map(design, weights, values, config.map)?;
+            fallback.solver_workspace_peak = attempted_peak.max(fallback_peak);
             fallback.requested_solver = FeSolverKind::Lsmr;
             fallback.fallback_used = true;
             fallback.warnings.insert(
@@ -141,8 +147,11 @@ pub fn absorb_fixed_effects(
             Ok(fallback)
         }
         FeSolverKind::Cg | FeSolverKind::IronsTuck | FeSolverKind::Squarem => {
-            admit_generic_solver(design, values, config, config.solver, false)?;
-            absorb_accelerated_map(design, weights, values, config.map, config.solver)
+            let peak = admit_generic_solver(design, values, config, config.solver, false)?;
+            let mut report =
+                absorb_accelerated_map(design, weights, values, config.map, config.solver)?;
+            report.solver_workspace_peak = peak;
+            Ok(report)
         }
         FeSolverKind::Cmg => Err(FeregError::new(
             ErrorCode::Unsupported,
@@ -160,7 +169,8 @@ fn absorb_auto(
 ) -> Result<SolveReport> {
     // Admit the cheap pilot first. An unused LSMR/CG workspace must not prevent
     // a MAP certificate from closing an otherwise affordable request.
-    admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
+    let mut attempted_peak =
+        admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
     let reference_norms = weighted_column_norms(values, weights)?;
     let initial = certify_residuals_with_reference_norms(
         design,
@@ -191,6 +201,7 @@ fn absorb_auto(
             "automatic MAP pilot contraction is invalid",
         ));
     }
+    pilot.solver_workspace_peak = attempted_peak;
     pilot.requested_solver = FeSolverKind::Auto;
     pilot.pilot_iterations = pilot.iterations;
     pilot.pilot_contraction = contraction;
@@ -214,7 +225,11 @@ fn absorb_auto(
             ..config.lsmr
         };
         let attempt: Result<(SolveReport, DenseMatrix)> = (|| {
-            admit_generic_solver(design, values, config, FeSolverKind::Lsmr, true)?;
+            let peak = admit_generic_solver(design, values, config, FeSolverKind::Lsmr, true)?;
+            // Keep admitted work even if construction/solving errors before a
+            // report is returned. An admission rejection itself allocates none
+            // of this workspace and must not charge the rejected envelope.
+            attempted_peak = attempted_peak.max(peak);
             let mut lsmr_values =
                 fallible_matrix_copy(values, "unable to reserve automatic LSMR fallback matrix")?;
             let report = absorb_lsmr(design, weights, &mut lsmr_values, lsmr_config)?;
@@ -233,6 +248,7 @@ fn absorb_auto(
                     lsmr.stop_reason = SolveStopReason::Certified;
                 }
                 if lsmr.certified() {
+                    lsmr.solver_workspace_peak = attempted_peak;
                     lsmr.requested_solver = FeSolverKind::Auto;
                     lsmr.iterations = lsmr.iterations.saturating_add(pilot.iterations);
                     lsmr.pilot_iterations = pilot.iterations;
@@ -272,7 +288,8 @@ fn absorb_auto(
 
     // A failed/rejected LSMR attempt has released its solver and transport.
     // Recheck the actual continuation instead of charging two live solvers.
-    admit_generic_solver(design, values, config, FeSolverKind::Cg, false)?;
+    let continuation_peak = admit_generic_solver(design, values, config, FeSolverKind::Cg, false)?;
+    attempted_peak = attempted_peak.max(continuation_peak);
     let mut cg = absorb_accelerated_map(
         design,
         weights,
@@ -289,6 +306,7 @@ fn absorb_auto(
             "automatic CG continuation exhausted the solver budget without certification",
         ));
     }
+    cg.solver_workspace_peak = attempted_peak;
     cg.requested_solver = FeSolverKind::Auto;
     cg.iterations = cg.iterations.saturating_add(pilot.iterations);
     cg.pilot_iterations = pilot.iterations;
@@ -315,10 +333,7 @@ fn admit_generic_solver(
     config: AbsorbConfig,
     solver: FeSolverKind,
     preserve_input: bool,
-) -> Result<()> {
-    let Some(budget) = config.solver_memory_budget else {
-        return Ok(());
-    };
+) -> Result<SolverWorkspacePeak> {
     let workspace = generic_fe_solver_bytes(design, values.ncols(), solver, config.lsmr)?;
     let preserved = if preserve_input {
         owned_fe_matrix_bytes(values.nrows(), values.ncols())?
@@ -331,12 +346,14 @@ fn admit_generic_solver(
             "generic FE joint workspace overflows",
         )
     })?;
-    if !budget.fits(required) {
-        return Err(FeregError::new(ErrorCode::Allocation, format!(
-            "generic {solver:?} requires {required} workspace bytes beside {} execution bytes; usable={}",
-            budget.execution_bytes, budget.usable_bytes)));
+    if let Some(budget) = config.solver_memory_budget {
+        if !budget.fits(required) {
+            return Err(FeregError::new(ErrorCode::Allocation, format!(
+                "generic {solver:?} requires {required} workspace bytes beside {} execution bytes; usable={}",
+                budget.execution_bytes, budget.usable_bytes)));
+        }
     }
-    Ok(())
+    SolverWorkspacePeak::from_bytes(required)
 }
 
 fn fallible_matrix_copy(input: &DenseMatrix, label: &'static str) -> Result<DenseMatrix> {
@@ -512,6 +529,46 @@ mod generic_budget_regression {
         assert_eq!(error.code, ErrorCode::Allocation);
     }
     #[test]
+    fn generic_explicit_fallback_keeps_the_discarded_lsmr_envelope() {
+        let first = EffectTerm::new(vec![0, 0, 1, 1, 2, 2], 3, true, vec![]).unwrap();
+        let second = EffectTerm::new(vec![0, 1, 1, 2, 2, 0], 3, true, vec![]).unwrap();
+        let design = FeDesign::new(6, vec![first, second]).unwrap();
+        let input = vec![1.0, 7.0, 2.0, 9.0, 4.0, 3.0];
+        let mut config = AbsorbConfig {
+            solver: FeSolverKind::Lsmr,
+            lsmr: LsmrConfig {
+                max_iterations: 1,
+                tolerance: 1e-14,
+                ..LsmrConfig::default()
+            },
+            ..AbsorbConfig::default()
+        };
+        let mut original = DenseMatrix::from_columns(&[input.clone()]).unwrap();
+        let original_report =
+            absorb_fixed_effects(&design, &[1.0; 6], &mut original, config).unwrap();
+        let attempt = generic_fe_solver_bytes(&design, 1, FeSolverKind::Lsmr, config.lsmr).unwrap()
+            + owned_fe_matrix_bytes(6, 1).unwrap();
+        let fallback = generic_fe_solver_bytes(&design, 1, FeSolverKind::Map, config.lsmr).unwrap();
+        assert!(attempt > fallback);
+        assert_eq!(
+            original_report.solver_workspace_peak.bytes(),
+            Some(attempt as u64)
+        );
+        config.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 137,
+            usable_bytes: 137 + attempt,
+        });
+        let mut values = DenseMatrix::from_columns(&[input]).unwrap();
+        let report = absorb_fixed_effects(&design, &[1.0; 6], &mut values, config).unwrap();
+        assert_eq!(report.used_solver, FeSolverKind::Map);
+        assert!(report.certified() && report.fallback_used);
+        assert_eq!(report.solver_workspace_peak.bytes(), Some(attempt as u64));
+        assert_eq!(values, original);
+        assert_eq!(report.certificate, original_report.certificate);
+        assert_eq!(report.iterations, original_report.iterations);
+    }
+
+    #[test]
     fn generic_auto_enforces_joint_budget() {
         check_budget(FeSolverKind::Auto);
     }
@@ -576,7 +633,12 @@ mod generic_budget_regression {
                                     assert_eq!(result.unwrap_err().code, ErrorCode::Allocation);
                                     assert_eq!(values.as_slice(), outcome);
                                 } else {
-                                    assert!(result.unwrap().certified());
+                                    let report = result.unwrap();
+                                    assert!(report.certified());
+                                    assert_eq!(
+                                        report.solver_workspace_peak.bytes(),
+                                        Some(reserve as u64)
+                                    );
                                     assert!(values
                                         .as_slice()
                                         .iter()
@@ -608,6 +670,7 @@ mod generic_budget_regression {
         assert!(report.certified());
         assert_eq!(report.used_solver, FeSolverKind::Map);
         assert!(!report.fallback_used);
+        assert_eq!(report.solver_workspace_peak.bytes(), Some(reserve as u64));
         assert!(values
             .as_slice()
             .iter()
@@ -679,6 +742,9 @@ mod generic_budget_regression {
                 assert_eq!(report.used_solver, FeSolverKind::Cg);
                 assert!(report.fallback_used);
                 assert!(report.warnings[0].contains("workspace bytes"));
+                // The larger LSMR route was never allocated. Only the admitted
+                // pilot and CG continuation belong to this peak.
+                assert_eq!(report.solver_workspace_peak.bytes(), Some(cg_bytes as u64));
                 assert!(values
                     .as_slice()
                     .iter()

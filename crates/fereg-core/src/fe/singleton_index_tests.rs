@@ -212,6 +212,57 @@ fn singleton_index_scale_doubling_has_substantial_drops() {
     }
 }
 
+#[test]
+fn singleton_index_review_scale_has_half_initial_singletons_and_a_cascade() {
+    // Half the rows are isolated singletons, a quarter form a path whose
+    // endpoints trigger a cascade, and the remaining quarter form a core.
+    // The small instances additionally bind the closed-form retained mask to
+    // both the historical search and an independent simultaneous fixed point.
+    for n in [256, 512, 65_536, 131_072] {
+        let isolated = n / 2;
+        let chain = n / 4;
+        let core_level = isolated + chain / 2 + 1;
+        let mut first = vec![core_level as u32; n];
+        let mut second = first.clone();
+        for row in 0..isolated {
+            first[row] = row as u32;
+            second[row] = row as u32;
+        }
+        for edge in 0..chain {
+            first[isolated + edge] = (isolated + edge / 2) as u32;
+            second[isolated + edge] = (isolated + (edge + 1) / 2) as u32;
+        }
+        let effects = [&first[..], &second[..]];
+        let levels = [core_level + 1; 2];
+        let initial = vec![true; n];
+        let expected: Vec<bool> = (0..n).map(|row| row >= isolated + chain).collect();
+        if n <= 512 {
+            let historical =
+                scanning_reference(&effects, &levels, &initial, SingletonMultiplicity::Unit);
+            assert_eq!(historical.active, expected);
+            assert_eq!(
+                simultaneous_reference(&effects, &levels, &initial, &vec![1.0; n]),
+                expected
+            );
+        }
+        let started = std::time::Instant::now();
+        let result = prune_singletons(&effects, &levels, &initial, false).unwrap();
+        let elapsed = started.elapsed();
+        assert_eq!(result.active, expected);
+        assert_eq!(result.dropped_observations.len(), isolated + chain);
+        assert_eq!(result.cascade_events, isolated + chain);
+        if n >= 65_536 {
+            eprintln!(
+                "SINGLETON_REVIEW_SCALE rows={n} initially_singleton_rows={} dropped={} retained={} seconds={:.9}",
+                isolated + 2,
+                result.dropped_observations.len(),
+                n / 4,
+                elapsed.as_secs_f64()
+            );
+        }
+    }
+}
+
 #[derive(Default)]
 struct PayloadReservation {
     calls: usize,

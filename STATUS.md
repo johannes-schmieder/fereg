@@ -12,6 +12,29 @@ completed optimization/calibration investigation chronology formerly here.
 
 ## Candidate preparation: memory accounting checkpoints
 
+The [fixed Linux cost check](benchmarks/reports/development/candidate-memory-costs-linux-2026-09-15/README.md)
+passes all 30 alternating pairs (60 fresh-process commands) and 11 predeclared
+licensed fixtures. Scientific matrices, sample/order, saved outputs and non-time
+solver fields match exactly. No median slowdown exceeds both 5% and 10 ms;
+weak-wide medians are 6.003/5.982 seconds. Complete phase/allocation/RSS/scratch
+receipts are retained; separately unobserved discarded-attempt time stays null.
+The three-FE public base-only discrepancy reproduces (50,298,672 observed versus
+22,983,168 base bytes), without establishing an execution-plus-solver cap breach.
+
+The [larger singleton control](benchmarks/reports/development/candidate-singleton-scale-2026-09-15/README.md)
+passes the exact predeclared 65,536/131,072-row sizes with half initially
+singleton and a further quarter cascading. Both small independent oracles pass;
+debug diagnostic times are 0.0570/0.1128 seconds (1.978x). No task job remains
+running. The native implementation checkpoint is suitable for continued
+development; it is not a frozen or validated production/review candidate.
+
+The [isolated combined checkpoint](benchmarks/reports/development/candidate-memory-isolated-2026-09-15/README.md)
+passes 880 core, 96 plugin and 3 testkit checks using a separate Cargo target
+and verified compiler-reported executables. It includes the broader PPML
+recovery/normalization/output envelope. Earlier shared-target receipts remain
+diagnostic; this run binds its exact artifacts but does not close whole-action
+coverage.
+
 The [isolated PPML recovery-team repair](benchmarks/reports/development/candidate-ppml-recovery-team-2026-09-15/README.md)
 keeps saved-effect CG/normalization on the accepted fit's worker team. A guard
 rejects a count differing from memory admission before allocation, and no-save
@@ -32,8 +55,9 @@ memory prototype. Exact and one-byte-short admission, actual rebased-output
 capacities, saved slopes, allocation failure and interruption are covered. This
 repairs a phase-inventory omission; it does not establish an empirical cap breach.
 
-The [larger memory checkpoint](benchmarks/reports/development/candidate-memory-accounting-2026-09-15/README.md)
-remains uncommitted and unadopted pending complete-action and performance gates.
+The current implementation extends the [earlier memory checkpoint](benchmarks/reports/development/candidate-memory-accounting-2026-09-15/README.md).
+The current source-bound cost controls pass; complete-action coverage remains
+open. The earlier snapshot and its original status remain historical evidence.
 Its tested snapshot passes 878 core, 95 plugin and 3 top-level library checks.
 The later no-budget CMG reporting follow-up passes 35 CMG and 35 PPML IRLS
 checks against a separate source identity. Failed setup, fallback, inference
@@ -41,11 +65,16 @@ reconstruction and intercept recovery envelopes now propagate through a compact
 8-byte carrier; unknown scopes remain unknown. Earlier failed fixtures and the
 baseline PPML warm-allocation failure are preserved in the receipts.
 
-Current implementation work is the PPML saved-effect solver envelope and
-parent/frame lifetimes. Versioned public action diagnostics, original
-three-FE/German allocation reproduction, fixed paired command comparisons and
-exact-candidate Mac/Linux installation remain open. No complete-action coverage,
-performance adoption, candidate freeze or release qualification is claimed.
+The compact internal solver carrier, failed-attempt/fallback propagation,
+specialized slope-MAP admission and PPML saved-effect solver envelope are
+implemented. Whole-action parent/frame and metadata coverage, versioned public
+action diagnostics and a new German OLS allocation reproduction remain open.
+The public base-memory fields and result wires are unchanged. No whole-action
+ratio or complete-action coverage is claimed. Mac builds still fail on the
+unaccepted Xcode license; ADR 0073 still needs the owner's decision. Exact-SHA
+candidate freeze, universal/Rosetta checks, deterministic Mac/Linux archives and
+extracted-package installation remain blocked or pending. Nothing was installed,
+pushed, tagged, released, or promoted to formal qualification.
 
 ## Candidate preparation: PPML warm-allocation repair
 
@@ -77,13 +106,14 @@ pointwise envelope. Sample/order, coefficients, covariance and DoF parity pass.
 No native numerical defect was demonstrated. [Proposed ADR 0073](docs/adr/0073-german-ols-review-adjudication.md)
 requires Johannes's explicit decision before this evidence can close the
 case-specific review gate. No CG exception or tolerance relaxation is active;
-original failed comparisons remain failed. No further estimation is planned.
+original failed comparisons remain failed. No further reference estimation is
+planned.
 
 The earlier OLS 25.7% difference compares whole-action allocation with base
 execution storage. Its separately admitted CG workspace is 2,191,388,408 bytes;
 base plus CG is 5,032,768,432 bytes, above observed 3,570,575,392 bytes. That
 comparison does not demonstrate a cap breach. Complete action accounting and
-coverage remain required; the memory prototype is not yet adopted. Mac builds
+coverage remain required; a whole-action memory claim is not accepted. Mac builds
 still await owner acceptance of the Xcode license. No candidate is qualified.
 
 ## Candidate preparation: packaging and fixed development controls

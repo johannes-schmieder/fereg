@@ -1,0 +1,33 @@
+{
+  "job": 7586371,
+  "tests_passed": 1,
+  "sentinel": "SINGLETON_REVIEW_SCALE_PASS",
+  "cases": [
+    {
+      "rows": 65536,
+      "initially_singleton_rows": 32770,
+      "dropped": 49152,
+      "retained": 16384,
+      "seconds": 0.057021969
+    },
+    {
+      "rows": 131072,
+      "initially_singleton_rows": 65538,
+      "dropped": 98304,
+      "retained": 32768,
+      "seconds": 0.112789284
+    }
+  ],
+  "scale_ratio": 1.9779970067326158,
+  "oracle": "256/512-row instances match historical observation-zero scanning and separately implemented simultaneous-pass fixed point; larger masks have the same closed-form disconnected topology",
+  "timing_scope": "Debug build, one bounded invocation per size; diagnostic scaling, no noisy timing assertion or release speed claim",
+  "scheduler": {
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "46",
+    "maxvmem": "3.455G",
+    "hostname": "scc-gd4.scc.bu.edu",
+    "slots": "4"
+  },
+  "log_sha256": "f51d4ee8347dbad2049e96eb5e1e3dc7ca7ad729b9ece38cffbd61676f0034e0"
+}

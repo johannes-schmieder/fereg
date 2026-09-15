@@ -1,0 +1,73 @@
+{
+  "development_only": true,
+  "accepted_bounded_cost_check": true,
+  "review_candidate_ready": false,
+  "baseline_source": "9ecf47d3550a10db059ef3605e4f8c4aeacd5511",
+  "source_identity_sha256": "db0b50ceec367f37703fc13e954ecd2d2c64d5eda9448c3a4f67fe7c97aa37f3",
+  "artifacts": {
+    "baseline": "551e8759c5cf3e2558c94b6af1c139f2801971de8729f912afba2f8e41ed55ed",
+    "candidate": "4782babab9875814045d12f4f93d4107065ffca0b855c218ee2114d5061d4642"
+  },
+  "fixed_case_manifest_sha256": "a450e3ee0fb3dcd3a3843d247d5b876ff9f9f487d49bdae6b39ed4c9e81c8cb2",
+  "scheduler": [
+    {
+      "jobnumber": "7586340",
+      "jobname": "fereg_memory_build",
+      "hostname": "scc-gd4.scc.bu.edu",
+      "qname": "econ",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "90",
+      "ru_maxrss": "1175688",
+      "maxvmem": "2.598G",
+      "start_time": "Tue Sep 15 18:46:27 2026",
+      "end_time": "Tue Sep 15 18:47:57 2026"
+    },
+    {
+      "jobnumber": "7586345",
+      "jobname": "fereg_memory_pairs",
+      "hostname": "scc-mc8.scc.bu.edu",
+      "qname": "bioinfo-pub",
+      "slots": "16",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "495",
+      "ru_maxrss": "549520",
+      "maxvmem": "1.485G",
+      "start_time": "Tue Sep 15 18:50:27 2026",
+      "end_time": "Tue Sep 15 18:58:42 2026"
+    },
+    {
+      "jobnumber": "7586355",
+      "jobname": "fereg_fixed_fixtures",
+      "hostname": "scc-ff3.scc.bu.edu",
+      "qname": "f",
+      "slots": "16",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "68",
+      "ru_maxrss": "205360",
+      "maxvmem": "9.260G",
+      "start_time": "Tue Sep 15 18:59:23 2026",
+      "end_time": "Tue Sep 15 19:00:31 2026"
+    }
+  ],
+  "licensed_fixtures": 11,
+  "paired_commands": 60,
+  "science": "All scientific matrices, sample/order, saved outputs and non-time solver fields exactly equal within each pair",
+  "phase_reporting": "Complete raw runtime tables retained; component medians need not sum",
+  "missing_costs": "Discarded-attempt time is not separately available and stays null",
+  "raw_log_hashes": {
+    "build.log": "4dca5ba0ea5818bd9088893bca99d30dac4c83ad23ffb93071ffd71a59103bc5",
+    "screen.log": "f5dd2955114901e041ac532538d446ebe148f04b8481b092f5d7cc0b878a757e",
+    "fixtures.log": "95de5dc306f417f663c250fc9f38e21f87437a757023091e1840dc03770aa059"
+  },
+  "executed_harness_hashes": {
+    "harness/measure.py": "562e81288991c101b387d429e0b411614256cba14a48bae2ce013a56b616887d",
+    "harness/stata_worker.do": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+    "harness/common.py": "fd7ff16ddb1b72574d6ee66bfd767914733936eace0d65872b7634c4084a7968",
+    "harness/run-screen.py": "b6cff3619786223163cb20e511f72eff298c2743ba23ee2f5aa9ba3fd696c01d"
+  },
+  "scope": "No installed plugin change, full-data estimation restart, reference estimation, formal qualification or candidate freeze"
+}

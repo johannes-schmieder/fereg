@@ -1,0 +1,23 @@
+{
+  "decision": "Retain internal accounting and admission changes for continued development",
+  "scope": "Compact attempted-workspace carrier; failed/fallback/retained-state propagation; slope-MAP admission; PPML final-phase overlap and worker count",
+  "basis": [
+    "979 isolated native checks",
+    "30 fixed alternating fresh-process pairs with exact scientific results and no threshold regression",
+    "11 licensed Linux fixtures",
+    "separately bound singleton scale control"
+  ],
+  "not_accepted": [
+    "Complete action-memory model or public ratio",
+    "Mac/Linux review candidate",
+    "Formal performance/scientific qualification",
+    "Release or installed-package replacement"
+  ],
+  "remaining_gates": [
+    "Explicit whole-action coverage and versioned public diagnostics",
+    "New German OLS action-memory reproduction",
+    "Owner decision on proposed ADR 0073",
+    "Owner acceptance of Xcode license and subsequent universal/Rosetta validation",
+    "Exact-source freeze, deterministic review archives and extracted-package checks"
+  ]
+}
