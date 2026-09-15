@@ -10,7 +10,7 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Full German PPML: native completed, pinned reference running
+## Full German PPML: native completed, reference stopped by user
 
 The [full fast report](benchmarks/reports/development/german-ppml-full-fast-local-2026-09-15/README.md)
 records source `ece0db4` / isolated plugin `156f3835`. The unchanged full
@@ -25,14 +25,16 @@ This is successful native publication, with independent full-data science still
 pending. The old interrupted low run is not a paired speed baseline. Disclose
 the overlapping SCC transfer in the native timing.
 
-The prepared full ppmlhdfe reference is now running sequentially after its
-18-file pinned preflight passes: local time PID 3547/Stata 3548, runner session 46176.
-Continue full all-row/sample/b/V/DoF/objective and public-mean audits after it
-finishes; use the previously calibrated bounded scripts and check the separate
-full audit memory allowance. The 5% SCC audits below expose unresolved
-model-space/residual issues; localize these before another expensive projection
-audit. Keep the 15-minute monitor on this reference. No local build or numerical
-audit should overlap the timed reference.
+The user stopped the full ppmlhdfe reference because it was taking too long.
+The [stop receipt](benchmarks/reports/development/german-ppml-full-fast-local-2026-09-15/reference-user-stop.md)
+records verified process termination, process_rc=-15/accepted=false and no final
+Stata receipt or numerical exports. Elapsed process time is 17,269.615 s
+(4h 47m 50s), last logged outer iteration four; this is censored duration, not a
+completed benchmark or observed convergence failure. Peak RSS is 106.37 GB,
+peak footprint 115.05 GB, zero reported swaps. Partial logs are preserved.
+The monitor was deleted and no automatic restart is scheduled. All work in this
+comparison is stopped or terminal. Full reference comparison and independent
+native model-space acceptance remain unresolved; the 5% gaps below are retained.
 
 ## German 5% SCC comparison: commands complete, scientific gaps unresolved
 
@@ -93,9 +95,9 @@ on the full local sample. No estimator/audit retry or tolerance relaxation.
 
 The single complete pair takes 1,369.344 s native versus 4,904.909 s reference;
 these remain diagnostic timings, not an accepted speed claim. All SCC jobs
-are now terminal. Continue the 15-minute monitor for the full local reference.
-No local builds or numerical audits overlap the timed reference. This does not restart the
-stopped SCC campaign; no push, installed-dist change or qualification claim.
+are now terminal; the full local reference was subsequently stopped by the user.
+There are no active jobs or monitors for these comparisons. The stopped SCC
+campaign remains stopped; no push, installed-dist change or qualification claim.
 
 ## German PPML: memory bounds and consistency-loop repair adopted
 

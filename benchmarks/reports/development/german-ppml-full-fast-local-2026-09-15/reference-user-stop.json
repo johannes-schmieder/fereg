@@ -1,0 +1,35 @@
+{
+  "outcome": "stopped at user request before completion",
+  "reference_accepted": false,
+  "process_completion": {
+    "process_rc": -15,
+    "elapsed_seconds": 17269.615023851395,
+    "stata_receipt": null,
+    "accepted": false
+  },
+  "stop_signal": "SIGTERM",
+  "requested_utc": "2026-09-15T17:48:01.701831+00:00",
+  "last_logged_outer_iteration": 4,
+  "expected_outputs_present": {
+    "fit-result.txt": false,
+    "result.txt": false,
+    "outputs.dta": false,
+    "scalars.tsv": false,
+    "b.tsv": false,
+    "V.tsv": false
+  },
+  "maximum_resident_set_size_bytes": 106370842624,
+  "peak_memory_footprint_bytes": 115052055352,
+  "swaps": 0,
+  "reference_pins": {
+    "reghdfe": "29b2b203f534413369d675d0c0f674d61291f536",
+    "ftools": "d6e24d66fd02ba1b37325c82c5040444c5b4c636",
+    "require": "f4760b86e55cf73b82041ce59cf20e8e8224afb0",
+    "ppmlhdfe-b85665d8f674e93c1e07446a9a2b29be7f797910": "b85665d8f674e93c1e07446a9a2b29be7f797910"
+  },
+  "partial_logs_preserved": true,
+  "process_exit_verified": true,
+  "monitor_deleted": true,
+  "automatic_restart": false,
+  "scientific_interpretation": "No full reference estimation or numerical comparison established; cancellation is not an observed convergence failure. Elapsed process time is a censored duration, not a completed-command benchmark."
+}
