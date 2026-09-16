@@ -1,0 +1,670 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling autocfg v1.5.1
+   Compiling crossbeam-utils v0.8.22
+   Compiling serde_core v1.0.229
+   Compiling crossbeam-epoch v0.9.20
+   Compiling num-traits v0.2.19
+   Compiling cfg-if v1.0.4
+   Compiling serde v1.0.229
+   Compiling crossbeam-deque v0.8.7
+   Compiling syn v3.0.3
+   Compiling semver v1.0.28
+   Compiling thiserror v2.0.20
+   Compiling rayon-core v1.13.0
+   Compiling libc v0.2.189
+   Compiling rustc_version v0.4.1
+   Compiling scopeguard v1.2.0
+   Compiling getrandom v0.4.3
+   Compiling rand_core v0.10.1
+   Compiling lock_api v0.4.14
+   Compiling heapless v0.7.17
+   Compiling matrixmultiply v0.3.11
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.20
+   Compiling byteorder v1.5.0
+   Compiling cpufeatures v0.3.0
+   Compiling either v1.18.0
+   Compiling chacha20 v0.10.1
+   Compiling rayon v1.12.0
+   Compiling hash32 v0.2.1
+   Compiling spin v0.9.9
+   Compiling portable-atomic v1.15.0
+   Compiling rawpointer v0.2.1
+   Compiling stable_deref_trait v1.2.1
+   Compiling cobs v0.3.0
+   Compiling rand v0.10.2
+   Compiling num-integer v0.1.47
+   Compiling num-complex v0.4.6
+   Compiling thread_local v1.1.10
+   Compiling fereg-core v0.5.0 ($RUN/source/crates/fereg-core)
+   Compiling ndarray v0.17.2
+   Compiling cmg v0.1.0 (https://github.com/johannes-schmieder/CMG?rev=90e1fe0b0c14065155532711246ede6678bb4935#90e1fe0b)
+   Compiling schwarz-precond v0.4.0 (https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a)
+   Compiling postcard v1.1.3
+   Compiling approx-chol v0.5.0
+   Compiling within v0.4.0 (https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a)
+   Compiling fereg-plugin v0.5.0 ($RUN/source/crates/fereg-plugin)
+   Compiling fereg-testkit v0.5.0 ($RUN/source/crates/fereg-testkit)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 52.23s
+   Compiling libc v0.2.189
+   Compiling getrandom v0.4.3
+   Compiling rand v0.10.2
+   Compiling approx-chol v0.5.0
+   Compiling within v0.4.0 (https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a)
+   Compiling fereg-core v0.5.0 ($RUN/source/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 21.54s
+EXACT_ARTIFACT feppml_constrained_memory_contract 9945659dd5bbab738fe826810e35d4d12c436f203a7df6c92b8110d148d39684
+
+running 2 tests
+test governing_k50_shape_rejects_old_cap_and_selects_low_at_exact_new_boundary ... ok
+test previous_k10_four_gigabyte_shape_still_rejects_every_route ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXACT_ARTIFACT fereg_core 1c0df1421b0a3044302ce5d902fb75b44e4ef021a20db98a2268efd628ac913f
+
+running 67 tests
+test memory::owned_fe::tests::owned_shape_charges_actual_retained_capacities_and_membership_scratch ... ok
+test memory::owned_fe::tests::owned_shape_rejects_overflow_before_allocation ... ok
+test memory::owned_fe::tests::signed_schwarz_reserves_cover_without_changing_categorical_estimates ... ok
+test memory::owned_fe::tests::summary_covers_sequential_construction_without_summing_scratch ... ok
+test memory::tests::auto_selects_low_when_fast_exceeds_the_safe_budget ... ok
+test memory::tests::dense_two_fe_model_includes_loaded_numeric_staging ... ok
+test memory::tests::explicit_fast_fails_before_allocation_when_only_low_fits ... ok
+test memory::tests::intercept_recovery_memory_covers_outputs_and_rejects_invalid_axes ... ok
+test memory::tests::joint_budget_selects_only_complete_solver_plans ... ok
+test memory::tests::low_mode_is_smaller_for_wide_models ... ok
+test memory::tests::lsmr_batch_model_bounds_window_frames_and_retained_outputs ... ok
+test memory::tests::lsmr_recurrence_model_matches_independent_allocator_payloads ... ok
+test memory::tests::no_fe_model_does_not_reserve_group_projection_workspace ... ok
+test memory::tests::ols_schwarz_admission_includes_dense_tables_before_solving ... ok
+test memory::tests::schwarz_corrections_charge_dense_sparse_and_concurrent_pairs ... ok
+test memory::tests::solver_memory_model_is_route_specific_monotone_and_borrowed ... ok
+test memory::tests::unavailable_system_budget_keeps_requested_or_fast_auto_mode ... ok
+test memory::tests::wide_cholesky_workspace_is_preflighted_without_changing_low_mode ... ok
+test memory::tests::zero_finite_columns_need_no_pool ... ok
+test memory::workspace_peak::tests::addressability_sentinel_and_arithmetic_overflow_fail_closed ... ok
+test memory::workspace_peak::tests::diagnostic_carrier_does_not_raise_solver_report_alignment ... ok
+test memory::workspace_peak::tests::sequential_attempts_charge_maximum_with_resident_overlap_once ... ok
+test memory::workspace_peak::tests::unmodeled_is_contagious_and_distinct_from_zero ... ok
+test ppml::memory::tests::all_positive_report_capacity_reduces_both_route_peaks_by_exact_storage ... ok
+test ppml::memory::tests::allocation_audit_alone_charges_one_equivalence_refresh_vector ... ok
+test ppml::memory::tests::auto_falls_back_to_low_and_explicit_fast_fails_before_workspace ... ok
+test ppml::memory::tests::certified_memory_telemetry_rejects_mutated_modeled_and_observed_claims ... ok
+test ppml::memory::tests::embedding_resident_baseline_is_charged_to_every_phase_peak ... ok
+test ppml::memory::tests::finite_session_charges_inverse_lower_and_bounded_route_moment_storage ... ok
+test ppml::memory::tests::fitted_start_mu_peak_retains_fit_and_detector_workspace ... ok
+test ppml::memory::tests::generation_zero_plan_rebases_only_to_a_bounded_final_generation ... ok
+test ppml::memory::tests::line_search_backtracks_a_finite_candidate_whose_mean_overflows ... ok
+test ppml::memory::tests::line_search_propagates_raw_domain_errors_instead_of_halving_them ... ok
+test ppml::memory::tests::low_categorical_workspace_caps_oversized_pools_before_admission ... ok
+test ppml::memory::tests::low_route_replaces_resident_n_by_k_with_pool_and_scratch ... ok
+test ppml::memory::tests::low_scratch_io_buffer_covers_empty_bounded_and_wide_rows_exactly ... ok
+test ppml::memory::tests::malformed_and_overflowing_dimensions_fail_before_estimation ... ok
+test ppml::memory::tests::map_preflight_covers_singleton_rich_owned_topology_construction ... ok
+test ppml::memory::tests::model_scales_session_vectors_slots_and_reusable_map_basis_separately ... ok
+test ppml::memory::tests::narrow_fast_two_fe_route_charges_level_pcg_state_exactly ... ok
+test ppml::memory::tests::nested_metadata_is_admitted_at_every_overlapping_lifetime ... ok
+test ppml::memory::tests::no_route_fit_fails_closed ... ok
+test ppml::memory::tests::output_requests_increase_only_final_stage_peaks ... ok
+test ppml::memory::tests::partial_fe_save_models_complete_recovery_and_no_save_pays_nothing ... ok
+test ppml::memory::tests::phase_names_and_wire_order_are_frozen ... ok
+test ppml::memory::tests::post_solve_phases_charge_exact_residual_and_record_transient ... ok
+test ppml::memory::tests::preflight_probe_observes_rejection_before_workspace_allocation ... ok
+test ppml::memory::tests::preparation_staging_uses_exact_candidate_capacity ... ok
+test ppml::memory::tests::prepared_and_linear_metadata_use_registered_concrete_type_widths ... ok
+test ppml::memory::tests::probability_rebase_build_retains_only_source_positions_until_exact_restore ... ok
+test ppml::memory::tests::public_solver_workspace_fails_closed_one_byte_above_usable_memory ... ok
+test ppml::memory::tests::public_solver_workspace_is_bound_to_fit_and_nested_phase_peaks ... ok
+test ppml::memory::tests::publication_phase_models_independent_psd_and_wald_validation_scratch ... ok
+test ppml::memory::tests::rank_zero_cluster_inventory_charges_one_fallible_row_ordering ... ok
+test ppml::memory::tests::registered_diagnostic_record_fits_the_bounded_slot ... ok
+test ppml::memory::tests::reported_inference_axis_is_admitted_through_recovery_and_publication ... ok
+test ppml::memory::tests::retained_generation_zero_active_pweights_are_charged_exactly ... ok
+test ppml::memory::tests::reusable_workspace_has_stable_data_sized_capacities ... ok
+test ppml::memory::tests::row_axis_model_separates_steady_ledgers_from_atomic_rebase_overlap ... ok
+test ppml::memory::tests::saved_intercept_slope_preflight_has_one_transient_total_and_no_public_duplicate ... ok
+test ppml::memory::tests::simplex_preflight_charges_joint_live_design_and_kernel_ceiling ... ok
+test ppml::memory::tests::singleton_queue_and_level_counters_are_admitted_for_both_routes ... ok
+test ppml::memory::tests::sparse_two_fe_fast_route_charges_level_pcg_state_exactly ... ok
+test ppml::memory::tests::stable_line_search_accepts_in_place_without_capacity_growth ... ok
+test ppml::memory::tests::steady_state_certificate_requires_zero_events_and_all_capacity_proofs ... ok
+test ppml::memory::tests::strict_final_solve_charges_four_vectors_and_exact_candidate_phase_maximum ... ok
+test ppml::memory::tests::telemetry_never_infers_unobserved_allocator_or_timer_values ... ok
+
+test result: ok. 67 passed; 0 failed; 0 ignored; 0 measured; 818 filtered out; finished in 0.03s
+
+
+running 321 tests
+test ppml::categorical_fwl_cmg::tests::certificate_topology_is_bound_to_the_fit_lifetime_design ... ok
+test ppml::categorical_fwl_cmg::tests::finite_certificate_preserves_literal_moments_across_thread_counts ... ok
+test ppml::categorical_fwl_cmg::tests::fused_workspace_estimate_is_monotone ... ok
+test ppml::categorical_fwl_cmg::tests::graph_batch_capacity_covers_nuisance_without_exceeding_the_pool ... ok
+test ppml::categorical_fwl_cmg::tests::nuisance_reduction_requires_exact_nesting_in_a_selected_core ... ok
+test ppml::categorical_fwl_cmg::tests::pivoted_cholesky_recovers_a_permuted_spd_system ... ok
+test ppml::categorical_lsmr::tests::augmented_operator_obeys_adjoint_identity ... ok
+test ppml::categorical_lsmr::tests::checkpoint_memory_charges_batch_outputs_and_concurrent_recurrences ... ok
+test ppml::categorical_lsmr::tests::core_pair_bridge_matches_its_dense_symmetric_block_factor ... ok
+test ppml::categorical_lsmr::tests::core_pair_memory_charges_exactly_two_core_width_bridge_buffers ... ok
+test ppml::categorical_lsmr::tests::exact_certificate_does_not_erase_a_finite_moment_through_split_underflow ... ok
+test ppml::categorical_lsmr::tests::exact_certificate_does_not_turn_overflowing_squares_into_a_false_pass ... ok
+test ppml::categorical_lsmr::tests::exact_certificate_is_thread_count_deterministic ... ok
+test ppml::categorical_lsmr::tests::exact_certificate_rejects_an_uncorrected_target ... ok
+test ppml::categorical_lsmr::tests::first_pass_predictor_clamps_prior_certificate_misses ... ok
+test ppml::categorical_lsmr::tests::first_pass_predictor_initializes_to_the_scheduled_tolerance ... ok
+test ppml::categorical_lsmr::tests::first_pass_predictor_invalidation_is_atomic_and_matches_engine_replacement ... ok
+test ppml::categorical_lsmr::tests::first_pass_predictor_rejects_weight_and_schedule_jumps ... ok
+test ppml::categorical_lsmr::tests::frame_preparation_preserves_column_order_diagonals ... ok
+test ppml::categorical_lsmr::tests::joint_core_pair_uses_the_same_two_largest_effects_under_every_permutation ... ok
+test ppml::categorical_lsmr::tests::joint_lsmr_frame_trace_is_deterministic_and_complete ... ok
+test ppml::categorical_lsmr::tests::joint_memory_charges_only_the_selected_schwarz_topology ... ok
+test ppml::categorical_lsmr::tests::joint_memory_estimate_rejects_invalid_and_overflowing_shapes ... ok
+test ppml::categorical_lsmr::tests::joint_memory_estimate_scales_with_retained_design_and_thread_team ... ok
+test ppml::categorical_lsmr::tests::joint_policy_keeps_two_effect_schwarz_and_uses_one_core_pair_for_multiway ... ok
+test ppml::categorical_lsmr::tests::joint_solver_reuses_a_certified_incremental_state_across_weight_frames ... ok
+test ppml::categorical_lsmr::tests::joint_solver_supports_zero_finite_columns_with_three_effects ... ok
+test ppml::categorical_lsmr::tests::joint_solver_tracks_retained_team_across_one_four_one ... ok
+test ppml::categorical_lsmr::tests::schwarz_memory_charges_dense_cross_tabs_at_both_dispatch_boundaries ... ok
+test ppml::categorical_lsmr::tests::sparse_checkpoint_memory_includes_concurrent_dense_nuisance_pairs ... ok
+test ppml::categorical_lsmr::tests::topology_identity_rejects_a_different_effect_partition_with_the_same_total_levels ... ok
+test ppml::categorical_lsmr::tests::topology_identity_rejects_an_equal_shaped_replacement ... ok
+test ppml::categorical_lsmr::tests::weighted_moment_reorders_a_nonzero_subnormal_split_factor ... ok
+test ppml::certificate::tests::exact_fit_uses_outcome_reference_scale ... ok
+test ppml::certificate::tests::nonzero_fe_score_is_rejected ... ok
+test ppml::family::tests::buffered_family_helpers_reuse_caller_storage ... ok
+test ppml::family::tests::defaults_are_self_consistent ... ok
+test ppml::family::tests::deviance_is_zero_at_the_mean ... ok
+test ppml::family::tests::deviance_remains_positive_for_nearly_equal_fractional_values ... ok
+test ppml::family::tests::exposure_output_capacity_failure_is_allocation_r909 ... ok
+test ppml::family::tests::exposure_requires_strict_positivity ... ok
+test ppml::family::tests::finite_domain_representability_failures_are_nonconvergence_r430 ... ok
+test ppml::family::tests::fractional_outcomes_follow_the_continuous_poisson_objective ... ok
+test ppml::family::tests::frequency_weights_equal_literal_replication ... ok
+test ppml::family::tests::gamma_matches_factorials ... ok
+test ppml::family::tests::invalid_raw_domains_remain_invalid_data_r459 ... ok
+test ppml::family::tests::prior_weight_scaling_changes_hessian_and_objective_but_not_working_response ... ok
+test ppml::family::tests::zero_outcome_working_response_uses_the_exact_minus_one_score_adjustment ... ok
+test ppml::irls::tests::intercept_initialization_is_offset_aware_and_deterministic ... ok
+test ppml::irls::tests::warm_start_rejects_a_remainder_outside_the_fixed_effect_span ... ok
+test ppml::irls::tests::warm_start_rejects_an_inconsistent_finite_predictor ... ok
+test ppml::memory::tests::all_positive_report_capacity_reduces_both_route_peaks_by_exact_storage ... ok
+test ppml::memory::tests::allocation_audit_alone_charges_one_equivalence_refresh_vector ... ok
+test ppml::memory::tests::auto_falls_back_to_low_and_explicit_fast_fails_before_workspace ... ok
+test ppml::memory::tests::certified_memory_telemetry_rejects_mutated_modeled_and_observed_claims ... ok
+test ppml::memory::tests::embedding_resident_baseline_is_charged_to_every_phase_peak ... ok
+test ppml::memory::tests::finite_session_charges_inverse_lower_and_bounded_route_moment_storage ... ok
+test ppml::memory::tests::fitted_start_mu_peak_retains_fit_and_detector_workspace ... ok
+test ppml::memory::tests::generation_zero_plan_rebases_only_to_a_bounded_final_generation ... ok
+test ppml::memory::tests::line_search_backtracks_a_finite_candidate_whose_mean_overflows ... ok
+test ppml::memory::tests::line_search_propagates_raw_domain_errors_instead_of_halving_them ... ok
+test ppml::memory::tests::low_categorical_workspace_caps_oversized_pools_before_admission ... ok
+test ppml::memory::tests::low_route_replaces_resident_n_by_k_with_pool_and_scratch ... ok
+test ppml::memory::tests::low_scratch_io_buffer_covers_empty_bounded_and_wide_rows_exactly ... ok
+test ppml::memory::tests::malformed_and_overflowing_dimensions_fail_before_estimation ... ok
+test ppml::memory::tests::map_preflight_covers_singleton_rich_owned_topology_construction ... ok
+test ppml::memory::tests::model_scales_session_vectors_slots_and_reusable_map_basis_separately ... ok
+test ppml::memory::tests::narrow_fast_two_fe_route_charges_level_pcg_state_exactly ... ok
+test ppml::memory::tests::nested_metadata_is_admitted_at_every_overlapping_lifetime ... ok
+test ppml::memory::tests::no_route_fit_fails_closed ... ok
+test ppml::memory::tests::output_requests_increase_only_final_stage_peaks ... ok
+test ppml::memory::tests::partial_fe_save_models_complete_recovery_and_no_save_pays_nothing ... ok
+test ppml::memory::tests::phase_names_and_wire_order_are_frozen ... ok
+test ppml::memory::tests::post_solve_phases_charge_exact_residual_and_record_transient ... ok
+test ppml::memory::tests::preflight_probe_observes_rejection_before_workspace_allocation ... ok
+test ppml::memory::tests::preparation_staging_uses_exact_candidate_capacity ... ok
+test ppml::memory::tests::prepared_and_linear_metadata_use_registered_concrete_type_widths ... ok
+test ppml::memory::tests::probability_rebase_build_retains_only_source_positions_until_exact_restore ... ok
+test ppml::memory::tests::public_solver_workspace_fails_closed_one_byte_above_usable_memory ... ok
+test ppml::memory::tests::public_solver_workspace_is_bound_to_fit_and_nested_phase_peaks ... ok
+test ppml::memory::tests::publication_phase_models_independent_psd_and_wald_validation_scratch ... ok
+test ppml::memory::tests::rank_zero_cluster_inventory_charges_one_fallible_row_ordering ... ok
+test ppml::memory::tests::registered_diagnostic_record_fits_the_bounded_slot ... ok
+test ppml::memory::tests::reported_inference_axis_is_admitted_through_recovery_and_publication ... ok
+test ppml::memory::tests::retained_generation_zero_active_pweights_are_charged_exactly ... ok
+test ppml::memory::tests::reusable_workspace_has_stable_data_sized_capacities ... ok
+test ppml::memory::tests::row_axis_model_separates_steady_ledgers_from_atomic_rebase_overlap ... ok
+test ppml::memory::tests::saved_intercept_slope_preflight_has_one_transient_total_and_no_public_duplicate ... ok
+test ppml::memory::tests::simplex_preflight_charges_joint_live_design_and_kernel_ceiling ... ok
+test ppml::memory::tests::singleton_queue_and_level_counters_are_admitted_for_both_routes ... ok
+test ppml::memory::tests::sparse_two_fe_fast_route_charges_level_pcg_state_exactly ... ok
+test ppml::memory::tests::stable_line_search_accepts_in_place_without_capacity_growth ... ok
+test ppml::memory::tests::steady_state_certificate_requires_zero_events_and_all_capacity_proofs ... ok
+test ppml::memory::tests::strict_final_solve_charges_four_vectors_and_exact_candidate_phase_maximum ... ok
+test ppml::memory::tests::telemetry_never_infers_unobserved_allocator_or_timer_values ... ok
+test ppml::prepared::tests::allocation_free_classification_matches_materialized_shape_and_error_precedence ... ok
+test ppml::prepared::tests::analytic_and_importance_weights_are_rejected_at_the_input_contract ... ok
+test ppml::prepared::tests::common_pweight_rescaling_leaves_canonical_weights_unchanged ... ok
+test ppml::prepared::tests::common_seam_preserves_complete_drop_precedence_and_row_ledger ... ok
+test ppml::prepared::tests::earlier_missingness_prevents_later_domain_errors ... ok
+test ppml::prepared::tests::empty_and_zero_positive_weight_samples_are_insufficient ... ok
+test ppml::prepared::tests::every_invalid_fweight_form_fails_with_frequency_code ... ok
+test ppml::prepared::tests::exposure_is_positive_and_logged_exactly_once ... ok
+test ppml::prepared::tests::extreme_finite_pweights_normalize_even_when_raw_sum_and_multiplier_overflow ... ok
+test ppml::prepared::tests::frequency_effective_n_supported_range_failure_is_r401 ... ok
+test ppml::prepared::tests::frequency_weights_preserve_multiplicity_and_report_effective_n ... ok
+test ppml::prepared::tests::malformed_source_use_table_fails_at_the_generic_boundary ... ok
+test ppml::prepared::tests::multiplication_precedes_division_when_physical_n_rescues_a_subnormal_q ... ok
+test ppml::prepared::tests::negative_outcome_is_invalid_but_off_candidate_value_is_not_inspected ... ok
+test ppml::prepared::tests::nonpositive_pweights_fail_and_masked_pweights_drop ... ok
+test ppml::prepared::tests::off_candidate_or_preceded_nonfinite_adjustment_is_not_inspected ... ok
+test ppml::prepared::tests::offset_and_exposure_are_mutually_exclusive_before_row_reads ... ok
+test ppml::prepared::tests::offset_is_preserved_and_missing_offset_drops_in_original_order ... ok
+test ppml::prepared::tests::owned_adjustment_reuses_only_candidate_bounded_capacity ... ok
+test ppml::prepared::tests::probability_weights_normalize_to_physical_n_and_keep_raw_sum ... ok
+test ppml::prepared::tests::unmasked_nonfinite_adjustments_are_invalid_but_masked_values_still_drop ... ok
+test ppml::prepared::tests::unmasked_nonfinite_outcome_is_invalid_but_masked_or_off_candidate_is_missing ... ok
+test ppml::prepared::tests::unrepresentable_mixed_pweight_scale_is_numerical_nonconvergence_not_invalid_data ... ok
+test ppml::prepared::tests::unweighted_fractional_outcomes_are_retained_with_physical_effective_n ... ok
+test ppml::prepared_estimator::tests::accepted_mu_drop_then_publication_fit_failure_returns_no_composite ... ok
+test ppml::prepared_estimator::tests::action_allocator_observation_is_attached_after_composite_certification ... ok
+test ppml::prepared_estimator::tests::allocation_audit_counts_only_executed_linear_subproblems ... ok
+test ppml::prepared_estimator::tests::automatic_family_matches_explicit_solver_and_preserves_requested_identity ... ok
+test ppml::prepared_estimator::tests::automatic_low_memory_retains_certified_map ... ok
+test ppml::prepared_estimator::tests::automatic_lsmr_admission_preserves_map_only_surfaces ... ok
+test ppml::prepared_estimator::tests::automatic_specialized_fit_is_interruption_atomic ... ok
+test ppml::prepared_estimator::tests::automatic_workspace_budget_veto_selects_map_without_solver_retry ... ok
+test ppml::prepared_estimator::tests::bounded_integer_counts_match_exact_sets_and_reject_unbounded_domains ... ok
+test ppml::prepared_estimator::tests::canonical_profile_recovery_preserves_composite_publication_and_failure_atomicity ... ok
+test ppml::prepared_estimator::tests::cluster_preflight_bound_dominates_exact_subset_groups_without_n_storage ... ok
+test ppml::prepared_estimator::tests::clustered_composite_uses_final_codes_and_shared_multiway_inventory ... ok
+test ppml::prepared_estimator::tests::default_auto_absorb_policy_is_resolved_once_for_separation_and_fit ... ok
+test ppml::prepared_estimator::tests::domain_and_memory_failures_return_no_composite_value ... ok
+test ppml::prepared_estimator::tests::exact_fe_separation_rebases_every_final_product_once ... ok
+test ppml::prepared_estimator::tests::excluded_zero_keeps_conservative_admission_but_compact_report_bank ... ok
+test ppml::prepared_estimator::tests::explicit_lsmr_matches_map_and_reports_its_concrete_engine ... ok
+test ppml::prepared_estimator::tests::explicit_public_map_matches_one_effect_auto_bitwise ... ok
+test ppml::prepared_estimator::tests::fe_run_bounds_dominate_exact_groups_under_order_masks_interactions_and_slopes ... ok
+test ppml::prepared_estimator::tests::fe_run_refinement_is_interruptible_and_does_not_claim_unique_runs ... ok
+test ppml::prepared_estimator::tests::final_sample_rebase_preserves_the_full_original_omission_axis ... ok
+test ppml::prepared_estimator::tests::fit_only_and_residual_only_results_retain_no_unrequested_predictor_state ... ok
+test ppml::prepared_estimator::tests::fitted_mu_drop_restarts_and_rebases_the_original_axis ... ok
+test ppml::prepared_estimator::tests::frequency_weights_and_exposure_reach_the_same_certified_boundary ... ok
+test ppml::prepared_estimator::tests::huge_finite_outcome_is_numerical_r430_with_no_composite_publication ... ok
+test ppml::prepared_estimator::tests::interrupt_callback_may_be_non_send_and_runs_only_on_the_caller_thread ... ok
+test ppml::prepared_estimator::tests::metadata_admission_counts_nested_recipes_labels_and_partial_saves ... ok
+test ppml::prepared_estimator::tests::no_fe_constant_is_identified_with_a_real_robust_covariance_coordinate ... ok
+test ppml::prepared_estimator::tests::one_and_multiway_fe_use_normalized_constant_and_exact_final_topology ... ok
+test ppml::prepared_estimator::tests::one_and_two_fe_ppml_map_keep_fused_projection_capacities_stable ... ok
+test ppml::prepared_estimator::tests::partial_saved_fe_publication_retains_full_final_hessian_certificate ... ok
+test ppml::prepared_estimator::tests::positive_outcome_scan_remains_interruptible_before_admission ... ok
+test ppml::prepared_estimator::tests::positive_outcomes_bound_report_banks_across_routes_weights_and_singletons ... ok
+test ppml::prepared_estimator::tests::ppml_result_freezes_pairwise_shared_topology_dof ... ok
+test ppml::prepared_estimator::tests::public_cmg_fallback_retains_retry_timing_and_certificate_evidence ... ok
+test ppml::prepared_estimator::tests::public_cmg_intermediate_budget_rejection_precedes_route_observation_preparation ... ok
+test ppml::prepared_estimator::tests::public_cmg_matches_the_map_ppml_oracle ... ok
+test ppml::prepared_estimator::tests::public_cmg_non_numerical_failures_remain_fatal ... ok
+test ppml::prepared_estimator::tests::public_cmg_numerical_failure_falls_back_to_map_permanently ... ok
+test ppml::prepared_estimator::tests::public_cmg_rejects_four_fixed_effect_dimensions ... ok
+test ppml::prepared_estimator::tests::public_cmg_retries_only_the_failed_projection_rhs ... ok
+test ppml::prepared_estimator::tests::public_lsmr_checkpoint_workspace_is_required_before_canonical_work ... ok
+test ppml::prepared_estimator::tests::public_specialized_solvers_reject_memory_low ... ok
+test ppml::prepared_estimator::tests::publication_capacity_failure_is_allocation_r909 ... ok
+test ppml::prepared_estimator::tests::pweights_and_offset_are_canonicalized_on_the_certified_final_sample ... ok
+test ppml::prepared_estimator::tests::requested_mu_without_a_candidate_is_reported_and_never_skipped ... ok
+test ppml::prepared_estimator::tests::saved_effect_recovery_honors_admission_inside_a_different_outer_pool ... ok
+test ppml::prepared_estimator::tests::saved_fe_recovery_uses_the_hessian_of_the_published_strict_state ... ok
+test ppml::prepared_estimator::tests::saved_intercept_and_slope_recover_through_ppml_fallible_map ... ok
+test ppml::prepared_estimator::tests::saved_slope_recovery_allocation_failure_is_r909_and_atomic ... ok
+test ppml::prepared_estimator::tests::three_effect_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh ... ok
+test ppml::prepared_estimator::tests::two_way_clustered_composite_publishes_every_final_subset ... ok
+test ppml::prepared_estimator::tests::unrepresentable_pweight_range_returns_atomic_r430_with_and_without_fixed_effects ... ok
+test ppml::prepared_estimator::tests::unsupported_public_solver_topology_fails_before_fit_lifetime_allocation ... ok
+test ppml::prepared_estimator::tests::zero_active_control_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh ... ok
+test ppml::prepared_estimator::tests::zero_active_control_lsmr_uses_joint_state_but_reports_fused_identity ... ok
+test ppml::prepared_irls::tests::allocator_event_inside_warmed_solve_fails_even_with_zero_net_growth ... ok
+test ppml::prepared_irls::tests::bitwise_identical_weights_skip_final_frame_control_reprojection ... ok
+test ppml::prepared_irls::tests::cmg_nested_nuisance_preserves_full_weighted_checkpoint_and_retry_certificates ... ok
+test ppml::prepared_irls::tests::cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work ... ok
+test ppml::prepared_irls::tests::cmg_nuisance_batches_preserve_weighted_fits_and_deterministic_certificates ... ok
+test ppml::prepared_irls::tests::cmg_warm_seed_requires_complete_certification_and_survives_no_failed_frame ... ok
+test ppml::prepared_irls::tests::complete_warmed_map_window_certifies_stable_fake_allocator ... ok
+test ppml::prepared_irls::tests::constant_offset_seed_uses_weighted_means_and_falls_back_on_raw_overflow ... ok
+test ppml::prepared_irls::tests::domain_and_interrupt_failures_never_enter_the_canonical_fallback ... ok
+test ppml::prepared_irls::tests::experimental_strict_guard_ignores_only_nonestimable_coefficient_slots ... ok
+test ppml::prepared_irls::tests::explicit_three_fe_solver_roles_are_permutation_invariant_and_certified ... ok
+test ppml::prepared_irls::tests::failed_canonical_retry_after_warm_invalidation_is_atomic ... ok
+test ppml::prepared_irls::tests::initial_checkpoint_lsmr_eligibility_is_narrow_and_route_explicit ... ok
+test ppml::prepared_irls::tests::intercept_initialization_and_backtracking_move_beta_and_eta_together ... ok
+test ppml::prepared_irls::tests::invalid_warm_projection_falls_back_to_independently_certified_canonical_solve ... ok
+test ppml::prepared_irls::tests::line_search_reuses_buffers_and_rejects_overflow ... ok
+test ppml::prepared_irls::tests::one_effect_seed_does_not_admit_slopes_or_multiple_effects ... ok
+test ppml::prepared_irls::tests::one_effect_seed_is_group_optimal_weighted_stable_and_deterministic ... ok
+test ppml::prepared_irls::tests::owned_intercept_fe_design_peak_covers_the_allocated_topology ... ok
+test ppml::prepared_irls::tests::persistent_strict_profile_failure_rebuilds_then_returns_bounded_nonconvergence ... ok
+test ppml::prepared_irls::tests::prepared_driver_matches_explicit_dense_poisson_without_fixed_effects ... ok
+test ppml::prepared_irls::tests::prepared_driver_reports_nonconvergence_atomically ... ok
+test ppml::prepared_irls::tests::prepared_iteration_report_fits_registered_memory_slot ... ok
+test ppml::prepared_irls::tests::profile_recovery_is_bounded_but_does_not_penalize_progress_or_changed_bases ... ok
+test ppml::prepared_irls::tests::rebuilt_strict_candidate_preserves_storage_and_fresh_science ... ok
+test ppml::prepared_irls::tests::refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model ... ok
+test ppml::prepared_irls::tests::same_rank_basis_pivot_resumes_first_checkpoint_and_fails_final_hessian_closed ... ok
+test ppml::prepared_irls::tests::stable_initialization_handles_large_offsets ... ok
+test ppml::prepared_irls::tests::strict_caller_error_and_unwind_restore_a_usable_prior_session ... ok
+test ppml::prepared_irls::tests::strict_candidate_categorical_projection_preserves_scratch_and_fresh_parity ... ok
+test ppml::prepared_irls::tests::strict_candidate_rank_predicate_is_shared_by_both_checkpoints ... ok
+test ppml::prepared_irls::tests::strict_checkpoint_movement_resumes_bounded_irls_at_both_checkpoints ... ok
+test ppml::prepared_irls::tests::strict_profile_movement_never_weakens_a_tiny_user_tolerance ... ok
+test ppml::prepared_irls::tests::strict_projection_refinement_is_bounded_and_never_loosens_a_target ... ok
+test ppml::prepared_irls::tests::unusable_one_effect_seed_restores_global_start_and_mu_keeps_global_start ... ok
+test ppml::prepared_model::tests::categorical_clustered_generations_preserve_original_rows_and_defer_singletons ... ok
+test ppml::prepared_model::tests::failed_cluster_rebase_restores_the_raw_owner_candidate_mask ... ok
+test ppml::prepared_model::tests::no_absorb_generation_keeps_the_intercept_in_the_categorical_finite_design ... ok
+test ppml::prepared_model::tests::owner_rejects_more_than_five_cluster_dimensions ... ok
+test ppml::prepared_model::tests::owner_rejects_numeric_data_from_a_different_loaded_source ... ok
+test ppml::prepared_model::tests::probability_weights_renormalize_to_each_final_generation_n ... ok
+test ppml::prepared_model::tests::tiny_equal_pweights_rebase_locally_without_an_overflowing_scalar_multiplier ... ok
+test ppml::prepared_separation::singleton::tests::cascade_scale_doubling_bounds_membership_work_and_keeps_stable_cycle ... ok
+test ppml::prepared_separation::singleton::tests::cascading_masks_match_with_frequency_protected_rows_and_inactive_endpoints ... ok
+test ppml::prepared_separation::singleton::tests::exact_masks_match_pass_reference_across_multiway_weights_and_initial_exclusions ... ok
+test ppml::prepared_separation::singleton::tests::no_singleton_or_no_effect_has_no_drop_allocation ... ok
+test ppml::prepared_separation::tests::accepted_cascade_rows_do_not_retain_detector_sized_capacity ... ok
+test ppml::prepared_separation::tests::candidate_ledger_hash_binds_stable_original_rows ... ok
+test ppml::prepared_separation::tests::default_chain_is_deterministic_and_uses_the_declared_restart_order ... ok
+test ppml::prepared_separation::tests::disabled_detector_chain_preserves_boundary_rows ... ok
+test ppml::prepared_separation::tests::exact_fe_allocation_free_replay_rejects_a_deleted_level_identity ... ok
+test ppml::prepared_separation::tests::exact_fe_level_compaction_failure_precedes_any_ledger_mutation ... ok
+test ppml::prepared_separation::tests::exact_fe_proposal_deduplicates_rows_across_absorbed_effects ... ok
+test ppml::prepared_separation::tests::exact_then_comprehensive_ir_rebuilds_fe_and_cluster_topology_twice ... ok
+test ppml::prepared_separation::tests::failed_prepared_rebase_leaves_generation_and_ledger_unchanged ... ok
+test ppml::prepared_separation::tests::impossible_detector_workspace_reservation_maps_to_allocation ... ok
+test ppml::prepared_separation::tests::independent_certificate_and_commit_token_are_both_required_atomically ... ok
+test ppml::prepared_separation::tests::invalid_detector_tolerance_fails_closed_before_preparation ... ok
+test ppml::prepared_separation::tests::ir_no_separation_boundary_diagnostic_is_never_negative ... ok
+test ppml::prepared_separation::tests::mu_phase_and_report_charge_the_fitted_start_solve ... ok
+test ppml::prepared_separation::tests::no_separation_is_an_identity_generation_on_the_candidate_axis ... ok
+test ppml::prepared_separation::tests::numerical_proposal_boundary_rejects_every_identity_and_shape_forgery ... ok
+test ppml::prepared_separation::tests::over_budget_prepared_simplex_requires_ir_or_returns_allocation ... ok
+test ppml::prepared_separation::tests::phase_probe_brackets_disabled_stages_and_max_merges_restarts ... ok
+test ppml::prepared_separation::tests::prepared_ir_is_comprehensive_without_the_simplex_adapter ... ok
+test ppml::prepared_separation::tests::prepared_mu_uses_original_axis_start_and_certifies_its_candidate ... ok
+test ppml::prepared_separation::tests::prepared_simplex_alone_closes_nontrivial_no_separation_with_dual_proof ... ok
+test ppml::prepared_separation::tests::prepared_simplex_executes_the_full_absorbed_slope_model ... ok
+test ppml::prepared_separation::tests::public_report_is_candidate_compact_while_final_reasons_use_original_rows ... ok
+test ppml::prepared_separation::tests::repeated_interaction_exact_ids_survive_rebase_code_reuse_and_shared_anchors ... ok
+test ppml::prepared_separation::tests::report_bank_overflow_or_allocation_failure_precedes_detector_execution ... ok
+test ppml::prepared_separation::tests::separation_rebase_preserves_offset_cluster_and_final_pweight_scale ... ok
+test ppml::prepared_separation::tests::singleton_pass_deduplicates_rows_across_absorbed_effects ... ok
+test ppml::psd::tests::cached_jacobi_pivots_match_exhaustive_search_after_rotations ... ok
+test ppml::psd::tests::multiway_policy_clips_only_after_the_complete_covariance ... ok
+test ppml::psd::tests::positive_semidefinite_multiway_covariance_is_not_changed ... ok
+test ppml::psd::tests::published_psd_inspection_rejects_invalid_inputs_without_mutation ... ok
+test ppml::psd::tests::robust_and_one_way_paths_reject_material_indefiniteness ... ok
+test ppml::residuals::tests::all_public_formulas_match_the_independent_oracle_fixture ... ok
+test ppml::residuals::tests::deviance_contribution_stays_nonnegative_at_near_equality ... ok
+test ppml::residuals::tests::fill_requires_one_exact_final_sample_axis ... ok
+test ppml::residuals::tests::invalid_domain_and_nonrepresentable_values_fail_closed ... ok
+test ppml::residuals::tests::public_residuals_do_not_accept_weights_or_change_with_weight_kind ... ok
+test ppml::result::tests::certified_result_binds_separation_none_to_its_exact_request_and_seal ... ok
+test ppml::result::tests::clipped_covariance_validation_certifies_the_published_matrix ... ok
+test ppml::result::tests::clustered_subset_identity_and_declared_metadata_fail_closed ... ok
+test ppml::result::tests::composite_result_is_one_certified_prediction_and_inference_authority ... ok
+test ppml::result::tests::composite_result_rejects_cross_generation_rows_and_objective_drift ... ok
+test ppml::result::tests::composite_result_rejects_mutated_dof_vce_wald_certificate_and_memory_families ... ok
+test ppml::result::tests::duplicate_or_out_of_range_saved_declared_indices_fail_closed ... ok
+test ppml::result::tests::exact_fe_identities_bind_intercept_terms_and_direct_drop_anchors ... ok
+test ppml::result::tests::exact_predictor_and_saved_channels_certify ... ok
+test ppml::result::tests::fixed_effect_rows_require_explicit_channel_identity_and_exact_rank_sum ... ok
+test ppml::result::tests::frozen_memory_route_axes_remain_bound_to_the_certified_final_sample ... ok
+test ppml::result::tests::identified_zero_variance_uses_zero_se_and_missing_z ... ok
+test ppml::result::tests::ir_commit_does_not_retroactively_close_simplex_across_generations ... ok
+test ppml::result::tests::mu_no_drop_grammar_is_proof_free_no_candidates_only ... ok
+test ppml::result::tests::nonconstant_mu_requires_final_hessian_not_preparation_weights ... ok
+test ppml::result::tests::nonmonotone_mapping_and_inconsistent_saved_effects_fail_closed ... ok
+test ppml::result::tests::normalized_structural_constant_must_be_exactly_zero ... ok
+test ppml::result::tests::null_likelihood_does_not_accept_an_offset_or_fixed_effect_input ... ok
+test ppml::result::tests::null_likelihood_is_constant_only_and_pseudo_r_squared_uses_it ... ok
+test ppml::result::tests::partial_saved_mask_uses_full_decomposition_evidence_without_public_sum ... ok
+test ppml::result::tests::raw_domain_and_positive_support_keep_their_public_return_codes ... ok
+test ppml::result::tests::residual_predictions_require_outcome_and_remain_unweighted ... ok
+test ppml::result::tests::scatter_uses_stable_original_rows_and_missing_elsewhere ... ok
+test ppml::result::tests::separation_generation_sample_mapping_and_method_ranges_fail_closed ... ok
+test ppml::result::tests::separation_report_envelope_is_exact_for_all_policy_subsets ... ok
+test ppml::result::tests::simplex_full_positive_rank_proof_is_bound_to_the_final_finite_dimension ... ok
+test ppml::result::tests::unresolved_simplex_requires_a_certified_comprehensive_ir_closure ... ok
+test ppml::result::tests::xb_includes_offset_but_not_absorbed_contribution ... ok
+test ppml::result::tests::zero_direction_is_only_valid_for_exact_zero_no_separation_certificate ... ok
+test ppml::solver::tests::auto_is_reported_separately_from_its_map_selection ... ok
+test ppml::solver::tests::automatic_report_accepts_admitted_lsmr_but_not_untrained_cmg ... ok
+test ppml::solver::tests::certified_lsmr_checkpoint_has_independent_engine_identity ... ok
+test ppml::solver::tests::checkpoint_lsmr_numerical_fallback_is_row_local_and_nonpermanent ... ok
+test ppml::solver::tests::cmg_fallback_is_visible_and_permanent_in_the_report ... ok
+test ppml::solver::tests::lsmr_engine_selection_uses_only_the_active_control_boundary ... ok
+test ppml::tests::all_zero_outcome_reports_the_nonexistent_finite_intercept ... ok
+test ppml::tests::checkpoint_refinement_survives_ordinary_scheduling ... ok
+test ppml::tests::clustered_vce_is_finite ... ok
+test ppml::tests::exposure_recovers_a_constant_rate ... ok
+test ppml::tests::fractional_outcomes_are_valid_estimation_data ... ok
+test ppml::tests::inner_tolerance_is_monotone_and_reaches_the_outer_certificate_floor ... ok
+test ppml::tests::inner_tolerance_responds_to_outer_progress_at_a_fixed_iteration ... ok
+test ppml::tests::intercept_only_matches_the_mean ... ok
+test ppml::tests::invalid_outcomes_fail_closed ... ok
+test ppml::tests::nonfinite_inner_tolerance_progress_fails_closed ... ok
+test ppml::tests::public_outer_controls_preserve_frozen_internal_policy ... ok
+test ppml::tests::public_warm_start_rejects_inconsistent_eta_and_beta ... ok
+test ppml::tests::stale_final_profile_reproduction_is_rejected_instead_of_published ... ok
+test ppml::tests::two_way_fixed_effects_recover_the_slope ... ok
+test ppml::vce::tests::clustered_rank_zero_counts_groups_with_one_fallible_row_ordering ... ok
+test ppml::vce::tests::compact_design_maps_arbitrary_solve_order_to_full_reported_slots ... ok
+test ppml::vce::tests::configured_ppml_sandwich_uses_requested_team_against_global_pool ... ok
+test ppml::vce::tests::final_sample_dof_uses_effective_n_and_cluster_cap ... ok
+test ppml::vce::tests::five_way_clusters_use_all_subsets_one_common_correction_and_capped_dof ... ok
+test ppml::vce::tests::inference_frequency_weight_domain_failure_preserves_r401 ... ok
+test ppml::vce::tests::normalized_pweight_metadata_does_not_reintroduce_raw_scale ... ok
+test ppml::vce::tests::ppml_sandwich_adapter_maps_covariance_failure_but_preserves_malformed_design ... ok
+test ppml::vce::tests::reported_structural_normalization_is_separate_from_sandwich_rank ... ok
+test ppml::vce::tests::robust_fweights_equal_literal_row_replication ... ok
+test ppml::vce::tests::stale_unit_weight_adapter_routes_through_the_new_engine ... ok
+test ppml::vce::tests::unadjusted_is_a_compatibility_spelling_for_robust_z_inference ... ok
+test ppml::vce::tests::valid_finite_ppml_sandwich_overflow_is_nonconvergence ... ok
+test ppml::vce::tests::weight_report_rejects_forged_raw_scale_metadata ... ok
+
+test result: ok. 321 passed; 0 failed; 0 ignored; 0 measured; 564 filtered out; finished in 5.21s
+
+
+running 2 tests
+test ols::prepared_fit::tests::certified_linear_session_fresh_frozen_and_strict_match_across_routes ... FAILED
+test ols::prepared_fit::tests::certified_linear_session_generation_invalidation_is_fail_closed ... ok
+
+failures:
+
+---- ols::prepared_fit::tests::certified_linear_session_fresh_frozen_and_strict_match_across_routes stdout ----
+
+thread 'ols::prepared_fit::tests::certified_linear_session_fresh_frozen_and_strict_match_across_routes' panicked at crates/fereg-core/src/ols/prepared_fit.rs:12079:21:
+strict canonical fit retains its new residual beside the reusable donor
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    ols::prepared_fit::tests::certified_linear_session_fresh_frozen_and_strict_match_across_routes
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 883 filtered out; finished in 0.02s
+
+
+running 1 test
+test ols::prepared_fit::tests::retained_fresh_frozen_and_strict_kernels_use_requested_team_against_global_pool ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 884 filtered out; finished in 0.06s
+
+
+running 4 tests
+test ols::prepared_fit::tests::rejected_uncertified_strict_candidate_restores_exact_basis_transaction ... ok
+test ppml::prepared_irls::tests::rebuilt_strict_candidate_preserves_storage_and_fresh_science ... ok
+test ppml::prepared_irls::tests::strict_candidate_categorical_projection_preserves_scratch_and_fresh_parity ... ok
+test ppml::prepared_irls::tests::strict_candidate_rank_predicate_is_shared_by_both_checkpoints ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 881 filtered out; finished in 0.03s
+
+EXACT_ARTIFACT fereg_plugin 98ff250c9f1a65e7bd48a3a6036215b32706c78773dfbf184041bc5fa82c7267
+
+running 97 tests
+test dispatch::tests::doctor_rejects_protocol_mismatch ... ok
+test dispatch::tests::estimator_actions_require_the_live_spi_boundary ... ok
+test dispatch::tests::version_is_machine_readable ... ok
+test estimate::tests::candidate_numeric_loading_rejects_bad_shapes_and_polls_empty_runs ... ok
+test estimate::tests::candidate_numeric_runs_preserve_coordinates_and_bound_bulk_reads ... ok
+test estimate::tests::complete_candidate_universe_skips_candidate_spi_reads ... ok
+test estimate::tests::complete_input_certificate_disagreement_fails_before_output ... ok
+test estimate::tests::deterministic_thread_counts_preserve_scientific_results_and_are_reported ... ok
+test estimate::tests::every_output_store_failure_leaves_receipt_incomplete ... ok
+test estimate::tests::fixed_width_string_cluster_is_encoded_natively_and_strl_fails_pre_read ... ok
+test estimate::tests::fixed_width_string_codes_are_byte_exact_sorted_and_missing_aware ... ok
+test estimate::tests::guarded_iid_robust_and_clustered_actions_commit_complete_last ... ok
+test estimate::tests::handshake_layout_and_interrupt_fail_before_any_output_write ... ok
+test estimate::tests::large_restricted_mixed_input_batches_only_numeric_candidate_runs ... ok
+test estimate::tests::licensed_stata_bundle_matches_ordinary_argv_and_rejects_malformed_pre_read ... ok
+test estimate::tests::local_estimation_bundle_validates_capacity_bytes_and_framing_before_reads ... ok
+test estimate::tests::low_memory_execution_matches_fast_across_inference_modes ... ok
+test estimate::tests::native_coefficient_shadow_certification_rejects_every_scatter_family ... ok
+test estimate::tests::native_defined_value_table_certification_rejects_malformed_rows ... ok
+test estimate::tests::nonpositive_residual_dof_stores_nothing_and_leaves_receipt_incomplete ... ok
+test estimate::tests::omitted_factor_slot_is_zero_scattered_and_noconstant_layout_is_exact ... ok
+test estimate::tests::saved_fe_and_prediction_outputs_are_native_identity_consistent ... ok
+test estimate::tests::saved_only_fast_path_matches_fully_materialized_outputs ... ok
+test estimate::tests::saved_output_store_failures_leave_receipt_incomplete ... ok
+test estimate::tests::saved_outputs_allow_a_generated_column_omitted_by_absorption ... ok
+test estimate::tests::shadow_fe_identity_accepts_intercept_interaction_and_slope_rows ... ok
+test estimate::tests::shadow_fe_identity_rejects_malformed_combinations ... ok
+test ffi::tests::allocation_events_detect_allocate_free_churn_with_zero_net_bytes ... ok
+test ffi::tests::atomic_store_errors_have_static_preformatted_reports ... ok
+test ffi::tests::exported_boundary_catches_injected_panic ... ok
+test ffi::tests::exported_boundary_rejects_null_argv ... ok
+test ffi::tests::ols_allocator_window_does_not_increment_ppml_event_counter ... ok
+test ffi::tests::pinned_estimation_domain_errors_keep_their_ffi_return_codes ... ok
+test ffi::tests::ppml_phase_allocator_preserves_nested_outer_and_linear_windows ... ok
+test ffi::tests::stata_output_is_split_into_physical_lines ... ok
+test ffi::tests::tracking_allocator_event_counter_is_monotone ... ok
+test input::tests::analytic_weight_is_read_only_for_candidates_and_controls_the_native_sample ... ok
+test input::tests::candidate_negative_analytic_weight_fails_before_any_write ... ok
+test input::tests::categorical_interaction_reads_each_numeric_source_once_and_is_candidate_scoped ... ok
+test input::tests::developer_confirmation_and_known_fields_are_mandatory ... ok
+test input::tests::factor_main_effect_reads_one_numeric_source_once_and_preserves_atomic_diagnostics ... ok
+test input::tests::fixed_effect_sources_are_read_once_and_missingness_uses_reason_five ... ok
+test input::tests::frequency_singletons_use_integer_multiplicity_and_bad_policy_fails_before_reads ... ok
+test input::tests::frequency_weight_is_read_only_for_candidates_and_retains_physical_rows ... ok
+test input::tests::invalid_candidate_factor_value_and_string_source_fail_without_writes ... ok
+test input::tests::invalid_candidate_frequency_weight_fails_before_any_write ... ok
+test input::tests::invalid_candidate_probability_weight_fails_before_any_write ... ok
+test input::tests::malformed_dimensions_and_layout_fail_before_observation_reads ... ok
+test input::tests::matrix_store_handle_validates_name_and_layout_before_commit ... ok
+test input::tests::missing_or_nonbinary_candidate_fails_without_diagnostic_writes ... ok
+test input::tests::mixed_interaction_and_pending_time_series_fail_before_observation_reads ... ok
+test input::tests::mixed_weight_bindings_fail_before_observation_reads ... ok
+test input::tests::opt_in_fe_map_certifies_and_nonconvergence_is_atomic ... ok
+test input::tests::opt_in_map_check_runs_structural_constant_before_writes ... ok
+test input::tests::probability_weight_is_read_only_for_candidates_and_preserves_physical_rows ... ok
+test input::tests::read_failure_and_interruption_fail_without_diagnostic_writes ... ok
+test input::tests::registry_decoder_is_length_delimited_and_exact ... ok
+test input::tests::singleton_cascade_and_keepsingletons_write_exact_atomic_diagnostics ... ok
+test input::tests::successful_action_reads_only_candidate_rows_and_writes_exact_diagnostics ... ok
+test input::tests::unsupported_fixed_effect_shapes_and_strings_fail_before_observation_reads ... ok
+test input::tests::unsupported_model_and_string_binding_fail_before_observation_reads ... ok
+test instrumentation::tests::preflight_receipt_is_emitted_only_from_the_core_decision_event ... ok
+test ppml_estimate::tests::active_factor_level_that_vanishes_on_rebase_is_syntax_omitted ... ok
+test ppml_estimate::tests::allocation_audit_is_opt_in_and_publishes_real_phase_evidence ... 
+running 1 test
+test ppml_estimate::tests::allocation_audit_is_opt_in_and_publishes_real_phase_evidence ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 96 filtered out; finished in 0.01s
+
+ok
+test ppml_estimate::tests::allocation_audit_n100k_no_fe_k0_accounts_embedding_preparation ... 
+running 1 test
+test ppml_estimate::tests::allocation_audit_n100k_no_fe_k0_accounts_embedding_preparation ... n100k_no_fe_k0 embedding=1012286 modeled_preparation=21456573 observed_preparation=15049291
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 96 filtered out; finished in 5.28s
+
+ok
+test ppml_estimate::tests::allocation_audit_preflights_worker_team_switches_one_four_one ... 
+running 1 test
+test ppml_estimate::tests::allocation_audit_preflights_worker_team_switches_one_four_one ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 96 filtered out; finished in 15.88s
+
+ok
+test ppml_estimate::tests::allocation_failure_is_atomic_in_every_fit_lifetime_phase ... 
+running 1 test
+test ppml_estimate::tests::allocation_failure_is_atomic_in_every_fit_lifetime_phase ... PPML allocation-failure phase preparation: fired=true, successful_events=1
+PPML allocation-failure phase separation_fe: fired=true, successful_events=1
+PPML allocation-failure phase separation_simplex: fired=true, successful_events=1
+PPML allocation-failure phase separation_ir: fired=true, successful_events=1
+PPML allocation-failure phase separation_mu: fired=true, successful_events=1
+PPML allocation-failure phase weight_response_refresh: fired=false, successful_events=0
+PPML allocation-failure phase fe_projection: fired=true, successful_events=1
+PPML allocation-failure phase finite_solve: fired=true, successful_events=1
+PPML allocation-failure phase objective_line_search: fired=false, successful_events=0
+PPML allocation-failure phase strict_final_solve: fired=true, successful_events=1
+PPML allocation-failure phase inference: fired=true, successful_events=1
+PPML allocation-failure phase fe_recovery: fired=true, successful_events=1
+PPML allocation-failure phase publication: fired=true, successful_events=1
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 96 filtered out; finished in 0.06s
+
+ok
+test ppml_estimate::tests::bounded_evidence_and_receipt_tampering_fail_before_any_store ... ok
+test ppml_estimate::tests::default_request_binds_separation_and_fit_to_one_linear_policy ... ok
+test ppml_estimate::tests::every_ppml_store_failure_leaves_receipt_incomplete ... ok
+test ppml_estimate::tests::finite_valid_unrepresentable_result_fails_r430_atomically ... ok
+test ppml_estimate::tests::hidden_ppml_action_carries_factor_absorb_cluster_weight_and_saved_fe ... ok
+test ppml_estimate::tests::hidden_ppml_action_commits_a_distinct_receipt_last ... ok
+test ppml_estimate::tests::licensed_allocation_hook_reaches_fallible_fe_recovery_and_is_action_local ... ok
+test ppml_estimate::tests::malformed_wire_and_output_conflicts_fail_before_observation_reads ... ok
+test ppml_estimate::tests::native_break_marker_is_emitted_after_core_entry_and_interrupts_before_stores ... ok
+test ppml_estimate::tests::native_break_rejects_missing_or_path_like_marker_tokens_before_reads ... ok
+test ppml_estimate::tests::no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing ... 
+running 1 test
+test ppml_estimate::tests::no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 96 filtered out; finished in 0.91s
+
+ok
+test ppml_estimate::tests::ppml_bundle_decoder_accepts_the_closed_83_field_protocol_only ... ok
+test ppml_estimate::tests::ppml_local_bundle_preserves_science_and_rejects_incomplete_input_before_reads ... ok
+test ppml_estimate::tests::public_solver_names_decode_to_typed_families ... ok
+test ppml_estimate::tests::saved_fe_memory_covers_measured_final_phases_across_repeated_calls ... 
+running 1 test
+test ppml_estimate::tests::saved_fe_memory_covers_measured_final_phases_across_repeated_calls ... saved_fe_memory fast/1 inference observed=3756458 modeled=5747368
+saved_fe_memory fast/1 fe_recovery observed=3887803 modeled=5648577
+saved_fe_memory fast/1 publication observed=4854319 modeled=6537552
+saved_fe_memory low/4 inference observed=3507998 modeled=6154272
+saved_fe_memory low/4 fe_recovery observed=3639343 modeled=6055385
+saved_fe_memory low/4 publication observed=4605859 modeled=6944360
+saved_fe_memory fast/1 inference observed=3736082 modeled=5739848
+saved_fe_memory fast/1 fe_recovery observed=3867427 modeled=5641057
+saved_fe_memory fast/1 publication observed=4833943 modeled=6530032
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 96 filtered out; finished in 8.20s
+
+ok
+test ppml_estimate::tests::saved_fe_recovery_uses_the_accepted_hessian_for_nonexact_counts ... ok
+test ppml_estimate::tests::stale_receipt_interrupt_and_panic_leave_complete_zero ... ok
+test ppml_estimate::tests::unknown_and_retired_solver_spellings_fail_closed ... ok
+test ppml_result::tests::allocation_free_optional_cell_validation_matches_index_oracle ... ok
+test ppml_result::tests::bounded_ledger_digests_bind_fields_order_and_every_generation_hash ... ok
+test ppml_result::tests::bounded_sequence_preserves_requested_methods_and_trace_positions ... ok
+test ppml_result::tests::final_publication_peak_must_stay_within_the_preflight_phase_model ... ok
+test ppml_result::tests::finite_weighted_outcome_that_stata_cannot_represent_is_r430 ... ok
+test ppml_result::tests::first_action_allocator_observation_keeps_prior_baseline_missing ... ok
+test ppml_result::tests::inference_evidence_preserves_multiway_psd_repair_diagnostics ... ok
+test ppml_result::tests::scientific_and_structural_shadow_representation_failures_are_distinct ... ok
+test ppml_result::tests::separation_trace_binds_stable_exact_fe_term_and_original_row_identity ... ok
+test ppml_result::tests::solver_fallback_reason_is_row_local ... ok
+test result::tests::covariance_determinant_fails_closed_on_malformed_or_nonfinite_input ... ok
+test result::tests::covariance_determinant_has_exact_small_wire_semantics ... ok
+
+test result: ok. 97 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 33.17s
+
+EXACT_ARTIFACT fereg_testkit 239acdc1dba6d992ef08a164c93cdf83bb09d83d79ebedc0daa5a45dd4459d7d
+
+running 3 tests
+test tests::doctor_runs_with_32_requested_threads ... ok
+test tests::unknown_action_returns_syntax_error ... ok
+test tests::version_action_is_available_without_stata ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+SCOPE_FAILURES [["fereg_core", "certified_linear_session", 101]]
