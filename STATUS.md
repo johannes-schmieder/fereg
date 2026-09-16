@@ -10,6 +10,33 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Candidate preparation: memory construction and allocation inventories
+
+The [memory/inventory checkpoint](benchmarks/reports/development/candidate-memory-coverage-inventory-2026-09-15/README.md)
+closes the PPML owned-FE construction omission on MAP and exploratory Mu routes.
+The common preflight now includes count/cursor scratch, offset sentinels and
+nested descriptors before allocation. Exact/one-byte-short fast/low budgets,
+overflow and sequential construction checks pass. This is a component repair,
+not evidence of an observed whole-action cap breach or a performance gain.
+
+SCC job 7587586 passes 156 focused core, 96 plugin and 3 testkit checks (255 total)
+on an isolated source/target with exact compiler-artifact identities. All 160
+source/fixture files match the tested snapshot. The first fixture's stale
+separation dimension failure is preserved. No empirical fit was restarted.
+
+The reviewed OLS inventory v18 now watches memory helpers and binds four exact
+post-F0 boundary replacements without modifying F0 or v17. A separate all-action
+inventory covers 121 core/plugin source files, including PPML/separation/session
+bodies. Both audits and all 37 Python mutation/structural checks pass. The complete
+repository checker still fails pre-existing STATUS-heading/historical-copy and
+public-PPML-wrapper assertions; its failed receipts remain explicit.
+
+The [capacity/lifetime obligations](docs/allocation_inventory.md) distinguish
+structural coverage from byte coverage. Parent/frame overlap, nested metadata,
+opaque dependency capacities and saved/publication parents still block a complete
+action model. Public base fields/wires are unchanged; whole-action peak/ratio
+remain undefined. The installed plugin is unchanged. The candidate is not ready.
+
 ## Candidate preparation: empirical memory reproduction and remaining gates
 
 The [new German OLS memory reproduction](benchmarks/reports/development/candidate-german-ols-memory-2026-09-15/README.md)
@@ -28,17 +55,19 @@ fails against the unchanged frozen v17 inventory: 80 violations already exist
 at requested baseline 9ecf47d, and 87 at native checkpoint a765c33. Seven new
 reported categories concern intentional memory-carrier/admission changes; other
 changes can share an already-failing file category. Both failures are preserved.
-Review the allocation/one-call changes and new helper coverage before versioning
-the inventory; numerical tests cannot substitute for this gate.
+The source review and v18/all-action successor inventories are recorded above;
+these original failures remain unchanged. Structural checks do not replace
+capacity proofs or numerical tests.
 
 The Mac/Linux review candidate is not ready. The remaining checklist is:
 
 - [ ] Complete parent/frame, metadata and whole-action capacity/admission coverage;
   add versioned public peak/coverage diagnostics and protocol/package metadata.
   Undefined coverage must keep the action ratio undefined.
-- [ ] Review and version the structural allocation inventory without rewriting F0.
-- [ ] Obtain the separate case-specific decision on proposed ADR 0073; preserve
-  the failed reference residual-parity receipts.
+- [x] Review/version the OLS structural inventory without rewriting F0 and add
+  the all-action inventory; both focused audits and mutation checks pass.
+- [x] Johannes accepted ADR 0073 on 2026-09-15 for this fixed German review
+  case. The failed reference residual-parity receipts remain unchanged.
 - [ ] Resolve the Xcode license prerequisite, then freeze one exact SHA and run
   focused Mac/Linux checks, universal-slice audit and Rosetta loading.
 - [ ] Produce repeatable deterministic Mac/Linux review archives with dependency
@@ -108,7 +137,7 @@ implemented. Whole-action parent/frame and metadata coverage and versioned publi
 action diagnostics remain open; the new German OLS reproduction is recorded above.
 The public base-memory fields and result wires are unchanged. No whole-action
 ratio or complete-action coverage is claimed. Mac builds still fail on the
-unaccepted Xcode license; ADR 0073 still needs the owner's decision. Exact-SHA
+unaccepted Xcode license. ADR 0073 has the owner's case-specific approval. Exact-SHA
 candidate freeze, universal/Rosetta checks, deterministic Mac/Linux archives and
 extracted-package installation remain blocked or pending. Nothing was installed,
 pushed, tagged, released, or promoted to formal qualification.
@@ -140,9 +169,10 @@ records the one permitted tighter reference fit and independent all-row
 conditional projection. Native residuals pass on all 4,361,733 retained rows
 (maximum error 1.177e-10); the tighter reference still misses the existing
 pointwise envelope. Sample/order, coefficients, covariance and DoF parity pass.
-No native numerical defect was demonstrated. [Proposed ADR 0073](docs/adr/0073-german-ols-review-adjudication.md)
-requires Johannes's explicit decision before this evidence can close the
-case-specific review gate. No CG exception or tolerance relaxation is active;
+No native numerical defect was demonstrated. [Accepted ADR 0073](docs/adr/0073-german-ols-review-adjudication.md)
+authorizes this fixed case's independent residual adjudication for the Mac/Linux
+development review. Exact-candidate preservation still requires validation.
+No general CG exception or tolerance relaxation is active;
 original failed comparisons remain failed. No further reference estimation is
 planned.
 

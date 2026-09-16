@@ -1,0 +1,8 @@
+repository checks: FAIL
+ - STATUS.md must be the only mutable project-status document; found: STATUS.md, Veneto_Benchmark/work/ppml-diagnostic/instrumented-source/STATUS.md, benchmarks/reports/development/within-weighted-assembly-2026-09-06/work/repair/fereg/STATUS.md
+ - STATUS.md is missing required section: ## 0.5.0 beta exit gate
+ - STATUS.md is missing required section: ## Completed, evidence-backed baseline
+ - STATUS.md is missing required section: ## Active checkpoint
+ - STATUS.md is missing required section: ## Current blockers
+ - STATUS.md is missing required section: ## Development plan
+ - feppml.ado is not the exact public one-call transaction wrapper

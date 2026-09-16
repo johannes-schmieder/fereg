@@ -327,6 +327,18 @@ over-cap request returns `r(909)` before the N-by-P design or tableau is
 allocated. The bounded explicit design is detector scratch and is released
 before PPML IRLS, inference, or publication.
 
+The common PPML FE-topology envelope also covers owned `EffectTerm`
+construction on MAP and exploratory Mu routes, which do not enter specialized
+LSMR/CMG admission. Charge all retained codes, memberships, offset sentinels,
+slope values and descriptors, plus the maximum single-effect count/cursor
+scratch. Do not sum scratch for sequential effects or omit it because the
+finished design no longer owns it. Preserve a larger existing conservative
+bound. Checked scalar arithmetic runs before materialization and allocates no
+observation-sized reporting state.
+
+The [allocation inventory](allocation_inventory.md) separates structural source
+coverage from capacity/lifetime proof and lists the remaining proof obligations.
+
 ## Instrumentation and acceptance
 
 The public result wire records requested/selected memory mode, estimated fast

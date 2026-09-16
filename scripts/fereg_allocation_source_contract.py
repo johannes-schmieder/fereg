@@ -21,9 +21,9 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v17.json"
-CONTRACT_ID = "fereg-allocation-source-contract-v17"
-SCHEMA_VERSION = 17
+DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v18.json"
+CONTRACT_ID = "fereg-allocation-source-contract-v18"
+SCHEMA_VERSION = 18
 
 # Keep the watched surface narrow enough to describe the actual OLS seam, but
 # closed against a new helper file.  The retained changing-weight session is a
@@ -69,6 +69,7 @@ WATCHED_GLOBS = (
     "crates/fereg-core/src/data/**/*.rs",
     "crates/fereg-core/src/fe/**/*.rs",
     "crates/fereg-core/src/linalg/**/*.rs",
+    "crates/fereg-core/src/memory/**/*.rs",
     "crates/fereg-core/src/ols/**/*.rs",
     "crates/fereg-core/src/sandwich/**/*.rs",
     "crates/fereg-plugin/src/**/*.rs",
@@ -129,8 +130,9 @@ ROUTING_BOUNDARY_FUNCTIONS = (
     *BOUNDARY_FUNCTIONS,
 )
 
-# These ten functions existed at exact F0 and pure extraction is required to
-# preserve their production token bodies.  Later one-shot/session seams are
+# These ten functions existed at exact F0. Pure extraction preserves their
+# bodies. Separately reviewed OLS changes below pin exact replacements; the
+# historical F0 identity and literal pins are never rewritten.  Later one-shot/session seams are
 # frozen by the live companion manifest but cannot be projected backward into
 # F0 because they did not yet exist there.
 F0_SOURCE_SHA = "2dee5d8c4cd99b51bbaca600348f66f325b58ab4"
@@ -166,6 +168,21 @@ F0_PREEXISTING_BOUNDARY_HASHES = {
         "fit_prepared_ols_coefficients_view_map",
     ): "33b448405a8e6ebbcaa342bc9c59d86acde43bf6aa2068902a67d3560e910832",
 }
+# Reviewed OLS changes since the extraction checkpoint. These are exact body
+# replacements, never an allow-list of functions whose bodies may drift.
+# See docs/allocation_inventory.md for decisions and source-bound evidence.
+REVIEWED_BOUNDARY_SOURCE_SHA = "a765c338f252350d0a9f5bf496330181dfbdb4b8"
+REVIEWED_BOUNDARY_HASHES = {
+    ('crates/fereg-plugin/src/estimate.rs', 'estimate_ols_test'):
+        '6d29cf038c0065b4a26ed1f62fa381c972b286aa4850b51614094fb43baabad8',
+    ('crates/fereg-core/src/ols/prepared_robust.rs', 'fit_prepared_ols_robust_map'):
+        '8e72d5101457a0057b093ffe30f96cc2149020f8dfc5586dda9cc85842fae712',
+    ('crates/fereg-core/src/ols/prepared_robust.rs', 'fit_prepared_categorical_ols_robust_map'):
+        'cf8a0058719d64704735547f435f886899a20467d7f3b5b1a1778e08bd7b73ef',
+    ('crates/fereg-core/src/ols/prepared_fit.rs', 'fit_prepared_ols_coefficients_view_map'):
+        '787412f726e1f0dfc92e01511c2fc74408d19a6d705ed4fbc86cd5542f99051b',
+}
+
 F0_PREEXISTING_BOUNDARY_LITERAL_HASHES = {
     ("crates/fereg-plugin/src/estimate.rs", "estimate_ols_test"):
         (4, "9ef282b93c2c9d59dfb279cc8de461a3114740a9041e9dbde36305e22c351e9e"),
@@ -1194,6 +1211,11 @@ def build_contract(root: Path = ROOT) -> dict[str, Any]:
                 {"path": path, "function": function}
                 for path, function in ROUTING_BOUNDARY_FUNCTIONS
             ],
+            "reviewed_boundary_source_sha": REVIEWED_BOUNDARY_SOURCE_SHA,
+            "reviewed_boundary_hashes": [
+                {"path": path, "function": function, "body_tokens_sha256": digest}
+                for (path, function), digest in REVIEWED_BOUNDARY_HASHES.items()
+            ],
             "f0_source_sha": F0_SOURCE_SHA,
             "f0_preexisting_boundary_hashes": [
                 {"path": path, "function": function, "body_tokens_sha256": digest}
@@ -1235,6 +1257,8 @@ def build_contract(root: Path = ROOT) -> dict[str, Any]:
 
 
 def _load_contract(path: Path) -> Mapping[str, Any]:
+    if not REVIEWED_BOUNDARY_HASHES.keys() <= F0_PREEXISTING_BOUNDARY_HASHES.keys():
+        raise ContractError("reviewed replacement has no historical F0 boundary")
     if set(F0_PREEXISTING_BOUNDARY_LITERAL_HASHES) != set(
         F0_PREEXISTING_BOUNDARY_HASHES
     ):
@@ -1270,6 +1294,11 @@ def _load_contract(path: Path) -> Mapping[str, Any]:
         "boundary_functions": [
             {"path": relative, "function": function}
             for relative, function in ROUTING_BOUNDARY_FUNCTIONS
+        ],
+        "reviewed_boundary_source_sha": REVIEWED_BOUNDARY_SOURCE_SHA,
+        "reviewed_boundary_hashes": [
+            {"path": path, "function": function, "body_tokens_sha256": digest}
+            for (path, function), digest in REVIEWED_BOUNDARY_HASHES.items()
         ],
         "f0_source_sha": F0_SOURCE_SHA,
         "f0_preexisting_boundary_hashes": [
@@ -1629,13 +1658,14 @@ def audit_repository(
         if expected_boundaries[key] != observed_boundaries[key]:
             violations.append(f"exact fereg adapter/one-shot boundary changed: {key[0]}:{key[1]}")
     for key, f0_digest in F0_PREEXISTING_BOUNDARY_HASHES.items():
+        live_digest = REVIEWED_BOUNDARY_HASHES.get(key, f0_digest)
         observed_boundary = observed_boundaries.get(key)
         if (
             observed_boundary is None
-            or observed_boundary.get("body_tokens_sha256") != f0_digest
+            or observed_boundary.get("body_tokens_sha256") != live_digest
         ):
             violations.append(
-                f"pre-existing F0 fereg boundary changed: {key[0]}:{key[1]}"
+                f"pinned fereg boundary changed: {key[0]}:{key[1]}"
             )
         expected_literal_count, expected_literal_digest = (
             F0_PREEXISTING_BOUNDARY_LITERAL_HASHES[key]

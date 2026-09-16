@@ -1,0 +1,5 @@
+{
+  "benchmarks/manifests/fereg_allocation_source_contract_v17.json": "a3aeed9291c61912c042f57cd592abb5369fa412e3cf6a5cbcf3d3d58042f936",
+  "benchmarks/manifests/fereg_allocation_source_contract_v18.json": "59f88bf90ce03c77e82e2d87fcd8c57fa8953c461bf239fb3120363a98b4f291",
+  "benchmarks/manifests/action_allocation_inventory_v1.json": "0987bcf07fba6b91dd699ba6fed4fc578055b49a2dbf8cd41a128e136d454d43"
+}

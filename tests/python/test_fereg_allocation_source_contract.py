@@ -13,7 +13,7 @@ from scripts import fereg_allocation_source_contract as CONTRACT
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MANIFEST = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v17.json"
+MANIFEST = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v18.json"
 
 
 class FeregAllocationSourceContractTests(unittest.TestCase):
@@ -114,6 +114,35 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             CONTRACT.F0_FFI_OLS_BRANCH_SHA256,
         )
 
+    def test_reviewed_boundaries_are_exact_source_pins(self) -> None:
+        for (relative, function), expected in CONTRACT.REVIEWED_BOUNDARY_HASHES.items():
+            source = subprocess.check_output(
+                ["git", "show", f"{CONTRACT.REVIEWED_BOUNDARY_SOURCE_SHA}:{relative}"],
+                cwd=ROOT, text=True,
+            )
+            body = CONTRACT._function_body(CONTRACT._production_tokens(source), function)
+            self.assertEqual(CONTRACT._sha256_text(CONTRACT._canonical_tokens(body)), expected)
+            self.assertNotEqual(expected, CONTRACT.F0_PREEXISTING_BOUNDARY_HASHES[(relative, function)])
+
+    def test_new_memory_helper_is_in_closed_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            candidate = self._source_root(Path(directory))
+            helper = candidate / "crates/fereg-core/src/memory/hidden.rs"
+            helper.write_text("fn hidden(n: usize) { let _x = vec![0.; n]; }\n")
+            self.assertTrue(any("source set changed" in v for v in
+                                CONTRACT.audit_repository(candidate, MANIFEST)))
+
+    def test_review_pin_cannot_be_weakened_by_refreshing_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            candidate = self._source_root(Path(directory))
+            estimate = candidate / "crates/fereg-plugin/src/estimate.rs"
+            self._replace(estimate, "    let resources_start = instrumentation::begin_observation();",
+                          "    let _unexpected = vec![0_u8; 100];\n    let resources_start = instrumentation::begin_observation();")
+            refreshed = candidate / "refreshed.json"
+            refreshed.write_text(json.dumps(CONTRACT.build_contract(candidate)))
+            self.assertTrue(any("pinned fereg boundary changed" in v for v in
+                                CONTRACT.audit_repository(candidate, refreshed)))
+
     def test_comments_and_whitespace_do_not_change_the_structural_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
@@ -132,10 +161,10 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             estimate = candidate / "crates/fereg-plugin/src/estimate.rs"
             self._replace(
                 estimate,
-                "    let started = Instant::now();",
+                "    let resources_start = instrumentation::begin_observation();",
                 "    let rows = args.len();\n"
                 "    let _new_observation_buffer = Vec::<f64>::with_capacity(rows);\n"
-                "    let started = Instant::now();",
+                "    let resources_start = instrumentation::begin_observation();",
             )
             violations = CONTRACT.audit_repository(candidate, MANIFEST)
             self.assertTrue(
@@ -409,7 +438,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             candidate = self._source_root(Path(directory))
             estimate = candidate / "crates/fereg-plugin/src/estimate.rs"
             source = estimate.read_text(encoding="utf-8")
-            self.assertEqual(source.count('"FEREG_PHASE_TIMING"'), 2)
+            self.assertEqual(source.count('"FEREG_PHASE_TIMING"'), 3)
             estimate.write_text(
                 source.replace('"FEREG_PHASE_TIMING"', '"PATH"'),
                 encoding="utf-8",
@@ -555,7 +584,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
                 violations,
             )
             self.assertTrue(
-                any("pre-existing F0 fereg boundary changed" in item for item in violations),
+                any("pinned fereg boundary changed" in item for item in violations),
                 violations,
             )
 

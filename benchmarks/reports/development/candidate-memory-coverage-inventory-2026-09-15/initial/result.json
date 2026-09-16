@@ -1,0 +1,11 @@
+{
+  "job_id": 7587578,
+  "status": "failed_test_fixture",
+  "core_filters": {
+    "memory_passed": 65,
+    "memory_failed": 1
+  },
+  "plugin": null,
+  "testkit": null,
+  "terminal_sentinel": false
+}

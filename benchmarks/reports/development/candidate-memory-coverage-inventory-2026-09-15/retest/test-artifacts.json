@@ -1,0 +1,85 @@
+[
+  {
+    "package_id": "path+file://<RUN_ROOT>/source/crates/fereg-testkit#0.5.0",
+    "target": {
+      "kind": [
+        "lib"
+      ],
+      "crate_types": [
+        "lib"
+      ],
+      "name": "fereg_testkit",
+      "src_path": "<RUN_ROOT>/source/crates/fereg-testkit/src/lib.rs",
+      "edition": "2021",
+      "doc": true,
+      "doctest": true,
+      "test": true
+    },
+    "profile": {
+      "opt_level": "0",
+      "debuginfo": 2,
+      "debug_assertions": true,
+      "overflow_checks": true,
+      "test": true
+    },
+    "path": "<RUN_ROOT>/target/debug/deps/fereg_testkit-61e93ca079331fc6",
+    "sha256": "6f8eaaa0e1abc0ebca72fff28bd8bbbdb3a6c2b7e6e6eca0668cbb2a65485a79",
+    "bytes": 93540200
+  },
+  {
+    "package_id": "path+file://<RUN_ROOT>/source/crates/fereg-plugin#0.5.0",
+    "target": {
+      "kind": [
+        "staticlib",
+        "rlib"
+      ],
+      "crate_types": [
+        "staticlib",
+        "rlib"
+      ],
+      "name": "fereg_plugin",
+      "src_path": "<RUN_ROOT>/source/crates/fereg-plugin/src/lib.rs",
+      "edition": "2021",
+      "doc": true,
+      "doctest": false,
+      "test": true
+    },
+    "profile": {
+      "opt_level": "0",
+      "debuginfo": 2,
+      "debug_assertions": true,
+      "overflow_checks": true,
+      "test": true
+    },
+    "path": "<RUN_ROOT>/target/debug/deps/fereg_plugin-e651ae9cfb533d78",
+    "sha256": "34b3269dd18c8196d456085ced58e00805fcae05893fe5b413cd4aaebbc1c329",
+    "bytes": 124289544
+  },
+  {
+    "package_id": "path+file://<RUN_ROOT>/source/crates/fereg-core#0.5.0",
+    "target": {
+      "kind": [
+        "lib"
+      ],
+      "crate_types": [
+        "lib"
+      ],
+      "name": "fereg_core",
+      "src_path": "<RUN_ROOT>/source/crates/fereg-core/src/lib.rs",
+      "edition": "2021",
+      "doc": true,
+      "doctest": true,
+      "test": true
+    },
+    "profile": {
+      "opt_level": "0",
+      "debuginfo": 2,
+      "debug_assertions": true,
+      "overflow_checks": true,
+      "test": true
+    },
+    "path": "<RUN_ROOT>/target/debug/deps/fereg_core-4c03e1651c8d97f4",
+    "sha256": "624553ea41db20e07e9548d781436e538ee85570cea01e95d8b1af7147d4fea6",
+    "bytes": 172156320
+  }
+]

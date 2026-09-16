@@ -1,6 +1,6 @@
 # ADR 0073: German OLS review-candidate adjudication
 
-**Status:** Proposed; requires Johannes's decision
+**Status:** Accepted by Johannes on 2026-09-15
 **Date:** 2026-09-15
 **Decision owner:** Johannes Schmieder
 
@@ -15,7 +15,7 @@ match native residuals on every retained row (maximum error 1.177e-10) and
 identify reference error (maximum 3.819e-7). Coefficients, covariance, sample,
 ordering and DoF parity pass. Original failed receipts remain failed.
 
-## Proposed decision
+## Decision
 
 For this fixed German 5% case only, allow the Mac/Linux **development review
 candidate** to pass its residual-accuracy gate through the independent
@@ -30,4 +30,6 @@ It does not supply an interval enclosure of the joint finite optimum, qualify
 performance, waive any memory/platform/install gate, authorize publication, or
 change the formal release contract. Any broader use requires a separate decision.
 
-Until approved, the review-candidate residual-parity gate remains blocked.
+Johannes approved this case-specific decision on 2026-09-15. The exact frozen
+candidate must still meet the requirements above; historical reference-parity
+failures remain failed.

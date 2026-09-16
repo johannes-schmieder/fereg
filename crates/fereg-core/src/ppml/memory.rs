@@ -459,8 +459,10 @@ pub struct PpmlMemoryInventory {
     /// loaded weight column and each generation's canonical prior weights.
     pub retained_raw_preseparation_probability_weight_bytes: u128,
     pub topology_bytes: u128,
-    /// Fixed-topology copy owned by the reusable FE solver.  It is distinct
-    /// from the canonical prepared topology and never rebuilt per iteration.
+    /// Fixed-topology copy owned by the reusable FE solver, including its
+    /// construction envelope (one count/cursor pair plus all retained effects).
+    /// Charged on every route, including MAP and Mu before specialized admission.
+    /// Distinct from canonical topology and never rebuilt per iteration.
     pub fe_solver_topology_bytes: u128,
     pub cluster_topology_bytes: u128,
     /// Candidate and current prepared-generation compact row maps.
@@ -922,7 +924,7 @@ fn estimate_route(
         let slope_channels = total_fe_channels
             .checked_sub(fe)
             .ok_or_else(|| allocation("PPML FE channel count is smaller than its effect count"))?;
-        checked_sum(&[
+        let legacy_envelope = checked_sum(&[
             checked_mul(
                 checked_mul(n, fe, "PPML reusable FE codes")?,
                 word,
@@ -943,7 +945,19 @@ fn estimate_route(
                 slope_channels,
                 "PPML reusable FE slope values",
             )?)?,
-        ])?
+        ])?;
+        let construction = crate::memory::OwnedFeDesignMemoryEstimate::from_summary(
+            dimensions.observations,
+            dimensions.fe_dimensions,
+            dimensions.fe_total_levels,
+            dimensions.fe_max_levels,
+            usize::try_from(slope_channels)
+                .map_err(|_| allocation("PPML slope channel count is not addressable"))?,
+        )?;
+        // Public LSMR/CMG have a second topology admission check. MAP and Mu
+        // do not: this base preflight must cover EffectTerm construction too.
+        // Keep the existing conservative envelope where it is larger.
+        legacy_envelope.max(construction.construction_bytes)
     };
     let cluster_topology_bytes = checked_sum(&[
         checked_mul(
@@ -3592,6 +3606,56 @@ mod tests {
                 relative_two_norm: 0.0,
                 passed: true,
             },
+        }
+    }
+
+    #[test]
+    fn map_preflight_covers_singleton_rich_owned_topology_construction() {
+        let mut dimensions = dimensions();
+        dimensions.observations = 10_000;
+        dimensions.original_observations = 10_000;
+        dimensions.candidate_observations = 10_000;
+        dimensions.separation_generation_capacity = 2;
+        dimensions.cluster_subset_groups = 10_000;
+        dimensions.fe_dimensions = 1;
+        dimensions.fe_total_levels = 10_000;
+        dimensions.fe_max_levels = 10_000;
+        dimensions.fe_total_channels = 1;
+        dimensions.fe_max_channels = 1;
+        dimensions.fe_max_level_members = 1;
+        dimensions.fe_coefficient_directions = 10_000;
+        dimensions.fe_max_effect_directions = 10_000;
+        let estimate = estimate_ppml_memory(dimensions, PpmlMemoryConfig::default()).unwrap();
+        let mut exact = crate::memory::OwnedFeDesignMemoryEstimate::default();
+        exact.add_effect(10_000, 10_000, 0).unwrap();
+        let old_envelope = 10_000_u128 * (16 + 16);
+        assert!(exact.construction_bytes > old_envelope);
+        for inventory in [estimate.fast, estimate.low] {
+            assert!(inventory.fe_solver_topology_bytes >= exact.construction_bytes);
+        }
+        for (requested, inventory) in [
+            (MemoryMode::Fast, estimate.fast),
+            (MemoryMode::Low, estimate.low),
+        ] {
+            let config = PpmlMemoryConfig {
+                requested,
+                available_bytes: Some(inventory.peak_bytes + MINIMUM_HEADROOM_BYTES),
+                ..PpmlMemoryConfig::default()
+            };
+            let admitted = plan_ppml_memory(dimensions, config).unwrap();
+            assert_eq!(admitted.usable_bytes, Some(inventory.peak_bytes));
+            assert_eq!(
+                plan_ppml_memory(
+                    dimensions,
+                    PpmlMemoryConfig {
+                        available_bytes: config.available_bytes.map(|bytes| bytes - 1),
+                        ..config
+                    }
+                )
+                .unwrap_err()
+                .code,
+                ErrorCode::Allocation
+            );
         }
     }
 

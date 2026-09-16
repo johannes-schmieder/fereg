@@ -1,0 +1,17 @@
+You have not agreed to the Xcode license agreements. Please run 'sudo xcodebuild -license' from within a Terminal window to review and agree to the Xcode and Apple SDKs license.
+Traceback (most recent call last):
+  File "<SOURCE_ROOT>/scripts/check_repository.py", line 85, in <module>
+    tracked_files = subprocess.run(
+                    ~~~~~~~~~~~~~~^
+        ["git", "-C", str(ROOT), "ls-files", "-z"],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        check=True,
+        ^^^^^^^^^^^
+        stdout=subprocess.PIPE,
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    ).stdout.split(b"\0")
+    ^
+  File "<PYTHON>/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', '-C', '<SOURCE_ROOT>', 'ls-files', '-z']' returned non-zero exit status 69.

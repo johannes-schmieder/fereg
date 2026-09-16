@@ -10,6 +10,51 @@ pub(crate) struct OwnedFeDesignMemoryEstimate {
 }
 
 impl OwnedFeDesignMemoryEstimate {
+    /// Pre-allocation envelope when only aggregate topology dimensions exist.
+    /// All resident effects coexist; only one effect's count/cursor scratch
+    /// exists at a time. Descriptor and offset sentinels are heap payloads too.
+    pub(crate) fn from_summary(
+        rows: usize,
+        effects: usize,
+        total_levels: usize,
+        maximum_levels: usize,
+        slope_channels: usize,
+    ) -> Result<Self> {
+        if maximum_levels > total_levels
+            || (effects == 0 && (total_levels != 0 || slope_channels != 0))
+        {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "owned FE summary dimensions are inconsistent",
+            ));
+        }
+        let n = rows as u128;
+        let d = effects as u128;
+        let s = slope_channels as u128;
+        let resident_bytes = checked_sum(&[
+            bytes::<EffectTerm>(d)?,
+            bytes::<u32>(checked_mul(n, d, "owned FE summary codes")?)?,
+            bytes::<usize>(checked_sum(&[
+                checked_mul(n, d, "owned FE summary memberships")?,
+                total_levels as u128,
+                d,
+            ])?)?,
+            bytes::<f64>(checked_mul(n, s, "owned FE summary slopes")?)?,
+            bytes::<Vec<f64>>(s)?,
+        ])?;
+        let construction_bytes = checked_sum(&[
+            resident_bytes,
+            bytes::<usize>(checked_mul(
+                maximum_levels as u128,
+                2,
+                "owned FE summary scratch",
+            )?)?,
+        ])?;
+        Ok(Self {
+            resident_bytes,
+            construction_bytes,
+        })
+    }
     // EffectTerm::new builds counts and cursors beside the retained codes,
     // slopes, offsets and memberships. Effects are constructed sequentially.
     pub(crate) fn add_effect(&mut self, rows: usize, levels: usize, slopes: usize) -> Result<()> {
@@ -216,6 +261,39 @@ fn allocation(message: &'static str) -> FeregError {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn summary_covers_sequential_construction_without_summing_scratch() {
+        for levels in [&[97][..], &[97, 31, 2][..], &[2, 31, 97][..]] {
+            let mut exact = super::OwnedFeDesignMemoryEstimate::default();
+            for (index, &level) in levels.iter().enumerate() {
+                exact.add_effect(97, level, index).unwrap();
+            }
+            let summary = super::OwnedFeDesignMemoryEstimate::from_summary(
+                97,
+                levels.len(),
+                levels.iter().sum(),
+                *levels.iter().max().unwrap(),
+                (0..levels.len()).sum(),
+            )
+            .unwrap();
+            assert_eq!(summary.resident_bytes, exact.resident_bytes);
+            assert!(summary.construction_bytes >= exact.construction_bytes);
+            assert_eq!(
+                summary.construction_bytes - summary.resident_bytes,
+                2 * *levels.iter().max().unwrap() as u128 * std::mem::size_of::<usize>() as u128
+            );
+        }
+        assert!(super::OwnedFeDesignMemoryEstimate::from_summary(1, 0, 1, 1, 0).is_err());
+        assert!(super::OwnedFeDesignMemoryEstimate::from_summary(
+            usize::MAX,
+            usize::MAX,
+            usize::MAX,
+            usize::MAX,
+            usize::MAX
+        )
+        .is_err());
+    }
+
     use super::*;
 
     #[test]

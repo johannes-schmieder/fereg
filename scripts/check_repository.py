@@ -17,12 +17,14 @@ try:
         audit_repository as audit_fereg_allocation_contract,
     )
     from scripts.ppml_legacy_boundary import audit_repository as audit_ppml_legacy_boundary
+    from scripts.action_allocation_inventory import audit as audit_action_inventory, DEFAULT_INVENTORY
 except ModuleNotFoundError:
     from fereg_allocation_source_contract import (
         ContractError as FeregAllocationContractError,
         audit_repository as audit_fereg_allocation_contract,
     )
     from ppml_legacy_boundary import audit_repository as audit_ppml_legacy_boundary
+    from action_allocation_inventory import audit as audit_action_inventory, DEFAULT_INVENTORY
 
 ROOT = Path(__file__).resolve().parents[1]
 ERRORS: list[str] = []
@@ -495,6 +497,12 @@ try:
         ERRORS.append(f"fereg allocation source contract: {violation}")
 except FeregAllocationContractError as error:
     ERRORS.append(f"fereg allocation source contract is invalid: {error}")
+
+# PPML, separation and session allocations are outside the OLS-only F0 seam.
+try:
+    ERRORS.extend(audit_action_inventory(ROOT, DEFAULT_INVENTORY))
+except (OSError, ValueError, KeyError, TypeError, FeregAllocationContractError) as error:
+    ERRORS.append(f"action allocation inventory is invalid: {error}")
 
 # Parse Python with its real grammar; use a cheap delimiter check only for Rust
 # when Cargo is unavailable.
