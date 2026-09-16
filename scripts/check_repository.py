@@ -16,6 +16,7 @@ try:
         ContractError as FeregAllocationContractError,
         audit_repository as audit_fereg_allocation_contract,
     )
+    from scripts.repository_layout_contract import status_paths, status_errors, public_ppml_wrapper_is_exact
     from scripts.ppml_legacy_boundary import audit_repository as audit_ppml_legacy_boundary
     from scripts.action_allocation_inventory import audit as audit_action_inventory, DEFAULT_INVENTORY
 except ModuleNotFoundError:
@@ -23,6 +24,7 @@ except ModuleNotFoundError:
         ContractError as FeregAllocationContractError,
         audit_repository as audit_fereg_allocation_contract,
     )
+    from repository_layout_contract import status_paths, status_errors, public_ppml_wrapper_is_exact
     from ppml_legacy_boundary import audit_repository as audit_ppml_legacy_boundary
     from action_allocation_inventory import audit as audit_action_inventory, DEFAULT_INVENTORY
 
@@ -195,32 +197,13 @@ require(
     "deleted development automation must not be restored",
 )
 
-status_files = [
-    path.relative_to(ROOT).as_posix()
-    for path in ROOT.rglob("*.md")
-    if "status" in path.name.lower()
-    or path.name
-    in {
-        "HANDOFF.md",
-        "IMPLEMENTATION_STATUS.md",
-        "LOCAL_CODEX_PROMPT.md",
-        "VALIDATION.md",
-    }
-]
+status_files = status_paths([path.decode("utf-8") for path in tracked_files if path])
 require(
-    sorted(status_files) == ["STATUS.md"],
+    status_files == ["STATUS.md"],
     "STATUS.md must be the only mutable project-status document; found: "
-    + ", ".join(sorted(status_files)),
+    + ", ".join(status_files),
 )
-status = read("STATUS.md")
-for heading in (
-    "## 0.5.0 beta exit gate",
-    "## Completed, evidence-backed baseline",
-    "## Active checkpoint",
-    "## Current blockers",
-    "## Development plan",
-):
-    require(heading in status, f"STATUS.md is missing required section: {heading}")
+ERRORS.extend(status_errors(read("STATUS.md")))
 
 agents = read("AGENTS.md")
 require(agents.startswith("# fereg agent instructions\n"), "AGENTS.md has the wrong title")
@@ -302,19 +285,8 @@ require(
 
 feppml_source = read("stata/feppml.ado")
 feppml_ado = feppml_source.lower()
-feppml_executable = tuple(
-    line.strip()
-    for line in feppml_source.splitlines()
-    if line.strip() and not line.lstrip().startswith(("*", "//"))
-)
 require(
-    feppml_executable
-    == (
-        "program define feppml, eclass sortpreserve",
-        "version 18.0",
-        "_fereg_ppml `0'",
-        "end",
-    ),
+    public_ppml_wrapper_is_exact(feppml_source),
     "feppml.ado is not the exact public one-call transaction wrapper",
 )
 require(

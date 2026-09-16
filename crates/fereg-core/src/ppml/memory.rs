@@ -128,6 +128,7 @@ impl Default for PpmlMemoryConfig {
 /// its large workspaces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PpmlMemoryDimensions {
+    pub metadata: super::PpmlMetadataMemory,
     pub observations: usize,
     /// Full observation axis on which numeric/domain and separation ledgers
     /// remain live. This can exceed `observations` after if/in or missing-data
@@ -371,7 +372,8 @@ fn validate_final_dimensions_within_preflight(
         && final_dimensions.fe_max_effect_directions <= preflight.fe_max_effect_directions
         && final_dimensions.cluster_subset_groups <= preflight.cluster_subset_groups
         && final_dimensions.publication_matrix_cells <= preflight.publication_matrix_cells;
-    let stable = final_dimensions.original_observations == preflight.original_observations
+    let stable = final_dimensions.metadata == preflight.metadata
+        && final_dimensions.original_observations == preflight.original_observations
         && final_dimensions.candidate_observations == preflight.candidate_observations
         && final_dimensions.retained_base_adjustment_capacity_elements
             == preflight.retained_base_adjustment_capacity_elements
@@ -445,6 +447,10 @@ impl PpmlMemoryRoute {
 /// Itemized peak model for one concrete PPML route.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PpmlMemoryInventory {
+    /// Nested candidate model retained while rebuilding compact recipes.
+    pub preparation_metadata_transient_bytes: u128,
+    /// Boxed IRLS parent and copied coefficient/FE/cluster publication metadata.
+    pub result_metadata_bytes: u128,
     /// Still-live embedding/action storage measured relative to the action
     /// allocator baseline immediately before entering the core fit.
     pub embedding_resident_bytes: u128,
@@ -1134,6 +1140,7 @@ fn estimate_route(
         0
     };
     let prepared_model_metadata_bytes = checked_sum(&[
+        dimensions.metadata.prepared_nested_bytes,
         checked_mul(
             reported_coefficient_slots,
             size_of::<PpmlCoefficientStatus>() as u128,
@@ -1169,6 +1176,7 @@ fn estimate_route(
             topology_bytes,
             cluster_topology_bytes,
             prepared_model_metadata_bytes,
+            dimensions.metadata.preparation_transient_bytes,
             replacement_drop_reason_bytes,
             replacement_row_map_bytes,
         ])?
@@ -1411,16 +1419,18 @@ fn estimate_route(
         categorical_accelerator_cells,
     ])?;
     let fe_workspace_bytes = bytes_f64(fe_workspace_cells)?;
-    // Session response, owned weights, two predictors, frozen response and
-    // residual, and normalized reusable-MAP weights remain live together.
+    // Session response, owned weights, two predictors, frozen response,
+    // normalized reusable-MAP weights, and one residual bank. Canonical solve
+    // moves that residual into the accepted fit; frozen solve recycles it.
+    // A strict transaction's rollback residual is charged in its overlap below.
     // The rank-vector bank is separately exact: retained reference norms,
     // reference means, and within norms consume three K vectors; refreshed
     // mean corrections consume one more; rhs/row/solve/scores/scales and the
-    // accepted frozen-step coefficients consume six. Strict's second
-    // coefficient bank is charged only in its transient below.
+    // accepted frozen-step coefficients consume six; the session row consumes
+    // one. Strict's second coefficient bank is charged in its transient below.
     let linear_vector_bytes = checked_sum(&[
         bytes_f64(checked_mul(n, 7, "PPML linear observation vectors")?)?,
-        bytes_f64(checked_mul(k, 10, "PPML linear rank vectors")?)?,
+        bytes_f64(checked_mul(k, 11, "PPML linear rank vectors")?)?,
         checked_mul(
             coefficient_slots,
             checked_mul(4, word, "PPML linear slot bookkeeping width")?,
@@ -1680,14 +1690,20 @@ fn estimate_route(
     ])?;
     let input_preparation_peak_bytes = checked_sum(&[
         common,
+        dimensions.metadata.preparation_transient_bytes,
         bytes_f64(checked_mul(
             candidate_n,
             checked_sum(&[loaded, 3])?,
             "PPML candidate-capacity preparation staging",
         )?)?,
     ])?;
+    let result_metadata_bytes = checked_sum(&[
+        dimensions.metadata.result_bytes,
+        size_of::<super::prepared_irls::PreparedPpmlIrlsFit>() as u128,
+    ])?;
     let fitted_common = checked_sum(&[
         common,
+        result_metadata_bytes,
         iteration_buffer_bytes,
         coefficient_buffer_bytes,
         retained_within_resident_bytes,
@@ -1901,6 +1917,8 @@ fn estimate_route(
         .max(publication_peak_bytes);
 
     Ok(PpmlMemoryInventory {
+        preparation_metadata_transient_bytes: dimensions.metadata.preparation_transient_bytes,
+        result_metadata_bytes,
         embedding_resident_bytes: config.embedding_resident_bytes,
         canonical_numeric_bytes,
         retained_base_adjustment_bytes,
@@ -3537,6 +3555,7 @@ mod tests {
 
     fn dimensions() -> PpmlMemoryDimensions {
         PpmlMemoryDimensions {
+            metadata: Default::default(),
             observations: 100_000,
             original_observations: 100_000,
             candidate_observations: 100_000,
@@ -3607,6 +3626,87 @@ mod tests {
                 passed: true,
             },
         }
+    }
+
+    #[test]
+    fn nested_metadata_is_admitted_at_every_overlapping_lifetime() {
+        let plain_dimensions = dimensions();
+        let plain = estimate_ppml_memory(plain_dimensions, PpmlMemoryConfig::default()).unwrap();
+        let mut shape = plain_dimensions;
+        shape.metadata = super::super::PpmlMetadataMemory {
+            prepared_nested_bytes: 70_003,
+            preparation_transient_bytes: 90_007,
+            result_bytes: 110_017,
+        };
+        let charged = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+        for (before, after) in [(plain.fast, charged.fast), (plain.low, charged.low)] {
+            assert_eq!(
+                after.prepared_model_metadata_bytes - before.prepared_model_metadata_bytes,
+                70_003
+            );
+            assert_eq!(
+                after.separation_replacement_generation_bytes
+                    - before.separation_replacement_generation_bytes,
+                160_010
+            );
+            assert_eq!(
+                after.result_metadata_bytes - before.result_metadata_bytes,
+                110_017
+            );
+            for (old, new) in [
+                (before.iteration_peak_bytes, after.iteration_peak_bytes),
+                (
+                    before.strict_final_peak_bytes,
+                    after.strict_final_peak_bytes,
+                ),
+                (before.inference_peak_bytes, after.inference_peak_bytes),
+                (before.fe_recovery_peak_bytes, after.fe_recovery_peak_bytes),
+                (before.publication_peak_bytes, after.publication_peak_bytes),
+            ] {
+                assert_eq!(
+                    new - old,
+                    180_020,
+                    "parents coexist; they are not sequential maxima"
+                );
+            }
+        }
+        for (requested, peak) in [
+            (MemoryMode::Fast, charged.fast.peak_bytes),
+            (MemoryMode::Low, charged.low.peak_bytes),
+        ] {
+            let config = PpmlMemoryConfig {
+                requested,
+                available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES),
+                ..PpmlMemoryConfig::default()
+            };
+            let plan = plan_ppml_memory(shape, config).unwrap();
+            assert_eq!(plan.usable_bytes, Some(peak));
+            assert_eq!(
+                plan_ppml_memory(
+                    shape,
+                    PpmlMemoryConfig {
+                        available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES - 1),
+                        ..config
+                    }
+                )
+                .unwrap_err()
+                .code,
+                ErrorCode::Allocation
+            );
+            let mut changed = shape;
+            changed.metadata.prepared_nested_bytes -= 1;
+            assert!(
+                plan.with_final_dimensions(changed).is_err(),
+                "rebase cannot discard unreleased metadata capacity"
+            );
+        }
+        shape.metadata.result_bytes = u128::MAX;
+        assert_eq!(
+            estimate_ppml_memory(shape, PpmlMemoryConfig::default())
+                .unwrap_err()
+                .code,
+            ErrorCode::Allocation
+        );
     }
 
     #[test]
@@ -4724,9 +4824,9 @@ mod tests {
         assert_eq!(
             inventory.linear_vector_bytes,
             metadata_dimensions.observations as u128 * 7 * size_of::<f64>() as u128
-                + 10 * size_of::<f64>() as u128
+                + 11 * size_of::<f64>() as u128
                 + 4 * size_of::<usize>() as u128,
-            "observation vectors, ten retained rank vectors, and four reusable index banks are all resident",
+            "observation vectors, eleven retained rank vectors, and four reusable index banks are all resident",
         );
     }
 
@@ -4958,6 +5058,7 @@ mod tests {
 
         let fitted_common = |inventory: PpmlMemoryInventory| {
             inventory.canonical_numeric_bytes
+                + inventory.result_metadata_bytes
                 + inventory.retained_base_adjustment_bytes
                 + inventory.retained_raw_preseparation_probability_weight_bytes
                 + inventory.topology_bytes

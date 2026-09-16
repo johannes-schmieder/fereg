@@ -1,0 +1,112 @@
+[
+  {
+    "package_id": "path+file://$RUN/source/crates/fereg-testkit#0.5.0",
+    "target": {
+      "kind": [
+        "lib"
+      ],
+      "crate_types": [
+        "lib"
+      ],
+      "name": "fereg_testkit",
+      "src_path": "$RUN/source/crates/fereg-testkit/src/lib.rs",
+      "edition": "2021",
+      "doc": true,
+      "doctest": true,
+      "test": true
+    },
+    "profile": {
+      "opt_level": "0",
+      "debuginfo": 2,
+      "debug_assertions": true,
+      "overflow_checks": true,
+      "test": true
+    },
+    "path": "$RUN/target/debug/deps/fereg_testkit-61e93ca079331fc6",
+    "sha256": "239acdc1dba6d992ef08a164c93cdf83bb09d83d79ebedc0daa5a45dd4459d7d",
+    "bytes": 93578936
+  },
+  {
+    "package_id": "path+file://$RUN/source/crates/fereg-plugin#0.5.0",
+    "target": {
+      "kind": [
+        "staticlib",
+        "rlib"
+      ],
+      "crate_types": [
+        "staticlib",
+        "rlib"
+      ],
+      "name": "fereg_plugin",
+      "src_path": "$RUN/source/crates/fereg-plugin/src/lib.rs",
+      "edition": "2021",
+      "doc": true,
+      "doctest": false,
+      "test": true
+    },
+    "profile": {
+      "opt_level": "0",
+      "debuginfo": 2,
+      "debug_assertions": true,
+      "overflow_checks": true,
+      "test": true
+    },
+    "path": "$RUN/target/debug/deps/fereg_plugin-e651ae9cfb533d78",
+    "sha256": "98ff250c9f1a65e7bd48a3a6036215b32706c78773dfbf184041bc5fa82c7267",
+    "bytes": 124443496
+  },
+  {
+    "package_id": "path+file://$RUN/source/crates/fereg-core#0.5.0",
+    "target": {
+      "kind": [
+        "lib"
+      ],
+      "crate_types": [
+        "lib"
+      ],
+      "name": "fereg_core",
+      "src_path": "$RUN/source/crates/fereg-core/src/lib.rs",
+      "edition": "2021",
+      "doc": true,
+      "doctest": true,
+      "test": true
+    },
+    "profile": {
+      "opt_level": "0",
+      "debuginfo": 2,
+      "debug_assertions": true,
+      "overflow_checks": true,
+      "test": true
+    },
+    "path": "$RUN/target/debug/deps/fereg_core-4c03e1651c8d97f4",
+    "sha256": "1c0df1421b0a3044302ce5d902fb75b44e4ef021a20db98a2268efd628ac913f",
+    "bytes": 172337720
+  },
+  {
+    "package_id": "path+file://$RUN/source/crates/fereg-core#0.5.0",
+    "target": {
+      "kind": [
+        "test"
+      ],
+      "crate_types": [
+        "bin"
+      ],
+      "name": "feppml_constrained_memory_contract",
+      "src_path": "$RUN/source/crates/fereg-core/tests/feppml_constrained_memory_contract.rs",
+      "edition": "2021",
+      "doc": false,
+      "doctest": false,
+      "test": true
+    },
+    "profile": {
+      "opt_level": "0",
+      "debuginfo": 2,
+      "debug_assertions": true,
+      "overflow_checks": true,
+      "test": true
+    },
+    "path": "$RUN/target/debug/deps/feppml_constrained_memory_contract-0ee9059b7015d246",
+    "sha256": "9945659dd5bbab738fe826810e35d4d12c436f203a7df6c92b8110d148d39684",
+    "bytes": 87465352
+  }
+]

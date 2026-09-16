@@ -11,6 +11,7 @@ mod family;
 #[cfg(test)]
 mod irls;
 mod memory;
+mod metadata_memory;
 mod prepared;
 mod prepared_estimator;
 mod prepared_irls;
@@ -30,6 +31,7 @@ pub use family::{
     offset_from_exposure, poisson_null_objective, poisson_objective, PoissonNullObjective,
     PoissonObjective,
 };
+pub use metadata_memory::PpmlMetadataMemory;
 pub use memory::{
     certify_ppml_steady_state_allocation, estimate_ppml_memory, plan_ppml_memory,
     BoundedPpmlDiagnostics, PpmlAllocationTelemetry, PpmlAllocatorSnapshot,

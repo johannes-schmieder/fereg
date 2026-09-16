@@ -311,6 +311,10 @@ pub(crate) struct LinearWithinMemoryReport {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct LinearSessionWorkspaceCapacities {
+    pub(crate) accepted_fit: [usize; 6],
+    pub(crate) accepted_fit_optional_owners: bool,
+    pub(crate) within_metadata: [usize; 5],
+    pub(crate) basis_metadata: [usize; 3],
     pub(crate) response_elements: usize,
     pub(crate) weight_elements: usize,
     pub(crate) finite_predictor_elements: usize,
@@ -458,6 +462,20 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictLinearCandidateTransaction<'_,
     #[cfg(test)]
     pub(crate) fn workspace_capacities(&self) -> LinearSessionWorkspaceCapacities {
         self.session.workspace_capacities()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn rollback_residual_capacity(&self) -> usize {
+        self.rollback.as_ref().map_or(0, |rollback| {
+            rollback
+                .fit
+                .as_ref()
+                .map_or(0, |fit| fit.session_capacity_inventory().0[5])
+                + rollback
+                    .frozen_step
+                    .as_ref()
+                    .map_or(0, |step| step.within_residuals.capacity())
+        })
     }
 }
 
@@ -1633,7 +1651,29 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     (0, scratch.bytes(), scratch.io_buffer_capacity())
                 }
             });
+        let (accepted_fit, accepted_fit_optional_owners) = self.fit.as_ref().map_or(
+            ([0; 6], false),
+            CertifiedPreparedOlsFit::session_capacity_inventory,
+        );
         LinearSessionWorkspaceCapacities {
+            accepted_fit,
+            accepted_fit_optional_owners,
+            within_metadata: self.within.as_ref().map_or([0; 5], |within| {
+                [
+                    within.stored_generated_columns.capacity(),
+                    within.active_positions.capacity(),
+                    within.reference_norms.capacity(),
+                    within.reference_means.capacity(),
+                    within.within_norms.capacity(),
+                ]
+            }),
+            basis_metadata: self.frozen_basis.as_ref().map_or([0; 3], |basis| {
+                [
+                    basis.slots.capacity(),
+                    basis.kept_generated_columns.capacity(),
+                    basis.dropped_generated_columns.capacity(),
+                ]
+            }),
             response_elements: self.response.capacity(),
             weight_elements: self.weights.capacity(),
             finite_predictor_elements: self.finite_predictor.capacity(),
@@ -1650,22 +1690,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             frozen_solve_elements: self.frozen_workspace.solve.capacity(),
             frozen_permutation_elements: self.frozen_workspace.permutation.capacity(),
             frozen_score_elements: self.frozen_workspace.scores.capacity(),
-            frozen_coefficient_elements: current_step.map_or_else(
-                || self.frozen_workspace.coefficients.capacity(),
-                |step| step.coefficients.capacity(),
-            ),
-            frozen_bread_elements: current_step.map_or_else(
-                || self.frozen_workspace.bread.capacity(),
-                |step| step.bread.capacity(),
-            ),
-            frozen_residual_elements: current_step.map_or_else(
-                || self.frozen_workspace.residuals.capacity(),
-                |step| step.within_residuals.capacity(),
-            ),
-            frozen_reported_coefficient_elements: current_step.map_or_else(
-                || self.frozen_workspace.reported_coefficients.capacity(),
-                |step| step.reported_coefficients.capacity(),
-            ),
+            frozen_coefficient_elements: self.frozen_workspace.coefficients.capacity()
+                + current_step.map_or(0, |step| step.coefficients.capacity()),
+            frozen_bread_elements: self.frozen_workspace.bread.capacity()
+                + current_step.map_or(0, |step| step.bread.capacity()),
+            frozen_residual_elements: self.frozen_workspace.residuals.capacity()
+                + current_step.map_or(0, |step| step.within_residuals.capacity()),
+            frozen_reported_coefficient_elements: self
+                .frozen_workspace
+                .reported_coefficients
+                .capacity()
+                + current_step.map_or(0, |step| step.reported_coefficients.capacity()),
             frozen_kept_elements: self.frozen_workspace.kept.capacity(),
             frozen_candidate_position_elements: self
                 .frozen_workspace

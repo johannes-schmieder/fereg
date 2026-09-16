@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-15
+**Last updated:** 2026-09-16
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,35 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
+
+## Candidate preparation: PPML metadata and repository checks repaired
+
+The [parent/metadata checkpoint](benchmarks/reports/development/candidate-memory-parents-2026-09-16/README.md)
+adds PPML admission for nested recipes, availability-request copies, FE/cluster
+labels and identities, boxed fit/result metadata, and the separate K-double
+session row buffer. Prepared metadata capacities must fit the frozen preflight;
+atomic replacement generations retain both parents. Publication optional-cell
+validation no longer allocates index inventories.
+
+Capacity tests distinguish frozen, staged-strict and committed-fit ownership.
+The proposed extra permanent N-vector was rejected: canonical solve transfers
+its residual, and strict commit releases rollback. The existing strict overlap
+charge remains. Historical caps are unchanged; exact/one-byte-short boundaries
+pass. No empirical cap breach or command-speed improvement is claimed.
+
+SCC job 7589938 passes 450 distinct native checks against the isolated 161-file
+snapshot, including failure/interruption/repeated-call/publication controls.
+All 64 focused Python checks, both allocation audits and the complete repository
+checker pass. The stale STATUS/archive and ADR-0041 wrapper checks are repaired.
+Failed development receipts remain preserved. Inventories advance to OLS v19
+and action v2 without changing F0 or historical pins. Installed plugin unchanged.
+
+Remaining coverage: OLS preparation/inference/recovery/publication parents,
+complete categorical/compiler metadata and opaque dependency/pool capacities.
+Whole-action peak/ratio remain undefined; public base fields/wires are unchanged.
+The next implementation boundary is OLS publication storage/admission. Candidate
+freeze, licensed Mac/Linux validation, packaging/install checks and the Mac
+Xcode prerequisite remain open. Nothing has been pushed or released.
 
 ## Candidate preparation: memory construction and allocation inventories
 
@@ -27,9 +56,9 @@ separation dimension failure is preserved. No empirical fit was restarted.
 The reviewed OLS inventory v18 now watches memory helpers and binds four exact
 post-F0 boundary replacements without modifying F0 or v17. A separate all-action
 inventory covers 121 core/plugin source files, including PPML/separation/session
-bodies. Both audits and all 37 Python mutation/structural checks pass. The complete
-repository checker still fails pre-existing STATUS-heading/historical-copy and
-public-PPML-wrapper assertions; its failed receipts remain explicit.
+bodies. Both audits and all 37 Python mutation/structural checks pass. At that checkpoint the complete repository checker failed STATUS-heading,
+historical-copy and public-PPML-wrapper assertions. Those failures are preserved;
+the newer checkpoint above repairs them.
 
 The [capacity/lifetime obligations](docs/allocation_inventory.md) distinguish
 structural coverage from byte coverage. Parent/frame overlap, nested metadata,

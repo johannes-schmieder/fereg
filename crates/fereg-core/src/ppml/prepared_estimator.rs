@@ -353,6 +353,7 @@ pub fn fit_prepared_ppml_interruptible(
                 saved_channel_count,
                 resolved_linear,
                 allocation_audit_enabled,
+                preliminary_plan.preflight_dimensions.metadata,
             )?;
             let final_plan = (*preliminary_plan).with_final_dimensions(dimensions)?;
             explore_prepared_ppml_mu_interruptible(
@@ -388,6 +389,7 @@ pub fn fit_prepared_ppml_interruptible(
                 saved_channel_count,
                 resolved_linear,
                 allocation_audit_enabled,
+                preliminary_plan.preflight_dimensions.metadata,
             )?;
             let final_plan = (*preliminary_plan).with_final_dimensions(dimensions)?;
             let fit = fit_prepared_ppml_irls_interruptible(
@@ -1132,6 +1134,7 @@ fn conservative_preflight_dimensions_from_classification(
         .ok_or_else(|| allocation("PPML preflight cluster groups overflow"))?;
     let separation_workspace = separation_workspace_requirements(request.separation);
     Ok(PpmlMemoryDimensions {
+        metadata: super::PpmlMetadataMemory::from_request(&request.ols, &request.clusters)?,
         observations,
         original_observations: numeric.n_original,
         candidate_observations: numeric.n_candidate,
@@ -1180,11 +1183,21 @@ fn final_memory_dimensions(
     requested_saved_fe_channels: usize,
     linear: PreparedOlsFitConfig,
     allocation_audit_enabled: bool,
+    metadata: super::PpmlMetadataMemory,
 ) -> Result<PpmlMemoryDimensions> {
     let categorical = prepared
         .prepared()
         .categorical()
         .ok_or_else(|| invalid_argument("prepared PPML generation lacks categorical topology"))?;
+    let actual_nested_bytes = categorical.nested_metadata_capacity_bytes()
+        + prepared
+            .cluster_design()
+            .map_or(0, |clusters| clusters.metadata_capacity_bytes());
+    if actual_nested_bytes > metadata.prepared_nested_bytes {
+        return Err(allocation(
+            "PPML prepared metadata capacities exceed generation-zero admission",
+        ));
+    }
     let topology = categorical.fe_topology();
     let specs = categorical.effect_specs();
     if specs.len() != topology.effect_to_topology().len() {
@@ -1225,6 +1238,7 @@ fn final_memory_dimensions(
     let cluster_subset_groups = cluster_subset_groups(clusters)?;
     let separation_workspace = separation_workspace_requirements(separation);
     Ok(PpmlMemoryDimensions {
+        metadata,
         observations: prepared.original_rows().len(),
         original_observations: prepared.original_observations(),
         // The owner retains the generation-zero if/in capacity even though
@@ -1660,6 +1674,69 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static FIT_PHASE_BEGINS: AtomicUsize = AtomicUsize::new(0);
+
+    #[test]
+    fn metadata_admission_counts_nested_recipes_labels_and_partial_saves() {
+        use crate::ols::PreparedOlsCategoricalComponent;
+        use std::mem::size_of;
+        let (mut request, _) = fixture(2, true, true, false, false, false);
+        let original =
+            super::super::PpmlMetadataMemory::from_request(&request.ols, &request.clusters)
+                .unwrap();
+        // A label is copied by both prepared and final cluster metadata.
+        request.clusters[0].label.push_str(&"long".repeat(1_000));
+        let labels =
+            super::super::PpmlMetadataMemory::from_request(&request.ols, &request.clusters)
+                .unwrap();
+        assert_eq!(
+            labels.prepared_nested_bytes - original.prepared_nested_bytes,
+            4_000
+        );
+        assert_eq!(labels.result_bytes - original.result_bytes, 4_000);
+        // Request metadata owns nested terms; executable interaction recipes
+        // allocate their own typed components in both candidate and rebase.
+        let term = &mut request.ols.model.terms[0];
+        term.raw_kind = RawTermKind::Interaction;
+        term.components.push(term.components[0].clone());
+        let recipes =
+            super::super::PpmlMetadataMemory::from_request(&request.ols, &request.clusters)
+                .unwrap();
+        let added = (2 * size_of::<PreparedOlsCategoricalComponent>()) as u128;
+        assert_eq!(
+            recipes.prepared_nested_bytes - labels.prepared_nested_bytes,
+            added
+        );
+        let component = &request.ols.model.terms[0].components[1];
+        let cloned_component = size_of::<crate::metadata::TermComponent>() as u128
+            + component.raw_operator.len() as u128
+            + component.raw_time_series_operator.len() as u128;
+        assert_eq!(
+            recipes.preparation_transient_bytes - labels.preparation_transient_bytes,
+            added + cloned_component
+        );
+        request.ols.absorbed_terms[1].saved_name = "second".into();
+        assert_eq!(
+            super::super::PpmlMetadataMemory::from_request(&request.ols, &request.clusters)
+                .unwrap(),
+            recipes,
+            "partial saving still reserves all declared channel descriptors and identities"
+        );
+        request.ols.model.terms[0].components[0]
+            .raw_operator
+            .push_str(&"x".repeat(4096));
+        let operators =
+            super::super::PpmlMetadataMemory::from_request(&request.ols, &request.clusters)
+                .unwrap();
+        assert_eq!(
+            operators.preparation_transient_bytes - recipes.preparation_transient_bytes,
+            4096,
+            "availability compilation copies operator payloads beside the raw request"
+        );
+        assert_eq!(
+            operators.prepared_nested_bytes,
+            recipes.prepared_nested_bytes
+        );
+    }
 
     #[test]
     fn positive_outcomes_bound_report_banks_across_routes_weights_and_singletons() {

@@ -64,6 +64,30 @@ pub struct PreparedCategoricalOlsData {
 }
 
 impl PreparedCategoricalOlsData {
+    /// Executable recipe payloads and FE metadata; excludes numeric topology
+    /// and top-level finite descriptors, charged separately by the planner.
+    pub(crate) fn nested_metadata_capacity_bytes(&self) -> u128 {
+        use std::mem::size_of;
+        self.model.nested_recipe_capacity_bytes()
+            + self.effect_specs.capacity() as u128
+                * size_of::<CategoricalTopologyDofEffectSpec>() as u128
+            + self
+                .effect_specs
+                .iter()
+                .map(|effect| {
+                    effect.sources.capacity() as u128 * size_of::<SourceId>() as u128
+                        + effect.label.capacity() as u128
+                        + effect.slopes.capacity() as u128
+                            * size_of::<CategoricalTopologyDofSlopeSpec>() as u128
+                        + effect
+                            .slopes
+                            .iter()
+                            .map(|slope| slope.label.capacity() as u128)
+                            .sum::<u128>()
+                })
+                .sum::<u128>()
+    }
+
     #[must_use]
     pub const fn model(&self) -> &PreparedOlsModel {
         &self.model

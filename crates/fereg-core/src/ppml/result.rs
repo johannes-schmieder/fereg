@@ -3934,6 +3934,7 @@ mod tests {
             )
             .expect("disabled separation seal");
         let dimensions = PpmlMemoryDimensions {
+            metadata: Default::default(),
             observations: outcome.len(),
             original_observations: outcome.len(),
             candidate_observations: outcome.len(),

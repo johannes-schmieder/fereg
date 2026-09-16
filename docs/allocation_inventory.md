@@ -4,10 +4,10 @@ Two separate checks protect the current native source:
 
 - `scripts/fereg_allocation_source_contract.py audit` enforces the OLS route,
   allocation syntax, literal payloads, Cargo/native wiring and exact one-shot
-  boundaries against `fereg_allocation_source_contract_v18.json`.
+  boundaries against `fereg_allocation_source_contract_v19.json`.
 - `scripts/action_allocation_inventory.py audit` covers every Rust source under
   both core and plugin, including PPML, separation and retained sessions, against
-  `action_allocation_inventory_v1.json`. It also binds `Cargo.lock`. It does not
+  `action_allocation_inventory_v2.json`. It also binds `Cargo.lock`. It does not
   exclude a file because the OLS-only route cannot reach it.
 
 Both are structural guards. Their allocation counts are syntax counts, not
@@ -43,6 +43,36 @@ one particular route; they do not discharge every row or establish a cap breach
 from the old base-only ratio. See [the reproduction](../benchmarks/reports/development/candidate-german-ols-memory-2026-09-15/README.md).
 
 ## Reviewed OLS source transitions
+
+V19 preserves the v18/F0 boundary pins and adds capacity observations for the
+shared session's accepted finite fit, retained within metadata and frozen basis.
+The observation sums simultaneous frozen-result and workspace owners. It does
+not create a PPML session in any one-shot OLS path. Action inventory v2 adds the
+scalar PPML metadata planner and publication-validator changes. Neither version
+changes the structural-only coverage designation.
+
+The PPML metadata planner charges the availability request's copied model,
+component/operator strings, synthetic terms, bindings and bound effect identities
+as preparation scratch. Candidate/compact interaction recipes, effect and cluster
+labels/source identities, the boxed IRLS parent and final result metadata have
+separate lifetime charges. Generation rebasing cannot shrink the frozen metadata
+reservation, and prepared nested capacities are checked against that admission.
+Partial FE saving retains the complete channel metadata bound. Plugin optional-cell
+validation now uses index predicates instead of allocating index inventories.
+
+Session capacity observations distinguish a frozen step, a staged strict
+candidate plus rollback, and the committed canonical fit. The canonical solve
+moves the residual out of reusable storage; strict commit releases the rollback
+residual. There is no extra permanent N-vector charge. The additional session
+row workspace costs K doubles. These observations extend the existing strict
+overlap checks without changing numerical kernels or acceptance thresholds.
+
+Remaining byte proofs are explicit: the OLS base heuristic still needs complete
+preparation/inference/recovery/publication parents; categorical topology and
+compiler container metadata need a full capacity inventory; opaque dependency
+and worker-pool growth remain unresolved. The added typed PPML metadata charges
+do not certify those scopes. A whole-action peak/ratio must remain undefined
+until every applicable scope is covered.
 
 The immutable v17 and F0 records remain unchanged. F0 is still
 `2dee5d8c4cd99b51bbaca600348f66f325b58ab4`. V18 adds the previously unwatched

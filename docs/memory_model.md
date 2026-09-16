@@ -284,6 +284,24 @@ fit and prepared parent storage remain charged beside recovery. Recovery uses
 the worker count admitted by the accepted fit and rejects a team mismatch
 before allocating its workspace; all SPI calls remain on the caller thread.
 
+PPML also freezes scalar metadata reservations at generation zero. Preparation
+charges the copied availability request, nested term/operator strings and bound
+effect identities alongside candidate/compact executable recipes. Retained
+effect/cluster metadata and final coefficient/FE/cluster publication metadata
+use their concrete type widths and string/source lengths; the final prepared
+nested capacities must fit the admitted bound. A replacement generation includes
+its own construction metadata beside the old generation. The boxed IRLS parent
+and public result metadata are included in all fitted-parent phase sums. These
+checks allocate no observation-sized reporting state.
+
+The shared session inventory observes accepted-fit, retained-within and basis
+capacities, including both workspace and frozen-result owners when present.
+Canonical solve transfers the reusable residual into the accepted fit. A strict
+candidate retains the prior residual only until commit or rollback; it belongs
+to the strict overlap charge, not a second permanent observation vector. The
+session row buffer is a separate K-double bank. Optional-cell validation during
+plugin publication uses predicates without allocating index vectors.
+
 ## PPML separation memory
 
 The prepared singleton fixed point uses one N-capacity machine-word queue

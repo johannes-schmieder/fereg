@@ -754,7 +754,17 @@ fn summarize_linear_workspace(
         capacity.fe_topology_level_offset_elements,
         capacity.fe_topology_level_observation_elements,
     ];
-    let element_capacity_sum = elements.iter().try_fold(0_u128, |sum, value| {
+    if capacity.accepted_fit_optional_owners {
+        return Err(internal(
+            "PPML session retained unexpected inference/FE result storage",
+        ));
+    }
+    let element_capacity_sum = elements
+        .iter()
+        .chain(capacity.accepted_fit.iter())
+        .chain(capacity.within_metadata.iter())
+        .chain(capacity.basis_metadata.iter())
+        .try_fold(0_u128, |sum, value| {
         sum.checked_add(*value as u128).ok_or_else(|| {
             FeregError::new(
                 ErrorCode::Allocation,
@@ -4514,6 +4524,7 @@ mod tests {
             max_directions = max_directions.max(effect_directions);
         }
         PpmlMemoryDimensions {
+            metadata: Default::default(),
             observations: prepared.fit_sample().n_active(),
             original_observations: prepared.fit_sample().n_original,
             candidate_observations: prepared.fit_sample().n_candidate,
@@ -4912,6 +4923,7 @@ mod tests {
     #[test]
     fn line_search_reuses_buffers_and_rejects_overflow() {
         let dimensions = PpmlMemoryDimensions {
+            metadata: Default::default(),
             observations: 2,
             original_observations: 2,
             candidate_observations: 2,

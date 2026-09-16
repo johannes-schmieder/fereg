@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "scope": "development_memory_components_and_structural_guards",
+  "base_sha": "214ae07adef81a9021ac331a3e8b7c8df94ee2fe",
+  "snapshot": "214ae07-parents-metadata-publication4",
+  "native": {
+    "job_id": 7589938,
+    "source_files_verified": 161,
+    "unique_core_tests": 348,
+    "plugin_tests": 97,
+    "testkit_tests": 3,
+    "constrained_memory_tests": 2,
+    "total_distinct_tests": 450,
+    "scheduler_failed": 0,
+    "exit_status": 0,
+    "terminal_sentinel": "MEMORY_PARENTS_METADATA_PUBLICATION_PASS",
+    "wall_seconds_including_build": 128,
+    "maxvmem": "4.710G"
+  },
+  "python": {
+    "status": "PASS",
+    "tests": 64
+  },
+  "repository_checker": "PASS",
+  "whole_action_coverage": "incomplete",
+  "whole_action_ratio": null,
+  "production_candidate_ready": false,
+  "performance_claim": false,
+  "installed_plugin_changed": false,
+  "remaining": [
+    "OLS complete parent/inference/recovery/publication envelope",
+    "categorical/compiler container capacity closure",
+    "opaque dependency and worker pool growth",
+    "versioned public action diagnostics after coverage closure",
+    "exact candidate platform/package/install gates"
+  ]
+}

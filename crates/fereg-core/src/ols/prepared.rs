@@ -132,6 +132,21 @@ pub struct PreparedOlsModel {
     pub columns: Vec<PreparedOlsColumn>,
 }
 
+impl PreparedOlsModel {
+    pub(crate) fn nested_recipe_capacity_bytes(&self) -> u128 {
+        self.columns
+            .iter()
+            .map(|column| match &column.kind {
+                PreparedOlsColumnKind::CategoricalInteraction { components } => {
+                    components.capacity() as u128
+                        * std::mem::size_of::<PreparedOlsCategoricalComponent>() as u128
+                }
+                _ => 0,
+            })
+            .sum()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct PreparedCategoricalSource {
     pub source: SourceId,

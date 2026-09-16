@@ -87,6 +87,20 @@ pub struct PreparedOlsClusterDesign {
 }
 
 impl PreparedOlsClusterDesign {
+    pub(crate) fn metadata_capacity_bytes(&self) -> u128 {
+        self.dimensions.capacity() as u128
+            * std::mem::size_of::<PreparedOlsClusterDimension>() as u128
+            + self
+                .dimensions
+                .iter()
+                .map(|dimension| {
+                    dimension.label.capacity() as u128
+                        + dimension.sources.capacity() as u128
+                            * std::mem::size_of::<SourceId>() as u128
+                })
+                .sum::<u128>()
+    }
+
     #[must_use]
     pub fn dimensions(&self) -> &[PreparedOlsClusterDimension] {
         &self.dimensions

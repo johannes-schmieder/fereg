@@ -565,34 +565,22 @@ pub(crate) fn build_certified_ppml_shadow(
     )?;
     validate_stata_cells("fit", &fit, &[10, 18, 19, 24], StataCellClass::Scientific)?;
     validate_stata_cells("degrees of freedom", &dof, &[6], StataCellClass::Structural)?;
-    let separation_optional = optional_columns(separation_rows, SEPARATION_COLUMNS, 8..12)?;
-    validate_stata_cells(
+    validate_stata_cells_where(
         "separation",
         &separation,
-        &separation_optional,
+        |index| (8..12).contains(&(index % SEPARATION_COLUMNS)),
         StataCellClass::Scientific,
     )?;
-    let mut runtime_optional = Vec::new();
-    runtime_optional
-        .try_reserve_exact(7 + 13 + 35 + 1 + 3 + 13)
-        .map_err(|_| allocation("unable to reserve PPML runtime optional-cell inventory"))?;
-    runtime_optional.extend(16..=22);
-    runtime_optional.extend(27..40);
-    runtime_optional.extend(41..76);
-    runtime_optional.push(78);
-    runtime_optional.extend(79..82);
-    runtime_optional.extend(95..108);
-    validate_stata_cells(
+    validate_stata_cells_where(
         "runtime",
         &runtime,
-        &runtime_optional,
+        |index| matches!(index, 16..=22 | 27..=39 | 41..=75 | 78..=81 | 95..=107),
         StataCellClass::Structural,
     )?;
-    let solver_optional = optional_columns(SOLVER_ROWS, SOLVER_COLUMNS, 16..22)?;
-    validate_stata_cells(
+    validate_stata_cells_where(
         "solver diagnostics",
         &solver,
-        &solver_optional,
+        |index| (16..22).contains(&(index % SOLVER_COLUMNS)),
         StataCellClass::Structural,
     )?;
     for (label, values) in [
@@ -2159,8 +2147,22 @@ fn validate_stata_cells(
             "PPML {label} optional-cell inventory is invalid",
         )));
     }
+    validate_stata_cells_where(
+        label,
+        values,
+        |index| optional.binary_search(&index).is_ok(),
+        class,
+    )
+}
+
+fn validate_stata_cells_where(
+    label: &str,
+    values: &[f64],
+    optional: impl Fn(usize) -> bool,
+    class: StataCellClass,
+) -> Result<()> {
     for (index, value) in values.iter().copied().enumerate() {
-        if value == STATA_SYSTEM_MISSING && optional.binary_search(&index).is_ok() {
+        if value == STATA_SYSTEM_MISSING && optional(index) {
             continue;
         }
         if !is_stata_publishable(value) {
@@ -2174,31 +2176,6 @@ fn validate_stata_cells(
     Ok(())
 }
 
-fn optional_columns(
-    rows: usize,
-    columns: usize,
-    optional_columns: std::ops::Range<usize>,
-) -> Result<Vec<usize>> {
-    let per_row = optional_columns.len();
-    let capacity = checked_product(rows, per_row, "PPML optional-cell inventory")?;
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(capacity)
-        .map_err(|_| allocation("unable to reserve PPML optional-cell inventory"))?;
-    for row in 0..rows {
-        let start = row
-            .checked_mul(columns)
-            .ok_or_else(|| allocation("PPML optional-cell row overflows"))?;
-        for column in optional_columns.clone() {
-            output.push(
-                start
-                    .checked_add(column)
-                    .ok_or_else(|| allocation("PPML optional-cell index overflows"))?,
-            );
-        }
-    }
-    Ok(output)
-}
 
 fn relative_error(left: f64, right: f64) -> f64 {
     if !left.is_finite() || !right.is_finite() {
@@ -2349,6 +2326,34 @@ fn allocation(message: impl Into<String>) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn allocation_free_optional_cell_validation_matches_index_oracle() {
+        for (rows, columns, first, last) in [
+            (7, SEPARATION_COLUMNS, 8, 12),
+            (SOLVER_ROWS, SOLVER_COLUMNS, 16, 22),
+        ] {
+            let optional: Vec<usize> = (0..rows)
+                .flat_map(|row| (first..last).map(move |column| row * columns + column))
+                .collect();
+            let mut values = vec![0.0; rows * columns];
+            for index in 0..values.len() {
+                values[index] = STATA_SYSTEM_MISSING;
+                let expected =
+                    validate_stata_cells("oracle", &values, &optional, StataCellClass::Structural)
+                        .is_ok();
+                let actual = validate_stata_cells_where(
+                    "candidate",
+                    &values,
+                    |i| (first..last).contains(&(i % columns)),
+                    StataCellClass::Structural,
+                )
+                .is_ok();
+                assert_eq!(actual, expected, "cell {index} of {columns}-column wire");
+                values[index] = 0.0;
+            }
+        }
+    }
 
     #[test]
     fn solver_fallback_reason_is_row_local() {

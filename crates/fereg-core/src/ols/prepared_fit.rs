@@ -495,6 +495,22 @@ impl CertifiedPreparedOlsFit {
         self.initial_absorbed_outcome_sum_of_squares
     }
 
+    /// Capacity inventory of the six retained finite-result banks. PPML's
+    /// session forbids the separately owned inference cache and FE products.
+    pub(crate) fn session_capacity_inventory(&self) -> ([usize; 6], bool) {
+        (
+            [
+                self.coefficients.capacity(),
+                self.kept_generated_columns.capacity(),
+                self.dropped_generated_columns.capacity(),
+                self.bread.coordinates.capacity(),
+                self.bread.values.capacity(),
+                self.residuals.storage_capacity(),
+            ],
+            self.recovered_fe_coefficients.is_some() || self.fast_score_cache.is_some(),
+        )
+    }
+
     /// Final FE-orthogonal regression residuals on the compact prepared axis.
     #[must_use]
     pub fn residuals(&self) -> &[f64] {
@@ -11957,6 +11973,14 @@ mod tests {
                     let weighted_frozen = session.solve_frozen().expect("weighted frozen solve");
                     assert_frozen_matches_fit(&weighted_frozen, &weighted_expected);
                     let warmed_capacities = session.workspace_capacities();
+                    assert!(!warmed_capacities.accepted_fit_optional_owners);
+                    assert_eq!(
+                        warmed_capacities.accepted_fit, [0; 6],
+                        "frozen solve consumes the accepted finite fit"
+                    );
+                    assert!(warmed_capacities.frozen_residual_elements >= y.len());
+                    assert!(warmed_capacities.within_metadata[2] > 0);
+                    assert!(warmed_capacities.basis_metadata[0] > 0);
 
                     session
                         .refresh_response(&refreshed_y, 2)
@@ -12026,7 +12050,14 @@ mod tests {
                         );
                     }
 
-                    let strict = session.strictify().expect("strict session fit");
+                    let strict_transaction = session.strict_candidate().expect("strict candidate");
+                    assert!(strict_transaction.workspace_capacities().accepted_fit[5] >= y.len());
+                    assert!(
+                        strict_transaction.rollback_residual_capacity() >= y.len(),
+                        "the candidate residual overlaps the rollback residual until commit"
+                    );
+                    strict_transaction.commit();
+                    let strict = session.output().expect("strict session fit");
                     assert_retained_fit_has_no_warning_storage(strict.fit());
                     let final_weights = if weight_case == 2 {
                         TestWeights::Frequency(&frequency_refresh)
@@ -12059,6 +12090,12 @@ mod tests {
                     assert_eq!(memory.rows, y.len());
                     assert_eq!(memory.columns, strict.fit().finite_rank());
                     assert_eq!(memory.mode, mode);
+                    let final_capacities = session.workspace_capacities();
+                    assert!(final_capacities.accepted_fit[5] >= y.len());
+                    assert_eq!(
+                        final_capacities.frozen_residual_elements, 0,
+                        "canonical solve transfers its workspace residual into the accepted fit"
+                    );
                     let products = session
                         .into_current_products()
                         .expect("owned final products");
