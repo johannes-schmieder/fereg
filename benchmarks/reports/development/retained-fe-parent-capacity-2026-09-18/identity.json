@@ -1,0 +1,29 @@
+{
+  "base_commit": "dd1cf057d828115d4d0be34ef703e04b05a8f525",
+  "snapshot_manifest_sha256": "838af64ffec0c65ecfd5a44806bfbc469d576c4c937426499a663bed0b8c4539",
+  "scope": "scoped retained FE parent fix plus separately labelled preserved overlay; native synthetic tests only",
+  "deployment_correction": "Include existing synthetic CSV fixtures required by include_str at test compilation; native source unchanged.",
+  "code_commit": "ded4f95b2d875605c96f2c496ff74bd084107385",
+  "clean_native_and_fixture_files_match_commit": true,
+  "test_build_identity_note": "Tests were built from the hash-bound precommit snapshot with the base commit in FEREG_GIT_COMMIT; no release artifact or exact-SHA qualification is claimed.",
+  "commands": {
+    "clean_and_overlay": [
+      "cargo test --locked --offline -p fereg-core --lib prepared_fit -- --test-threads=1",
+      "cargo test --locked --offline -p fereg-core --lib ols::prepared_scores -- --test-threads=1",
+      "cargo test --locked --offline -p fereg-plugin --lib -- --test-threads=1"
+    ],
+    "inference_test_snapshot": [
+      "cargo test --locked --offline -p fereg-core --lib ols::prepared_robust -- --test-threads=1",
+      "cargo test --locked --offline -p fereg-core --lib ols::prepared_clustered -- --test-threads=1"
+    ]
+  },
+  "execution_limits": {
+    "reserved_slots": 28,
+    "cargo_build_jobs": 8,
+    "rust_test_threads": 1,
+    "rayon_num_threads": 4,
+    "omp_num_threads": 1,
+    "openblas_num_threads": 1,
+    "mkl_num_threads": 1
+  }
+}

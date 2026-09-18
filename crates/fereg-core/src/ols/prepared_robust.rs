@@ -1717,6 +1717,92 @@ mod tests {
     }
 
     #[test]
+    fn score_reconstruction_admits_retained_fe_parent_before_solver_setup() {
+        let rows = 48;
+        let groups = (0..rows).map(|r| (r / 6) as f64).collect::<Vec<_>>();
+        let x = (0..rows)
+            .map(|r| (r as f64 * 0.31).sin())
+            .collect::<Vec<_>>();
+        let y = (0..rows)
+            .map(|r| 1.7 * x[r] + groups[r] + 0.07 * (r as f64 * 1.13).sin())
+            .collect::<Vec<_>>();
+        let (request, input) = prepared_inputs(&y, &[x], Some(&groups), true, TestWeights::Unit);
+        let prepared = crate::prepare_categorical_ols_data(&request, &input).unwrap();
+        let absorbed = prepared
+            .inference_compute_absorbed_dof(PreparedOlsAbsorbedDofPolicy::default())
+            .unwrap();
+        let summary = prepared
+            .inference_absorbed_dof_summary(&absorbed, PreparedOlsAbsorbedDofPolicy::default())
+            .unwrap();
+        let mut config = PreparedOlsRobustConfig::default();
+        config.fit.absorb.retain_coefficients = true;
+        config.fit.absorb.solver = crate::fe::FeSolverKind::Cg;
+        config.fit.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+            execution_bytes: 1234,
+            usable_bytes: 1 << 30,
+        });
+        let build = || {
+            let mut fit = fit_prepared_ols_coefficients_view_map(&prepared, config.fit).unwrap();
+            let generated = fit.kept_generated_columns().to_vec();
+            drop(fit.take_fast_score_cache(&generated));
+            fit
+        };
+        let expected = compose_view_internal(
+            &prepared,
+            build(),
+            summary,
+            config,
+            &mut CountingReservation::default(),
+            RobustPerturbations::default(),
+            None,
+        )
+        .unwrap();
+        let fit = build();
+        let parent = fit.retained_fe_coefficient_bytes();
+        assert!(parent > 0);
+        let mut tight = config;
+        tight.fit.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+            execution_bytes: 1234,
+            usable_bytes: 1234 + parent - 1,
+        });
+        let error = compose_view_internal(
+            &prepared,
+            fit,
+            summary,
+            tight,
+            &mut CountingReservation::default(),
+            RobustPerturbations::default(),
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert!(error.message.contains("inference FE coefficient parent"));
+        // Known fit/solver bounds admit the uncached reconstruction without
+        // changing its coefficient, residual or independent covariance checks.
+        tight
+            .fit
+            .absorb
+            .solver_memory_budget
+            .as_mut()
+            .unwrap()
+            .usable_bytes =
+            1234 + u128::from(expected.fit.solver_workspace_peak().bytes().unwrap());
+        let result = compose_view_internal(
+            &prepared,
+            build(),
+            summary,
+            tight,
+            &mut CountingReservation::default(),
+            RobustPerturbations::default(),
+            None,
+        )
+        .unwrap();
+        assert_eq!(result.fit.coefficients(), expected.fit.coefficients());
+        assert_eq!(result.fit.residuals(), expected.fit.residuals());
+        assert_eq!(result.covariance, expected.covariance);
+    }
+
+    #[test]
     fn score_reconstruction_retains_its_separate_solver_memory_report() {
         let rows = 48;
         let groups = (0..rows).map(|r| (r / 6) as f64).collect::<Vec<_>>();
@@ -2324,12 +2410,20 @@ mod tests {
     }
 
     fn prepared(
+        outcome: &[f64], regressors: &[Vec<f64>], fixed_effect: Option<&[f64]>,
+        include_intercept: bool, weights: TestWeights<'_>,
+    ) -> PreparedOlsData {
+        let (request, input) = prepared_inputs(outcome, regressors, fixed_effect, include_intercept, weights);
+        prepare_ols_data(&request, &input).expect("prepared robust test case")
+    }
+
+    fn prepared_inputs(
         outcome: &[f64],
         regressors: &[Vec<f64>],
         fixed_effect: Option<&[f64]>,
         include_intercept: bool,
         weights: TestWeights<'_>,
-    ) -> PreparedOlsData {
+    ) -> (OlsRequestV1, LoadedOlsInput) {
         let mut sources = Vec::new();
         let mut terms = Vec::new();
         let mut numeric_sources = Vec::new();
@@ -2426,15 +2520,15 @@ mod tests {
                 (None, Some(loaded(&values)), None)
             }
         };
-        prepare_ols_data(
-            &OlsRequestV1 {
+        (
+            OlsRequestV1 {
                 model: CompiledTermGraph { sources, terms },
                 absorbed_terms,
                 bindings,
                 include_intercept,
                 keep_singletons: true,
             },
-            &LoadedOlsInput {
+            LoadedOlsInput {
                 candidate: vec![true; outcome.len()],
                 outcome: loaded(outcome),
                 numeric_sources,
@@ -2443,7 +2537,6 @@ mod tests {
                 probability_weight,
             },
         )
-        .expect("prepared robust test case")
     }
 
     fn loaded(values: &[f64]) -> LoadedNumericColumn {

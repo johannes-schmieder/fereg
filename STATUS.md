@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-17
+**Last updated:** 2026-09-18
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,34 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
+
+## Retained OLS FE product capacity admission — 2026-09-18
+
+Code commit `ded4f95b` admits initial and combined FE coefficient products before
+retained solver construction and checks their actual value/layout capacities at
+handoff. Uncached robust/clustered score reconstruction charges the final
+retained product. Exact and one-byte-short budgets, spare capacities, injected
+allocation failures and repeated calls are covered. Arithmetic and scientific
+policy are unchanged; corrected live-parent admission can reject a tight budget
+or use an already supported certified fallback.
+
+The [development report](benchmarks/reports/development/retained-fe-parent-capacity-2026-09-18/README.md)
+binds clean and preserved-overlay source, synthetic inputs, test binaries,
+inventories and scheduler receipts. Jobs 7628936 and 7628956 pass 412 Rust test
+executions across those scopes, including 21 focused robust/clustered checks;
+both have terminal sentinels and zero scheduler failure/exit. Five focused Python
+checks, structural inventories and repository checks pass. Both initial
+fixture-extraction failures are preserved. This is native development evidence,
+not a new performance comparison, licensed Stata run or qualified candidate.
+
+**Resume boundary:** the retained-product handoff is bounded, but construction
+inside its producing solver is a separate obligation. Ordinary CMG ingestion,
+remaining construction/transient frames and complete inference/recovery/
+publication coverage still prevent a complete whole-action ratio. Coverage bits
+remain conservative; estimated runtime headroom and the earlier CMG timing flag
+retain their uncertainty. Mac linked validation is still blocked by the Xcode
+license. Installed artifacts, issue #27 and unrelated jobs remain untouched;
+no push or release. Unrelated dirty memory work remains preserved.
 
 ## CMG integration: published ownership APIs and estimated runtime policy
 

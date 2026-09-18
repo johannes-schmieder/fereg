@@ -414,7 +414,9 @@ reservation before allocation and checks the returned capacities before handing
 the final product to the fit. An excess fails with an allocation error; it does
 not borrow unreported space from a retained session's captured budget. These
 checks allocate no observation-sized reporting state and leave arithmetic,
-routing, tolerances and public base-memory fields unchanged.
+solver-selection policy, tolerances and public base-memory fields unchanged.
+Corrected admission may reject a tight budget or select an existing certified
+fallback when the previously understated parent would have appeared to fit.
 
 This establishes the retained-product handoff bound, not a proof of allocations
 inside the solver that produced the initial product or of allocator/process

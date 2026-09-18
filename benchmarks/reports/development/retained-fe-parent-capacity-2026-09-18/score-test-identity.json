@@ -1,0 +1,6 @@
+{
+  "production_commit": "ded4f95b2d875605c96f2c496ff74bd084107385",
+  "change": "Adopt the existing focused inference-parent test from the preserved worktree; production code unchanged.",
+  "source_manifest_sha256": "2a3c2fd01a08df0a507f345183ee1cdd488ebd05cc8650e26dff8d3bb2988209",
+  "correction": "Include the prepared_inputs test-helper extraction required by the adopted inference-parent test; production code unchanged."
+}
