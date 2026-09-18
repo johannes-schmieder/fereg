@@ -792,6 +792,19 @@ Online: {help poisson}, {help glm}, {help fvvarlist}, {help tsvarlist},
 {help weights}, {help predict}, {help fereg}
 {p_end}
 
+
+{pstd}
+{cmd:e(feppml_memory)} is an 11-by-2 presence/value report for action
+memory. Its schema version and estimate status distinguish unavailable (0),
+partial (1), and calibrated practical estimates (2). The current partial
+report supplies the Stata allocation baseline, an uncalibrated native estimate,
+and estimated publication growth. Some routes retain conservative reservations.
+Combined peak and additional reserve remain unavailable. Absent values
+have presence zero and value zero. This report does not change memory admission
+or the existing runtime report. With multiple Stata frames, used memory is
+unavailable because Stata's used-data counter is frame-local; the allocated
+baseline includes the resident segments and shared pools.
+
 {marker author}
 {title:Author}
 

@@ -28,6 +28,10 @@ pub struct PreparedCategoricalOlsReportPlan {
 }
 
 impl PreparedCategoricalOlsReportPlan {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        crate::memory::vec_capacity_bytes(&self.original_slots)
+    }
+
     #[must_use]
     pub const fn original_coefficient_count(&self) -> usize {
         self.original_coefficient_count

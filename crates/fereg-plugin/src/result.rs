@@ -279,6 +279,31 @@ pub(crate) struct OlsShadowResult<'a> {
     pub(crate) retained_rows: &'a [usize],
     pub(crate) residuals: &'a [f64],
     pub(crate) execution: PreparedOlsExecutionReport,
+    pub(crate) solver_workspace_peak: Option<u64>,
+}
+
+impl OlsShadowResult<'_> {
+    pub(crate) fn capacity_bytes(&self) -> u128 {
+        [
+            &self.b,
+            &self.covariance,
+            &self.coefficient_status,
+            &self.omission_b_marker,
+            &self.omission_v_marker,
+            &self.fit,
+            &self.dof,
+            &self.solver,
+            &self.fixed_effects,
+            &self.clusters,
+            &self.subsets,
+            &self.certificates,
+            &self.receipt,
+        ]
+        .into_iter()
+        .map(|values| values.capacity() as u128)
+        .sum::<u128>()
+            * std::mem::size_of::<f64>() as u128
+    }
 }
 
 pub(crate) fn build_shadow_result<'a>(
@@ -487,6 +512,7 @@ pub(crate) fn build_shadow_result<'a>(
         retained_rows: prepared.sample().retained_rows(),
         residuals: fit.residuals(),
         execution: fit.execution(),
+        solver_workspace_peak: fit.solver_workspace_peak().bytes(),
     })
 }
 

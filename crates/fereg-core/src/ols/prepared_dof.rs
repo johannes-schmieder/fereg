@@ -58,6 +58,13 @@ pub struct PreparedOlsAbsorbedDofReport {
     pub is_approximate: bool,
 }
 
+impl PreparedOlsAbsorbedDofReport {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        crate::memory::vec_capacity_bytes(&self.effects)
+            + self.effects.iter().map(|effect| effect.label.capacity() as u128).sum::<u128>()
+    }
+}
+
 trait PreparedDofReservation {
     fn reserve_vec<T>(
         &mut self,

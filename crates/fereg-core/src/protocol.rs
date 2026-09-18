@@ -22,22 +22,23 @@ impl ProtocolVersion {
 
 /// Version of the small action/diagnostics handshake accepted by the plugin.
 ///
-/// Minor 5 adds the explicit ado-certified complete-input flag used by the
-/// estimation bridge. Older diagnostic callers remain valid under the usual
+/// Minor 6 adds the Stata memory baseline and independent memory-result matrix.
+/// Minor 5 added the explicit ado-certified complete-input flag. Older diagnostic callers remain valid under the usual
 /// minor-version rule; estimation continues to require an exact action wire.
-pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5);
+pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 6);
 /// Version of the data-independent expanded-model metadata wire.
 pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1);
 /// Version of the public prepared-OLS shadow-result layout.
-pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4);
+pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5);
 /// Version of the PPML-specific request layout, independent of the action,
 /// model, OLS-result, and PPML-result wires.
-/// Minor 5 replaces the private solver-development cross-product with the
+/// Minor 6 adds the shared Stata memory baseline/result contract.
+/// Minor 5 replaced the private solver-development cross-product with the
 /// single public `solver(auto|map|lsmr|cmg)` family field.
-pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5);
+pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 6);
 /// Version of the separately versioned PPML shadow-result layout.
-/// Minor 2 adds the fixed-shape public PPML solver report.
-pub const PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 2);
+/// Minor 3 adds the shared memory report; minor 2 added the solver report.
+pub const PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 3);
 
 /// Exact integer magic stored in the first column of every PPML result receipt.
 ///
@@ -601,11 +602,11 @@ mod tests {
 
     #[test]
     fn action_handshake_and_model_wire_are_distinct_versions() {
-        assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 5));
+        assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 6));
         assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 1));
-        assert_eq!(OLS_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 4));
-        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 5));
-        assert_eq!(PPML_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 2));
+        assert_eq!(OLS_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 5));
+        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 6));
+        assert_eq!(PPML_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 3));
         assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
         assert_ne!(OLS_RESULT_WIRE_VERSION, PPML_RESULT_WIRE_VERSION);
     }
@@ -630,7 +631,7 @@ mod tests {
             [
                 5_354_602.0,
                 1.0,
-                2.0,
+                3.0,
                 3.0,
                 5.0,
                 4.0,

@@ -14,7 +14,7 @@ from scripts import package_release, stage_release  # noqa: E402
 class ReleaseStagingTests(unittest.TestCase):
     PRODUCTION_STATA_FILES = (
         "fereg.ado", "fereg_run.ado", "_fereg_estimate_public.ado",
-        "_fereg_ols.ado", "_fereg_estimate_ols.ado", "_fereg_load.ado",
+        "_fereg_ols.ado", "_fereg_estimate_ols.ado", "_fereg_load.ado", "_fereg_memory_baseline.ado", "_fereg_memory_validate.ado",
         "feppml.ado", "_fereg_ppml.ado", "_fereg_estimate_ppml.ado",
         "feppml_p.ado", "fereg_parse.ado", "fereg_p.ado", "fereg_estat.ado",
         "fereg.sthlp", "feppml.sthlp", "fereg_parse.sthlp",
@@ -99,11 +99,11 @@ class ReleaseStagingTests(unittest.TestCase):
                 self.assertIn(prefix + private_ppml, names)
             self.assertEqual(manifest["version"], "0.5.0")
             self.assertEqual(manifest["phase"], "beta")
-            self.assertEqual(manifest["action_protocol"], "1.5")
-            self.assertEqual(manifest["ols_result_wire"], "1.4")
+            self.assertEqual(manifest["action_protocol"], "1.6")
+            self.assertEqual(manifest["ols_result_wire"], "1.5")
             self.assertEqual(manifest["model_wire"], "2.1")
-            self.assertEqual(manifest["ppml_request_wire"], "1.5")
-            self.assertEqual(manifest["ppml_result_wire"], "1.2")
+            self.assertEqual(manifest["ppml_request_wire"], "1.6")
+            self.assertEqual(manifest["ppml_result_wire"], "1.3")
             caveats = " ".join(manifest["support_caveats"]).lower()
             self.assertNotRegex(caveats, r"r\(498\)|fail[- ]closed|ols[- ]only")
 

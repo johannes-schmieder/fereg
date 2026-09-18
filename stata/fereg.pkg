@@ -6,6 +6,8 @@ f _fereg_estimate_public.ado
 f _fereg_ols.ado
 f _fereg_estimate_ols.ado
 f _fereg_load.ado
+f _fereg_memory_baseline.ado
+f _fereg_memory_validate.ado
 f feppml.ado
 f _fereg_ppml.ado
 f _fereg_estimate_ppml.ado

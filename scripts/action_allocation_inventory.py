@@ -19,7 +19,7 @@ else:
     import fereg_allocation_source_contract as source
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_INVENTORY = ROOT / "benchmarks/manifests/action_allocation_inventory_v17.json"
+DEFAULT_INVENTORY = ROOT / "benchmarks/manifests/action_allocation_inventory_v19.json"
 SOURCE_GLOBS = ("crates/fereg-core/src/**/*.rs", "crates/fereg-plugin/src/**/*.rs")
 
 

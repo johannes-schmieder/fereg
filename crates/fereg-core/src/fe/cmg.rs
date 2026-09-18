@@ -74,9 +74,19 @@ pub(crate) struct CmgConfig {
     pub batch_size: usize,
     pub retain_coefficients: bool,
     pub requested_solver: FeSolverKind,
-    /// Explicit internal experiment; all production callers keep ordinary CMG.
+    /// Component policy for explicit CMG; automatic CMG remains ordinary.
     pub components: bool,
     pub solver_memory_budget: Option<FeSolverMemoryBudget>,
+}
+
+/// Private comparison seam; production explicit-CMG uses the component engine.
+/// Automatic routing must remain independent of both this policy and the seam.
+pub(crate) fn explicit_cmg_components(requested: FeSolverKind) -> bool {
+    component_policy(requested, std::env::var_os("FEREG_CMG_ORDINARY").is_some())
+}
+
+fn component_policy(requested: FeSolverKind, ordinary_override: bool) -> bool {
+    requested == FeSolverKind::Cmg && !ordinary_override
 }
 
 impl CmgConfig {
@@ -3981,6 +3991,16 @@ mod tests {
             .expect("guarded all-tiny setup"),
             CmgAutoBuildOutcome::Ready(_)
         ));
+    }
+
+    #[test]
+    fn component_default_is_explicit_only_and_has_an_ordinary_comparison_seam() {
+        for solver in [FeSolverKind::Auto, FeSolverKind::Map, FeSolverKind::Lsmr, FeSolverKind::Cg] {
+            assert!(!component_policy(solver, false));
+            assert!(!component_policy(solver, true));
+        }
+        assert!(component_policy(FeSolverKind::Cmg, false));
+        assert!(!component_policy(FeSolverKind::Cmg, true));
     }
 
     fn config(batch_size: usize) -> CmgConfig {

@@ -181,46 +181,15 @@ fn generic_lsmr_bytes(
             continue;
         }
         has_slopes = true;
-        let l = effect.n_levels() as u128;
-        let square = checked_mul(s, s, "LSMR slope transform square")?;
-        // Pinned within's SlopeReparam keeps sorted old and whitened loadings
-        // together during construction. Per-level means/comoments coexist
-        // with retained centers/transforms. Full squares bound the triangle.
-        // Vec growth for unidentified directions and transform descriptors is
-        // charged separately; the state remains through coefficient recovery.
         slope_bytes = checked_sum(&[
             slope_bytes,
-            bytes::<f64>(checked_mul(
-                checked_mul(design.nobs() as u128, s, "LSMR slope loading cells")?,
-                2,
-                "LSMR loading copies",
-            )?)?,
-            bytes::<f64>(checked_mul(
-                l,
-                checked_sum(&[
-                    checked_mul(square, 2, "LSMR slope moments and transforms")?,
-                    checked_mul(s, 2, "LSMR slope means and centers")?,
-                    1,
-                ])?,
-                "LSMR slope level state",
-            )?)?,
-            checked_mul(l, 32, "LSMR level transform descriptors")?,
-            checked_mul(
-                checked_mul(l, effect.channels() as u128, "LSMR unidentified directions")?,
-                96,
-                "LSMR unidentified direction banks",
+            lsmr_slope_effect_bytes(
+                design.nobs(),
+                rhs,
+                effect.n_levels(),
+                effect.slopes().len(),
+                effect.channels(),
             )?,
-            // Pivoted Gram-Schmidt's growing basis, Gram, working vectors,
-            // slope views and back-transform scratch (one per active RHS).
-            bytes::<f64>(checked_sum(&[
-                checked_mul(square, 4, "LSMR slope Gram scratch")?,
-                checked_mul(
-                    s,
-                    checked_sum(&[16, rhs as u128])?,
-                    "LSMR slope linear scratch",
-                )?,
-            ])?)?,
-            256,
         ])?;
     }
     // Each channel contributes its own coefficient block and cross-tab pairs.
@@ -244,6 +213,58 @@ fn generic_lsmr_bytes(
         slope_bytes,
         certificate,
         bytes::<usize>(channels as u128)?,
+    ])
+}
+
+/// Pinned within slope reparameterization: retained transforms/loadings and
+/// construction scratch. Shared by owned absorption and saved-effect recovery.
+pub(super) fn lsmr_slope_effect_bytes(
+    observations: usize,
+    rhs: usize,
+    levels: usize,
+    slopes: usize,
+    channels: usize,
+) -> Result<u128> {
+    let s = slopes as u128;
+    let l = levels as u128;
+    let square = checked_mul(s, s, "LSMR slope transform square")?;
+    // Pinned within's SlopeReparam keeps sorted old and whitened loadings
+    // together during construction. Per-level means/comoments coexist
+    // with retained centers/transforms. Full squares bound the triangle.
+    // Vec growth for unidentified directions and transform descriptors is
+    // charged separately; the state remains through coefficient recovery.
+    checked_sum(&[
+        bytes::<f64>(checked_mul(
+            checked_mul(observations as u128, s, "LSMR slope loading cells")?,
+            2,
+            "LSMR loading copies",
+        )?)?,
+        bytes::<f64>(checked_mul(
+            l,
+            checked_sum(&[
+                checked_mul(square, 2, "LSMR slope moments and transforms")?,
+                checked_mul(s, 2, "LSMR slope means and centers")?,
+                1,
+            ])?,
+            "LSMR slope level state",
+        )?)?,
+        checked_mul(l, 32, "LSMR level transform descriptors")?,
+        checked_mul(
+            checked_mul(l, channels as u128, "LSMR unidentified directions")?,
+            96,
+            "LSMR unidentified direction banks",
+        )?,
+        // Pivoted Gram-Schmidt's growing basis, Gram, working vectors,
+        // slope views and back-transform scratch (one per active RHS).
+        bytes::<f64>(checked_sum(&[
+            checked_mul(square, 4, "LSMR slope Gram scratch")?,
+            checked_mul(
+                s,
+                checked_sum(&[16, rhs as u128])?,
+                "LSMR slope linear scratch",
+            )?,
+        ])?)?,
+        256,
     ])
 }
 

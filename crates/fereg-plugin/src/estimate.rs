@@ -1,4 +1,6 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use crate::memory_report::{Baseline, Report as MemoryReport, ROWS as MEMORY_ROWS};
+use std::collections::{BTreeMap, BTreeSet};
+use crate::input_memory::{InputMemory, StringDictionary};
 use std::time::Instant;
 
 use crate::input::{PreparedMatrixStoreName, SpiApi};
@@ -34,8 +36,8 @@ use fereg_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };
 use fereg_core::{
-    estimate_phase2_memory, plan_ols_memory, CategoricalTopologyDofReport, FeSolverMemoryBudget,
-    MapConfig, MemoryMode, MemoryPlan, PreparedCategoricalOlsData, ThreadConfig, ThreadTeam,
+    estimate_phase2_memory, CategoricalTopologyDofReport, FeSolverMemoryBudget, MapConfig,
+    MemoryMode, MemoryPlan, PreparedCategoricalOlsData, ThreadConfig, ThreadTeam,
 };
 use rayon::prelude::*;
 
@@ -60,6 +62,7 @@ struct ResultMatrices {
     subsets: String,
     certificates: String,
     runtime: String,
+    memory_report: String,
     receipt: String,
 }
 
@@ -78,6 +81,7 @@ struct PreparedResultMatrices {
     subsets: PreparedMatrixStoreName,
     certificates: PreparedMatrixStoreName,
     runtime: PreparedMatrixStoreName,
+    memory_report: PreparedMatrixStoreName,
     receipt: PreparedMatrixStoreName,
 }
 
@@ -100,8 +104,23 @@ struct DerivedObservationOutputs {
     saved_channels: Vec<Option<Vec<f64>>>,
 }
 
+impl DerivedObservationOutputs {
+    fn capacity_bytes(&self) -> u128 {
+        let values = [&self.xb, &self.xbd, &self.absorbed]
+            .into_iter()
+            .chain(self.saved_channels.iter())
+            .map(|value| value.as_ref().map_or(0, Vec::capacity) as u128)
+            .sum::<u128>();
+        values * std::mem::size_of::<f64>() as u128
+            + self.saved_channels.capacity() as u128
+                * std::mem::size_of::<Option<Vec<f64>>>() as u128
+    }
+}
+
 #[derive(Debug)]
 struct EstimateAction {
+    memory_baseline: Baseline,
+    transport_parent_bytes: u128,
     request: OlsRequestV1,
     candidate_all: bool,
     input_complete: bool,
@@ -110,7 +129,18 @@ struct EstimateAction {
     absorbed_dof: PreparedOlsAbsorbedDofPolicy,
     account_cluster_nesting: bool,
     fit: PreparedOlsFitConfig,
+    expected_effective_threads: usize,
     memory_plan: MemoryPlan,
+    preparation_memory: crate::ols_preparation_memory::OlsPreparationMemory,
+    frame_memory: crate::ols_frame_memory::OlsFrameMemory,
+    generated_columns: usize,
+    prepared_owner_bytes: u128,
+    execution_parent_bytes: u128,
+    output_parent_bytes: u128,
+    metadata_owner_bytes: u128,
+    metadata_peak_bytes: u128,
+    input_peak_bytes: u128,
+    publication_memory: crate::ols_publication_memory::OlsPublicationMemory,
     requested_tolerance: f64,
     outputs: ObservationOutputs,
     matrices: PreparedResultMatrices,
@@ -118,6 +148,9 @@ struct EstimateAction {
 
 #[derive(Debug)]
 struct EstimateActionSpec {
+    memory_baseline: Baseline,
+    transport_parent_bytes: u128,
+    transport_peak_bytes: u128,
     model_major: f64,
     model_minor: f64,
     source_matrix: String,
@@ -185,18 +218,28 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let started = Instant::now();
     let resources_start = instrumentation::begin_observation();
     let local_bundle = read_local_estimate_bundle(args, spi)?.map(|value| [value]);
-    let specification = EstimateActionSpec::parse(
+    let mut specification = EstimateActionSpec::parse(
         local_bundle.as_ref().map_or(args, |values| values.as_slice()),
     )?;
+    // The expanded local bundle dies here; only the original ABI argv
+    // remains live through numerical work and publication.
+    specification.transport_parent_bytes = crate::metadata_memory::argument_parent_bytes(args)?;
     drop(local_bundle);
-    let action = specification.decode_and_validate(spi)?;
+    let mut action = specification.decode_and_validate(spi)?;
+    drop(specification);
     let preflight_seconds = started.elapsed().as_secs_f64();
-    let loaded = load_ols_input(
+    let mut input_memory = loading_memory(
+        &action.request, spi.nobs()?, 0,
+        action.metadata_owner_bytes, action.memory_plan.usable_bytes,
+    )?;
+    let loaded = load_ols_input_with_memory(
         &action.request,
         action.candidate_all,
         action.input_complete,
+        &mut input_memory,
         spi,
     )?;
+    action.input_peak_bytes = input_memory.peak();
     let input_load_seconds = started.elapsed().as_secs_f64() - preflight_seconds;
     let observation = ActionObservation {
         started,
@@ -216,6 +259,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
                 prepare_ols_data_owned(&action.request, loaded)
             })?;
+            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
             let inference = fit_prepared_ols_unadjusted_map(
@@ -226,6 +270,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsUnadjustedConfig::default()
                 },
             )?;
+            action.admit_output_parent(inference.owned_buffer_bytes())?;
             let inference_seconds = inference_started.elapsed().as_secs_f64();
             let outputs_started = Instant::now();
             let result_data = PreparedOlsResultData::legacy(&prepared);
@@ -260,6 +305,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
                 prepare_ols_data_owned(&action.request, loaded)
             })?;
+            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
             let inference = fit_prepared_ols_robust_map(
@@ -270,6 +316,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsRobustConfig::default()
                 },
             )?;
+            action.admit_output_parent(inference.owned_buffer_bytes())?;
             let inference_seconds = inference_started.elapsed().as_secs_f64();
             let outputs_started = Instant::now();
             let result_data = PreparedOlsResultData::legacy(&prepared);
@@ -306,6 +353,8 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
                 prepare_ols_clustered_data_owned(&request, loaded)
             })?;
+            drop(request);
+            action.admit_prepared_parent(prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes())?;
             let inference = fit_prepared_ols_clustered_map(
                 &prepared,
                 PreparedOlsClusteredConfig {
@@ -315,6 +364,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsClusteredConfig::default()
                 },
             )?;
+            action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::legacy(prepared.ols());
             let derived = build_derived_observation_outputs(
                 result_data,
@@ -336,6 +386,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
                 prepare_categorical_ols_data_owned(&action.request, loaded)
             })?;
+            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let inference = fit_prepared_categorical_ols_unadjusted_map(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
@@ -344,6 +395,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsUnadjustedConfig::default()
                 },
             )?;
+            action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::categorical(&prepared);
             let derived = build_derived_observation_outputs(
                 result_data,
@@ -365,6 +417,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
                 prepare_categorical_ols_data_owned(&action.request, loaded)
             })?;
+            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let inference = fit_prepared_categorical_ols_robust_map(
                 &prepared,
                 PreparedOlsRobustConfig {
@@ -373,6 +426,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsRobustConfig::default()
                 },
             )?;
+            action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::categorical(&prepared);
             let derived = build_derived_observation_outputs(
                 result_data,
@@ -398,6 +452,8 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
                 prepare_categorical_ols_clustered_data_owned(&request, loaded)
             })?;
+            drop(request);
+            action.admit_prepared_parent(prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes())?;
             let inference = fit_prepared_categorical_ols_clustered_map(
                 &prepared,
                 PreparedOlsClusteredConfig {
@@ -407,6 +463,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     ..PreparedOlsClusteredConfig::default()
                 },
             )?;
+            action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::categorical(prepared.ols());
             let derived = build_derived_observation_outputs(
                 result_data,
@@ -449,8 +506,228 @@ fn prepare_loaded_ols<T: Send>(
     Ok(prepared)
 }
 
+impl EstimateAction {
+    /// Translate existing component models to one explicit action timeline.
+    /// This keeps unproven owner families visible instead of treating a
+    /// solver-only report as a complete command-memory estimate.
+    fn memory_ledger(&self, solver: Option<u64>) -> Result<crate::action_memory::Ledger> {
+        use crate::action_memory::{Estimator, Frame, Gaps, Ledger, Stage};
+        let mut ledger = Ledger::new(Estimator::Ols);
+        ledger.record(
+            Stage::Metadata,
+            Frame {
+                parents: 0,
+                workspace: self.metadata_peak_bytes,
+            },
+            Gaps::TRANSPORT_COMPILER,
+        )?;
+        ledger.record(
+            Stage::Loading,
+            Frame {
+                parents: 0,
+                workspace: self.input_peak_bytes,
+            },
+            Gaps::TRANSPORT_COMPILER,
+        )?;
+        ledger.record(
+            Stage::Preparation,
+            Frame {
+                parents: self.metadata_owner_bytes,
+                workspace: self.preparation_memory.preparation_peak_bytes(0)?,
+            },
+            Gaps::CONSTRUCTION.union(Gaps::WORKER_RUNTIME),
+        )?;
+        let mut fit_gaps = Gaps::NUMERICAL_FRAMES
+            .union(Gaps::RETAINED_FE_PARENT)
+            .union(Gaps::WORKER_RUNTIME);
+        if !self.request.absorbed_terms.is_empty() {
+            fit_gaps = fit_gaps.union(Gaps::DEPENDENCY_CONTAINERS);
+        }
+        if solver.is_none() {
+            fit_gaps = fit_gaps.union(Gaps::SOLVER_ATTEMPT);
+        }
+        // Inference projections are included in the fit's additional solver
+        // peak. Use the same conservative frame in both sequential stages.
+        let fit = Frame {
+            parents: self.execution_parent_bytes,
+            workspace: u128::from(solver.unwrap_or(0)),
+        };
+        ledger.record(Stage::Fit, fit, fit_gaps)?;
+        ledger.record(Stage::Inference, fit, fit_gaps)?;
+        let recovery = self.outputs.saved_channels.iter().any(Option::is_some);
+        ledger.record(
+            Stage::Recovery,
+            Frame {
+                parents: self.output_parent_bytes,
+                workspace: self.publication_memory.derived_peak_bytes,
+            },
+            if recovery {
+                Gaps::RECOVERY
+                    .union(Gaps::WORKER_RUNTIME)
+                    .union(Gaps::DEPENDENCY_CONTAINERS)
+            } else {
+                Gaps::WORKER_RUNTIME
+            },
+        )?;
+        ledger.record(
+            Stage::Publication,
+            Frame {
+                parents: self.output_parent_bytes,
+                workspace: self.publication_memory.peak_bytes(),
+            },
+            Gaps::WORKER_RUNTIME,
+        )?;
+        Ok(ledger)
+    }
+
+    /// Expected lifetime composition; conservative admission remains unchanged.
+    /// A fast projection owns one RHS bank. Finite/inference banks are later
+    /// sequential frames and must not all become the projection's live parent.
+    fn memory_forecast(&self, shadow: &OlsShadowResult<'_>) -> Result<Option<crate::memory_forecast::Forecast>> {
+        use crate::memory_forecast::{sum, Forecast, ols_projection_parent};
+        let Some(solver) = shadow.solver_workspace_peak else { return Ok(None); };
+        let fast = shadow.execution.mode == PreparedOlsExecutionMode::Fast;
+        let fit = if fast {
+            let projection = sum(&[ols_projection_parent(self.prepared_owner_bytes,
+                self.metadata_owner_bytes, shadow.retained_rows.len(), self.generated_columns,
+                self.fit.execution.poolsize, true)?, u128::from(solver)])?;
+            let finite = sum(&[self.prepared_owner_bytes, self.metadata_owner_bytes,
+                self.preparation_memory.frame_metadata_bytes, self.frame_memory.fast_bytes])?;
+            projection.max(finite)
+        } else {
+            // Low-memory score reconstruction has different retained parents;
+            // retain its conservative composition until that case is calibrated.
+            sum(&[self.execution_parent_bytes, u128::from(solver)])?
+        };
+        let preparation = sum(&[self.metadata_owner_bytes,
+            self.preparation_memory.preparation_peak_bytes(0)?])?;
+        let publication = sum(&[self.output_parent_bytes, self.publication_memory.peak_bytes()])?;
+        let native_peak = fit.max(preparation).max(publication)
+            .max(self.metadata_peak_bytes).max(self.input_peak_bytes);
+        let matrix_cells = self.publication_memory.shadow_bytes / 8
+            + (crate::result::RUNTIME_ROWS * 2 + crate::memory_report::CELLS) as u128;
+        Ok(Some(Forecast { native_peak,
+            stata_growth: Forecast::publication_growth(shadow.drop_reasons.len(), matrix_cells)? }))
+    }
+
+    fn metadata_capacity_bytes(&self) -> u128 {
+        use std::mem::size_of;
+        let matrices = &self.matrices;
+        self.request.owned_buffer_bytes()
+            + self.clusters.capacity() as u128 * size_of::<OlsClusterTermV1>() as u128
+            + self.clusters.iter().map(|cluster| {
+                cluster.label.capacity() as u128
+                    + cluster.sources.capacity() as u128 * size_of::<SourceId>() as u128
+            }).sum::<u128>()
+            + self.outputs.saved_channels.capacity() as u128 * size_of::<Option<u32>>() as u128
+            // CString owns a boxed byte slice, including its NUL terminator.
+            + [&matrices.b, &matrices.covariance, &matrices.coefficient_status,
+                &matrices.omission_b_marker, &matrices.omission_v_marker, &matrices.fit,
+                &matrices.dof, &matrices.solver, &matrices.fixed_effects, &matrices.clusters,
+                &matrices.subsets, &matrices.certificates, &matrices.runtime, &matrices.memory_report, &matrices.receipt]
+                .iter().map(|name| name.as_c_str().to_bytes_with_nul().len() as u128).sum::<u128>()
+    }
+
+    /// Reconcile the surviving preparation owner before fit/inference allocates
+    /// its frames. Public base estimates retain their historical meaning.
+    fn admit_prepared_parent(&mut self, owned_bytes: u128) -> Result<()> {
+        let public_base = self.memory_plan.estimate;
+        let reconciled = self.preparation_memory.with_prepared_owner(public_base, owned_bytes)?;
+        let frame_parent = owned_bytes.checked_add(self.preparation_memory.frame_metadata_bytes)
+            .ok_or_else(|| allocation("OLS transient metadata parent overflows"))?;
+        let mut execution = self.frame_memory.with_parent(reconciled, frame_parent)?;
+        execution.fast_bytes = execution.fast_bytes.checked_add(self.metadata_owner_bytes)
+            .ok_or_else(|| allocation("OLS execution metadata size overflows"))?;
+        execution.low_bytes = execution.low_bytes.checked_add(self.metadata_owner_bytes)
+            .ok_or_else(|| allocation("OLS execution metadata size overflows"))?;
+        let mut plan = self.publication_memory.plan(
+            self.memory_plan.requested,
+            execution,
+            self.memory_plan.available_bytes,
+        )?;
+        let execution_bytes = plan.selected_bytes();
+        self.fit.execution.mode = match plan.selected {
+            MemoryMode::Fast => PreparedOlsExecutionMode::Fast,
+            MemoryMode::Low => PreparedOlsExecutionMode::Low,
+            MemoryMode::Auto => return Err(invalid("unresolved prepared OLS memory mode")),
+        };
+        self.fit.absorb.solver_memory_budget = plan.usable_bytes.map(|usable_bytes| {
+            FeSolverMemoryBudget { execution_bytes, usable_bytes }
+        });
+        self.fit.absorb.retain_coefficients = self.outputs.saved_channels.iter().any(Option::is_some)
+            && plan.selected == MemoryMode::Fast;
+        plan.estimate = public_base;
+        self.memory_plan = plan;
+        self.prepared_owner_bytes = owned_bytes;
+        self.execution_parent_bytes = execution_bytes;
+        Ok(())
+    }
+
+    fn admit_output_parent(&mut self, inference_bytes: u128) -> Result<()> {
+        let owned = self.prepared_owner_bytes.checked_add(inference_bytes)
+            .and_then(|bytes| bytes.checked_add(self.metadata_owner_bytes))
+            .ok_or_else(|| allocation("OLS output parent size overflows"))?;
+        self.output_parent_bytes = owned;
+        if let Some(budget) = self.fit.absorb.solver_memory_budget.as_mut() {
+            let parent = budget.execution_bytes.max(owned);
+            if !parent.checked_add(self.publication_memory.peak_bytes())
+                .is_some_and(|peak| peak <= budget.usable_bytes) {
+                return Err(allocation("OLS retained inference and publication exceed usable memory"));
+            }
+            budget.execution_bytes = parent;
+        }
+        Ok(())
+    }
+}
+
 impl EstimateActionSpec {
+    fn metadata_shape(&self) -> crate::metadata_memory::MetadataShape {
+        let registry_bytes = [
+            &self.source_names,
+            &self.canonical_tokens,
+            &self.raw_component_operators,
+            &self.raw_time_series_operators,
+            &self.absorb_labels,
+            &self.absorb_saved_names,
+            &self.cluster_labels,
+        ].into_iter().map(crate::metadata_memory::strings_bytes).sum::<u128>();
+        let string_bytes = [
+            &self.source_matrix,
+            &self.term_matrix,
+            &self.component_matrix,
+            &self.absorb_term_matrix,
+            &self.absorb_component_matrix,
+            &self.cluster_term_matrix,
+            &self.cluster_component_matrix,
+            &self.binding_matrix,
+            &self.matrices.b,
+            &self.matrices.covariance,
+            &self.matrices.coefficient_status,
+            &self.matrices.fit,
+            &self.matrices.dof,
+            &self.matrices.solver,
+            &self.matrices.fixed_effects,
+            &self.matrices.clusters,
+            &self.matrices.subsets,
+            &self.matrices.certificates,
+            &self.matrices.runtime,
+            &self.matrices.memory_report,
+            &self.matrices.receipt,
+            &self.matrices.omission_b_marker,
+            &self.matrices.omission_v_marker,
+        ].into_iter().map(|value| value.capacity() as u128).sum::<u128>();
+        crate::metadata_memory::MetadataShape {
+            rows: [self.source_count, self.term_count, self.component_count,
+                self.absorb_term_count, self.absorb_component_count, self.cluster_term_count,
+                self.cluster_component_count, self.binding_count],
+            transport_parent_bytes: self.transport_parent_bytes,
+            specification_bytes: registry_bytes + string_bytes
+                + self.outputs.saved_channels.capacity() as u128 * std::mem::size_of::<Option<u32>>() as u128,
+        }
+    }
+
     fn parse(args: &[String]) -> Result<Self> {
+        let transport_peak_bytes = admit_estimate_transport(args)?;
         let values = parse_estimate_key_values(args)?;
         let handshake = Handshake::from_key_values(&values)?;
         handshake.validate()?;
@@ -495,6 +772,9 @@ impl EstimateActionSpec {
         let output_absorbed = parse_nonnegative_u32(&values, "output_absorbed")?;
         let output_saved_count = parse_usize(&values, "output_saved_count")?;
         let specification = Self {
+            memory_baseline: Baseline::parse(&values)?,
+            transport_parent_bytes: crate::metadata_memory::argument_parent_bytes(args)?,
+            transport_peak_bytes,
             model_major: f64::from(parse_u16(&values, "model_major")?),
             model_minor: f64::from(parse_u16(&values, "model_minor")?),
             source_matrix: required(&values, "source_matrix")?.to_owned(),
@@ -573,6 +853,7 @@ impl EstimateActionSpec {
                 subsets: required(&values, "output_subset_matrix")?.to_owned(),
                 certificates: required(&values, "output_certificate_matrix")?.to_owned(),
                 runtime: required(&values, "output_runtime_matrix")?.to_owned(),
+                memory_report: required(&values, "output_memory_matrix")?.to_owned(),
                 receipt: required(&values, "output_receipt_matrix")?.to_owned(),
             },
         };
@@ -651,6 +932,11 @@ impl EstimateActionSpec {
             "output_subset_matrix",
             "output_certificate_matrix",
             "output_runtime_matrix",
+            "output_memory_matrix",
+            "stata_used_entry",
+            "stata_alloc_entry",
+            "stata_used_before",
+            "stata_alloc_before",
             "output_receipt_matrix",
         ];
         for key in values.keys() {
@@ -664,6 +950,14 @@ impl EstimateActionSpec {
     }
 
     fn decode_and_validate(&self, spi: &mut dyn SpiApi) -> Result<EstimateAction> {
+        self.decode_with_memory_limit(spi, imposed_memory_limit_bytes)
+    }
+
+    fn decode_with_memory_limit(
+        &self,
+        spi: &mut dyn SpiApi,
+        available_bytes: impl FnOnce() -> Result<Option<u128>>,
+    ) -> Result<EstimateAction> {
         if !matches!(self.solver, FeSolverKind::Auto | FeSolverKind::Lsmr)
             && self.preconditioner != LsmrPreconditioner::Off
         {
@@ -671,6 +965,10 @@ impl EstimateActionSpec {
                 "preconditioner() is valid only with solver(auto) or solver(lsmr)",
             ));
         }
+        let available_bytes = available_bytes()?;
+        let usable_bytes = fereg_core::memory::usable_memory_bytes(available_bytes);
+        let metadata_peak_bytes = self.metadata_shape().admit(usable_bytes)?.max(self.transport_peak_bytes);
+        crate::metadata_memory::admit(metadata_peak_bytes, usable_bytes)?;
         let wire = ModelWireV2 {
             major: self.model_major,
             minor: self.model_minor,
@@ -717,6 +1015,7 @@ impl EstimateActionSpec {
             absorb_saved_names: self.absorb_saved_names.clone(),
         };
         let decoded = wire.decode_specification()?;
+        drop(wire);
         let bindings = read_bindings(spi, &self.binding_matrix, self.binding_count)?;
         let request = OlsRequestV1 {
             model: decoded.model,
@@ -787,8 +1086,39 @@ impl EstimateActionSpec {
             clusters.len(),
             self.poolsize,
         )?;
+        let publication_memory = crate::ols_publication_memory::OlsPublicationMemory::estimate(
+            crate::ols_publication_memory::OlsPublicationShape {
+                observations: spi.nobs()?,
+                reported_coefficients: prepared_model.coefficients.len(),
+                fe_channels: extended_fe_rows,
+                cluster_dimensions: clusters.len(),
+                xb: self.outputs.xb.is_some(),
+                xbd: self.outputs.xbd.is_some(),
+                absorbed: self.outputs.absorbed.is_some(),
+                saved_channels: self
+                    .outputs
+                    .saved_channels
+                    .iter()
+                    .filter(|value| value.is_some())
+                    .count(),
+            },
+        )?;
         let memory_plan =
-            plan_ols_memory(self.memory, memory_estimate, imposed_memory_limit_bytes()?)?;
+            publication_memory.plan(self.memory, memory_estimate, available_bytes)?;
+        let preparation_memory = crate::ols_preparation_memory::OlsPreparationMemory::estimate(
+            spi.nobs()?,
+            loaded_numeric_columns,
+            request.bindings.iter().any(|binding| matches!(binding.role,
+                OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight)),
+            extended_fe_rows,
+            clusters.len(),
+        )?;
+        let preparation_memory = preparation_memory.with_construction(spi.nobs()?, &request, &clusters)?;
+        preparation_memory.admit_numeric_arrays(memory_plan.usable_bytes)?;
+        let frame_memory = crate::ols_frame_memory::OlsFrameMemory::estimate(
+            spi.nobs()?, prepared_model.columns.len(), prepared_model.coefficients.len(),
+            clusters.len(), self.poolsize, self.vce != OlsVceKind::Iid,
+        )?;
         let default_fit = PreparedOlsFitConfig::default();
         let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let fit = PreparedOlsFitConfig {
@@ -876,7 +1206,9 @@ impl EstimateActionSpec {
                 &self.binding_matrix,
             ],
         )?;
-        Ok(EstimateAction {
+        let mut action = EstimateAction {
+            memory_baseline: self.memory_baseline,
+            transport_parent_bytes: self.transport_parent_bytes,
             request,
             candidate_all: self.candidate_all,
             input_complete: self.input_complete,
@@ -884,18 +1216,46 @@ impl EstimateActionSpec {
             vce: self.vce,
             absorbed_dof: self.absorbed_dof,
             account_cluster_nesting: self.account_cluster_nesting,
+            expected_effective_threads: fit.execution.threads.resolved(),
             fit,
             memory_plan,
+            preparation_memory,
+            frame_memory,
+            generated_columns: prepared_model.columns.len(),
+            prepared_owner_bytes: 0,
+            execution_parent_bytes: 0,
+            output_parent_bytes: 0,
+            metadata_owner_bytes: 0,
+            metadata_peak_bytes,
+            input_peak_bytes: 0,
+            publication_memory,
             requested_tolerance: self.tolerance,
             outputs: self.outputs.clone(),
             matrices,
-        })
+        };
+        action.metadata_owner_bytes = action.metadata_capacity_bytes()
+            .checked_add(action.transport_parent_bytes)
+            .ok_or_else(|| allocation("metadata parent size overflows"))?;
+        action.preparation_memory.admit_numeric_arrays_with_parent(
+            action.memory_plan.usable_bytes, action.metadata_owner_bytes,
+        )?;
+        action.admit_prepared_parent(0)?;
+        Ok(action)
     }
 }
 
 // This is a metadata transport capacity, independent of N and finite rank.
 // Refuse impossible descriptors before reserving or accessing the caller macro.
 const MAX_LOCAL_ESTIMATE_BUNDLE_BYTES: usize = 16 * 1024 * 1024;
+
+pub(crate) fn admit_estimate_transport(args: &[String]) -> Result<u128> {
+    let bytes = crate::metadata_memory::transport_peak_bytes(args)?;
+    crate::metadata_memory::admit(
+        bytes,
+        fereg_core::memory::usable_memory_bytes(imposed_memory_limit_bytes()?),
+    )?;
+    Ok(bytes)
+}
 
 pub(crate) fn read_local_estimate_bundle(
     args: &[String],
@@ -932,6 +1292,11 @@ pub(crate) fn read_local_estimate_bundle(
     // Read one byte beyond the declaration so SPI truncation cannot make an
     // overlong macro look exact. The SPI limit excludes its NUL terminator.
     let required = PREFIX.len() + length + 2;
+    crate::metadata_memory::admit(
+        required as u128 + args.len() as u128 * std::mem::size_of::<String>() as u128
+            + args.iter().map(|value| value.capacity() as u128).sum::<u128>(),
+        fereg_core::memory::usable_memory_bytes(imposed_memory_limit_bytes()?),
+    )?;
     let mut bytes = Vec::new();
     bytes
         .try_reserve_exact(required)
@@ -962,6 +1327,9 @@ pub(crate) fn read_local_estimate_bundle(
 /// Decoding is complete and canonical before the handshake and before any SPI
 /// metadata or observation read.
 pub(crate) fn parse_estimate_key_values(args: &[String]) -> Result<BTreeMap<String, String>> {
+    if args.len() > 85 {
+        return Err(syntax("guarded OLS protocol has more than 85 fields"));
+    }
     let Some(bundle) = (args.len() == 1)
         .then(|| args[0].strip_prefix("bundle="))
         .flatten()
@@ -978,12 +1346,12 @@ pub(crate) fn parse_estimate_key_values(args: &[String]) -> Result<BTreeMap<Stri
 }
 
 pub(crate) fn decode_estimate_bundle(bundle: &str) -> Result<Vec<String>> {
-    const MAX_FIELDS: usize = 80;
+    const MAX_FIELDS: usize = 85;
     let bytes = bundle.as_bytes();
     let (count, mut cursor) = parse_bundle_decimal(bytes, 0, "field count")?;
     if count == 0 || count > MAX_FIELDS {
         return Err(syntax(
-            "guarded OLS bundle field count must be between one and 80",
+            "guarded OLS bundle field count must be between one and 85",
         ));
     }
     let mut fields = reserved_empty(count, "guarded OLS bundle fields")?;
@@ -1130,6 +1498,9 @@ fn read_clusters(spec: &EstimateActionSpec, spi: &mut dyn SpiApi) -> Result<Vec<
         if term != term_index + 1 || count == 0 {
             return Err(invalid("cluster term order or source count is invalid"));
         }
+        if count > spec.cluster_component_count.saturating_sub(component_cursor) {
+            return Err(invalid("cluster component table ended before declared source counts"));
+        }
         let mut sources = reserved_empty(count, "cluster source recipe")?;
         for order in 1..=count {
             let component = components.rows.get(component_cursor).ok_or_else(|| {
@@ -1163,10 +1534,48 @@ fn read_clusters(spec: &EstimateActionSpec, spi: &mut dyn SpiApi) -> Result<Vec<
     Ok(output)
 }
 
+#[cfg(test)]
 pub(crate) fn load_ols_input(
     request: &OlsRequestV1,
     candidate_all: bool,
     input_complete: bool,
+    spi: &mut dyn SpiApi,
+) -> Result<LoadedOlsInput> {
+    let mut memory = loading_memory(request, spi.nobs()?, 0, 0, None)?;
+    load_ols_input_with_memory(request, candidate_all, input_complete, &mut memory, spi)
+}
+
+pub(crate) fn loading_memory(
+    request: &OlsRequestV1,
+    rows: usize,
+    extra_columns: usize,
+    parent_bytes: u128,
+    usable_bytes: Option<u128>,
+) -> Result<InputMemory> {
+    use crate::input_memory::{add, mul};
+    use std::mem::size_of;
+    let sources = request.model.sources.len();
+    let weights = request.bindings.iter().filter(|binding| matches!(binding.role,
+        OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight)).count();
+    let columns = sources.checked_add(weights).and_then(|v| v.checked_add(extra_columns))
+        .and_then(|v| v.checked_add(1)).ok_or_else(|| allocation("input column count overflows"))?;
+    let row_bytes = add(mul(columns, 9)?, 1)?;
+    let arrays = (rows as u128).checked_mul(row_bytes).ok_or_else(|| allocation("input array bytes overflow"))?;
+    // The loader and final source descriptors can coexist. Position lists,
+    // whole-column and chunk slices, plus the SPI's positions/pointers are
+    // column-sized, with at most one bulk call live on the Stata thread.
+    let sources_bytes = mul(sources, size_of::<(SourceId, OlsSourceLoader)>()
+        + size_of::<(SourceId, LoadedNumericColumn)>() + size_of::<u32>())?;
+    let transport_bytes = mul(columns, 2 * size_of::<u32>() + size_of::<*mut f64>()
+        + 2 * size_of::<&mut [f64]>() + 2 * size_of::<&mut [bool]>())?;
+    InputMemory::new(usable_bytes, add(parent_bytes, add(arrays, add(sources_bytes, transport_bytes)?)?)?)
+}
+
+pub(crate) fn load_ols_input_with_memory(
+    request: &OlsRequestV1,
+    candidate_all: bool,
+    input_complete: bool,
+    memory: &mut InputMemory,
     spi: &mut dyn SpiApi,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
@@ -1195,7 +1604,7 @@ pub(crate) fn load_ols_input(
             }
             OlsSourceLoader::FixedWidthString {
                 column: empty_loaded_column(n, "OLS string source codes")?,
-                provisional_codes: HashMap::new(),
+                provisional_codes: StringDictionary::new(),
             }
         } else {
             OlsSourceLoader::Numeric(empty_loaded_column(n, "OLS numeric source")?)
@@ -1305,7 +1714,7 @@ pub(crate) fn load_ols_input(
                         spi.check_interrupted()?;
                     }
                     if retained {
-                        loader.read_into(spi, *position, row + 1, row)?;
+                        loader.read_into(spi, *position, row + 1, row, memory)?;
                     }
                 }
             }
@@ -1328,7 +1737,7 @@ pub(crate) fn load_ols_input(
             }
             read_into(spi, outcome_position, observation, &mut outcome, zero_based)?;
             for ((_, destination), position) in source_loaders.iter_mut().zip(&source_positions) {
-                destination.read_into(spi, *position, observation, zero_based)?;
+                destination.read_into(spi, *position, observation, zero_based, memory)?;
             }
             if let (Some(position), Some(destination)) =
                 (analytic_position, analytic_weight.as_mut())
@@ -1352,7 +1761,7 @@ pub(crate) fn load_ols_input(
     for (source, loader) in source_loaders {
         push_reserved(
             &mut numeric_sources,
-            (source, loader.finalize()?),
+            (source, loader.finalize(memory)?),
             "final OLS source table capacity exhausted",
         )?;
     }
@@ -1452,7 +1861,7 @@ enum OlsSourceLoader {
     Numeric(LoadedNumericColumn),
     FixedWidthString {
         column: LoadedNumericColumn,
-        provisional_codes: HashMap<Vec<u8>, u32>,
+        provisional_codes: StringDictionary,
     },
 }
 
@@ -1463,75 +1872,29 @@ impl OlsSourceLoader {
         position: u32,
         observation: usize,
         zero_based: usize,
+        memory: &mut InputMemory,
     ) -> Result<()> {
         match self {
             Self::Numeric(column) => read_into(spi, position, observation, column, zero_based),
-            Self::FixedWidthString {
-                column,
-                provisional_codes,
-            } => {
-                let value = spi.read_string(position, observation)?;
+            Self::FixedWidthString { column, provisional_codes } => {
+                let value = spi.read_string_with_limit(position, observation, memory.remaining())?;
+                memory.admit(value.capacity() as u128)?;
                 if value.is_empty() {
                     column.missing[zero_based] = true;
                     return Ok(());
                 }
-                let code = if let Some(code) = provisional_codes.get(value.as_slice()) {
-                    *code
-                } else {
-                    let code = u32::try_from(provisional_codes.len()).map_err(|_| {
-                        unsupported("fixed-width string source has more than u32::MAX levels")
-                    })?;
-                    provisional_codes.try_reserve(1).map_err(|_| {
-                        allocation("unable to reserve fixed-width string factorization table")
-                    })?;
-                    provisional_codes.insert(value, code);
-                    code
-                };
-                column.values[zero_based] = f64::from(code);
+                column.values[zero_based] = f64::from(provisional_codes.encode(value, memory)?);
                 column.missing[zero_based] = false;
                 Ok(())
             }
         }
     }
 
-    fn finalize(self) -> Result<LoadedNumericColumn> {
+    fn finalize(self, memory: &mut InputMemory) -> Result<LoadedNumericColumn> {
         match self {
             Self::Numeric(column) => Ok(column),
-            Self::FixedWidthString {
-                mut column,
-                provisional_codes,
-            } => {
-                let mut levels =
-                    reserved_empty(provisional_codes.len(), "fixed-width string level ordering")?;
-                for entry in provisional_codes {
-                    push_reserved(
-                        &mut levels,
-                        entry,
-                        "fixed-width string level ordering capacity exhausted",
-                    )?;
-                }
-                levels.sort_unstable_by(|left, right| left.0.cmp(&right.0));
-                let mut recode = reserved_filled(
-                    levels.len(),
-                    0_u32,
-                    "fixed-width string deterministic recode",
-                )?;
-                for (sorted, (_, provisional)) in levels.into_iter().enumerate() {
-                    recode[usize::try_from(provisional).map_err(|_| {
-                        invalid("fixed-width string provisional code exceeds usize")
-                    })?] = u32::try_from(sorted).map_err(|_| {
-                        unsupported("fixed-width string source has more than u32::MAX levels")
-                    })?;
-                }
-                for (value, missing) in column.values.iter_mut().zip(&column.missing) {
-                    if *missing {
-                        continue;
-                    }
-                    let provisional = *value as usize;
-                    *value = f64::from(*recode.get(provisional).ok_or_else(|| {
-                        invalid("fixed-width string provisional code is out of range")
-                    })?);
-                }
+            Self::FixedWidthString { mut column, provisional_codes } => {
+                provisional_codes.recode(&mut column.values, &column.missing, memory)?;
                 Ok(column)
             }
         }
@@ -1588,7 +1951,11 @@ fn build_derived_observation_outputs_in_team(
             xb: None,
             xbd: None,
             absorbed: None,
-            saved_channels: vec![None; requested.saved_channels.len()],
+            saved_channels: reserved_filled(
+                requested.saved_channels.len(),
+                None,
+                "derived saved-output registry",
+            )?,
         });
     }
     let n = prepared.sample().n_active();
@@ -1601,28 +1968,28 @@ fn build_derived_observation_outputs_in_team(
     let needs_absorbed =
         requested.absorbed.is_some() || requested.saved_channels.iter().any(Option::is_some);
     let materialize_xb = requested.xb.is_some() || requested.absorbed.is_some();
-    let fitted_terms = fit
-        .coefficients()
-        .iter()
-        .filter_map(
-            |fitted| match (fitted.generated_column_index, fitted.value) {
-                (Some(column), Some(coefficient)) => Some(Ok((column, coefficient))),
-                (None, None) => None,
-                (Some(_), None)
-                    if matches!(
-                        fitted.status,
-                        PreparedOlsFitStatus::CollinearWithFixedEffects
-                            | PreparedOlsFitStatus::NumericallyRankDeficient
-                    ) =>
-                {
-                    None
-                }
-                _ => Some(Err(invalid(
+    let mut fitted_terms = reserved_empty(fit.coefficients().len(), "derived OLS fitted terms")?;
+    for fitted in fit.coefficients() {
+        match (fitted.generated_column_index, fitted.value) {
+            (Some(column), Some(coefficient)) => push_reserved(
+                &mut fitted_terms,
+                (column, coefficient),
+                "derived OLS fitted-term capacity exhausted",
+            )?,
+            (None, None) => {}
+            (Some(_), None)
+                if matches!(
+                    fitted.status,
+                    PreparedOlsFitStatus::CollinearWithFixedEffects
+                        | PreparedOlsFitStatus::NumericallyRankDeficient
+                ) => {}
+            _ => {
+                return Err(invalid(
                     "derived OLS output coefficient identity is incomplete",
-                ))),
-            },
-        )
-        .collect::<Result<Vec<_>>>()?;
+                ))
+            }
+        }
+    }
     for fitted in fit.coefficients() {
         if fitted.value.is_some()
             && !matches!(
@@ -1710,6 +2077,29 @@ fn build_derived_observation_outputs_in_team(
                 "derived saved-output request mask capacity exhausted",
             )?;
         }
+        // The recovery model already charges returned channels and its own
+        // scratch. Only these caller-owned buffers coexist with that attempt;
+        // xbd and the publication matrices are constructed after it returns.
+        let parent_bytes = (xb_work.as_ref().map_or(0, Vec::capacity) as u128
+            + absorbed_target.as_ref().map_or(0, Vec::capacity) as u128)
+            * std::mem::size_of::<f64>() as u128
+            + fitted_terms.capacity() as u128 * std::mem::size_of::<(usize, f64)>() as u128
+            + saved_channels.capacity() as u128 * std::mem::size_of::<Option<Vec<f64>>>() as u128
+            + mask.capacity() as u128 * std::mem::size_of::<bool>() as u128;
+        let recovery_budget = fit_config
+            .absorb
+            .solver_memory_budget
+            .map(|budget| {
+                budget
+                    .execution_bytes
+                    .checked_add(parent_bytes)
+                    .map(|execution_bytes| FeSolverMemoryBudget {
+                        execution_bytes,
+                        ..budget
+                    })
+                    .ok_or_else(|| allocation("OLS recovery parent byte count overflows"))
+            })
+            .transpose()?;
         let recovered = categorical.recover_absorbed_effects_fast(
             absorbed_target
                 .as_deref()
@@ -1729,7 +2119,7 @@ fn build_derived_observation_outputs_in_team(
                 check_every: 1,
                 symmetric: true,
             },
-            fit_config.absorb.solver_memory_budget,
+            recovery_budget,
         )?;
         let (absorbed_sum, channels) = recovered.into_optional_parts();
         recovered_absorbed = absorbed_sum;
@@ -1812,7 +2202,7 @@ fn precommit_and_store(
                 .threads
                 .requested
                 .map_or(0, |value| value.get())
-        || shadow.execution.effective_threads != action.fit.execution.threads.resolved()
+        || shadow.execution.effective_threads != action.expected_effective_threads
         || shadow.execution.deterministic != action.fit.execution.threads.deterministic
         || (shadow.execution.scratch_bytes > 0)
             != (expected_mode == PreparedOlsExecutionMode::Low
@@ -1823,11 +2213,34 @@ fn precommit_and_store(
         ));
     }
     let runtime = build_runtime_shadow(action, shadow, observation)?;
+    let publication_bytes = shadow.capacity_bytes()
+        + derived.capacity_bytes()
+        + runtime.capacity() as u128 * std::mem::size_of::<f64>() as u128;
+    if shadow.capacity_bytes() > action.publication_memory.shadow_bytes
+        || publication_bytes > action.publication_memory.publication_bytes
+    {
+        return Err(allocation(
+            "OLS publication capacities exceed preflight admission",
+        ));
+    }
+    if std::env::var_os("FEREG_ACTION_MEMORY_AUDIT").is_some() {
+        let resources = instrumentation::snapshot();
+        crate::action_memory::emit(&action.memory_ledger(shadow.solver_workspace_peak)?,
+            resources.allocation_peak_bytes.saturating_sub(observation.resources_start.allocation_current_bytes))?;
+    }
+    let forecast = action.memory_forecast(shadow)?;
+    if let Some(forecast) = forecast {
+        forecast.trace(action.memory_baseline, instrumentation::native_live_before())?;
+    }
+    let memory_report = MemoryReport::estimated(action.memory_baseline,
+        instrumentation::native_live_before(),
+        action.memory_ledger(shadow.solver_workspace_peak)?.summary(),
+        action.memory_plan.safety_headroom_bytes, forecast)?;
     validate_shadow_against_outputs(action, shadow)?;
     validate_derived_against_outputs(action, shadow, derived)?;
     validate_defined_value_table(&runtime, "OLS runtime shadow")?;
     spi.check_interrupted()?;
-    store_shadow(action, shadow, derived, &runtime, spi)
+    store_shadow(action, shadow, derived, &runtime, &memory_report, spi)
 }
 
 fn build_runtime_shadow(
@@ -2325,6 +2738,7 @@ fn store_shadow(
     shadow: &OlsShadowResult<'_>,
     derived: &DerivedObservationOutputs,
     runtime: &[f64],
+    memory_report: &MemoryReport,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
     let mut retained_cursor = 0_usize;
@@ -2432,6 +2846,7 @@ fn store_shadow(
         &shadow.certificates,
     )?;
     store_matrix(spi, &action.matrices.runtime, RUNTIME_ROWS, 2, runtime)?;
+    store_matrix(spi, &action.matrices.memory_report, MEMORY_ROWS, 2, &memory_report.0)?;
     for column in 1..RECEIPT_COMPLETE_COLUMN {
         spi.store_matrix(
             &action.matrices.receipt,
@@ -2585,6 +3000,7 @@ fn validate_layout(
             CERTIFICATE_ROWS,
             2,
         )?,
+        memory_report: PreparedMatrixStoreName::try_new(&matrices.memory_report, MEMORY_ROWS, 2)?,
         runtime: PreparedMatrixStoreName::try_new(&matrices.runtime, RUNTIME_ROWS, 2)?,
         receipt: PreparedMatrixStoreName::try_new(&matrices.receipt, 1, RECEIPT_COLUMNS)?,
     };
@@ -2634,6 +3050,7 @@ fn validate_layout(
         ),
         (prepared_matrices.certificates.as_str(), CERTIFICATE_ROWS, 2),
         (prepared_matrices.runtime.as_str(), RUNTIME_ROWS, 2),
+        (prepared_matrices.memory_report.as_str(), MEMORY_ROWS, 2),
         (prepared_matrices.receipt.as_str(), 1, RECEIPT_COLUMNS),
     ];
     let mut names = BTreeSet::new();
@@ -2843,14 +3260,13 @@ pub(crate) fn decode_registry(value: &str, expected: usize) -> Result<Vec<String
         }
         return Ok(Vec::new());
     }
-    let pieces: Vec<&str> = value.split('|').collect();
-    if pieces.len() != expected {
+    if value.split('|').count() != expected {
         return Err(invalid(
             "registry cardinality does not match its declared count",
         ));
     }
     let mut output = reserved_empty(expected, "length-framed registry")?;
-    for piece in pieces {
+    for piece in value.split('|') {
         let (length, payload) = piece
             .split_once(':')
             .ok_or_else(|| invalid("registry item lacks a length prefix"))?;
@@ -2860,11 +3276,11 @@ pub(crate) fn decode_registry(value: &str, expected: usize) -> Result<Vec<String
         if payload.len() != length {
             return Err(invalid("registry byte length is incorrect"));
         }
-        push_reserved(
-            &mut output,
-            payload.to_owned(),
-            "registry capacity exhausted",
-        )?;
+        let mut text = String::new();
+        text.try_reserve_exact(payload.len())
+            .map_err(|_| allocation("unable to reserve registry payload"))?;
+        text.push_str(payload);
+        push_reserved(&mut output, text, "registry capacity exhausted")?;
     }
     Ok(output)
 }
@@ -3281,6 +3697,7 @@ mod tests {
             "RCERT" => 12,
             "RRUNTIME" => 13,
             "RREC" => 14,
+            "RMEMORY" => 15,
             _ => panic!("unprepared test matrix-store name {name:?}"),
         }
     }
@@ -3375,6 +3792,7 @@ mod tests {
 
     fn coefficient_shadow() -> OlsShadowResult<'static> {
         OlsShadowResult {
+            solver_workspace_peak: None,
             b: vec![2.0, 3.0],
             covariance: vec![4.0, 1.0, 1.0, 5.0],
             coefficient_status: vec![1.0, 1.0, 1.0, 1.0, 2.0, 5.0, 0.0, 2.0],
@@ -3406,6 +3824,32 @@ mod tests {
                 deterministic: true,
             },
         }
+    }
+
+    #[test]
+    fn memory_baseline_and_matrix_are_validated_before_any_store() {
+        for replacement in ["stata_alloc_before=-1", "stata_used_before=9007199254740993", "output_memory_matrix=RB"] {
+            let (mut args, mut spi) = fixture(OlsVceKind::Iid);
+            let key = replacement.split_once('=').unwrap().0;
+            *args.iter_mut().find(|arg| arg.starts_with(&format!("{key}="))).unwrap() = replacement.to_owned();
+            assert!(estimate_ols_test(&args, &mut spi).is_err(), "{replacement}");
+            assert_eq!(spi.store_calls, 0);
+            assert_eq!(spi.receipt_complete(), 0.0);
+        }
+    }
+
+    #[test]
+    fn partial_memory_report_is_published_without_claiming_combined_coverage() {
+        let (args, mut spi) = fixture(OlsVceKind::Iid);
+        estimate_ols_test(&args, &mut spi).unwrap();
+        let report = &spi.matrices["RMEMORY"];
+        assert_eq!(report[0], vec![1.0, 1.0]);
+        assert_eq!(report[1], vec![1.0, 1.0]);
+        assert_eq!(report[3], vec![0.0, 0.0]);
+        assert_eq!(report[7], vec![0.0, 0.0]);
+        assert_eq!(report[8], vec![0.0, 0.0]);
+        assert!(report[10][1] > 0.0);
+        assert_eq!(spi.receipt_complete(), 1.0);
     }
 
     fn fixture(vce: OlsVceKind) -> (Vec<String>, FakeSpi) {
@@ -3485,6 +3929,7 @@ mod tests {
             ("RCLUSTER".to_owned(), zero_matrix(1, CLUSTER_COLUMNS)),
             ("RSUBSET".to_owned(), zero_matrix(1, SUBSET_COLUMNS)),
             ("RCERT".to_owned(), zero_matrix(CERTIFICATE_ROWS, 2)),
+            ("RMEMORY".to_owned(), zero_matrix(MEMORY_ROWS, 2)),
             ("RRUNTIME".to_owned(), zero_matrix(RUNTIME_ROWS, 2)),
             ("RREC".to_owned(), zero_matrix(1, RECEIPT_COLUMNS)),
         ]);
@@ -3596,6 +4041,11 @@ mod tests {
             "output_subset_matrix=RSUBSET".to_owned(),
             "output_certificate_matrix=RCERT".to_owned(),
             "output_runtime_matrix=RRUNTIME".to_owned(),
+            "output_memory_matrix=RMEMORY".to_owned(),
+            "stata_used_entry=.".to_owned(),
+            "stata_alloc_entry=.".to_owned(),
+            "stata_used_before=.".to_owned(),
+            "stata_alloc_before=.".to_owned(),
             "output_receipt_matrix=RREC".to_owned(),
         ];
         (
@@ -3807,6 +4257,549 @@ mod tests {
             ),
         );
         (args, spi)
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn prepared_owner_accounting_matches_independent_allocator_deallocation() {
+        use fereg_core::data::WeightKind;
+        let _guard = instrumentation::lock_action_observation();
+        fn check<T>(owner: T, bytes: u128) {
+            let before = crate::ffi::allocation_usage();
+            drop(owner);
+            let after = crate::ffi::allocation_usage();
+            assert_eq!(u128::from(before.current_bytes - after.current_bytes), bytes);
+        }
+        for complex in [false, true] {
+            for clustered in [false, true] {
+                for weight in [None, Some(WeightKind::Analytic), Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
+                    let (args, mut spi) = saved_output_fixture();
+                    let mut action = EstimateActionSpec::parse(&args).unwrap()
+                        .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+                    let mut loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
+                    action.request.keep_singletons = true;
+                    action.request.absorbed_terms[0].saved_name.clear();
+                    if complex {
+                        action.request.absorbed_terms[0].categorical_sources.push(SourceId::new(1).unwrap());
+                        action.request.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
+                    }
+                    let mut repeated = action.request.absorbed_terms[0].clone();
+                    repeated.id = AbsorbTermId::new(2).unwrap();
+                    repeated.label = "repeated".to_owned();
+                    action.request.absorbed_terms.push(repeated);
+                    if let Some(kind) = weight {
+                        let column = LoadedNumericColumn { values: vec![2.0; 6], missing: vec![false; 6] };
+                        let role = match kind {
+                            WeightKind::Analytic => { loaded.analytic_weight = Some(column); OlsInputRole::AnalyticWeight },
+                            WeightKind::Frequency => { loaded.frequency_weight = Some(column); OlsInputRole::FrequencyWeight },
+                            WeightKind::Probability => { loaded.probability_weight = Some(column); OlsInputRole::ProbabilityWeight },
+                            WeightKind::Importance => unreachable!("unsupported fixture weight"),
+                        };
+                        action.request.bindings.push(OlsInputBinding { stata_var_position: 12, role });
+                    }
+                    // Retained capacities deliberately exceed logical lengths.
+                    loaded.outcome.values.reserve(100);
+                    if clustered {
+                        let request = OlsClusteredRequestV1 { ols: action.request, clusters: vec![
+                            OlsClusterTermV1 { label: "simple".to_owned(), sources: vec![SourceId::new(2).unwrap()] },
+                            OlsClusterTermV1 { label: "interaction".to_owned(), sources: vec![SourceId::new(1).unwrap(), SourceId::new(2).unwrap()] },
+                        ] };
+                        if complex {
+                            let owner = prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
+                            let before = crate::ffi::allocation_usage();
+                            let bytes = owner.ols().owned_buffer_bytes() + owner.clusters().owned_buffer_bytes();
+                            assert_eq!(crate::ffi::allocation_usage().events, before.events);
+                            check(owner, bytes);
+                        } else {
+                            let owner = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
+                            let bytes = owner.ols().owned_buffer_bytes() + owner.clusters().owned_buffer_bytes();
+                            check(owner, bytes);
+                        }
+                    } else if complex {
+                        let owner = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+                        let bytes = owner.owned_buffer_bytes();
+                        check(owner, bytes);
+                    } else {
+                        let mut owner = prepare_ols_data_owned(&action.request, loaded).unwrap();
+                        owner.sample.outcome.reserve(101);
+                        owner.model.columns.reserve(17);
+                        owner.categorical_sources[0].encoded.levels.reserve(15);
+                        let before = crate::ffi::allocation_usage();
+                        let bytes = owner.owned_buffer_bytes();
+                        assert_eq!(crate::ffi::allocation_usage().events, before.events);
+                        check(owner, bytes);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn inference_owner_accounting_matches_allocator_in_all_six_routes() {
+        let _guard = instrumentation::lock_action_observation();
+        fn check<T>(owner: T, bytes: u128) {
+            let before = crate::ffi::allocation_usage();
+            drop(owner);
+            let after = crate::ffi::allocation_usage();
+            assert_eq!(u128::from(before.current_bytes - after.current_bytes), bytes);
+        }
+        for mode in [PreparedOlsExecutionMode::Fast, PreparedOlsExecutionMode::Low] {
+            let (args, mut spi) = saved_output_fixture();
+            let mut action = EstimateActionSpec::parse(&args).unwrap()
+                .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+            action.fit.execution.mode = mode;
+            let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
+            action.request.absorbed_terms[0].saved_name.clear();
+            let clustered = OlsClusteredRequestV1 {
+                ols: action.request.clone(),
+                clusters: vec![OlsClusterTermV1 { label: "g".to_owned(), sources: vec![SourceId::new(2).unwrap()] }],
+            };
+            let iid = PreparedOlsUnadjustedConfig { fit: action.fit, ..Default::default() };
+            let robust = PreparedOlsRobustConfig { fit: action.fit, ..Default::default() };
+            let cluster = PreparedOlsClusteredConfig { fit: action.fit, ..Default::default() };
+            let prepared = prepare_ols_data_owned(&action.request, loaded.clone()).unwrap();
+            let inference = fit_prepared_ols_unadjusted_map(&prepared, iid).unwrap();
+            let bytes = inference.owned_buffer_bytes();
+            check(inference, bytes);
+            let inference = fit_prepared_ols_robust_map(&prepared, robust).unwrap();
+            let bytes = inference.owned_buffer_bytes();
+            check(inference, bytes);
+            let prepared = prepare_ols_clustered_data_owned(&clustered, loaded.clone()).unwrap();
+            let inference = fit_prepared_ols_clustered_map(&prepared, cluster).unwrap();
+            let bytes = inference.owned_buffer_bytes();
+            check(inference, bytes);
+            let prepared = prepare_categorical_ols_data_owned(&action.request, loaded.clone()).unwrap();
+            let inference = fit_prepared_categorical_ols_unadjusted_map(&prepared, iid).unwrap();
+            let bytes = inference.owned_buffer_bytes();
+            check(inference, bytes);
+            let inference = fit_prepared_categorical_ols_robust_map(&prepared, robust).unwrap();
+            let bytes = inference.owned_buffer_bytes();
+            check(inference, bytes);
+            let prepared = prepare_categorical_ols_clustered_data_owned(&clustered, loaded).unwrap();
+            let inference = fit_prepared_categorical_ols_clustered_map(&prepared, cluster).unwrap();
+            let bytes = inference.owned_buffer_bytes();
+            check(inference, bytes);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn saved_slope_recovery_workspace_bounds_observed_allocator_peak() {
+        let _guard = instrumentation::lock_action_observation();
+        let (args, mut spi) = saved_output_fixture();
+        let mut action = EstimateActionSpec::parse(&args).unwrap()
+            .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+        action.request.keep_singletons = true;
+        action.request.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
+        let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
+        let target = loaded.numeric_sources[0].1.values.iter()
+            .zip(&loaded.numeric_sources[1].1.values)
+            .map(|(slope, group)| 2.0 * slope + 3.0 * group).collect::<Vec<_>>();
+        let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+        for workers in [1, 4] {
+            let pool = rayon::ThreadPoolBuilder::new().num_threads(workers).build().unwrap();
+            pool.install(|| {
+                for mask in [[true, true], [false, true]] {
+                    let run = || prepared.recover_absorbed_effects_fast(
+                        &target, &mask, None, false, true,
+                        LsmrConfig::default(), MapConfig { tolerance: 1e-12, ..Default::default() }, None,
+                    ).unwrap();
+                    // Worker construction belongs to its separately declared
+                    // runtime scope. The recovery envelope covers each live
+                    // numerical attempt, including pinned within setup.
+                    drop(run());
+                    for _ in 0..3 {
+                        let start = instrumentation::begin_observation();
+                        let recovered = run();
+                        let usage = crate::ffi::allocation_usage();
+                        let observed = usage.peak_bytes - start.allocation_current_bytes;
+                        let modeled = recovered.solver_workspace_peak().bytes().unwrap();
+                        assert!(observed <= modeled, "slope recovery peak {observed} exceeds {modeled}");
+                        for (actual, expected) in recovered.absorbed_sum().iter().zip(&target) {
+                            assert!((actual-expected).abs() < 1e-10);
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn numeric_dictionary_growth_stays_inside_construction_envelope() {
+        let _guard = instrumentation::lock_action_observation();
+        for n in [1, 7, 257, 4097, 8193, 65537] {
+            for levels in [1, 31, n] {
+                let values: Vec<f64> = (0..n).map(|i| (i % levels) as f64 * 100000.5 + 0.25).collect();
+                let start = instrumentation::begin_observation();
+                let encoded = fereg_core::factorize::factorize_f64(&values).unwrap();
+                let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
+                assert!(u128::from(peak) <= n as u128 * 96 + 4096, "dictionary {n}/{levels}: {peak}");
+                for (i, code) in encoded.codes.iter().enumerate() {
+                    assert_eq!(encoded.levels[*code as usize], values[i]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn construction_and_transient_frame_peaks_bound_independent_allocations() {
+        let _guard = instrumentation::lock_action_observation();
+        let team = ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap());
+        team.install(|| ()).unwrap();
+        for rows in [257, 8193] {
+            for complex in [false, true] {
+                for vce in [OlsVceKind::Iid, OlsVceKind::Robust, OlsVceKind::Clustered] {
+                    let (args, mut spi) = saved_output_fixture();
+                    let mut action = EstimateActionSpec::parse(&args).unwrap()
+                        .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+                    action.request.keep_singletons = true;
+                    action.request.absorbed_terms[0].saved_name.clear();
+                    if complex {
+                        action.request.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
+                    }
+                    let loaded = LoadedOlsInput {
+                        candidate: vec![true; rows],
+                        outcome: LoadedNumericColumn { values: (0..rows).map(|i| {
+                            let x = ((i * 7) % 109) as f64;
+                            0.8 * x + (i % 31) as f64 + ((i * 3) % 7) as f64
+                        }).collect(), missing: vec![false; rows] },
+                        numeric_sources: vec![
+                            (SourceId::new(1).unwrap(), LoadedNumericColumn {
+                                values: (0..rows).map(|i| ((i * 7) % 109) as f64).collect(), missing: vec![false; rows],
+                            }),
+                            // Non-integer, widely spaced labels force dictionary
+                            // factorization rather than the dense integer path.
+                            (SourceId::new(2).unwrap(), LoadedNumericColumn {
+                                values: (0..rows).map(|i| (i % 31) as f64 * 100000.5).collect(), missing: vec![false; rows],
+                            }),
+                        ],
+                        analytic_weight: None, frequency_weight: None, probability_weight: None,
+                    };
+                    let clusters = vec![OlsClusterTermV1 {
+                        label: "g".to_owned(), sources: vec![SourceId::new(2).unwrap()],
+                    }];
+                    let construction = crate::ols_preparation_memory::OlsPreparationMemory::estimate(rows, 3, false, 1, clusters.len()).unwrap()
+                        .with_construction(rows, &action.request, &clusters).unwrap();
+                    let bound = construction.preparation_peak_bytes(0).unwrap();
+                    construction.admit_numeric_arrays(Some(bound)).unwrap();
+                    assert_eq!(construction.admit_numeric_arrays(Some(bound-1)).unwrap_err().code, ErrorCode::Allocation);
+                    let request = OlsClusteredRequestV1 { ols: action.request, clusters };
+                    team.install(|| {
+                        let start = instrumentation::begin_observation();
+                        // Use the complex topology even for the intercept-only
+                        // control, exercising construction overlap and validation.
+                        let prepared = prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
+                        let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
+                        assert!(u128::from(peak) <= bound, "construction {peak} > {bound}");
+                        for mode in [PreparedOlsExecutionMode::Fast, PreparedOlsExecutionMode::Low] {
+                            let mut fit = action.fit;
+                            fit.execution.mode = mode;
+                            fit.absorb.retain_coefficients = false;
+                            fit.absorb.solver_memory_budget = None;
+                            let model = crate::ols_frame_memory::OlsFrameMemory::estimate(rows,
+                                prepared.ols().model().columns.len(), prepared.ols().model().coefficients.len(),
+                                if vce == OlsVceKind::Clustered { prepared.clusters().len() } else { 0 },
+                                fit.execution.poolsize, vce != OlsVceKind::Iid).unwrap();
+                            let start = instrumentation::begin_observation();
+                            let (solver_peak, owned) = match vce {
+                                OlsVceKind::Iid => {
+                                    let r = fit_prepared_categorical_ols_unadjusted_map(prepared.ols(),
+                                        PreparedOlsUnadjustedConfig { fit, ..Default::default() }).unwrap();
+                                    (r.fit().solver_workspace_peak().bytes(), r.owned_buffer_bytes())
+                                },
+                                OlsVceKind::Robust => {
+                                    let r = fit_prepared_categorical_ols_robust_map(prepared.ols(),
+                                        PreparedOlsRobustConfig { fit, ..Default::default() }).unwrap();
+                                    (r.fit().solver_workspace_peak().bytes(), r.owned_buffer_bytes())
+                                },
+                                OlsVceKind::Clustered => {
+                                    let r = fit_prepared_categorical_ols_clustered_map(&prepared,
+                                        PreparedOlsClusteredConfig { fit, ..Default::default() }).unwrap();
+                                    (r.fit().solver_workspace_peak().bytes(), r.owned_buffer_bytes())
+                                },
+                            };
+                            let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
+                            let frame = if mode == PreparedOlsExecutionMode::Fast { model.fast_bytes } else { model.low_bytes };
+                            let total = frame + u128::from(solver_peak.expect("modeled fixture solver"));
+                            assert!(u128::from(peak) <= total, "frame {peak} > {total}; owner {owned}");
+                        }
+                    }).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn action_metadata_matches_independent_deallocation_and_counts_spare_capacity() {
+        let _guard = instrumentation::lock_action_observation();
+        for (args, mut spi) in [
+            fixture(OlsVceKind::Clustered),
+            factor_scatter_fixture(),
+            saved_output_fixture(),
+        ] {
+            let mut action = EstimateActionSpec::parse(&args)
+                .unwrap()
+                .decode_with_memory_limit(&mut spi, || Ok(None))
+                .unwrap();
+            action.request.model.sources.reserve(13);
+            action.request.model.sources[0].canonical_name.reserve(29);
+            action.request.model.terms.reserve(11);
+            for term in &mut action.request.model.terms {
+                term.canonical_token.reserve(7);
+                term.components.reserve(5);
+                for component in &mut term.components {
+                    component.raw_operator.reserve(3);
+                    component.raw_time_series_operator.reserve(17);
+                }
+            }
+            action.request.bindings.reserve(19);
+            action.request.absorbed_terms.reserve(3);
+            for term in &mut action.request.absorbed_terms {
+                term.categorical_sources.reserve(5);
+                term.slope_sources.reserve(7);
+                term.label.reserve(19);
+                term.saved_name.reserve(23);
+            }
+            action.clusters.reserve(7);
+            for cluster in &mut action.clusters {
+                cluster.label.reserve(31);
+                cluster.sources.reserve(3);
+            }
+            action.outputs.saved_channels.reserve(17);
+            let before = crate::ffi::allocation_usage();
+            let bytes = action.metadata_capacity_bytes();
+            assert_eq!(crate::ffi::allocation_usage().events, before.events);
+            assert!(bytes + action.transport_parent_bytes > action.metadata_owner_bytes);
+            drop(action);
+            let after = crate::ffi::allocation_usage();
+            assert_eq!(
+                u128::from(before.current_bytes - after.current_bytes),
+                bytes
+            );
+            assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn action_ledger_covers_every_ols_stage_without_reporting_allocations() {
+        let _guard = instrumentation::lock_action_observation();
+        let (args, mut spi) = saved_output_fixture();
+        let mut action = EstimateActionSpec::parse(&args)
+            .unwrap()
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
+        let base = action.memory_plan.estimate;
+        let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
+        let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+        action
+            .admit_prepared_parent(prepared.owned_buffer_bytes())
+            .unwrap();
+        let inference = fit_prepared_categorical_ols_unadjusted_map(
+            &prepared,
+            PreparedOlsUnadjustedConfig {
+                fit: action.fit,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        action
+            .admit_output_parent(inference.owned_buffer_bytes())
+            .unwrap();
+        let solver = inference.fit().solver_workspace_peak();
+        let before = crate::ffi::allocation_usage();
+        let ledger = action.memory_ledger(solver.bytes()).unwrap();
+        assert_eq!(crate::ffi::allocation_usage().events, before.events);
+        let summary = ledger.summary();
+        assert_eq!(summary.missing_stages, 0);
+        assert!(
+            summary.accounted_peak
+                >= action.execution_parent_bytes + u128::from(solver.bytes().unwrap())
+        );
+        assert!(
+            summary.accounted_peak
+                >= action.output_parent_bytes + action.publication_memory.peak_bytes()
+        );
+        assert_eq!(summary.complete_peak, None);
+        assert_eq!(summary.ratio(u64::MAX), None);
+        assert_eq!(action.memory_plan.estimate, base);
+        assert_eq!(spi.store_calls, 0);
+    }
+
+    #[test]
+    fn output_parent_admission_adds_live_owners_and_rejects_before_stores() {
+        let (args, mut spi) = saved_output_fixture();
+        let mut action = EstimateActionSpec::parse(&args).unwrap()
+            .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+        action.prepared_owner_bytes = 1000;
+        let parent = 3000 + action.metadata_owner_bytes;
+        let peak = parent + action.publication_memory.peak_bytes();
+        action.fit.absorb.solver_memory_budget = Some(FeSolverMemoryBudget {
+            execution_bytes: 1500, usable_bytes: peak-1,
+        });
+        assert_eq!(action.admit_output_parent(2000).unwrap_err().code, ErrorCode::Allocation);
+        assert_eq!(action.fit.absorb.solver_memory_budget.unwrap().execution_bytes, 1500);
+        action.fit.absorb.solver_memory_budget.as_mut().unwrap().usable_bytes = peak;
+        action.admit_output_parent(2000).unwrap();
+        assert_eq!(action.fit.absorb.solver_memory_budget.unwrap().execution_bytes, parent);
+        action.admit_output_parent(2000).unwrap();
+        assert_eq!(action.fit.absorb.solver_memory_budget.unwrap().execution_bytes, parent);
+        assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+        assert_eq!(spi.receipt_complete(), 0.0);
+    }
+
+    #[test]
+    fn prepared_parent_exact_budget_reaches_solver_and_preserves_public_base() {
+        let (args, mut spi) = saved_output_fixture();
+        let mut spec = EstimateActionSpec::parse(&args).unwrap();
+        for mode in [MemoryMode::Fast, MemoryMode::Low] {
+            spec.memory = mode;
+            let unrestricted = spec.decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+            let public_base = unrestricted.memory_plan.estimate;
+            let owned_bytes = public_base.fast_bytes.max(public_base.low_bytes) + 4096;
+            let reconciled = unrestricted.preparation_memory.with_prepared_owner(public_base, owned_bytes).unwrap();
+            let adjusted = unrestricted.frame_memory.with_parent(reconciled, owned_bytes + unrestricted.preparation_memory.frame_metadata_bytes).unwrap();
+            let execution = (if mode == MemoryMode::Fast { adjusted.fast_bytes } else { adjusted.low_bytes }) + unrestricted.metadata_owner_bytes;
+            let usable = (execution + unrestricted.publication_memory.peak_bytes()).max(
+                unrestricted.preparation_memory.preparation_peak_bytes(unrestricted.metadata_owner_bytes).unwrap());
+            let available = 512 * 1024 * 1024 + usable;
+            let mut exact = spec.decode_with_memory_limit(&mut spi, || Ok(Some(available))).unwrap();
+            exact.admit_prepared_parent(owned_bytes).unwrap();
+            assert_eq!(exact.memory_plan.estimate, public_base);
+            assert_eq!(exact.fit.absorb.solver_memory_budget.unwrap(), FeSolverMemoryBudget { execution_bytes: execution, usable_bytes: usable });
+            let mut short = spec.decode_with_memory_limit(&mut spi, || Ok(Some(available-1))).unwrap();
+            assert_eq!(short.admit_prepared_parent(owned_bytes).unwrap_err().code, ErrorCode::Allocation);
+            assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+            assert_eq!(spi.receipt_complete(), 0.0);
+        }
+    }
+
+    #[test]
+    fn publication_admission_uses_reported_axis_before_reading_rows() {
+        for (args, mut spi) in [
+            fixture(OlsVceKind::Iid),
+            factor_scatter_fixture(),
+            saved_output_fixture(),
+        ] {
+            let mut spec = EstimateActionSpec::parse(&args).unwrap();
+            for mode in [MemoryMode::Fast, MemoryMode::Low] {
+                spec.memory = mode;
+                let unrestricted = spec
+                    .decode_with_memory_limit(&mut spi, || Ok(None))
+                    .unwrap();
+                let frame = unrestricted.frame_memory.with_parent(unrestricted.memory_plan.estimate, unrestricted.preparation_memory.frame_metadata_bytes).unwrap();
+                let base = (if mode == MemoryMode::Fast { frame.fast_bytes } else { frame.low_bytes }) + unrestricted.metadata_owner_bytes;
+                let reserve = unrestricted.publication_memory.peak_bytes();
+                let usable = (base + reserve)
+                    .max(unrestricted.preparation_memory.preparation_peak_bytes(unrestricted.metadata_owner_bytes).unwrap())
+                    .max(unrestricted.metadata_peak_bytes);
+                let limit = 512 * 1024 * 1024 + usable;
+                let exact = spec
+                    .decode_with_memory_limit(&mut spi, || Ok(Some(limit)))
+                    .unwrap();
+                assert_eq!(
+                    exact.memory_plan.estimate,
+                    unrestricted.memory_plan.estimate
+                );
+                let solver = exact.fit.absorb.solver_memory_budget.unwrap();
+                assert_eq!(solver.execution_bytes, base);
+                assert_eq!(solver.usable_bytes, usable);
+                let error = spec
+                    .decode_with_memory_limit(&mut spi, || Ok(Some(limit - 1)))
+                    .unwrap_err();
+                assert_eq!(error.code, ErrorCode::Allocation);
+                assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
+                assert_eq!(spi.receipt_complete(), 0.0);
+            }
+        }
+    }
+
+    #[test]
+    fn saved_publication_checks_observed_capacities_before_any_store() {
+        let _guard = instrumentation::lock_action_observation();
+        for mode in [MemoryMode::Fast, MemoryMode::Low] {
+            let (args, mut spi) = saved_output_fixture();
+            let mut spec = EstimateActionSpec::parse(&args).unwrap();
+            spec.memory = mode;
+            let mut action = spec
+                .decode_with_memory_limit(&mut spi, || Ok(None))
+                .unwrap();
+            let observation = ActionObservation {
+                started: Instant::now(),
+                resources_start: instrumentation::begin_observation(),
+                preflight_seconds: 0.0,
+                input_load_seconds: 0.0,
+            };
+            let loaded = load_ols_input(
+                &action.request,
+                action.candidate_all,
+                action.input_complete,
+                &mut spi,
+            )
+            .unwrap();
+            let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+            let inference = fit_prepared_categorical_ols_unadjusted_map(
+                &prepared,
+                PreparedOlsUnadjustedConfig {
+                    fit: action.fit,
+                    absorbed_dof: action.absorbed_dof,
+                    ..PreparedOlsUnadjustedConfig::default()
+                },
+            )
+            .unwrap();
+            let result_data = PreparedOlsResultData::categorical(&prepared);
+            let derived = build_derived_observation_outputs(
+                result_data,
+                Some(&prepared),
+                inference.fit(),
+                &action.outputs,
+                normalization_known_connected(inference.absorbed_dof()),
+                action.fit,
+            )
+            .unwrap();
+            let mut shadow = build_shadow_result(
+                result_data,
+                None,
+                CertifiedOlsInference::CategoricalIid(&inference),
+                action.outputs.residual.is_some(),
+            )
+            .unwrap();
+            let runtime = build_runtime_shadow(&action, &shadow, &observation).unwrap();
+            let bytes = shadow.capacity_bytes()
+                + derived.capacity_bytes()
+                + runtime.capacity() as u128 * std::mem::size_of::<f64>() as u128;
+            assert_eq!(
+                shadow.capacity_bytes(),
+                action.publication_memory.shadow_bytes
+            );
+            assert_eq!(bytes, action.publication_memory.publication_bytes);
+            drop(runtime);
+
+            action.publication_memory.publication_bytes = bytes - 1;
+            let error = precommit_and_store(&action, &shadow, &derived, &observation, &mut spi)
+                .unwrap_err();
+            assert_eq!(error.code, ErrorCode::Allocation);
+            assert_eq!((spi.store_calls, spi.receipt_complete()), (0, 0.0));
+            action.publication_memory.publication_bytes = bytes;
+            // Lengths and scientific payload are unchanged; excess reserved
+            // capacity alone must also fail before publication starts.
+            shadow.b.reserve_exact(1);
+            assert!(shadow.capacity_bytes() > action.publication_memory.shadow_bytes);
+            assert_eq!(
+                precommit_and_store(&action, &shadow, &derived, &observation, &mut spi)
+                    .unwrap_err()
+                    .code,
+                ErrorCode::Allocation
+            );
+            assert_eq!((spi.store_calls, spi.receipt_complete()), (0, 0.0));
+            shadow.b.shrink_to_fit();
+            precommit_and_store(&action, &shadow, &derived, &observation, &mut spi).unwrap();
+            assert_eq!(spi.receipt_complete(), 1.0);
+        }
     }
 
     #[test]
@@ -4282,16 +5275,84 @@ mod tests {
         ]);
         let mut loader = OlsSourceLoader::FixedWidthString {
             column: empty_loaded_column(5, "test string codes").expect("column"),
-            provisional_codes: HashMap::new(),
+            provisional_codes: StringDictionary::new(),
         };
+        let mut memory = InputMemory::new(None, 0).unwrap();
         for observation in 1..=5 {
             loader
-                .read_into(&mut spi, 3, observation, observation - 1)
+                .read_into(&mut spi, 3, observation, observation - 1, &mut memory)
                 .expect("string read");
         }
-        let encoded = loader.finalize().expect("deterministic recode");
+        let encoded = loader.finalize(&mut memory).expect("deterministic recode");
         assert_eq!(encoded.values, vec![1.0, 0.0, 0.0, 2.0, 1.0]);
         assert_eq!(encoded.missing, vec![false, false, true, false, false]);
+    }
+
+    #[test]
+    fn string_loading_budget_and_interruption_leave_no_public_stores() {
+        fn run(usable: Option<u128>, interrupted: bool) -> Result<(LoadedOlsInput, u128)> {
+            let (args, mut spi) = fixture(OlsVceKind::Clustered);
+            spi.string_variables.insert(4);
+            for row in 1..=6 {
+                spi.data.remove(&(4, row));
+                spi.string_data.insert((4, row), format!("group-{}", row % 3).into_bytes());
+            }
+            let spec = EstimateActionSpec::parse(&args)?;
+            let action = spec.decode_and_validate(&mut spi)?;
+            spi.interrupt_checks = 0;
+            spi.interrupt_at = interrupted.then_some(1);
+            let mut memory = loading_memory(&action.request, spi.nobs, 0, action.metadata_capacity_bytes(), usable)?;
+            let result = load_ols_input_with_memory(&action.request, false, false, &mut memory, &mut spi);
+            assert_eq!(spi.store_calls, 0);
+            Ok((result?, memory.peak()))
+        }
+        let (original, peak) = run(None, false).unwrap();
+        let (bounded, same_peak) = run(Some(peak), false).unwrap();
+        assert_eq!(original, bounded);
+        assert_eq!(peak, same_peak);
+        assert_eq!(run(Some(peak - 1), false).unwrap_err().code, ErrorCode::Allocation);
+        assert_eq!(run(Some(peak), true).unwrap_err().code, ErrorCode::Interrupted);
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn decoder_admission_precedes_allocations_and_bounds_live_compiler_frames() {
+        let _guard = crate::instrumentation::lock_action_observation();
+        for fixture in [fixture(OlsVceKind::Iid), fixture(OlsVceKind::Clustered), saved_output_fixture()] {
+            let (args, mut spi) = fixture;
+            let spec = EstimateActionSpec::parse(&args).unwrap();
+            let bound = spec.metadata_shape().peak_bytes().unwrap();
+            let (start, _) = crate::ffi::begin_ols_allocation_observation();
+            let action = spec.decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+            let observed = crate::ffi::allocation_usage().peak_bytes.saturating_sub(start.current_bytes);
+            assert!(u128::from(observed) <= bound, "decoder {observed} exceeds {bound}");
+            drop(action);
+            // These fixtures are below the 20% headroom crossover, so this
+            // supplies exactly one byte less than the decoder's admission.
+            assert!(bound < 512 * 1024 * 1024);
+            let (start, _) = crate::ffi::begin_ols_allocation_observation();
+            let error = spec.decode_with_memory_limit(&mut spi, || Ok(Some(512 * 1024 * 1024 + bound - 1))).unwrap_err();
+            assert_eq!(error.code, ErrorCode::Allocation);
+            assert_eq!(spi.numeric_reads, 0);
+            assert_eq!(spi.store_calls, 0);
+            let observed = crate::ffi::allocation_usage().peak_bytes.saturating_sub(start.current_bytes);
+            assert!(observed < 1024, "budget failure allocated decoder storage");
+        }
+    }
+
+    #[cfg(feature = "ffi")]
+    #[test]
+    fn malformed_cluster_arity_cannot_reserve_outside_wire_admission() {
+        let _guard = crate::instrumentation::lock_action_observation();
+        let (args, mut spi) = fixture(OlsVceKind::Clustered);
+        let spec = EstimateActionSpec::parse(&args).unwrap();
+        spi.matrices.get_mut(&spec.cluster_term_matrix).unwrap()[0][1] = 1e12;
+        let (start, _) = crate::ffi::begin_ols_allocation_observation();
+        let error = spec.decode_with_memory_limit(&mut spi, || Ok(None)).unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+        let peak = crate::ffi::allocation_usage().peak_bytes - start.current_bytes;
+        assert!(u128::from(peak) < spec.metadata_shape().peak_bytes().unwrap());
+        assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
     }
 
     #[test]
@@ -4511,7 +5572,7 @@ mod tests {
         let (args, mut successful) = fixture(OlsVceKind::Iid);
         estimate_ols_test(&args, &mut successful).expect("baseline estimate succeeds");
         let total_stores = successful.store_calls;
-        assert_eq!(total_stores, 284);
+        assert_eq!(total_stores, 284 + crate::memory_report::CELLS);
         assert_eq!(successful.stores.capacity(), 512);
 
         for failing_ordinal in 1..=total_stores {

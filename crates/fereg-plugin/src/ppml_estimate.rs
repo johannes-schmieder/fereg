@@ -1,12 +1,16 @@
+use crate::memory_report::{Baseline, Report as MemoryReport, ROWS as MEMORY_ROWS};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::time::Instant;
 
 use crate::estimate::{
-    imposed_memory_limit_bytes, load_ols_input, parse_bool, parse_nonnegative_u32,
+    imposed_memory_limit_bytes, load_ols_input_with_memory, loading_memory, parse_bool, parse_nonnegative_u32,
     parse_positive_f64, parse_positive_u32, parse_positive_usize, parse_u16, parse_usize,
-    read_bindings, read_local_estimate_bundle, read_numeric_columns_in_chunks, read_table, required,
+    read_bindings, read_local_estimate_bundle, read_numeric_columns_in_chunks, read_table,
+    required,
 };
+#[cfg(test)]
+use crate::estimate::load_ols_input;
 use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::instrumentation::{
     ppml_action_allocation_observation, ppml_allocator_snapshot_probe,
@@ -49,7 +53,7 @@ pub const ACTION_ESTIMATE_PPML: &str = "estimate-ppml";
 const CONFIRMATION: &str = "feppml-estimation";
 const CLUSTER_TERM_ROW_WIDTH: usize = 2;
 const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
-const MAX_PPML_PROTOCOL_FIELDS: usize = 83;
+const MAX_PPML_PROTOCOL_FIELDS: usize = 88;
 const NATIVE_BREAK_MARKER: &str = "FEPPML_NATIVE_BREAK_ARMED\n";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -115,6 +119,7 @@ struct ResultMatrices {
     certificates: String,
     solver: String,
     runtime: String,
+    memory_report: String,
     receipt: String,
 }
 
@@ -135,6 +140,7 @@ struct PreparedResultMatrices {
     certificates: PreparedMatrixStoreName,
     solver: PreparedMatrixStoreName,
     runtime: PreparedMatrixStoreName,
+    memory_report: PreparedMatrixStoreName,
     receipt: PreparedMatrixStoreName,
 }
 
@@ -201,6 +207,8 @@ impl AdjustmentBinding {
 
 #[derive(Debug)]
 struct EstimatePpmlAction {
+    memory_baseline: Baseline,
+    transport_parent_bytes: u128,
     request: OlsRequestV1,
     clusters: Vec<OlsClusterTermV1>,
     vce: PpmlVceRequest,
@@ -210,7 +218,9 @@ struct EstimatePpmlAction {
     residual: Option<PpmlResidualKind>,
     config: PpmlConfig,
     linear: PreparedOlsFitConfig,
+    expected_effective_threads: usize,
     memory: PpmlMemoryConfig,
+    metadata_peak_bytes: u128,
     solver: PpmlSolverFamily,
     separation: SeparationConfig,
     requested_observation_columns: usize,
@@ -224,6 +234,9 @@ struct EstimatePpmlAction {
 
 #[derive(Debug)]
 struct EstimatePpmlSpec {
+    memory_baseline: Baseline,
+    transport_parent_bytes: u128,
+    transport_peak_bytes: u128,
     model_major: f64,
     model_minor: f64,
     source_matrix: String,
@@ -284,18 +297,31 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let (action_probe, action_start, action_previous_baseline) =
         ppml_action_allocation_observation(resources_start);
     let local_bundle = read_local_estimate_bundle(args, spi)?.map(|value| [value]);
-    let specification = EstimatePpmlSpec::parse(
-        local_bundle.as_ref().map_or(args, |values| values.as_slice()),
+    let mut specification = EstimatePpmlSpec::parse(
+        local_bundle
+            .as_ref()
+            .map_or(args, |values| values.as_slice()),
     )?;
+    // The expanded local bundle dies here; only the original ABI argv
+    // remains live through numerical work and publication.
+    specification.transport_parent_bytes = crate::metadata_memory::argument_parent_bytes(args)?;
     drop(local_bundle);
     let action = specification.decode_and_validate(spi)?;
     if action.injection == PpmlDeveloperInjection::Panic {
         panic!("injected hidden PPML transaction panic");
     }
-    let loaded = load_ols_input(
+    let mut input_memory = loading_memory(
+        &action.request,
+        spi.nobs()?,
+        usize::from(action.adjustment.position().is_some()),
+        action.metadata_capacity_bytes() + action.transport_parent_bytes,
+        action.memory.usable_bytes(),
+    )?;
+    let loaded = load_ols_input_with_memory(
         &action.request,
         action.candidate_all,
         action.input_complete,
+        &mut input_memory,
         spi,
     )?;
     let adjustment = load_adjustment(action.adjustment, &loaded.candidate, spi)?;
@@ -356,7 +382,9 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let before_fit = probe();
             let embedding_resident_bytes =
                 before_fit.current_bytes.saturating_sub(start.current_bytes);
-            prepared_request.memory.embedding_resident_bytes = u128::from(embedding_resident_bytes);
+            prepared_request.memory.embedding_resident_bytes = u128::from(embedding_resident_bytes)
+                .checked_add(action.transport_parent_bytes)
+                .ok_or_else(|| allocation("PPML embedding parent size overflows"))?;
             #[cfg(test)]
             TEST_LAST_EMBEDDING_RESIDENT_BYTES.store(
                 embedding_resident_bytes,
@@ -396,6 +424,8 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let result = fit_prepared_ppml_interruptible(prepared_request, prepared_input, &mut interrupt)?;
     let publication_extension_started = Instant::now();
     let mut publication_phase = PublicationPhaseScope::begin(phase_probe);
+    let publication_memory = action.publication_memory(&result)?;
+    publication_memory.admit(result.memory().plan.usable_bytes)?;
     let mut shadow = build_certified_ppml_shadow(
         &result,
         CertifiedPpmlShadowContext {
@@ -406,6 +436,33 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             elapsed_seconds: started.elapsed().as_secs_f64(),
         },
     )?;
+    publication_memory.validate_capacity(&shadow)?;
+    let mut memory_ledger = ppml_action_memory_ledger(result.memory().plan,
+        Some(input_memory.peak()), Some(action.metadata_peak_bytes))?;
+    memory_ledger.record(
+        crate::action_memory::Stage::Publication,
+        crate::action_memory::Frame {
+            parents: publication_memory.parent_bytes,
+            workspace: publication_memory.shadow_bytes,
+        },
+        crate::action_memory::Gaps::WORKER_RUNTIME,
+    )?;
+    if std::env::var_os("FEREG_ACTION_MEMORY_AUDIT").is_some() {
+        let resources = crate::instrumentation::snapshot();
+        crate::action_memory::emit(&memory_ledger,
+            resources.allocation_peak_bytes.saturating_sub(resources_start.allocation_current_bytes))?;
+    }
+    let forecast = crate::memory_forecast::Forecast {
+        // This inventory already composes each generation/phase and the plugin
+        // publication parent. Runtime allowances remain explicit calibration gaps.
+        native_peak: memory_ledger.summary().accounted_peak,
+        stata_growth: crate::memory_forecast::Forecast::publication_growth(
+            shadow.drop_reasons.len(), action.publication_matrix_cells as u128)?,
+    };
+    forecast.trace(action.memory_baseline, crate::instrumentation::native_live_before())?;
+    let memory_report = MemoryReport::estimated(action.memory_baseline,
+        crate::instrumentation::native_live_before(), memory_ledger.summary(),
+        result.memory().plan.safety_headroom_bytes, Some(forecast))?;
     precommit(&action, &shadow, spi)?;
     store_shadow_prefix(&action, &shadow, spi)?;
     let action_end = action_probe.map(|probe| probe());
@@ -422,11 +479,95 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             modeled_selected_bytes: result.memory().plan.selected_bytes(),
         },
     )?;
-    store_runtime_and_complete(&action, &shadow, spi)
+    store_runtime_and_complete(&action, &shadow, &memory_report, spi)
+}
+
+impl EstimatePpmlAction {
+    fn metadata_capacity_bytes(&self) -> u128 {
+        use std::mem::size_of;
+        self.request.owned_buffer_bytes()
+            + self.clusters.capacity() as u128 * size_of::<OlsClusterTermV1>() as u128
+            + self
+                .clusters
+                .iter()
+                .map(|cluster| {
+                    cluster.label.capacity() as u128
+                        + cluster.sources.capacity() as u128 * size_of::<SourceId>() as u128
+                })
+                .sum::<u128>()
+            + self.outputs.saved_channels.capacity() as u128 * size_of::<Option<u32>>() as u128
+            + self.break_marker_token.capacity() as u128
+            + prepared_matrix_names(&self.matrices)
+                .iter()
+                .map(|name| name.as_c_str().to_bytes_with_nul().len() as u128)
+                .sum::<u128>()
+    }
+
+    fn publication_memory(
+        &self,
+        result: &fereg_core::ppml::CertifiedPpmlResult,
+    ) -> Result<crate::ppml_result::PpmlPublicationMemory> {
+        crate::ppml_result::PpmlPublicationMemory::estimate(
+            result.memory().plan.embedding_resident_bytes,
+            self.metadata_capacity_bytes() + self.transport_parent_bytes,
+            result.owned_buffer_bytes(),
+            self.publication_matrix_cells,
+            result.fixed_effects().len(),
+        )
+    }
 }
 
 impl EstimatePpmlSpec {
+    fn metadata_shape(&self) -> crate::metadata_memory::MetadataShape {
+        let registry_bytes = [
+            &self.source_names,
+            &self.canonical_tokens,
+            &self.raw_component_operators,
+            &self.raw_time_series_operators,
+            &self.absorb_labels,
+            &self.absorb_saved_names,
+            &self.cluster_labels,
+        ].into_iter().map(crate::metadata_memory::strings_bytes).sum::<u128>();
+        let string_bytes = [
+            &self.source_matrix,
+            &self.term_matrix,
+            &self.component_matrix,
+            &self.absorb_term_matrix,
+            &self.absorb_component_matrix,
+            &self.cluster_term_matrix,
+            &self.cluster_component_matrix,
+            &self.binding_matrix,
+            &self.matrices.b,
+            &self.matrices.covariance,
+            &self.matrices.coefficient_status,
+            &self.matrices.fit,
+            &self.matrices.dof,
+            &self.matrices.solver,
+            &self.matrices.fixed_effects,
+            &self.matrices.clusters,
+            &self.matrices.subsets,
+            &self.matrices.certificates,
+            &self.matrices.runtime,
+            &self.matrices.memory_report,
+            &self.matrices.receipt,
+            &self.matrices.separation,
+            &self.matrices.inference,
+            &self.matrices.drop_counts,
+            &self.matrices.separation_sequence,
+            &self.break_marker_token,
+        ].into_iter().map(|value| value.capacity() as u128).sum::<u128>();
+        crate::metadata_memory::MetadataShape {
+            rows: [self.source_count, self.term_count, self.component_count,
+                self.absorb_term_count, self.absorb_component_count, self.cluster_term_count,
+                self.cluster_component_count, self.binding_count],
+            transport_parent_bytes: self.transport_parent_bytes,
+            specification_bytes: registry_bytes + string_bytes
+                + self.outputs.saved_channels.capacity() as u128 * std::mem::size_of::<Option<u32>>() as u128,
+        }
+    }
+
     fn parse(args: &[String]) -> Result<Self> {
+        let transport_peak_bytes = crate::estimate::admit_estimate_transport(args)?;
         let values = parse_ppml_estimate_key_values(args)?;
         let handshake = Handshake::from_key_values(&values)?;
         handshake.validate()?;
@@ -475,6 +616,9 @@ impl EstimatePpmlSpec {
         let cluster_term_count = parse_usize(&values, "cluster_term_count")?;
         let cluster_component_count = parse_usize(&values, "cluster_component_count")?;
         let specification = Self {
+            memory_baseline: Baseline::parse(&values)?,
+            transport_parent_bytes: crate::metadata_memory::argument_parent_bytes(args)?,
+            transport_peak_bytes,
             model_major: f64::from(parse_u16(&values, "model_major")?),
             model_minor: f64::from(parse_u16(&values, "model_minor")?),
             source_matrix: required(&values, "source_matrix")?.to_owned(),
@@ -573,6 +717,7 @@ impl EstimatePpmlSpec {
                 certificates: required(&values, "output_certificate_matrix")?.to_owned(),
                 solver: required(&values, "output_solver_matrix")?.to_owned(),
                 runtime: required(&values, "output_runtime_matrix")?.to_owned(),
+                memory_report: required(&values, "output_memory_matrix")?.to_owned(),
                 receipt: required(&values, "output_receipt_matrix")?.to_owned(),
             },
             injection: match values.get("inject").map(String::as_str).unwrap_or("") {
@@ -677,6 +822,11 @@ impl EstimatePpmlSpec {
             "output_certificate_matrix",
             "output_solver_matrix",
             "output_runtime_matrix",
+            "output_memory_matrix",
+            "stata_used_entry",
+            "stata_alloc_entry",
+            "stata_used_before",
+            "stata_alloc_before",
             "output_receipt_matrix",
             "inject",
             "break_marker_token",
@@ -721,6 +871,14 @@ impl EstimatePpmlSpec {
             ));
         }
 
+        let memory = PpmlMemoryConfig {
+            requested: self.memory,
+            available_bytes: imposed_memory_limit_bytes()?,
+            poolsize: self.poolsize,
+            ..PpmlMemoryConfig::default()
+        };
+        let metadata_peak_bytes = self.metadata_shape().admit(memory.usable_bytes())?.max(self.transport_peak_bytes);
+        crate::metadata_memory::admit(metadata_peak_bytes, memory.usable_bytes())?;
         let wire = ModelWireV2 {
             major: self.model_major,
             minor: self.model_minor,
@@ -767,6 +925,7 @@ impl EstimatePpmlSpec {
             absorb_saved_names: std::mem::take(&mut self.absorb_saved_names),
         };
         let decoded = wire.decode_specification()?;
+        drop(wire);
         decoded.model.validate_executable_metadata()?;
         let request = OlsRequestV1 {
             model: decoded.model,
@@ -869,12 +1028,7 @@ impl EstimatePpmlSpec {
             },
             ..PreparedOlsFitConfig::default()
         };
-        let memory = PpmlMemoryConfig {
-            requested: self.memory,
-            available_bytes: imposed_memory_limit_bytes()?,
-            poolsize: self.poolsize,
-            ..PpmlMemoryConfig::default()
-        };
+
         let separation = SeparationConfig {
             methods: separation_methods,
             tolerance: self.separation_tolerance,
@@ -900,6 +1054,8 @@ impl EstimatePpmlSpec {
             .ok_or_else(|| allocation("PPML requested output-column count overflows"))?;
         let publication_matrix_cells = publication_matrix_cells(&matrices)?;
         Ok(EstimatePpmlAction {
+            memory_baseline: self.memory_baseline,
+            transport_parent_bytes: self.transport_parent_bytes,
             request,
             clusters,
             vce,
@@ -908,8 +1064,10 @@ impl EstimatePpmlSpec {
             adjustment,
             residual,
             config,
+            expected_effective_threads: linear.execution.threads.resolved(),
             linear,
             memory,
+            metadata_peak_bytes,
             solver,
             separation,
             requested_observation_columns,
@@ -965,6 +1123,9 @@ fn create_native_break_marker(token: &str) -> Result<()> {
 /// fixed and bounded; each key and value payload is copied only after a
 /// fallible reservation.
 fn parse_ppml_estimate_key_values(args: &[String]) -> Result<BTreeMap<String, String>> {
+    if args.len() > MAX_PPML_PROTOCOL_FIELDS {
+        return Err(syntax("guarded PPML protocol has too many fields"));
+    }
     let Some(bundle) = (args.len() == 1)
         .then(|| args[0].strip_prefix("bundle="))
         .flatten()
@@ -1084,6 +1245,95 @@ fn load_adjustment(
     )?;
     spi.check_interrupted()?;
     Ok(Some(LoadedNumericColumn { values, missing }))
+}
+
+fn ppml_action_memory_ledger(
+    plan: fereg_core::ppml::PpmlMemoryPlan,
+    input_peak_bytes: Option<u128>,
+    metadata_peak_bytes: Option<u128>,
+) -> Result<crate::action_memory::Ledger> {
+    use crate::action_memory::{Estimator, Frame, Gaps, Ledger, Stage};
+    let mut ledger = Ledger::new(Estimator::Ppml);
+    let inventory = plan.selected_inventory();
+    let embedding = inventory.embedding_resident_bytes;
+    ledger.record(
+        Stage::Metadata,
+        Frame {
+            parents: 0,
+            workspace: metadata_peak_bytes.unwrap_or(embedding),
+        },
+        Gaps::TRANSPORT_COMPILER,
+    )?;
+    ledger.record(
+        Stage::Loading,
+        Frame {
+            parents: 0,
+            workspace: input_peak_bytes.unwrap_or(embedding),
+        },
+        if input_peak_bytes.is_some() { Gaps::TRANSPORT_COMPILER }
+        else { Gaps::STRING_LOADING.union(Gaps::TRANSPORT_COMPILER) },
+    )?;
+    let runtime = Gaps::WORKER_RUNTIME.union(Gaps::DEPENDENCY_CONTAINERS);
+    let generation = runtime.union(Gaps::PPML_GENERATION_PARENT);
+    let stages = [
+        (
+            Stage::Preparation,
+            plan.modeled_phase_peak_bytes(PpmlPhase::Preparation),
+            generation.union(Gaps::CONSTRUCTION),
+        ),
+        (
+            Stage::Separation,
+            plan.modeled_phase_peak_bytes(PpmlPhase::SeparationFe)
+                .max(plan.modeled_phase_peak_bytes(PpmlPhase::SeparationMu)),
+            generation,
+        ),
+        (
+            Stage::Fit,
+            plan.modeled_phase_peak_bytes(PpmlPhase::FeProjection),
+            generation.union(Gaps::NUMERICAL_FRAMES),
+        ),
+        (
+            Stage::Iteration,
+            plan.modeled_phase_peak_bytes(PpmlPhase::WeightResponseRefresh)
+                .max(plan.modeled_phase_peak_bytes(PpmlPhase::ObjectiveLineSearch))
+                .max(plan.modeled_phase_peak_bytes(PpmlPhase::FeProjection)),
+            generation.union(Gaps::NUMERICAL_FRAMES),
+        ),
+        (
+            Stage::Strict,
+            plan.modeled_phase_peak_bytes(PpmlPhase::StrictFinalSolve),
+            generation.union(Gaps::NUMERICAL_FRAMES),
+        ),
+        (
+            Stage::Inference,
+            plan.modeled_phase_peak_bytes(PpmlPhase::Inference),
+            generation.union(Gaps::NUMERICAL_FRAMES),
+        ),
+        (
+            Stage::Recovery,
+            plan.modeled_phase_peak_bytes(PpmlPhase::FeRecovery),
+            generation.union(Gaps::RECOVERY),
+        ),
+        (
+            Stage::Publication,
+            plan.modeled_phase_peak_bytes(PpmlPhase::Publication),
+            generation.union(Gaps::PUBLICATION),
+        ),
+    ];
+    for (stage, peak, gaps) in stages {
+        let workspace = peak
+            .checked_sub(embedding)
+            .ok_or_else(|| internal("PPML action phase omits its embedding parent"))?;
+        ledger.record(
+            stage,
+            Frame {
+                parents: embedding,
+                workspace,
+            },
+            gaps,
+        )?;
+    }
+    Ok(ledger)
 }
 
 fn precommit(
@@ -1741,7 +1991,7 @@ fn validate_result_request_identity(
         || shadow.adjustment_kind != action.adjustment.kind()
         || shadow.requested_memory != action.memory.requested
         || shadow.requested_threads != requested_threads
-        || shadow.effective_threads != action.linear.execution.threads.resolved()
+        || shadow.effective_threads != action.expected_effective_threads
         || shadow.planned_poolsize
             != action
                 .linear
@@ -2075,8 +2325,10 @@ fn store_shadow_prefix(
 fn store_runtime_and_complete(
     action: &EstimatePpmlAction,
     shadow: &PpmlShadowResult<'_>,
+    memory_report: &MemoryReport,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
+    store_matrix(spi, &action.matrices.memory_report, MEMORY_ROWS, 2, &memory_report.0)?;
     store_matrix(
         spi,
         &action.matrices.runtime,
@@ -2196,6 +2448,9 @@ fn read_ppml_clusters(
         let count = exact_usize(row[1], "PPML cluster source count")?;
         if identity != term_index + 1 || count == 0 {
             return Err(invalid("PPML cluster term order or arity is invalid"));
+        }
+        if count > spec.cluster_component_count.saturating_sub(cursor) {
+            return Err(invalid("PPML cluster component table ended before its declared arity"));
         }
         let mut sources = Vec::new();
         sources
@@ -2381,6 +2636,7 @@ fn validate_matrix_layout(
         (&matrices.certificates, CERTIFICATE_ROWS, 1),
         (&matrices.solver, SOLVER_ROWS, SOLVER_COLUMNS),
         (&matrices.runtime, RUNTIME_ROWS, 1),
+        (&matrices.memory_report, MEMORY_ROWS, 2),
         (&matrices.receipt, 1, PPML_RESULT_RECEIPT_COLUMNS),
     ];
     let input_names = input_matrices
@@ -2454,6 +2710,7 @@ fn validate_matrix_layout(
             1,
         )?,
         solver: PreparedMatrixStoreName::try_new(&matrices.solver, SOLVER_ROWS, SOLVER_COLUMNS)?,
+        memory_report: PreparedMatrixStoreName::try_new(&matrices.memory_report, MEMORY_ROWS, 2)?,
         runtime: PreparedMatrixStoreName::try_new(&matrices.runtime, RUNTIME_ROWS, 1)?,
         receipt: PreparedMatrixStoreName::try_new(
             &matrices.receipt,
@@ -2463,7 +2720,7 @@ fn validate_matrix_layout(
     })
 }
 
-fn prepared_matrix_names(matrices: &PreparedResultMatrices) -> [&PreparedMatrixStoreName; 16] {
+fn prepared_matrix_names(matrices: &PreparedResultMatrices) -> [&PreparedMatrixStoreName; 17] {
     [
         &matrices.b,
         &matrices.covariance,
@@ -2480,6 +2737,7 @@ fn prepared_matrix_names(matrices: &PreparedResultMatrices) -> [&PreparedMatrixS
         &matrices.certificates,
         &matrices.solver,
         &matrices.runtime,
+        &matrices.memory_report,
         &matrices.receipt,
     ]
 }
@@ -2605,6 +2863,11 @@ fn decode_ppml_registry(value: &str, expected: usize) -> Result<Vec<String>> {
             return Err(invalid("empty registry must use the dot sentinel"));
         }
         return Ok(Vec::new());
+    }
+    // The caller's declared cardinality is not an allocation bound until it
+    // agrees with the actual framing. Reject malformed huge counts first.
+    if value.split('|').count() != expected {
+        return Err(invalid("registry cardinality does not match its declared count"));
     }
     let mut output = Vec::new();
     output
@@ -2808,6 +3071,81 @@ fn internal(message: impl Into<String>) -> FeregError {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn action_ledger_keeps_ppml_embedding_and_all_generation_stages() {
+        use fereg_core::ppml::{plan_ppml_memory, PpmlMemoryDimensions};
+        fn dimensions() -> PpmlMemoryDimensions {
+            PpmlMemoryDimensions {
+                metadata: Default::default(),
+                observations: 100_000,
+                original_observations: 100_000,
+                candidate_observations: 100_000,
+                loaded_numeric_columns: 6,
+                retained_base_adjustment_capacity_elements: 0,
+                retained_raw_preseparation_probability_weight_elements: 0,
+                finite_columns: 20,
+                coefficient_slots: 20,
+                reported_coefficient_slots: 20,
+                fe_dimensions: 2,
+                fe_total_levels: 30_000,
+                fe_max_levels: 20_000,
+                fe_total_channels: 2,
+                fe_max_channels: 1,
+                fe_max_level_members: 20,
+                fe_coefficient_directions: 30_000,
+                fe_max_effect_directions: 20_000,
+                cluster_dimensions: 2,
+                cluster_subset_groups: 35_000,
+                separation_workspace_vectors: 8,
+                separation_singleton_enabled: true,
+                separation_method_count: 4,
+                separation_generation_capacity: 100_000,
+                separation_rebase_enabled: true,
+                separation_exact_fe_enabled: true,
+                separation_mu_enabled: false,
+                simplex_tableau_cells: 1_000_000,
+                requested_output_columns: 0,
+                requested_mean_output: false,
+                requested_saved_fe_channels: 0,
+                publication_matrix_cells: 2_000,
+                threads: 4,
+                allocation_audit_enabled: false,
+            }
+        }
+
+        let _guard = crate::instrumentation::lock_action_observation();
+        for requested in [MemoryMode::Fast, MemoryMode::Low] {
+            let mut plan = plan_ppml_memory(
+                dimensions(),
+                PpmlMemoryConfig {
+                    requested,
+                    available_bytes: None,
+                    embedding_resident_bytes: 123456,
+                    poolsize: 4,
+                    diagnostic_capacity: 128,
+                    require_fast_route: false,
+                },
+            )
+            .unwrap();
+            plan.solver_workspace_bytes = 765432;
+            let before = crate::ffi::allocation_usage();
+            let ledger = ppml_action_memory_ledger(plan, None, None).unwrap();
+            assert_eq!(crate::ffi::allocation_usage().events, before.events);
+            let summary = ledger.summary();
+            assert_eq!(summary.missing_stages, 0);
+            assert!(
+                summary.accounted_peak
+                    >= plan.modeled_phase_peak_bytes(PpmlPhase::StrictFinalSolve)
+            );
+            assert!(
+                summary.accounted_peak >= plan.modeled_phase_peak_bytes(PpmlPhase::Publication)
+            );
+            assert_eq!(summary.complete_peak, None);
+            assert_eq!(summary.ratio(u64::MAX), None);
+        }
+    }
+
     use super::*;
     use fereg_core::metadata::{
         AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledModelSpecification, CompiledTermGraph,
@@ -2858,8 +3196,10 @@ mod tests {
         matrices: BTreeMap<String, Vec<Vec<f64>>>,
         reads: usize,
         stores: Vec<StoreEvent>,
+        record_stores: bool,
         store_calls: usize,
         fail_store_at: Option<usize>,
+        interrupt_store_at: Option<usize>,
         interrupt_at: Option<usize>,
         interrupt_checks: usize,
         interrupt_after_display: bool,
@@ -2939,12 +3279,20 @@ mod tests {
 
         fn store_numeric(&mut self, variable: u32, observation: usize, value: f64) -> Result<()> {
             self.store_calls += 1;
+            if self.interrupt_store_at == Some(self.store_calls) {
+                return Err(FeregError::new(
+                    ErrorCode::Interrupted,
+                    "injected publication interruption",
+                ));
+            }
             if self.fail_store_at == Some(self.store_calls) {
                 return Err(internal("injected PPML numeric-store failure"));
             }
             self.numeric.insert((variable, observation), (value, false));
-            self.stores
-                .push(StoreEvent::Numeric(variable, observation, value));
+            if self.record_stores {
+                self.stores
+                    .push(StoreEvent::Numeric(variable, observation, value));
+            }
             Ok(())
         }
 
@@ -2956,6 +3304,12 @@ mod tests {
             value: f64,
         ) -> Result<()> {
             self.store_calls += 1;
+            if self.interrupt_store_at == Some(self.store_calls) {
+                return Err(FeregError::new(
+                    ErrorCode::Interrupted,
+                    "injected publication interruption",
+                ));
+            }
             if self.fail_store_at == Some(self.store_calls) {
                 return Err(internal("injected PPML matrix-store failure"));
             }
@@ -2965,12 +3319,14 @@ mod tests {
                 .and_then(|row| row.get_mut(column - 1))
                 .map(|slot| *slot = value)
                 .ok_or_else(|| invalid("fake PPML matrix store is out of range"))?;
-            self.stores.push(StoreEvent::Matrix(
-                name.as_str().to_owned(),
-                row,
-                column,
-                value,
-            ));
+            if self.record_stores {
+                self.stores.push(StoreEvent::Matrix(
+                    name.as_str().to_owned(),
+                    row,
+                    column,
+                    value,
+                ));
+            }
             Ok(())
         }
 
@@ -2998,6 +3354,32 @@ mod tests {
                 Ok(())
             }
         }
+    }
+
+    #[test]
+    fn memory_baseline_and_matrix_are_validated_before_any_store() {
+        for replacement in ["stata_alloc_before=-1", "stata_used_before=9007199254740993", "output_memory_matrix=RB"] {
+            let (mut args, mut spi) = fixture();
+            let key = replacement.split_once('=').unwrap().0;
+            *args.iter_mut().find(|arg| arg.starts_with(&format!("{key}="))).unwrap() = replacement.to_owned();
+            assert!(estimate_ppml_test(&args, &mut spi).is_err(), "{replacement}");
+            assert_eq!(spi.store_calls, 0);
+            assert_eq!(spi.receipt_complete(), 0.0);
+        }
+    }
+
+    #[test]
+    fn partial_memory_report_is_published_without_claiming_combined_coverage() {
+        let (args, mut spi) = fixture();
+        estimate_ppml_test(&args, &mut spi).unwrap();
+        let report = &spi.matrices["RMEMORY"];
+        assert_eq!(report[0], vec![1.0, 1.0]);
+        assert_eq!(report[1], vec![1.0, 1.0]);
+        assert_eq!(report[3], vec![0.0, 0.0]);
+        assert_eq!(report[7], vec![0.0, 0.0]);
+        assert_eq!(report[8], vec![0.0, 0.0]);
+        assert!(report[10][1] > 0.0);
+        assert_eq!(spi.receipt_complete(), 1.0);
     }
 
     fn fixture() -> (Vec<String>, FakeSpi) {
@@ -3077,6 +3459,7 @@ mod tests {
                 "RSOLVER".to_owned(),
                 zero_matrix(SOLVER_ROWS, SOLVER_COLUMNS),
             ),
+            ("RMEMORY".to_owned(), zero_matrix(MEMORY_ROWS, 2)),
             ("RRUNTIME".to_owned(), zero_matrix(RUNTIME_ROWS, 1)),
             (
                 "RREC".to_owned(),
@@ -3181,6 +3564,11 @@ mod tests {
             "output_certificate_matrix=RCERT".to_owned(),
             "output_solver_matrix=RSOLVER".to_owned(),
             "output_runtime_matrix=RRUNTIME".to_owned(),
+            "output_memory_matrix=RMEMORY".to_owned(),
+            "stata_used_entry=.".to_owned(),
+            "stata_alloc_entry=.".to_owned(),
+            "stata_used_before=.".to_owned(),
+            "stata_alloc_before=.".to_owned(),
             "output_receipt_matrix=RREC".to_owned(),
         ];
         (
@@ -3196,8 +3584,10 @@ mod tests {
                 // Keep the post-snapshot RUNTIME/COMPLETE tail allocation-free
                 // in the mock just as it is through the production SPI bridge.
                 stores: Vec::with_capacity(1_024),
+                record_stores: true,
                 store_calls: 0,
                 fail_store_at: None,
+                interrupt_store_at: None,
                 interrupt_at: None,
                 interrupt_checks: 0,
                 interrupt_after_display: false,
@@ -3595,7 +3985,7 @@ mod tests {
     }
 
     #[test]
-    fn ppml_bundle_decoder_accepts_the_closed_83_field_protocol_only() {
+    fn ppml_bundle_decoder_accepts_the_closed_88_field_protocol_only() {
         fn encode(fields: &[String]) -> String {
             let mut bundle = format!("{}:", fields.len());
             for field in fields {
@@ -3608,7 +3998,7 @@ mod tests {
             .map(|index| format!("field_{index}=value_{index}"))
             .collect::<Vec<_>>();
         assert_eq!(
-            decode_ppml_estimate_bundle(&encode(&fields)).expect("83-field PPML bundle"),
+            decode_ppml_estimate_bundle(&encode(&fields)).expect("88-field PPML bundle"),
             fields,
         );
 
@@ -3618,7 +4008,7 @@ mod tests {
         let error = decode_ppml_estimate_bundle(&encode(&oversized))
             .expect_err("84-field PPML bundle must fail closed");
         assert_eq!(error.code, ErrorCode::Syntax);
-        assert!(error.message.contains("between one and 83"));
+        assert!(error.message.contains("between one and 88"));
     }
 
     #[test]
@@ -3664,7 +4054,7 @@ mod tests {
         assert_eq!(spi.receipt_complete(), 1.0);
         assert_eq!(spi.matrices["RREC"][0][0], fereg_core::PPML_RESULT_MAGIC);
         assert_eq!(spi.matrices["RREC"][0][1], 1.0);
-        assert_eq!(spi.matrices["RREC"][0][2], 2.0);
+        assert_eq!(spi.matrices["RREC"][0][2], f64::from(PPML_RESULT_WIRE_VERSION.minor));
         assert_eq!(spi.matrices["RREC"][0][4], 2.0);
         assert_eq!(spi.matrices["RREC"][0][6], 10.0);
         assert_eq!(spi.matrices["RREC"][0][8], 10.0);
@@ -3800,10 +4190,18 @@ mod tests {
             .contains("unknown estimate-ppml field fe_solver"));
     }
 
-    fn with_unpublished_shadow(
-        assertion: impl FnOnce(&EstimatePpmlAction, &mut PpmlShadowResult<'_>, &mut FakeSpi),
+    fn with_certified_fixture(
+        fixture: (Vec<String>, FakeSpi),
+        assertion: impl FnOnce(EstimatePpmlAction, fereg_core::ppml::CertifiedPpmlResult, FakeSpi),
     ) {
-        let (args, mut spi) = fixture();
+        with_certified_fixture_probe(fixture, None, assertion);
+    }
+
+    fn with_certified_fixture_probe(
+        (args, mut spi): (Vec<String>, FakeSpi),
+        phase_allocation_probe: Option<fereg_core::ppml::PpmlPhaseAllocatorProbe>,
+        assertion: impl FnOnce(EstimatePpmlAction, fereg_core::ppml::CertifiedPpmlResult, FakeSpi),
+    ) {
         let specification = EstimatePpmlSpec::parse(&args).expect("PPML fixture specification");
         let action = specification
             .decode_and_validate(&mut spi)
@@ -3827,7 +4225,7 @@ mod tests {
                 memory: action.memory,
                 memory_preflight_probe: None,
                 allocation_snapshot_probe: None,
-                phase_allocation_probe: None,
+                phase_allocation_probe,
                 linear_phase_allocation_probe: None,
                 action_allocation_snapshot_probe: None,
                 action_allocation_start: None,
@@ -3852,18 +4250,200 @@ mod tests {
             },
         )
         .expect("PPML fixture fit");
-        let mut shadow = build_certified_ppml_shadow(
-            &result,
-            CertifiedPpmlShadowContext {
-                residual: action.residual,
-                xb_requested: action.outputs.xb.is_some(),
-                separation_methods: action.separation.methods,
-                drop_singletons: action.separation.drop_singletons,
-                elapsed_seconds: 0.0,
-            },
-        )
-        .expect("PPML fixture shadow");
-        assertion(&action, &mut shadow, &mut spi);
+        assertion(action, result, spi);
+    }
+
+    fn with_unpublished_shadow(
+        assertion: impl FnOnce(&EstimatePpmlAction, &mut PpmlShadowResult<'_>, &mut FakeSpi),
+    ) {
+        with_certified_fixture(fixture(), |action, result, mut spi| {
+            let mut shadow = build_certified_ppml_shadow(
+                &result,
+                CertifiedPpmlShadowContext {
+                    residual: action.residual,
+                    xb_requested: action.outputs.xb.is_some(),
+                    separation_methods: action.separation.methods,
+                    drop_singletons: action.separation.drop_singletons,
+                    elapsed_seconds: 0.0,
+                },
+            )
+            .expect("PPML fixture shadow");
+            assertion(&action, &mut shadow, &mut spi);
+        });
+    }
+
+    #[cfg(feature = "ffi")]
+    static CORE_PUBLICATION_END_CURRENT: AtomicU64 = AtomicU64::new(u64::MAX);
+
+    #[cfg(feature = "ffi")]
+    fn capture_core_publication_end(
+        phase: PpmlPhase,
+        event: fereg_core::ppml::PpmlPhaseAllocatorEvent,
+    ) -> u64 {
+        if phase == PpmlPhase::Publication
+            && event == fereg_core::ppml::PpmlPhaseAllocatorEvent::End
+        {
+            CORE_PUBLICATION_END_CURRENT.store(
+                crate::ffi::allocation_usage().current_bytes,
+                Ordering::Relaxed,
+            );
+        }
+        // This probe checks retained ownership, not a phase-peak estimate.
+        0
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn core_publication_observation_has_no_obsolete_fit_or_generation_owner() {
+        let _guard = crate::instrumentation::lock_action_observation();
+        let (separated_args, mut separated_spi) =
+            allocation_failure_phase_fixture(PpmlPhase::SeparationFe);
+        for row in 1..=4 {
+            separated_spi.numeric.insert((2, row), (0.0, false));
+        }
+        let (mut low_args, low_spi) = categorical_absorb_cluster_weight_fixture();
+        replace_argument(&mut low_args, "memory", "memory=low".to_owned());
+        for fixture in [
+            fixture(),
+            categorical_absorb_cluster_weight_fixture(),
+            (separated_args, separated_spi),
+            (low_args, low_spi),
+        ] {
+            CORE_PUBLICATION_END_CURRENT.store(u64::MAX, Ordering::Relaxed);
+            with_certified_fixture_probe(
+                fixture,
+                Some(capture_core_publication_end),
+                |_action, _result, _spi| {
+                    assert_eq!(
+                        CORE_PUBLICATION_END_CURRENT.load(Ordering::Relaxed),
+                        crate::ffi::allocation_usage().current_bytes,
+                        "core return released obsolete state after the publication observation",
+                    );
+                },
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn final_sample_validation_allocates_no_observation_mask() {
+        let _guard = crate::instrumentation::lock_action_observation();
+        let n = 100_000;
+        let rows: Vec<usize> = (0..n).step_by(2).collect();
+        let prepared = std::sync::Arc::new(rows.clone());
+        let reasons = (0..n)
+            .map(|row| {
+                if row % 2 == 0 {
+                    fereg_core::DropReason::Retained
+                } else {
+                    fereg_core::DropReason::Singleton
+                }
+            })
+            .collect();
+        let outcome = vec![1.0; rows.len()];
+        let weights = vec![1.0; rows.len()];
+        let before = crate::ffi::allocation_usage();
+        let sample =
+            fereg_core::ppml::PpmlFinalSample::new(n, n, prepared, rows, reasons, outcome, weights)
+                .unwrap();
+        let after = crate::ffi::allocation_usage();
+        assert_eq!(after.events, before.events);
+        assert_eq!(after.current_bytes, before.current_bytes);
+        assert_eq!(sample.original_rows().len(), n / 2);
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn publication_owners_match_independent_deallocation_and_exact_admission() {
+        let _guard = crate::instrumentation::lock_action_observation();
+        let (separated_args, mut separated_spi) =
+            allocation_failure_phase_fixture(PpmlPhase::SeparationFe);
+        for observation in 1..=4 {
+            separated_spi.numeric.insert((2, observation), (0.0, false));
+        }
+        let (mut low_args, low_spi) = categorical_absorb_cluster_weight_fixture();
+        replace_argument(&mut low_args, "memory", "memory=low".to_owned());
+        for fixture in [
+            fixture(),
+            categorical_absorb_cluster_weight_fixture(),
+            (separated_args, separated_spi),
+            (low_args, low_spi),
+        ] {
+            with_certified_fixture(fixture, |mut action, result, spi| {
+                // Force nontrivial nested and outer capacity at the surviving
+                // embedding boundary; these are not observation-sized scans.
+                action.clusters.reserve(11);
+                for cluster in &mut action.clusters {
+                    cluster.label.reserve(29);
+                    cluster.sources.reserve(7);
+                }
+                action.outputs.saved_channels.reserve(13);
+                action.break_marker_token.reserve(31);
+                action.request.model.sources.reserve(5);
+                for source in &mut action.request.model.sources {
+                    source.canonical_name.reserve(17);
+                }
+                let before_count = crate::ffi::allocation_usage();
+                let result_bytes = result.owned_buffer_bytes();
+                let action_bytes = action.metadata_capacity_bytes();
+                let model = action.publication_memory(&result).unwrap();
+                let peak = model.peak_bytes().unwrap();
+                model.admit(Some(peak)).unwrap();
+                assert_eq!(crate::ffi::allocation_usage().events, before_count.events);
+                assert_eq!(
+                    model.admit(Some(peak - 1)).unwrap_err().code,
+                    ErrorCode::Allocation
+                );
+                assert_eq!(spi.store_calls, 0);
+                assert_eq!(spi.receipt_complete(), 0.0);
+
+                let start = crate::instrumentation::begin_ppml_observation();
+                let mut shadow = build_certified_ppml_shadow(
+                    &result,
+                    CertifiedPpmlShadowContext {
+                        residual: action.residual,
+                        xb_requested: action.outputs.xb.is_some(),
+                        separation_methods: action.separation.methods,
+                        drop_singletons: action.separation.drop_singletons,
+                        elapsed_seconds: 0.0,
+                    },
+                )
+                .unwrap();
+                model.validate_capacity(&shadow).unwrap();
+                let after_shadow = crate::ffi::allocation_usage();
+                assert!(
+                    u128::from(after_shadow.peak_bytes - start.allocation_current_bytes)
+                        <= model.shadow_bytes
+                );
+                let shadow_bytes = shadow.capacity_bytes();
+                assert_eq!(
+                    u128::from(after_shadow.current_bytes - start.allocation_current_bytes),
+                    shadow_bytes
+                );
+                // Spare descriptor capacity must be charged and rejected, even
+                // though the lengths and every scientific output still agree.
+                shadow
+                    .saved_channels
+                    .reserve(model.shadow_bytes as usize + 1);
+                assert_eq!(
+                    model.validate_capacity(&shadow).unwrap_err().code,
+                    ErrorCode::Allocation
+                );
+                drop(shadow);
+                let before = crate::ffi::allocation_usage();
+                drop(result);
+                let after = crate::ffi::allocation_usage();
+                assert_eq!(
+                    u128::from(before.current_bytes - after.current_bytes),
+                    result_bytes
+                );
+                drop(action);
+                assert_eq!(
+                    u128::from(after.current_bytes - crate::ffi::allocation_usage().current_bytes),
+                    action_bytes
+                );
+            });
+        }
     }
 
     #[test]
@@ -3936,6 +4516,16 @@ mod tests {
 
     #[cfg(feature = "ffi")]
     #[test]
+    fn malformed_registry_cardinality_rejects_before_reservation() {
+        let _guard = crate::instrumentation::lock_action_observation();
+        let (start, _) = crate::ffi::begin_ols_allocation_observation();
+        let error = decode_ppml_registry("1:x", usize::MAX / 32).unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+        assert!(crate::ffi::allocation_usage().peak_bytes - start.current_bytes < 1024);
+    }
+
+    #[cfg(feature = "ffi")]
+    #[test]
     fn no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing() {
         const CHILD_ENV: &str = "FEREG_PPML_EARLY_PREFLIGHT_TEST_CHILD";
         if std::env::var_os(CHILD_ENV).is_none() {
@@ -3943,7 +4533,7 @@ mod tests {
                 std::env::current_exe().expect("current plugin test executable"),
             )
             .env(CHILD_ENV, "1")
-            .env("FEREG_MEMORY_LIMIT_BYTES", "1")
+            .env_remove("FEREG_MEMORY_LIMIT_BYTES")
             .arg(
                 "ppml_estimate::tests::no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing",
             )
@@ -4033,6 +4623,7 @@ mod tests {
             );
         }
 
+        std::env::set_var("FEREG_MEMORY_LIMIT_BYTES", "1");
         // Exercise the complete plugin transaction under the same imposed
         // one-byte limit. The direct core observation above proves timing;
         // this second arm proves that the ordinary error path cannot publish
@@ -4558,6 +5149,57 @@ mod tests {
         let (args, mut following) = categorical_absorb_cluster_weight_fixture();
         estimate_ppml_test(&args, &mut following)
             .expect("allocation injection must not leak into the next action");
+        assert_eq!(following.receipt_complete(), 1.0);
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    fn publication_through_complete_has_no_native_allocation() {
+        let _guard = crate::instrumentation::lock_action_observation();
+        with_unpublished_shadow(|action, shadow, spi| {
+            spi.record_stores = false;
+            let memory_report = MemoryReport::partial(Baseline::default(), None,
+                crate::action_memory::Ledger::new(crate::action_memory::Estimator::Ppml).summary(), 0).unwrap();
+            let before = crate::ffi::allocation_usage();
+            precommit(action, shadow, spi).unwrap();
+            let validated = crate::ffi::allocation_usage();
+            store_shadow_prefix(action, shadow, spi).unwrap();
+            let stored = crate::ffi::allocation_usage();
+            store_runtime_and_complete(action, shadow, &memory_report, spi).unwrap();
+            let after = crate::ffi::allocation_usage();
+            assert_eq!(
+                validated.events, before.events,
+                "publication validation allocated"
+            );
+            assert_eq!(
+                stored.events, validated.events,
+                "publication prefix allocated"
+            );
+            assert_eq!(
+                after.events, stored.events,
+                "publication completion allocated"
+            );
+            assert_eq!(after.current_bytes, before.current_bytes);
+            assert_eq!(spi.receipt_complete(), 1.0);
+        });
+    }
+
+    #[test]
+    fn publication_interruptions_at_output_runtime_and_complete_never_commit() {
+        let (args, mut success) = fixture();
+        estimate_ppml_test(&args, &mut success).unwrap();
+        for ordinal in [1, success.store_calls - RUNTIME_ROWS, success.store_calls] {
+            let (args, mut spi) = fixture();
+            spi.interrupt_store_at = Some(ordinal);
+            assert_eq!(
+                estimate_ppml_test(&args, &mut spi).unwrap_err().code,
+                ErrorCode::Interrupted
+            );
+            assert_eq!(spi.receipt_complete(), 0.0);
+            assert_eq!(spi.store_calls, ordinal);
+        }
+        let (args, mut following) = fixture();
+        estimate_ppml_test(&args, &mut following).unwrap();
         assert_eq!(following.receipt_complete(), 1.0);
     }
 

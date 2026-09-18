@@ -260,8 +260,8 @@ def validate_manifest(manifest: Mapping[str, Any], *, root: Path | None = ROOT) 
         or manifest["status"] != "frozen_contract"
         or manifest["baseline_source"] != F0_SOURCE
         or manifest["baseline_versions"] != {
-            "ado": "0.5.0", "action_protocol": "1.5", "model_wire": "2.1",
-            "ols_result_wire": "1.4",
+            "ado": "0.5.0", "action_protocol": "1.6", "model_wire": "2.1",
+            "ols_result_wire": "1.5",
         }
         or manifest["required_categories"] != list(REQUIRED_CATEGORIES)
     ):

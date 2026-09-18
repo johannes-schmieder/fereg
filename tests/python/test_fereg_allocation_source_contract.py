@@ -54,6 +54,24 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_current_source_matches_closed_inventory_and_exact_boundaries(self) -> None:
         self.assertEqual(CONTRACT.audit_repository(ROOT, MANIFEST), [])
 
+    def test_prepared_parent_boundary_is_bound_to_preserved_source_excerpt(self) -> None:
+        pin = CONTRACT.PREPARED_PARENT_BOUNDARY
+        source = (ROOT / pin["source_excerpt"]).read_text()
+        self.assertEqual(hashlib.sha256(source.encode()).hexdigest(), pin["source_sha256"])
+        body = CONTRACT._function_body(CONTRACT._production_tokens(source), pin["function"])
+        self.assertEqual(CONTRACT._sha256_text(CONTRACT._canonical_tokens(body)), pin["body_tokens_sha256"])
+        self.assertEqual(pin["path"], "crates/fereg-plugin/src/estimate.rs")
+        self.assertEqual(pin["function"], "estimate_ols_test")
+
+    def test_input_memory_boundary_is_bound_to_preserved_source_excerpt(self) -> None:
+        pin = CONTRACT.INPUT_MEMORY_BOUNDARY
+        source = (ROOT / pin["source_excerpt"]).read_text()
+        self.assertEqual(hashlib.sha256(source.encode()).hexdigest(), pin["source_sha256"])
+        body = CONTRACT._function_body(CONTRACT._production_tokens(source), pin["function"])
+        self.assertEqual(CONTRACT._sha256_text(CONTRACT._canonical_tokens(body)), pin["body_tokens_sha256"])
+        self.assertEqual(pin["path"], CONTRACT.PREPARED_PARENT_BOUNDARY["path"])
+        self.assertNotEqual(pin["body_tokens_sha256"], CONTRACT.PREPARED_PARENT_BOUNDARY["body_tokens_sha256"])
+
     def test_pinned_preexisting_hashes_are_derived_from_exact_f0(self) -> None:
         for (relative, function), expected in CONTRACT.F0_PREEXISTING_BOUNDARY_HASHES.items():
             source = subprocess.run(
@@ -571,8 +589,8 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             estimate = candidate / "crates/fereg-plugin/src/estimate.rs"
             self._replace(
                 estimate,
-                "            let inference = fit_prepared_ols_unadjusted_map(",
-                "            let inference = fit_prepared_ols_robust_map(",
+                "            let inference = fit_prepared_ols_unadjusted_map(\n",
+                "            let inference = fit_prepared_ols_robust_map(\n",
             )
             violations = CONTRACT.audit_repository(candidate, MANIFEST)
             self.assertTrue(

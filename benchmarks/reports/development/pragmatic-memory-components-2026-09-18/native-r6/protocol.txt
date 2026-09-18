@@ -1,0 +1,18 @@
+   Compiling fereg-core v0.5.0 (<run:pragmatic-memory-20260918-r6>/source/crates/fereg-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 34.24s
+     Running unittests src/lib.rs (<run:pragmatic-build-cache-20260918>/debug/deps/fereg_core-ecfcb19d92c9d19b)
+
+running 10 tests
+test protocol::tests::action_handshake_and_model_wire_are_distinct_versions ... ok
+test protocol::tests::current_handshake_passes ... ok
+test protocol::tests::malformed_and_duplicate_key_values_are_rejected ... ok
+test protocol::tests::newer_action_protocol_minor_is_labeled_unambiguously ... ok
+test protocol::tests::newer_protocol_major_fails_closed ... ok
+test protocol::tests::old_stata_is_rejected ... ok
+test protocol::tests::ppml_receipt_encodes_exact_identity_and_remains_incomplete ... ok
+test protocol::tests::ppml_receipt_layout_is_closed_and_complete_is_last ... ok
+test protocol::tests::ppml_receipt_rejects_inconsistent_structure ... ok
+test protocol::tests::pre_one_ado_contract_must_match_exactly ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 899 filtered out; finished in 0.00s
+

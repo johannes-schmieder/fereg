@@ -32,6 +32,11 @@ pub struct LevelIndex {
 }
 
 impl LevelIndex {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        crate::memory::vec_capacity_bytes(&self.offsets)
+            + crate::memory::vec_capacity_bytes(&self.observations)
+    }
+
     pub fn from_codes(codes: &[u32], n_levels: usize) -> Result<Self> {
         let mut reservation = SystemReservation;
         Self::from_codes_with_reservation(codes, n_levels, &mut reservation)

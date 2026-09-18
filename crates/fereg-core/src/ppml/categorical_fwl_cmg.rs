@@ -905,7 +905,7 @@ impl ReusableCategoricalFwlCmg {
             batch_size: self.config.batch_size,
             retain_coefficients: false,
             requested_solver: FeSolverKind::Cmg,
-            components: false,
+            components: crate::fe::explicit_cmg_components(FeSolverKind::Cmg),
             solver_memory_budget: Some(self.config.solver_memory_budget),
         }
     }

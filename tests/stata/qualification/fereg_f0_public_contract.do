@@ -82,7 +82,7 @@ assert `"`e(fereg_solver_requested)'"' == "auto"
 assert `"`e(fereg_preconditioner)'"' == "auto"
 assert `"`e(fereg_action_protocol)'"' == "1.5"
 assert `"`e(fereg_model_wire)'"' == "2.1"
-assert `"`e(fereg_result_wire)'"' == "1.4"
+assert `"`e(fereg_result_wire)'"' == "1.5"
 assert `"`e(predict)'"' == "fereg_p"
 assert e(fereg_requested_threads) == 0
 assert e(fereg_receipt)[1,16] == 1

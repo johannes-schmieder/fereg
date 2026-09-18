@@ -1,0 +1,104 @@
+JOB=7632313
+hostname     scc-xd2.scc.bu.edu  
+jobnumber    7632313             
+slots        28                  
+failed       0    
+exit_status  101                 
+ru_wallclock 41           
+maxvmem      2.318G
+JOB=7632321
+hostname     scc-um1.scc.bu.edu  
+jobnumber    7632321             
+slots        28                  
+failed       0    
+exit_status  101                 
+ru_wallclock 50           
+maxvmem      2.178G
+JOB=7632341
+hostname     scc-zj4.scc.bu.edu  
+jobnumber    7632341             
+slots        28                  
+failed       0    
+exit_status  101                 
+ru_wallclock 79           
+maxvmem      3.036G
+JOB=7632345
+hostname     scc-zj4.scc.bu.edu  
+jobnumber    7632345             
+slots        28                  
+failed       0    
+exit_status  1                   
+ru_wallclock 0            
+maxvmem      0.000
+JOB=7632348
+hostname     scc-zj4.scc.bu.edu  
+jobnumber    7632348             
+slots        28                  
+failed       0    
+exit_status  101                 
+ru_wallclock 120          
+maxvmem      3.246G
+JOB=7632350
+hostname     scc-zj4.scc.bu.edu  
+jobnumber    7632350             
+slots        28                  
+failed       0    
+exit_status  1                   
+ru_wallclock 191          
+maxvmem      3.189G
+JOB=7632365
+hostname     scc-zj4.scc.bu.edu  
+jobnumber    7632365             
+slots        28                  
+failed       0    
+exit_status  0                   
+ru_wallclock 2            
+maxvmem      31.031M
+JOB=7632367
+hostname     scc-zj4.scc.bu.edu  
+jobnumber    7632367             
+slots        28                  
+failed       0    
+exit_status  1                   
+ru_wallclock 11           
+maxvmem      844.188M
+JOB=7632389
+hostname     scc-zj4.scc.bu.edu  
+jobnumber    7632389             
+slots        28                  
+failed       0    
+exit_status  0                   
+ru_wallclock 1            
+maxvmem      0.000
+JOB=7632403
+hostname     scc-wf4.scc.bu.edu  
+jobnumber    7632403             
+slots        28                  
+failed       0    
+exit_status  0                   
+ru_wallclock 57           
+maxvmem      1.925G
+JOB=7632442
+hostname     scc-zj4.scc.bu.edu  
+jobnumber    7632442             
+slots        28                  
+failed       0    
+exit_status  0                   
+ru_wallclock 206          
+maxvmem      3.182G
+JOB=7632448
+hostname     scc-zj4.scc.bu.edu  
+jobnumber    7632448             
+slots        28                  
+failed       0    
+exit_status  0                   
+ru_wallclock 84           
+maxvmem      2.197G
+JOB=7632452
+hostname     scc-zj4.scc.bu.edu  
+jobnumber    7632452             
+slots        28                  
+failed       0    
+exit_status  1                   
+ru_wallclock 6            
+maxvmem      720.008M

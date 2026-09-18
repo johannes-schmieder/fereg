@@ -11,11 +11,11 @@ request/result layouts are independently versioned:
 
 | Contract | 0.5.0 version |
 |---|---:|
-| Action protocol | 1.5 |
+| Action protocol | 1.6 |
 | Model wire | 2.1 |
-| OLS result wire | 1.4 |
-| PPML request wire | 1.5 |
-| PPML result wire | 1.2 |
+| OLS result wire | 1.5 |
+| PPML request wire | 1.6 |
+| PPML result wire | 1.3 |
 
 Estimation requires the exact action and estimator-specific request/result
 versions. Diagnostic `doctor` and `selftest` callers retain the action
@@ -146,3 +146,26 @@ outside this protected transaction.
 
 Licensed fixtures pass only when process status, Stata return code, status
 files, and the unique terminal `END_FIXTURE|<name>|rc=0` sentinel agree.
+
+## Shared memory result
+
+The estimation action accepts four scalar baseline fields: `stata_used_entry`,
+`stata_alloc_entry`, `stata_used_before`, `stata_alloc_before`. Each is a
+nonnegative exact integer byte count or `.` for unavailable. The separate
+`output_memory_matrix` is mandatory, distinct from every input and output
+matrix, and has 11 rows and two columns (presence, value). Absent cells encode
+`0,0`. Publication precedes COMPLETE and participates in the same rollback.
+
+Rows are `schema_version`, `estimate_status`, `stata_used_before`,
+`stata_alloc_before`, `native_live_before`, `native_peak_est`,
+`stata_growth_est`, `combined_peak_est`, `additional_reserve`,
+`safety_headroom`, `model_gap_bits`. Schema 1 uses status 0 unavailable,
+1 partial, 2 estimated-complete-practical. Status 2 requires calibration;
+strict mathematical coverage is a separate property. The initial partial
+report exposes an uncalibrated phase-based native estimate and an estimated
+Stata publication increment. CMG and low-memory frames still include conservative
+reservations, so these numbers are not ten-percent forecasts. Combined peak
+and additional reserve remain unavailable. Gap bits retain both strict
+limitations (low 16 bits) and uncalibrated expected use/Stata growth (bits 17/18);
+bit 16 marks an unavailable baseline and bits 20–29 mark missing action stages. Existing OLS/PPML runtime matrices retain their
+layout and observation boundaries.

@@ -188,6 +188,23 @@ pub struct PreparedNumericSample {
 }
 
 impl PreparedNumericSample {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        bytes(&self.original_row_by_active)
+            + bytes(&self.outcome)
+            + bytes(&self.regressors)
+            + self.regressors.iter().map(bytes).sum::<u128>()
+            + match &self.weights {
+                PreparedWeights::None => 0,
+                PreparedWeights::Provided { values, .. } => bytes(values),
+            }
+            + match &self.adjustment {
+                PreparedAdjustment::None => 0,
+                PreparedAdjustment::Offset(values) | PreparedAdjustment::Exposure(values) => bytes(values),
+            }
+            + bytes(&self.drop_reasons)
+    }
+
     #[must_use]
     pub fn n_active(&self) -> usize {
         self.original_row_by_active.len()

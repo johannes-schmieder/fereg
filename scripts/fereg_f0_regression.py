@@ -1137,9 +1137,9 @@ def validate_manifest(
     if versions != {
         "ado": "0.5.0",
         "plugin": "0.5.0",
-        "action_protocol": "1.5",
+        "action_protocol": "1.6",
         "model_wire": "2.1",
-        "ols_result_wire": "1.4",
+        "ols_result_wire": "1.5",
     }:
         raise ContractError("baseline candidate protocol versions are not frozen")
     artifacts = baseline["artifacts"]

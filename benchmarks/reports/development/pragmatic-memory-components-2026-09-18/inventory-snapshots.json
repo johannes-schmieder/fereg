@@ -1,0 +1,12 @@
+{
+  "ols": {
+    "committed_clean_sha256": "63278f2d132beafb2802cb4da13a7435f420d211d83c7caa9d90ff0971544886",
+    "preserved_workspace_sha256": "9b914cdf1c0243210813d064f9512a9fa4de241f1f45ac56f10d4d65d31735c7"
+  },
+  "action": {
+    "committed_clean_sha256": "c235494240e1bdc62c97fc41e1ee97f99eb9adbb34fc21b98c5c86f8e08a1fe7",
+    "preserved_workspace_sha256": "8660309028c588483d010ecbc67435f4e48652598a69eb4cde259fc04aac3316"
+  },
+  "preserved_uncompiled_prototype": "crates/fereg-core/src/fe/cmg_container_memory.rs",
+  "scope": "Both structural inventories pass. The clean commit excludes the obsolete, unreferenced CMG draft; the original worktree file and its inventory overlays remain uncommitted and unchanged."
+}

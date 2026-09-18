@@ -1,0 +1,11 @@
+{
+  "7632313": "Native compilation: three protocol-plumbing errors; fixed in r2.",
+  "7632321": "104 plugin passes, 41 failures from PPML field cap and OLS fake-SPI memory name; fixed in r3.",
+  "7632341": "142 plugin passes, 3 stale wire/store-count expectations; fixed in r4.",
+  "7632345": "Dependent calibration stopped before estimation because upstream DONE was absent.",
+  "7632348": "145 plugin passes; one stale core protocol receipt version expectation.",
+  "7632350": "Native tests and release build passed; binary audit wrapper used old default Python. Narrow loader repair 7632365 passed on identical artifact.",
+  "7632367": "Calibration passed narrow OLS; wide fixture requested unsupported c.x1#c.x1. Diagnostic 7632389 confirmed r(498) before data loading. Revised fixed manifest uses supported i.w expansion.",
+  "7632452": "One native command passed; offline audit rejected the inactive estimator matrix placeholder. Selector fixed and regression-tested; 7632768 completed.",
+  "local-python": "55 of 59 checks passed; four identity errors arose while refreshing the inventory ID in a loaded test process. Separate focused retest recorded after stabilization."
+}

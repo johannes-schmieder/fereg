@@ -179,6 +179,7 @@ program define _fereg_estimate_public, eclass
             as txt " native-peak-allocation=" ///
             as result %21.0fc el(e(fereg_runtime), 13, 2) ///
             as txt " scratch=" as result %21.0fc el(e(fereg_runtime), 9, 2)
+        di as txt "fereg action memory: partial estimate; combined peak unavailable"
         di as txt "fereg execution: requested-threads=" ///
             as result %9.0f el(e(fereg_runtime), 28, 2) ///
             as txt " effective-threads=" as result %9.0f el(e(fereg_runtime), 29, 2) ///

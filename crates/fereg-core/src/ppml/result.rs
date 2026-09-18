@@ -1,9 +1,9 @@
 use super::prepared_model::PreparedPpmlModel;
 use super::prepared_separation::candidate_ledger_hash_candidate_axis;
 use super::prepared_separation::CertifiedSeparationSeal;
-use super::psd::inspect_published_ppml_covariance;
 #[cfg(test)]
 use super::psd::apply_ppml_psd_policy;
+use super::psd::inspect_published_ppml_covariance;
 use super::residuals::{ppml_residuals, PpmlResidualKind};
 use super::vce::{compute_ppml_wald, validate_weight_report};
 #[cfg(test)]
@@ -366,18 +366,15 @@ impl PpmlFinalSample {
                 "PPML candidate count disagrees with the original-axis drop ledger",
             ));
         }
-        let mut retained = fallible_filled(
-            original_observations,
-            false,
-            "unable to reserve PPML final-row validation state",
-        )?;
-        for &row in &original_rows {
-            retained[row] = true;
-        }
-        if drop_reasons.iter().enumerate().any(|(row, reason)| {
-            (retained[row] && *reason != DropReason::Retained)
-                || (!retained[row] && *reason == DropReason::Retained)
-        }) {
+        // The row map is already strictly ordered and range checked. Equality
+        // of these ordered streams proves both directions of membership
+        // without another original-observation-sized validation mask.
+        if !drop_reasons
+            .iter()
+            .enumerate()
+            .filter_map(|(row, reason)| (*reason == DropReason::Retained).then_some(row))
+            .eq(original_rows.iter().copied())
+        {
             return Err(FeregError::new(
                 ErrorCode::Internal,
                 "PPML retained rows disagree with original-axis drop reasons",
@@ -1035,6 +1032,86 @@ pub struct CertifiedPpmlResult {
     memory: PpmlMemoryTelemetry,
     solver: PpmlSolverReport,
     certificate: PpmlResultCertificate,
+}
+
+impl CertifiedPpmlResult {
+    /// Heap retained by the certified result, including nested spare capacity.
+    /// The shared prepared-row Arc is counted once in full: after core return
+    /// it belongs to this publication parent, even if another observer holds it.
+    /// Construction and independent certification scratch are separate frames.
+    #[must_use]
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        let coefficients = &self.coefficients;
+        let sample = &self.sample;
+        let output = &self.output;
+        let vce = &self.inference.vce;
+        let separation = &self.separation;
+        bytes(&coefficients.values)
+            + bytes(&coefficients.statuses)
+            + bytes(&coefficients.generated_columns)
+            + bytes(&coefficients.kept_full_slots)
+            + bytes(&sample.prepared_original_rows)
+            + (2 * std::mem::size_of::<usize>() + std::mem::size_of::<Vec<usize>>()) as u128
+            + bytes(&sample.original_rows)
+            + bytes(&sample.drop_reasons)
+            + bytes(&sample.outcome)
+            + bytes(&sample.prior_weights)
+            + bytes(&output.original_rows)
+            + bytes(&output.offset)
+            + bytes(&output.finite_predictor)
+            + bytes(&output.xb)
+            + bytes(&output.absorbed_predictor)
+            + bytes(&output.eta)
+            + bytes(&output.mean)
+            + bytes(&output.residual)
+            + output.saved_effects.as_ref().map_or(0, |saved| {
+                bytes(&saved.channels)
+                    + bytes(&saved.declared_channel_indices)
+                    + saved.channels.iter().map(bytes).sum::<u128>()
+            })
+            + bytes(&vce.covariance)
+            + bytes(&vce.standard_errors)
+            + bytes(&vce.z_statistics)
+            + bytes(&vce.cluster_dimension_groups)
+            + bytes(&vce.cluster_subsets)
+            + vce
+                .cluster_subsets
+                .iter()
+                .map(|subset| bytes(&subset.dimensions))
+                .sum::<u128>()
+            + bytes(&self.inference.wald.tested_columns)
+            + bytes(&self.fixed_effects)
+            + self
+                .fixed_effects
+                .iter()
+                .map(|effect| bytes(&effect.source_ids))
+                .sum::<u128>()
+            + bytes(&self.clusters)
+            + self
+                .clusters
+                .iter()
+                .map(|cluster| cluster.label.capacity() as u128 + bytes(&cluster.source_ids))
+                .sum::<u128>()
+            + bytes(&separation.active)
+            + bytes(&separation.retained_observations)
+            + bytes(&separation.dropped_observations)
+            + bytes(&separation.drop_reasons)
+            + bytes(&separation.generation_hashes)
+            + bytes(&separation.methods)
+            + separation
+                .methods
+                .iter()
+                .map(|method| {
+                    bytes(&method.dropped_observations)
+                        + bytes(&method.singleton_drops)
+                        + method
+                            .exact_fe_certificate
+                            .as_ref()
+                            .map_or(0, |certificate| bytes(&certificate.zero_only_levels))
+                })
+                .sum::<u128>()
+    }
 }
 
 impl PpmlOutputState {
@@ -2805,6 +2882,9 @@ fn validate_separation_report(
         ));
     }
 
+    // Attribution is fully checked; the independent hash replay owns its
+    // own active/reason vectors and no longer needs this candidate mask.
+    drop(globally_reported);
     replay_separation_generation_hashes(report, candidate_original_rows)?;
     Ok(true)
 }
@@ -4338,6 +4418,57 @@ mod tests {
             super::super::poisson_null_objective(&expanded_y, &[1.0; 5]).expect("expanded null");
         assert!((compact.mean - expanded.mean).abs() < 1e-15);
         assert!((compact.log_likelihood - expanded.log_likelihood).abs() < 1e-13);
+    }
+
+    #[test]
+    fn final_sample_ordered_membership_matches_explicit_mask_oracle() {
+        for n in 1..=6 {
+            for rows_mask in 1_usize..(1 << n) {
+                for ledger_mask in 0_usize..(1 << n) {
+                    let rows: Vec<usize> =
+                        (0..n).filter(|row| rows_mask & (1 << row) != 0).collect();
+                    let reasons: Vec<DropReason> = (0..n)
+                        .map(|row| {
+                            if ledger_mask & (1 << row) != 0 {
+                                DropReason::Retained
+                            } else {
+                                [
+                                    DropReason::ExcludedByIfIn,
+                                    DropReason::MissingCluster,
+                                    DropReason::Singleton,
+                                ][row % 3]
+                            }
+                        })
+                        .collect();
+                    let candidates = reasons
+                        .iter()
+                        .filter(|r| **r != DropReason::ExcludedByIfIn)
+                        .count();
+                    let mut explicit_mask = vec![false; n];
+                    for &row in &rows {
+                        explicit_mask[row] = true;
+                    }
+                    let matches = reasons.iter().enumerate().all(|(row, reason)| {
+                        explicit_mask[row] == (*reason == DropReason::Retained)
+                    });
+                    let retained = rows.len();
+                    let result = PpmlFinalSample::new(
+                        n,
+                        candidates,
+                        Arc::new((0..n).collect()),
+                        rows,
+                        reasons,
+                        vec![1.0; retained],
+                        vec![1.0; retained],
+                    );
+                    assert_eq!(
+                        result.is_ok(),
+                        matches,
+                        "n={n}, rows={rows_mask}, ledger={ledger_mask}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

@@ -17,7 +17,7 @@ assert e(N) == 8
 assert e(N_full) == 10
 assert e(num_singletons) == 2
 assert e(fereg_receipt)[1,5] == 4
-assert `"`e(fereg_result_wire)'"' == "1.4"
+assert `"`e(fereg_result_wire)'"' == "1.5"
 local names : colfullnames e(b)
 assert `"`names'"' == "x 2b.f 3.f _cons"
 assert e(fereg_status)[1,2] == 1

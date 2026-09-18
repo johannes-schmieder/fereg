@@ -133,6 +133,12 @@ pub struct PreparedOlsModel {
 }
 
 impl PreparedOlsModel {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        crate::memory::vec_capacity_bytes(&self.coefficients)
+            + crate::memory::vec_capacity_bytes(&self.columns)
+            + self.nested_recipe_capacity_bytes()
+    }
+
     pub(crate) fn nested_recipe_capacity_bytes(&self) -> u128 {
         self.columns
             .iter()
@@ -286,6 +292,22 @@ pub struct PreparedOlsData {
 }
 
 impl PreparedOlsData {
+    /// Heap buffers retained by preparation beside fit/inference/recovery.
+    /// Counts each owner once, including unused capacity and nested metadata;
+    /// excludes stack storage, construction scratch and dependency workspaces.
+    #[must_use]
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        self.model.owned_buffer_bytes()
+            + self.sample.owned_buffer_bytes()
+            + bytes(&self.categorical_sources)
+            + self.categorical_sources.iter().map(|source| bytes(&source.encoded.codes) + bytes(&source.encoded.levels)).sum::<u128>()
+            + bytes(&self.fe_topology.sources)
+            + self.fe_topology.sources.iter().map(|source| source.level_index.owned_buffer_bytes()).sum::<u128>()
+            + bytes(&self.fe_topology.effects)
+            + self.fe_topology.effects.iter().map(|effect| effect.label.capacity() as u128).sum::<u128>()
+    }
+
     /// Borrow the current intercept-only FE design without copying codes or
     /// level membership. This structural adapter invokes no numerical solver.
     pub fn borrowed_intercept_fe_design(&self) -> Result<BorrowedInterceptFeDesign<'_>> {
@@ -449,6 +471,49 @@ fn build_borrowed_intercept_fe_design_with_controls<
 }
 
 impl OlsRequestV1 {
+    /// Retained request heap, including nested containers and unused capacity.
+    /// Borrowed SPI inputs and construction scratch belong to separate owners.
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        bytes(&self.model.sources)
+            + bytes(&self.model.terms)
+            + bytes(&self.absorbed_terms)
+            + bytes(&self.bindings)
+            + self
+                .model
+                .sources
+                .iter()
+                .map(|source| source.canonical_name.capacity() as u128)
+                .sum::<u128>()
+            + self
+                .model
+                .terms
+                .iter()
+                .map(|term| {
+                    term.canonical_token.capacity() as u128
+                        + bytes(&term.components)
+                        + term
+                            .components
+                            .iter()
+                            .map(|component| {
+                                component.raw_operator.capacity() as u128
+                                    + component.raw_time_series_operator.capacity() as u128
+                            })
+                            .sum::<u128>()
+                })
+                .sum::<u128>()
+            + self
+                .absorbed_terms
+                .iter()
+                .map(|term| {
+                    bytes(&term.categorical_sources)
+                        + bytes(&term.slope_sources)
+                        + term.label.capacity() as u128
+                        + term.saved_name.capacity() as u128
+                })
+                .sum::<u128>()
+    }
+
     /// Validate the entire request and compile the currently supported plain
     /// continuous, numeric categorical main-effect, and all-categorical
     /// interaction recipes. This performs no observation reads; categorical
@@ -745,8 +810,7 @@ fn finish_prepare_ols_data(
     )?;
     let num_singletons = singleton_result.dropped_observations.len();
     let cascade_events = singleton_result.cascade_events;
-    let sample =
-        sample.compact_active_rows(&singleton_result.active, crate::data::DropReason::Singleton)?;
+    drop(singleton_result.dropped_observations);
 
     // With no singleton deletion, the pruning codes already live on the final
     // compact axis. Reusing them avoids a second observation-scale
@@ -757,10 +821,19 @@ fn finish_prepare_ols_data(
             .iter()
             .any(|candidate| candidate.source == *source)
     });
-    let (categorical_sources, fixed_effects) = if num_singletons == 0
-        && pruning_covers_final_sources
-    {
-        (pruning_categorical_sources, pruning_fixed_effects)
+    let reusable_pruning = if num_singletons == 0 && pruning_covers_final_sources {
+        Some((pruning_categorical_sources, pruning_fixed_effects))
+    } else {
+        // These codes/levels no longer describe the final sample. Release them
+        // before numeric compaction and final factorization allocate replacements.
+        drop(pruning_categorical_sources);
+        drop(pruning_fixed_effects);
+        None
+    };
+    let sample = sample.compact_active_rows(&singleton_result.active, crate::data::DropReason::Singleton)?;
+    drop(singleton_result.active);
+    let (categorical_sources, fixed_effects) = if let Some(reusable) = reusable_pruning {
+        reusable
     } else {
         let categorical_sources = factorize_categorical_sources(request, &sample, cluster_sources)?;
         let fixed_effects = prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;

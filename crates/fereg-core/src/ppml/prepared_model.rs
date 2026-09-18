@@ -127,6 +127,22 @@ pub(crate) struct PreparedPpmlModelGeneration {
 }
 
 impl PreparedPpmlModelGeneration {
+    /// All generation-owned heap capacities. The shared initial-drop-reason
+    /// Arc belongs to the immutable raw owner and is counted there exactly once.
+    pub(super) fn owned_buffer_bytes(&self) -> u128 {
+        let prepared = self.fit_view().owned_buffer_bytes()
+            + self.cluster_design().map_or(0, PreparedOlsClusterDesign::owned_buffer_bytes);
+        prepared + crate::memory::vec_capacity_bytes(&self.offset)
+            + self.unit_prior_weights.as_ref().map_or(0, crate::memory::vec_capacity_bytes)
+    }
+
+    fn validate_memory_bound(&self, bound: Option<u128>) -> Result<()> {
+        if bound.is_some_and(|bound| self.owned_buffer_bytes() > bound) {
+            return Err(allocation("PPML prepared generation capacities exceed admission"));
+        }
+        Ok(())
+    }
+
     pub(crate) const fn generation(&self) -> usize {
         self.generation
     }
@@ -253,6 +269,7 @@ impl PreparedPpmlModelGeneration {
 /// rebuild swaps in a newly allocated mask, constructs a wholly owned result,
 /// and restores the baseline mask before returning either success or error.
 pub(crate) struct PreparedPpmlModelOwner {
+    generation_memory_bound: Option<u128>,
     request: OlsClusteredRequestV1,
     loaded: LoadedOlsInput,
     candidate_original_rows: Arc<Vec<usize>>,
@@ -270,6 +287,11 @@ pub(crate) struct PreparedPpmlModelOwner {
 }
 
 impl PreparedPpmlModelOwner {
+    pub(crate) fn with_generation_memory_bound(mut self, bytes: u128) -> Self {
+        self.generation_memory_bound = Some(bytes);
+        self
+    }
+
     pub(crate) fn from_selection(
         request: OlsRequestV1,
         clusters: Vec<OlsClusterTermV1>,
@@ -365,6 +387,7 @@ impl PreparedPpmlModelOwner {
         // singleton policy as part of its certified fixed point.
         request.keep_singletons = true;
         Ok(Self {
+            generation_memory_bound: None,
             request: OlsClusteredRequestV1 {
                 ols: request,
                 clusters,
@@ -634,7 +657,7 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
             .base_offset
             .as_ref()
             .map_or(0, |_| self.requested_candidate_observations);
-        Ok(PreparedPpmlModelGeneration {
+        let prepared = PreparedPpmlModelGeneration {
             generation,
             prepared,
             offset,
@@ -646,7 +669,9 @@ impl PreparedSeparationRebuilder for PreparedPpmlModelOwner {
             initial_drop_reasons: Arc::clone(&self.initial_drop_reasons),
             weight_report,
             adjustment_report: self.adjustment_report,
-        })
+        };
+        prepared.validate_memory_bound(self.generation_memory_bound)?;
+        Ok(prepared)
     }
 }
 
@@ -1083,6 +1108,36 @@ mod tests {
             PreparedPpmlModelOwner::new(self.request, self.clusters, self.loaded, numeric)
                 .expect("prepared owner")
         }
+    }
+
+    #[test]
+    fn generation_capacity_guard_counts_spare_capacity_and_preserves_rollback() {
+        let fixture = categorical_clustered_fixture();
+        let numeric = fixture.prepare_numeric();
+        let mut owner = fixture.into_owner(numeric);
+        let rows = owner.candidate_original_rows.to_vec();
+        let initial = owner.rebuild_generation(&rows, 0).unwrap();
+        let exact = initial.owned_buffer_bytes();
+        initial.validate_memory_bound(Some(exact)).unwrap();
+        assert_eq!(initial.validate_memory_bound(Some(exact - 1)).unwrap_err().code,
+            ErrorCode::Allocation);
+        let candidate = owner.loaded.candidate.clone();
+        let probability = owner.loaded.probability_weight.clone();
+        owner.generation_memory_bound = Some(exact - 1);
+        assert_eq!(owner.rebuild_generation(&rows, 1).unwrap_err().code, ErrorCode::Allocation);
+        assert_eq!(owner.loaded.candidate, candidate);
+        assert_eq!(owner.loaded.probability_weight, probability);
+        owner.generation_memory_bound = Some(exact);
+        for generation in 1..=3 {
+            let replacement = owner.rebuild_generation(&rows, generation).unwrap();
+            assert_eq!(replacement.owned_buffer_bytes(), exact);
+            assert_eq!(replacement.outcome(), initial.outcome());
+        }
+        let mut spare = initial;
+        spare.offset.reserve_exact(37);
+        assert!(spare.owned_buffer_bytes() > exact);
+        assert_eq!(spare.validate_memory_bound(Some(exact)).unwrap_err().code,
+            ErrorCode::Allocation);
     }
 
     #[test]

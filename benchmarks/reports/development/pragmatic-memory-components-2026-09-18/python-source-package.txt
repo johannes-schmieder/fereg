@@ -1,0 +1,9 @@
+.
+----------------------------------------------------------------------
+Ran 1 test in 43.442s
+
+OK
+created /var/folders/2n/n_3w208j31sdjd6f7q7xtr_m0000gp/T/tmpegqvk5_m/source.zip
+sha256 70f2884d90044bf5d14cf3901f337ac934b6f0905d229116d3565b81cb0cc5a5
+created /var/folders/2n/n_3w208j31sdjd6f7q7xtr_m0000gp/T/tmpegqvk5_m/source-second.zip
+sha256 70f2884d90044bf5d14cf3901f337ac934b6f0905d229116d3565b81cb0cc5a5

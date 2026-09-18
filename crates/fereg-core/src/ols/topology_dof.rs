@@ -84,6 +84,16 @@ pub struct CategoricalTopologyDofReport {
     pub is_approximate: bool,
 }
 
+impl CategoricalTopologyDofReport {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        crate::memory::vec_capacity_bytes(&self.effects)
+            + self.effects.iter().map(|effect| effect.label.capacity() as u128 + match &effect.identity {
+                CategoricalTopologyDofEffectIdentity::Explicit { sources, .. } => crate::memory::vec_capacity_bytes(sources),
+                CategoricalTopologyDofEffectIdentity::ImplicitNoAbsorb => 0,
+            }).sum::<u128>()
+    }
+}
+
 /// Compute absorbed rank for finalized categorical topology.
 ///
 /// `effect_specs` and `topology.effect_to_topology()` are both in requested

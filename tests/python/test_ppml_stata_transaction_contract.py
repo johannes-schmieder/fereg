@@ -27,9 +27,9 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertEqual(text.count("plugin call __fereg_estimate_plugin"), 1)
         for field in (
             "request_major=1",
-            "request_minor=5",
+            "request_minor=6",
             "result_major=1",
-            "result_minor=2",
+            "result_minor=3",
             "model_major=`model_major'",
             "model_minor=`model_minor'",
             "output_inference_matrix=`inference_shadow'",
@@ -145,11 +145,11 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         rust_keys = set(re.findall(r'"([a-z_]+)"', allowed.group("body")))
         self.assertEqual(ado_keys, rust_keys)
 
-    def test_protocol_uses_ppml_request_15_and_result_12(self) -> None:
+    def test_protocol_uses_ppml_request_16_and_result_13(self) -> None:
         protocol = PROTOCOL.read_text(encoding="utf-8")
         for token in (
-            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5)",
-            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 2)",
+            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 6)",
+            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 3)",
             "PPML_RESULT_INFERENCE_ROWS: usize = 16",
             "PPML_RESULT_DROP_COUNT_ROWS: usize = 14",
             "PPML_RESULT_SEPARATION_SEQUENCE_ROWS: usize = 5",
@@ -171,7 +171,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "rowsof(`separation_sequence') != 5 | colsof(`separation_sequence') != 13",
             "rowsof(`solver') != 4 | colsof(`solver') != 22",
             "rowsof(`receipt') != 1 | colsof(`receipt') != 33",
-            "`receipt'[1,3] != 2",
+            "`receipt'[1,3] != 3",
             "`receipt'[1,33] != 1",
         ):
             self.assertIn(token, text)
@@ -646,12 +646,12 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "runtime[81] = telemetry_u128(",
             "runtime[82 + index] = telemetry_u128(",
             "runtime[95 + index] =",
-            "runtime_optional.extend(16..=22)",
-            "runtime_optional.extend(27..40)",
-            "runtime_optional.extend(41..76)",
-            "runtime_optional.push(78)",
-            "runtime_optional.extend(79..82)",
-            "runtime_optional.extend(95..108)",
+            "(16..=22).contains(&index)",
+            "(27..40).contains(&index)",
+            "(41..76).contains(&index)",
+            "index == 78",
+            "(79..82).contains(&index)",
+            "(95..108).contains(&index)",
         ):
             self.assertIn(token, native)
 

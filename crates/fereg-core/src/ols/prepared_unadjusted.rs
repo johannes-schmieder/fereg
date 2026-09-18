@@ -139,6 +139,14 @@ pub struct CertifiedPreparedOlsUnadjusted {
 }
 
 impl CertifiedPreparedOlsUnadjusted {
+    /// Heap owners retained after inference, excluding the borrowed prepared data.
+    #[must_use]
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+            + crate::memory::vec_capacity_bytes(&self.covariance.values)
+            + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
+    }
+
     #[must_use]
     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
         &self.fit
@@ -198,6 +206,14 @@ pub struct CertifiedPreparedCategoricalOlsUnadjusted {
 }
 
 impl CertifiedPreparedCategoricalOlsUnadjusted {
+    /// Heap owners retained after inference, excluding the borrowed prepared data.
+    #[must_use]
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+            + crate::memory::vec_capacity_bytes(&self.covariance.values)
+            + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
+    }
+
     #[must_use]
     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
         &self.fit

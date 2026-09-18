@@ -10,6 +10,36 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Practical memory reporting and explicit CMG components — 2026-09-18
+
+Implemented the shared OLS/PPML memory tables, entry/pre-plugin Stata baselines,
+whole-ABI native observation, publication-growth estimates and fast-OLS phase
+lifetime composition. Legacy memory/admission fields remain intact. **Memory
+accuracy is not accepted:** seven of twelve synthetic cases meet the declared
+10%-or-64-MiB criterion; five CMG-heavy estimates remain too conservative.
+The report stays partial, with combined peak/reserve unavailable. Strict proof
+coverage is separate from practical calibration.
+
+Explicit `solver(cmg)` now defaults to the pinned component engine; automatic
+routing remains ordinary. All 18 component pairs and nine memory-overhead pairs
+pass scientific comparisons, with no command/phase timing threshold violation.
+The [development report](benchmarks/reports/development/pragmatic-memory-components-2026-09-18/README.md)
+binds fixed inputs, isolated baseline/candidate sources, artifacts, native tests,
+local Stata baseline checks, inventories, failed attempts and SCC accounting.
+Final native job 7632442 passes 205 focused Rust tests and the Linux loader;
+comparison jobs 7632403 and 7632768 are terminal with zero scheduler failure/exit.
+
+**Resume boundary:** replace conservative CMG construction/runtime reservations
+in the expected-use forecast with a separate ownership/lifetime estimate;
+retain those reservations for admission. Calibrate Stata publication growth and
+process uncertainty. Do not claim whole-action closure, freeze/package a
+production candidate, or run the declared holdouts/German case until the
+synthetic gate passes. No empirical rerun, installed-artifact replacement,
+CMG edit, issue edit, push or release occurred. Xcode licensing still blocks
+Mac linked checks. Earlier unrelated dirty STATUS content and receipts remain.
+The obsolete uncompiled CMG draft and its two working-inventory overlays remain
+uncommitted; clean committed inventories bind the source without that draft.
+
 ## Retained OLS FE product capacity admission — 2026-09-18
 
 Code commit `ded4f95b` admits initial and combined FE coefficient products before

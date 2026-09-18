@@ -17,8 +17,8 @@ use super::{
 use crate::data::DropReason;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    CategoricalCodeView, LevelIndex, FeSolverKind, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS,
-    PARALLEL_DOT_CHUNK_ROWS, PARALLEL_PROJECTION_MIN_ROWS,
+    CategoricalCodeView, FeSolverKind, LevelIndex, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS,
+    FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS, PARALLEL_PROJECTION_MIN_ROWS,
 };
 use crate::metadata::CoefficientSlot;
 use crate::ols::{
@@ -109,6 +109,14 @@ pub struct PpmlMemoryConfig {
     /// Fixed capacity of the iteration diagnostic ring.  This is independent
     /// of N, K, FE levels, cluster groups, and the number of IRLS iterations.
     pub diagnostic_capacity: usize,
+}
+
+impl PpmlMemoryConfig {
+    /// Shared admission limit for embedding construction and core execution.
+    #[must_use]
+    pub fn usable_bytes(self) -> Option<u128> {
+        crate::memory::usable_memory_bytes(self.available_bytes)
+    }
 }
 
 impl Default for PpmlMemoryConfig {
@@ -254,7 +262,9 @@ impl PpmlMemoryDimensions {
         if self.separation_generation_capacity == 0
             || self.separation_generation_capacity > self.observations
         {
-            return Err(invalid_argument("PPML separation generation capacity must lie in 1..=N"));
+            return Err(invalid_argument(
+                "PPML separation generation capacity must lie in 1..=N",
+            ));
         }
         if self.separation_method_count > 5 {
             return Err(invalid_argument(
@@ -357,7 +367,8 @@ fn validate_final_dimensions_within_preflight(
     final_dimensions: PpmlMemoryDimensions,
 ) -> Result<()> {
     let bounded = final_dimensions.observations <= preflight.observations
-        && final_dimensions.separation_generation_capacity <= preflight.separation_generation_capacity
+        && final_dimensions.separation_generation_capacity
+            <= preflight.separation_generation_capacity
         && final_dimensions.loaded_numeric_columns <= preflight.loaded_numeric_columns
         && final_dimensions.finite_columns <= preflight.finite_columns
         && final_dimensions.coefficient_slots <= preflight.coefficient_slots
@@ -454,6 +465,8 @@ pub struct PpmlMemoryInventory {
     /// Still-live embedding/action storage measured relative to the action
     /// allocator baseline immediately before entering the core fit.
     pub embedding_resident_bytes: u128,
+    /// Transferred raw-owner capacity not already included in the embedding.
+    pub input_owner_supplement_bytes: u128,
     pub canonical_numeric_bytes: u128,
     /// Owner-side candidate-capacity offset/logged-exposure storage.  The
     /// generation-local compact offset remains separately included in
@@ -491,6 +504,12 @@ pub struct PpmlMemoryInventory {
     /// Retained coefficient/column/report-plan metadata prepared before the
     /// numerical fit. This is K/slot-sized, never N-by-K.
     pub prepared_model_metadata_bytes: u128,
+    /// Complete retained prepared generation, excluding shared raw-owner Arcs.
+    /// This independently bounds capacities, including the original slot axis.
+    pub prepared_generation_bytes: u128,
+    /// Increment above the legacy retained-generation fields. It accompanies
+    /// both the current generation and a simultaneous replacement generation.
+    pub prepared_generation_supplement_bytes: u128,
     /// Complete replacement-generation payload held beside the old prepared
     /// generation during an accepted atomic rebase: canonical numerics,
     /// categorical/cluster topology, model metadata, its original-axis drop
@@ -598,6 +617,8 @@ pub struct PpmlMemoryInventory {
     /// mu is excluded because it reuses the mandatory composite-replay mean;
     /// saved channels, xb, residual, absorbed, and eta are included exactly.
     pub saved_output_bytes: u128,
+    /// Plugin matrix payloads and one borrowed-slice descriptor per declared
+    /// FE channel, including channels not requested for saved publication.
     pub publication_bytes: u128,
     /// Immutable final-sample/output ownership created while the accepted fit
     /// is still live: outcome, weights, the composite-replay mean, and two
@@ -812,9 +833,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
         .available_bytes
         .map(|available| MINIMUM_HEADROOM_BYTES.max(available / 5))
         .unwrap_or(0);
-    let usable_bytes = config
-        .available_bytes
-        .map(|available| available.saturating_sub(safety_headroom_bytes));
+    let usable_bytes = config.usable_bytes();
     let fits = |bytes: u128| usable_bytes.is_none_or(|usable| bytes <= usable);
     let selected = match (config.requested, config.require_fast_route) {
         (MemoryMode::Fast, _) if fits(estimate.fast.peak_bytes) => Some(PpmlMemoryRoute::Fast),
@@ -1160,6 +1179,31 @@ fn estimate_route(
             "PPML prepared finite-column metadata",
         )?,
     ])?;
+    // Constructors reserve coefficients, columns and reporting slots at the
+    // original reporting axis even if rebasing removes most logical slots.
+    // The row-scaled metadata includes categorical sources that are absent
+    // from the absorbed-effect count (finite factors and cluster-only sources).
+    let prepared_generation_bytes = checked_sum(&[
+        bytes_f64(checked_mul(n, checked_sum(&[loaded, 3])?, "PPML generation numerics")?)?,
+        checked_mul(loaded, size_of::<Vec<f64>>() as u128, "PPML numeric descriptors")?,
+        checked_mul(n, word, "PPML generation sample row map")?,
+        original_n,
+        dimensions.metadata.prepared_nested_bytes,
+        dimensions.metadata.generation_fixed_bytes,
+        checked_mul(n, dimensions.metadata.generation_bytes_per_row, "PPML generation topology rows")?,
+        checked_mul(levels, word, "PPML generation membership offsets")?,
+        checked_mul(reported_coefficient_slots,
+            (size_of::<PreparedOlsCoefficient>() + size_of::<PreparedOlsColumn>()
+                + size_of::<CoefficientSlot>()) as u128,
+            "PPML generation reserved coefficient axis")?,
+    ])?;
+    let legacy_generation_bytes = checked_sum(&[
+        canonical_numeric_bytes, topology_bytes, cluster_topology_bytes,
+        prepared_model_metadata_bytes, checked_mul(n, word, "PPML generation row allowance")?,
+        original_n,
+    ])?;
+    let prepared_generation_supplement_bytes =
+        prepared_generation_bytes.saturating_sub(legacy_generation_bytes);
     // Atomic rebase is a true old-plus-new transaction.  The ordinary
     // `common` payload below already owns the raw owner, current generation,
     // and steady ledgers.  A replacement generation is built in full before
@@ -1176,6 +1220,7 @@ fn estimate_route(
             topology_bytes,
             cluster_topology_bytes,
             prepared_model_metadata_bytes,
+            prepared_generation_supplement_bytes,
             dimensions.metadata.preparation_transient_bytes,
             replacement_drop_reason_bytes,
             replacement_row_map_bytes,
@@ -1619,7 +1664,14 @@ fn estimate_route(
         "PPML separately allocated requested observation outputs",
     )?)?;
     let fe_recovery_workspace_bytes = owned_fe_recovery_workspace_bytes(dimensions)?;
-    let publication_bytes = bytes_f64(dimensions.publication_matrix_cells as u128)?;
+    let publication_bytes = checked_sum(&[
+        bytes_f64(dimensions.publication_matrix_cells as u128)?,
+        checked_mul(
+            dimensions.fe_total_channels as u128,
+            size_of::<&[f64]>() as u128,
+            "PPML publication saved-channel descriptors",
+        )?,
+    ])?;
     let publication_result_bytes = checked_sum(&[
         bytes_f64(checked_mul(
             n,
@@ -1663,17 +1715,36 @@ fn estimate_route(
         checked_mul(k, word, "PPML publication Wald tested slots")?,
         reported_coefficient_slots,
     ])?;
+    // The original-axis generation mask, candidate-axis separation replay
+    // and inference-slot/saved-channel masks belong to sequential validators.
+    // Method-attribution storage is released before hash replay. Candidate
+    // capacity, rather than final N, bounds the replay after separation drops.
+    let publication_separation_replay_bytes = checked_mul(
+        dimensions.candidate_observations as u128,
+        (size_of::<bool>() + size_of::<Option<SeparationDropReason>>()) as u128,
+        "PPML publication separation replay masks",
+    )?;
+    let publication_metadata_mask_bytes = checked_sum(&[
+        reported_coefficient_slots,
+        dimensions.requested_saved_fe_channels as u128,
+    ])?;
     let publication_validator_workspace_bytes = publication_psd_validator_bytes
         .max(publication_wald_validator_bytes)
-        .max(reported_coefficient_slots);
+        .max(dimensions.original_observations as u128)
+        .max(publication_separation_replay_bytes)
+        .max(publication_metadata_mask_bytes)
+        .max(k);
     let diagnostic_bytes = checked_mul(
         config.diagnostic_capacity as u128,
         DIAGNOSTIC_RECORD_BYTES,
         "PPML bounded diagnostic record",
     )?;
 
+    let input_owner_supplement_bytes = dimensions.metadata.input_owner_bytes
+        .saturating_sub(config.embedding_resident_bytes);
     let common = checked_sum(&[
         config.embedding_resident_bytes,
+        input_owner_supplement_bytes,
         canonical_numeric_bytes,
         retained_base_adjustment_bytes,
         retained_raw_preseparation_probability_weight_bytes,
@@ -1682,6 +1753,7 @@ fn estimate_route(
         row_ledger_bytes,
         row_axis_arc_header_bytes,
         prepared_model_metadata_bytes,
+        prepared_generation_supplement_bytes,
         separation_method_report_row_bytes,
         separation_method_report_level_bytes,
         separation_method_report_record_bytes,
@@ -1811,7 +1883,10 @@ fn estimate_route(
     // Two mutually exclusive non-square candidate boundaries must both fit.
     // The installed/pre-install stage owns candidate fit kept+dropped,
     // candidate basis kept+dropped, candidate active positions, and the
-    // outer rollback copy (four K index banks), plus one complete set of
+    // outer rollback copy (four K index banks), plus the caller's copied
+    // active-column identities when a specialized engine changes basis.
+    // That fifth bank survives the transaction through engine refresh. Add
+    // one complete set of
     // fitted coefficient, bread-coordinate, and basis-slot records. Earlier,
     // fit assembly instead overlaps final fitted coefficients/coordinates
     // with generated Option/status vectors, reference/score norms, rollback
@@ -1825,7 +1900,7 @@ fn estimate_route(
     )?)?;
     let strict_installed_metadata_bytes = checked_sum(&[
         checked_mul(
-            checked_mul(k, 4, "PPML strict installed rank-index banks")?,
+            checked_mul(k, 5, "PPML strict installed rank-index banks")?,
             word,
             "PPML strict installed rank-index bytes",
         )?,
@@ -1920,6 +1995,7 @@ fn estimate_route(
         preparation_metadata_transient_bytes: dimensions.metadata.preparation_transient_bytes,
         result_metadata_bytes,
         embedding_resident_bytes: config.embedding_resident_bytes,
+        input_owner_supplement_bytes,
         canonical_numeric_bytes,
         retained_base_adjustment_bytes,
         retained_raw_preseparation_probability_weight_bytes,
@@ -1933,6 +2009,8 @@ fn estimate_route(
         row_ledger_bytes,
         row_axis_arc_header_bytes,
         prepared_model_metadata_bytes,
+        prepared_generation_bytes,
+        prepared_generation_supplement_bytes,
         separation_replacement_generation_bytes,
         separation_rebase_proposal_bytes,
         separation_rebase_direction_bytes,
@@ -3629,6 +3707,55 @@ mod tests {
     }
 
     #[test]
+    fn raw_owner_capacity_supplements_but_never_duplicates_embedding() {
+        let shape = dimensions();
+        let before = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+        for embedding in [0, 113, 10_007, 10_008] {
+            let mut shape = shape;
+            shape.metadata.input_owner_bytes = 10_007;
+            let after = estimate_ppml_memory(shape, PpmlMemoryConfig {
+                embedding_resident_bytes: embedding, ..PpmlMemoryConfig::default()
+            }).unwrap();
+            assert_eq!(after.fast.input_owner_supplement_bytes, 10_007_u128.saturating_sub(embedding));
+            assert_eq!(after.fast.iteration_peak_bytes - before.fast.iteration_peak_bytes,
+                embedding.max(10_007));
+            assert_eq!(after.fast.separation_peak_bytes - before.fast.separation_peak_bytes,
+                embedding.max(10_007));
+        }
+    }
+
+    #[test]
+    fn generation_supplement_is_admitted_for_both_simultaneous_owners() {
+        let mut shape = dimensions();
+        // Force the categorical capacity bound to dominate the old FE heuristic.
+        shape.metadata.generation_fixed_bytes = 123_457;
+        shape.metadata.generation_bytes_per_row = 1_024;
+        let before = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+        shape.metadata.generation_fixed_bytes += 97;
+        let after = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+        for (before, after) in [(before.fast, after.fast), (before.low, after.low)] {
+            assert!(before.prepared_generation_supplement_bytes > 0);
+            assert_eq!(after.prepared_generation_bytes - before.prepared_generation_bytes, 97);
+            assert_eq!(after.iteration_peak_bytes - before.iteration_peak_bytes, 97);
+            assert_eq!(after.separation_replacement_generation_bytes
+                - before.separation_replacement_generation_bytes, 97);
+            assert_eq!(after.separation_rebase_bytes - before.separation_rebase_bytes, 97);
+            assert_eq!(after.separation_peak_bytes - before.separation_peak_bytes, 194);
+        }
+        let config = PpmlMemoryConfig { requested: MemoryMode::Fast,
+            ..PpmlMemoryConfig::default() };
+        let peak = estimate_ppml_memory(shape, config).unwrap().fast.peak_bytes;
+        // This fixture remains below the fixed-headroom crossover.
+        assert!(peak < 4 * MINIMUM_HEADROOM_BYTES);
+        plan_ppml_memory(shape, PpmlMemoryConfig { available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES), ..config }).unwrap();
+        assert_eq!(plan_ppml_memory(shape, PpmlMemoryConfig {
+            available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES - 1), ..config
+        }).unwrap_err().code, ErrorCode::Allocation);
+        shape.metadata.generation_bytes_per_row = u128::MAX;
+        assert_eq!(estimate_ppml_memory(shape, config).unwrap_err().code, ErrorCode::Allocation);
+    }
+
+    #[test]
     fn nested_metadata_is_admitted_at_every_overlapping_lifetime() {
         let plain_dimensions = dimensions();
         let plain = estimate_ppml_memory(plain_dimensions, PpmlMemoryConfig::default()).unwrap();
@@ -3637,6 +3764,7 @@ mod tests {
             prepared_nested_bytes: 70_003,
             preparation_transient_bytes: 90_007,
             result_bytes: 110_017,
+            ..Default::default()
         };
         let charged = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
         for (before, after) in [(plain.fast, charged.fast), (plain.low, charged.low)] {
@@ -3771,8 +3899,10 @@ mod tests {
             * (4 * size_of::<SeparationMethodReport>() + size_of::<u64>()) as u128;
         for (before, after) in [(wide.fast, narrow.fast), (wide.low, narrow.low)] {
             assert_eq!(before.peak_bytes - after.peak_bytes, saving);
-            assert_eq!(after.separation_method_report_record_bytes,
-                (8 * size_of::<SeparationMethodReport>()) as u128);
+            assert_eq!(
+                after.separation_method_report_record_bytes,
+                (8 * size_of::<SeparationMethodReport>()) as u128
+            );
             assert_eq!(after.separation_generation_hash_bytes, 16);
         }
         let mut plan = plan_ppml_memory(positive, config).expect("positive plan");
@@ -4359,7 +4489,7 @@ mod tests {
         let expected_phase_metadata = |dimensions: PpmlMemoryDimensions| {
             let k = dimensions.finite_columns as u128;
             let slots = dimensions.coefficient_slots as u128;
-            let installed = k * 4 * size_of::<usize>() as u128
+            let installed = k * 5 * size_of::<usize>() as u128
                 + slots
                     * (size_of::<PreparedOlsFittedCoefficient>()
                         + size_of::<PreparedOlsBreadCoordinate>()
@@ -4435,6 +4565,8 @@ mod tests {
             + inventory.row_ledger_bytes
             + inventory.row_axis_arc_header_bytes
             + inventory.prepared_model_metadata_bytes
+            + inventory.prepared_generation_supplement_bytes
+            + inventory.input_owner_supplement_bytes
             + inventory.separation_method_report_row_bytes
             + inventory.separation_method_report_level_bytes
             + inventory.separation_method_report_record_bytes
@@ -4579,6 +4711,8 @@ mod tests {
             + inventory.row_ledger_bytes
             + inventory.row_axis_arc_header_bytes
             + inventory.prepared_model_metadata_bytes
+            + inventory.prepared_generation_supplement_bytes
+            + inventory.input_owner_supplement_bytes
             + inventory.separation_method_report_row_bytes
             + inventory.separation_method_report_level_bytes
             + inventory.separation_method_report_record_bytes
@@ -5032,24 +5166,51 @@ mod tests {
     }
 
     #[test]
+    fn publication_reserves_descriptors_for_every_declared_channel() {
+        let mut shape = dimensions();
+        shape.requested_saved_fe_channels = 0;
+        for saved in [0, 1, shape.fe_total_channels] {
+            shape.requested_saved_fe_channels = saved;
+            shape.requested_output_columns = saved;
+            let estimate = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+            for inventory in [estimate.fast, estimate.low] {
+                assert_eq!(
+                    inventory.publication_bytes,
+                    shape.publication_matrix_cells as u128 * size_of::<f64>() as u128
+                        + shape.fe_total_channels as u128 * size_of::<&[f64]>() as u128
+                );
+            }
+        }
+    }
+
+    #[test]
     fn publication_phase_models_independent_psd_and_wald_validation_scratch() {
         let mut validator_dimensions = dimensions();
         validator_dimensions.observations = 1_000;
+        validator_dimensions.original_observations = 1_000;
+        validator_dimensions.candidate_observations = 1_000;
         validator_dimensions.separation_generation_capacity = 1_000;
-        validator_dimensions.finite_columns = 7;
-        validator_dimensions.coefficient_slots = 11;
-        validator_dimensions.reported_coefficient_slots = 11;
+        validator_dimensions.finite_columns = 17;
+        validator_dimensions.coefficient_slots = 21;
+        validator_dimensions.reported_coefficient_slots = 21;
         validator_dimensions.publication_matrix_cells = 0;
         validator_dimensions.requested_output_columns = 0;
         let estimate = estimate_ppml_memory(validator_dimensions, PpmlMemoryConfig::default())
             .expect("publication-validator estimate");
         let rank = validator_dimensions.finite_columns as u128;
-        let expected_psd =
-            (PUBLICATION_PSD_SQUARE_WORKSPACE_COUNT * rank * rank + rank) * size_of::<f64>() as u128;
+        let expected_psd = (PUBLICATION_PSD_SQUARE_WORKSPACE_COUNT * rank * rank + rank)
+            * size_of::<f64>() as u128;
         let expected_wald = (2 * rank * rank + 2 * rank) * size_of::<f64>() as u128
             + rank * size_of::<usize>() as u128
             + validator_dimensions.reported_coefficient_slots as u128;
-        let expected = expected_psd.max(expected_wald);
+        let expected = expected_psd
+            .max(expected_wald)
+            .max(validator_dimensions.original_observations as u128)
+            .max(2 * validator_dimensions.candidate_observations as u128)
+            .max(
+                (validator_dimensions.reported_coefficient_slots
+                    + validator_dimensions.requested_saved_fe_channels) as u128,
+            );
         assert_eq!(
             estimate.fast.publication_validator_workspace_bytes,
             expected
@@ -5116,9 +5277,36 @@ mod tests {
             .expect("slot-state estimate");
         assert_eq!(
             slot_only.fast.publication_validator_workspace_bytes,
-            slot_only_dimensions.reported_coefficient_slots as u128,
-            "a rank-zero result still reserves one validation bit per reporting slot",
+            (slot_only_dimensions.reported_coefficient_slots
+                + slot_only_dimensions.requested_saved_fe_channels) as u128,
+            "slot and saved-channel masks coexist even at rank zero",
         );
+    }
+
+    #[test]
+    fn publication_validation_uses_original_and_candidate_axes_after_drops() {
+        let mut shape = dimensions();
+        shape.observations = 8;
+        shape.fe_max_level_members = 8;
+        shape.separation_generation_capacity = 8;
+        shape.original_observations = 1_000_000;
+        shape.candidate_observations = 100_000;
+        let original = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+        assert_eq!(
+            original.fast.publication_validator_workspace_bytes,
+            1_000_000
+        );
+        assert_eq!(
+            original.low.publication_validator_workspace_bytes,
+            1_000_000
+        );
+        shape.candidate_observations = 750_000;
+        let replay = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+        assert_eq!(replay.fast.publication_validator_workspace_bytes, 1_500_000);
+        assert_eq!(replay.low.publication_validator_workspace_bytes, 1_500_000);
+        for (before, after) in [(original.fast, replay.fast), (original.low, replay.low)] {
+            assert!(after.publication_peak_bytes >= before.publication_peak_bytes + 500_000);
+        }
     }
 
     #[test]

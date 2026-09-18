@@ -155,6 +155,23 @@ pub trait SpiApi {
         Ok(())
     }
     fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>>;
+    /// The production SPI checks the required buffer size before reserving.
+    /// Test SPI implementations may use this capacity-checked default.
+    fn read_string_with_limit(
+        &mut self,
+        variable: u32,
+        observation: usize,
+        limit_bytes: usize,
+    ) -> Result<Vec<u8>> {
+        let value = self.read_string(variable, observation)?;
+        if value.capacity() > limit_bytes {
+            return Err(FeregError::new(
+                ErrorCode::Allocation,
+                "Stata string buffer exceeds input memory budget",
+            ));
+        }
+        Ok(value)
+    }
     fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize)>;
     fn matrix_element(&mut self, name: &str, row: usize, column: usize) -> Result<f64>;
     fn store_numeric(&mut self, variable: u32, observation: usize, value: f64) -> Result<()>;

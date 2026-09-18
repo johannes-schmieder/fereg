@@ -42,6 +42,10 @@ pub struct EncodedInteraction {
 }
 
 impl EncodedInteraction {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        crate::memory::vec_capacity_bytes(&self.codes)
+    }
+
     #[must_use]
     pub fn codes(&self) -> &[u32] {
         &self.codes

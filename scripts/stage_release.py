@@ -34,6 +34,8 @@ PRODUCTION_STATA_FILES = (
     "_fereg_ols.ado",
     "_fereg_estimate_ols.ado",
     "_fereg_load.ado",
+    "_fereg_memory_baseline.ado",
+    "_fereg_memory_validate.ado",
     "feppml.ado",
     "_fereg_ppml.ado",
     "_fereg_estimate_ppml.ado",
@@ -303,10 +305,10 @@ def write_manifest(
         "created_utc": FIXED_UTC,
         "source_sha": source_sha,
         "source_dirty": source_dirty,
-        "action_protocol": "1.5",
-        "ols_result_wire": "1.4",
-        "ppml_request_wire": "1.5",
-        "ppml_result_wire": "1.2",
+        "action_protocol": "1.6",
+        "ols_result_wire": "1.5",
+        "ppml_request_wire": "1.6",
+        "ppml_result_wire": "1.3",
         "model_wire": "2.1",
         "plugins": [
             {

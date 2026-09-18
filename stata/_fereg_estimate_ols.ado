@@ -4,6 +4,9 @@
 // Do not add a sorting operation without restoring order on every exit.
 program define _fereg_estimate_ols, eclass
     version 18.0
+    quietly _fereg_memory_baseline
+    local stata_used_entry = strtrim(string(r(used), "%21.0f"))
+    local stata_alloc_entry = strtrim(string(r(allocated), "%21.0f"))
     local hidden_cmdline `"_fereg_estimate_ols `0'"'
 
     syntax varlist(fv ts numeric min=1) [if] [in], ///
@@ -437,6 +440,8 @@ program define _fereg_estimate_ols, eclass
     tempname b_shadow v_shadow status_shadow marker_b_shadow marker_v_shadow
     tempname fit_shadow dof_shadow
     tempname solver_shadow fe_shadow cluster_shadow subset_shadow
+    tempname memory_shadow
+    matrix `memory_shadow' = J(11, 2, .)
     tempname certificate_shadow runtime_shadow receipt_shadow
     matrix `b_shadow' = J(1, `matrix_dimension', .)
     matrix `v_shadow' = J(`matrix_dimension', `matrix_dimension', .)
@@ -478,7 +483,10 @@ program define _fereg_estimate_ols, eclass
         if `load_rc' != 0 & `load_rc' != 110 exit `load_rc'
     }
     local deterministic_wire = (`"`deterministic'"' != "")
-    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=5;stata=`c(stata_version)';confirm=fereg-estimation;plugin=0.5.0;result_major=1;result_minor=4;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_receipt_matrix=`receipt_shadow';"'
+    quietly _fereg_memory_baseline
+    local stata_used_before = strtrim(string(r(used), "%21.0f"))
+    local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
+    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=fereg-estimation;plugin=0.5.0;result_major=1;result_minor=5;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
     local request_bundle
     local request_count 0
     while `"`request_arguments'"' != "" {
@@ -507,6 +515,7 @@ program define _fereg_estimate_ols, eclass
     }
     if `"`inject'"' == "postplugin" exit 3498
 
+    _fereg_memory_validate `memory_shadow'
     _fereg_eols_validate `b_shadow' `v_shadow' ///
         `status_shadow' `marker_b_shadow' `marker_v_shadow' ///
         `fit_shadow' `dof_shadow' `solver_shadow' ///
@@ -661,6 +670,12 @@ program define _fereg_estimate_ols, eclass
     ereturn matrix fereg_subset = `subset_shadow', copy
     ereturn matrix fereg_certificate = `certificate_shadow', copy
     ereturn matrix fereg_runtime = `runtime_shadow', copy
+    matrix rownames `memory_shadow' = schema_version estimate_status ///
+        stata_used_before stata_alloc_before native_live_before native_peak_est ///
+        stata_growth_est combined_peak_est additional_reserve safety_headroom model_gap_bits
+    matrix colnames `memory_shadow' = present value
+    ereturn matrix fereg_memory = `memory_shadow', copy
+    ereturn local fereg_memory_method "phase-capacity-partial-v1"
     ereturn matrix fereg_receipt = `receipt_shadow', copy
 
     local kept_indepvars
@@ -717,9 +732,9 @@ program define _fereg_estimate_ols, eclass
         ereturn local wexp "= `pweight'"
     }
     if `"`residual'"' != "" ereturn local resid "`residual'"
-    ereturn local fereg_action_protocol "1.5"
+    ereturn local fereg_action_protocol "1.6"
     ereturn local fereg_model_wire "2.1"
-    ereturn local fereg_result_wire "1.4"
+    ereturn local fereg_result_wire "1.5"
     ereturn local fereg_plugin "0.5.0"
     if `"`inject'"' == "postdiagnostics" exit 3498
     if `"`inject'"' == "precommit" exit 3498
@@ -783,7 +798,7 @@ program define _fereg_eols_validate, rclass
     }
     local coefficients = `receipt'[1,5]
     if `receipt'[1,1] != 5354601 | `receipt'[1,2] != 1 | ///
-       `receipt'[1,3] != 4 | `receipt'[1,4] != `vcecode' | ///
+       `receipt'[1,3] != 5 | `receipt'[1,4] != `vcecode' | ///
        `coefficients' != int(`coefficients') | `coefficients' < 0 | ///
        `coefficients' > `capacity' | ///
        `receipt'[1,7] != _N | `receipt'[1,10] != `clusters' | ///

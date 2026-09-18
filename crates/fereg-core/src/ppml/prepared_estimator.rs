@@ -248,6 +248,7 @@ pub fn fit_prepared_ppml_interruptible(
         ),
         requested_saved_channel_count,
     )?;
+    preflight_dimensions.metadata.input_owner_bytes = raw_input_owner_bytes(&request, &loaded);
     // This scalar refinement reads raw outcome values only after the row
     // classifier has resolved domain/error precedence. Excluded nonpositive
     // rows can only retain the wider envelope. No sample state is allocated.
@@ -320,7 +321,7 @@ pub fn fit_prepared_ppml_interruptible(
         loaded.ols,
         numeric,
         loaded.adjustment,
-    )?;
+    )?.with_generation_memory_bound(preliminary_plan.selected_inventory().prepared_generation_bytes);
     let preparation_elapsed = preparation_clock.elapsed();
     let preparation_peak =
         end_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
@@ -522,8 +523,10 @@ pub fn fit_prepared_ppml_interruptible(
     let convergence = convergence_report(&fit)?;
     let clusters = cluster_metadata(prepared)?;
     let mut memory = fit.diagnostics().memory.clone();
-    memory.record_phase(PpmlPhase::Preparation, preparation_elapsed);
-    if let Some(bytes) = preparation_peak {
+    memory.record_phase(PpmlPhase::Preparation,
+        preparation_elapsed + separation_outcome.initial_preparation_elapsed);
+    if let Some(bytes) = preparation_peak.into_iter()
+        .chain(separation_outcome.initial_preparation_peak).max() {
         memory.observe_phase_peak(PpmlPhase::Preparation, bytes);
     }
     record_separation_timings(&mut memory, &separation_outcome.separation)?;
@@ -545,7 +548,7 @@ pub fn fit_prepared_ppml_interruptible(
     if let Some(bytes) = recovery_peak {
         memory.observe_phase_peak(PpmlPhase::FeRecovery, bytes);
     }
-    let result = CertifiedPpmlResult::new(CertifiedPpmlResultInput {
+    let result_input = CertifiedPpmlResultInput {
         coefficients,
         sample,
         weights: prepared.weight_report(),
@@ -562,8 +565,19 @@ pub fn fit_prepared_ppml_interruptible(
         memory,
         solver: fit.diagnostics().solver,
         certificate_tolerance: request.ppml.tolerance,
-    })?
-    .retain_requested_outputs();
+    };
+    // Every certification input now owns its data. Release the final Hessian
+    // products and prepared/raw generation before independent PSD, Wald and
+    // separation replay allocate their scratch; no solver state is needed.
+    drop(cluster_codes);
+    drop(fit);
+    drop(separation_outcome.prepared);
+    drop(separation_outcome.original_axis_reasons);
+    drop(separation_outcome.candidate_original_rows);
+    drop(wald_columns);
+    drop(omission_statuses);
+    drop(requested_saved_channels);
+    let result = CertifiedPpmlResult::new(result_input)?.retain_requested_outputs();
     interrupt(PpmlInterruptPoint::Publication)?;
     result.with_publication_observations(
         publication_clock,
@@ -1175,6 +1189,25 @@ fn conservative_preflight_dimensions_from_classification(
     })
 }
 
+/// Count capacities of the owner transferred to the separation coordinator.
+/// This descriptor-only walk allocates nothing and reads no observation values.
+fn raw_input_owner_bytes(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -> u128 {
+    use crate::memory::vec_capacity_bytes as bytes;
+    let column = |value: &LoadedNumericColumn| bytes(&value.values) + bytes(&value.missing);
+    request.ols.owned_buffer_bytes()
+        + bytes(&request.clusters)
+        + request.clusters.iter().map(|cluster| {
+            cluster.label.capacity() as u128 + bytes(&cluster.sources)
+        }).sum::<u128>()
+        + bytes(&loaded.ols.candidate)
+        + column(&loaded.ols.outcome)
+        + bytes(&loaded.ols.numeric_sources)
+        + loaded.ols.numeric_sources.iter().map(|(_, value)| column(value)).sum::<u128>()
+        + [&loaded.ols.analytic_weight, &loaded.ols.frequency_weight,
+            &loaded.ols.probability_weight, &loaded.adjustment]
+            .into_iter().flatten().map(column).sum::<u128>()
+}
+
 fn final_memory_dimensions(
     prepared: &PreparedPpmlModelGeneration,
     clusters: &[&[u32]],
@@ -1674,6 +1707,50 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static FIT_PHASE_BEGINS: AtomicUsize = AtomicUsize::new(0);
+
+    #[test]
+    fn generation_parent_bound_covers_factors_clusters_slopes_and_rebases() {
+        use crate::ppml_separation::PreparedSeparationRebuilder;
+        let mut fixtures = Vec::new();
+        for effects in [0, 1, 2, 4] {
+            for clustered in [false, true] {
+                for probability in [false, true] {
+                    fixtures.push(fixture(effects, false, clustered, probability, true, false));
+                }
+            }
+        }
+        fixtures.push(factor_rebase_fixture());
+        let (mut slope, data) = fixture(2, false, true, true, true, false);
+        slope.ols.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
+        fixtures.push((slope, data));
+        let (mut interaction, data) = fixture(2, false, true, false, false, false);
+        interaction.ols.absorbed_terms[0].categorical_sources.push(SourceId::new(3).unwrap());
+        interaction.clusters[0].sources.push(SourceId::new(2).unwrap());
+        fixtures.push((interaction, data));
+        for (request, loaded) in fixtures {
+            let input = borrowed_numeric_input(&request, &loaded).unwrap();
+            let classification = classify_ppml_numeric_data(&input.as_input()).unwrap();
+            let dimensions = conservative_preflight_dimensions_from_classification(
+                &request, classification, input.numeric_sources.len(),
+                input.offset.is_some() || input.exposure.is_some(),
+                loaded.ols.probability_weight.is_some(), 0,
+            ).unwrap();
+            let plan = plan_ppml_memory(dimensions, request.memory).unwrap();
+            let bound = plan.selected_inventory().prepared_generation_bytes;
+            let numeric = select_ppml_numeric_data(&input.as_input(), classification).unwrap();
+            drop(input);
+            let mut owner = PreparedPpmlModelOwner::from_selection(
+                request.ols, request.clusters, loaded.ols, numeric, loaded.adjustment,
+            ).unwrap().with_generation_memory_bound(bound);
+            let rows = owner.candidate_original_rows();
+            let old = owner.rebuild_generation(&rows, 0).unwrap();
+            let new = owner.rebuild_generation(&rows[..rows.len() - 2], 1).unwrap();
+            assert!(old.owned_buffer_bytes() <= bound);
+            assert!(new.owned_buffer_bytes() <= bound);
+            // Old/new coexist through commit; neither can use the other's bound.
+            assert!(old.owned_buffer_bytes() + new.owned_buffer_bytes() <= 2 * bound);
+        }
+    }
 
     #[test]
     fn metadata_admission_counts_nested_recipes_labels_and_partial_saves() {

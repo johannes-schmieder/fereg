@@ -62,7 +62,7 @@ pub use categorical_request::{
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
 pub(crate) use cmg::{
-    CmgAbsorber, CmgAutoBuildOutcome, CmgConfig, CmgControlSeed, CmgTopologyProfile,
+    explicit_cmg_components, CmgAbsorber, CmgAutoBuildOutcome, CmgConfig, CmgControlSeed, CmgTopologyProfile,
     CmgUnpolishedProjectionReport, PreparedCmgTopology,
     MAX_NUISANCE_COLUMNS as CMG_MAX_NUISANCE_COLUMNS,
 };

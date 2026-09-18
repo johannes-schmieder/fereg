@@ -87,6 +87,15 @@ pub struct PreparedOlsClusterDesign {
 }
 
 impl PreparedOlsClusterDesign {
+    /// Owned cluster buffers only; simple dimensions borrow OLS source codes.
+    #[must_use]
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        self.metadata_capacity_bytes() + self.dimensions.iter().map(|dimension| match &dimension.codes {
+            PreparedOlsClusterCodes::CategoricalSource { .. } => 0,
+            PreparedOlsClusterCodes::Interaction(codes) => crate::memory::vec_capacity_bytes(codes),
+        }).sum::<u128>()
+    }
+
     pub(crate) fn metadata_capacity_bytes(&self) -> u128 {
         self.dimensions.capacity() as u128
             * std::mem::size_of::<PreparedOlsClusterDimension>() as u128

@@ -2,10 +2,18 @@
 
 The runtime dependency is pinned to CMG
 `1d39c113f0c397f29653d92672090e5a42f80921`. Cargo enables `parallel` and
-`experimental-components`. All production configuration sites select ordinary
-CMG. The crate-private component flag requires an explicit CMG request and uses
+`experimental-components`. Explicit `solver(cmg)` uses component-aware CMG:
 coarse-isolate pruning, preserved unpruned stopping, and component terminal
-factors together. It is not a Stata option or an automatic routing rule.
+factors together. Automatic routing still selects the ordinary engine. No new
+Stata option or ordinary-CMG retry is introduced. The private
+`FEREG_CMG_ORDINARY` comparison override restores ordinary CMG for development
+measurements; it is not part of the supported command surface.
+
+The bounded development comparison is recorded in
+[the component/memory report](../benchmarks/reports/development/pragmatic-memory-components-2026-09-18/README.md).
+It covers connected, tiny-component, mixed-component, tiny weighted bridge,
+low-memory clustered OLS and saved-output PPML cases. It does not establish a
+universal speedup or formal release qualification.
 
 ## Runtime and lifetimes
 

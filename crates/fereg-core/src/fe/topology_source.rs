@@ -22,6 +22,10 @@ pub struct CategoricalTopologySource {
 }
 
 impl CategoricalTopologySource {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        self.partition.owned_buffer_bytes() + self.level_index.owned_buffer_bytes()
+    }
+
     /// Construct a topology source that borrows one authoritative code column.
     pub fn single(
         categorical_source_index: usize,

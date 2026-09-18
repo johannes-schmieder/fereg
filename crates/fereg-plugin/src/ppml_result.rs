@@ -108,6 +108,95 @@ pub(crate) struct PpmlShadowResult<'a> {
     pub(crate) cluster_metadata: &'a [PpmlClusterDimensionResult],
 }
 
+impl PpmlShadowResult<'_> {
+    /// Observation products and metadata borrow the certified result. Only
+    /// matrix banks and the saved-channel descriptor bank own heap here.
+    pub(crate) fn capacity_bytes(&self) -> u128 {
+        [
+            &self.b,
+            &self.covariance,
+            &self.coefficient_status,
+            &self.fit,
+            &self.dof,
+            &self.fixed_effects,
+            &self.clusters,
+            &self.subsets,
+            &self.separation,
+            &self.inference,
+            &self.drop_counts,
+            &self.separation_sequence,
+            &self.certificates,
+            &self.solver,
+            &self.runtime,
+        ]
+        .iter()
+        .map(|values| values.capacity() as u128 * std::mem::size_of::<f64>() as u128)
+        .sum::<u128>()
+            + self.saved_channels.capacity() as u128 * std::mem::size_of::<&[f64]>() as u128
+    }
+}
+
+/// The embedding publication frame starts after core certification returns.
+/// The original embedding reserve conservatively retains its worker/input
+/// allowance; the surviving action and certified result are explicit parents.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PpmlPublicationMemory {
+    pub(crate) parent_bytes: u128,
+    pub(crate) shadow_bytes: u128,
+}
+
+impl PpmlPublicationMemory {
+    pub(crate) fn estimate(
+        embedding_bytes: u128,
+        action_bytes: u128,
+        result_bytes: u128,
+        matrix_cells: usize,
+        declared_channels: usize,
+    ) -> Result<Self> {
+        let parent_bytes = embedding_bytes
+            .max(action_bytes)
+            .checked_add(result_bytes)
+            .ok_or_else(|| allocation("PPML publication parent size overflows"))?;
+        let shadow_bytes = (matrix_cells as u128)
+            .checked_mul(std::mem::size_of::<f64>() as u128)
+            .and_then(|bytes| {
+                bytes.checked_add(declared_channels as u128 * std::mem::size_of::<&[f64]>() as u128)
+            })
+            .ok_or_else(|| allocation("PPML publication shadow size overflows"))?;
+        let model = Self {
+            parent_bytes,
+            shadow_bytes,
+        };
+        model.peak_bytes()?;
+        Ok(model)
+    }
+
+    pub(crate) fn peak_bytes(self) -> Result<u128> {
+        self.parent_bytes
+            .checked_add(self.shadow_bytes)
+            .ok_or_else(|| allocation("PPML publication frame size overflows"))
+    }
+
+    pub(crate) fn admit(self, usable_bytes: Option<u128>) -> Result<()> {
+        let peak = self.peak_bytes()?;
+        if usable_bytes.is_some_and(|usable| peak > usable) {
+            return Err(allocation(
+                "PPML retained result and publication exceed usable memory",
+            ));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn validate_capacity(self, shadow: &PpmlShadowResult<'_>) -> Result<()> {
+        if shadow.capacity_bytes() > self.shadow_bytes {
+            return Err(allocation(
+                "PPML publication capacities exceed preflight admission",
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// Publication-only choices that are intentionally absent from the certified
 /// scientific result. The result itself owns every model, row, inference,
 /// topology, and telemetry identity used below.
@@ -2176,7 +2265,6 @@ fn validate_stata_cells_where(
     Ok(())
 }
 
-
 fn relative_error(left: f64, right: f64) -> f64 {
     if !left.is_finite() || !right.is_finite() {
         f64::INFINITY
@@ -2326,6 +2414,30 @@ fn allocation(message: impl Into<String>) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn publication_frame_checks_overflow_and_simultaneous_parents() {
+        let model = PpmlPublicationMemory::estimate(100, 60, 50, 10, 3).unwrap();
+        assert_eq!(model.parent_bytes, 150);
+        assert_eq!(
+            model.shadow_bytes,
+            80 + 3 * std::mem::size_of::<&[f64]>() as u128
+        );
+        let peak = model.peak_bytes().unwrap();
+        model.admit(Some(peak)).unwrap();
+        assert_eq!(
+            model.admit(Some(peak - 1)).unwrap_err().code,
+            ErrorCode::Allocation
+        );
+        assert_eq!(
+            PpmlPublicationMemory::estimate(10, 200, 50, 0, 0)
+                .unwrap()
+                .parent_bytes,
+            250
+        );
+        assert!(PpmlPublicationMemory::estimate(u128::MAX, 0, 1, 0, 0).is_err());
+        assert!(PpmlPublicationMemory::estimate(u128::MAX, 0, 0, 1, 0).is_err());
+    }
 
     #[test]
     fn allocation_free_optional_cell_validation_matches_index_oracle() {

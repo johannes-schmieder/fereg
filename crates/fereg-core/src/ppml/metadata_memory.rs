@@ -20,9 +20,17 @@ use crate::topology_dof::{CategoricalTopologyDofEffectSpec, CategoricalTopologyD
 /// Rebased generations retain the original reporting-axis reservations.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct PpmlMetadataMemory {
+    /// Capacity sum of the transferred raw request and input owner. The
+    /// embedding observation may already include it; only a shortfall is added.
+    pub input_owner_bytes: u128,
     pub prepared_nested_bytes: u128,
     pub preparation_transient_bytes: u128,
     pub result_bytes: u128,
+    /// Retained categorical/topology descriptors outside the model metadata.
+    pub generation_fixed_bytes: u128,
+    /// Codes, level identities and topology row maps per retained observation.
+    /// Membership offsets are charged separately at the admitted FE level axis.
+    pub generation_bytes_per_row: u128,
 }
 
 impl PpmlMetadataMemory {
@@ -126,12 +134,85 @@ impl PpmlMetadataMemory {
             bytes::<PreparedOlsColumn>(slots)?,
             availability_request_metadata_bytes(request)?,
         ])?;
+        let (generation_fixed_bytes, generation_bytes_per_row) =
+            generation_storage(request, clusters)?;
         Ok(Self {
+            input_owner_bytes: 0,
+            generation_fixed_bytes,
+            generation_bytes_per_row,
             prepared_nested_bytes: prepared,
             preparation_transient_bytes: transient,
             result_bytes: result,
         })
     }
+}
+
+/// Complete retained categorical storage, including finite-only and cluster-only
+/// sources. All source-set counting is metadata-sized and allocation-free.
+fn generation_storage(
+    request: &OlsRequestV1,
+    clusters: &[OlsClusterTermV1],
+) -> Result<(u128, u128)> {
+    use crate::fe::{CategoricalTopologySource, CompactedCategoricalSource};
+    use crate::metadata::ComponentKind;
+    use crate::prepared_categorical_data::PreparedCategoricalModelSource;
+    let mut categories = 0;
+    let mut compacted = 0;
+    let mut ordinary = 0;
+    let mut row_bytes = size_of::<usize>() as u128; // topology retained-row map
+    for source in &request.model.sources {
+        let absorbed = request.absorbed_terms.iter().any(|effect| {
+            effect.categorical_sources.contains(&source.id)
+        });
+        let modeled = request.model.terms.iter().any(|term| {
+            term.components.iter().any(|component| {
+                component.source == source.id && component.kind == ComponentKind::Categorical
+            })
+        }) || clusters.iter().any(|cluster| cluster.sources.contains(&source.id));
+        if absorbed || modeled { categories += 1; }
+        if absorbed {
+            compacted += 1;
+            // Compact codes and original-level identities; each has <= N entries.
+            add(&mut row_bytes, 2 * size_of::<u32>() as u128)?;
+        }
+        if modeled {
+            ordinary += 1;
+            // A topology-backed source owns only its candidate f64 level table.
+            // An ordinary source owns an additional compact u32 code vector.
+            add(&mut row_bytes, size_of::<f64>() as u128
+                + if absorbed { 0 } else { size_of::<u32>() as u128 })?;
+        }
+    }
+    let effects = request.absorbed_terms.len();
+    // Registry growth uses try_reserve(1): geometric capacity < 2*len, with
+    // Rust's four-element minimum. No registry allocation for zero effects.
+    let registry_capacity = if effects == 0 { 0 } else {
+        effects.checked_mul(2).ok_or_else(overflow)?.max(4)
+    };
+    let mut fixed = sum(&[
+        bytes::<CompactedCategoricalSource>(compacted)?,
+        bytes::<PreparedCategoricalModelSource>(ordinary)?,
+        bytes::<Option<usize>>(categories)?,
+        bytes::<Vec<usize>>(effects)?,
+        bytes::<usize>(effects)?, // effect -> topology
+        bytes::<CategoricalTopologySource>(registry_capacity)?,
+        bytes::<usize>(effects)?, // terminal membership offsets
+    ])?;
+    for effect in &request.absorbed_terms {
+        add(&mut fixed, bytes::<usize>(effect.categorical_sources.len())?)?;
+        add(&mut row_bytes, size_of::<usize>() as u128)?; // memberships
+        if effect.categorical_sources.len() > 1 {
+            // Canonical partition key and one interaction code per observation.
+            add(&mut fixed, bytes::<usize>(effect.categorical_sources.len())?)?;
+            add(&mut row_bytes, size_of::<u32>() as u128)?;
+        }
+    }
+    for cluster in clusters {
+        if cluster.sources.len() > 1 {
+            add(&mut row_bytes, size_of::<u32>() as u128)?;
+        }
+    }
+    Ok((fixed, row_bytes))
 }
 
 /// `plan_categorical_absorbed_request` keeps a fallible model copy, synthetic

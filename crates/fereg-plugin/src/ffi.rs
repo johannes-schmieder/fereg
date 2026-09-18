@@ -19,6 +19,11 @@ static ALLOCATION_CURRENT_BYTES: AtomicU64 = AtomicU64::new(0);
 static ALLOCATION_PEAK_BYTES: AtomicU64 = AtomicU64::new(0);
 static ALLOCATION_EVENTS: AtomicU64 = AtomicU64::new(0);
 static PREVIOUS_ACTION_BASELINE_BYTES: AtomicU64 = AtomicU64::new(u64::MAX);
+// Stitch the existing allocator windows at their reset boundaries. This adds
+// no atomic operation to the allocation/deallocation hot path.
+static ABI_BASELINE_BYTES: AtomicU64 = AtomicU64::new(u64::MAX);
+static ABI_PREFIX_PEAK_BYTES: AtomicU64 = AtomicU64::new(0);
+static ACTION_OBSERVATION_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 static PPML_PHASE_ACTION_BASELINE_BYTES: AtomicU64 = AtomicU64::new(0);
 static PPML_PHASE_ACTIVE_MASK: AtomicU16 = AtomicU16::new(0);
 const PPML_PHASE_MASK: u16 = (1_u16 << fereg_core::ppml::PPML_PHASE_COUNT) - 1;
@@ -233,6 +238,10 @@ pub(crate) struct AllocationUsage {
 fn begin_allocation_observation_inner(
     reset_ppml_phase_telemetry: bool,
 ) -> (AllocationUsage, Option<u64>) {
+    if ABI_BASELINE_BYTES.load(Ordering::Relaxed) != u64::MAX {
+        ABI_PREFIX_PEAK_BYTES.fetch_max(ALLOCATION_PEAK_BYTES.load(Ordering::Relaxed), Ordering::Relaxed);
+    }
+    ACTION_OBSERVATION_SEQUENCE.fetch_add(1, Ordering::Relaxed);
     let current = ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed);
     ALLOCATION_PEAK_BYTES.store(current, Ordering::Relaxed);
     PPML_PHASE_ACTIVE_MASK.store(
@@ -975,6 +984,15 @@ impl SpiApi for SpiSession {
     }
 
     fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>, FeregError> {
+        self.read_string_with_limit(variable, observation, usize::MAX)
+    }
+
+    fn read_string_with_limit(
+        &mut self,
+        variable: u32,
+        observation: usize,
+        limit_bytes: usize,
+    ) -> Result<Vec<u8>, FeregError> {
         let variable = Self::position(variable, "variable position")?;
         let observation = Self::observation(observation)?;
         // SAFETY: indices are checked and the session is thread-confined.
@@ -991,7 +1009,13 @@ impl SpiApi for SpiSession {
         let length_usize = usize::try_from(length).map_err(|_| {
             FeregError::new(ErrorCode::Allocation, "string buffer length exceeds usize")
         })?;
-        let mut buffer = Vec::<c_char>::new();
+        if length_usize > limit_bytes {
+            return Err(FeregError::new(
+                ErrorCode::Allocation,
+                "Stata string buffer exceeds input memory budget",
+            ));
+        }
+        let mut buffer = Vec::<u8>::new();
         buffer.try_reserve_exact(length_usize).map_err(|_| {
             FeregError::new(
                 ErrorCode::Allocation,
@@ -1002,20 +1026,14 @@ impl SpiApi for SpiSession {
         // SAFETY: the buffer is writable for `length` bytes; indices are checked
         // and the session remains confined to Stata's calling thread.
         Self::spi_rc(
-            unsafe { fereg_spi_read_string(variable, observation, buffer.as_mut_ptr(), length) },
+            unsafe { fereg_spi_read_string(variable, observation, buffer.as_mut_ptr().cast(), length) },
             "string read",
         )?;
-        // SAFETY: the bridge guarantees NUL termination within the supplied buffer.
-        let bytes = unsafe { CStr::from_ptr(buffer.as_ptr()) }.to_bytes();
-        let mut output = Vec::new();
-        output.try_reserve_exact(bytes.len()).map_err(|_| {
-            FeregError::new(
-                ErrorCode::Allocation,
-                "unable to reserve copied Stata string",
-            )
+        let end = buffer.iter().position(|byte| *byte == 0).ok_or_else(|| {
+            FeregError::new(ErrorCode::Internal, "Stata string buffer lacks a terminator")
         })?;
-        output.extend_from_slice(bytes);
-        Ok(output)
+        buffer.truncate(end);
+        Ok(buffer)
     }
 
     fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize), FeregError> {
@@ -1136,6 +1154,27 @@ fn stata_output_chunks(message: &str) -> impl Iterator<Item = &str> {
     message.split_inclusive('\n')
 }
 
+/// Baseline before argv decoding, distinct from the legacy estimator window.
+pub(crate) fn abi_memory_baseline() -> Option<u64> {
+    let bytes = ABI_BASELINE_BYTES.load(Ordering::Relaxed);
+    (bytes != u64::MAX).then_some(bytes)
+}
+
+fn begin_abi_memory_observation() {
+    let bytes = ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed);
+    ABI_BASELINE_BYTES.store(bytes, Ordering::Relaxed);
+    ABI_PREFIX_PEAK_BYTES.store(bytes, Ordering::Relaxed);
+    ALLOCATION_PEAK_BYTES.store(bytes, Ordering::Relaxed);
+}
+
+fn finish_abi_memory_observation() -> (u64, u64, u64) {
+    let start = ABI_BASELINE_BYTES.swap(u64::MAX, Ordering::Relaxed);
+    let current = ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed);
+    let peak = ABI_PREFIX_PEAK_BYTES.load(Ordering::Relaxed)
+        .max(ALLOCATION_PEAK_BYTES.load(Ordering::Relaxed));
+    (start, current, peak)
+}
+
 /// Dispatch one Stata plugin action across the C ABI.
 ///
 /// # Safety
@@ -1146,9 +1185,13 @@ fn stata_output_chunks(message: &str) -> impl Iterator<Item = &str> {
 /// the C SPI bridge with `pginit` before actions that emit output.
 #[no_mangle]
 pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char) -> c_int {
+    begin_abi_memory_observation();
+    let initial_sequence = ACTION_OBSERVATION_SEQUENCE.load(Ordering::Relaxed);
+    let mut audited_estimator = None;
     let outcome = catch_unwind(AssertUnwindSafe(|| {
         // SAFETY: the exported ABI validates argc/argv before dereferencing.
         let args = unsafe { read_arguments(argc, argv) }?;
+        audited_estimator = action_memory_audit_estimator(&args);
         let sink = SpiSink;
         if args
             .first()
@@ -1173,7 +1216,23 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
         }
     }));
 
-    match outcome {
+    let terminal = audited_estimator
+        .filter(|_| ACTION_OBSERVATION_SEQUENCE.load(Ordering::Relaxed) != initial_sequence)
+        .map(|estimator| {
+            let usage = allocation_usage();
+            crate::action_memory::TerminalObservation {
+                estimator,
+                return_code: match &outcome {
+                    Ok(Ok(())) => 0,
+                    Ok(Err(error)) => error.return_code(),
+                    Err(_) => ErrorCode::Panic.stata_return_code(),
+                },
+                start_bytes: PREVIOUS_ACTION_BASELINE_BYTES.load(Ordering::Relaxed),
+                current_bytes: usage.current_bytes,
+                peak_bytes: usage.peak_bytes,
+            }
+        });
+    let return_code = match outcome {
         Ok(Ok(())) => 0,
         Ok(Err(error)) => {
             report_error(&error);
@@ -1188,6 +1247,33 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
             report_error(&error);
             error.return_code()
         }
+    };
+    let whole_action = finish_abi_memory_observation();
+    if let Some(terminal) = terminal {
+        // Diagnostic I/O is outside the Stata transaction and never changes
+        // its result. A broken stderr must not turn COMPLETE into failure;
+        // even an unexpected writer panic remains inside the ABI boundary.
+        let _ = catch_unwind(AssertUnwindSafe(|| {
+            let _ = terminal.write(std::io::stderr().lock());
+            let (start_bytes, current_bytes, peak_bytes) = whole_action;
+            let _ = crate::action_memory::TerminalObservation {
+                start_bytes, current_bytes, peak_bytes, ..terminal
+            }.write_whole_action(std::io::stderr().lock());
+        }));
+    }
+    return_code
+}
+
+/// Labels observation only; the frozen dispatch branches remain the sole
+/// authority for selecting and entering an estimation action.
+fn action_memory_audit_estimator(args: &[String]) -> Option<&'static str> {
+    if std::env::var_os("FEREG_ACTION_MEMORY_AUDIT").is_none() {
+        return None;
+    }
+    match args.first().map(String::as_str) {
+        Some(action) if action.eq_ignore_ascii_case(ACTION_ESTIMATE_OLS) => Some("ols"),
+        Some(action) if action.eq_ignore_ascii_case(ACTION_ESTIMATE_PPML) => Some("ppml"),
+        _ => None,
     }
 }
 
@@ -1207,7 +1293,38 @@ unsafe fn read_arguments(
             "plugin received a null argv pointer",
         ));
     }
-    let mut args = Vec::with_capacity(argc as usize);
+    let mut required = (argc as u128)
+        .checked_mul(std::mem::size_of::<String>() as u128)
+        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "argument descriptor size overflows"))?;
+    // Validate and count borrowed C strings before constructing the owned argv.
+    // This is a metadata pass, independent of Stata observation loading.
+    for index in 0..argc as usize {
+        // SAFETY: the ABI promises argc pointers; each pointee is checked below.
+        let pointer = unsafe { *argv.add(index) };
+        if pointer.is_null() {
+            return Err(FeregError::new(ErrorCode::Syntax, format!("plugin argument {index} is null")));
+        }
+        // SAFETY: the caller supplies NUL-terminated strings for this call.
+        let value = unsafe { CStr::from_ptr(pointer) }.to_str().map_err(|_| {
+            FeregError::new(ErrorCode::Syntax, format!("plugin argument {index} is not valid UTF-8"))
+        })?;
+        required = required.checked_add(value.len() as u128)
+            .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "argument payload size overflows"))?;
+    }
+    if argc > 0 {
+        // SAFETY: the complete argument array was validated above.
+        let action = unsafe { CStr::from_ptr(*argv) }.to_bytes();
+        if action.eq_ignore_ascii_case(ACTION_ESTIMATE_OLS.as_bytes())
+            || action.eq_ignore_ascii_case(ACTION_ESTIMATE_PPML.as_bytes())
+        {
+            crate::metadata_memory::admit(required,
+                fereg_core::memory::usable_memory_bytes(crate::estimate::imposed_memory_limit_bytes()?))?;
+        }
+    }
+    let mut args = Vec::new();
+    args.try_reserve_exact(argc as usize).map_err(|_| {
+        FeregError::new(ErrorCode::Allocation, "unable to reserve plugin arguments")
+    })?;
     for index in 0..argc as usize {
         // SAFETY: argv is non-null for argc > 0 and the caller promises
         // an array containing argc pointers. Each pointee is validated below.
@@ -1226,7 +1343,12 @@ unsafe fn read_arguments(
                 format!("plugin argument {index} is not valid UTF-8"),
             )
         })?;
-        args.push(value.to_owned());
+        let mut owned = String::new();
+        owned.try_reserve_exact(value.len()).map_err(|_| {
+            FeregError::new(ErrorCode::Allocation, "unable to reserve plugin argument payload")
+        })?;
+        owned.push_str(value);
+        args.push(owned);
     }
     Ok(args)
 }
@@ -1282,6 +1404,31 @@ fn panic_message(payload: &(dyn Any + Send)) -> String {
 mod tests {
     use super::*;
     use std::ffi::CString;
+
+    #[test]
+    fn whole_action_stitches_prefix_and_legacy_reset_without_losing_early_peak() {
+        let _guard = crate::instrumentation::lock_action_observation();
+        begin_abi_memory_observation();
+        let start = abi_memory_baseline().unwrap();
+        let prefix = vec![7_u8; 128 * 1024];
+        std::hint::black_box(&prefix);
+        drop(prefix);
+        let (_, previous) = begin_ols_allocation_observation();
+        std::hint::black_box(previous);
+        let smaller = vec![9_u8; 1024];
+        std::hint::black_box(&smaller);
+        drop(smaller);
+        let legacy = allocation_usage().peak_bytes;
+        let (whole_start, _, peak) = finish_abi_memory_observation();
+        assert_eq!(whole_start, start);
+        assert!(peak >= start + 128 * 1024);
+        assert!(peak > legacy);
+        assert!(abi_memory_baseline().is_none());
+        begin_abi_memory_observation();
+        let repeated_start = abi_memory_baseline().unwrap();
+        let (_, _, repeated_peak) = finish_abi_memory_observation();
+        assert!(repeated_peak < repeated_start + 128 * 1024);
+    }
 
     #[cfg(target_os = "macos")]
     #[test]

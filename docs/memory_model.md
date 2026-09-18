@@ -363,6 +363,94 @@ observation-sized reporting state.
 The [allocation inventory](allocation_inventory.md) separates structural source
 coverage from capacity/lifetime proof and lists the remaining proof obligations.
 
+## OLS retained preparation and inference storage
+
+OLS observes capacities of retained prepared data after authoritative sample
+preparation and before numerical execution. This includes nested metadata,
+category levels, encoded interactions and membership indexes, counting shared
+codes once. The observed owner augments the old base model only to the extent
+it exceeds that model's explicit prepared-payload allowance. Existing finite
+and working-vector reserves are preserved. Internal admission and automatic
+fast/low selection use the reconciled parent; published base estimates retain
+their established meaning.
+
+Before derived outputs, the retained preparation and inference owners are
+summed. Inference ownership includes residual/bread buffers, packed or strided
+score caches, retained FE coefficients, DoF metadata and VCE products. Output
+and recovery admission use at least that simultaneous total, while preserving
+any larger execution reserve. Exact-budget acceptance and one-byte-short
+rejection are checked before output allocation or public stores.
+
+Before SPI row reads, a scalar bound also admits the value/missing arrays and
+numeric compaction banks, maps and masks. Sequential construction stages use
+their maximum. Obsolete pruning and availability state is released before
+replacement storage when it no longer contributes to the final sample.
+Numeric-source construction also has a checked scalar envelope for dictionary
+growth, candidate/final topology, pruning, cluster codes and construction
+metadata. Slope-channel metadata charges repeated categorical labels and source
+identities per channel. This inspection allocates no observation-sized state.
+Fixed-width string dictionaries and decoder/compiler work before this boundary
+remain outside its coverage. These component envelopes do not define an
+action-peak ratio.
+
+## OLS request owners and saved slopes
+
+The request and prepared output names remain live across the entire numerical
+and publication portion of OLS. Their nested capacities are added to the
+loading/preparation floor and to each reconciled execution/output parent.
+This does not change published base-memory fields. The scalar inspection walks
+metadata descriptors only and is checked against independent deallocation,
+including unused capacity. Temporary parsing/compiler copies are a separate
+construction scope.
+
+Saved-effect recovery with slopes uses a checked per-route envelope. It
+includes requested channel vectors, residual/total and coefficient banks,
+component normalization, topology validation and nested metadata. LSMR adds
+the existing pinned slope-reparameterization model and the certificate workspace
+retained in its caller frame. Every attempted route is admitted independently;
+failed attempts release their workspace before the next route. Certified MAP
+remains available when its smaller envelope fits and LSMR does not. The returned
+incremental peak includes earlier failed attempts. PPML retains its existing
+recovery admission and route policy.
+
+## OLS transient numerical frames
+
+Internal execution admission takes at least the sum of the observed prepared
+owner, retained request/channel metadata and a checked fast/low frame envelope.
+The envelope covers finite QR/Cholesky storage, bounded moment partials, score
+and covariance certificates, and cluster reductions. Failed finite attempts
+release their local owners before fallback; sequential fit and inference frames
+contribute their maximum. FE solver admission remains separate.
+
+Dense cluster subsets can use the reducer's `max(32*N,64 MiB)` ceiling while
+parallel partials remain live. Both banks are charged together. Sorted fallback
+charges its two row orders. Low mode additionally reserves bounded scratch I/O
+and score-cache buffers; private file payload is reported separately from heap
+bytes. Published base-memory fields retain their established meaning.
+
+Focused allocator fixtures check numeric construction and all three VCE frames
+in fast/low modes. They begin with loaded inputs and a primed team. Such checks
+do not establish cold dependency-pool coverage or all retained-coefficient
+parent overlaps, and do not certify complete action memory.
+
+## OLS publication storage
+
+OLS admits a separate checked publication reserve before reading observations.
+Both square shadow matrices use the reported coefficient count, including
+omitted slots, rather than the smaller generated finite-column width. The
+reserve also covers determinant/coordinate scratch, fixed result tables,
+requested derived vectors and their registries. It takes the maximum across
+output construction, shadow construction and final publication. Existing public
+fast/low/base fields keep their original meaning.
+
+This reserve and absorption workspace are sequential. Absorption's route
+admission uses the reconciled execution parent without adding future publication
+storage. Saved-effect recovery
+adds its actually live caller capacities to that parent; the recovery estimate
+already owns returned channels, normalization and certificates. Final
+publication checks actual shadow/output/runtime capacities before any store.
+These are additional component bounds, not a complete OLS parent certificate.
+
 ## Instrumentation and acceptance
 
 The public result wire records requested/selected memory mode, estimated fast
@@ -394,6 +482,58 @@ for comparison but are not promotion blockers. The final 10m direct-LSMR route
 used more RSS at eight threads while staying within its modeled native
 allocation and producing a material speed gain; this is the intended separation
 between diagnostic resident memory and hard allocation safety.
+
+## Development action-lifetime diagnostics
+
+The plugin's opt-in `FEREG_ACTION_MEMORY_AUDIT` trace combines existing OLS and
+PPML models in a fixed-size, versioned ledger. It adds simultaneous parents
+and workspace and takes maxima over sequential stages/attempts. Missing stages
+and unproven owner families remain explicit; they cannot produce a complete
+whole-action denominator. The model trace precedes publication. An additional
+version-1 terminal record observes action return/unwind before ABI error
+reporting; neither is a public protocol change. See the source-bound
+[proof obligations](allocation_inventory.md#action-lifetime-ledger-and-proof-boundary).
+
+Fast fits retaining FE coefficient products additionally admit their initial
+and combined coefficient banks before solver-session construction, using actual
+prepared levels and channels. The retained parent is included in the returned
+solver envelope relative to the original execution base. The residual solver
+therefore cannot silently use the budget already occupied by the initial
+product. Uncached robust/clustered score reconstruction separately charges the
+capacity of the retained final FE product. These parent reservations leave
+the public base-memory fields unchanged. Complete inference and dependency/runtime coverage remains
+an independent obligation.
+
+## Input and metadata construction admission
+
+Before native input construction, OLS and PPML admit value/missing/candidate
+arrays, source-loader descriptors and SPI batch descriptors. Fixed-width string
+sources additionally maintain a capacity ledger for all live dictionaries.
+Dictionary growth includes old and new storage together; final ordering releases
+buckets before admitting recodes. The production SPI checks the per-cell buffer
+limit before reservation and returns that same buffer after truncating its NUL
+terminator. Workers never access the SPI.
+
+Argument transport and decoder/compiler tables have separate metadata-only
+reservations before construction. Declared registry/recipe counts cannot request
+storage beyond their supplied payloads. Original argument owners remain charged
+after the temporary expanded local bundle is released. These reservations use
+the existing safety headroom; they do not allocate observation-sized accounting
+state or alter the public base-field definitions. The capacity inventory and
+remaining whole-action exclusions are in `docs/allocation_inventory.md`.
+
+
+The PPML retained-generation inventory separately bounds transferred raw input
+and categorical/model capacities. It supplements existing allowances only where
+those bounds are larger, and charges both current and replacement owners during
+an atomic rebase. Original coefficient-slot capacity survives final-sample
+rebasing even when logical slots disappear. Core callers receive the same raw
+owner charge as plugin callers; an embedding observation already covering that
+owner is not duplicated. These additions leave the existing base field meanings
+and numerical policies intact. Initial generation construction is attributed to
+preparation, including its allocation-failure path. Complete action coverage
+still requires the remaining construction, numerical and dependency proofs in
+[the allocation inventory](allocation_inventory.md).
 
 ## Retained OLS coefficient product admission
 

@@ -21,9 +21,9 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v32.json"
-CONTRACT_ID = "fereg-allocation-source-contract-v32"
-SCHEMA_VERSION = 19
+DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v34.json"
+CONTRACT_ID = "fereg-allocation-source-contract-v34"
+SCHEMA_VERSION = 21
 
 # Keep the watched surface narrow enough to describe the actual OLS seam, but
 # closed against a new helper file.  The retained changing-weight session is a
@@ -182,6 +182,19 @@ REVIEWED_BOUNDARY_HASHES = {
     ('crates/fereg-core/src/ols/prepared_fit.rs', 'fit_prepared_ols_coefficients_view_map'):
         '787412f726e1f0dfc92e01511c2fc74408d19a6d705ed4fbc86cd5542f99051b',
 }
+
+# Exact development transition: capacity-only guards at the six OLS branches.
+# The source excerpt is checked independently; historical F0/source-SHA pins remain.
+PREPARED_PARENT_BOUNDARY = {
+    "path": "crates/fereg-plugin/src/estimate.rs",
+    "function": "estimate_ols_test",
+    "source_excerpt": "benchmarks/reports/development/candidate-ols-prepared-parents-2026-09-16/estimate_ols_test.rs",
+    "source_sha256": "7df2af893c2c5dcb34c145ee28f6bc4cff22668843026b4c9ddff35321210110",
+    "body_tokens_sha256": "2e773012989878a653488bfb8bbbedc5c75bd68ce592ce1dc3111c9eb57925ae",
+}
+
+# Source-bound input/metadata admission; the historical parent transition remains.
+INPUT_MEMORY_BOUNDARY = {'path': 'crates/fereg-plugin/src/estimate.rs', 'function': 'estimate_ols_test', 'source_excerpt': 'benchmarks/reports/development/candidate-input-memory-2026-09-16/estimate_ols_test.rs', 'source_sha256': 'a0b0d1e531e98bd3ef3645974e116bd8e87cacec2bb88b3b68d36b1b300cfd0a', 'body_tokens_sha256': 'c7c805580e24c703d70617b966c6168a1d7d0e540395c82652c473964a76a8bf'}
 
 F0_PREEXISTING_BOUNDARY_LITERAL_HASHES = {
     ("crates/fereg-plugin/src/estimate.rs", "estimate_ols_test"):
@@ -1211,6 +1224,8 @@ def build_contract(root: Path = ROOT) -> dict[str, Any]:
                 {"path": path, "function": function}
                 for path, function in ROUTING_BOUNDARY_FUNCTIONS
             ],
+            "prepared_parent_boundary": PREPARED_PARENT_BOUNDARY,
+            "input_memory_boundary": INPUT_MEMORY_BOUNDARY,
             "reviewed_boundary_source_sha": REVIEWED_BOUNDARY_SOURCE_SHA,
             "reviewed_boundary_hashes": [
                 {"path": path, "function": function, "body_tokens_sha256": digest}
@@ -1295,6 +1310,8 @@ def _load_contract(path: Path) -> Mapping[str, Any]:
             {"path": relative, "function": function}
             for relative, function in ROUTING_BOUNDARY_FUNCTIONS
         ],
+        "prepared_parent_boundary": PREPARED_PARENT_BOUNDARY,
+        "input_memory_boundary": INPUT_MEMORY_BOUNDARY,
         "reviewed_boundary_source_sha": REVIEWED_BOUNDARY_SOURCE_SHA,
         "reviewed_boundary_hashes": [
             {"path": path, "function": function, "body_tokens_sha256": digest}
@@ -1659,6 +1676,10 @@ def audit_repository(
             violations.append(f"exact fereg adapter/one-shot boundary changed: {key[0]}:{key[1]}")
     for key, f0_digest in F0_PREEXISTING_BOUNDARY_HASHES.items():
         live_digest = REVIEWED_BOUNDARY_HASHES.get(key, f0_digest)
+        if key == (PREPARED_PARENT_BOUNDARY["path"], PREPARED_PARENT_BOUNDARY["function"]):
+            live_digest = PREPARED_PARENT_BOUNDARY["body_tokens_sha256"]
+        if key == (INPUT_MEMORY_BOUNDARY["path"], INPUT_MEMORY_BOUNDARY["function"]):
+            live_digest = INPUT_MEMORY_BOUNDARY["body_tokens_sha256"]
         observed_boundary = observed_boundaries.get(key)
         if (
             observed_boundary is None

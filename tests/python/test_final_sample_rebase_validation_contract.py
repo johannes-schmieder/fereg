@@ -34,7 +34,7 @@ class FinalSampleRebaseValidationContractTests(unittest.TestCase):
         self.assertIn("local coefficient_capacity =", text)
         self.assertIn("local coefficient_count = r(coefficients)", text)
         self.assertIn("fvexpand `indepvars' if `sample_shadow'", text)
-        self.assertIn('ereturn local fereg_result_wire "1.4"', text)
+        self.assertIn('ereturn local fereg_result_wire "1.5"', text)
 
     def test_licensed_rebase_fixture_is_in_every_qualification_profile(self) -> None:
         import json

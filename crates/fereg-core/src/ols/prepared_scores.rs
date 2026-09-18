@@ -484,7 +484,7 @@ pub(super) fn build_prepared_ols_score_design<
                 batch_size: fit.execution().poolsize.max(1),
                 retain_coefficients: false,
                 requested_solver,
-                components: false,
+                components: crate::fe::explicit_cmg_components(requested_solver),
                 solver_memory_budget: absorb.solver_memory_budget,
             },
             prepared.fit_structural_intercept(),

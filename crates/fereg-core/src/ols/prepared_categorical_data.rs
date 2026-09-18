@@ -64,6 +64,24 @@ pub struct PreparedCategoricalOlsData {
 }
 
 impl PreparedCategoricalOlsData {
+    /// Retained heap buffers, with topology-backed codes counted only at their
+    /// owner. Construction scratch and numerical/dependency frames are separate.
+    #[must_use]
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        self.sample.owned_buffer_bytes()
+            + bytes(&self.model.columns)
+            + bytes(&self.model.coefficients)
+            + self.nested_metadata_capacity_bytes()
+            + bytes(&self.categorical_sources)
+            + self.categorical_sources.iter().map(|source| match &source.storage {
+                PreparedCategoricalModelSourceStorage::Topology { candidate_levels, .. } => bytes(candidate_levels),
+                PreparedCategoricalModelSourceStorage::Owned { encoded } => bytes(&encoded.codes) + bytes(&encoded.levels),
+            }).sum::<u128>()
+            + self.fe_topology.owned_buffer_bytes()
+            + self.report_plan.owned_buffer_bytes()
+    }
+
     /// Executable recipe payloads and FE metadata; excludes numeric topology
     /// and top-level finite descriptors, charged separately by the planner.
     pub(crate) fn nested_metadata_capacity_bytes(&self) -> u128 {
@@ -430,6 +448,10 @@ impl PreparedCategoricalOlsData {
         allow_lsmr: bool,
         memory_budget: Option<FeSolverMemoryBudget>,
     ) -> Result<RecoveredCategoricalEffects> {
+        let validation_bytes = self.fe_topology.validation_workspace_bytes()?;
+        if memory_budget.is_some_and(|budget| !budget.fits(validation_bytes)) {
+            return Err(allocation("saved-FE topology validation exceeds the joint memory budget"));
+        }
         self.validate()?;
         let effects = self.effect_views()?;
         let recovery_memory = if !effects.is_empty()
@@ -456,6 +478,23 @@ impl PreparedCategoricalOlsData {
                     .count(),
                 rayon::current_num_threads(),
                 lsmr.local_size,
+            )?)
+        } else if allow_lsmr && !effects.is_empty() {
+            // PPML admits recovery in its parent/frame planner and disables this
+            // LSMR route. Keep its existing admission and failure policy.
+            let mut shapes = Vec::new();
+            shapes.try_reserve_exact(effects.len()).map_err(|_| {
+                allocation("unable to reserve slope recovery shapes")
+            })?;
+            for (effect, &source) in effects.iter().zip(self.fe_topology.effect_to_topology()) {
+                shapes.push((self.fe_topology.registry().source(source)?.n_levels(),
+                    effect.has_intercept(), effect.slopes().len()));
+            }
+            Some(crate::memory::estimate_slope_recovery_memory(
+                self.sample.n_active(), &shapes,
+                requested_channels.iter().filter(|&&requested| requested).count(),
+                self.fe_topology.compacted_sources().len(), validation_bytes,
+                rayon::current_num_threads(), lsmr.local_size,
             )?)
         } else {
             None
@@ -1047,20 +1086,29 @@ fn finish_prepare_categorical_ols_data(
         plan.requested_keep_singletons(),
     )?;
     let (singleton, _, _) = singleton_result.into_parts();
-    let fe_topology =
-        finalize_categorical_topology(&candidate_views, &recipe_views, &singleton.active)?;
+    drop(initially_active);
     let num_singletons = singleton.dropped_observations.len();
     let cascade_events = singleton.cascade_events;
+    drop(singleton.dropped_observations);
+    let fe_topology =
+        finalize_categorical_topology(&candidate_views, &recipe_views, &singleton.active)?;
+    drop(candidate_views);
+    drop(recipe_views);
 
     let PreparedOlsData {
         model: availability_model,
         sample,
         categorical_sources: candidate_sources,
+        fe_topology: availability_topology,
         ..
     } = availability;
+    // Finalized topology replaces the availability topology before numeric
+    // compaction allocates a second value bank.
+    drop(availability_topology);
     let final_sources = final_categorical_sources(&availability_model, cluster_sources)?;
     let model_source_plans = plan_model_sources(candidate_sources, &final_sources, &fe_topology)?;
     let sample = sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;
+    drop(singleton.active);
     if fe_topology.retained_rows().len() != sample.n_active() {
         return Err(invalid(
             "final categorical topology retained-row count differs from compact sample",

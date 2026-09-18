@@ -206,6 +206,16 @@ pub struct CertifiedPreparedOlsClustered {
 }
 
 impl CertifiedPreparedOlsClustered {
+    /// Heap owners retained after inference, excluding prepared data/cluster codes.
+    #[must_use]
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+            + bytes(&self.cluster_counts) + bytes(&self.subsets)
+            + bytes(&self.covariance.raw_values) + bytes(&self.covariance.values)
+            + bytes(&self.covariance.standard_errors)
+    }
+
     #[must_use]
     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
         &self.fit
@@ -273,6 +283,16 @@ pub struct CertifiedPreparedCategoricalOlsClustered {
 }
 
 impl CertifiedPreparedCategoricalOlsClustered {
+    /// Heap owners retained after inference, excluding prepared data/cluster codes.
+    #[must_use]
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+            + bytes(&self.cluster_counts) + bytes(&self.subsets)
+            + bytes(&self.covariance.raw_values) + bytes(&self.covariance.values)
+            + bytes(&self.covariance.standard_errors)
+    }
+
     #[must_use]
     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
         &self.fit

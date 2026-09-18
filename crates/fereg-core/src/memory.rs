@@ -4,7 +4,9 @@ use crate::options::MemoryMode;
 
 mod categorical_schwarz;
 mod owned_fe;
+mod slope_recovery;
 mod workspace_peak;
+pub(crate) use slope_recovery::estimate_slope_recovery_memory;
 pub(crate) use categorical_schwarz::{
     categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
     CategoricalSchwarzMemoryEstimate,
@@ -16,6 +18,20 @@ pub use workspace_peak::SolverWorkspacePeak;
 
 const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
 const LOW_MODE_TRANSPOSE_BUFFER_BYTES: u128 = 1024 * 1024;
+
+/// Apply the shared native headroom policy before any construction stage.
+#[must_use]
+pub fn usable_memory_bytes(available_bytes: Option<u128>) -> Option<u128> {
+    available_bytes.map(|available| {
+        available.saturating_sub(MINIMUM_HEADROOM_BYTES.max(available / 5))
+    })
+}
+
+/// Heap payload of an owned vector, including unused capacity. The descriptor
+/// belongs to its containing owner. This reads no elements and allocates nothing.
+pub(crate) fn vec_capacity_bytes<T>(values: &Vec<T>) -> u128 {
+    values.capacity() as u128 * std::mem::size_of::<T>() as u128
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MemoryEstimate {
@@ -638,8 +654,7 @@ pub fn plan_ols_memory(
     let safety_headroom_bytes = available_bytes
         .map(|available| MINIMUM_HEADROOM_BYTES.max(available / 5))
         .unwrap_or(0);
-    let usable_bytes =
-        available_bytes.map(|available| available.saturating_sub(safety_headroom_bytes));
+    let usable_bytes = usable_memory_bytes(available_bytes);
     let fits = |bytes: u128| usable_bytes.is_none_or(|usable| bytes <= usable);
     let selected = match requested {
         MemoryMode::Fast if fits(estimate.fast_bytes) => MemoryMode::Fast,

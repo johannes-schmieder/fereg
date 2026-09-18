@@ -25,6 +25,14 @@ pub struct CategoricalPartition {
 }
 
 impl CategoricalPartition {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        let key = match &self.key {
+            CategoricalPartitionKey::Single(_) => 0,
+            CategoricalPartitionKey::Interaction(indices) => crate::memory::vec_capacity_bytes(indices),
+        };
+        key + self.owned_interaction.as_ref().map_or(0, EncodedInteraction::owned_buffer_bytes)
+    }
+
     /// Construct a zero-copy partition over one authoritative categorical
     /// source.
     pub fn single(

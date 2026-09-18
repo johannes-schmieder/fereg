@@ -1,9 +1,17 @@
 #![doc = "Narrow Stata FFI and safe action dispatcher for fereg."]
 
+mod action_memory;
+mod memory_report;
+mod memory_forecast;
+mod input_memory;
+mod metadata_memory;
 mod dispatch;
 mod estimate;
 mod input;
 mod instrumentation;
+mod ols_frame_memory;
+mod ols_preparation_memory;
+mod ols_publication_memory;
 mod output;
 mod ppml_estimate;
 mod ppml_result;

@@ -63,6 +63,18 @@ pub struct FinalizedCategoricalTopology {
 }
 
 impl FinalizedCategoricalTopology {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        bytes(&self.compacted_sources)
+            + self.compacted_sources.iter().map(|source| bytes(&source.codes) + bytes(&source.original_levels)).sum::<u128>()
+            + bytes(&self.candidate_to_compacted_source)
+            + bytes(&self.remapped_effect_recipes)
+            + self.remapped_effect_recipes.iter().map(bytes).sum::<u128>()
+            + bytes(&self.effect_to_topology)
+            + bytes(&self.retained_rows)
+            + self.registry.owned_buffer_bytes()
+    }
+
     #[must_use]
     pub fn compacted_sources(&self) -> &[CompactedCategoricalSource] {
         &self.compacted_sources

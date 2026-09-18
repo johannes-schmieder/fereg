@@ -8,7 +8,7 @@
 //! the shared certified prepared weighted-linear boundary.
 
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[cfg(test)]
 use std::cell::Cell;
@@ -124,6 +124,8 @@ pub(crate) struct PreparedPpmlSeparationOutcome {
     /// final generation merges this with numeric/domain reasons exactly once.
     pub(crate) original_axis_reasons: Vec<Option<SeparationDropReason>>,
     phase_allocation_peaks: PreparedSeparationPhasePeaks,
+    pub(crate) initial_preparation_elapsed: Duration,
+    pub(crate) initial_preparation_peak: Option<u64>,
 }
 
 /// Unforgeable (outside this module) terminal separation certification.
@@ -380,8 +382,9 @@ where
     ) -> Result<T>,
 {
     validate_config(config)?;
-    let coordinator = PreparedSeparationCoordinator::new(owner)?;
-    coordinate_prepared_ppml_separation(
+    let (coordinator, initial_preparation_elapsed, initial_preparation_peak) =
+        prepare_initial_generation(owner, phase_allocation_probe)?;
+    let (mut outcome, fit) = coordinate_prepared_ppml_separation(
         coordinator,
         ppml,
         config,
@@ -404,7 +407,28 @@ where
                 interrupt,
             )
         },
-    )
+    )?;
+    outcome.initial_preparation_elapsed = initial_preparation_elapsed;
+    outcome.initial_preparation_peak = initial_preparation_peak;
+    Ok((outcome, fit))
+}
+
+/// A separate scope makes success and failed initial construction observable;
+/// later rebuilds remain nested in the requesting separation phase.
+fn prepare_initial_generation(
+    owner: PreparedPpmlModelOwner,
+    phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
+) -> Result<(PreparedSeparationCoordinator<PreparedPpmlModelOwner>, Duration, Option<u64>)> {
+    let started = Instant::now();
+    begin_phase_allocation(phase_allocation_probe, PpmlPhase::Preparation);
+    let coordinator = PreparedSeparationCoordinator::new(owner);
+    // Close this window even when a failed allocation/rebuild rejects the
+    // initial generation. Later atomic rebuilds are inside separation phases.
+    let initial_preparation_peak =
+        end_phase_allocation(phase_allocation_probe, PpmlPhase::Preparation);
+    let initial_preparation_elapsed = started.elapsed();
+    let coordinator = coordinator?;
+    Ok((coordinator, initial_preparation_elapsed, initial_preparation_peak))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1026,6 +1050,8 @@ where
         candidate_original_rows,
         original_axis_reasons,
         phase_allocation_peaks,
+        initial_preparation_elapsed: Duration::ZERO,
+        initial_preparation_peak: None,
     };
     Ok((outcome, final_fit))
 }
@@ -3326,6 +3352,29 @@ mod tests {
     static PHASE_PROBE_ENDS: AtomicU64 = AtomicU64::new(0);
     static MU_PHASE_ACTIVE: AtomicBool = AtomicBool::new(false);
     static MU_FIT_CALLS: AtomicU64 = AtomicU64::new(0);
+
+    #[test]
+    fn initial_generation_phase_closes_on_success_and_capacity_rejection() {
+        let _guard = PHASE_PROBE_TEST_LOCK.lock().unwrap();
+        for rejected in [false, true] {
+            PHASE_PROBE_EVENTS.lock().unwrap().clear();
+            PHASE_PROBE_ENDS.store(0, Ordering::SeqCst);
+            let (request, clusters, loaded, uses) = fixture();
+            let numeric = prepare_numeric(&loaded, &uses);
+            let mut owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap();
+            if rejected { owner = owner.with_generation_memory_bound(0); }
+            let result = prepare_initial_generation(owner, Some(deterministic_phase_probe));
+            if rejected {
+                assert_eq!(result.err().unwrap().code, ErrorCode::Allocation);
+            } else {
+                assert_eq!(result.unwrap().2, Some(1));
+            }
+            assert_eq!(*PHASE_PROBE_EVENTS.lock().unwrap(), vec![
+                (PpmlPhase::Preparation, super::super::PpmlPhaseAllocatorEvent::Begin, 0),
+                (PpmlPhase::Preparation, super::super::PpmlPhaseAllocatorEvent::End, 1),
+            ]);
+        }
+    }
 
     #[test]
     fn impossible_detector_workspace_reservation_maps_to_allocation() {

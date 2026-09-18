@@ -453,6 +453,23 @@ impl CertifiedPreparedOlsFit {
             .map_or(0, FeCoefficientBatch::retained_bytes)
     }
 
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        let warnings = |report: &SolveReport| bytes(&report.warnings)
+            + report.warnings.iter().map(|warning| warning.capacity() as u128).sum::<u128>();
+        let cache = self.fast_score_cache.as_ref().map_or(0, |cache| match cache {
+            PreparedOlsFastScoreCache::Packed { generated_columns, within, means } =>
+                bytes(generated_columns) + within.storage_capacity() as u128 * 8 + bytes(means),
+            PreparedOlsFastScoreCache::Strided { generated_columns, within, reference_norms, means } =>
+                bytes(generated_columns) + within.storage_capacity() as u128 * 8 + bytes(reference_norms) + bytes(means),
+        });
+        bytes(&self.coefficients) + bytes(&self.kept_generated_columns)
+            + bytes(&self.dropped_generated_columns) + bytes(&self.bread.coordinates)
+            + bytes(&self.bread.values) + self.residuals.storage_capacity() as u128 * 8
+            + self.recovered_fe_coefficients.as_ref().map_or(0, FeCoefficientBatch::retained_bytes)
+            + cache + warnings(&self.absorption_report) + warnings(&self.residual_absorption_report)
+    }
+
     #[must_use]
     pub fn coefficients(&self) -> &[PreparedOlsFittedCoefficient] {
         &self.coefficients
@@ -1538,7 +1555,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
         batch_size: config.execution.poolsize,
         retain_coefficients: config.absorb.retain_coefficients,
         requested_solver: config.absorb.solver,
-        components: false,
+        components: crate::fe::explicit_cmg_components(config.absorb.solver),
         solver_memory_budget: config.absorb.solver_memory_budget,
     };
     let initial_rhs_columns = prepared
@@ -7927,6 +7944,174 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
+        let group = source(1, "group");
+        let slope = source(2, "slope");
+        let n = 12;
+        let groups = (0..n).map(|row| (row / 6) as f64).collect::<Vec<_>>();
+        let slopes = (0..n).map(|row| (row % 6) as f64 - 2.0).collect::<Vec<_>>();
+        let noise = (0..n)
+            .map(|row| [1.0, -2.0, 1.0][row % 3])
+            .collect::<Vec<_>>();
+        let y = (0..n)
+            .map(|row| 3.0 * groups[row] + 2.0 * slopes[row] + noise[row])
+            .collect::<Vec<_>>();
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![group.clone(), slope.clone()],
+                terms: Vec::new(),
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![group.id],
+                slope_sources: vec![slope.id],
+                label: "group##c.slope".into(),
+                saved_name: String::new(),
+            }],
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(group.id),
+                },
+                OlsInputBinding {
+                    stata_var_position: 4,
+                    role: OlsInputRole::NumericSource(slope.id),
+                },
+            ],
+            include_intercept: false,
+            keep_singletons: true,
+        };
+        let input = LoadedOlsInput {
+            candidate: vec![true; n],
+            outcome: loaded(&y),
+            numeric_sources: vec![(group.id, loaded(&groups)), (slope.id, loaded(&slopes))],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let prepared =
+            crate::prepared_categorical_data::prepare_categorical_ols_data(&request, &input)
+                .unwrap();
+        let target = y.iter().zip(&noise).map(|(y, e)| y - e).collect::<Vec<_>>();
+        let weights = (0..n).map(|row| 1.0 + (row % 3) as f64).collect::<Vec<_>>();
+        for workers in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for weights in [
+                        BorrowedMapWeights::Unit,
+                        BorrowedMapWeights::Provided(&weights),
+                    ] {
+                        let lsmr = crate::fe::LsmrConfig::default();
+                        let map = crate::fe::MapConfig {
+                            tolerance: 1e-12,
+                            ..Default::default()
+                        };
+                        let memory = crate::memory::estimate_slope_recovery_memory(
+                            n,
+                            &[(2, true, 1)],
+                            2,
+                            prepared.fe_topology().compacted_sources().len(),
+                            prepared.fe_topology().validation_workspace_bytes().unwrap(),
+                            workers,
+                            lsmr.local_size,
+                        )
+                        .unwrap();
+                        let run = |workspace| {
+                            prepared.recover_absorbed_effects_fast_with_weights(
+                                weights,
+                                &target,
+                                &[true, true],
+                                None,
+                                false,
+                                true,
+                                lsmr,
+                                map,
+                                Some(crate::memory::FeSolverMemoryBudget {
+                                    execution_bytes: 137,
+                                    usable_bytes: 137 + workspace,
+                                }),
+                            )
+                        };
+                        assert_eq!(
+                            run(memory.map_peak_bytes - 1).unwrap_err().code,
+                            ErrorCode::Allocation
+                        );
+                        assert_eq!(run(0).unwrap_err().code, ErrorCode::Allocation);
+                        let tight = run(memory.map_peak_bytes).unwrap();
+                        assert_eq!(
+                            tight.recovery_method(),
+                            crate::fe::CategoricalRecoveryMethod::Map
+                        );
+                        assert_eq!(
+                            tight.solver_workspace_peak().bytes(),
+                            Some(memory.map_peak_bytes as u64)
+                        );
+                        let ample = run(memory.lsmr_peak_bytes).unwrap();
+                        assert_eq!(
+                            ample.solver_workspace_peak().bytes(),
+                            Some(memory.lsmr_peak_bytes as u64)
+                        );
+                        let coefficients = crate::fe::FeCoefficientBatch::from_values(
+                            vec![2],
+                            vec![2],
+                            1,
+                            vec![0.0, 3.0, 2.0, 2.0],
+                        )
+                        .unwrap();
+                        let retained = prepared
+                            .recover_absorbed_effects_fast_with_weights(
+                                weights,
+                                &target,
+                                &[true, true],
+                                Some(&coefficients),
+                                false,
+                                true,
+                                lsmr,
+                                map,
+                                Some(crate::memory::FeSolverMemoryBudget {
+                                    execution_bytes: 137,
+                                    usable_bytes: 137 + memory.retained_peak_bytes,
+                                }),
+                            )
+                            .unwrap();
+                        assert_eq!(
+                            retained.recovery_method(),
+                            crate::fe::CategoricalRecoveryMethod::RetainedCoefficients
+                        );
+                        assert_eq!(
+                            retained.solver_workspace_peak().bytes(),
+                            Some(memory.retained_peak_bytes as u64)
+                        );
+                        for recovered in [tight, ample, retained] {
+                            for (row, expected) in target.iter().enumerate() {
+                                assert!((recovered.absorbed_sum()[row] - expected).abs() < 1e-10);
+                                let sum = recovered
+                                    .channels()
+                                    .iter()
+                                    .flatten()
+                                    .map(|channel| channel[row])
+                                    .sum::<f64>();
+                                assert!((sum - expected).abs() < 1e-10);
+                            }
+                        }
+                    }
+                });
         }
     }
 
