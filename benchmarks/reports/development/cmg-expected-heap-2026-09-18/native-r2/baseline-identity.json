@@ -1,0 +1,6 @@
+{
+  "base_commit": "e7ad6501f90dec4a1e3290c32464d1544313f871",
+  "snapshot_sha256": "79bbf9571f0c9a7fc657234b5655f523588bcc10864e9662b8c1511f7120810a",
+  "variant": "baseline",
+  "scope": "bounded CMG expected-heap development validation"
+}

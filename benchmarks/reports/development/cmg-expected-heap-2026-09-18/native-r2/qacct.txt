@@ -1,0 +1,43 @@
+==============================================================
+qname        mem512              
+hostname     scc-wk3.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_cmg_heap      
+jobnumber    7639913             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Fri Sep 18 16:56:26 2026
+start_time   Fri Sep 18 16:57:07 2026
+end_time     Fri Sep 18 17:03:16 2026
+granted_pe   omp28               
+slots        28                  
+failed       0    
+exit_status  0                   
+ru_wallclock 369          
+ru_utime     552.131      
+ru_stime     28.438       
+ru_maxrss    1846328             
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    6285764             
+ru_majflt    6599                
+ru_nswap     0                   
+ru_inblock   2044592             
+ru_oublock   4852176             
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     258655              
+ru_nivcsw    23949               
+cpu          580.569      
+mem          654.667           
+io           27.226            
+iow          0.000             
+maxvmem      3.401G
+arid         undefined

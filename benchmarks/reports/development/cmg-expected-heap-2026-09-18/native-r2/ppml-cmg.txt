@@ -1,0 +1,13 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running unittests src/lib.rs (${DEV_ROOT}/cmg-heap-20260918-r2/target-candidate/debug/deps/fereg_core-ecfcb19d92c9d19b)
+
+running 6 tests
+test ppml::categorical_fwl_cmg::tests::certificate_topology_is_bound_to_the_fit_lifetime_design ... ok
+test ppml::categorical_fwl_cmg::tests::finite_certificate_preserves_literal_moments_across_thread_counts ... ok
+test ppml::categorical_fwl_cmg::tests::fused_workspace_estimate_is_monotone ... ok
+test ppml::categorical_fwl_cmg::tests::graph_batch_capacity_covers_nuisance_without_exceeding_the_pool ... ok
+test ppml::categorical_fwl_cmg::tests::nuisance_reduction_requires_exact_nesting_in_a_selected_core ... ok
+test ppml::categorical_fwl_cmg::tests::pivoted_cholesky_recovers_a_permuted_spd_system ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 905 filtered out; finished in 0.06s
+

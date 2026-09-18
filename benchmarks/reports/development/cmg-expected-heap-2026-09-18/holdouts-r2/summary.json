@@ -1,0 +1,17 @@
+{
+  "cases": [
+    {
+      "case": "wider_k",
+      "delta_seconds": -0.015000000000000013,
+      "flag": false,
+      "medians": {
+        "baseline": 0.848,
+        "candidate": 0.833
+      },
+      "relative_change": -0.017688679245283036
+    }
+  ],
+  "native_accuracy_pass": true,
+  "performance_pass": true,
+  "whole_action_accepted": false
+}

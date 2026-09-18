@@ -1,0 +1,162 @@
+[
+  {
+    "group": "calibration",
+    "case": "ols_narrow",
+    "predicted_bytes": 896766,
+    "observed_bytes": 431610,
+    "relative_error": 1.0777229443247376,
+    "absolute_error_bytes": 465156,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ols_wide_missing",
+    "predicted_bytes": 90071137,
+    "observed_bytes": 85669348,
+    "relative_error": 0.051381142762986824,
+    "absolute_error_bytes": 4401789,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ols_connected_cmg",
+    "predicted_bytes": 23960839,
+    "observed_bytes": 14855131,
+    "relative_error": 0.6129671963175551,
+    "absolute_error_bytes": 9105708,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ols_tiny_components",
+    "predicted_bytes": 19559300,
+    "observed_bytes": 14655636,
+    "relative_error": 0.33459237115332285,
+    "absolute_error_bytes": 4903664,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ols_mixed_components",
+    "predicted_bytes": 31245231,
+    "observed_bytes": 20914711,
+    "relative_error": 0.4939355843836427,
+    "absolute_error_bytes": 10330520,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ols_weighted_bridge",
+    "predicted_bytes": 5174515,
+    "observed_bytes": 3334539,
+    "relative_error": 0.5517932163936304,
+    "absolute_error_bytes": 1839976,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ols_three_disconnected",
+    "predicted_bytes": 7252120,
+    "observed_bytes": 7155991,
+    "relative_error": 0.0134333595444712,
+    "absolute_error_bytes": 96129,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ols_slopes_saved",
+    "predicted_bytes": 6613378,
+    "observed_bytes": 4102792,
+    "relative_error": 0.6119213452692703,
+    "absolute_error_bytes": 2510586,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ols_low_inference",
+    "predicted_bytes": 32264238,
+    "observed_bytes": 15396029,
+    "relative_error": 1.0956207603921764,
+    "absolute_error_bytes": 16868209,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ppml_one",
+    "predicted_bytes": 9320460,
+    "observed_bytes": 2560336,
+    "relative_error": 2.640326894595084,
+    "absolute_error_bytes": 6760124,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ppml_cmg_saved",
+    "predicted_bytes": 14476220,
+    "observed_bytes": 9909750,
+    "relative_error": 0.4608057720931406,
+    "absolute_error_bytes": 4566470,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "calibration",
+    "case": "ppml_separation",
+    "predicted_bytes": 17322132,
+    "observed_bytes": 10561968,
+    "relative_error": 0.6400477638258325,
+    "absolute_error_bytes": 6760164,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "holdouts",
+    "case": "double_n",
+    "predicted_bytes": 47881479,
+    "observed_bytes": 31700091,
+    "relative_error": 0.5104524147895979,
+    "absolute_error_bytes": 16181388,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "holdouts",
+    "case": "new_components",
+    "predicted_bytes": 31261615,
+    "observed_bytes": 21866735,
+    "relative_error": 0.429642559806025,
+    "absolute_error_bytes": 9394880,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "holdouts",
+    "case": "new_separation",
+    "predicted_bytes": 17322132,
+    "observed_bytes": 10496352,
+    "relative_error": 0.6503002185902302,
+    "absolute_error_bytes": 6825780,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  },
+  {
+    "group": "holdouts-r2",
+    "case": "wider_k",
+    "predicted_bytes": 114170619,
+    "observed_bytes": 74684020,
+    "relative_error": 0.528715500317203,
+    "absolute_error_bytes": 39486599,
+    "pass_declared_tolerance": true,
+    "whole_action_accepted": false
+  }
+]

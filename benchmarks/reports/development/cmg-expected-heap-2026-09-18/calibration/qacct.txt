@@ -1,0 +1,43 @@
+==============================================================
+qname        mem512              
+hostname     scc-wj1.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_mem_calibration
+jobnumber    7639948             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Fri Sep 18 16:59:28 2026
+start_time   Fri Sep 18 17:04:54 2026
+end_time     Fri Sep 18 17:06:21 2026
+granted_pe   omp28               
+slots        28                  
+failed       0    
+exit_status  0                   
+ru_wallclock 87           
+ru_utime     102.805      
+ru_stime     19.827       
+ru_maxrss    266460              
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    616076              
+ru_majflt    644                 
+ru_nswap     0                   
+ru_inblock   301680              
+ru_oublock   1286200             
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     221677              
+ru_nivcsw    211515              
+cpu          122.632      
+mem          42.480            
+io           90.442            
+iow          0.000             
+maxvmem      1.926G
+arid         undefined

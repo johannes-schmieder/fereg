@@ -1,0 +1,34 @@
+FEREG_ACTION_MEMORY|version=1|accounted_peak=5194635517|complete_peak=None|prefix_ratio=None|observation=precommit|observed_prefix_bytes=3570573260|missing_stages=0|gaps=125
+FEREG_ACTION_MEMORY_STAGE|version=1|stage=metadata|recorded=true|parents=0|workspace=643717|peak=643717|gaps=1
+FEREG_ACTION_MEMORY_STAGE|version=1|stage=loading|recorded=true|parents=0|workspace=578303592|peak=578303592|gaps=1
+FEREG_ACTION_MEMORY_STAGE|version=1|stage=preparation|recorded=true|parents=6717|workspace=1948951180|peak=1948957897|gaps=68
+FEREG_ACTION_MEMORY_STAGE|version=1|stage=fit|recorded=true|parents=2887910717|workspace=2306724800|peak=5194635517|gaps=120
+FEREG_ACTION_MEMORY_STAGE|version=1|stage=inference|recorded=true|parents=2887910717|workspace=2306724800|peak=5194635517|gaps=120
+FEREG_ACTION_MEMORY_STAGE|version=1|stage=recovery|recorded=true|parents=700706888|workspace=48|peak=700706936|gaps=64
+FEREG_ACTION_MEMORY_STAGE|version=1|stage=publication|recorded=true|parents=700706888|workspace=12548|peak=700719436|gaps=64
+FEREG_MEMORY_FORECAST|version=2|calibrated=0|native_peak=3705301141|stata_growth=4628641|combined=Some(4429556866)
+FEREG_ACTION_MEMORY_TERMINAL|version=1|estimator=ols|return_code=0|observation=action_return|start_bytes=2484|current_bytes=33656|peak_bytes=3570575744|peak_delta_bytes=3570573260
+FEREG_WHOLE_ACTION_MEMORY_TERMINAL|version=1|estimator=ols|return_code=0|observation=abi_return|start_bytes=0|current_bytes=33656|peak_bytes=3570575744|peak_delta_bytes=3570575744
+	Command being timed: "stata-mp -b do run.do"
+	User time (seconds): 1075.40
+	System time (seconds): 2.67
+	Percent of CPU this job got: 372%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:49.69
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 4246064
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 266
+	Minor (reclaiming a frame) page faults: 177051
+	Voluntary context switches: 29579
+	Involuntary context switches: 7456
+	Swaps: 0
+	File system inputs: 83392
+	File system outputs: 400584
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

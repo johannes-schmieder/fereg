@@ -1,0 +1,34 @@
+[
+  {
+    "case": "wider_k",
+    "medians": {
+      "baseline": {
+        "command_seconds": 0.848,
+        "rss_peak_bytes": 174632960.0,
+        "scratch_bytes": 0.0,
+        "native_peak_bytes": 74680876.0,
+        "preflight_seconds": 0.00076228,
+        "input_seconds": 0.075178307,
+        "native_seconds": 0.367042035,
+        "plugin_seconds": 0.442982622,
+        "solver_setup_seconds": 0.013607722,
+        "solver_solve_seconds": 0.030711375,
+        "fallback_count": 0.0
+      },
+      "candidate": {
+        "command_seconds": 0.833,
+        "rss_peak_bytes": 173645824.0,
+        "scratch_bytes": 0.0,
+        "native_peak_bytes": 74680876.0,
+        "preflight_seconds": 0.000752003,
+        "input_seconds": 0.081676233,
+        "native_seconds": 0.365500533,
+        "plugin_seconds": 0.447928769,
+        "solver_setup_seconds": 0.009479950999999999,
+        "solver_solve_seconds": 0.02494294,
+        "fallback_count": 0.0
+      }
+    },
+    "timing_flags": []
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "action": {
+    "clean_inventory_sha256": "61d6554d04ac01778f6e276333e9c67e6c5ca12e72ea140e4f4d90030d036b12",
+    "preserved_overlay_inventory_sha256": "2301cae5e3a527a03a7413e2f896bee063275fa60a4b23a1610bcb9423205ae1",
+    "clean_source_excludes": "crates/fereg-core/src/fe/cmg_container_memory.rs",
+    "reason": "uncompiled preexisting untracked draft preserved in working tree only"
+  },
+  "ols": {
+    "clean_inventory_sha256": "ac24b00fc64a9939457225332667a389d9887f269d59390e12d9277f35eb5694",
+    "preserved_overlay_inventory_sha256": "b69edc2a6fcf6c081b608f7d1e323f619dd201a158d4a1a194b8023944ea4462",
+    "clean_source_excludes": "crates/fereg-core/src/fe/cmg_container_memory.rs",
+    "reason": "uncompiled preexisting untracked draft preserved in working tree only"
+  }
+}

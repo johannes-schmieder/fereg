@@ -10,35 +10,54 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Practical memory reporting and explicit CMG components — 2026-09-18
+## CMG expected heap and native calibration — 2026-09-18
 
-Implemented the shared OLS/PPML memory tables, entry/pre-plugin Stata baselines,
-whole-ABI native observation, publication-growth estimates and fast-OLS phase
-lifetime composition. Legacy memory/admission fields remain intact. **Memory
-accuracy is not accepted:** seven of twelve synthetic cases meet the declared
-10%-or-64-MiB criterion; five CMG-heavy estimates remain too conservative.
-The report stays partial, with combined peak/reserve unavailable. Strict proof
-coverage is separate from practical calibration.
+Implementation commit `290a2ffb` separates expected native heap from conservative
+CMG admission. The forecast uses actual retained capacities, hierarchy dimensions,
+component factor fill and estimated construction scratch; runtime/stack headroom
+remains admitted separately. Failed attempts, OLS retained parents and PPML
+prepared/frame/checkpoint overlap retain independent peaks. Automatic routing,
+scientific contracts and the CMG pin are unchanged. Explicit CMG still defaults
+to components, as adopted in the preceding checkpoint.
 
-Explicit `solver(cmg)` now defaults to the pinned component engine; automatic
-routing remains ordinary. All 18 component pairs and nine memory-overhead pairs
-pass scientific comparisons, with no command/phase timing threshold violation.
-The [development report](benchmarks/reports/development/pragmatic-memory-components-2026-09-18/README.md)
-binds fixed inputs, isolated baseline/candidate sources, artifacts, native tests,
-local Stata baseline checks, inventories, failed attempts and SCC accounting.
-Final native job 7632442 passes 205 focused Rust tests and the Linux loader;
-comparison jobs 7632403 and 7632768 are terminal with zero scheduler failure/exit.
+The [development report](benchmarks/reports/development/cmg-expected-heap-2026-09-18/README.md)
+binds isolated baseline/candidate source and artifacts, input hashes, all focused
+tests and failed attempts. Native job 7639913 passes 205 Rust checks and Linux
+export/actual-loader checks. Job 7639948 passes all twelve fixed native-memory
+cases and 27 alternating scientific pairs, with no command or phase timing flag.
+Four holdouts pass (7639985/7639998); the original width-harness mistake is retained
+and only that holdout was corrected/retested. Local Python, inventory and
+repository checks pass. Compiled source matches the tested snapshot.
 
-**Resume boundary:** replace conservative CMG construction/runtime reservations
-in the expected-use forecast with a separate ownership/lifetime estimate;
-retain those reservations for admission. Calibrate Stata publication growth and
-process uncertainty. Do not claim whole-action closure, freeze/package a
-production candidate, or run the declared holdouts/German case until the
-synthetic gate passes. No empirical rerun, installed-artifact replacement,
-CMG edit, issue edit, push or release occurred. Xcode licensing still blocks
-Mac linked checks. Earlier unrelated dirty STATUS content and receipts remain.
-The obsolete uncompiled CMG draft and its two working-inventory overlays remain
-uncommitted; clean committed inventories bind the source without that draft.
+CMG forecasts fall from 162.05 to 22.85 MiB (connected OLS), 396.36 to 18.65
+(tiny components), and 140.38 to 13.81 (saved-output PPML). Observed peaks are
+14.17, 13.98 and 9.45 MiB. These pass the declared absolute allowance; they are
+not ten-percent-relative results or new solver-memory savings. The
+[attribution](benchmarks/reports/development/cmg-memory-attribution-2026-09-18/README.md)
+identifies worst-case level reservations and runtime allowances, not a defect
+in low-degree elimination or component numerics.
+
+The single unchanged German 5% native OLS check, job 7639994, retains exactly
+4,361,733 rows. All scientific tables, saved columns and sample order match the
+preserved native result exactly. Predicted native peak is 3,705,301,141 bytes
+versus 3,570,575,744 observed (+3.77%); command time is 285.070 seconds, without
+a paired speed claim. All accepted jobs have terminal sentinels and zero
+scheduler failure/exit. No reference or full-sample estimation was rerun.
+
+**Resume boundary:** native forecast calibration now passes all twelve fixed
+cases, four holdouts and the unchanged German check. Whole-action reporting
+remains partial: Stata publication/allocation growth and whole-process runtime,
+stack and allocator uncertainty still need calibration. The German before/after
+Stata allocated increase is 101,325,876 bytes, whereas the narrower publication
+estimate is 4,628,641; these are different lifetime boundaries, now measured
+explicitly. Combined peak/reserve stay unavailable; strict proof limitations
+remain separate. Do not infer release readiness from the native gate.
+
+The installed plugin and CMG checkout are unchanged. Mac linking remains blocked
+by the unaccepted Xcode license. No push, issue edit, release or broad campaign
+occurred. Unrelated STATUS content and historical receipts remain preserved;
+the uncompiled CMG draft and working inventory overlays remain uncommitted.
+The earlier checkpoints below retain their historical scope.
 
 ## Retained OLS FE product capacity admission — 2026-09-18
 

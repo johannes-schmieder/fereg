@@ -1,0 +1,43 @@
+==============================================================
+qname        mem384              
+hostname     scc-yk4.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_mem_calibration
+jobnumber    7639998             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Fri Sep 18 17:14:13 2026
+start_time   Fri Sep 18 17:16:08 2026
+end_time     Fri Sep 18 17:16:19 2026
+granted_pe   omp28               
+slots        28                  
+failed       0    
+exit_status  0                   
+ru_wallclock 11           
+ru_utime     16.127       
+ru_stime     2.373        
+ru_maxrss    302904              
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    130962              
+ru_majflt    0                   
+ru_nswap     0                   
+ru_inblock   168                 
+ru_oublock   292600              
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     25734               
+ru_nivcsw    3515                
+cpu          18.500       
+mem          6.541             
+io           2.566             
+iow          0.000             
+maxvmem      1.456G
+arid         undefined

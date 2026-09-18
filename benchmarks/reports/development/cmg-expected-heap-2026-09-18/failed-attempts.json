@@ -1,0 +1,23 @@
+[
+  {
+    "job_id": "7639848",
+    "scope": "native r1",
+    "outcome": "41/42 CMG tests passed; old hierarchy-guard assertion compared entire diagnostic carrier",
+    "decision": "compare unchanged admitted bytes and separately assert expected-heap semantics; r2 passes all 42",
+    "evidence": "native-r1/cmg.txt"
+  },
+  {
+    "job_id": "7639985",
+    "scope": "wider_k holdout only",
+    "outcome": "harness generated 65 controls but stale explicit RHS estimated 50",
+    "decision": "reject this width receipt; preserve other three holdouts; one corrected-width retest job 7639998 requires df_m=67",
+    "evidence": "holdouts/calibration.json",
+    "empirical_job": "7639994 was held while queued; released only after corrected holdout passed"
+  },
+  {
+    "scope": "final local repository checker environment",
+    "outcome": "system Git invokes the unaccepted Xcode license before checks execute",
+    "decision": "use existing Homebrew Git via PATH; focused repository check passes; no license accepted and no Mac build claimed",
+    "evidence": "repository-system-git-failure.txt"
+  }
+]

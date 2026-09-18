@@ -1,0 +1,8 @@
+test_current_source_matches (test_action_allocation_inventory.ActionAllocationInventoryTests.test_current_source_matches) ... ok
+test_inventory_cannot_claim_byte_coverage (test_action_allocation_inventory.ActionAllocationInventoryTests.test_inventory_cannot_claim_byte_coverage) ... ok
+test_ppml_session_helpers_literals_and_lock_are_closed (test_action_allocation_inventory.ActionAllocationInventoryTests.test_ppml_session_helpers_literals_and_lock_are_closed) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 8.502s
+
+OK

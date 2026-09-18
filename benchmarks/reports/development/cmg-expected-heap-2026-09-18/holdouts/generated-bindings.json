@@ -1,0 +1,18 @@
+{
+  "double_n": {
+    "data_sha256": "29f49bf4b284439db61f3d67678fde2e380bbebe42a90170d24c2e381e247964",
+    "metadata_sha256": "583922dceb09f9016aebf52cfac0a60374d48a1493671bec17c9638dcff66fcd"
+  },
+  "new_components": {
+    "data_sha256": "7502cb8a835450cc5ff4e0d50d7496447c60d728ed910d904c023130fe9f55ad",
+    "metadata_sha256": "d19c0c4992ce6c29880fe8183eb512b4ec7f5f260e5205d665fa26d00ccc276e"
+  },
+  "new_separation": {
+    "data_sha256": "e448b7283b980ad589abd405d23ca17f50ef04626f3fe3b6a3d4b522593a9faa",
+    "metadata_sha256": "844f838e25a48a65dad09d71bf5dc5db2dbdec50041257b8a8273e5b8706d816"
+  },
+  "wider_k": {
+    "data_sha256": "4a000f3171d2b1797f9a70a6dc91db0384eddc6f910528c07962b22c00f823c1",
+    "metadata_sha256": "613f0e6dac3de47aa07cd4c54a793dd43861095b79898e27e8e249c2c5a90583"
+  }
+}

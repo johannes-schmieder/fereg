@@ -1,0 +1,97 @@
+{
+  "cases": [
+    {
+      "case": "ols_narrow",
+      "delta_seconds": -0.0010000000000000009,
+      "flag": false,
+      "medians": {
+        "baseline": 0.21,
+        "candidate": 0.209
+      },
+      "relative_change": -0.004761904761904767
+    },
+    {
+      "case": "ols_wide_missing",
+      "delta_seconds": 0.009000000000000008,
+      "flag": false,
+      "medians": {
+        "baseline": 0.73,
+        "candidate": 0.739
+      },
+      "relative_change": 0.012328767123287683
+    },
+    {
+      "case": "ppml_one",
+      "delta_seconds": 0.010000000000000009,
+      "flag": false,
+      "medians": {
+        "baseline": 0.249,
+        "candidate": 0.259
+      },
+      "relative_change": 0.04016064257028116
+    },
+    {
+      "case": "ols_connected_cmg",
+      "delta_seconds": 0.0,
+      "flag": false,
+      "medians": {
+        "baseline": 0.315,
+        "candidate": 0.315
+      },
+      "relative_change": 0.0
+    },
+    {
+      "case": "ols_tiny_components",
+      "delta_seconds": 0.0010000000000000009,
+      "flag": false,
+      "medians": {
+        "baseline": 0.294,
+        "candidate": 0.295
+      },
+      "relative_change": 0.0034013605442176904
+    },
+    {
+      "case": "ols_mixed_components",
+      "delta_seconds": 0.008999999999999952,
+      "flag": false,
+      "medians": {
+        "baseline": 0.341,
+        "candidate": 0.35
+      },
+      "relative_change": 0.026392961876832703
+    },
+    {
+      "case": "ols_weighted_bridge",
+      "delta_seconds": 0.0020000000000000018,
+      "flag": false,
+      "medians": {
+        "baseline": 0.248,
+        "candidate": 0.25
+      },
+      "relative_change": 0.008064516129032265
+    },
+    {
+      "case": "ols_low_inference",
+      "delta_seconds": 0.0030000000000000027,
+      "flag": false,
+      "medians": {
+        "baseline": 0.5,
+        "candidate": 0.503
+      },
+      "relative_change": 0.006000000000000005
+    },
+    {
+      "case": "ppml_cmg_saved",
+      "delta_seconds": -0.0010000000000000009,
+      "flag": false,
+      "medians": {
+        "baseline": 0.358,
+        "candidate": 0.357
+      },
+      "relative_change": -0.0027932960893854776
+    }
+  ],
+  "native_accuracy_pass": true,
+  "performance_pass": true,
+  "whole_action_accepted": false
+}
