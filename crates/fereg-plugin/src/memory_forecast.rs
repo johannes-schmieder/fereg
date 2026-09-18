@@ -19,7 +19,7 @@ impl Forecast {
                 (Some(stata), Some(native)) => Some(self.combined(stata, native)?),
                 _ => None,
             };
-            eprintln!("FEREG_MEMORY_FORECAST|version=1|calibrated=0|native_peak={}|stata_growth={}|combined={combined:?}", self.native_peak, self.stata_growth);
+            eprintln!("FEREG_MEMORY_FORECAST|version=2|calibrated=0|native_peak={}|stata_growth={}|combined={combined:?}", self.native_peak, self.stata_growth);
         }
         Ok(())
     }

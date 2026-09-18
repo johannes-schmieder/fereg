@@ -452,17 +452,30 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         crate::action_memory::emit(&memory_ledger,
             resources.allocation_peak_bytes.saturating_sub(resources_start.allocation_current_bytes))?;
     }
-    let forecast = crate::memory_forecast::Forecast {
-        // This inventory already composes each generation/phase and the plugin
-        // publication parent. Runtime allowances remain explicit calibration gaps.
-        native_peak: memory_ledger.summary().accounted_peak,
-        stata_growth: crate::memory_forecast::Forecast::publication_growth(
-            shadow.drop_reasons.len(), action.publication_matrix_cells as u128)?,
+    let expected_solver = match result.memory().expected_solver_workspace_peak {
+        Some(peak) => peak.expected_heap_bytes().map(u128::from),
+        None => Some(result.memory().plan.solver_workspace_bytes),
     };
-    forecast.trace(action.memory_baseline, crate::instrumentation::native_live_before())?;
+    let forecast = if let Some(expected_solver) = expected_solver {
+        // This copy is reporting-only. It must never re-enter admission or
+        // telemetry validation, which retain the original conservative plan.
+        let mut expected_plan = result.memory().plan;
+        expected_plan.solver_workspace_bytes = expected_solver;
+        let expected = ppml_action_memory_ledger(expected_plan,
+            Some(input_memory.peak()), Some(action.metadata_peak_bytes))?;
+        Some(crate::memory_forecast::Forecast {
+            native_peak: expected.summary().accounted_peak.max(
+                publication_memory.parent_bytes + publication_memory.shadow_bytes),
+            stata_growth: crate::memory_forecast::Forecast::publication_growth(
+                shadow.drop_reasons.len(), action.publication_matrix_cells as u128)?,
+        })
+    } else { None };
+    if let Some(forecast) = forecast {
+        forecast.trace(action.memory_baseline, crate::instrumentation::native_live_before())?;
+    }
     let memory_report = MemoryReport::estimated(action.memory_baseline,
         crate::instrumentation::native_live_before(), memory_ledger.summary(),
-        result.memory().plan.safety_headroom_bytes, Some(forecast))?;
+        result.memory().plan.safety_headroom_bytes, forecast)?;
     precommit(&action, &shadow, spi)?;
     store_shadow_prefix(&action, &shadow, spi)?;
     let action_end = action_probe.map(|probe| probe());

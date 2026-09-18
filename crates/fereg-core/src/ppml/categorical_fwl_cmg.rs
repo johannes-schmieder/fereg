@@ -21,7 +21,7 @@ use crate::fe::{
     FeSolverKind, MapConfig, PreparedCmgTopology, ValidatedBorrowedInterceptSource,
     CMG_MAX_NUISANCE_COLUMNS,
 };
-use crate::memory::FeSolverMemoryBudget;
+use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
 use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
@@ -269,6 +269,8 @@ pub(crate) struct FusedFwlCmgConfig {
 }
 
 pub(crate) struct ReusableCategoricalFwlCmg {
+    expected_heap_peak: SolverWorkspacePeak,
+    expected_parent_bytes: u128,
     rows: usize,
     active_columns: usize,
     certificate_topology: FusedCmgCertificateTopology,
@@ -366,6 +368,15 @@ impl FusedCmgCertificateTopology {
 }
 
 impl ReusableCategoricalFwlCmg {
+    /// The persistent prepared/fused parent also remains live during canonical
+    /// checkpoint solves; hierarchy frames and checkpoints are sequential.
+    pub(crate) fn expected_heap_peak(&self, checkpoint_bytes: u128) -> Result<SolverWorkspacePeak> {
+        Ok(self.expected_heap_peak.max(
+            SolverWorkspacePeak::from_bytes(checkpoint_bytes)?
+                .with_retained(self.expected_parent_bytes)?,
+        ))
+    }
+
     pub(crate) fn new<P: PreparedOlsFitView + Sync + ?Sized>(
         prepared: &P,
         active_generated: &[usize],
@@ -495,6 +506,10 @@ impl ReusableCategoricalFwlCmg {
         }
         let team = ThreadTeam::new(config.threads).acquire()?;
         Ok(Self {
+            expected_heap_peak: SolverWorkspacePeak::from_bytes(
+                topology_prepare_peak.max(fused_workspace_bytes + prepared_retained),
+            )?,
+            expected_parent_bytes: fused_workspace_bytes + prepared_retained,
             rows,
             active_columns,
             certificate_topology,
@@ -621,12 +636,19 @@ impl ReusableCategoricalFwlCmg {
         let cmg_config = self.cmg_config(map);
         let borrowed =
             projection_design(prepared.fit_borrowed_cmg_design()?, self.redundant_nuisance)?;
-        let mut absorber = CmgAbsorber::build_unpolished_prepared(
+        let attempt = CmgAbsorber::build_unpolished_prepared(
             borrowed,
             BorrowedMapWeights::Provided(weights),
             cmg_config,
             &mut self.prepared_topology,
-        )?;
+        );
+        if attempt.is_err() {
+            self.expected_heap_peak = SolverWorkspacePeak::UNMODELED;
+        }
+        let mut absorber = attempt?;
+        self.expected_heap_peak = self.expected_heap_peak.max(
+            absorber.expected_heap_peak().with_retained(self.expected_parent_bytes)?,
+        );
         let first = absorber.project_unpolished_with_seed(
             &mut self.projected,
             first_tolerance,
@@ -681,12 +703,19 @@ impl ReusableCategoricalFwlCmg {
                 )?;
                 let retry_config = self.cmg_config(retry_map);
                 self.reset_warm_start();
-                absorber = CmgAbsorber::build_unpolished_prepared(
+                let attempt = CmgAbsorber::build_unpolished_prepared(
                     retry_borrowed,
                     BorrowedMapWeights::Provided(weights),
                     retry_config,
                     &mut self.prepared_topology,
-                )?;
+                );
+                if attempt.is_err() {
+                    self.expected_heap_peak = SolverWorkspacePeak::UNMODELED;
+                }
+                absorber = attempt?;
+                self.expected_heap_peak = self.expected_heap_peak.max(
+                    absorber.expected_heap_peak().with_retained(self.expected_parent_bytes)?,
+                );
                 absorber.project_unpolished(&mut self.retry, retry_tolerance)?
             };
             diagnostics.observe_projection(report);

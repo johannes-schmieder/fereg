@@ -3187,6 +3187,10 @@ pub enum PpmlFallbackKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PpmlMemoryTelemetry {
     pub plan: PpmlMemoryPlan,
+    /// Optional expected-heap override for the solver inventory. Admission and
+    /// validation keep using plan.solver_workspace_bytes. An unmodeled override
+    /// suppresses the forecast; None preserves the ordinary route's model.
+    pub expected_solver_workspace_peak: Option<crate::memory::SolverWorkspacePeak>,
     /// Requested application threads; zero preserves the public "native
     /// default" sentinel while `effective_threads` reports the resolved team.
     pub requested_threads: usize,
@@ -3229,6 +3233,7 @@ impl PpmlMemoryTelemetry {
         }
         Ok(Self {
             plan,
+            expected_solver_workspace_peak: None,
             requested_threads,
             effective_threads,
             timings: PpmlPhaseTimings::default(),

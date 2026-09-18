@@ -67,7 +67,9 @@ pub(super) fn admit(
     let peak = parents
         .checked_add(incremental as u128)
         .ok_or_else(|| allocation("CMG action stage overflows"))?;
-    let observed = SolverWorkspacePeak::from_bytes(peak)?;
+    // Admission reservations must not overwrite the independently composed
+    // heap forecast with max-level/fill/runtime allowances.
+    let observed = SolverWorkspacePeak::from_bytes(peak)?.with_expected_heap(Some(0))?;
     plan.construction = plan.construction.max(observed);
     plan.projection = plan.projection.max(observed);
     remaining(config, parents, incremental)

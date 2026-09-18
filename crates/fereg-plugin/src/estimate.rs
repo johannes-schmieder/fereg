@@ -585,7 +585,7 @@ impl EstimateAction {
     /// sequential frames and must not all become the projection's live parent.
     fn memory_forecast(&self, shadow: &OlsShadowResult<'_>) -> Result<Option<crate::memory_forecast::Forecast>> {
         use crate::memory_forecast::{sum, Forecast, ols_projection_parent};
-        let Some(solver) = shadow.solver_workspace_peak else { return Ok(None); };
+        let Some(solver) = shadow.solver_expected_heap_peak else { return Ok(None); };
         let fast = shadow.execution.mode == PreparedOlsExecutionMode::Fast;
         let fit = if fast {
             let projection = sum(&[ols_projection_parent(self.prepared_owner_bytes,
@@ -3793,6 +3793,7 @@ mod tests {
     fn coefficient_shadow() -> OlsShadowResult<'static> {
         OlsShadowResult {
             solver_workspace_peak: None,
+            solver_expected_heap_peak: None,
             b: vec![2.0, 3.0],
             covariance: vec![4.0, 1.0, 1.0, 5.0],
             coefficient_status: vec![1.0, 1.0, 1.0, 1.0, 2.0, 5.0, 0.0, 2.0],

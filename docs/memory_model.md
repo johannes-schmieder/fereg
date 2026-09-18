@@ -494,6 +494,16 @@ version-1 terminal record observes action return/unwind before ABI error
 reporting; neither is a public protocol change. See the source-bound
 [proof obligations](allocation_inventory.md#action-lifetime-ledger-and-proof-boundary).
 
+The private expected-use forecast is a separate channel from that conservative
+ledger. CMG's revision-2 forecast composes requested capacities and actual
+hierarchy dimensions with separately estimated construction scratch; it does
+not substitute the allocator-observed peak for its model. Runtime heap headroom
+and requested worker stacks remain in admission and outside the expected native
+heap figure. Solver attempts carry both values so a larger admission reservation
+cannot overwrite a smaller expected heap estimate. Unknown failed-constructor
+temporaries invalidate the expected channel independently of admission. See
+[CMG integration](cmg_integration.md#expected-heap-reporting).
+
 Fast fits retaining FE coefficient products additionally admit their initial
 and combined coefficient banks before solver-session construction, using actual
 prepared levels and channels. The retained parent is included in the returned

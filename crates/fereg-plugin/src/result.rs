@@ -280,6 +280,7 @@ pub(crate) struct OlsShadowResult<'a> {
     pub(crate) residuals: &'a [f64],
     pub(crate) execution: PreparedOlsExecutionReport,
     pub(crate) solver_workspace_peak: Option<u64>,
+    pub(crate) solver_expected_heap_peak: Option<u64>,
 }
 
 impl OlsShadowResult<'_> {
@@ -513,6 +514,7 @@ pub(crate) fn build_shadow_result<'a>(
         residuals: fit.residuals(),
         execution: fit.execution(),
         solver_workspace_peak: fit.solver_workspace_peak().bytes(),
+        solver_expected_heap_peak: fit.solver_workspace_peak().expected_heap_bytes(),
     })
 }
 

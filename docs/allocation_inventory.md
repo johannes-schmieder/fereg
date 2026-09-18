@@ -4,10 +4,10 @@ Two separate checks protect the current native source:
 
 - `scripts/fereg_allocation_source_contract.py audit` enforces the OLS route,
   allocation syntax, literal payloads, Cargo/native wiring and exact one-shot
-  boundaries against `fereg_allocation_source_contract_v34.json`.
+  boundaries against `fereg_allocation_source_contract_v35.json`.
 - `scripts/action_allocation_inventory.py audit` covers every Rust source under
   both core and plugin, including PPML, separation and retained sessions, against
-  `action_allocation_inventory_v19.json`. It also binds `Cargo.lock`. It does not
+  `action_allocation_inventory_v20.json`. It also binds `Cargo.lock`. It does not
   exclude a file because the OLS-only route cannot reach it.
 
 Both are structural guards. Their allocation counts are syntax counts, not

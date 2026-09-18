@@ -33,6 +33,8 @@ use super::{
 
 #[path = "cmg_admission.rs"]
 mod admission;
+#[path = "cmg_forecast.rs"]
+mod forecast;
 
 pub(crate) const MAX_NUISANCE_COLUMNS: usize = 64;
 // CMG's graph solve feeds the OLS normal equations, whose score certificate is
@@ -347,6 +349,13 @@ impl CmgWorkspacePlan {
         construction: SolverWorkspacePeak::ZERO,
         projection: SolverWorkspacePeak::ZERO,
     };
+
+    fn record_expected_heap(&mut self, bytes: u128) -> Result<()> {
+        let expected = SolverWorkspacePeak::ZERO.with_expected_heap(Some(bytes))?;
+        self.construction = self.construction.max(expected);
+        self.projection = self.projection.max(expected);
+        Ok(())
+    }
 }
 
 /// Private outcome of post-topology automatic CMG setup. A rejected hierarchy
@@ -448,6 +457,7 @@ impl CallerPcgBuffers {
         let parents =
             admission::frame_storage(&[solver], prepared)? + admission::runtime_extra(runtime);
         admission::admit(config, parents, total, memory)?;
+        memory.record_expected_heap(parents - admission::runtime_extra(runtime) + total as u128)?;
         let workspaces = PcgBatchWorkspace::new_bank_with_budget(
             solver.preconditioner(),
             workspace_count,
@@ -1128,6 +1138,12 @@ impl<'a> CmgAbsorber<'a> {
                     )
                 })
             };
+            if graph.is_err() && memory.construction != SolverWorkspacePeak::ZERO {
+                // A failed opaque constructor can have released temporary
+                // owners before returning. Do not claim a complete forecast.
+                memory.construction = memory.construction.with_expected_heap(None)?;
+                memory.projection = memory.projection.with_expected_heap(None)?;
+            }
             *attempted_peak = attempted_peak.max(memory.construction);
             match graph {
                 Ok(GraphBuildOutcome::Ready(graph)) => CmgRoute::Graph(graph),
@@ -1269,16 +1285,23 @@ impl<'a> CmgAbsorber<'a> {
         })
     }
 
+    pub(crate) fn expected_heap_peak(&self) -> SolverWorkspacePeak {
+        self.memory.construction
+    }
+
     fn retained_workspace_peak(&self) -> Result<SolverWorkspacePeak> {
         match &self.route {
             CmgRoute::Graph(graph)
                 if matches!(graph.workspace, GraphCmgWorkspace::OlsBuffers(_)) =>
             {
-                SolverWorkspacePeak::from_bytes(cmg_retained_workspace_bound_bytes(
+                let admitted = cmg_retained_workspace_bound_bytes(
                     graph,
                     self.config,
                     None,
-                )?)
+                )?;
+                SolverWorkspacePeak::from_bytes(admitted)?.with_expected_heap(Some(
+                    admitted - admission::runtime_extra(graph.runtime_estimate),
+                ))
             }
             CmgRoute::Direct | CmgRoute::Failed(_) => Ok(SolverWorkspacePeak::ZERO),
             // Prepared PPML topology and caller buffers require their parent
@@ -1302,10 +1325,7 @@ impl<'a> CmgAbsorber<'a> {
         }
         let (reference_norms, norm_workspace) =
             weighted_column_norms(&values, self.weights, self.weight_scale)?;
-        let norm_peak = match self.retained_workspace_peak()?.bytes() {
-            Some(bytes) => norm_workspace.with_retained(bytes as u128)?,
-            None => SolverWorkspacePeak::UNMODELED,
-        };
+        let norm_peak = norm_workspace.with_retained_peak(self.retained_workspace_peak()?)?;
         let norm_bytes = reference_norms.capacity() as u128 * 8;
         let norm_seconds = phase_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
         let setup_seconds = std::mem::take(&mut self.pending_setup_seconds);
@@ -1409,12 +1429,9 @@ impl<'a> CmgAbsorber<'a> {
                         solve_started.elapsed().as_secs_f64() - bulk_seconds,
                     );
                 }
-                let polish_peak = match graph_retained.bytes() {
-                    Some(bytes) => report
-                        .solver_workspace_peak
-                        .with_retained(bytes as u128 + coefficient_bytes)?,
-                    None => SolverWorkspacePeak::UNMODELED,
-                };
+                let polish_peak = report.solver_workspace_peak
+                    .with_retained_peak(graph_retained)?
+                    .with_retained(coefficient_bytes)?;
                 report.solver_workspace_peak = self
                     .memory
                     .construction
@@ -1511,10 +1528,7 @@ impl<'a> CmgAbsorber<'a> {
                 &values,
                 config.map,
             )?;
-        let certificate_peak = match retained.bytes() {
-            Some(bytes) => certificate_workspace.with_retained(bytes as u128)?,
-            None => SolverWorkspacePeak::UNMODELED,
-        };
+        let certificate_peak = certificate_workspace.with_retained_peak(retained)?;
         if !certificate.passed {
             drop(self.route);
             ensure_cg_fallback_fits(&self.design, values.ncols(), config)?;
@@ -1979,6 +1993,7 @@ fn build_graph_route(
     };
     let estimate = admission::runtime(config)?;
     let runtime_budget = admission::admit(config, 0, estimate.total_bytes(), memory)?;
+    memory.record_expected_heap(estimate.worker_handles_bytes() as u128)?;
     let (executor, runtime_estimate) = ParallelExecutor::new_with_estimated_memory_budget(
         parallel,
         ParallelRuntimeAllowance::default(),
@@ -1997,6 +2012,9 @@ fn build_graph_route(
     let graph_started = trace_enabled.then(Instant::now);
     let graph =
         Laplacian::from_edges_with_executor(vertices, edges, &executor).map_err(cmg_error)?;
+    // Duplicate aggregation compacts in place: retained edge capacity still
+    // covers the raw observation bank. Sorting is in-place in the pinned CMG.
+    memory.record_expected_heap(admission::storage(&[&graph, &executor])?)?;
     let graph_seconds = graph_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
     build_graph_route_from_numeric(
         design,
@@ -2032,6 +2050,7 @@ fn build_prepared_graph_route(
     };
     let estimate = admission::runtime(config)?;
     let runtime_budget = admission::admit(config, 0, estimate.total_bytes(), memory)?;
+    memory.record_expected_heap(estimate.worker_handles_bytes() as u128)?;
     let (executor, runtime_estimate) = ParallelExecutor::new_with_estimated_memory_budget(
         parallel,
         ParallelRuntimeAllowance::default(),
@@ -2048,6 +2067,7 @@ fn build_prepared_graph_route(
         numeric_bytes,
         memory,
     )?;
+    memory.record_expected_heap(estimate.worker_handles_bytes() as u128 + numeric_bytes as u128)?;
     let graph_started = trace_enabled.then(Instant::now);
     let graph = prepared.assemble(design, profile, weights, weight_scale)?;
     let graph_seconds = graph_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
@@ -2119,6 +2139,9 @@ fn build_graph_route_from_numeric(
         )
     }
     .map_err(cmg_error)?;
+    memory.record_expected_heap(forecast::hierarchy_peak(
+        &graph, &executor, &preconditioner, prepared, config.components,
+    )?)?;
     let hierarchy_seconds =
         hierarchy_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
     let hierarchy = preconditioner.hierarchy();
@@ -2196,6 +2219,7 @@ fn build_graph_route_from_numeric(
         let parents = admission::frame_storage(&[&solver], prepared)?
             + admission::runtime_extra(runtime_estimate);
         let budget = admission::admit(config, parents, required, memory)?;
+        memory.record_expected_heap(parents - admission::runtime_extra(runtime_estimate) + required as u128)?;
         solver.try_plan_with_budget(budget).map_err(cmg_error)?;
     }
     let caller = CallerPcgBuffers::new(
@@ -2244,6 +2268,7 @@ fn build_graph_route_from_numeric(
     )? + admission::runtime_extra(runtime_estimate)
         + (caller.diagnostics.capacity() * std::mem::size_of::<PcgDiagnostics>()) as u128;
     admission::admit(config, parents, metadata_bytes, memory)?;
+    memory.record_expected_heap(parents - admission::runtime_extra(runtime_estimate) + metadata_bytes as u128)?;
     let nuisance = build_nuisance_columns(design, &profile.effect_order[2..])?;
     let nuisance_effects = build_nuisance_effects(design, &profile.effect_order[2..])?;
     let mut route = GraphCmg {
@@ -2271,6 +2296,7 @@ fn build_graph_route_from_numeric(
         .ok_or_else(|| allocation("CMG nuisance factor overflows"))?;
     let parents = cmg_retained_workspace_bound_bytes(&route, config, prepared)?;
     admission::admit(config, parents, nuisance_bound, memory)?;
+    memory.record_expected_heap(parents - admission::runtime_extra(runtime_estimate) + nuisance_bound as u128)?;
     let nuisance_started = trace_enabled.then(Instant::now);
     let (factor, metrics) = build_nuisance_factor(
         design,
@@ -2292,6 +2318,7 @@ fn build_graph_route_from_numeric(
         config.batch_size,
     )?;
     admission::admit(config, retained, projection, memory)?;
+    memory.record_expected_heap(retained - admission::runtime_extra(runtime_estimate) + projection as u128)?;
     if trace_enabled {
         eprintln!("FEREG_CMG_MEMORY|policy=estimated-v1|threads={}|runtime_heap_allowance={}|worker_stack_allowance={}|runtime_heap_unbounded=1|retained_with_allowance={retained}|components={}",
             runtime_estimate.threads(), runtime_estimate.runtime_heap_allowance_bytes(), runtime_estimate.worker_stack_allowance_bytes(), config.components);
@@ -2569,8 +2596,8 @@ fn preflight_cmg_memory(
         .is_none_or(|budget| budget.fits(required))
     {
         Ok(CmgWorkspacePlan {
-            construction: SolverWorkspacePeak::from_bytes(required)?,
-            projection: SolverWorkspacePeak::from_bytes(required - retained_coefficients as u128)?,
+            construction: SolverWorkspacePeak::from_bytes(required)?.with_expected_heap(Some(0))?,
+            projection: SolverWorkspacePeak::from_bytes(required - retained_coefficients as u128)?.with_expected_heap(Some(0))?,
         })
     } else {
         Err(allocation(format!(
@@ -2599,7 +2626,7 @@ fn preflight_prepared_cmg_memory(
     {
         // Prepared PPML does not retain an OLS coefficient output. Its
         // separately owned topology remains charged by the PPML caller.
-        let peak = SolverWorkspacePeak::from_bytes(required)?;
+        let peak = SolverWorkspacePeak::from_bytes(required)?.with_expected_heap(Some(0))?;
         Ok(CmgWorkspacePlan {
             construction: peak,
             projection: peak,
@@ -3962,7 +3989,9 @@ mod tests {
             .expect("guarded mixed setup"),
             CmgAutoBuildOutcome::HierarchyRejected { .. }
         ));
-        assert_eq!(attempted_peak, expected);
+        assert_eq!(attempted_peak.bytes(), expected.bytes());
+        assert!(attempted_peak.expected_heap_bytes().unwrap() > 0);
+        assert!(attempted_peak.expected_heap_bytes().unwrap() < attempted_peak.bytes().unwrap());
         assert!(attempted_peak.bytes().unwrap() > 0);
 
         let (tiny_worker, tiny_firm) = build_codes(1_100, true);
@@ -5114,6 +5143,42 @@ mod tests {
     }
 
     #[test]
+    fn cmg_heap_forecast_uses_actual_small_component_storage_without_runtime_allowances() {
+        for components in [false, true] {
+            for groups in [1, 256] {
+                let n = groups * 8;
+                let left = (0..n).map(|i| ((i / 8) * 2 + i % 2) as u32).collect::<Vec<_>>();
+                let right = (0..n).map(|i| ((i / 8) * 2 + (i / 2) % 2) as u32).collect::<Vec<_>>();
+                let li = LevelIndex::from_codes(&left, groups * 2).unwrap();
+                let ri = LevelIndex::from_codes(&right, groups * 2).unwrap();
+                let design = BorrowedInterceptFeDesign::new(n, vec![
+                    effect(&left, groups * 2, &li), effect(&right, groups * 2, &ri),
+                ]).unwrap();
+                let mut options = config(2);
+                options.components = components;
+                options.threads = ThreadConfig::from_requested(2, true).unwrap();
+                let profile = CmgTopologyProfile::analyze(&design).unwrap();
+                let admission = preflight_cmg_memory(&design, &profile, options).unwrap();
+                let mut session = CmgAbsorber::build_profiled(design, BorrowedMapWeights::Unit,
+                    options, false, profile).unwrap();
+                let retained = session.retained_workspace_peak().unwrap();
+                let expected = session.expected_heap_peak().expected_heap_bytes().unwrap();
+                assert!(expected >= retained.expected_heap_bytes().unwrap());
+                assert!(expected < admission.construction.bytes().unwrap() / 4);
+                let input = (0..n).map(|i| if i % 8 < 4 { -1.0 } else { 1.0 }).collect::<Vec<_>>();
+                let projected = session.absorb(DenseMatrix::from_columns(&[input.clone()]).unwrap()).unwrap();
+                assert!(projected.report().certified());
+                for (&actual, &reference) in projected.residualized().as_slice().iter().zip(&input) {
+                    assert!((actual - reference).abs() < 1e-10);
+                }
+                let peak = projected.report().solver_workspace_peak;
+                assert!(peak.bytes().unwrap() >= admission.construction.bytes().unwrap());
+                assert!(peak.expected_heap_bytes().unwrap() < peak.bytes().unwrap() / 4);
+            }
+        }
+    }
+
+    #[test]
     fn cmg_workspace_failed_nuisance_construction_retains_its_admitted_attempt() {
         let n = 6000;
         let worker = (0..n).map(|row| (row / 3) as u32).collect::<Vec<_>>();
@@ -5168,6 +5233,7 @@ mod tests {
         }
         assert!(attempted.bytes().unwrap() >= expected.bytes().unwrap());
         assert!(attempted.bytes().unwrap() > 0);
+        assert_eq!(attempted.expected_heap_bytes(), None, "failed opaque setup is not a zero-cost forecast");
     }
 
     #[test]

@@ -958,6 +958,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .unwrap_or(0);
     let effective_threads = config.linear.execution.threads.resolved();
     let mut memory = PpmlMemoryTelemetry::new(memory_plan, requested_threads, effective_threads)?;
+    if config.solver_plan.selected == super::PpmlSolverFamily::Cmg {
+        memory.expected_solver_workspace_peak = Some(crate::memory::SolverWorkspacePeak::from_bytes(
+            solver_admission.checkpoint_workspace_bytes + solver_admission.owned_fe_design_shortfall_bytes,
+        )?);
+    }
     // Admission and telemetry bind this fit to one resolved team. Repeated
     // automatic resolution may allocate while querying OS CPU quotas (Linux),
     // and must not change the team behind the admitted workspace dimensions.
@@ -1190,6 +1195,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 initial_solver_report.enable_lsmr_checkpoint();
             }
             solver_report = Some(initial_solver_report);
+            if let Some(cmg) = fused_cmg.as_ref() {
+                record_cmg_heap_forecast(&mut memory, cmg, solver_admission)?;
+            }
             result
         } else if let Some(joint) = joint_lsmr.as_mut() {
             let report = joint.solve(
@@ -1240,6 +1248,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     workspace.hessian_weights(),
                     inner_tolerance,
                 )?;
+            record_cmg_heap_forecast(&mut memory, fused_cmg.as_ref().expect("CMG attempt retained"), solver_admission)?;
             match attempt {
                 FusedFwlCmgSolveOutcome::Certified(report) => {
                     let cmg = fused_cmg
@@ -1864,6 +1873,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         ));
                     }
                 }
+                if let Some(cmg) = fused_cmg.as_ref() {
+                    record_cmg_heap_forecast(&mut memory, cmg, solver_admission)?;
+                }
             }
             final_score = prepared_score_certificate(
                 prepared,
@@ -2151,6 +2163,20 @@ struct PublicSolverMemoryAdmission {
     incremental_bytes: u128,
     owned_fe_design_shortfall_bytes: u128,
     cmg_batch_capacity: usize,
+    checkpoint_workspace_bytes: u128,
+}
+
+fn record_cmg_heap_forecast(
+    memory: &mut PpmlMemoryTelemetry,
+    cmg: &ReusableCategoricalFwlCmg,
+    admission: PublicSolverMemoryAdmission,
+) -> Result<()> {
+    let peak = cmg.expected_heap_peak(admission.checkpoint_workspace_bytes)?
+        .with_retained(admission.owned_fe_design_shortfall_bytes)?;
+    memory.expected_solver_workspace_peak = Some(
+        memory.expected_solver_workspace_peak.unwrap_or(crate::memory::SolverWorkspacePeak::ZERO).max(peak),
+    );
+    Ok(())
 }
 
 fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
@@ -2297,6 +2323,7 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
             .ok_or_else(|| allocation("public PPML solver admission memory overflows"))?,
         owned_fe_design_shortfall_bytes,
         cmg_batch_capacity,
+        checkpoint_workspace_bytes: checkpoint_workspace,
     })
 }
 
@@ -4227,6 +4254,9 @@ mod tests {
                 FusedFwlCmgSolveOutcome::Certified(_)
             ));
             assert_eq!(engine.warm_seed_ready(), (true, true));
+            let expected = engine.expected_heap_peak(1024).unwrap();
+            assert!(expected.expected_heap_bytes().unwrap() >= 1024);
+            assert!(expected.expected_heap_bytes().unwrap() < 16 * 1024 * 1024);
             match failure {
                 0 => {
                     cmg::inject_projection_certificate_failure_once(0);

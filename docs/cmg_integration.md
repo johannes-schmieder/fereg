@@ -77,3 +77,27 @@ Admission records stage maxima and rejects before the covered allocation.
 Observation-sized reporting state is not allocated. Failure preserves existing
 certified alternatives and public publication atomicity. This integration does
 not establish complete whole-action coverage or release readiness.
+
+## Expected heap reporting
+
+The expected-use channel is independent of admission. It retains actual CMG
+capacity unions, selected workspace counts and plans, and uses the constructed
+hierarchy dimensions for transient forest/contraction/factor estimates. The
+finest graph's spare edge capacity is counted even when duplicate observations
+collapse to fewer canonical edges. Component factor scratch uses actual factor
+nonzeros; ordinary factors retain their dense construction allowance. This is
+an engineering model of requested heap, not a proof of complete construction.
+
+The forecast excludes the separately admitted opaque-runtime and requested-stack
+allowances. These exclusions remain explicit whole-process uncertainties, not
+assertions that the runtime consumes zero memory. No solver option, stopping
+rule, admission budget or dependency pin changes for reporting.
+
+Solver diagnostics carry admission and expected peaks separately through maxima
+over sequential attempts and sums with simultaneous parents. OLS polishing
+charges the retained CMG heap; final correction can release it. PPML preserves
+the prepared/fused parent across ordinary frames, retries and strict checkpoints,
+and retains earlier peaks when rebuilding after a basis change. An opaque setup
+failure makes the expected channel unavailable rather than reporting zero.
+Private `FEREG_MEMORY_FORECAST` records identify model revision 2; the public
+11-by-2 matrix schema and partial-coverage status are unchanged.
