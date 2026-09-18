@@ -2248,6 +2248,7 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
                 batch_size: cmg_batch_capacity,
                 retain_coefficients: false,
                 requested_solver: FeSolverKind::Cmg,
+                components: false,
                 solver_memory_budget: None,
             };
             let topology_prepare = PreparedCmgTopology::conservative_prepare_peak_bytes(&design)?;

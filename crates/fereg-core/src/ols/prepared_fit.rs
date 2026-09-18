@@ -1530,6 +1530,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
         batch_size: config.execution.poolsize,
         retain_coefficients: config.absorb.retain_coefficients,
         requested_solver: config.absorb.solver,
+        components: false,
         solver_memory_budget: config.absorb.solver_memory_budget,
     };
     let initial_rhs_columns = prepared

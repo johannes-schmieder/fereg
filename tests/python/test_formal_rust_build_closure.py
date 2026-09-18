@@ -312,7 +312,7 @@ echo '{c_libraries / 'ld-linux-x86-64.so.2'} (0x00000002)'
             revisions,
             {
                 "https://github.com/johannes-schmieder/CMG": (
-                    "90e1fe0b0c14065155532711246ede6678bb4935"
+                    "1d39c113f0c397f29653d92672090e5a42f80921"
                 ),
                 "https://github.com/johannes-schmieder/within": (
                     "1ac3522a251c2622dbeab451415924f9ebe117b9"

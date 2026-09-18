@@ -44,12 +44,12 @@ use = "Exact runtime dependency for certified LSMR and Schwarz preconditioning; 
 [[reference]]
 name = "cmg"
 repository = "https://github.com/johannes-schmieder/CMG"
-commit = "90e1fe0b0c14065155532711246ede6678bb4935"
+commit = "1d39c113f0c397f29653d92672090e5a42f80921"
 version = "0.1.0"
 license = "GPL-3.0-only"
 relevant_source_paths = ["src/", "Cargo.toml"]
 relevant_test_paths = ["tests/", "src/**/tests/"]
-use = "Exact runtime dependency for solver(cmg), including prepared fixed-topology assembly, caller-buffer PCG, checked repeated-solve memory accounting, and retained setup optimizations; compiled with the parallel feature."
+use = "Exact runtime dependency for solver(cmg), including prepared fixed-topology assembly, caller-buffer PCG, capacity-union reporting, admitted construction and fixed workspaces, and joined worker retirement with explicitly estimated runtime allowances; parallel and experimental-components are compiled, with ordinary defaults unchanged."
 
 [[reference]]
 name = "reghdfe"

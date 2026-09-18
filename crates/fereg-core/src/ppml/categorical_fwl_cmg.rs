@@ -422,16 +422,17 @@ impl ReusableCategoricalFwlCmg {
         #[cfg(test)]
         ROUTE_OBSERVATION_PREPARATIONS.set(ROUTE_OBSERVATION_PREPARATIONS.get().saturating_add(1));
         let prepared_topology = PreparedCmgTopology::prepare(&borrowed)?;
+        let prepared_retained = prepared_topology.retained_bytes()? as u128;
         let adjusted_execution = config
             .solver_memory_budget
             .execution_bytes
             .checked_add(fused_workspace_bytes)
-            .and_then(|value| value.checked_add(prepared_topology.retained_bytes() as u128))
+            .and_then(|value| value.checked_add(prepared_retained))
             .ok_or_else(|| allocation("fused PPML CMG execution memory overflows"))?;
         if adjusted_execution > config.solver_memory_budget.usable_bytes {
             return Err(allocation(format!(
                 "fused PPML CMG workspaces and prepared topology require {} bytes beyond the selected PPML execution plan",
-                fused_workspace_bytes + prepared_topology.retained_bytes() as u128
+                fused_workspace_bytes + prepared_retained
             )));
         }
         let config = FusedFwlCmgConfig {
@@ -904,6 +905,7 @@ impl ReusableCategoricalFwlCmg {
             batch_size: self.config.batch_size,
             retain_coefficients: false,
             requested_solver: FeSolverKind::Cmg,
+            components: false,
             solver_memory_budget: Some(self.config.solver_memory_budget),
         }
     }

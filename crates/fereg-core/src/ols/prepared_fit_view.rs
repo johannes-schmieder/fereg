@@ -496,6 +496,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
                     batch_size,
                     retain_coefficients: config.retain_coefficients,
                     requested_solver: FeSolverKind::Cmg,
+                    components: false,
                     solver_memory_budget: config.solver_memory_budget,
                 },
             )?;
