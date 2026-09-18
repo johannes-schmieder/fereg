@@ -13,7 +13,7 @@ from scripts import fereg_allocation_source_contract as CONTRACT
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MANIFEST = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v19.json"
+MANIFEST = CONTRACT.DEFAULT_CONTRACT
 
 
 class FeregAllocationSourceContractTests(unittest.TestCase):
