@@ -54,15 +54,21 @@ also admits topology validation and numeric workspace before allocation, then
 checks their actual capacities. Recovery and public whole-action reporting
 remain separate accounting boundaries.
 
-Topology-selected CMG uses the same joint budget. Before hierarchy
-construction, fereg consumes CMG's upstream checked conservative estimate for
-the graph, hierarchy, parallel plan, and reusable workspace pool, then adds
-fereg's simultaneous graph RHS/solution vectors, nuisance Schur storage, and
-retained coefficient product. After construction it consumes CMG's exact
-retained-memory report and rechecks the hierarchy, plan, workspace pool, and
-nuisance factor against the joint budget. A selected CMG route that does not
-fit returns to the existing auto policy before graph allocation; an explicit
-route can use certified CG only when that fallback also fits.
+Topology-selected CMG uses the same joint budget and the explicitly estimated
+runtime policy described in [CMG integration](cmg_integration.md): 32 MiB pool
+heap, 2 MiB heap per worker and an explicitly requested 8 MiB stack per worker.
+The estimate is retained with the solver until joined worker retirement. It is
+engineering headroom, not a proven Rayon bound or an allocator hard cap; existing
+whole-process headroom and unknown-coverage flags remain.
+
+CMG-owned hierarchy, factor, plan and fixed solve-bank construction now use
+matching upstream requested-layout admission APIs. The retained report is one
+capacity union, including nested banks and shared Arc owners; the old overlapping
+principal-array/container report is not added to it. Prepared PPML parents are
+included before subtracting their already charged union. Fereg separately
+charges its nuisance and output storage. Ordinary iterator ingestion and other
+unresolved action scopes remain explicit. Memory rejection preserves existing
+automatic alternatives and certified CG fallback, subject to their own admission.
 
 ## Fast and low execution
 

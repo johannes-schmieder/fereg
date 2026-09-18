@@ -198,8 +198,8 @@ pub(crate) struct CmgUnpolishedProjectionReport {
 }
 
 /// PPML-owned structural graph state reused while IRLS changes only weights.
-/// OLS deliberately does not use this seam, so its established construction
-/// and owned-result solve behavior remain unchanged.
+/// OLS keeps its ordinary endpoint construction; both callers use fixed
+/// solve banks, while only PPML retains changing-weight topology and seeds.
 pub(crate) struct PreparedCmgTopology {
     profile: CmgTopologyProfile,
     design_identity: PreparedCmgDesignIdentity,
@@ -400,6 +400,7 @@ struct CallerPcgBuffers {
 }
 
 impl CallerPcgBuffers {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         solver: &ParallelPcgSolver,
         batch_size: usize,
@@ -1793,6 +1794,8 @@ impl GraphCmg {
         }
         let mut metrics = CmgSolveMetrics::default();
         let batch_width = self.pcg_batch_width(config.batch_size);
+        let trace_ols = matches!(self.workspace, GraphCmgWorkspace::OlsBuffers(_))
+            && std::env::var_os("FEREG_PHASE_TIMING").is_some();
         let mut start = 0;
         while start < values.ncols() {
             let seed_end = if seed.as_ref().is_some_and(|(_, enabled)| *enabled)
@@ -1820,7 +1823,8 @@ impl GraphCmg {
                         start,
                         end,
                     )?;
-                    self.projection_work.rhs_seconds += rhs_started.elapsed().as_secs_f64();
+                    let rhs_seconds = rhs_started.elapsed().as_secs_f64();
+                    self.projection_work.rhs_seconds += rhs_seconds;
                     let mut batch_seed = seed.as_mut().filter(|_| start < values.ncols() - 1);
                     let guesses = batch_seed
                         .as_ref()
@@ -1828,7 +1832,9 @@ impl GraphCmg {
                         .map(|(seed, _)| &seed.potentials[start * vertices..end * vertices]);
                     let solve_started = Instant::now();
                     caller.solve(&self.solver, width, pcg_options, guesses)?;
-                    self.projection_work.pcg_seconds += solve_started.elapsed().as_secs_f64();
+                    let solve_seconds = solve_started.elapsed().as_secs_f64();
+                    self.projection_work.pcg_seconds += solve_seconds;
+                    let subtract_started = trace_ols.then(Instant::now);
                     let was_seeded = guesses.is_some();
                     if let Some((seed, _)) = &mut batch_seed {
                         let retained_end = end.min(values.ncols() - 1);
@@ -1881,6 +1887,10 @@ impl GraphCmg {
                             start + local,
                             solution,
                         )?;
+                    }
+                    if let Some(started) = subtract_started {
+                        eprintln!("FEREG_PHASE|cmg_batch|rhs={rhs_seconds:.9}|solve={solve_seconds:.9}|subtract={:.9}|width={width}|route={:?}",
+                            started.elapsed().as_secs_f64(), self.solver.select_batch_execution(width).map_err(cmg_error)?.execution());
                     }
                 }
             }
@@ -3435,29 +3445,6 @@ fn zero_vec(elements: usize, label: &'static str) -> Result<Vec<f64>> {
     }
     values.resize(elements, 0.0);
     Ok(values)
-}
-
-fn zero_matrix_vectors(rows: usize, columns: usize, label: &'static str) -> Result<Vec<Vec<f64>>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(rows)
-        .map_err(|_| allocation(label))?;
-    for _ in 0..rows {
-        output.push(zero_vec(columns, label)?);
-    }
-    Ok(output)
-}
-
-fn validate_finite_vectors(values: &[Vec<f64>], message: &'static str) -> Result<()> {
-    if values
-        .iter()
-        .flat_map(|value| value.iter())
-        .any(|value| !value.is_finite())
-    {
-        Err(invalid_data(message))
-    } else {
-        Ok(())
-    }
 }
 
 fn validate_finite_slice(values: &[f64], message: &'static str) -> Result<()> {
@@ -5582,6 +5569,14 @@ mod tests {
                 assert!(outcome.report().certified());
                 assert_eq!(outcome.report().used_solver, FeSolverKind::Cmg);
                 assert_matrix_close(outcome.residualized(), reference.residualized(), 5e-9);
+                let (residual, _, coefficients) = outcome.into_full_parts();
+                assert_coefficients_reconstruct(
+                    &values,
+                    &residual,
+                    &[&left, &right],
+                    &coefficients.expect("retained component coefficients"),
+                    5e-9,
+                );
             }
         }
     }
