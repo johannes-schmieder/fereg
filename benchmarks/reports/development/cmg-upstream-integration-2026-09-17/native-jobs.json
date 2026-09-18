@@ -1,0 +1,230 @@
+[
+  {
+    "source": "5f2ff07adda223c19edeb80cf32f0e7af9cc8579",
+    "job_id": 7626036,
+    "source_manifest_sha256": "30f8c87d7f98a80de71ae8ca1c75a145a7f59de2d6336cdd6a8dba8d6bd02ca3",
+    "tests": {},
+    "log_hashes": {
+      "cmg": "c0031a9b679f6f5ca0543ba79ca64416428a53d254ad239b36c7dfec5129776e",
+      "toolchain": "1f7142b840bf642ab95b81805437e9f8ef79cb8c9b2e0b89feb4088d6424b6ae"
+    },
+    "toolchain": [
+      "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+      "rustc 1.85.1 (4eb161250 2025-03-15)"
+    ],
+    "accounting": {
+      "qname": "w28",
+      "hostname": "scc-wc3.scc.bu.edu",
+      "start_time": "Thu Sep 17 21:08:00 2026",
+      "end_time": "Thu Sep 17 21:08:45 2026",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "101",
+      "ru_wallclock": "45",
+      "cpu": "56.364",
+      "maxvmem": "2.193G"
+    }
+  },
+  {
+    "source": "de2f8192000ba3efba83af7f2860bf9e7464489c",
+    "job_id": 7626062,
+    "source_manifest_sha256": "14a0feadc24c72a2897dad3b26eae8c0c457341942c16a2859bf62e0711e04db",
+    "tests": {
+      "cmg": {
+        "passed": 40,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 51.37
+      },
+      "ppml-cmg": {
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 0.16
+      },
+      "irls": {
+        "passed": 35,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 5.7
+      },
+      "plugin": {
+        "passed": 97,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 113.06
+      }
+    },
+    "log_hashes": {
+      "cmg": "0a4cfaccd63ea84b771659d7c2945b54e3e06a85e941f53acfec9baf9a52f4ad",
+      "ppml-cmg": "51a541d77ac31e39ca60a43e40d1d798aefde13422d281263ba287d869aaedd6",
+      "irls": "6488352d98690f372d097f61e7fe280cab5fa76e20a99accdd9c6da685f6ab57",
+      "plugin": "728f76bd549ed4a21d512ae96b064d41357a6d394b1f3326100820abfc940323",
+      "build": "41bd034ccdd73875d1fa7a632d0e55eede11a96f734f15ebe791998c1e07545f",
+      "loader": "8751b854d28b30459e644da7801662df0d13c4f2c60b010643e62c31425f76ac",
+      "licensed": "2b73267b86faad95a873931721fc161467ef2dfbb7ec8ed52f34ee3cb4f2e632",
+      "toolchain": "1f7142b840bf642ab95b81805437e9f8ef79cb8c9b2e0b89feb4088d6424b6ae"
+    },
+    "actual_plugin_loader_pass": true,
+    "fixture_markers": [
+      "PASS: END_FIXTURE|fereg_smoke|rc=0",
+      "PASS: END_FIXTURE|feppml_smoke|rc=0"
+    ],
+    "toolchain": [
+      "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+      "rustc 1.85.1 (4eb161250 2025-03-15)"
+    ],
+    "licensed": {
+      "break_receipts": [],
+      "build_rc": 0,
+      "completed": true,
+      "failure_detail": null,
+      "failure_kind": null,
+      "plugin_filename": "fereg_linux.plugin",
+      "plugin_sha256": "3be7cf10166f013766d9160072d75c81ada785ba9ec0ede1228dca99f88a0a68",
+      "profile": "scc-dev-shared",
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "ci/fereg_smoke.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "ci/feppml_smoke.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "stata_edition": "MP",
+      "stata_machine_type": "PC (64-bit x86-64)",
+      "stata_os": "Unix",
+      "stata_processors": 4,
+      "stata_rc": 0,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 2
+    },
+    "terminal_marker": "FEREG_CMG_INTEGRATION_PASS source=de2f8192000ba3efba83af7f2860bf9e7464489c job=7626062",
+    "accounting": {
+      "qname": "w28",
+      "hostname": "scc-wd1.scc.bu.edu",
+      "start_time": "Thu Sep 17 21:13:26 2026",
+      "end_time": "Thu Sep 17 21:27:55 2026",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "869",
+      "cpu": "1266.419",
+      "maxvmem": "3.416G"
+    }
+  },
+  {
+    "source": "cae41abc08bc66719e44068d876271f6e11403e7",
+    "job_id": 7626076,
+    "source_manifest_sha256": "26036327c3bf8673b1b264c394f06261d68c3b59e04cb36649a4e24990cd42ef",
+    "tests": {
+      "cmg": {
+        "passed": 40,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 51.54
+      },
+      "ppml-cmg": {
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 0.15
+      },
+      "irls": {
+        "passed": 35,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 5.73
+      },
+      "plugin": {
+        "passed": 97,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 112.96
+      }
+    },
+    "log_hashes": {
+      "cmg": "8491fa2aa11902afb6eff3e4c045a7f5391a3fea93bbe2b180d515e10e57eb38",
+      "ppml-cmg": "556d68bf3dce200c2f8bfb918dd7ec02895bf8278d7c190fb701dc4c35cb8ed6",
+      "irls": "8ba4b4d5bf24fb75ec412956e6250e7755a8a7e7fbfa92775ffc80d287b3309f",
+      "plugin": "4efb41f327dd742613f3f2d993d4859c62656d168a8eda6a0070821fe9342c7e",
+      "build": "33071f9029ac80dff9592bda1cffe64a3ca87c04ab4d9fd2438ecee84de9c596",
+      "loader": "8751b854d28b30459e644da7801662df0d13c4f2c60b010643e62c31425f76ac",
+      "licensed": "f2b05ca5d07cae7a6e44771f9579e773551413821eb2190c85f6aafe46d18efc",
+      "toolchain": "1f7142b840bf642ab95b81805437e9f8ef79cb8c9b2e0b89feb4088d6424b6ae"
+    },
+    "actual_plugin_loader_pass": true,
+    "fixture_markers": [
+      "PASS: END_FIXTURE|fereg_smoke|rc=0",
+      "PASS: END_FIXTURE|feppml_smoke|rc=0"
+    ],
+    "toolchain": [
+      "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+      "rustc 1.85.1 (4eb161250 2025-03-15)"
+    ],
+    "licensed": {
+      "break_receipts": [],
+      "build_rc": 0,
+      "completed": true,
+      "failure_detail": null,
+      "failure_kind": null,
+      "plugin_filename": "fereg_linux.plugin",
+      "plugin_sha256": "7a5531488c48859835c318721149ad8f7b2d3e2f77198f10613cd0c1294c0d6d",
+      "profile": "scc-dev-shared",
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "ci/fereg_smoke.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "ci/feppml_smoke.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "stata_edition": "MP",
+      "stata_machine_type": "PC (64-bit x86-64)",
+      "stata_os": "Unix",
+      "stata_processors": 4,
+      "stata_rc": 0,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 2
+    },
+    "terminal_marker": "FEREG_CMG_INTEGRATION_PASS source=cae41abc08bc66719e44068d876271f6e11403e7 job=7626076",
+    "accounting": {
+      "qname": "w28",
+      "hostname": "scc-wd2.scc.bu.edu",
+      "start_time": "Thu Sep 17 21:21:59 2026",
+      "end_time": "Thu Sep 17 21:36:34 2026",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "875",
+      "cpu": "1279.226",
+      "maxvmem": "3.521G"
+    }
+  }
+]

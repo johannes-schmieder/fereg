@@ -1,0 +1,37 @@
+{
+  "development_only": true,
+  "whole_action_coverage_complete": false,
+  "whole_action_ratio": null,
+  "runtime_policy": "estimated-v1",
+  "pool_heap_allowance_bytes": 33554432,
+  "per_worker_heap_allowance_bytes": 2097152,
+  "requested_per_worker_stack_bytes": 8388608,
+  "runtime_is_proven_bound": false,
+  "publication_eligible": false,
+  "installed_artifacts_replaced": false,
+  "mac_linked_validation": "blocked-unaccepted-Xcode-license",
+  "windows_validation": "not-run",
+  "performance_original_gate_pass": false,
+  "performance_original_flags_preserved": true,
+  "diagnostic_pending": false,
+  "diagnostic_original_flag_reproduced": false,
+  "performance_no_regression_established": false,
+  "native_clean_tests": {
+    "cmg": 40,
+    "prepared_cmg": 6,
+    "ppml_irls": 35,
+    "plugin": 97
+  },
+  "native_overlay_tests": {
+    "cmg": 40,
+    "plugin": 137
+  },
+  "licensed_clean_smoke_passed": 2,
+  "paired_commands": 18,
+  "diagnostic_commands": 8,
+  "science_exact_all_pairs": true,
+  "python_clean_allocation": 37,
+  "python_overlay_allocation": 39,
+  "python_dependency_closure": 10,
+  "repository_checks_pass": true
+}

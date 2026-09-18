@@ -1,0 +1,77 @@
+[
+  {
+    "id": "cmg_ols_small",
+    "data": "cmg_ols_small.dta",
+    "generated": true,
+    "expected_sample_rows": 7680,
+    "solver": "cmg",
+    "strings": false,
+    "cell": {
+      "name": "cmg_ols_small",
+      "model": "ols",
+      "section": "width",
+      "design": "synthetic",
+      "n": 7680,
+      "k": 2,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "weight": "",
+      "absorb": "",
+      "vce": "",
+      "fit_options": "memory(fast) residuals(saved_e)"
+    }
+  },
+  {
+    "id": "cmg_ols_weighted",
+    "data": "cmg_ols_weighted.dta",
+    "generated": true,
+    "expected_sample_rows": 65536,
+    "solver": "cmg",
+    "strings": false,
+    "cell": {
+      "name": "cmg_ols_weighted",
+      "model": "ols",
+      "section": "width",
+      "design": "synthetic",
+      "n": 65536,
+      "k": 8,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "weight": "[fw=w]",
+      "absorb": "",
+      "vce": "cluster g2",
+      "fit_options": "memory(fast) residuals(saved_e)"
+    }
+  },
+  {
+    "id": "cmg_ppml",
+    "data": "cmg_ppml.dta",
+    "generated": true,
+    "expected_sample_rows": 16384,
+    "solver": "cmg",
+    "strings": false,
+    "cell": {
+      "name": "cmg_ppml",
+      "model": "ppml",
+      "section": "width",
+      "design": "synthetic",
+      "n": 16384,
+      "k": 2,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "weight": "",
+      "absorb": "",
+      "vce": "robust",
+      "fit_options": "memory(fast) residuals(saved_e)"
+    }
+  }
+]

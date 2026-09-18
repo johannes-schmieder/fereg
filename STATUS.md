@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-09-17
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,51 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
+
+## CMG integration: published ownership APIs and estimated runtime policy
+
+The published dependency is now CMG
+`1d39c113f0c397f29653d92672090e5a42f80921`, with `parallel` and
+`experimental-components` compiled. Production components remain disabled and
+automatic routing/scientific thresholds are unchanged. The
+[CMG integration report](benchmarks/reports/development/cmg-upstream-integration-2026-09-17/README.md)
+binds coherent local commits, clean source `cae41abc`, the separate preserved
+memory overlay, artifacts, inputs and reference hashes. The earlier CMG
+shutdown draft is superseded by this published upstream integration; no CMG
+repository modification or further upstream authorization is pending here.
+
+Checked APIs now admit covered hierarchy/factor construction, prepared numeric
+assembly, plans and fixed caller/workspace banks. Shared retained owners use one
+capacity union. Each owned executor reserves the explicit estimated policy:
+32 MiB pool heap, 2 MiB heap per worker and 8 MiB requested stack per worker.
+Known handles are counted once; joined retirement retains the runtime charge.
+This is engineering headroom, not a proven runtime/whole-process bound.
+
+Clean-source SCC job 7626076 passes 178 native tests, Linux build/export and
+actual-loader checks, and both licensed OLS/PPML smoke fixtures with explicit
+sentinels. The preserved memory overlay separately passes 40 CMG and 137 plugin
+tests in job 7626099. All 18 paired commands match scientific outputs,
+samples/order, saved residuals and non-time solver diagnostics exactly. The
+clean/overlay allocation suites pass 37/39 tests; ten dependency-closure tests,
+reviewed allocation inventories and repository checks pass. All integration
+jobs are terminal with scheduler accounting; original failed evidence remains.
+
+Original command medians: narrow OLS .080/.082 s, weighted clustered OLS
+.195/.202 s, PPML .254/.277 s. The PPML +23 ms/+9.1% flag is preserved;
+FE projection carries its comparable phase flag. A single same-binary diagnostic
+(job 7626155) on another node did not reproduce it: .610/.582 s and faster FE
+projection, with exact science. Traced setup costs were nearly identical.
+This does not prove the original difference was noise. Performance remains
+uncertain and the original gate is not relabelled as passing.
+
+**Resume boundary:** integration is implemented and numerically validated locally;
+production acceptance remains open. Whole-action coverage/ratio are still
+incomplete/undefined. Ordinary ingestion, remaining fereg-owned construction,
+inference/recovery/publication and strict dependency/runtime proofs retain their
+separate limits. Mac linked validation remains blocked by the unaccepted Xcode
+license. No installed artifacts, issue #27, push, tag, release or stopped
+campaign was changed. Earlier unrelated dirty memory work remains preserved.
+The earlier dated checkpoints below retain their historical source scope.
 
 ## Candidate preparation: PPML metadata and repository checks repaired
 
