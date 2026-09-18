@@ -117,8 +117,8 @@ pub(super) fn construction_bound(
     .map_err(cmg_error)
 }
 
-// CMG's select_batch_execution may initialize its plan. Mirror only the pinned
-// eligibility predicate here to admit that initialization first. A one-RHS tail
+// CMG's select_batch_execution may initialize its plan. Use the pinned public
+// eligibility dimensions here to admit that initialization first. A one-RHS tail
 // can choose Planned even when full batches run AcrossRightHandSides. Tests
 // compare all actual width decisions with this predicate at the crossovers.
 pub(super) fn may_need_plan(solver: &ParallelPcgSolver) -> bool {
@@ -129,11 +129,13 @@ pub(super) fn may_need_plan(solver: &ParallelPcgSolver) -> bool {
     {
         return false;
     }
-    let vector = solver.preconditioner().finest_components().count() == 1
-        && graph.vertex_count()
-            >= options
-                .min_parallel_len
-                .max(options.reduction_chunk_size.saturating_mul(8));
+    // The component count is private upstream. Conservatively admit the
+    // small plan even for a disconnected vector-eligible graph, instead of
+    // allocating another component discovery. Solver routing remains upstream.
+    let vector = graph.vertex_count()
+        >= options
+            .min_parallel_len
+            .max(options.reduction_chunk_size.saturating_mul(8));
     vector
         || solver
             .preconditioner()

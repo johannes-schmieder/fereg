@@ -42,10 +42,12 @@ prepared owner in execution storage. Frame measurements include it in the full
 union before subtracting the already charged parent union, so shared component
 and lineage Arcs are not counted twice.
 
-The routing query can initialize a plan. Fereg first checks the exact pinned
-eligibility predicate, including a possible single-RHS tail, and admits the
+The routing query can initialize a plan. Fereg first checks conservative pinned
+eligibility dimensions, including a possible single-RHS tail, and admits the
 solver-owned plan before querying routing. It does not construct another pool
-or plan. A focused test checks routing queries cannot grow admitted solver
+or plan. Because upstream keeps the connected-component count private, a large
+disconnected graph may conservatively prepare a plan before the routing query;
+the solver still makes its unchanged decision. A focused test checks routing queries cannot grow admitted solver
 storage.
 
 Both OLS and prepared PPML provision fixed PCG banks and caller-owned RHS,
