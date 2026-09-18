@@ -445,6 +445,14 @@ impl PreparedOlsFastScoreCache {
 }
 
 impl CertifiedPreparedOlsFit {
+    /// This product survives score reabsorption. Other fit owners belong to
+    /// the finite/inference execution envelope, rather than FE workspace.
+    pub(super) fn retained_fe_coefficient_bytes(&self) -> u128 {
+        self.recovered_fe_coefficients
+            .as_ref()
+            .map_or(0, FeCoefficientBatch::retained_bytes)
+    }
+
     #[must_use]
     pub fn coefficients(&self) -> &[PreparedOlsFittedCoefficient] {
         &self.coefficients
@@ -1752,11 +1760,40 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
     )
 }
 
+/// The initial solver can transfer dependency-owned buffers with spare capacity.
+/// Check that owner plus the later one-RHS product against the reservation
+/// captured by the solver session, before allocating the finite-solve frame.
+fn check_retained_fe_initial_capacity(
+    initial: Option<&FeCoefficientBatch>,
+    reserved_parent: u128,
+) -> Result<()> {
+    let Some(initial) = initial else {
+        return Ok(());
+    };
+    let combined_values =
+        (initial.rhs(0)?.len() as u128).checked_mul(std::mem::size_of::<f64>() as u128);
+    let combined_layout = (initial.effect_channels().len() as u128)
+        .checked_mul(3)
+        .and_then(|cells| cells.checked_add(1))
+        .and_then(|cells| cells.checked_mul(std::mem::size_of::<usize>() as u128));
+    let required = combined_values
+        .and_then(|bytes| bytes.checked_add(combined_layout?))
+        .and_then(|bytes| bytes.checked_add(initial.retained_bytes()))
+        .ok_or_else(|| allocation("retained FE product capacity overflows"))?;
+    if required > reserved_parent {
+        return Err(allocation(
+            "retained FE product capacity exceeds its admitted parent reservation",
+        ));
+    }
+    Ok(())
+}
+
 fn combine_recovered_fe_coefficients<R: FitReservation>(
     initial: Option<FeCoefficientBatch>,
     residual: Option<FeCoefficientBatch>,
     residual_iterations: usize,
     generated_coefficients: &[Option<f64>],
+    reserved_parent: u128,
     reservation: &mut R,
 ) -> Result<Option<FeCoefficientBatch>> {
     let Some(initial) = initial else {
@@ -1767,6 +1804,8 @@ fn combine_recovered_fe_coefficients<R: FitReservation>(
             "initial FE coefficient batch and generated OLS columns differ",
         ));
     }
+    check_retained_fe_initial_capacity(Some(&initial), reserved_parent)?;
+    let initial_capacity = initial.retained_bytes();
     let initial_outcome = initial.rhs(0)?;
     let mut combined = reserved_empty(
         reservation,
@@ -1817,7 +1856,16 @@ fn combine_recovered_fe_coefficients<R: FitReservation>(
         "unable to reserve combined FE level layout",
     )?;
     level_counts.extend_from_slice(initial.level_counts());
-    FeCoefficientBatch::from_values(effect_channels, level_counts, 1, combined).map(Some)
+    let combined = FeCoefficientBatch::from_values(effect_channels, level_counts, 1, combined)?;
+    if initial_capacity
+        .checked_add(combined.retained_bytes())
+        .is_none_or(|bytes| bytes > reserved_parent)
+    {
+        return Err(allocation(
+            "combined FE product capacity exceeds its admitted parent reservation",
+        ));
+    }
+    Ok(Some(combined))
 }
 
 fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
@@ -1862,6 +1910,25 @@ fn fit_with_controls_internal_mode_with_frame<
     let mut trace = PhaseTrace::new();
     frame.validate_for(prepared)?;
     let weights = frame.weights();
+    // Admit retained products before constructing any retained solver session,
+    // so its captured budget covers the later residual call as well. The
+    // execution parent excludes FE storage; sequential solver calls share the
+    // reserve, while the initial and combined products may coexist.
+    let retained_fe_parent = if config.absorb.retain_coefficients {
+        prepared.fit_retained_fe_parent_bytes()?
+    } else {
+        0
+    };
+    let mut config = config;
+    if let Some(budget) = config.absorb.solver_memory_budget.as_mut() {
+        budget.execution_bytes = budget
+            .execution_bytes
+            .checked_add(retained_fe_parent)
+            .ok_or_else(|| allocation("retained FE parent budget overflows"))?;
+        if !budget.fits(0) {
+            return Err(allocation("retained FE products exceed usable memory"));
+        }
+    }
     let mut cmg = build_fit_fe_absorber(prepared, weights.borrowed(), config)?;
 
     let projection_phase = LinearSessionPhaseAllocationGuard::new(
@@ -1960,7 +2027,11 @@ fn fit_with_controls_internal_mode_with_frame<
         ));
     }
     let cached_norms = absorbed.take_residual_norms();
-    let (mut within, absorption_report, initial_fe_coefficients) = absorbed.into_full_parts();
+    let (mut within, mut absorption_report, initial_fe_coefficients) = absorbed.into_full_parts();
+    check_retained_fe_initial_capacity(initial_fe_coefficients.as_ref(), retained_fe_parent)?;
+    absorption_report.solver_workspace_peak = absorption_report
+        .solver_workspace_peak
+        .with_retained(retained_fe_parent)?;
     let initial_absorb_seconds = trace.lap();
     drop(projection_phase);
     let finite_phase = LinearSessionPhaseAllocationGuard::new(
@@ -2101,8 +2172,11 @@ fn fit_with_controls_internal_mode_with_frame<
             "prepared OLS residual absorption returned an uncertified result",
         ));
     }
-    let (mut residuals, residual_absorption_report, residual_fe_coefficients) =
+    let (mut residuals, mut residual_absorption_report, residual_fe_coefficients) =
         residual_absorbed.into_full_parts();
+    residual_absorption_report.solver_workspace_peak = residual_absorption_report
+        .solver_workspace_peak
+        .with_retained(retained_fe_parent)?;
     let residual_absorb_seconds = trace.lap();
     drop(residual_projection_phase);
     if perturbations.final_residual_constant {
@@ -2133,6 +2207,7 @@ fn fit_with_controls_internal_mode_with_frame<
         residual_fe_coefficients,
         residual_absorption_report.iterations,
         &qr.generated_coefficients,
+        retained_fe_parent,
         reservation,
     )?;
     let coefficients = build_coefficient_slots(prepared, &qr, reservation)?;
@@ -7282,6 +7357,219 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn retained_fe_capacity_handoff_counts_spare_value_and_layout_buffers() {
+        // Logical axes match a two-effect/two-RHS result. Spare storage must
+        // remain charged when the result is moved out of its solver.
+        for (value_capacity, channel_capacity, level_capacity) in
+            [(14, 2, 2), (8192, 2, 2), (14, 64, 2), (14, 2, 64)]
+        {
+            let mut values = Vec::with_capacity(value_capacity);
+            values.resize(14, 0.0);
+            let mut channels = Vec::with_capacity(channel_capacity);
+            channels.extend_from_slice(&[1, 1]);
+            let mut levels = Vec::with_capacity(level_capacity);
+            levels.extend_from_slice(&[4, 3]);
+            let initial = FeCoefficientBatch::from_values(channels, levels, 2, values).unwrap();
+            let combined =
+                FeCoefficientBatch::from_values(vec![1, 1], vec![4, 3], 1, vec![0.0; 7]).unwrap();
+            let exact = initial.retained_bytes() + combined.retained_bytes();
+            check_retained_fe_initial_capacity(Some(&initial), exact).unwrap();
+            let error = check_retained_fe_initial_capacity(Some(&initial), exact - 1).unwrap_err();
+            assert_eq!(error.code, ErrorCode::Allocation);
+            assert!(error.message.contains("capacity exceeds"));
+            // Returning an error cannot change either coefficient owner.
+            assert_eq!(initial.rhs(0).unwrap(), &[0.0; 7]);
+            assert_eq!(initial.rhs(1).unwrap(), &[0.0; 7]);
+        }
+        check_retained_fe_initial_capacity(None, 0).unwrap();
+    }
+
+    #[test]
+    fn retained_fe_capacity_handoff_rejects_logical_size_only_reservation() {
+        let mut values = Vec::with_capacity(16_384);
+        values.resize(14, 0.0);
+        let initial = FeCoefficientBatch::from_values(vec![1, 1], vec![4, 3], 2, values).unwrap();
+        let logical = 7 * 3 * 8 + 2 * 7 * std::mem::size_of::<usize>() as u128;
+        assert_eq!(
+            check_retained_fe_initial_capacity(Some(&initial), logical)
+                .unwrap_err()
+                .code,
+            ErrorCode::Allocation,
+        );
+    }
+
+    #[test]
+    fn retained_fe_combination_admits_before_allocation_and_preserves_arithmetic() {
+        let initial = || {
+            FeCoefficientBatch::from_values(vec![1], vec![2], 2, vec![5.0, 9.0, 2.0, 3.0]).unwrap()
+        };
+        let residual =
+            || FeCoefficientBatch::from_values(vec![1], vec![2], 1, vec![0.25, -0.5]).unwrap();
+        let parent = initial().retained_bytes() + residual().retained_bytes();
+        let mut reservation = InjectedReservation::default();
+        assert_eq!(
+            combine_recovered_fe_coefficients(
+                Some(initial()),
+                Some(residual()),
+                1,
+                &[Some(2.0)],
+                parent - 1,
+                &mut reservation,
+            )
+            .unwrap_err()
+            .code,
+            ErrorCode::Allocation
+        );
+        assert_eq!(
+            reservation.calls, 0,
+            "reject before the new coefficient bank"
+        );
+        for fail_at in 1..=3 {
+            let mut reservation = InjectedReservation {
+                fail_at: Some(fail_at),
+                ..InjectedReservation::default()
+            };
+            assert_eq!(
+                combine_recovered_fe_coefficients(
+                    Some(initial()),
+                    Some(residual()),
+                    1,
+                    &[Some(2.0)],
+                    parent,
+                    &mut reservation,
+                )
+                .unwrap_err()
+                .code,
+                ErrorCode::Allocation
+            );
+            assert_eq!(reservation.calls, fail_at);
+        }
+        for _ in 0..3 {
+            let combined = combine_recovered_fe_coefficients(
+                Some(initial()),
+                Some(residual()),
+                1,
+                &[Some(2.0)],
+                parent,
+                &mut SystemFitReservation,
+            )
+            .unwrap()
+            .unwrap();
+            assert_eq!(combined.rhs(0).unwrap(), &[1.25, 2.5]);
+        }
+        struct SpareReservation;
+        impl FitReservation for SpareReservation {
+            fn reserve<T>(
+                &mut self,
+                target: &mut Vec<T>,
+                elements: usize,
+                _: &'static str,
+            ) -> Result<()> {
+                target
+                    .try_reserve_exact(elements + 64)
+                    .map_err(|_| allocation("test spare reservation failed"))
+            }
+        }
+        let error = combine_recovered_fe_coefficients(
+            Some(initial()),
+            Some(residual()),
+            1,
+            &[Some(2.0)],
+            parent,
+            &mut SpareReservation,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert!(error.message.contains("combined FE product capacity"));
+    }
+
+    #[test]
+    fn retained_fe_parent_is_admitted_before_session_and_survives_peak_reporting() {
+        let x = (0..96)
+            .map(|r| ((r * 19 % 37) as f64).sin())
+            .collect::<Vec<_>>();
+        let g = (0..96).map(|r| (r % 4) as f64).collect::<Vec<_>>();
+        let y = (0..96)
+            .map(|r| 2.0 * x[r] + g[r] + ((r * 7 % 31) as f64).cos())
+            .collect::<Vec<_>>();
+        let h = (0..96).map(|r| ((r / 4) % 3) as f64).collect::<Vec<_>>();
+        let view = prepared_multiway_categorical(&y, &[x], &[g, h]);
+        let parent = view.fit_retained_fe_parent_bytes().unwrap();
+        let mut config = PreparedOlsFitConfig::default();
+        config.absorb.solver = FeSolverKind::Cg;
+        config.absorb.retain_coefficients = true;
+        config.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+            execution_bytes: 1234,
+            usable_bytes: 1 << 30,
+        });
+        let mut reservation = SystemFitReservation;
+        let reference = fit_with_controls_internal(
+            &view,
+            config,
+            &mut reservation,
+            FitPerturbations::default(),
+        )
+        .unwrap();
+        assert!(reference.recovered_fe_coefficients.is_some());
+        assert!(u128::from(reference.solver_workspace_peak().bytes().unwrap()) >= parent);
+        config.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+            execution_bytes: 1234,
+            usable_bytes: 1234 + parent - 1,
+        });
+        let error = fit_with_controls_internal(
+            &view,
+            config,
+            &mut reservation,
+            FitPerturbations::default(),
+        )
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert!(error.message.contains("retained FE products"));
+        // The returned solver envelope includes the retained parent exactly
+        // once relative to the caller's unchanged execution base.
+        config
+            .absorb
+            .solver_memory_budget
+            .as_mut()
+            .unwrap()
+            .usable_bytes = 1234 + u128::from(reference.solver_workspace_peak().bytes().unwrap());
+        let exact = fit_with_controls_internal(
+            &view,
+            config,
+            &mut reservation,
+            FitPerturbations::default(),
+        )
+        .unwrap();
+        assert_eq!(exact.coefficients(), reference.coefficients());
+        assert_eq!(exact.residuals(), reference.residuals());
+        assert_eq!(
+            exact.recovered_fe_coefficients,
+            reference.recovered_fe_coefficients
+        );
+        assert_eq!(
+            exact.solver_workspace_peak(),
+            reference.solver_workspace_peak()
+        );
+        config
+            .absorb
+            .solver_memory_budget
+            .as_mut()
+            .unwrap()
+            .usable_bytes -= 1;
+        assert_eq!(
+            fit_with_controls_internal(
+                &view,
+                config,
+                &mut reservation,
+                FitPerturbations::default()
+            )
+            .unwrap_err()
+            .code,
+            ErrorCode::Allocation
+        );
     }
 
     #[test]

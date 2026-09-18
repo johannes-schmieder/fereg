@@ -11,7 +11,7 @@ The machine-readable authority is
 evaluator are `scripts/fereg_f0_regression.py`.
 
 The zero-overhead structural companion is
-`benchmarks/manifests/fereg_allocation_source_contract_v19.json`, enforced by
+`benchmarks/manifests/fereg_allocation_source_contract_v32.json`, enforced by
 `scripts/fereg_allocation_source_contract.py` from both repository checks and
 normal Python test discovery. It does not replace measured F0 evidence.
 

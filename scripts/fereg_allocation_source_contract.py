@@ -21,8 +21,8 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v30.json"
-CONTRACT_ID = "fereg-allocation-source-contract-v30"
+DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v32.json"
+CONTRACT_ID = "fereg-allocation-source-contract-v32"
 SCHEMA_VERSION = 19
 
 # Keep the watched surface narrow enough to describe the actual OLS seam, but

@@ -434,6 +434,26 @@ pub(super) fn build_prepared_ols_score_design<
     } else {
         None
     };
+    // A reconstructed score bank can invoke another solver while the final
+    // fit's coefficient product remains live. Retained/cached score paths do
+    // not construct that solver and need no additional workspace reservation.
+    let retained_fe_parent = if cached.is_none() && retained_scratch.is_none() {
+        fit.retained_fe_coefficient_bytes()
+    } else {
+        0
+    };
+    let mut absorb = absorb;
+    if let Some(budget) = absorb.solver_memory_budget.as_mut() {
+        budget.execution_bytes = budget
+            .execution_bytes
+            .checked_add(retained_fe_parent)
+            .ok_or_else(|| allocation("inference FE parent budget overflows"))?;
+        if !budget.fits(0) {
+            return Err(allocation(
+                "inference FE coefficient parent exceeds usable memory",
+            ));
+        }
+    }
     let map_weights = match &prepared.fit_sample().weights {
         PreparedWeights::None => BorrowedMapWeights::Unit,
         PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
@@ -528,7 +548,7 @@ pub(super) fn build_prepared_ols_score_design<
         )?,
     };
     fit.record_additional_scratch_peak(scratch_peak_bytes);
-    fit.record_additional_solver_workspace_peak(solver_peak);
+    fit.record_additional_solver_workspace_peak(solver_peak.with_retained(retained_fe_parent)?);
     let storage_seconds = phase_started.elapsed().as_secs_f64();
 
     let phase_started = Instant::now();

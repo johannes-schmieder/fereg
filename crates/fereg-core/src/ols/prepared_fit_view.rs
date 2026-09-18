@@ -337,6 +337,10 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate>;
 
+    /// Initial all-RHS and combined one-RHS products that outlive an FE call.
+    /// The current solver's own result/workspace is admitted separately.
+    fn fit_retained_fe_parent_bytes(&self) -> Result<u128>;
+
     /// Borrow the finalized intercept-only topology for PPML's reusable MAP
     /// session. One-shot OLS never calls this seam; slope-bearing prepared
     /// views return `None` and retain the generic owned-design projector.
@@ -824,6 +828,24 @@ impl PreparedOlsFitView for PreparedOlsData {
         }
     }
 
+    fn fit_retained_fe_parent_bytes(&self) -> Result<u128> {
+        let mut directions = 0_u128;
+        for effect in self.fe_topology.effects() {
+            directions = directions
+                .checked_add(
+                    self.fe_topology.sources()[effect.topology_source_index].n_levels() as u128,
+                )
+                .ok_or_else(|| allocation("retained FE directions overflow"))?;
+        }
+        let effects = self.fe_topology.effects().len();
+        let virtual_constant = effects == 0 && self.structural_intercept;
+        retained_fe_parent_bytes(
+            if virtual_constant { 1 } else { directions },
+            effects + usize::from(virtual_constant),
+            self.model.columns.len(),
+        )
+    }
+
     fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate> {
         let borrowed = self.borrowed_intercept_fe_design()?;
         let mut memory = OwnedFeDesignMemoryEstimate::default();
@@ -1107,6 +1129,34 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         }
     }
 
+    fn fit_retained_fe_parent_bytes(&self) -> Result<u128> {
+        let topology = self.fe_topology();
+        if topology.effect_to_topology().len() != self.effect_specs().len() {
+            return Err(allocation("retained FE topology and effects differ"));
+        }
+        let mut directions = 0_u128;
+        for (&index, spec) in topology
+            .effect_to_topology()
+            .iter()
+            .zip(self.effect_specs())
+        {
+            let channels = spec.slopes.len() as u128 + u128::from(spec.intercept);
+            let cells = (topology.registry().source(index)?.n_levels() as u128)
+                .checked_mul(channels)
+                .ok_or_else(|| allocation("retained FE directions overflow"))?;
+            directions = directions
+                .checked_add(cells)
+                .ok_or_else(|| allocation("retained FE directions overflow"))?;
+        }
+        let effects = self.effect_specs().len();
+        let virtual_constant = effects == 0 && self.fit_structural_intercept();
+        retained_fe_parent_bytes(
+            if virtual_constant { 1 } else { directions },
+            effects + usize::from(virtual_constant),
+            self.model().columns.len(),
+        )
+    }
+
     fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate> {
         let topology = self.fe_topology();
         if topology.effect_to_topology().len() != self.effect_specs().len() {
@@ -1246,4 +1296,42 @@ fn fallible_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> 
 
 fn allocation(message: &'static str) -> FeregError {
     FeregError::new(ErrorCode::Allocation, message)
+}
+
+/// Initial K+1 RHS and the combined one-RHS result can coexist. The residual
+/// solver's own product is already in its workspace report. Repeated effects
+/// are counted separately because coefficient batches preserve their ordering.
+fn retained_fe_parent_bytes(directions: u128, effects: usize, generated: usize) -> Result<u128> {
+    if effects == 0 {
+        return Ok(0);
+    }
+    let values = directions
+        .checked_mul(generated as u128 + 2)
+        .and_then(|cells| cells.checked_mul(8));
+    let metadata = (effects as u128)
+        .checked_mul(3)
+        .and_then(|cells| cells.checked_add(1))
+        .and_then(|cells| cells.checked_mul(2 * std::mem::size_of::<usize>() as u128));
+    values
+        .and_then(|bytes| bytes.checked_add(metadata?))
+        .ok_or_else(|| allocation("retained FE product parent overflows"))
+}
+
+#[cfg(test)]
+mod retained_parent_tests {
+    use super::*;
+    #[test]
+    fn retained_product_parent_counts_both_lifetimes_and_checks_overflow() {
+        // Two effects, seven coefficient directions, K=3: the initial four
+        // RHS and combined one RHS coexist; each has three descriptor arrays.
+        assert_eq!(
+            retained_fe_parent_bytes(7, 2, 3).unwrap(),
+            7 * 5 * 8 + 2 * 7 * std::mem::size_of::<usize>() as u128
+        );
+        assert_eq!(retained_fe_parent_bytes(0, 0, 3).unwrap(), 0);
+        assert_eq!(
+            retained_fe_parent_bytes(u128::MAX, 2, 3).unwrap_err().code,
+            ErrorCode::Allocation
+        );
+    }
 }

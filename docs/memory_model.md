@@ -394,3 +394,29 @@ for comparison but are not promotion blockers. The final 10m direct-LSMR route
 used more RSS at eight threads while staying within its modeled native
 allocation and producing a material speed gain; this is the intended separation
 between diagnostic resident memory and hard allocation safety.
+
+## Retained OLS coefficient product admission
+
+Fast OLS fits that retain FE coefficients reserve the initial all-RHS product
+and the later combined one-RHS product before constructing the solver session.
+For `K` generated controls, `D` ordered effects and `L` level/channel directions,
+the parent reservation is `8*L*(K+2) + 2*sizeof(usize)*(3*D+1)`.
+Repeated effects and slope channels retain their own axes; a virtual structural
+constant has one direction. The active solver's own result/workspace remains
+separately admitted. Initial and residual solver reports each include this
+parent once, and sequential reports combine by maximum. Uncached inference
+reabsorption charges the actual capacity of the final retained product.
+
+At the initial solver return, the actual capacities of the coefficient values
+and all three layout arrays, plus the future combined product, must fit that
+reservation before finite-solve storage is allocated. Combination rechecks the
+reservation before allocation and checks the returned capacities before handing
+the final product to the fit. An excess fails with an allocation error; it does
+not borrow unreported space from a retained session's captured budget. These
+checks allocate no observation-sized reporting state and leave arithmetic,
+routing, tolerances and public base-memory fields unchanged.
+
+This establishes the retained-product handoff bound, not a proof of allocations
+inside the solver that produced the initial product or of allocator/process
+resident memory. Whole-action coverage remains incomplete and its ratio remains
+undefined until all outstanding owner families are covered.
