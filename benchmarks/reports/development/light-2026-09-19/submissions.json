@@ -1,0 +1,27 @@
+{
+  "run": "20260919-light-e23f15ca",
+  "original_startup": {
+    "job_id": "7643293",
+    "status": "failed_startup_preserved",
+    "main_fits": 0
+  },
+  "repair_1": {
+    "task_1_job_id": "7643437",
+    "startup": "passed_execution_and_native_oracles",
+    "array_job_id": "7643462",
+    "array_tasks": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "array_concurrency": 3,
+    "maximum_campaign_concurrency": 4
+  },
+  "candidate_artifact_sha256": "4ee87eee9bd739330768e3d916e9b3ddea4c6fdab861d4b1bccdc48dcf4b0ea9"
+}

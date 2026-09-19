@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-18
+**Last updated:** 2026-09-19
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,42 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
+
+## Light competitor benchmark — 2026-09-19
+
+The owner-approved [light harness](benchmarks/light/README.md) fixes ten logical
+28-core SCC bundles, four- and 28-core comparisons, three fresh-process repeats,
+concurrent process-tree PSS and a 12-hour limit per bundle. The inventory has
+40 scientific configurations and at most 1,200 fits, including bottleneck width,
+saved effects, clustering, slopes and the two Veneto panels. This is development
+evidence, not release qualification or a restart of the stopped campaign.
+
+Clean candidate source is `e23f15cad16c2f0b2368326aea579921a069ca9a`; the isolated
+Linux artifact is `4ee87eee…cf4b0ea9`. Eight focused local checks pass. Original
+startup job `7643293` passed every native explicit-design oracle but exposed
+gtools capture defects and comparator numerical discrepancies. Its failed
+receipt is preserved; no main fits ran. The single operational repair corrects
+gtools link/residual capture and output precision, retaining all scientific
+thresholds. Comparator discrepancies remain failed comparisons. Repair startup
+job `7643437` passed all 24 supported adapter executions and all six native
+explicit-design checks, then began Task 1. Eight comparator oracle discrepancies
+remain explicit failures. Array `7643462.2-10` is submitted with concurrency
+three while Task 1 runs, keeping the campaign total at four. After Task 1 is
+terminal the array limit may rise to four; do not add tasks or repeat failures.
+
+[Submissions and local evidence](benchmarks/reports/development/light-2026-09-19/)
+record the attempts. The long Veneto raw-outcome inputs are prepared. Exact raw
+short-panel recovery is unresolved and must not be replaced by a nearly matching
+sample. Installed artifacts, dependency repositories and unrelated work remain
+unchanged. No benchmark conclusions or final report are accepted yet.
+
+The frozen measurement root is `20260919-light-e23f15ca/repair-1` under the SCC
+fereg runs directory; runtime identity is `1ce57d0f…aaeecba`. Measurement bytes
+must remain unchanged. Report/collection development is separate in `analysis/`.
+Local reporting now uses median paired ratios, retains reference audit failures
+(with only ADR 0026's ppmlhdfe exception), and exports native phase/allocation
+diagnostics. Ten focused local checks pass. The LaTeX/vector-figure layout
+compiles; final measured figures still require rendering and visual review.
 
 ## Practical whole-action memory reporting — 2026-09-18
 
