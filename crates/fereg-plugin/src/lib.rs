@@ -8,6 +8,7 @@ mod metadata_memory;
 mod dispatch;
 mod estimate;
 mod input;
+mod numeric_pipeline;
 mod instrumentation;
 mod ols_frame_memory;
 mod ols_preparation_memory;

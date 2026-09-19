@@ -12,14 +12,25 @@ completed optimization/calibration investigation chronology formerly here.
 
 ## One-FE optimization implementation — 2026-09-19
 
+Rust-owned input overlap now has adoption evidence in
+`benchmarks/reports/development/one-fe-pipeline-adoption-2026-09-19/`:
+84 accepted calls, bit-identical native science, three licensed fixtures,
+four focused native tests, Mac UBSan/portable bridge and actual-plugin ABI
+checks. The wide command falls from 528 to 506 ms; the narrow command remains
+215 ms. Control median ratios have maximum 1.0089 and geometric mean 0.9693.
+Two admitted Rust tiles and an in-place scope on the existing team replace the
+prototype C buffers/pthread. SPI remains on the Stata thread and shutdown is
+tested on errors and panics. The loading ledger explicitly retains the opaque
+worker-runtime coverage gap. Plain numeric parsing and narrow preparation are
+the next candidates; the 5% win objective remains unmet.
+
 The guarded Mac numeric accessor now has fresh adoption evidence in
 `benchmarks/reports/development/one-fe-accessor-adoption-2026-09-19/`:
 84 accepted calls, exact native scientific outputs, three licensed fixtures,
 real-plugin ABI checks and portable/Mac-UBSan bridge checks. The wide median
 falls from 561 to 528 ms; the narrow median remains 221 ms. Protected-control
 median ratios have maximum 1.0145 and geometric mean 0.9766. Fixest medians are
-471 and 144 ms respectively, so the win objective remains unmet. Rust-owned
-loading overlap is the next candidate; its implementation is not yet accepted.
+471 and 144 ms respectively. This accessor milestone is committed in `5ac9e9c5`.
 
 The owner-approved implementation target is a repeatable 5% win over pinned
 fixest on both 983,040-row, 10/50-regressor, 16-thread Mac cases. The other

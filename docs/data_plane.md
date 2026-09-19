@@ -11,6 +11,16 @@ variable types and destination pointers before using the SDK's direct `vdata`
 callback. Every callback return code is checked. Scalar reads and other
 platforms retain the checked accessor; this does not enable global fast mode.
 
+Eligible unrestricted Mac IID OLS calls with one ordinary categorical effect,
+unit weights, at least 16,384 rows and 16–64 loaded numeric columns may overlap
+loading with native conversion. The Stata thread fills two Rust-owned 4,096-row
+tiles; one job on the resolved native team writes the existing source columns
+and missing masks. Scratch capacity is admitted and charged to the input peak
+before reading. Insufficient optional scratch, a single requested thread, or an
+unsupported shape selects the existing column reader before any tiled read.
+The input-stage ledger retains the explicit worker-runtime coverage gap for
+opaque Rayon/native thread storage, as later native phases already do.
+
 For each original row, candidate exclusion from `if`/`in` is applied first.
 On candidate rows, outcome, ordinary terms, weights, fixed effects, clusters,
 and time-series materializations are checked in the registered precedence.

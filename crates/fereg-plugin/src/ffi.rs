@@ -585,6 +585,14 @@ extern "C" {
         missing_value: *mut f64,
     ) -> c_int;
     fn fereg_spi_vstore(variable: c_int, observation: c_int, value: f64) -> c_int;
+    fn fereg_spi_vdata_rows(
+        variables: *const c_int,
+        variable_count: c_int,
+        first_observation: c_int,
+        observation_count: c_int,
+        values: *mut f64,
+        missing_value: *mut f64,
+    ) -> c_int;
     fn fereg_spi_matrix_rows(name: *const c_char) -> c_int;
     fn fereg_spi_matrix_cols(name: *const c_char) -> c_int;
     fn fereg_spi_mat_el(name: *const c_char, row: c_int, column: c_int, value: *mut f64) -> c_int;
@@ -662,6 +670,17 @@ unsafe fn fereg_spi_vdata_columns(
 }
 #[cfg(test)]
 unsafe fn fereg_spi_vstore(_variable: c_int, _observation: c_int, _value: f64) -> c_int {
+    498
+}
+#[cfg(test)]
+unsafe fn fereg_spi_vdata_rows(
+    _variables: *const c_int,
+    _variable_count: c_int,
+    _first_observation: c_int,
+    _observation_count: c_int,
+    _values: *mut f64,
+    _missing_value: *mut f64,
+) -> c_int {
     498
 }
 #[cfg(test)]
@@ -877,6 +896,44 @@ impl SpiApi for SpiSession {
                 format!("Stata SPI returned invalid missing status {other}"),
             )),
         }
+    }
+
+    fn supports_numeric_rows(&self) -> bool {
+        cfg!(target_os = "macos")
+    }
+
+    fn read_numeric_rows(
+        &mut self,
+        variables: &[u32],
+        first_observation: usize,
+        values: &mut [f64],
+    ) -> Result<f64, FeregError> {
+        if variables.is_empty() || variables.len() > 64 || values.is_empty()
+            || values.len() % variables.len() != 0 || values.len() / variables.len() > 4096
+        {
+            return Err(FeregError::new(ErrorCode::InvalidArgument, "numeric SPI row batch has an invalid shape"));
+        }
+        let mut positions = [0; 64];
+        for (destination, variable) in positions.iter_mut().zip(variables) {
+            *destination = Self::position(*variable, "variable position")?;
+        }
+        let first = Self::observation(first_observation)?;
+        let count = (values.len() / variables.len()) as c_int;
+        first.checked_add(count - 1).ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "numeric SPI observation index overflows")
+        })?;
+        let mut boundary = 0.0;
+        // SAFETY: width, row count, index bounds and writable storage are
+        // checked above. The C adapter also validates Stata coordinates and
+        // rejects any thread other than the bound calling thread.
+        Self::spi_rc(unsafe {
+            fereg_spi_vdata_rows(positions.as_ptr(), variables.len() as c_int,
+                first, count, values.as_mut_ptr(), &mut boundary)
+        }, "numeric row read")?;
+        if !boundary.is_finite() || boundary <= 0.0 {
+            return Err(FeregError::new(ErrorCode::Internal, "Stata SPI returned an invalid numeric missing boundary"));
+        }
+        Ok(boundary)
     }
 
     fn read_numeric_columns(

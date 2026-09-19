@@ -239,6 +239,52 @@ ST_int fereg_spi_vdata_columns(
     return 0;
 }
 
+ST_int fereg_spi_vdata_rows(
+    const ST_int *variables,
+    ST_int variable_count,
+    ST_int first_observation,
+    ST_int observation_count,
+    ST_double *values,
+    ST_double *missing_value
+)
+{
+#if SYSTEM==APPLEMAC
+    ST_int observation, variable, rc;
+    ST_int observations, variables_available;
+    ST_int (*reader)(ST_int, ST_int, ST_double *);
+    if (variables == NULL || values == NULL || missing_value == NULL ||
+        variable_count <= 0 || variable_count > 64 || first_observation <= 0 ||
+        observation_count <= 0 || observation_count > 4096) {
+        return FEREG_SPI_RC_SYNTAX;
+    }
+    if (fereg_bridge_require_main_thread() != 0) return FEREG_SPI_RC_UNAVAILABLE;
+    observations = SF_nobs();
+    variables_available = SF_nvars();
+    if (first_observation > observations ||
+        observation_count > observations - first_observation + 1) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    for (variable = 0; variable < variable_count; ++variable) {
+        if (variables[variable] <= 0 || variables[variable] > variables_available ||
+            SF_var_is_string(variables[variable])) return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    reader = _stata_->vdata;
+    if (reader == NULL) return FEREG_SPI_RC_UNAVAILABLE;
+    *missing_value = SV_missval;
+    for (observation = 0; observation < observation_count; ++observation) {
+        for (variable = 0; variable < variable_count; ++variable) {
+            rc = reader(variables[variable], first_observation + observation, values++);
+            if (rc != 0) return rc;
+        }
+    }
+    return 0;
+#else
+    (void)variables; (void)variable_count; (void)first_observation;
+    (void)observation_count; (void)values; (void)missing_value;
+    return FEREG_SPI_RC_UNAVAILABLE;
+#endif
+}
+
 ST_int fereg_spi_vstore(ST_int variable, ST_int observation, ST_double value)
 {
     if (fereg_bridge_require_main_thread() != 0) {

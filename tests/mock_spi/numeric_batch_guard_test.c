@@ -38,6 +38,7 @@ static void *worker(void *unused)
     double data[1], *cols[] = {data}, missing;
     (void)unused;
     assert(fereg_spi_vdata_columns(vars, 1, 1, 1, cols, &missing) == 498);
+    assert(fereg_spi_vdata_rows(vars, 1, 1, 1, data, &missing) == 498);
     return NULL;
 }
 
@@ -87,6 +88,31 @@ int main(void)
     failure_at = 5;
     assert(fereg_spi_vdata_columns(vars, 3, 1, 4, cols, &missing) == 919);
     assert(calls == 5 && c[0] == 200001 && a[1] == 400002);
+    calls = 0;
+    failure_at = 0;
+    double rows[13] = {0};
+    rows[12] = -77;
+    assert(fereg_spi_vdata_rows(vars, 3, 65537, 4, rows, &missing) == 0);
+    assert(calls == 12 && rows[0] == 465537 && rows[11] == 265540 && rows[12] == -77);
+    calls = 0;
+    assert(fereg_spi_vdata_rows(NULL, 3, 1, 1, rows, &missing) == 198);
+    assert(fereg_spi_vdata_rows(vars, 0, 1, 1, rows, &missing) == 198);
+    assert(fereg_spi_vdata_rows(vars, 65, 1, 1, rows, &missing) == 198);
+    assert(fereg_spi_vdata_rows(vars, 3, 1, 4097, rows, &missing) == 198);
+    assert(fereg_spi_vdata_rows(vars, 3, 1, 1, NULL, &missing) == 198);
+    assert(fereg_spi_vdata_rows(vars, 3, 1, 1, rows, NULL) == 198);
+    assert(fereg_spi_vdata_rows(vars, 3, INT_MAX, 2, rows, &missing) == 498);
+    assert(fereg_spi_vdata_rows(vars, 3, 65540, 2, rows, &missing) == 498);
+    vars[2] = 3;
+    assert(fereg_spi_vdata_rows(vars, 3, 1, 1, rows, &missing) == 498);
+    vars[2] = 2;
+    plugin.vdata = NULL;
+    assert(fereg_spi_vdata_rows(vars, 3, 1, 1, rows, &missing) == 498);
+    plugin.vdata = read_value;
+    assert(calls == 0);
+    failure_at = 5;
+    assert(fereg_spi_vdata_rows(vars, 3, 1, 4, rows, &missing) == 919);
+    assert(calls == 5 && rows[0] == 400001 && rows[3] == 400002 && rows[12] == -77);
     puts("INPUT_GUARD_PASS");
     return 0;
 }

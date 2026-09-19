@@ -232,12 +232,22 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &action.request, spi.nobs()?, 0,
         action.metadata_owner_bytes, action.memory_plan.usable_bytes,
     )?;
-    let loaded = load_ols_input_with_memory(
+    let input_team = (action.candidate_all
+        && action.request.absorbed_terms.len() == 1
+        && action.request.absorbed_terms[0].categorical_sources.len() == 1
+        && action.request.absorbed_terms[0].slope_sources.is_empty()
+        && action.request.absorbed_terms[0].saved_name.is_empty()
+        && matches!(action.vce, OlsVceKind::Iid)
+        && !action.request.bindings.iter().any(|binding| matches!(binding.role,
+            OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight)))
+        .then(|| ThreadTeam::new(action.fit.execution.threads));
+    let loaded = load_ols_input_with_team(
         &action.request,
         action.candidate_all,
         action.input_complete,
         &mut input_memory,
         spi,
+        input_team,
     )?;
     action.input_peak_bytes = input_memory.peak();
     let input_load_seconds = started.elapsed().as_secs_f64() - preflight_seconds;
@@ -527,7 +537,7 @@ impl EstimateAction {
                 parents: 0,
                 workspace: self.input_peak_bytes,
             },
-            Gaps::TRANSPORT_COMPILER,
+            Gaps::TRANSPORT_COMPILER.union(Gaps::WORKER_RUNTIME),
         )?;
         ledger.record(
             Stage::Preparation,
@@ -1580,6 +1590,17 @@ pub(crate) fn load_ols_input_with_memory(
     memory: &mut InputMemory,
     spi: &mut dyn SpiApi,
 ) -> Result<LoadedOlsInput> {
+    load_ols_input_with_team(request, candidate_all, input_complete, memory, spi, None)
+}
+
+fn load_ols_input_with_team(
+    request: &OlsRequestV1,
+    candidate_all: bool,
+    input_complete: bool,
+    memory: &mut InputMemory,
+    spi: &mut dyn SpiApi,
+    team: Option<ThreadTeam>,
+) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
     let mut candidate = reserved_filled(n, candidate_all, "OLS candidate marker")?;
     let candidate_position = if candidate_all {
@@ -1685,13 +1706,20 @@ pub(crate) fn load_ols_input_with_memory(
                 missing.push(destination.missing.as_mut_slice());
             }
         }
-        read_numeric_columns_in_chunks(
-            spi,
-            &positions,
-            &mut columns,
-            &mut missing,
-            (!candidate_all).then_some(candidate.as_slice()),
-        )?;
+        let pipelined = if candidate_all && all_sources_numeric {
+            if let Some(team) = team {
+                crate::numeric_pipeline::try_read(spi, &positions, &mut columns, &mut missing, team, memory)?
+            } else { false }
+        } else { false };
+        if !pipelined {
+            read_numeric_columns_in_chunks(
+                spi,
+                &positions,
+                &mut columns,
+                &mut missing,
+                (!candidate_all).then_some(candidate.as_slice()),
+            )?;
+        }
         if candidate_all
             && all_sources_numeric
             && input_complete

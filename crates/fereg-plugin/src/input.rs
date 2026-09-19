@@ -111,6 +111,19 @@ pub trait SpiApi {
     fn variable_is_string(&mut self, variable: u32) -> Result<bool>;
     fn variable_is_strl(&mut self, variable: u32) -> Result<bool>;
     fn read_numeric(&mut self, variable: u32, observation: usize) -> Result<(f64, bool)>;
+    /// Optional raw, observation-major numeric transport. Only the main-thread
+    /// adapter enables this; the returned boundary is Stata's runtime `.`.
+    fn supports_numeric_rows(&self) -> bool {
+        false
+    }
+    fn read_numeric_rows(
+        &mut self,
+        _variables: &[u32],
+        _first_observation: usize,
+        _values: &mut [f64],
+    ) -> Result<f64> {
+        Err(FeregError::new(ErrorCode::Unsupported, "raw numeric row transport is unavailable"))
+    }
     /// Read numeric coordinates in observation order into native value and
     /// missing-status buffers. The default retains authoritative scalar SPI
     /// semantics; the production adapter classifies Stata's ordered numeric

@@ -153,6 +153,17 @@ impl ThreadTeam {
         Ok(self.acquire()?.install(function))
     }
 
+    /// Keep the scope body on its caller while lending the bounded team to
+    /// Rust-owned work. In particular, a thread-confined input producer must
+    /// never be moved into `install` alongside its native consumers.
+    pub fn in_place_scope<'scope, T>(
+        self,
+        function: impl FnOnce(&rayon::Scope<'scope>) -> T,
+    ) -> Result<T> {
+        let team = self.acquire()?;
+        Ok(team.pool.pool.as_ref().expect("live worker team").in_place_scope(function))
+    }
+
     /// Resolve/cache the requested pool before entering a transaction that
     /// cannot tolerate another fallible exit.
     pub(crate) fn acquire(self) -> Result<InstalledThreadTeam> {

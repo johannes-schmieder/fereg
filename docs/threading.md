@@ -30,6 +30,13 @@ their team owners on the calling thread.
 
 ## SPI prohibition
 
+The Mac numeric input pipeline uses `ThreadTeam::in_place_scope`: the scope
+body stays on the Stata calling thread, while one job on the resolved team
+transposes Rust-owned tiles and classifies missing values. Two 4,096-row buffers
+bound the handoff. Both peers signal closure on error or unwind, and the scope
+joins the worker before the loader returns. One-thread calls use the existing
+column reader. This introduces no independent thread pool or retained data cache.
+
 No worker may call `SF_*`, access Stata memory, read a Stata macro/matrix, write
 an output variable, or poll Stata directly. The main thread copies data into
 Rust-owned arrays, workers compute, and the main thread copies certified output
