@@ -17,6 +17,11 @@ calls. The current estimators reuse one resolved policy across parallel
 preparation, matrix, score, reconstruction, and inference kernels.
 Deterministic solver paths retain their registered reduction order. The
 default fast path may choose a different certified reduction or solver route.
+Fresh one-effect OLS inputs with at least 16,384 rows and eight RHS columns
+also check finite values on the already installed team. This Boolean check
+retains the same diagnostic before weight validation and workspace admission;
+it changes no numerical reduction. Calls outside a team and one-thread calls
+keep the serial check.
 Retired scoped teams signal shutdown and join their worker handles after the
 cache mutex is released. New and old teams can coexist during replacement.
 The general Rust API avoids self-join when external asynchronous work drops the

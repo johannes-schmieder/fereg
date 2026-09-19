@@ -10,6 +10,102 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## One-FE optimization implementation — 2026-09-19
+
+The owner-approved implementation target is a repeatable 5% win over pinned
+fixest on both 983,040-row, 10/50-regressor, 16-thread Mac cases. The other
+existing size/thread/group-layout cases remain protected controls. Near parity
+is not completion. The profiling and prototype evidence is committed in
+`8bf4e6e2`; the measured parallel validation change is retained in source with
+its focused test and threading contract. Next: integrate the guarded Mac
+numeric accessor and Rust-owned loading overlap as separate measured commits,
+then address Stata processing, narrow serial work, initialization and RHS
+materialization. Preserve unrelated pending work and historical receipts.
+
+## One-FE pass and loading-overlap experiment — 2026-09-19
+
+The owner-requested [pass/overlap experiment](benchmarks/reports/development/one-fe-passes-local-2026-09-19/README.md)
+is complete. Five rotated wide comparisons measure stock fereg at 582 ms,
+parallel finite-value validation at 562 ms, validation plus the earlier guarded
+fast accessor at 542 ms, and those changes plus pipelined input conversion at
+522 ms. Fresh pinned fixest comparisons take 456 ms. The combined prototype's
+10.3% paired improvement closes about 48% of the difference between command
+medians; it does not win this case. Shuffled wide input retains the overlap
+gain. Narrow input gains only a few milliseconds.
+
+Production Rust source retains only the bounded parallel finite-value check
+before initial one-FE projection. It uses an already installed worker team,
+preserves validation/error precedence and adds no buffer. Installed artifacts
+remain unchanged. Direct RHS initialization and concurrent source-moment
+variants did not improve command time and were rejected.
+
+The double-buffered 4,096-row input pipeline remains an isolated C transport
+prototype. SPI calls stay on the Stata thread, and its joined helper converts
+only owned copies. Its roughly 20–25 ms incremental wide-command gain survives
+full loading/allocation timing. Production integration still requires Rust-owned
+and admitted tiles, accounted worker lifetime and the resolved thread policy;
+the diagnostic's 3.25 MiB wide scratch plus worker stack are outside the Rust
+ledger. No one-thread pipeline performance or equal-memory claim is made.
+
+Evidence includes 104 accepted regression calls with exact native scientific
+exports, five fresh fixest comparisons, six licensed fixture passes across two
+artifacts, three focused Rust tests, actual-plugin ABI checks and two UBSan
+transport/failure tests. Source manifests, artifact hashes, rejected patches,
+raw numeric timings and independent-oracle receipts are archived. This is
+bounded local arm64 development evidence, not qualification. No remote job,
+branch, commit, push or installed-package change occurred.
+
+## Stata input accessor investigation — 2026-09-19
+
+The owner-requested [accessor investigation](benchmarks/reports/development/stata-input-accessor-local-2026-09-19/README.md)
+finds a modest local gain from a guarded numeric-batch `vdata` callback plus
+callback caching and loop cleanup. Five rotated wide one-FE comparisons reduce
+median input from 305.7 to 279.2 ms and command time from 582 to 559 ms;
+median paired reductions are 8.8% and 4.5%. Narrow, single-thread and shuffled
+controls retain smaller or comparable gains. The tested row-tile transport
+loses its extra write advantage when conversion back to columns is included.
+
+The evidence binds three arm64 diagnostic plugins sharing one unchanged Rust
+archive to 36 accepted command calls, exact scientific exports, independent
+dummy oracles, byte-level SDK comparisons, three licensed scientific/transaction
+fixtures, actual-plugin ABI checks and UBSan guard tests. ASan stalled before
+test entry; its overlapping kernel timing was excluded and rerun in isolation.
+No ASan, Linux/Windows, release or new fixest comparison is claimed.
+
+Production source and installed packages remain unchanged. The isolated
+candidate saves roughly 20–30 ms on the wide command, so this optimization
+alone does not close the fixest gap. Further material gains require reducing
+later materializations or overlapping useful native work with main-thread
+reads. Avoid a global SDK fast-mode switch; only the validated numeric batch
+reader was tested. No remote job, branch, commit or push was created.
+
+## One-FE OLS versus fixest profiling — 2026-09-19
+
+The owner-requested [local profile](benchmarks/reports/development/one-fe-profile-local-2026-09-19/README.md)
+is complete for unweighted, complete-data numeric IID OLS. Source `55c19cb6`,
+stock Mac artifact `0c6d5966…ebb4d37`, and the exact fixest 0.14.2 archive are
+bound to 152 accepted calls, independent explicit-dummy checks, exact native
+instrumentation comparisons, nested phase timings and stack summaries. At
+983,040 rows/50 regressors/16 native threads, stock command medians are
+0.593 s versus 0.461 s. Fereg input loading is 0.307 s, native work through
+precommit 0.215 s, and the remaining command boundary about 0.070 s. The wide
+single-thread case already wins, 1.712 s versus 2.325 s; narrow cases still lose.
+Fewer FE groups and shuffled-row controls retain the sixteen-thread gap.
+
+The next optimization boundary is main-thread input transport, one-FE matrix
+materialization/reference/projection passes, and repeated Stata preparation.
+Finite regression is already competitive; no new solver or production
+optimization was adopted. Failed/discarded diagnostic attempts remain explicit.
+This is local development evidence, with uncontrolled macOS core placement,
+not a release or cross-platform claim. No SCC job, push or installed-package
+change occurred; the separate light campaign remains untouched.
+
+Fresh universal Mac builds and actual-plugin ABI checks now work with the
+separately installed Command Line Tools selected through process-local
+`DEVELOPER_DIR`. The global Xcode selection/license remains unchanged. This
+resolves the local build obstacle for this profiling workflow without revising
+historical blocked-build receipts.
+
 ## Light competitor benchmark — 2026-09-19
 
 The owner-approved [light harness](benchmarks/light/README.md) fixes ten logical
