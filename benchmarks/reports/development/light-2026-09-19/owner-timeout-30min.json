@@ -1,0 +1,24 @@
+{
+  "date": "2026-09-19T11:03:04.438444+00:00",
+  "job_id": "7643785",
+  "held_for_array": "7643462",
+  "run_relative_to_original": "continuations/ppml-15min",
+  "previous_configuration": "owner-amendment.json",
+  "command_timeout_seconds": 1800,
+  "sge_task_limit_seconds": 43200,
+  "state_at_update": "dependency-held; not started; no runtime, plan or task receipt existed",
+  "deployment": "Remote hashes verified; temporary user hold released; original dependency retained. Prior unexecuted bytes archived in continuation amendments/30min.",
+  "scope": "Original PPML command timeouts and fresh native controls only; short Veneto remains omitted.",
+  "files": {
+    "followup.py": "384f2dab5307fd9f70cdeb726bf804a85d36197c85a4df50a809e9eaaba4212d",
+    "followup_plan.py": "2242550ac94e488ab43ef80cd5d4c864e4e0338fa8d21d26a41161cfe524fd72",
+    "README.md": "a0ba3af6c408b7d1bb5eaf1ca8d0e11e8b5e217dcfbbb828ea2d5a697e305b48",
+    "report.py": "3afa6628b3c5db5a1611efb21e7ff1b012904bf5694cf6397f9f5f7587f12dd7"
+  },
+  "tests": {
+    "focused_checks": 11,
+    "status": "pass",
+    "git_diff_check": "pass"
+  },
+  "monitor": "Existing 15-minute heartbeat updated to the 1800-second command limit."
+}

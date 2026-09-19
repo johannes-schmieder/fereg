@@ -46,14 +46,19 @@ Local reporting now uses median paired ratios, retains reference audit failures
 diagnostics. Ten focused local checks pass. The LaTeX/vector-figure layout
 compiles; final measured figures still require rendering and visual review.
 
-The owner also allows 15 minutes per PPML regression while retaining a 12-hour
+The owner now allows 30 minutes per PPML regression while retaining a 12-hour
 task cap. Eleven focused checks pass for the bounded continuation. One separate
 dependency-held job `7643785` (after array `7643462`) selects original PPML command timeouts only, includes
 fresh native controls and three repeats where executions succeed, and preserves
 input bytes, numerical settings and original failures. Nonconvergence errors
 and OLS timeouts are not retried. Collection/reporting keeps this continuation
 separate; use `--omit-short --followup CONTINUATION` when collecting the final
-report. No short-panel follow-up was submitted.
+report. No short-panel follow-up was submitted. The increase from 15 to 30
+minutes was deployed and hash-verified before the held job started; the prior
+unexecuted configuration is archived. The existing directory/terminal ID retains
+its historical `ppml-15min` name. Eleven focused checks still pass;
+[the amendment receipt](benchmarks/reports/development/light-2026-09-19/owner-timeout-30min.json)
+records the new limit and updated monitor.
 
 ## Practical whole-action memory reporting — 2026-09-18
 

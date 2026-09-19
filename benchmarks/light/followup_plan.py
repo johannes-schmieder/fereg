@@ -58,11 +58,11 @@ def make(root,parent):
             if block["input"]["sha256"]!=block["input_sha256"]:
                 raise ValueError("private input differs from original timed-out attempt")
     plan=dict(schema="fereg-light-followup-v1",id="ppml-15min",wall_seconds=43200,
-              command_timeout_seconds=900,parent_runtime_sha256=parent_identity,
+              command_timeout_seconds=1800,parent_runtime_sha256=parent_identity,
               original_timeout_receipts=hashes,cases=cases,
               max_fits=sum(len(b["arms"])*len(b["threads"])*b["repetitions"] for b in cases),
               purpose="owner-requested longer PPML allowance; only timed-out configurations and paired native controls",
-              stop_rule="no increase beyond 15 minutes; skip remaining repetitions after an execution failure")
+              stop_rule="no increase beyond 30 minutes; skip remaining repetitions after an execution failure")
     write_json(root/"followup-plan.json",plan)
     print("LIGHT_FOLLOWUP_PLAN",len(cases),plan["max_fits"],flush=True)
 

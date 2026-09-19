@@ -95,7 +95,7 @@ The short Veneto panel is omitted at the owner's request. Its original
 unattempted receipts remain historical evidence; do not recover, substitute,
 or rerun that sample. The long panel continues unchanged.
 
-The owner permits 15 minutes per PPML regression and up to 12 hours per SGE
+The owner permits 30 minutes per PPML regression and up to 12 hours per SGE
 task. `followup.sh` runs one dependency-held continuation after the original
 campaign ends. `followup_plan.py` selects only recorded PPML command timeouts,
 with fresh native controls for paired comparisons, and freezes the selected

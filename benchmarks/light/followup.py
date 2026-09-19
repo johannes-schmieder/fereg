@@ -47,7 +47,7 @@ def run(root):
             fixture(c,warm)
         else:
             generate(dict(c,n=7680),warm)
-        timeout=900 if c["model"]=="ppml" else 300
+        timeout=plan["command_timeout_seconds"] if c["model"]=="ppml" else 300
         for rep in range(1,block["repetitions"]+1):
             for threads in block["threads"] if rep%2 else list(reversed(block["threads"])):
                 group=root/("private/results" if c["private"] else "results")/cell_id(c)/f"t{threads}-r{rep}"
