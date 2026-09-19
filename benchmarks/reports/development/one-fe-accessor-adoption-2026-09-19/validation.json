@@ -1,0 +1,18 @@
+{
+  "accessor-guard.log": {
+    "status": "pass",
+    "sha256": "117ea0eed27b9e90e8c78f830986e021b457abe957fe338f1dceab3c85dd108d"
+  },
+  "accessor-portable.log": {
+    "status": "pass",
+    "sha256": "23ca5cdcec59b565f9c3c3c20d1c4fa22d340d1609e98966e94897e333ee7c38"
+  },
+  "build-baseline.log": {
+    "status": "pass",
+    "sha256": "f1ce9995c0e94611b0b497aa5419d4b909ad3f310d54d7ec5e29a0ffc1750d89"
+  },
+  "build-accessor.log": {
+    "status": "pass",
+    "sha256": "6b8802f26fe6b455068769e0fc140aae34ed122071b13eff0f5188d0fc295cc6"
+  }
+}

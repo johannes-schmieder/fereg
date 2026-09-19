@@ -1177,6 +1177,7 @@ int main(int argc, char *argv[])
     plugin.ismissing = mock_missing;
     plugin.missval = 0x1p+1023;
     plugin.safevdata = mock_vdata;
+    plugin.vdata = mock_vdata;
     plugin.safestore = mock_vstore;
     plugin.rowsof = mock_rowsof;
     plugin.colsof = mock_colsof;

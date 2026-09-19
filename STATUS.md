@@ -12,6 +12,15 @@ completed optimization/calibration investigation chronology formerly here.
 
 ## One-FE optimization implementation — 2026-09-19
 
+The guarded Mac numeric accessor now has fresh adoption evidence in
+`benchmarks/reports/development/one-fe-accessor-adoption-2026-09-19/`:
+84 accepted calls, exact native scientific outputs, three licensed fixtures,
+real-plugin ABI checks and portable/Mac-UBSan bridge checks. The wide median
+falls from 561 to 528 ms; the narrow median remains 221 ms. Protected-control
+median ratios have maximum 1.0145 and geometric mean 0.9766. Fixest medians are
+471 and 144 ms respectively, so the win objective remains unmet. Rust-owned
+loading overlap is the next candidate; its implementation is not yet accepted.
+
 The owner-approved implementation target is a repeatable 5% win over pinned
 fixest on both 983,040-row, 10/50-regressor, 16-thread Mac cases. The other
 existing size/thread/group-layout cases remain protected controls. Near parity

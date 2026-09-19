@@ -188,6 +188,11 @@ ST_int fereg_spi_vdata_columns(
     ST_int observation;
     ST_int variable;
     ST_int rc;
+#if SYSTEM==APPLEMAC
+    ST_int (*reader)(ST_int, ST_int, ST_double *);
+    ST_int observations;
+    ST_int variables_available;
+#endif
     if (variables == NULL || columns == NULL || missing_value == NULL || variable_count <= 0 ||
         first_observation <= 0 || observation_count <= 0) {
         return FEREG_SPI_RC_SYNTAX;
@@ -195,15 +200,39 @@ ST_int fereg_spi_vdata_columns(
     if (fereg_bridge_require_main_thread() != 0) {
         return FEREG_SPI_RC_UNAVAILABLE;
     }
+#if SYSTEM==APPLEMAC
+    /* Numeric batch addresses are checked once before using the SDK's direct
+       accessor. Scalar reads and other platforms retain SF_vdata checks. */
+    observations = SF_nobs();
+    variables_available = SF_nvars();
+    if (first_observation > observations ||
+        observation_count > observations - first_observation + 1) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    for (variable = 0; variable < variable_count; ++variable) {
+        if (columns[variable] == NULL) return FEREG_SPI_RC_SYNTAX;
+        if (variables[variable] <= 0 || variables[variable] > variables_available ||
+            SF_var_is_string(variables[variable])) {
+            return FEREG_SPI_RC_UNAVAILABLE;
+        }
+    }
+    reader = _stata_->vdata;
+    if (reader == NULL) return FEREG_SPI_RC_UNAVAILABLE;
+#endif
     *missing_value = SV_missval;
     for (observation = 0; observation < observation_count; ++observation) {
         for (variable = 0; variable < variable_count; ++variable) {
+#if SYSTEM==APPLEMAC
+            rc = reader(variables[variable], first_observation + observation,
+                        &columns[variable][observation]);
+#else
             if (columns[variable] == NULL) return FEREG_SPI_RC_SYNTAX;
             rc = SF_vdata(
                 variables[variable],
                 first_observation + observation,
                 &columns[variable][observation]
             );
+#endif
             if (rc != 0) return rc;
         }
     }

@@ -6,6 +6,11 @@ private result. Public estimator dispatch is active for `fereg` 0.5.0.
 
 ## Preparation order
 
+On macOS, bounded numeric column batches validate observation bounds, numeric
+variable types and destination pointers before using the SDK's direct `vdata`
+callback. Every callback return code is checked. Scalar reads and other
+platforms retain the checked accessor; this does not enable global fast mode.
+
 For each original row, candidate exclusion from `if`/`in` is applied first.
 On candidate rows, outcome, ordinary terms, weights, fixed effects, clusters,
 and time-series materializations are checked in the registered precedence.
