@@ -1,0 +1,168 @@
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -1580,6 +1580,7 @@
+     memory: &mut InputMemory,
+     spi: &mut dyn SpiApi,
+ ) -> Result<LoadedOlsInput> {
++    let profile_start = Instant::now();
+     let n = spi.nobs()?;
+     let mut candidate = reserved_filled(n, candidate_all, "OLS candidate marker")?;
+     let candidate_position = if candidate_all {
+@@ -1638,6 +1639,7 @@
+             "OLS source-position capacity exhausted",
+         )?;
+     }
++    let profile_allocated = Instant::now();
+     let all_sources_numeric = source_loaders
+         .iter()
+         .all(|(_, loader)| matches!(loader, OlsSourceLoader::Numeric(_)));
+@@ -1758,6 +1760,7 @@
+             }
+         }
+     }
++    let profile_loaded = Instant::now();
+     spi.check_interrupted()?;
+     let mut numeric_sources = reserved_empty(source_loaders.len(), "final OLS source table")?;
+     for (source, loader) in source_loaders {
+@@ -1766,6 +1769,12 @@
+             (source, loader.finalize(memory)?),
+             "final OLS source table capacity exhausted",
+         )?;
++    }
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
++        eprintln!("FEREG_PHASE|input_detail|allocation={:.9}|spi_read={:.9}|finalize={:.9}",
++            profile_allocated.duration_since(profile_start).as_secs_f64(),
++            profile_loaded.duration_since(profile_allocated).as_secs_f64(),
++            profile_loaded.elapsed().as_secs_f64());
+     }
+     Ok(LoadedOlsInput {
+         candidate,
+--- a/crates/fereg-core/src/ols/prepared.rs
++++ b/crates/fereg-core/src/ols/prepared.rs
+@@ -723,16 +723,26 @@
+     loaded: LoadedOlsInput,
+     cluster_sources: &[SourceId],
+ ) -> Result<PreparedOlsData> {
++    let profile_start = std::time::Instant::now();
+     let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
+     validate_loaded(request, &loaded)?;
+     validate_candidate_categorical_domain(request, &loaded, cluster_sources)?;
+     validate_candidate_weight_domain(&loaded)?;
++    let profile_validated = std::time::Instant::now();
+     let sample = if is_full_retained_unweighted_sample(&loaded) {
+         take_full_retained_unweighted_sample(loaded)?
+     } else {
+         take_classified_sample(request, loaded, cluster_sources)?
+     };
+-    finish_prepare_ols_data(request, cluster_sources, model, sample)
++    let profile_sampled = std::time::Instant::now();
++    let result = finish_prepare_ols_data(request, cluster_sources, model, sample);
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
++        eprintln!("FEREG_PHASE|prepare_detail|validate={:.9}|sample={:.9}|factor_singletons_finalize={:.9}",
++            profile_validated.duration_since(profile_start).as_secs_f64(),
++            profile_sampled.duration_since(profile_validated).as_secs_f64(),
++            profile_sampled.elapsed().as_secs_f64());
++    }
++    result
+ }
+ 
+ pub(crate) fn prepare_ols_data_with_cluster_sources(
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -3601,6 +3601,7 @@
+     perturb_bread: bool,
+     build_bread: bool,
+ ) -> Result<QrFit> {
++    let profile_start = Instant::now();
+     let nrows = within.nrows();
+     let generated_columns = prepared.fit_model().columns.len();
+     let expected_columns = generated_columns
+@@ -3821,8 +3822,10 @@
+             }
+             Ok(())
+         })?;
++    let profile_standardized = Instant::now();
+     let (standardized_rhs, standardized_gram) =
+         build_standardized_moments(within, &canonical_candidates, reservation)?;
++    let profile_moments = Instant::now();
+     if let Some(fit) = try_fit_scaled_pivoted_cholesky(
+         within,
+         weights,
+@@ -3840,7 +3843,16 @@
+         perturb_bread,
+         build_bread,
+     )? {
++        if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
++            eprintln!("FEREG_PHASE|finite_detail|setup_standardize={:.9}|moments={:.9}|cholesky_residual_certificates={:.9}|qr_fallback=0",
++                profile_standardized.duration_since(profile_start).as_secs_f64(),
++                profile_moments.duration_since(profile_standardized).as_secs_f64(),
++                profile_moments.elapsed().as_secs_f64());
++        }
+         return Ok(fit);
++    }
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
++        eprintln!("FEREG_PHASE|finite_detail|qr_fallback=1");
+     }
+     fill_trailing_norms(within, &candidate_columns, 0, &mut trailing_norms)?;
+     let initial_norm = trailing_norms.iter().copied().fold(0.0_f64, f64::max);
+--- a/stata/_fereg_estimate_ols.ado
++++ b/stata/_fereg_estimate_ols.ado
+@@ -4,6 +4,8 @@
+ // Do not add a sorting operation without restoring order on every exit.
+ program define _fereg_estimate_ols, eclass
+     version 18.0
++    timer clear 81
++    timer on 81
+     quietly _fereg_memory_baseline
+     local stata_used_entry = strtrim(string(r(used), "%21.0f"))
+     local stata_alloc_entry = strtrim(string(r(allocated), "%21.0f"))
+@@ -504,10 +506,16 @@
+         local request_bundle "bundle_local=`request_bytes'"
+     }
+     else local request_bundle `"bundle=`request_bundle'"'
++    timer off 81
++    timer clear 82
++    timer on 82
+     plugin call __fereg_estimate_plugin `touse' `depvar' `source_vars' ///
+         `weight_variable' `output_variables', ///
+         `"estimate-ols"' `"`request_bundle'"'
+ 
++    timer off 82
++    timer clear 83
++    timer on 83
+     if `"`inject'"' == "breakpostplugin" {
+         di as result "FEREG_BREAK_ARMED"
+         sleep 30000
+@@ -585,6 +593,9 @@
+     if `has_aweight' local eweight "[aweight=`aweight']"
+     if `has_fweight' local eweight "[fweight=`fweight']"
+     if `has_pweight' local eweight "[pweight=`pweight']"
++    timer off 83
++    timer clear 84
++    timer on 84
+     if `coefficient_count' > 0 {
+         // Whole-matrix Mata construction preserves the pinned multiway CGM
+         // matrix through Stata's e(V) posting path. Cell-written SPI shadows
+@@ -598,6 +609,9 @@
+         ereturn post `eweight', depname(`depvar') obs(`N_effective') ///
+             dof(`df_r') esample(`sample_shadow') buildfvinfo
+     }
++    timer off 84
++    timer clear 85
++    timer on 85
+     if `"`inject'"' == "postereturn" exit 3498
+ 
+     local fit_names rss tss tss_within mss r2 r2_a r2_within r2_a_within rmse F ll ll_0
+@@ -755,6 +769,12 @@
+         }
+         _estimates unhold `held_estimates', not
+     }
++    timer off 85
++    forvalues profile_timer = 81/85 {
++        quietly timer list `profile_timer'
++        noisily display "FEREG_ADO_PHASE|`profile_timer'|seconds=" %12.6f r(t`profile_timer')
++    }
++
+ end
+ 
+ 

@@ -1,0 +1,1302 @@
+[
+  {
+    "n": 245760,
+    "k": 10,
+    "threads": 1,
+    "input_sha256": "f5f974a0dd7c73a231d40294b8b92daab1a7b490c9c9311d7941d304cb592fe7",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.118,
+        "minimum": 0.106,
+        "maximum": 0.119,
+        "stock_phases": {
+          "preflight": 0.000193917,
+          "input": 0.024960458,
+          "native": 0.07549783299999999,
+          "outer_and_publication": 0.016833749999999995
+        },
+        "trace_phases": {
+          "preflight": 0.0002167705,
+          "input": 0.025850834,
+          "native": 0.0772099785,
+          "outer_and_publication": 0.019222417
+        },
+        "traced_seconds": 0.1225,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.00674425
+          },
+          "fit": {
+            "rhs": 0.006749771,
+            "raw_moments": 0.013984333000000002,
+            "initial_absorb": 0.024754958,
+            "within_norms": 2.915e-07,
+            "finite_solve": 0.012045646,
+            "score_cache": 2.1e-08,
+            "bread_raw_residual": 0.0019441039999999999,
+            "residual_absorb": 0.003455354,
+            "score": 0.0022593125,
+            "finalize": 6.875e-07,
+            "total": 0.0651949375
+          },
+          "iid": {
+            "setup_statistics": 0.0042588545,
+            "covariance": 3.708e-06,
+            "wald": 2.396e-06,
+            "certificate": 1.3119999999999999e-06,
+            "total": 0.0042664165
+          },
+          "iid_plugin": {
+            "prepare": 0.006784917,
+            "inference": 0.0703391875,
+            "outputs": 1.2063e-05,
+            "shadow": 7.688e-06,
+            "prestore_total": 0.07714410399999999
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.085,
+        "minimum": 0.082,
+        "maximum": 0.092,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.0125,
+          "dispatch": 0.0,
+          "demean": 0.0405,
+          "finite_fit": 0.023,
+          "prediction": 0.003,
+          "scores": 0.0035,
+          "iid_inference": 0.001,
+          "fit_statistics": 0.003,
+          "summary": 0.0005,
+          "unattributed": 0.0020000000000000503
+        },
+        "traced_seconds": 0.08900000000000005,
+        "nested": {
+          "ols": {
+            "products": 0.02,
+            "factor": 0.0,
+            "coefficients_residual": 0.003
+          },
+          "demean": {
+            "fe_setup": 2.3854e-05,
+            "workspace": 0.0018270835,
+            "group_means": 0.013674937000000002,
+            "subtract_export": 0.024958167
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.2826086956521738,
+      1.4,
+      1.292682926829268
+    ],
+    "fereg_over_fixest": 1.292682926829268
+  },
+  {
+    "n": 245760,
+    "k": 10,
+    "threads": 16,
+    "input_sha256": "f5f974a0dd7c73a231d40294b8b92daab1a7b490c9c9311d7941d304cb592fe7",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.068,
+        "minimum": 0.068,
+        "maximum": 0.07,
+        "stock_phases": {
+          "preflight": 0.000165958,
+          "input": 0.021532834,
+          "native": 0.036423542,
+          "outer_and_publication": 0.010452583000000008
+        },
+        "trace_phases": {
+          "preflight": 0.000158896,
+          "input": 0.020763625,
+          "native": 0.038535604,
+          "outer_and_publication": 0.011041875000000003
+        },
+        "traced_seconds": 0.07050000000000001,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.0060222295
+          },
+          "fit": {
+            "rhs": 0.0054601045,
+            "raw_moments": 0.002753625,
+            "initial_absorb": 0.0074517705,
+            "within_norms": 2.7100000000000003e-07,
+            "finite_solve": 0.004063125,
+            "score_cache": 0.0,
+            "bread_raw_residual": 0.0023238755,
+            "residual_absorb": 0.0027606665,
+            "score": 0.0021557705,
+            "finalize": 7.505000000000001e-07,
+            "total": 0.0269707295
+          },
+          "iid": {
+            "setup_statistics": 0.004486375,
+            "covariance": 1.3125000000000001e-06,
+            "wald": 2.2915e-06,
+            "certificate": 1.3545e-06,
+            "total": 0.004491479
+          },
+          "iid_plugin": {
+            "prepare": 0.0060580005,
+            "inference": 0.0323748125,
+            "outputs": 2.97915e-05,
+            "shadow": 7.562499999999999e-06,
+            "prestore_total": 0.0384703755
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.0600000000000001,
+        "minimum": 0.053,
+        "maximum": 0.0610000000000001,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.00849999999999998,
+          "dispatch": 0.0,
+          "demean": 0.027,
+          "finite_fit": 0.0045000000000000005,
+          "prediction": 0.0005,
+          "scores": 0.004,
+          "iid_inference": 0.001,
+          "fit_statistics": 0.003,
+          "summary": 0.001,
+          "unattributed": 0.00300000000000002
+        },
+        "traced_seconds": 0.0525,
+        "nested": {
+          "ols": {
+            "products": 0.0025,
+            "factor": 0.0015,
+            "coefficients_residual": 0.0005
+          },
+          "demean": {
+            "fe_setup": 1.73745e-05,
+            "workspace": 0.0014844795,
+            "group_means": 0.002078167,
+            "subtract_export": 0.023717937
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.1333333333333315,
+      1.1475409836065555,
+      1.2830188679245285
+    ],
+    "fereg_over_fixest": 1.1475409836065555
+  },
+  {
+    "n": 245760,
+    "k": 10,
+    "threads": 4,
+    "input_sha256": "f5f974a0dd7c73a231d40294b8b92daab1a7b490c9c9311d7941d304cb592fe7",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.069,
+        "minimum": 0.067,
+        "maximum": 0.071,
+        "stock_phases": {
+          "preflight": 0.000154875,
+          "input": 0.020078291,
+          "native": 0.037357,
+          "outer_and_publication": 0.011358541999999992
+        },
+        "trace_phases": {
+          "preflight": 0.000159021,
+          "input": 0.0212470835,
+          "native": 0.037238729,
+          "outer_and_publication": 0.0113551665
+        },
+        "traced_seconds": 0.07,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.0060578125
+          },
+          "fit": {
+            "rhs": 0.0030807085,
+            "raw_moments": 0.003930687,
+            "initial_absorb": 0.008815354000000001,
+            "within_norms": 2.5e-07,
+            "finite_solve": 0.0039066245,
+            "score_cache": 8.35e-08,
+            "bread_raw_residual": 0.0018564375,
+            "residual_absorb": 0.0023643545,
+            "score": 0.0017264585,
+            "finalize": 9.165e-07,
+            "total": 0.025682437500000002
+          },
+          "iid": {
+            "setup_statistics": 0.004458771,
+            "covariance": 9.79e-07,
+            "wald": 2.458e-06,
+            "certificate": 1.2915e-06,
+            "total": 0.004463667
+          },
+          "iid_plugin": {
+            "prepare": 0.0060950625,
+            "inference": 0.0310422085,
+            "outputs": 2.6729e-05,
+            "shadow": 7.2085000000000005e-06,
+            "prestore_total": 0.0371714375
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.057,
+        "minimum": 0.054,
+        "maximum": 0.057,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.00750000000000001,
+          "dispatch": 0.0,
+          "demean": 0.029,
+          "finite_fit": 0.00700000000000001,
+          "prediction": 0.0015,
+          "scores": 0.0035,
+          "iid_inference": 0.001,
+          "fit_statistics": 0.003,
+          "summary": 0.001,
+          "unattributed": 0.0014999999999999805
+        },
+        "traced_seconds": 0.055,
+        "nested": {
+          "ols": {
+            "products": 0.005500000000000005,
+            "factor": 0.0005,
+            "coefficients_residual": 0.001
+          },
+          "demean": {
+            "fe_setup": 1.57915e-05,
+            "workspace": 0.001309854,
+            "group_means": 0.0032920835,
+            "subtract_export": 0.0243001045
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.3148148148148147,
+      1.2105263157894737,
+      1.1754385964912282
+    ],
+    "fereg_over_fixest": 1.2105263157894737
+  },
+  {
+    "n": 983040,
+    "k": 10,
+    "threads": 1,
+    "input_sha256": "e7d8d1763cc5185952ca28699ee72519fbcb5bc1798b9fcd235fee7fa357a496",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.428,
+        "minimum": 0.426,
+        "maximum": 0.433,
+        "stock_phases": {
+          "preflight": 0.000177375,
+          "input": 0.08193974999999999,
+          "native": 0.300758167,
+          "outer_and_publication": 0.04608395799999998
+        },
+        "trace_phases": {
+          "preflight": 0.000180146,
+          "input": 0.082389479,
+          "native": 0.301338229,
+          "outer_and_publication": 0.04159214599999997
+        },
+        "traced_seconds": 0.4255,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.023858271
+          },
+          "fit": {
+            "rhs": 0.027590541500000003,
+            "raw_moments": 0.052199791499999995,
+            "initial_absorb": 0.09806864600000001,
+            "within_norms": 4.995e-07,
+            "finite_solve": 0.049228417,
+            "score_cache": 4.15e-08,
+            "bread_raw_residual": 0.0078480415,
+            "residual_absorb": 0.0135818125,
+            "score": 0.008927083,
+            "finalize": 7.5e-07,
+            "total": 0.257445854
+          },
+          "iid": {
+            "setup_statistics": 0.017077957999999997,
+            "covariance": 9.789999999999999e-07,
+            "wald": 2.104e-06,
+            "certificate": 1.3335e-06,
+            "total": 0.017082521
+          },
+          "iid_plugin": {
+            "prepare": 0.023903104,
+            "inference": 0.277327083,
+            "outputs": 2.0646e-05,
+            "shadow": 7.9165e-06,
+            "prestore_total": 0.3012590625
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.284,
+        "minimum": 0.274,
+        "maximum": 0.287,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.0395,
+          "dispatch": 0.0,
+          "demean": 0.10200000000000001,
+          "finite_fit": 0.087,
+          "prediction": 0.01300000000000005,
+          "scores": 0.0269999999999999,
+          "iid_inference": 0.0015000000000000551,
+          "fit_statistics": 0.012,
+          "summary": 0.00099999999999989,
+          "unattributed": 0.002000000000000113
+        },
+        "traced_seconds": 0.28500000000000003,
+        "nested": {
+          "ols": {
+            "products": 0.075,
+            "factor": 0.0,
+            "coefficients_residual": 0.012
+          },
+          "demean": {
+            "fe_setup": 0.000108875,
+            "workspace": 0.025289146,
+            "group_means": 0.044700936999999996,
+            "subtract_export": 0.031446146
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.5,
+      1.5802919708029195,
+      1.491289198606272
+    ],
+    "fereg_over_fixest": 1.5
+  },
+  {
+    "n": 983040,
+    "k": 10,
+    "threads": 16,
+    "input_sha256": "e7d8d1763cc5185952ca28699ee72519fbcb5bc1798b9fcd235fee7fa357a496",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.223,
+        "minimum": 0.222,
+        "maximum": 0.231,
+        "stock_phases": {
+          "preflight": 0.000161,
+          "input": 0.085775292,
+          "native": 0.117814209,
+          "outer_and_publication": 0.021163291
+        },
+        "trace_phases": {
+          "preflight": 0.00015910449999999998,
+          "input": 0.0862496455,
+          "native": 0.12062406250000002,
+          "outer_and_publication": 0.0219671875
+        },
+        "traced_seconds": 0.229,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.024826542
+          },
+          "fit": {
+            "rhs": 0.017331771000000003,
+            "raw_moments": 0.0065710000000000005,
+            "initial_absorb": 0.0201140205,
+            "within_norms": 5.21e-07,
+            "finite_solve": 0.0072066874999999996,
+            "score_cache": 1.25e-07,
+            "bread_raw_residual": 0.00872025,
+            "residual_absorb": 0.007828375,
+            "score": 0.006502604,
+            "finalize": 1.167e-06,
+            "total": 0.0742774585
+          },
+          "iid": {
+            "setup_statistics": 0.018354354,
+            "covariance": 1.6669999999999999e-06,
+            "wald": 3.2295e-06,
+            "certificate": 1.4165e-06,
+            "total": 0.0183609375
+          },
+          "iid_plugin": {
+            "prepare": 0.0248754585,
+            "inference": 0.09560956200000001,
+            "outputs": 2.2978999999999998e-05,
+            "shadow": 9.25e-06,
+            "prestore_total": 0.1205175205
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.142,
+        "minimum": 0.136,
+        "maximum": 0.146,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.0215,
+          "dispatch": 0.0,
+          "demean": 0.07299999999999995,
+          "finite_fit": 0.012,
+          "prediction": 0.002999999999999945,
+          "scores": 0.0305,
+          "iid_inference": 0.002,
+          "fit_statistics": 0.013000000000000001,
+          "summary": 0.001000000000000055,
+          "unattributed": 0.002500000000000044
+        },
+        "traced_seconds": 0.1585,
+        "nested": {
+          "ols": {
+            "products": 0.00800000000000001,
+            "factor": 0.002,
+            "coefficients_residual": 0.002
+          },
+          "demean": {
+            "fe_setup": 0.0001335,
+            "workspace": 0.028496166500000003,
+            "group_means": 0.005372813000000001,
+            "subtract_export": 0.038819208
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.582191780821918,
+      1.6323529411764706,
+      1.5704225352112677
+    ],
+    "fereg_over_fixest": 1.582191780821918
+  },
+  {
+    "n": 983040,
+    "k": 10,
+    "threads": 4,
+    "input_sha256": "e7d8d1763cc5185952ca28699ee72519fbcb5bc1798b9fcd235fee7fa357a496",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.252,
+        "minimum": 0.251,
+        "maximum": 0.253,
+        "stock_phases": {
+          "preflight": 0.0001665,
+          "input": 0.083442458,
+          "native": 0.143115833,
+          "outer_and_publication": 0.02372191600000001
+        },
+        "trace_phases": {
+          "preflight": 0.000169417,
+          "input": 0.08496310400000001,
+          "native": 0.1521531045,
+          "outer_and_publication": 0.02471437450000001
+        },
+        "traced_seconds": 0.262,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.025539979
+          },
+          "fit": {
+            "rhs": 0.0153760835,
+            "raw_moments": 0.0146421045,
+            "initial_absorb": 0.035564916,
+            "within_norms": 4.375e-07,
+            "finite_solve": 0.014166625,
+            "score_cache": 1.25e-07,
+            "bread_raw_residual": 0.0086198965,
+            "residual_absorb": 0.0103017915,
+            "score": 0.0070743955,
+            "finalize": 2.7710000000000002e-06,
+            "total": 0.1057498955
+          },
+          "iid": {
+            "setup_statistics": 0.017553063,
+            "covariance": 1.333e-06,
+            "wald": 2.7710000000000002e-06,
+            "certificate": 1.3335e-06,
+            "total": 0.017558729
+          },
+          "iid_plugin": {
+            "prepare": 0.0255985835,
+            "inference": 0.1263670625,
+            "outputs": 3.1354e-05,
+            "shadow": 3.5645499999999996e-05,
+            "prestore_total": 0.1520329375
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.169,
+        "minimum": 0.163,
+        "maximum": 0.171,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.02199999999999995,
+          "dispatch": 0.0,
+          "demean": 0.07200000000000005,
+          "finite_fit": 0.026000000000000002,
+          "prediction": 0.0045000000000000005,
+          "scores": 0.02899999999999995,
+          "iid_inference": 0.0015,
+          "fit_statistics": 0.013,
+          "summary": 0.001,
+          "unattributed": 0.0015000000000000568
+        },
+        "traced_seconds": 0.1705,
+        "nested": {
+          "ols": {
+            "products": 0.0215,
+            "factor": 0.0005,
+            "coefficients_residual": 0.004
+          },
+          "demean": {
+            "fe_setup": 0.00010035400000000001,
+            "workspace": 0.024575021,
+            "group_means": 0.013308521,
+            "subtract_export": 0.034165957999999996
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.4678362573099415,
+      1.497041420118343,
+      1.5460122699386503
+    ],
+    "fereg_over_fixest": 1.497041420118343
+  },
+  {
+    "n": 983040,
+    "k": 50,
+    "threads": 16,
+    "input_sha256": "43ed2c1d3547be0d5627d06fe23290544ad8732d1664bd17ef261bc274846bdd",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.579,
+        "minimum": 0.565,
+        "maximum": 0.579,
+        "stock_phases": {
+          "preflight": 0.000442083,
+          "input": 0.296976625,
+          "native": 0.204129917,
+          "outer_and_publication": 0.07647174999999995
+        },
+        "trace_phases": {
+          "preflight": 0.000399271,
+          "input": 0.2975306665,
+          "native": 0.20489820849999996,
+          "outer_and_publication": 0.06967185399999998
+        },
+        "traced_seconds": 0.5725,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.014766729499999999
+          },
+          "fit": {
+            "rhs": 0.030657625,
+            "raw_moments": 0.020879833,
+            "initial_absorb": 0.0625638335,
+            "within_norms": 3.7550000000000005e-07,
+            "finite_solve": 0.032350187,
+            "score_cache": 1.04e-07,
+            "bread_raw_residual": 0.011007417,
+            "residual_absorb": 0.0061527084999999995,
+            "score": 0.006114125,
+            "finalize": 2.5625e-06,
+            "total": 0.1697293125
+          },
+          "iid": {
+            "setup_statistics": 0.017470187499999998,
+            "covariance": 3.396e-06,
+            "wald": 3.0875e-05,
+            "certificate": 6.563e-06,
+            "total": 0.017511125
+          },
+          "iid_plugin": {
+            "prepare": 0.0148202705,
+            "inference": 0.18981247899999998,
+            "outputs": 6.4021e-05,
+            "shadow": 0.000119271,
+            "prestore_total": 0.2048164785
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.441,
+        "minimum": 0.422,
+        "maximum": 0.442,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.07100000000000001,
+          "dispatch": 0.0,
+          "demean": 0.1395,
+          "finite_fit": 0.1305,
+          "prediction": 0.0110000000000001,
+          "scores": 0.0660000000000001,
+          "iid_inference": 0.00199999999999978,
+          "fit_statistics": 0.012,
+          "summary": 0.00099999999999989,
+          "unattributed": 0.004500000000000115
+        },
+        "traced_seconds": 0.4375,
+        "nested": {
+          "ols": {
+            "products": 0.115,
+            "factor": 0.007500000000000066,
+            "coefficients_residual": 0.007999999999999785
+          },
+          "demean": {
+            "fe_setup": 1.0625e-05,
+            "workspace": 0.040817791500000006,
+            "group_means": 0.0060193545,
+            "subtract_export": 0.092348125
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.372037914691943,
+      1.2782805429864252,
+      1.3129251700680271
+    ],
+    "fereg_over_fixest": 1.3129251700680271
+  },
+  {
+    "n": 983040,
+    "k": 50,
+    "threads": 4,
+    "input_sha256": "43ed2c1d3547be0d5627d06fe23290544ad8732d1664bd17ef261bc274846bdd",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.782,
+        "minimum": 0.774,
+        "maximum": 0.806,
+        "stock_phases": {
+          "preflight": 0.000441583,
+          "input": 0.30201533300000005,
+          "native": 0.396215459,
+          "outer_and_publication": 0.08292375000000007
+        },
+        "trace_phases": {
+          "preflight": 0.0004409165,
+          "input": 0.298349479,
+          "native": 0.40653054200000005,
+          "outer_and_publication": 0.08217906250000001
+        },
+        "traced_seconds": 0.7875000000000001,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.021611917
+          },
+          "fit": {
+            "rhs": 0.043619104000000006,
+            "raw_moments": 0.0567808335,
+            "initial_absorb": 0.1363044375,
+            "within_norms": 5.204999999999999e-07,
+            "finite_solve": 0.0964789375,
+            "score_cache": 1.25e-07,
+            "bread_raw_residual": 0.018083416499999998,
+            "residual_absorb": 0.0071641875,
+            "score": 0.0065585209999999994,
+            "finalize": 1.771e-06,
+            "total": 0.36499239549999996
+          },
+          "iid": {
+            "setup_statistics": 0.0171680835,
+            "covariance": 2.9580000000000003e-06,
+            "wald": 3.0792e-05,
+            "certificate": 6.5005e-06,
+            "total": 0.017208458500000003
+          },
+          "iid_plugin": {
+            "prepare": 0.0216623545,
+            "inference": 0.3846540415,
+            "outputs": 4.8e-05,
+            "shadow": 8.4521e-05,
+            "prestore_total": 0.40644935400000004
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.765,
+        "minimum": 0.764,
+        "maximum": 0.77,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.08050000000000004,
+          "dispatch": 0.0,
+          "demean": 0.149,
+          "finite_fit": 0.423,
+          "prediction": 0.024499999999999952,
+          "scores": 0.06550000000000014,
+          "iid_inference": 0.00099999999999989,
+          "fit_statistics": 0.012,
+          "summary": 0.00099999999999989,
+          "unattributed": 0.0045000000000000595
+        },
+        "traced_seconds": 0.761,
+        "nested": {
+          "ols": {
+            "products": 0.3985,
+            "factor": 0.00300000000000011,
+            "coefficients_residual": 0.02150000000000005
+          },
+          "demean": {
+            "fe_setup": 9.562499999999999e-06,
+            "workspace": 0.040902167,
+            "group_means": 0.0188666455,
+            "subtract_export": 0.08932097950000001
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.0222222222222221,
+      1.0467532467532468,
+      1.013089005235602
+    ],
+    "fereg_over_fixest": 1.0222222222222221
+  },
+  {
+    "n": 983040,
+    "k": 50,
+    "threads": 1,
+    "input_sha256": "52b0f80e240907b4d989866b4bd729bd9f1f8c165731cfc9971fbaac6e995aff",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 1.712,
+        "minimum": 1.71,
+        "maximum": 1.72,
+        "stock_phases": {
+          "preflight": 0.00038675,
+          "input": 0.306759,
+          "native": 1.2746781669999998,
+          "outer_and_publication": 0.13639208299999983
+        },
+        "trace_phases": {
+          "preflight": 0.0003851665,
+          "input": 0.29562727099999997,
+          "native": 1.2500699795,
+          "outer_and_publication": 0.1369175829999999
+        },
+        "traced_seconds": 1.6829999999999998,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.0522423125
+          },
+          "fit": {
+            "rhs": 0.1413824165,
+            "raw_moments": 0.22176935450000002,
+            "initial_absorb": 0.3817948335,
+            "within_norms": 5.21e-07,
+            "finite_solve": 0.365411229,
+            "score_cache": 6.25e-08,
+            "bread_raw_residual": 0.044241729,
+            "residual_absorb": 0.013532375,
+            "score": 0.009340395500000001,
+            "finalize": 2.146e-06,
+            "total": 1.177475687
+          },
+          "iid": {
+            "setup_statistics": 0.0172264375,
+            "covariance": 3.2295e-06,
+            "wald": 3.02085e-05,
+            "certificate": 6.3545e-06,
+            "total": 0.0172663955
+          },
+          "iid_plugin": {
+            "prepare": 0.052290396,
+            "inference": 1.1976010205,
+            "outputs": 2.7354e-05,
+            "shadow": 5.85625e-05,
+            "prestore_total": 1.24997775
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 2.325,
+        "minimum": 2.314,
+        "maximum": 2.519,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.129,
+          "dispatch": 0.0,
+          "demean": 0.3435,
+          "finite_fit": 1.6735,
+          "prediction": 0.08749999999999995,
+          "scores": 0.0640000000000005,
+          "iid_inference": 0.000999999999999446,
+          "fit_statistics": 0.0120000000000005,
+          "summary": 0.0014999999999996132,
+          "unattributed": 0.0020000000000000018
+        },
+        "traced_seconds": 2.314,
+        "nested": {
+          "ols": {
+            "products": 1.5915,
+            "factor": 0.0,
+            "coefficients_residual": 0.08199999999999985
+          },
+          "demean": {
+            "fe_setup": 0.0001444795,
+            "workspace": 0.0439346665,
+            "group_means": 0.2091390415,
+            "subtract_export": 0.0897776045
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      0.7433016421780466,
+      0.6788408098451766,
+      0.7363440860215053
+    ],
+    "fereg_over_fixest": 0.7363440860215053
+  },
+  {
+    "n": 983040,
+    "k": 50,
+    "threads": 16,
+    "input_sha256": "52b0f80e240907b4d989866b4bd729bd9f1f8c165731cfc9971fbaac6e995aff",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.593,
+        "minimum": 0.583,
+        "maximum": 0.597,
+        "stock_phases": {
+          "preflight": 0.000412833,
+          "input": 0.307113667,
+          "native": 0.21489504200000004,
+          "outer_and_publication": 0.07011570899999997
+        },
+        "trace_phases": {
+          "preflight": 0.000423833,
+          "input": 0.299875125,
+          "native": 0.20408100000000004,
+          "outer_and_publication": 0.075620042
+        },
+        "traced_seconds": 0.5800000000000001,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.019748354000000003
+          },
+          "fit": {
+            "rhs": 0.0315991035,
+            "raw_moments": 0.0214544375,
+            "initial_absorb": 0.055139729,
+            "within_norms": 3.955e-07,
+            "finite_solve": 0.031546896,
+            "score_cache": 1.0350000000000001e-07,
+            "bread_raw_residual": 0.009961625,
+            "residual_absorb": 0.0075399790000000005,
+            "score": 0.006335812999999999,
+            "finalize": 2.771e-06,
+            "total": 0.163581708
+          },
+          "iid": {
+            "setup_statistics": 0.0175971665,
+            "covariance": 3.729e-06,
+            "wald": 3.1354e-05,
+            "certificate": 6.8335e-06,
+            "total": 0.0176393545
+          },
+          "iid_plugin": {
+            "prepare": 0.019784229,
+            "inference": 0.18409743750000002,
+            "outputs": 1.91665e-05,
+            "shadow": 5.5083e-05,
+            "prestore_total": 0.20395625
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.461,
+        "minimum": 0.459,
+        "maximum": 0.467,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.073,
+          "dispatch": 0.0,
+          "demean": 0.156,
+          "finite_fit": 0.1365,
+          "prediction": 0.01,
+          "scores": 0.06800000000000005,
+          "iid_inference": 0.0014999999999998352,
+          "fit_statistics": 0.012,
+          "summary": 0.00099999999999989,
+          "unattributed": 0.002500000000000252
+        },
+        "traced_seconds": 0.4605,
+        "nested": {
+          "ols": {
+            "products": 0.12,
+            "factor": 0.006500000000000175,
+            "coefficients_residual": 0.01
+          },
+          "demean": {
+            "fe_setup": 0.0001412295,
+            "workspace": 0.0429632495,
+            "group_means": 0.0181321875,
+            "subtract_export": 0.0945631045
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.264642082429501,
+      1.2783725910064239,
+      1.2919389978213507
+    ],
+    "fereg_over_fixest": 1.2783725910064239
+  },
+  {
+    "n": 983040,
+    "k": 50,
+    "threads": 4,
+    "input_sha256": "52b0f80e240907b4d989866b4bd729bd9f1f8c165731cfc9971fbaac6e995aff",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.791,
+        "minimum": 0.778,
+        "maximum": 0.8160000000000001,
+        "stock_phases": {
+          "preflight": 0.000395208,
+          "input": 0.300961833,
+          "native": 0.40712687499999994,
+          "outer_and_publication": 0.07757750000000008
+        },
+        "trace_phases": {
+          "preflight": 0.0003977715,
+          "input": 0.30525458299999997,
+          "native": 0.409208979,
+          "outer_and_publication": 0.07963866650000001
+        },
+        "traced_seconds": 0.7945,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.026821459
+          },
+          "fit": {
+            "rhs": 0.050932728999999996,
+            "raw_moments": 0.058511167,
+            "initial_absorb": 0.122593708,
+            "within_norms": 5.204999999999999e-07,
+            "finite_solve": 0.0966275,
+            "score_cache": 1.04e-07,
+            "bread_raw_residual": 0.0157684375,
+            "residual_absorb": 0.0097807085,
+            "score": 0.006755104,
+            "finalize": 2.75e-06,
+            "total": 0.36097333350000005
+          },
+          "iid": {
+            "setup_statistics": 0.0180528335,
+            "covariance": 4.7710000000000006e-06,
+            "wald": 3.1771000000000005e-05,
+            "certificate": 6.8124999999999996e-06,
+            "total": 0.0180965625
+          },
+          "iid_plugin": {
+            "prepare": 0.0268570005,
+            "inference": 0.382055125,
+            "outputs": 4.7875e-05,
+            "shadow": 0.00011039550000000001,
+            "prestore_total": 0.4090707295
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.82,
+        "minimum": 0.815,
+        "maximum": 0.864,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.08650000000000005,
+          "dispatch": 0.0,
+          "demean": 0.2015,
+          "finite_fit": 0.438,
+          "prediction": 0.02550000000000005,
+          "scores": 0.0665,
+          "iid_inference": 0.0015000000000000551,
+          "fit_statistics": 0.012,
+          "summary": 0.00099999999999989,
+          "unattributed": 0.0014999999999999458
+        },
+        "traced_seconds": 0.834,
+        "nested": {
+          "ols": {
+            "products": 0.4105,
+            "factor": 0.002500000000000165,
+            "coefficients_residual": 0.0249999999999999
+          },
+          "demean": {
+            "fe_setup": 0.0001439585,
+            "workspace": 0.0446600835,
+            "group_means": 0.0582039375,
+            "subtract_export": 0.0984555
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      0.9546012269938651,
+      0.9646341463414635,
+      0.9444444444444445
+    ],
+    "fereg_over_fixest": 0.9546012269938651
+  },
+  {
+    "n": 983040,
+    "k": 50,
+    "threads": 16,
+    "input_sha256": "3cfe45241aede7c00c4b27d894de3bd39254c4755bc7f873a4feac39f04f67bb",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.605,
+        "minimum": 0.6,
+        "maximum": 0.614,
+        "stock_phases": {
+          "preflight": 0.00046725,
+          "input": 0.299893833,
+          "native": 0.22622837499999998,
+          "outer_and_publication": 0.07425625000000002
+        },
+        "trace_phases": {
+          "preflight": 0.00042108300000000005,
+          "input": 0.2999768545,
+          "native": 0.22821208350000002,
+          "outer_and_publication": 0.072389979
+        },
+        "traced_seconds": 0.601,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.018773354
+          },
+          "fit": {
+            "rhs": 0.029713749999999997,
+            "raw_moments": 0.019704375,
+            "initial_absorb": 0.07979608299999999,
+            "within_norms": 6.035e-07,
+            "finite_solve": 0.032900479499999996,
+            "score_cache": 1.25e-07,
+            "bread_raw_residual": 0.0114993335,
+            "residual_absorb": 0.0090477295,
+            "score": 0.006033729,
+            "finalize": 1.8535000000000001e-06,
+            "total": 0.18869870849999998
+          },
+          "iid": {
+            "setup_statistics": 0.0172249165,
+            "covariance": 3.333e-06,
+            "wald": 3.04585e-05,
+            "certificate": 6.542e-06,
+            "total": 0.0172654585
+          },
+          "iid_plugin": {
+            "prepare": 0.0188243955,
+            "inference": 0.209237271,
+            "outputs": 2.5917000000000003e-05,
+            "shadow": 5.8104e-05,
+            "prestore_total": 0.2281459165
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.433,
+        "minimum": 0.43,
+        "maximum": 0.438,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.07599999999999996,
+          "dispatch": 0.0,
+          "demean": 0.145,
+          "finite_fit": 0.123,
+          "prediction": 0.0110000000000001,
+          "scores": 0.06600000000000006,
+          "iid_inference": 0.0014999999999998352,
+          "fit_statistics": 0.012,
+          "summary": 0.0014999999999998352,
+          "unattributed": 0.004500000000000226
+        },
+        "traced_seconds": 0.4405,
+        "nested": {
+          "ols": {
+            "products": 0.109,
+            "factor": 0.006000000000000005,
+            "coefficients_residual": 0.00800000000000001
+          },
+          "demean": {
+            "fe_setup": 0.00010439600000000001,
+            "workspace": 0.040768125,
+            "group_means": 0.01266425,
+            "subtract_export": 0.0917693955
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.4018264840182648,
+      1.4069767441860466,
+      1.3856812933025404
+    ],
+    "fereg_over_fixest": 1.4018264840182648
+  },
+  {
+    "n": 983040,
+    "k": 50,
+    "threads": 4,
+    "input_sha256": "3cfe45241aede7c00c4b27d894de3bd39254c4755bc7f873a4feac39f04f67bb",
+    "arms": {
+      "fereg": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.871,
+        "minimum": 0.858,
+        "maximum": 0.874,
+        "stock_phases": {
+          "preflight": 0.000428042,
+          "input": 0.2962915,
+          "native": 0.4827498750000001,
+          "outer_and_publication": 0.08427758399999996
+        },
+        "trace_phases": {
+          "preflight": 0.0004465205,
+          "input": 0.2968017085,
+          "native": 0.468557604,
+          "outer_and_publication": 0.08069416699999993
+        },
+        "traced_seconds": 0.8465,
+        "nested": {
+          "ols_prepare": {
+            "seconds": 0.024956271000000002
+          },
+          "fit": {
+            "rhs": 0.0453338545,
+            "raw_moments": 0.0562526875,
+            "initial_absorb": 0.19045274950000002,
+            "within_norms": 5.000000000000001e-07,
+            "finite_solve": 0.092556,
+            "score_cache": 2.1e-08,
+            "bread_raw_residual": 0.0191665835,
+            "residual_absorb": 0.0126286875,
+            "score": 0.00665,
+            "finalize": 2.5625e-06,
+            "total": 0.42304410400000003
+          },
+          "iid": {
+            "setup_statistics": 0.017247708,
+            "covariance": 3.3335e-06,
+            "wald": 3.01875e-05,
+            "certificate": 6.395999999999999e-06,
+            "total": 0.0172878755
+          },
+          "iid_plugin": {
+            "prepare": 0.025016104499999997,
+            "inference": 0.443350166,
+            "outputs": 4.0917e-05,
+            "shadow": 8.0375e-05,
+            "prestore_total": 0.468487896
+          }
+        }
+      },
+      "fixest": {
+        "stock_n": 3,
+        "traced_n": 2,
+        "seconds": 0.775,
+        "minimum": 0.77,
+        "maximum": 0.792,
+        "stock_phases": {},
+        "trace_phases": {
+          "environment": 0.09550000000000006,
+          "dispatch": 0.0,
+          "demean": 0.156,
+          "finite_fit": 0.4235,
+          "prediction": 0.02549999999999985,
+          "scores": 0.06699999999999995,
+          "iid_inference": 0.0015000000000000551,
+          "fit_statistics": 0.012,
+          "summary": 0.0015000000000000551,
+          "unattributed": 0.004000000000000059
+        },
+        "traced_seconds": 0.7865,
+        "nested": {
+          "ols": {
+            "products": 0.398,
+            "factor": 0.00299999999999989,
+            "coefficients_residual": 0.0225000000000002
+          },
+          "demean": {
+            "fe_setup": 0.000143604,
+            "workspace": 0.040873104,
+            "group_means": 0.026099042,
+            "subtract_export": 0.0883745625
+          }
+        }
+      }
+    },
+    "paired_ratios": [
+      1.127741935483871,
+      1.131168831168831,
+      1.0833333333333333
+    ],
+    "fereg_over_fixest": 1.127741935483871
+  }
+]

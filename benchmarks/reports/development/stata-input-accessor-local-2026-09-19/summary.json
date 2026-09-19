@@ -1,0 +1,267 @@
+[
+  {
+    "case": "holdout-n983040-k10-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.084384625,
+        "maximum": 0.222,
+        "minimum": 0.221,
+        "n": 3,
+        "native": 0.11662929199999998,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_input_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.020815708000000016,
+        "seconds": 0.221
+      },
+      "fast": {
+        "input": 0.079420583,
+        "maximum": 0.219,
+        "minimum": 0.216,
+        "n": 3,
+        "native": 0.115841917,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_command_ratios": [
+          0.9864253393665158,
+          0.9729729729729729,
+          0.9909502262443439
+        ],
+        "paired_input_ratios": [
+          1.0078885496308778,
+          0.9390884299124396,
+          0.9259414561897608
+        ],
+        "remaining": 0.02212066600000001,
+        "seconds": 0.218
+      }
+    }
+  },
+  {
+    "case": "holdout-n983040-k50-gdefault-shuffle0-t1",
+    "variants": {
+      "baseline": {
+        "input": 0.29565341700000003,
+        "maximum": 1.707,
+        "minimum": 1.675,
+        "n": 3,
+        "native": 1.2591855829999998,
+        "native_allocation_peak_bytes": 857489954.0,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_input_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.1385305000000001,
+        "seconds": 1.692
+      },
+      "fast": {
+        "input": 0.269838125,
+        "maximum": 1.674,
+        "minimum": 1.652,
+        "n": 3,
+        "native": 1.2521894169999999,
+        "native_allocation_peak_bytes": 857489954.0,
+        "paired_command_ratios": [
+          0.9874626865671641,
+          0.9763593380614657,
+          0.9806678383128294
+        ],
+        "paired_input_ratios": [
+          0.9089739355185601,
+          0.9221750021693995,
+          0.9110779266295109
+        ],
+        "remaining": 0.14022037499999995,
+        "seconds": 1.654
+      }
+    }
+  },
+  {
+    "case": "holdout-n983040-k50-gdefault-shuffle1-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.302987,
+        "maximum": 0.605,
+        "minimum": 0.592,
+        "n": 3,
+        "native": 0.22543345800000003,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_input_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.07522574999999998,
+        "seconds": 0.6
+      },
+      "fast": {
+        "input": 0.271898541,
+        "maximum": 0.5760000000000001,
+        "minimum": 0.566,
+        "n": 3,
+        "native": 0.227485875,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_command_ratios": [
+          0.956081081081081,
+          0.9471074380165289,
+          0.9600000000000002
+        ],
+        "paired_input_ratios": [
+          0.8930779208348874,
+          0.8946845237091436,
+          0.9370535666052286
+        ],
+        "remaining": 0.06953300000000007,
+        "seconds": 0.573
+      }
+    }
+  },
+  {
+    "case": "primary-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.305659,
+        "maximum": 0.5860000000000001,
+        "minimum": 0.581,
+        "n": 5,
+        "native": 0.20156524999999992,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_input_ratios": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.0735529170000001,
+        "seconds": 0.5820000000000001
+      },
+      "cached": {
+        "input": 0.29884287499999995,
+        "maximum": 0.596,
+        "minimum": 0.563,
+        "n": 5,
+        "native": 0.20067829199999998,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_command_ratios": [
+          0.9673539518900344,
+          0.9879725085910651,
+          0.982788296041308,
+          1.017064846416382,
+          0.9811965811965814
+        ],
+        "paired_input_ratios": [
+          0.9568195267316486,
+          0.9880812735384109,
+          0.9728002616696936,
+          0.9823058539090948,
+          0.9648464380168081
+        ],
+        "remaining": 0.07319120799999995,
+        "seconds": 0.5740000000000001
+      },
+      "fast": {
+        "input": 0.279154375,
+        "maximum": 0.5680000000000001,
+        "minimum": 0.55,
+        "n": 5,
+        "native": 0.20554354199999997,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_command_ratios": [
+          0.9656357388316152,
+          0.9450171821305842,
+          0.9552495697074009,
+          0.9539249146757679,
+          0.9709401709401712
+        ],
+        "paired_input_ratios": [
+          0.9017080332952426,
+          0.9116794870554564,
+          0.9188700984581406,
+          0.9132869472189596,
+          0.904372724916739
+        ],
+        "remaining": 0.07324174999999994,
+        "seconds": 0.559
+      }
+    }
+  },
+  {
+    "case": "smoke-n360-k10-gdefault-shuffle0-t4",
+    "variants": {
+      "baseline": {
+        "input": 5.8792e-05,
+        "maximum": 0.008,
+        "minimum": 0.008,
+        "n": 1,
+        "native": 0.000314458,
+        "native_allocation_peak_bytes": 91058.0,
+        "paired_command_ratios": [
+          1.0
+        ],
+        "paired_input_ratios": [
+          1.0
+        ],
+        "remaining": 0.0074725,
+        "seconds": 0.008
+      },
+      "cached": {
+        "input": 6.675000000000002e-05,
+        "maximum": 0.008,
+        "minimum": 0.008,
+        "n": 1,
+        "native": 0.000334041,
+        "native_allocation_peak_bytes": 91058.0,
+        "paired_command_ratios": [
+          1.0
+        ],
+        "paired_input_ratios": [
+          1.1353585521839709
+        ],
+        "remaining": 0.007442917,
+        "seconds": 0.008
+      },
+      "fast": {
+        "input": 6.4292e-05,
+        "maximum": 0.007,
+        "minimum": 0.007,
+        "n": 1,
+        "native": 0.000355417,
+        "native_allocation_peak_bytes": 91058.0,
+        "paired_command_ratios": [
+          0.875
+        ],
+        "paired_input_ratios": [
+          1.093550142876582
+        ],
+        "remaining": 0.006427791,
+        "seconds": 0.007
+      }
+    }
+  }
+]

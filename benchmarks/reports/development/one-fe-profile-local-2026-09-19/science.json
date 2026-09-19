@@ -1,0 +1,2794 @@
+{
+  "accepted_calls": 152,
+  "checks": [
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "8f40e19fa4ddde6e2c38174b36676c6bcbfaede1fdc741b387d72a76df3440ec",
+      "run": "n245760-k10-gdefault-shuffle0-t1-r1-stock-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "04a19980fd7d4840451ab895b61b606e822930d45e2f75e19008e6260e69fde5",
+      "run": "n245760-k10-gdefault-shuffle0-t1-r1-stock-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "5dd5622125c47b3adf9dd138d1856df2550f189ce4f05890b256f661883c94e1",
+      "run": "n245760-k10-gdefault-shuffle0-t1-r1-trace-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "98bb8a1c365bcfc278ac61859b2547e85b0f54d1bc729aaf10e8b876f7741c5a",
+      "run": "n245760-k10-gdefault-shuffle0-t1-r1-trace-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "71e88a28e009178ca4c633c20d1c2aa1a9eb5af3c7cda08f23f3f11218abc03b",
+      "run": "n245760-k10-gdefault-shuffle0-t1-r2-stock-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "8c7352b90039dc663f39cfa317a58140b311faa42be9abbe5f293293be0438cb",
+      "run": "n245760-k10-gdefault-shuffle0-t1-r2-stock-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "a4e79999881cf621a051999fe4dba98df33571183992331221fe93d71db957d0",
+      "run": "n245760-k10-gdefault-shuffle0-t1-r2-trace-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "22fb697791800c70907ecbf42d909dfe5e2d8259e1651253a2d7a27382c9d651",
+      "run": "n245760-k10-gdefault-shuffle0-t1-r2-trace-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "71d2ef51c25998115032b14cfd863dd4f00c4a680d7d0cf26e7540426591449f",
+      "run": "n245760-k10-gdefault-shuffle0-t1-r3-stock-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "6da813516b0903fb2dfd8ad58225e83d7ea8546d7889168c9532ac0f0fbcf1d2",
+      "run": "n245760-k10-gdefault-shuffle0-t1-r3-stock-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "5db60481be134803cf079f6ddb7be2755cd4fdb59af033881998440dfce63e03",
+      "run": "n245760-k10-gdefault-shuffle0-t16-r1-stock-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "680f5c07c8e2c252c6c37cc74dc0ddb64d0c809d2d71c7e18914458d4527fb14",
+      "run": "n245760-k10-gdefault-shuffle0-t16-r1-stock-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "90edc249dcf3e57b8c55a5623eefc0d0f4fc1d485374c56bff6e482c2125be58",
+      "run": "n245760-k10-gdefault-shuffle0-t16-r1-trace-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "7a1226f9735f9c6544f54476388859a8cef14f1dbdb2c129935b333e7c49c414",
+      "run": "n245760-k10-gdefault-shuffle0-t16-r1-trace-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "02af3d90e8d9b7803be5cdcc29688edb349df5bd234c8f392dc63af25e127f15",
+      "run": "n245760-k10-gdefault-shuffle0-t16-r2-stock-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "5038a147b9afe03798fe82b0be90b312c1a0d344bc4709477903da2096748b30",
+      "run": "n245760-k10-gdefault-shuffle0-t16-r2-stock-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "a7435a219cf177df9fa973b4180bb9f199563dbf30a7001ceeb7d5756fe0e4ad",
+      "run": "n245760-k10-gdefault-shuffle0-t16-r2-trace-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "6297a55cb46ae89df6a2fee3ccfcda3e5d653af070ec6e40975ad4b6866e2366",
+      "run": "n245760-k10-gdefault-shuffle0-t16-r2-trace-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "a4621de2807bf8a3e8cf8f41a20597e2eded0d41d98fb63bcc412100ec06571e",
+      "run": "n245760-k10-gdefault-shuffle0-t16-r3-stock-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "4998c81ebd62c6398c80a913620b8ca2c8c188855a20b9ed85f31c560dd5d853",
+      "run": "n245760-k10-gdefault-shuffle0-t16-r3-stock-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "aec6f1acfffff55530c3fbb982963dd38e697061e545a9720b962dcf497610c7",
+      "run": "n245760-k10-gdefault-shuffle0-t4-r1-stock-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "99984767899e3b054e7bb72d132be26f2872e5c71e2881827a46d6f4dd36541b",
+      "run": "n245760-k10-gdefault-shuffle0-t4-r1-stock-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "512fb0131ea06dc336944ccc04079aeb3da1ed4df80e1be575f79c085420e4f3",
+      "run": "n245760-k10-gdefault-shuffle0-t4-r1-trace-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "5e5207c2b0bc4eb92c83f40b5c1232fff9ffc5ec8858caa9dbf8935c08e8536d",
+      "run": "n245760-k10-gdefault-shuffle0-t4-r1-trace-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "d2cc5eda63acf96847454dbd9023e2ba20901478313ea5697e8c83521d7750b2",
+      "run": "n245760-k10-gdefault-shuffle0-t4-r2-stock-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "fdbf9cffec54addfdc231f7b139fa849e6af2c8d4a336143a2d9b6d2daeff768",
+      "run": "n245760-k10-gdefault-shuffle0-t4-r2-stock-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "6b9e5cc1a768a08fae929df7eef0637127ce8a50a7758777d2b70c8e473d6d82",
+      "run": "n245760-k10-gdefault-shuffle0-t4-r2-trace-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "eb51f6c6556b108ebcc7a5152abf5e5789f86eb01f62f95106dcff233df1c7a0",
+      "run": "n245760-k10-gdefault-shuffle0-t4-r2-trace-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "e158916249d56f13c8a589712d5632afc4cfa684ab1f4c649411ecefd92b85ba",
+        "covariance.csv": "4688056043168706bb4f4fafc21e4f8da2d12a1a4cd156b41fb81e4f484477a8"
+      },
+      "result_sha256": "9ac9dff3324904e7242917fbdc96aab70da2dee04de5088590ebb3f90b9a85a2",
+      "run": "n245760-k10-gdefault-shuffle0-t4-r3-stock-fereg",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0018028073766061e-16,
+          "coefficients.csv:value": 2.400857290751901e-15,
+          "covariance.csv:value": 3.324604317973129e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4f7e260adb3a83016fc6d339678d0de6817278276e296a587e483e32d1c24b79",
+        "covariance.csv": "476a6bb52ee3ddd0eb0ae82249d9c704779b4b43881dc15b95c9edd08e3294aa"
+      },
+      "result_sha256": "544fdf944882a595f7c3c968e078955c89c91bf6ef17eadfa065fd9ca9047696",
+      "run": "n245760-k10-gdefault-shuffle0-t4-r3-stock-fixest",
+      "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "8ba9fd1d181e53f7e87b55d00568aa0c36314e2bd2817839e478bb7c4ab450c5",
+        "covariance.csv": "672289e001e63f25855a06b3002f4e7e3c3f553bb9161bd36fbfd2a30dcda888"
+      },
+      "result_sha256": "3a20ec46a016ea2f1fe6749a361c31998158134e64a6c7c61acc6bf8f7776a55",
+      "run": "n360-k10-gdefault-shuffle0-t4-r1-stock-fereg",
+      "sample_sha256": "e3e6b718a1db1edf4b32fa29e146ebc122f3f92b114e2796618a14704f2d18e1",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0408340855860843e-16,
+          "coefficients.csv:value": 3.885780586188048e-16,
+          "covariance.csv:value": 8.998878031629687e-17
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "1f39b4dcb77ae6c141bb1afb3f6354ecab6148da9b1a468120607f7aeaac5e9c",
+        "covariance.csv": "7e2724133748abcad3b0a8d5fc6da07fe885c228e2728269843d6953879949d8"
+      },
+      "result_sha256": "d9f49d0c1ab13139f1e5f1b570240e9b474dad5f51b2e9b1899e4e7968742d01",
+      "run": "n360-k10-gdefault-shuffle0-t4-r1-stock-fixest",
+      "sample_sha256": "e3e6b718a1db1edf4b32fa29e146ebc122f3f92b114e2796618a14704f2d18e1",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "8ba9fd1d181e53f7e87b55d00568aa0c36314e2bd2817839e478bb7c4ab450c5",
+        "covariance.csv": "672289e001e63f25855a06b3002f4e7e3c3f553bb9161bd36fbfd2a30dcda888"
+      },
+      "result_sha256": "55da733848c5142f8cdec7b7c468df9726073ca6dfca0623473ff3c4b224b955",
+      "run": "n360-k10-gdefault-shuffle0-t4-r1-trace-fereg",
+      "sample_sha256": "e3e6b718a1db1edf4b32fa29e146ebc122f3f92b114e2796618a14704f2d18e1",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0408340855860843e-16,
+          "coefficients.csv:value": 3.885780586188048e-16,
+          "covariance.csv:value": 8.998878031629687e-17
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "1f39b4dcb77ae6c141bb1afb3f6354ecab6148da9b1a468120607f7aeaac5e9c",
+        "covariance.csv": "7e2724133748abcad3b0a8d5fc6da07fe885c228e2728269843d6953879949d8"
+      },
+      "result_sha256": "e2c5d7ff8ba32597cd84359a1e899329433b21da625260afd01af4eef77a7893",
+      "run": "n360-k10-gdefault-shuffle0-t4-r1-trace-fixest",
+      "sample_sha256": "e3e6b718a1db1edf4b32fa29e146ebc122f3f92b114e2796618a14704f2d18e1",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "b05b95ce30cf481b539c90fe4a232a82fc3a1eb0e93e2ac8a73eb928879215cf",
+      "run": "n983040-k10-gdefault-shuffle0-deep-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "25109b46a49c6b0d7a222229b0949bc18f39312437674a3b266a56e05a26c381",
+      "run": "n983040-k10-gdefault-shuffle0-deep-t16-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "6a6a994155ca5227fa9e01c2a54d5fa4320c80ba28a63796004f17b46a406cff",
+      "run": "n983040-k10-gdefault-shuffle0-deep-t16-r3-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "f855d6238549dcd81b6a5c0d283e90219ac3f624d3949db1372958422c9c03fc",
+      "run": "n983040-k10-gdefault-shuffle0-outer-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "0e18aed87d28b5879b798b9ae64aa4a3eaef31054feb4efa1f737b36ac036cc7",
+      "run": "n983040-k10-gdefault-shuffle0-publication-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "a4bc5cd2396c1ad027444bf132e71ebf6c176cb3bdbbe916fd8a726202f2ed93",
+      "run": "n983040-k10-gdefault-shuffle0-publication-t16-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "ef0db2dae0cb72ff3e440ecdc3bfe89b0346c6bdcd6940c2298e8d876b7ad251",
+      "run": "n983040-k10-gdefault-shuffle0-publication-t16-r3-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "21e2cdbb91dbc4371784288758de3eae2fd8fc282a9ffb87730b1dbe7e591ef4",
+      "run": "n983040-k10-gdefault-shuffle0-sample-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "ffcc194b7f00383378fb2441da330bf4f4c5c75af468eff42fe9aa2f1116420b",
+      "run": "n983040-k10-gdefault-shuffle0-sample-t16-r1-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "f2034ddfa2c4ee27ddf5a4a92f3e4f85f9aa3b3a455dba569f846bd363fa0f1b",
+      "run": "n983040-k10-gdefault-shuffle0-t1-r1-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "c08a51b5d5c544f12a9405e6c04ec48693b9462f6c1ba28c26c2a0e5031ff3e7",
+      "run": "n983040-k10-gdefault-shuffle0-t1-r1-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "e74b318ccc601219762618a4242d2eb7f603a2647f8ef3e6ce20553ffd871609",
+      "run": "n983040-k10-gdefault-shuffle0-t1-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "7ed28d3a12daa7ed5daaed3e7b12ec18538e46031fddcbbc6f09d03214d9cd7f",
+      "run": "n983040-k10-gdefault-shuffle0-t1-r1-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "fa5a3e5336181fdc321855c2e5d1cddf16c773162176781214fe6d284887897f",
+      "run": "n983040-k10-gdefault-shuffle0-t1-r2-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "5d5bbe390215e11d8fdcdc0b75904858fcc934a789a5aba3307004396c643896",
+      "run": "n983040-k10-gdefault-shuffle0-t1-r2-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "6f3a646c406ab82826be73ff594c62e1c954a5bc3cadbe44cff40394ab4591df",
+      "run": "n983040-k10-gdefault-shuffle0-t1-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "1a48dc141aebb1ca08ae071e18699393ce51ca4c1c965c6a5fdb0b3e62d0b304",
+      "run": "n983040-k10-gdefault-shuffle0-t1-r2-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "b7e2ceb5723c85eb4248844f249da917bd658ba4d3f24849e27627c32adb5a18",
+      "run": "n983040-k10-gdefault-shuffle0-t1-r3-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "d15d1bec58ca5b526d73a0709e19a2e42347ebead4fc51f82f977ecee8b52f1b",
+      "run": "n983040-k10-gdefault-shuffle0-t1-r3-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "bb374bd8a3e7f2fabb378ac03f2157b5daecbe93a91cafe7361bdbeb4def2cd8",
+      "run": "n983040-k10-gdefault-shuffle0-t16-r1-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "99ebbd1c7b839f3320da2889ed818431a34cb7cdc99811207a430723d898c97b",
+      "run": "n983040-k10-gdefault-shuffle0-t16-r1-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "59305db3983d6420886b44b141da10d22937d2a3f69d25a1d2b26cb6dff43555",
+      "run": "n983040-k10-gdefault-shuffle0-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "c4e0069517f9846ea2cf15aba73939bd318870b22ba1e2c8686030a0fe6db2eb",
+      "run": "n983040-k10-gdefault-shuffle0-t16-r1-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "efa49fe916fe9a98fe8738e2d6a0660232713f2fc2bce79e42fb51585164771b",
+      "run": "n983040-k10-gdefault-shuffle0-t16-r2-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "b4ed5cc13681374c674c3fb261a7104b3b064d007ebe54f3468a21893bc573a9",
+      "run": "n983040-k10-gdefault-shuffle0-t16-r2-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "2ffe929f38936178a71154fe3196473c3895c148f6c3603ca99433ce95a67a30",
+      "run": "n983040-k10-gdefault-shuffle0-t16-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "74d410edb09b3c9ff3d12863c34badd613844f7d58a899c497088e9eb58f966b",
+      "run": "n983040-k10-gdefault-shuffle0-t16-r2-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "a17f6771afea64604b8fd71f5be6021478ac52e1153b6eb098efdab47eec2eaf",
+      "run": "n983040-k10-gdefault-shuffle0-t16-r3-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "64b5d422b3b68c80d29baf062dde96610b99c5a4f87bc0ace94e1ad6ee84e59b",
+      "run": "n983040-k10-gdefault-shuffle0-t16-r3-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "40a4fc6a3f547c6ad7f879e5196b6d0779a6d4fe0a873884dfd744b387602666",
+      "run": "n983040-k10-gdefault-shuffle0-t4-r1-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "86ad96099de51e8942d5f443979d263e3b2cefcb1ceeeda21debaad83374d446",
+      "run": "n983040-k10-gdefault-shuffle0-t4-r1-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "6be2f739a1823b8ac10d5b256a7fe59694cc0b5dae8f1b6dbfc383b1acc7dab1",
+      "run": "n983040-k10-gdefault-shuffle0-t4-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "b9b5ecfcb05eeb99349a7fe61d2d5af4009ddeeed9521df35c3160a1a9b18a22",
+      "run": "n983040-k10-gdefault-shuffle0-t4-r1-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "69b02e4c12ed9158126adbe0e8f2d7aa78f6209685cb516f852c7fb822f41c10",
+      "run": "n983040-k10-gdefault-shuffle0-t4-r2-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "dfd4f3645c69caa64d70d78f0ed4080b45161549a73e8e434a3b09bc838ba268",
+      "run": "n983040-k10-gdefault-shuffle0-t4-r2-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "caf895060c25422b744b9f8b22a4804eef1a07ea42049d148523f26e30a44a10",
+      "run": "n983040-k10-gdefault-shuffle0-t4-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "49d90442f1ef496e5782936e7fcb188d4499062650eca663d521f34f6a585abb",
+      "run": "n983040-k10-gdefault-shuffle0-t4-r2-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "b6b95dc6e4841826b9e5ea018252fa360d48342d02a9f32b64e23cf4a676790c",
+        "covariance.csv": "f0a927e38cc36af4640b8187b6dc47e77dbe3b8e85aa59f72138895ad3dc36d5"
+      },
+      "result_sha256": "e9d82adf1bcd29d7235d326d2ddef7308923e0b83946f536657c7483e764b210",
+      "run": "n983040-k10-gdefault-shuffle0-t4-r3-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "covariance.csv:value": 1.7893571010747095e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "bc6e089a90e6d1a6975e4ed0bdfdf9193cb95ce77bb81171b826025546ed976a",
+        "covariance.csv": "5277a83f1eb9af647a49e425ef86d5b0e95e7494a5fb564011ee49e8cb425edb"
+      },
+      "result_sha256": "a924354f35999326afeea92bfedf38ed893d94568d127ce4af4fbeb33481710b",
+      "run": "n983040-k10-gdefault-shuffle0-t4-r3-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "97bdfb74226499b0749d2bf1b05160203b4cf33755ccea2472b1bf4758351fe5",
+        "covariance.csv": "2b739393f0be24b3f81ea1b60ea56e8d8d020fecf0e2ee995f8f2972bacf3172"
+      },
+      "result_sha256": "dfe3ec6ff56c9f132bd41d608b223e19efdcb500bec2cdff2eb5f85c3e3c44db",
+      "run": "n983040-k50-g1000-shuffle0-t16-r1-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 5.190292640122607e-15,
+          "covariance.csv:value": 1.9693516023662483e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "ed87a850914d1c4fa4da3dfeec6ae574dca692fea7bec4ce6c8b4d1cbe59e38f",
+        "covariance.csv": "c8dd10cd19dd100f8dce9c18c45644ec93e2b2b53eae78303de1c78e8568cbc0"
+      },
+      "result_sha256": "80afdd7abf7abebe63c92e33f345a530ea044850476e4471594380e27d90ee8a",
+      "run": "n983040-k50-g1000-shuffle0-t16-r1-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "97bdfb74226499b0749d2bf1b05160203b4cf33755ccea2472b1bf4758351fe5",
+        "covariance.csv": "2b739393f0be24b3f81ea1b60ea56e8d8d020fecf0e2ee995f8f2972bacf3172"
+      },
+      "result_sha256": "f82e7e58557065476b20b4ad496978782e3aa6750205376e029878d492eb36d2",
+      "run": "n983040-k50-g1000-shuffle0-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 5.190292640122607e-15,
+          "covariance.csv:value": 1.9693516023662483e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "ed87a850914d1c4fa4da3dfeec6ae574dca692fea7bec4ce6c8b4d1cbe59e38f",
+        "covariance.csv": "c8dd10cd19dd100f8dce9c18c45644ec93e2b2b53eae78303de1c78e8568cbc0"
+      },
+      "result_sha256": "1342e0837749e0fdd4469c78c9f913fc4d195144b3fa37cf6285df9520a25605",
+      "run": "n983040-k50-g1000-shuffle0-t16-r1-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "97bdfb74226499b0749d2bf1b05160203b4cf33755ccea2472b1bf4758351fe5",
+        "covariance.csv": "2b739393f0be24b3f81ea1b60ea56e8d8d020fecf0e2ee995f8f2972bacf3172"
+      },
+      "result_sha256": "21d7a615e7375f7ac4fd61c2afa1294d5c437aa587e8120aeeffcd62d6ad6e30",
+      "run": "n983040-k50-g1000-shuffle0-t16-r2-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 5.190292640122607e-15,
+          "covariance.csv:value": 1.9693516023662483e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "ed87a850914d1c4fa4da3dfeec6ae574dca692fea7bec4ce6c8b4d1cbe59e38f",
+        "covariance.csv": "c8dd10cd19dd100f8dce9c18c45644ec93e2b2b53eae78303de1c78e8568cbc0"
+      },
+      "result_sha256": "39e2aa5d42a4beb804e183348c317c13cf9fabcc95c9177a38e8a61b4b075eef",
+      "run": "n983040-k50-g1000-shuffle0-t16-r2-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "97bdfb74226499b0749d2bf1b05160203b4cf33755ccea2472b1bf4758351fe5",
+        "covariance.csv": "2b739393f0be24b3f81ea1b60ea56e8d8d020fecf0e2ee995f8f2972bacf3172"
+      },
+      "result_sha256": "9ca6bd2b34c934e570b025e504e523545d28c3229f7ee569ebe8dcaaf8d5bf5d",
+      "run": "n983040-k50-g1000-shuffle0-t16-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 5.190292640122607e-15,
+          "covariance.csv:value": 1.9693516023662483e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "ed87a850914d1c4fa4da3dfeec6ae574dca692fea7bec4ce6c8b4d1cbe59e38f",
+        "covariance.csv": "c8dd10cd19dd100f8dce9c18c45644ec93e2b2b53eae78303de1c78e8568cbc0"
+      },
+      "result_sha256": "600cc15679201ea1ad867c53d66e10057666ec95b11dae450f65536e9c83a94e",
+      "run": "n983040-k50-g1000-shuffle0-t16-r2-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "97bdfb74226499b0749d2bf1b05160203b4cf33755ccea2472b1bf4758351fe5",
+        "covariance.csv": "2b739393f0be24b3f81ea1b60ea56e8d8d020fecf0e2ee995f8f2972bacf3172"
+      },
+      "result_sha256": "8b7760d81b1b91af88ef18a0311e1ac50f679b5a12c095a9d16bd122c52b914e",
+      "run": "n983040-k50-g1000-shuffle0-t16-r3-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 5.190292640122607e-15,
+          "covariance.csv:value": 1.9693516023662483e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "ed87a850914d1c4fa4da3dfeec6ae574dca692fea7bec4ce6c8b4d1cbe59e38f",
+        "covariance.csv": "c8dd10cd19dd100f8dce9c18c45644ec93e2b2b53eae78303de1c78e8568cbc0"
+      },
+      "result_sha256": "bfa413694382f588495ecf15a2c2aee6415f466dca73494b12656b478a56b947",
+      "run": "n983040-k50-g1000-shuffle0-t16-r3-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "97bdfb74226499b0749d2bf1b05160203b4cf33755ccea2472b1bf4758351fe5",
+        "covariance.csv": "2b739393f0be24b3f81ea1b60ea56e8d8d020fecf0e2ee995f8f2972bacf3172"
+      },
+      "result_sha256": "17a7c086a23bfdbdf6012e79658d5fa89b2a5a520bbd82efa1176591372defc3",
+      "run": "n983040-k50-g1000-shuffle0-t4-r1-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 5.190292640122607e-15,
+          "covariance.csv:value": 1.9693516023662483e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "ed87a850914d1c4fa4da3dfeec6ae574dca692fea7bec4ce6c8b4d1cbe59e38f",
+        "covariance.csv": "c8dd10cd19dd100f8dce9c18c45644ec93e2b2b53eae78303de1c78e8568cbc0"
+      },
+      "result_sha256": "92f6d7c3e1e98d470983bc735d1fd88fa1591e203561723ab7f7b03010c301dd",
+      "run": "n983040-k50-g1000-shuffle0-t4-r1-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "97bdfb74226499b0749d2bf1b05160203b4cf33755ccea2472b1bf4758351fe5",
+        "covariance.csv": "2b739393f0be24b3f81ea1b60ea56e8d8d020fecf0e2ee995f8f2972bacf3172"
+      },
+      "result_sha256": "a63d1b4e5a7894757b116403735e573d2d7158135d16886bdcebbf1b75e02d43",
+      "run": "n983040-k50-g1000-shuffle0-t4-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 5.190292640122607e-15,
+          "covariance.csv:value": 1.9693516023662483e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "ed87a850914d1c4fa4da3dfeec6ae574dca692fea7bec4ce6c8b4d1cbe59e38f",
+        "covariance.csv": "c8dd10cd19dd100f8dce9c18c45644ec93e2b2b53eae78303de1c78e8568cbc0"
+      },
+      "result_sha256": "47c441538751a748a864c848e516251614512643e5c69a4367ec1d9e29cca75f",
+      "run": "n983040-k50-g1000-shuffle0-t4-r1-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "97bdfb74226499b0749d2bf1b05160203b4cf33755ccea2472b1bf4758351fe5",
+        "covariance.csv": "2b739393f0be24b3f81ea1b60ea56e8d8d020fecf0e2ee995f8f2972bacf3172"
+      },
+      "result_sha256": "7492a02af69c298ea1b6da5d8b01c9901b0a5568bd64eb73b3de84a9838965fa",
+      "run": "n983040-k50-g1000-shuffle0-t4-r2-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 5.190292640122607e-15,
+          "covariance.csv:value": 1.9693516023662483e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "ed87a850914d1c4fa4da3dfeec6ae574dca692fea7bec4ce6c8b4d1cbe59e38f",
+        "covariance.csv": "c8dd10cd19dd100f8dce9c18c45644ec93e2b2b53eae78303de1c78e8568cbc0"
+      },
+      "result_sha256": "c302a36f4ea84fd73ffbb873eef16f2dc7544f6d1efee9e45f88a22d15876da8",
+      "run": "n983040-k50-g1000-shuffle0-t4-r2-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "97bdfb74226499b0749d2bf1b05160203b4cf33755ccea2472b1bf4758351fe5",
+        "covariance.csv": "2b739393f0be24b3f81ea1b60ea56e8d8d020fecf0e2ee995f8f2972bacf3172"
+      },
+      "result_sha256": "6caec1e2c23b2d1f17c84c5ed8cc5dc6c2c00268a9ade7412b956cb1c4a3bca3",
+      "run": "n983040-k50-g1000-shuffle0-t4-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 5.190292640122607e-15,
+          "covariance.csv:value": 1.9693516023662483e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "ed87a850914d1c4fa4da3dfeec6ae574dca692fea7bec4ce6c8b4d1cbe59e38f",
+        "covariance.csv": "c8dd10cd19dd100f8dce9c18c45644ec93e2b2b53eae78303de1c78e8568cbc0"
+      },
+      "result_sha256": "5298578d0d0889555c6735766856601f2b1fdd5080f0f652397b41de57b73b77",
+      "run": "n983040-k50-g1000-shuffle0-t4-r2-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "97bdfb74226499b0749d2bf1b05160203b4cf33755ccea2472b1bf4758351fe5",
+        "covariance.csv": "2b739393f0be24b3f81ea1b60ea56e8d8d020fecf0e2ee995f8f2972bacf3172"
+      },
+      "result_sha256": "57dda6a09f962fde3d51a527e0e8d90571efac8f0e4f256715462fcfb5bcb09b",
+      "run": "n983040-k50-g1000-shuffle0-t4-r3-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 5.190292640122607e-15,
+          "covariance.csv:value": 1.9693516023662483e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "ed87a850914d1c4fa4da3dfeec6ae574dca692fea7bec4ce6c8b4d1cbe59e38f",
+        "covariance.csv": "c8dd10cd19dd100f8dce9c18c45644ec93e2b2b53eae78303de1c78e8568cbc0"
+      },
+      "result_sha256": "75d140ae0fd58be6b0b2283a083fcfa5a4d0a2560e2af2fe2b932b18e1c9269a",
+      "run": "n983040-k50-g1000-shuffle0-t4-r3-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "09d48e0de30f3fdfa4407e323cb2202a40f59b0ecea0c4075c7975a8980de84c",
+      "run": "n983040-k50-gdefault-shuffle0-deep-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "dbdaa1b505a452c8f5d5f0ca58af672e326f0ec663b179a40622a0934dcd9546",
+      "run": "n983040-k50-gdefault-shuffle0-deep-t16-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "118a11ab2b4482900b388e2487ed0286e373c0db3aaf74cbf0a25fdf2b1f72a2",
+      "run": "n983040-k50-gdefault-shuffle0-deep-t16-r3-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "93edeebb9bfbd91f6d9c1bc1236b1797c87d99e1250edce484b3eb4911185802",
+      "run": "n983040-k50-gdefault-shuffle0-outer-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "11a33b8126e817140bacf5e6879fb3af8f3e7cda1abb138d4cff0f82b556d956",
+      "run": "n983040-k50-gdefault-shuffle0-publication-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "d104c7930c114851d7766f87c36e4f9e87eee0941c67436e576b717c3fcf1aa5",
+      "run": "n983040-k50-gdefault-shuffle0-publication-t16-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "0eba89fdc0ef9546dc4e251277310c8c474f0562ebbc4da97fb86fd580f645e0",
+      "run": "n983040-k50-gdefault-shuffle0-publication-t16-r3-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "065c3a997c71868d6fd1ff9cc7fdc56c8819e00157fbcdc2fbafc8d21700f6c5",
+      "run": "n983040-k50-gdefault-shuffle0-sample-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "223c3655011ba88957bbd7b1939a3d5d705f2461b1c4e4406b09cd7166f0224d",
+      "run": "n983040-k50-gdefault-shuffle0-sample-t16-r1-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "9a2d0916da526b11ef59e47b988fb681355882b0c3b20d9a78443490c7b703e0",
+      "run": "n983040-k50-gdefault-shuffle0-t1-r1-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "4a07ac0b0e69007e2a99b4f2d7919108b4a75bedf71f7665b5566f0b37873505",
+      "run": "n983040-k50-gdefault-shuffle0-t1-r1-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "868f4f4048f803c2146bade111cc99d26303e9be783d1dfb8248ac205e4602bd",
+      "run": "n983040-k50-gdefault-shuffle0-t1-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "0cb85fcdf162e86a8b9c60e350e7a9f7716172de904070e200d89073a9b3de7d",
+      "run": "n983040-k50-gdefault-shuffle0-t1-r1-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "c6e73a25b7c2123a2cdd5d7f810b94803667ce4cc323d2b3781e003d084dac07",
+      "run": "n983040-k50-gdefault-shuffle0-t1-r2-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "0742fb7e145c6216770f46b6bd2a427f7868b1fd510fe69f8391a92cc3d1126d",
+      "run": "n983040-k50-gdefault-shuffle0-t1-r2-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "09a0bd9a8488125d549475c6f6931550ea075bcf69b3cbcb9c6babeb2513993a",
+      "run": "n983040-k50-gdefault-shuffle0-t1-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "27650eecfeff9f5dcafb58101cae07fa742a1ecc3796da49460e2bf6be4cdbfb",
+      "run": "n983040-k50-gdefault-shuffle0-t1-r2-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "2b4c10565236e54d19c98773dd643d23a6406f7dbd84857fe6c2412de93037c9",
+      "run": "n983040-k50-gdefault-shuffle0-t1-r3-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "600a33edce2b11b478bb609c732ab0dff01bc43c58f7870caabed57de05c5ac8",
+      "run": "n983040-k50-gdefault-shuffle0-t1-r3-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "16a80d389e138aff4917ecb92f2b713e7ca69d10ec28ae23a644a0cd330805b7",
+      "run": "n983040-k50-gdefault-shuffle0-t16-r1-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "7c23b28bea0addc17372b224a2cfcc9074283fd393541fac505859604fb0cc64",
+      "run": "n983040-k50-gdefault-shuffle0-t16-r1-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "c9c6ac61cd778bb22756ab5f51c4d1e2186d11f98e17aa994173d3194c8c99e2",
+      "run": "n983040-k50-gdefault-shuffle0-t16-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "12fb2610697dd88e5812080d0594e9a689ad9221fff01e3f95f9c0c0122f7e2a",
+      "run": "n983040-k50-gdefault-shuffle0-t16-r1-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "df17c8559639837cd562ac0cd5743b9a2e1150afb4d5e1706b874986f3eb5203",
+      "run": "n983040-k50-gdefault-shuffle0-t16-r2-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "6df90ebc3916a3d4bebb8839b66653c025a5e385bb6424bc161e95c0a673085c",
+      "run": "n983040-k50-gdefault-shuffle0-t16-r2-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "880573c327dc2e6b763dc8b124d974bfd62e311153432a89d740fa0348628fe2",
+      "run": "n983040-k50-gdefault-shuffle0-t16-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "3f520cc80c384ba4652d8d451e65e2426822ab989be8dba49df060d0d4d68cff",
+      "run": "n983040-k50-gdefault-shuffle0-t16-r2-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "9fc19ed114a12c631b6760169ace4146ee03e473da92f03fde1cc840e9702517",
+      "run": "n983040-k50-gdefault-shuffle0-t16-r3-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "9bb4a2d0548a4b28b550b7c23ecb405816979c68d974f0419ce2aea3ad65f107",
+      "run": "n983040-k50-gdefault-shuffle0-t16-r3-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "57d5e46e161f6650f92292cf7a8ba6e49f1d0025e6d9128bb0320e5019fa4689",
+      "run": "n983040-k50-gdefault-shuffle0-t4-r1-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "b77b1f163e4813ed644ddcc918f2d7c25cda9c486c7da1b3818bd66f5a98941a",
+      "run": "n983040-k50-gdefault-shuffle0-t4-r1-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "19c146f66392470ac46b76dd7f64b2695cbdeeff84b078f3b876f7ed30268494",
+      "run": "n983040-k50-gdefault-shuffle0-t4-r1-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "08584aa925a761eca2044f6209b9101534e80647db3076cb90b629b87eef1017",
+      "run": "n983040-k50-gdefault-shuffle0-t4-r1-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "60ce5b17931c46732209af5a372e57f509b2cdeb103de40971bdd981f0bdecbe",
+      "run": "n983040-k50-gdefault-shuffle0-t4-r2-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "b2979d5222d559fc5701a584fb3e79666ea2cb21cc72cab2bbde5eafe5e80a69",
+      "run": "n983040-k50-gdefault-shuffle0-t4-r2-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "b1f999a9a83421f9a7bd20e5082306db444b66b6b123cd344e5082c36be93937",
+      "run": "n983040-k50-gdefault-shuffle0-t4-r2-trace-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "94f2da6547c274e71a05cd054ad1d2f292d1157b15b536f0cd2cd3a616f1b482",
+      "run": "n983040-k50-gdefault-shuffle0-t4-r2-trace-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "4c3f95f62885bc7261c8b3e0fef9b3d70e7e45802e104f28c969277db7abf599",
+        "covariance.csv": "eea79b02d656392dbc64bb2134cbb4dd68e932c8e84afb0cde2ae969ba498371"
+      },
+      "result_sha256": "7edc24d3bae870b4a2037d996595de5ae15994839ea1a66dfd9cb53d84a32987",
+      "run": "n983040-k50-gdefault-shuffle0-t4-r3-stock-fereg",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "covariance.csv:value": 2.2711070898255928e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "c7b96277ced7254a2ff3106c784714a94e29794c1ac9325a74fb6c7b8e92ab74",
+        "covariance.csv": "bd906c0139c050d3be394e67a37d5575212cf1867e5c8bec164f9fd6e7c9bc6b"
+      },
+      "result_sha256": "6d14556abc9ae2ebdf5d009286a0e3c559176555dd0865260e1274239f8b3a90",
+      "run": "n983040-k50-gdefault-shuffle0-t4-r3-stock-fixest",
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "52c4bd524633c5d6d5e48bc6fa7843b73e0cec8b60955fd5e1ce9bdfc3d44917",
+        "covariance.csv": "e56af45e6d3012f19658b6210053cf1b4ca985e842575e95b018433ab451d2f6"
+      },
+      "result_sha256": "40914dbc875b4b511344fa0e74456d0bd943d2a9b5c8a0c4faaa02460e254ab3",
+      "run": "n983040-k50-gdefault-shuffle1-t16-r1-stock-fereg",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.7208456881689926e-14,
+          "covariance.csv:value": 2.6840356516120642e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "41f9e96bcaa84c8020474af9d511d44eb12a44113b5221fd994d3e1bc5b58d53",
+        "covariance.csv": "9f141f799bb74980e4252c1c7583e544c03cba4e53ee3ad5d6be2e4593968db8"
+      },
+      "result_sha256": "e8efd9dea58c1f221a88cb419cbb3ba2d4fd0ea7e289085c03ad570297b51ad5",
+      "run": "n983040-k50-gdefault-shuffle1-t16-r1-stock-fixest",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "52c4bd524633c5d6d5e48bc6fa7843b73e0cec8b60955fd5e1ce9bdfc3d44917",
+        "covariance.csv": "e56af45e6d3012f19658b6210053cf1b4ca985e842575e95b018433ab451d2f6"
+      },
+      "result_sha256": "023130c57237e8cca19d7925d179cc82e6e43a24bb8a4a39d4bdaea41bf9e09d",
+      "run": "n983040-k50-gdefault-shuffle1-t16-r1-trace-fereg",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.7208456881689926e-14,
+          "covariance.csv:value": 2.6840356516120642e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "41f9e96bcaa84c8020474af9d511d44eb12a44113b5221fd994d3e1bc5b58d53",
+        "covariance.csv": "9f141f799bb74980e4252c1c7583e544c03cba4e53ee3ad5d6be2e4593968db8"
+      },
+      "result_sha256": "f6209976aaca646abf4b757549e990f86a12a51e99cee620a0a9738285cdae9c",
+      "run": "n983040-k50-gdefault-shuffle1-t16-r1-trace-fixest",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "52c4bd524633c5d6d5e48bc6fa7843b73e0cec8b60955fd5e1ce9bdfc3d44917",
+        "covariance.csv": "e56af45e6d3012f19658b6210053cf1b4ca985e842575e95b018433ab451d2f6"
+      },
+      "result_sha256": "b801bd8dc1bace310e9729f4b5e9d6fbbb17ff594a4cb1b4c1ec4d5babd7182b",
+      "run": "n983040-k50-gdefault-shuffle1-t16-r2-stock-fereg",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.7208456881689926e-14,
+          "covariance.csv:value": 2.6840356516120642e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "41f9e96bcaa84c8020474af9d511d44eb12a44113b5221fd994d3e1bc5b58d53",
+        "covariance.csv": "9f141f799bb74980e4252c1c7583e544c03cba4e53ee3ad5d6be2e4593968db8"
+      },
+      "result_sha256": "0dbc27fdfff903992a40ffde252d8d33e23175248ab777b24df2bdec8a7ee025",
+      "run": "n983040-k50-gdefault-shuffle1-t16-r2-stock-fixest",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "52c4bd524633c5d6d5e48bc6fa7843b73e0cec8b60955fd5e1ce9bdfc3d44917",
+        "covariance.csv": "e56af45e6d3012f19658b6210053cf1b4ca985e842575e95b018433ab451d2f6"
+      },
+      "result_sha256": "8698e498594e41d1c36508b014b69db36b6abf89079f6b26d8533a0655af1200",
+      "run": "n983040-k50-gdefault-shuffle1-t16-r2-trace-fereg",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.7208456881689926e-14,
+          "covariance.csv:value": 2.6840356516120642e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "41f9e96bcaa84c8020474af9d511d44eb12a44113b5221fd994d3e1bc5b58d53",
+        "covariance.csv": "9f141f799bb74980e4252c1c7583e544c03cba4e53ee3ad5d6be2e4593968db8"
+      },
+      "result_sha256": "355c492bcd800c11ab9ff1624ce6ae98a46a9381ea83e324cb0541cc4d988de6",
+      "run": "n983040-k50-gdefault-shuffle1-t16-r2-trace-fixest",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "52c4bd524633c5d6d5e48bc6fa7843b73e0cec8b60955fd5e1ce9bdfc3d44917",
+        "covariance.csv": "e56af45e6d3012f19658b6210053cf1b4ca985e842575e95b018433ab451d2f6"
+      },
+      "result_sha256": "613e8414ac762103e615480db037e2482158b74b4e2d6a284cab08e4e0f6539f",
+      "run": "n983040-k50-gdefault-shuffle1-t16-r3-stock-fereg",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.7208456881689926e-14,
+          "covariance.csv:value": 2.6840356516120642e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "41f9e96bcaa84c8020474af9d511d44eb12a44113b5221fd994d3e1bc5b58d53",
+        "covariance.csv": "9f141f799bb74980e4252c1c7583e544c03cba4e53ee3ad5d6be2e4593968db8"
+      },
+      "result_sha256": "d2d34861e20c3b6fc1eb5101692c53e1f577150edfad37bfd404e11ac843ef41",
+      "run": "n983040-k50-gdefault-shuffle1-t16-r3-stock-fixest",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "52c4bd524633c5d6d5e48bc6fa7843b73e0cec8b60955fd5e1ce9bdfc3d44917",
+        "covariance.csv": "e56af45e6d3012f19658b6210053cf1b4ca985e842575e95b018433ab451d2f6"
+      },
+      "result_sha256": "d21de6f2d7a2cbd725df6945fc10b32ea4fde06445aa4627e3e3141d75cb9ad6",
+      "run": "n983040-k50-gdefault-shuffle1-t4-r1-stock-fereg",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.7208456881689926e-14,
+          "covariance.csv:value": 2.6840356516120642e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "41f9e96bcaa84c8020474af9d511d44eb12a44113b5221fd994d3e1bc5b58d53",
+        "covariance.csv": "9f141f799bb74980e4252c1c7583e544c03cba4e53ee3ad5d6be2e4593968db8"
+      },
+      "result_sha256": "ea68841cc752ab1c91fd28b30c430f7d2ab5b049b42131d8fb0695dce9f6b874",
+      "run": "n983040-k50-gdefault-shuffle1-t4-r1-stock-fixest",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "52c4bd524633c5d6d5e48bc6fa7843b73e0cec8b60955fd5e1ce9bdfc3d44917",
+        "covariance.csv": "e56af45e6d3012f19658b6210053cf1b4ca985e842575e95b018433ab451d2f6"
+      },
+      "result_sha256": "ae34415ec325b39275503330e46810b41be81047e2b935dfed74cb504e7961ac",
+      "run": "n983040-k50-gdefault-shuffle1-t4-r1-trace-fereg",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.7208456881689926e-14,
+          "covariance.csv:value": 2.6840356516120642e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "41f9e96bcaa84c8020474af9d511d44eb12a44113b5221fd994d3e1bc5b58d53",
+        "covariance.csv": "9f141f799bb74980e4252c1c7583e544c03cba4e53ee3ad5d6be2e4593968db8"
+      },
+      "result_sha256": "c9c09a0b4acb5bdcc5d13464a089f1d640a21bbbde250ee7fc6a3615904aa844",
+      "run": "n983040-k50-gdefault-shuffle1-t4-r1-trace-fixest",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "52c4bd524633c5d6d5e48bc6fa7843b73e0cec8b60955fd5e1ce9bdfc3d44917",
+        "covariance.csv": "e56af45e6d3012f19658b6210053cf1b4ca985e842575e95b018433ab451d2f6"
+      },
+      "result_sha256": "68eaa40bdb151fecdafe02b2e754b62a1ee8cd034884b818f99b2e9ab4bbc791",
+      "run": "n983040-k50-gdefault-shuffle1-t4-r2-stock-fereg",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.7208456881689926e-14,
+          "covariance.csv:value": 2.6840356516120642e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "41f9e96bcaa84c8020474af9d511d44eb12a44113b5221fd994d3e1bc5b58d53",
+        "covariance.csv": "9f141f799bb74980e4252c1c7583e544c03cba4e53ee3ad5d6be2e4593968db8"
+      },
+      "result_sha256": "663eaeb11f9418eeeb293e8246ad742439d3a2a0597e441f6b5f7e1f3a5bccb1",
+      "run": "n983040-k50-gdefault-shuffle1-t4-r2-stock-fixest",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "52c4bd524633c5d6d5e48bc6fa7843b73e0cec8b60955fd5e1ce9bdfc3d44917",
+        "covariance.csv": "e56af45e6d3012f19658b6210053cf1b4ca985e842575e95b018433ab451d2f6"
+      },
+      "result_sha256": "5c82925ff44687f604e3c9205b523f37f0234d84f047d53dcedb76dd4ef0f074",
+      "run": "n983040-k50-gdefault-shuffle1-t4-r2-trace-fereg",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.7208456881689926e-14,
+          "covariance.csv:value": 2.6840356516120642e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "41f9e96bcaa84c8020474af9d511d44eb12a44113b5221fd994d3e1bc5b58d53",
+        "covariance.csv": "9f141f799bb74980e4252c1c7583e544c03cba4e53ee3ad5d6be2e4593968db8"
+      },
+      "result_sha256": "919cbd975031b83ce0629f09cbdf4fe94582ed7a1c5bbf6843a96655e32106c2",
+      "run": "n983040-k50-gdefault-shuffle1-t4-r2-trace-fixest",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "full_native_output_check": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "52c4bd524633c5d6d5e48bc6fa7843b73e0cec8b60955fd5e1ce9bdfc3d44917",
+        "covariance.csv": "e56af45e6d3012f19658b6210053cf1b4ca985e842575e95b018433ab451d2f6"
+      },
+      "result_sha256": "d362447b95d918e1ca7587b0741dadda1e80cb89c56cbc700b4c3ebfa05db05d",
+      "run": "n983040-k50-gdefault-shuffle1-t4-r3-stock-fereg",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    },
+    {
+      "cross_estimator_check": {
+        "errors": {
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "coefficients.csv:value": 1.7208456881689926e-14,
+          "covariance.csv:value": 2.6840356516120642e-20
+        },
+        "sample_exact": true
+      },
+      "output_sha256": {
+        "coefficients.csv": "41f9e96bcaa84c8020474af9d511d44eb12a44113b5221fd994d3e1bc5b58d53",
+        "covariance.csv": "9f141f799bb74980e4252c1c7583e544c03cba4e53ee3ad5d6be2e4593968db8"
+      },
+      "result_sha256": "795f9e1738413613b8e7ccd25e6a543676f752e376b70b5639c7e15aff9ab7ad",
+      "run": "n983040-k50-gdefault-shuffle1-t4-r3-stock-fixest",
+      "sample_sha256": "65747fe39cf315417a3f7a8bf5c16b7e49deab35e46a73e10335299d5f00dfa7",
+      "status": "pass"
+    }
+  ],
+  "oracle": {
+    "checks": [
+      {
+        "rank": 82,
+        "residual_df": 278,
+        "rss": 80.493196119978,
+        "status": "pass"
+      },
+      {
+        "rank": 82,
+        "residual_df": 278,
+        "rss": 80.493196119978,
+        "status": "pass"
+      },
+      {
+        "rank": 82,
+        "residual_df": 278,
+        "rss": 80.493196119978,
+        "status": "pass"
+      },
+      {
+        "rank": 82,
+        "residual_df": 278,
+        "rss": 80.493196119978,
+        "status": "pass"
+      },
+      {
+        "errors": {
+          "coefficients.csv:se": 1.0408340855860843e-16,
+          "coefficients.csv:value": 3.885780586188048e-16,
+          "covariance.csv:value": 8.998878031629687e-17
+        },
+        "sample_exact": true
+      },
+      {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      {
+        "errors": {
+          "coefficients.csv:se": 1.0408340855860843e-16,
+          "coefficients.csv:value": 3.885780586188048e-16,
+          "covariance.csv:value": 8.998878031629687e-17
+        },
+        "sample_exact": true
+      }
+    ],
+    "status": "pass"
+  }
+}

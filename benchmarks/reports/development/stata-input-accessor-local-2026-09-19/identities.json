@@ -1,0 +1,46 @@
+{
+  "baseline": {
+    "abi_test": "pass",
+    "bridge": "9765896b824bd03715642317c980a8b56acaecbd0117a8420fcac26c0440d613",
+    "patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "plugin": "5b677f098797f1fad70fc83b7a69b274b500cb83a56d4e88a716dcc81079096f"
+  },
+  "cached": {
+    "abi_test": "pass",
+    "bridge": "7219b23956fc8b1ff69d31ed71e99fc9235e0b52689e8f9bb79055c70850f1fb",
+    "patch": "aea53de4942e116079af58b5f3cd7968179511acf239863a80914c7b70bd7082",
+    "plugin": "e60b900aca336ef7fc58322d86e71ed00392adbcd5aaae49d662b2c393f56382"
+  },
+  "controller": {
+    "common.py": "dfb15d34b8df2d5899e14f4306fbc732f070ef219cd472fd4e3702f31daca09c",
+    "measure.py": "6b478862a6ac64326d74dcb010fe5533a4af100f4160a76472ee190ab67d5850",
+    "r_worker.R": "f946c36ec15178acdd2b8aeee448cee2e035b09fb11183d1845bf86cfa653112",
+    "stata_worker.do": "22958f46792fb6115c138629d89b664d75a8b5b97e357ca5e06523e708f73bf4"
+  },
+  "fast": {
+    "abi_test": "pass",
+    "bridge": "900c1a6ff0f7da2a2e5c98a5a7623ef02d904647a7679d2d593360feb9cd59f2",
+    "patch": "7ff36365cf992fab78e84543a96954029bed542be18db0dd67f1c9495d000dc7",
+    "plugin": "f96381c9947c1bbff545c6414dfecb1ffb944d9fee46a5baa1e9a5c79ee75707"
+  },
+  "harness": {
+    "README.md": "00eca7f35e54815b27d974a27984257703edfac1bca291380d139557d470e151",
+    "archive.py": "f09f6531094d21afb129778a334a1f0819b566d497b99dad48fbf25b028aaf27",
+    "build.py": "d0223816be8c6db9b4230c784611953a99db22df8ed1f3121afbc275f9982ffa",
+    "fixtures.py": "4809a121645fd4c39860b3b7b4e02d85a34f31e3226988af2f4af767119a8ef1",
+    "guard_test.c": "37081d400c72c8b2a7316264005feac52b8499f542d9bae9e2a6dc0b503cdf12",
+    "kernel.py": "949f668da10b02fda935461541dd8b35ea34e579dea4c4e2c60ce47e244f8955",
+    "probe.c": "f8b5000647b4f86fc3c2a86f8159f5e64c9e4e0d7046ce915cbc5db2ada8ff57",
+    "run.py": "4d26a29f3466d7f5ef184327ae4273441094e9af59593e268b94f244474e52a7"
+  },
+  "limits": [
+    "Apple Silicon Stata/MP 19 only; arm64 diagnostic relinks, no cross-platform claim.",
+    "ASan runtime deadlocked before main; terminated, no ASan pass claimed.",
+    "Kernel v2 overlapped the stalled sanitizer process and is excluded; final kernel run was isolated.",
+    "First command launch was blocked by sandbox process enumeration before any fit; permitted retry succeeded."
+  ],
+  "probe_plugin_sha256": "7c454970f66a36f7c5e9d29ebc9e74eb3c472f6bffd3f17abf09c90207809a6d",
+  "probe_source_sha256": "f8b5000647b4f86fc3c2a86f8159f5e64c9e4e0d7046ce915cbc5db2ada8ff57",
+  "rust_archive_sha256": "5699f56545dd4b3b00991a0f6e076833c98dfe5ebef1f8a0f7f21ef5d3d95290",
+  "source_commit": "55c19cb679d675194c6baed74b09279e1f026b16"
+}

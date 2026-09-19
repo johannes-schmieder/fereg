@@ -1,0 +1,14 @@
+{
+  "README.md": "5e80dc74ba2ea2863c7aaa42900b2cf9b62ed259174993addfdec81c0eb21e0d",
+  "detailed-phases.json": "2acccf24b51452c0e5961638b65f29cfe840297fc2f25cd1ceda2a444f5962ed",
+  "environment.json": "647f68cb6f1141ab0a340398490a2729a5d7aef6c9bd79dd8c529261fee63ba9",
+  "harness-files.json": "811e3d3cd6235c444e8fbcce4f13b173ea28551b2e5ad22d71d6971ffe219abf",
+  "identities.json": "4a7fbbc7a24fb4f471eb17dff0ec042a267f749b6a0ded5ce51be5b3eb42272e",
+  "measurements.json": "8709abaa3bbe8e4b7f07eda8c15b0389c60576c1add72bf8508508e4dc500b82",
+  "patches/fereg.patch": "fe1f5ba1cd4a5234ff5cebeb39c591e9eda49fd148b1adeb88e4e00836f0abb2",
+  "patches/fixest.patch": "3c87f3f3f2363ae68943f2d6528f1f55e0db3d4417826e539b14aec8e6738acd",
+  "science.json": "237561b44fd305f1272310913322a5237187c3448e7b2097d69d9c327b5b3326",
+  "source-files.json": "af752c1aa21f26577adfe6cb53d3b99450bd46ad0d62e98076c41e579db8149f",
+  "stack-summaries.json": "102502439565d76552487f0ae35fa3f34d8fc91f87279f84e6dc59da09a6827d",
+  "summary.json": "44a128d04a8cbaf0e70023fdc34ff1876de24ba5ab328e399fc8438302df92a6"
+}

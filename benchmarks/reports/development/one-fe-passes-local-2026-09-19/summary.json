@@ -1,0 +1,865 @@
+[
+  {
+    "case": "confirm-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.304285917,
+        "maximum": 0.589,
+        "minimum": 0.577,
+        "n": 5,
+        "native": 0.20548750000000005,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3875885009765625,
+        "seconds": 0.582
+      },
+      "fastfinal": {
+        "input": 0.27931620900000004,
+        "maximum": 0.548,
+        "minimum": 0.538,
+        "n": 5,
+        "native": 0.18505954199999997,
+        "paired_command_ratios": [
+          0.9382504288164665,
+          0.9415807560137458,
+          0.9202037351443125,
+          0.9324090121317159,
+          0.9309153713298792
+        ],
+        "paired_command_savings": [
+          0.03600000000000003,
+          0.03399999999999992,
+          0.04699999999999993,
+          0.038999999999999924,
+          0.039999999999999925
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.386627197265625,
+        "seconds": 0.542
+      },
+      "final": {
+        "input": 0.30245458399999997,
+        "maximum": 0.571,
+        "minimum": 0.555,
+        "n": 5,
+        "native": 0.18433675,
+        "paired_command_ratios": [
+          0.9725557461406518,
+          0.9621993127147768,
+          0.9694397283531409,
+          0.9618717504332758,
+          0.9706390328151988
+        ],
+        "paired_command_savings": [
+          0.016000000000000014,
+          0.02199999999999991,
+          0.018000000000000016,
+          0.02199999999999991,
+          0.016999999999999904
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3872528076171875,
+        "seconds": 0.562
+      },
+      "fixest": {
+        "maximum": 0.461,
+        "minimum": 0.449,
+        "n": 5,
+        "paired_command_ratios": [
+          0.7907375643224701,
+          0.7903780068728523,
+          0.7623089983022072,
+          0.7902946273830157,
+          0.7789291882556132
+        ],
+        "paired_command_savings": [
+          0.12199999999999994,
+          0.12199999999999994,
+          0.13999999999999996,
+          0.12099999999999994,
+          0.12799999999999995
+        ],
+        "rss_gib": 1.822296142578125,
+        "seconds": 0.456
+      },
+      "pipelinefit": {
+        "input": 0.258026125,
+        "maximum": 0.527,
+        "minimum": 0.514,
+        "n": 5,
+        "native": 0.19075987500000002,
+        "paired_command_ratios": [
+          0.8970840480274443,
+          0.8969072164948455,
+          0.8828522920203736,
+          0.9133448873483536,
+          0.8877374784110537
+        ],
+        "paired_command_savings": [
+          0.05999999999999994,
+          0.05999999999999994,
+          0.06899999999999995,
+          0.04999999999999993,
+          0.06499999999999995
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3908233642578125,
+        "seconds": 0.522
+      }
+    }
+  },
+  {
+    "case": "final-trace-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.30716675000000004,
+        "maximum": 0.5780000000000001,
+        "minimum": 0.5780000000000001,
+        "n": 1,
+        "native": 0.20146645799999996,
+        "paired_command_ratios": [
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3827667236328125,
+        "seconds": 0.5780000000000001
+      },
+      "final": {
+        "input": 0.30748695800000003,
+        "maximum": 0.573,
+        "minimum": 0.573,
+        "n": 1,
+        "native": 0.189786542,
+        "paired_command_ratios": [
+          0.9913494809688579
+        ],
+        "paired_command_savings": [
+          0.0050000000000001155
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3871002197265625,
+        "seconds": 0.573
+      },
+      "pipelinefit": {
+        "input": 0.255986417,
+        "maximum": 0.516,
+        "minimum": 0.516,
+        "n": 1,
+        "native": 0.19019825,
+        "paired_command_ratios": [
+          0.8927335640138407
+        ],
+        "paired_command_savings": [
+          0.062000000000000055
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3888092041015625,
+        "seconds": 0.516
+      }
+    }
+  },
+  {
+    "case": "followup-screen-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.29873920800000003,
+        "maximum": 0.593,
+        "minimum": 0.571,
+        "n": 3,
+        "native": 0.2057327919999999,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3879547119140625,
+        "seconds": 0.5740000000000001
+      },
+      "coloverlap": {
+        "input": 0.30032037500000003,
+        "maximum": 0.593,
+        "minimum": 0.5860000000000001,
+        "n": 3,
+        "native": 0.21409795800000003,
+        "paired_command_ratios": [
+          1.033101045296167,
+          0.9881956155143341,
+          1.033274956217163
+        ],
+        "paired_command_savings": [
+          -0.018999999999999906,
+          0.006999999999999895,
+          -0.019000000000000128
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3866119384765625,
+        "seconds": 0.5900000000000001
+      },
+      "parallelcheck": {
+        "input": 0.303438458,
+        "maximum": 0.571,
+        "minimum": 0.554,
+        "n": 3,
+        "native": 0.186940416,
+        "paired_command_ratios": [
+          0.9947735191637629,
+          0.9578414839797641,
+          0.9702276707530649
+        ],
+        "paired_command_savings": [
+          0.0030000000000001137,
+          0.02499999999999991,
+          0.016999999999999904
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.39605712890625,
+        "seconds": 0.5680000000000001
+      }
+    }
+  },
+  {
+    "case": "followup-trace-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.300918583,
+        "maximum": 0.576,
+        "minimum": 0.576,
+        "n": 1,
+        "native": 0.205393208,
+        "paired_command_ratios": [
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.384002685546875,
+        "seconds": 0.576
+      },
+      "coloverlap": {
+        "input": 0.29854245799999996,
+        "maximum": 0.5760000000000001,
+        "minimum": 0.5760000000000001,
+        "n": 1,
+        "native": 0.20253445799999997,
+        "paired_command_ratios": [
+          1.0000000000000002
+        ],
+        "paired_command_savings": [
+          -1.1102230246251565e-16
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3845367431640625,
+        "seconds": 0.5760000000000001
+      },
+      "parallelcheck": {
+        "input": 0.296558542,
+        "maximum": 0.5489999999999999,
+        "minimum": 0.5489999999999999,
+        "n": 1,
+        "native": 0.18279225000000004,
+        "paired_command_ratios": [
+          0.953125
+        ],
+        "paired_command_savings": [
+          0.027000000000000024
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3844451904296875,
+        "seconds": 0.5489999999999999
+      }
+    }
+  },
+  {
+    "case": "pipeline-controls-n983040-k10-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.085483167,
+        "maximum": 0.224,
+        "minimum": 0.219,
+        "n": 3,
+        "native": 0.11666475000000003,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reported_native_peak": 233169535.0,
+        "rss_gib": 0.378082275390625,
+        "seconds": 0.222
+      },
+      "fastfinal": {
+        "input": 0.079917708,
+        "maximum": 0.218,
+        "minimum": 0.214,
+        "n": 3,
+        "native": 0.11503420799999999,
+        "paired_command_ratios": [
+          0.9732142857142857,
+          0.9771689497716894,
+          0.9774774774774775
+        ],
+        "paired_command_savings": [
+          0.006000000000000005,
+          0.0050000000000000044,
+          0.0050000000000000044
+        ],
+        "reported_native_peak": 233169535.0,
+        "rss_gib": 0.3914337158203125,
+        "seconds": 0.217
+      },
+      "pipelinefit": {
+        "input": 0.081357792,
+        "maximum": 0.215,
+        "minimum": 0.214,
+        "n": 3,
+        "native": 0.11266725000000001,
+        "paired_command_ratios": [
+          0.9598214285714285,
+          0.9771689497716894,
+          0.9684684684684685
+        ],
+        "paired_command_savings": [
+          0.009000000000000008,
+          0.0050000000000000044,
+          0.007000000000000006
+        ],
+        "reported_native_peak": 233169535.0,
+        "rss_gib": 0.377960205078125,
+        "seconds": 0.215
+      }
+    }
+  },
+  {
+    "case": "pipeline-controls-n983040-k50-gdefault-shuffle1-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.29601629100000004,
+        "maximum": 0.608,
+        "minimum": 0.594,
+        "n": 3,
+        "native": 0.22952883299999993,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.385284423828125,
+        "seconds": 0.603
+      },
+      "fastfinal": {
+        "input": 0.27027025000000005,
+        "maximum": 0.562,
+        "minimum": 0.549,
+        "n": 3,
+        "native": 0.21365266600000005,
+        "paired_command_ratios": [
+          0.9393939393939396,
+          0.9029605263157896,
+          0.9320066334991709
+        ],
+        "paired_command_savings": [
+          0.03599999999999992,
+          0.05899999999999994,
+          0.040999999999999925
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3857421875,
+        "seconds": 0.558
+      },
+      "pipelinefit": {
+        "input": 0.252985958,
+        "maximum": 0.54,
+        "minimum": 0.533,
+        "n": 3,
+        "native": 0.21176899999999999,
+        "paired_command_ratios": [
+          0.9040404040404041,
+          0.8881578947368421,
+          0.8839137645107795
+        ],
+        "paired_command_savings": [
+          0.05699999999999994,
+          0.06799999999999995,
+          0.06999999999999995
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.38818359375,
+        "seconds": 0.537
+      }
+    }
+  },
+  {
+    "case": "screen-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.301371667,
+        "maximum": 0.585,
+        "minimum": 0.576,
+        "n": 3,
+        "native": 0.202364292,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3829803466796875,
+        "seconds": 0.5780000000000001
+      },
+      "combined": {
+        "input": 0.299555791,
+        "maximum": 0.5920000000000001,
+        "minimum": 0.583,
+        "n": 3,
+        "native": 0.2175415,
+        "paired_command_ratios": [
+          1.0207612456747406,
+          0.9965811965811966,
+          1.027777777777778
+        ],
+        "paired_command_savings": [
+          -0.01200000000000001,
+          0.0020000000000000018,
+          -0.016000000000000125
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3862762451171875,
+        "seconds": 0.5900000000000001
+      },
+      "direct": {
+        "input": 0.30146033299999997,
+        "maximum": 0.588,
+        "minimum": 0.578,
+        "n": 3,
+        "native": 0.20581400000000005,
+        "paired_command_ratios": [
+          1.0155709342560553,
+          0.9880341880341881,
+          1.0208333333333333
+        ],
+        "paired_command_savings": [
+          -0.008999999999999897,
+          0.007000000000000006,
+          -0.01200000000000001
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.38494873046875,
+        "seconds": 0.587
+      },
+      "overlap": {
+        "input": 0.302138083,
+        "maximum": 0.6,
+        "minimum": 0.591,
+        "n": 3,
+        "native": 0.21950866700000005,
+        "paired_command_ratios": [
+          1.0224913494809686,
+          1.0153846153846153,
+          1.0416666666666667
+        ],
+        "paired_command_savings": [
+          -0.0129999999999999,
+          -0.009000000000000008,
+          -0.02400000000000002
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3861083984375,
+        "seconds": 0.594
+      }
+    }
+  },
+  {
+    "case": "smoke-n360-k10-gdefault-shuffle0-t4",
+    "variants": {
+      "baseline": {
+        "input": 8.629200000000002e-05,
+        "maximum": 0.011,
+        "minimum": 0.011,
+        "n": 1,
+        "native": 0.000393958,
+        "paired_command_ratios": [
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0
+        ],
+        "reported_native_peak": 91058.0,
+        "rss_gib": 0.0576171875,
+        "seconds": 0.011
+      },
+      "combined": {
+        "input": 4.2499999999999976e-05,
+        "maximum": 0.008,
+        "minimum": 0.008,
+        "n": 1,
+        "native": 0.00028487499999999997,
+        "paired_command_ratios": [
+          0.7272727272727273
+        ],
+        "paired_command_savings": [
+          0.002999999999999999
+        ],
+        "reported_native_peak": 91058.0,
+        "rss_gib": 0.0582275390625,
+        "seconds": 0.008
+      },
+      "direct": {
+        "input": 6.174999999999998e-05,
+        "maximum": 0.007,
+        "minimum": 0.007,
+        "n": 1,
+        "native": 0.000280333,
+        "paired_command_ratios": [
+          0.6363636363636365
+        ],
+        "paired_command_savings": [
+          0.003999999999999999
+        ],
+        "reported_native_peak": 91058.0,
+        "rss_gib": 0.05828857421875,
+        "seconds": 0.007
+      },
+      "overlap": {
+        "input": 3.3667e-05,
+        "maximum": 0.007,
+        "minimum": 0.007,
+        "n": 1,
+        "native": 0.00025520799999999993,
+        "paired_command_ratios": [
+          0.6363636363636365
+        ],
+        "paired_command_savings": [
+          0.003999999999999999
+        ],
+        "reported_native_peak": 91058.0,
+        "rss_gib": 0.0575408935546875,
+        "seconds": 0.007
+      }
+    }
+  },
+  {
+    "case": "stream-screen-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.29834970800000005,
+        "maximum": 0.579,
+        "minimum": 0.564,
+        "n": 3,
+        "native": 0.19815641700000003,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3877410888671875,
+        "seconds": 0.572
+      },
+      "streaminit": {
+        "input": 0.298802916,
+        "maximum": 0.5800000000000001,
+        "minimum": 0.5760000000000001,
+        "n": 3,
+        "native": 0.20265712500000005,
+        "paired_command_ratios": [
+          1.0139860139860142,
+          0.9948186528497411,
+          1.0283687943262414
+        ],
+        "paired_command_savings": [
+          -0.008000000000000118,
+          0.0029999999999998916,
+          -0.016000000000000125
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3829498291015625,
+        "seconds": 0.5800000000000001
+      }
+    }
+  },
+  {
+    "case": "stream-trace-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.300642375,
+        "maximum": 0.583,
+        "minimum": 0.583,
+        "n": 1,
+        "native": 0.20826600000000006,
+        "paired_command_ratios": [
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3861236572265625,
+        "seconds": 0.583
+      },
+      "streaminit": {
+        "input": 0.301386667,
+        "maximum": 0.576,
+        "minimum": 0.576,
+        "n": 1,
+        "native": 0.20608120800000002,
+        "paired_command_ratios": [
+          0.9879931389365352
+        ],
+        "paired_command_savings": [
+          0.007000000000000006
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.38897705078125,
+        "seconds": 0.576
+      }
+    }
+  },
+  {
+    "case": "trace-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.297846917,
+        "maximum": 0.579,
+        "minimum": 0.579,
+        "n": 1,
+        "native": 0.20291637500000004,
+        "paired_command_ratios": [
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.384002685546875,
+        "seconds": 0.579
+      },
+      "combined": {
+        "input": 0.30094195799999995,
+        "maximum": 0.594,
+        "minimum": 0.594,
+        "n": 1,
+        "native": 0.21593812500000004,
+        "paired_command_ratios": [
+          1.0259067357512954
+        ],
+        "paired_command_savings": [
+          -0.015000000000000013
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.382354736328125,
+        "seconds": 0.594
+      },
+      "direct": {
+        "input": 0.299314916,
+        "maximum": 0.5820000000000001,
+        "minimum": 0.5820000000000001,
+        "n": 1,
+        "native": 0.20775866700000006,
+        "paired_command_ratios": [
+          1.0051813471502593
+        ],
+        "paired_command_savings": [
+          -0.0030000000000001137
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.38262939453125,
+        "seconds": 0.5820000000000001
+      },
+      "overlap": {
+        "input": 0.299474334,
+        "maximum": 0.583,
+        "minimum": 0.583,
+        "n": 1,
+        "native": 0.20982845799999994,
+        "paired_command_ratios": [
+          1.0069084628670122
+        ],
+        "paired_command_savings": [
+          -0.0040000000000000036
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3848724365234375,
+        "seconds": 0.583
+      }
+    }
+  },
+  {
+    "case": "validation-holdout-n983040-k10-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.084044541,
+        "maximum": 0.225,
+        "minimum": 0.221,
+        "n": 3,
+        "native": 0.115785084,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reported_native_peak": 233169535.0,
+        "rss_gib": 0.3804779052734375,
+        "seconds": 0.223
+      },
+      "parallelcheck": {
+        "input": 0.084849542,
+        "maximum": 0.221,
+        "minimum": 0.219,
+        "n": 3,
+        "native": 0.11377699999999998,
+        "paired_command_ratios": [
+          0.9733333333333333,
+          0.9910313901345291,
+          1.0
+        ],
+        "paired_command_savings": [
+          0.006000000000000005,
+          0.0020000000000000018,
+          0.0
+        ],
+        "reported_native_peak": 233169535.0,
+        "rss_gib": 0.38128662109375,
+        "seconds": 0.221
+      }
+    }
+  },
+  {
+    "case": "validation-holdout-n983040-k50-gdefault-shuffle0-t1",
+    "variants": {
+      "baseline": {
+        "input": 0.29013733300000005,
+        "maximum": 1.691,
+        "minimum": 1.66,
+        "n": 3,
+        "native": 1.240091042,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reported_native_peak": 857489954.0,
+        "rss_gib": 1.3039398193359375,
+        "seconds": 1.674
+      },
+      "parallelcheck": {
+        "input": 0.292887667,
+        "maximum": 1.704,
+        "minimum": 1.676,
+        "n": 3,
+        "native": 1.2498857499999998,
+        "paired_command_ratios": [
+          1.001194743130227,
+          0.9934949733885274,
+          1.0265060240963855
+        ],
+        "paired_command_savings": [
+          -0.0020000000000000018,
+          0.01100000000000012,
+          -0.04400000000000004
+        ],
+        "reported_native_peak": 857489954.0,
+        "rss_gib": 1.3069915771484375,
+        "seconds": 1.68
+      }
+    }
+  },
+  {
+    "case": "validation-holdout-n983040-k50-gdefault-shuffle1-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.298816542,
+        "maximum": 0.611,
+        "minimum": 0.587,
+        "n": 3,
+        "native": 0.22574929199999993,
+        "paired_command_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "paired_command_savings": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.3879241943359375,
+        "seconds": 0.606
+      },
+      "parallelcheck": {
+        "input": 0.297469584,
+        "maximum": 0.589,
+        "minimum": 0.583,
+        "n": 3,
+        "native": 0.2142338749999999,
+        "paired_command_ratios": [
+          0.962046204620462,
+          1.0034071550255537,
+          0.955810147299509
+        ],
+        "paired_command_savings": [
+          0.02300000000000002,
+          -0.0020000000000000018,
+          0.027000000000000024
+        ],
+        "reported_native_peak": 925859855.0,
+        "rss_gib": 1.389190673828125,
+        "seconds": 0.584
+      }
+    }
+  }
+]

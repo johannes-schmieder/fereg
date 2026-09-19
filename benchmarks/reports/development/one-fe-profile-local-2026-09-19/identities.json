@@ -1,0 +1,37 @@
+{
+  "artifacts": {
+    "fereg_diagnostic": "ecd6eda343a3277a97ffc896334a0fd2551e8d7a5b52012bca4fe6f42bf93cae",
+    "fereg_stock": "0c6d5966f3b7b8bf4b41555282c8c20cfa5bfb040c06e23120c7ad4a7ebb4d37",
+    "fixest_diagnostic": "3db89e4786aa3809a0ceda33b29b65971ffe8a410900afa4fd1e1225040908f3",
+    "fixest_stock": "bece258f6c6fc3fc47accea45c7b004b0c495d46170d78fa2d6302e66de5fbf9"
+  },
+  "controller_snapshots": {
+    "controller": {
+      "common.py": "dfb15d34b8df2d5899e14f4306fbc732f070ef219cd472fd4e3702f31daca09c",
+      "measure.py": "6b478862a6ac64326d74dcb010fe5533a4af100f4160a76472ee190ab67d5850",
+      "r_worker.R": "f946c36ec15178acdd2b8aeee448cee2e035b09fb11183d1845bf86cfa653112",
+      "stata_worker.do": "22958f46792fb6115c138629d89b664d75a8b5b97e357ca5e06523e708f73bf4"
+    },
+    "controller-followup": {
+      "common.py": "dfb15d34b8df2d5899e14f4306fbc732f070ef219cd472fd4e3702f31daca09c",
+      "measure.py": "6b478862a6ac64326d74dcb010fe5533a4af100f4160a76472ee190ab67d5850",
+      "r_worker.R": "f946c36ec15178acdd2b8aeee448cee2e035b09fb11183d1845bf86cfa653112",
+      "stata_worker.do": "1b0d302046fdc5854d019f5cd62a5106d570f8f5e7849ab35e1180988f5ba7a4"
+    },
+    "controller-primary": {
+      "common.py": "dfb15d34b8df2d5899e14f4306fbc732f070ef219cd472fd4e3702f31daca09c",
+      "measure.py": "6fc012df26a5dad7deda42659e91d67134aa82d4fd42f969311f6177b011488c",
+      "r_worker.R": "5ddba6589a1805caadb5c761994538857b35cee0cd032df27ccfbff971044d60",
+      "stata_worker.do": "a1dbad4527f4dfbc46ac22ae70f92051673ab9b394717abc8689e1347044147a"
+    }
+  },
+  "failed_or_discarded_attempts": [
+    "Initial compiler C++ include-path failure; fixed locally with the Command Line Tools C++ headers.",
+    "Initial sandbox process-sampling restriction; rerun with authorized process access.",
+    "Smoke diagnostic read an intentionally disabled Rprof output; wrapper fixed and four oracle checks repeated.",
+    "First detailed build compiled the unchanged working-directory source rather than the instrumented snapshot; missing timer signatures detected, six diagnostic calls excluded, build repeated from the snapshot directory.",
+    "First publication probe expected display inside a quiet call; fit passed but attribution was rejected. Timer values now exported after the call; six checks passed."
+  ],
+  "fixest_archive_sha256": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9",
+  "source_commit": "55c19cb679d675194c6baed74b09279e1f026b16"
+}
