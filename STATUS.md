@@ -10,6 +10,40 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Practical whole-action memory reporting — 2026-09-18
+
+**ADR 0074's pragmatic memory milestone is complete for the calibrated scope.**
+The [development report](benchmarks/reports/development/whole-action-practical-2026-09-18/README.md)
+binds source snapshot `b58efa34…081d11`, Linux artifact `02bbde02…9b7714`,
+unchanged inputs and pinned references. Schema 2 now publishes combined peak and
+additional reserve when Stata-19 baselines and expected native stages are known.
+Strict proof gaps remain visible; unknown versions, frames or attempts remain
+partial. Admission, scientific calculations and routing are unchanged.
+
+Stata factor-variable result posting explains the missing allocation growth.
+Native execution and later posting use a phase maximum instead of summing
+noncoexisting owners. All 16 fixed estimator cases meet the larger-of-10%-or-
+64-MiB native/process target. Four publication holdouts pass on both Mac and
+Linux. Replaying the preserved German 5% receipt predicts 4.425 GB versus
+4.348 GB RSS (+1.77%); native prediction stays +3.77%. This is a reporting
+replay, not another empirical estimation or a new-binary German fit.
+
+All 150 native tests, 52 Python checks, Mac/Linux memory fixtures, Linux
+export/actual-loader checks, inventories and repository checks pass. Nine
+alternating scientific pairs are exact; no command or phase exceeds both
++5% and +10 ms. Job 7641143 completed substantive checks but its final wrapper
+had an `_rc` typo (exit 2). Job 7641149 corrected only that invocation and
+verified the preserved results: terminal pass, failed=0/exit=0. Both are
+terminal; no estimator measurements were repeated.
+
+**Next boundary:** freeze and package a Mac/Linux review candidate once Mac
+linking is available. The Xcode license remains unaccepted. Strict construction,
+allocator/runtime proofs and formal platform qualification remain separate;
+this practical milestone does not promise ten-percent accuracy on arbitrary
+workloads. Installed artifacts and CMG are unchanged; no push or release.
+Unrelated STATUS history, untracked work and inventory overlays are preserved.
+The earlier checkpoints below retain their historical scope.
+
 ## CMG expected heap and native calibration — 2026-09-18
 
 Implementation commit `290a2ffb` separates expected native heap from conservative

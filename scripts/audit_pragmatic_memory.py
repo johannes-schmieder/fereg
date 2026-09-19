@@ -40,10 +40,16 @@ def audit_case(directory: Path, relative: float = .10, absolute: int = 64 << 20)
             raise ValueError('missing memory value must be zero encoded')
         return int(amount) if present else None
     rows = [value(row) for row in range(1, 12)]
-    if rows[0] != 1 or rows[1] not in (0, 1, 2):
+    if rows[0] not in (1, 2) or rows[1] not in (0, 1, 2):
         raise ValueError('unsupported memory schema/status')
     if rows[1] < 2 and (rows[7] is not None or rows[8] is not None):
         raise ValueError('partial coverage cannot publish a combined prediction')
+    if rows[0] == 2 and rows[1] == 2:
+        if any(rows[i] is None for i in (2, 3, 4, 5, 6, 7, 8, 10)):
+            raise ValueError('incomplete practical memory report')
+        increment = max(rows[5], rows[6])
+        if rows[2] > rows[3] or rows[10] >= 2**16 or rows[8] != increment or rows[7] < rows[3]+rows[4]+increment:
+            raise ValueError('inconsistent practical memory report')
     traces = re.findall(r'FEREG_WHOLE_ACTION_MEMORY_TERMINAL\|[^\n]+', (directory/'stderr.txt').read_text())
     if len(traces) != 1:
         raise ValueError('one fresh-process whole-action observation required')
@@ -65,6 +71,12 @@ def audit_case(directory: Path, relative: float = .10, absolute: int = 64 << 20)
     if receipt.exists():
         r = json.loads(receipt.read_text())
         result['process_memory_observations'] = {k: v for k, v in r.items() if 'rss' in k or 'scratch' in k}
+        if rows[0] == 2:
+            rss = r.get('peak_rss_gib')
+            observed_rss = None if rss is None else round(rss * 2**30)
+            result['process_prediction_bytes'] = rows[7]
+            result['process_accuracy_pass'] = None if rows[7] is None or observed_rss is None else abs(rows[7]-observed_rss) <= max(absolute, relative*observed_rss)
+            result['practical_estimate_present'] = rows[1] == 2
     return result
 
 

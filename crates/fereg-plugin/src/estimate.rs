@@ -607,7 +607,9 @@ impl EstimateAction {
         let matrix_cells = self.publication_memory.shadow_bytes / 8
             + (crate::result::RUNTIME_ROWS * 2 + crate::memory_report::CELLS) as u128;
         Ok(Some(Forecast { native_peak,
-            stata_growth: Forecast::publication_growth(shadow.drop_reasons.len(), matrix_cells)? }))
+            stata_growth: Forecast::publication_growth(shadow.drop_reasons.len(), matrix_cells,
+                crate::memory_forecast::has_factor_stripes(&self.request.model),
+                self.memory_baseline.before_allocated)? }))
     }
 
     fn metadata_capacity_bytes(&self) -> u128 {
@@ -3844,7 +3846,7 @@ mod tests {
         let (args, mut spi) = fixture(OlsVceKind::Iid);
         estimate_ols_test(&args, &mut spi).unwrap();
         let report = &spi.matrices["RMEMORY"];
-        assert_eq!(report[0], vec![1.0, 1.0]);
+        assert_eq!(report[0], vec![1.0, 2.0]);
         assert_eq!(report[1], vec![1.0, 1.0]);
         assert_eq!(report[3], vec![0.0, 0.0]);
         assert_eq!(report[7], vec![0.0, 0.0]);

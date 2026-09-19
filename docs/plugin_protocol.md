@@ -159,13 +159,24 @@ matrix, and has 11 rows and two columns (presence, value). Absent cells encode
 Rows are `schema_version`, `estimate_status`, `stata_used_before`,
 `stata_alloc_before`, `native_live_before`, `native_peak_est`,
 `stata_growth_est`, `combined_peak_est`, `additional_reserve`,
-`safety_headroom`, `model_gap_bits`. Schema 1 uses status 0 unavailable,
-1 partial, 2 estimated-complete-practical. Status 2 requires calibration;
-strict mathematical coverage is a separate property. The initial partial
-report exposes an uncalibrated phase-based native estimate and an estimated
-Stata publication increment. CMG and low-memory frames still include conservative
-reservations, so these numbers are not ten-percent forecasts. Combined peak
-and additional reserve remain unavailable. Gap bits retain both strict
-limitations (low 16 bits) and uncalibrated expected use/Stata growth (bits 17/18);
-bit 16 marks an unavailable baseline and bits 20–29 mark missing action stages. Existing OLS/PPML runtime matrices retain their
-layout and observation boundaries.
+`safety_headroom`, `model_gap_bits`. Schema 2 retains status 0 unavailable,
+1 partial, 2 estimated-complete-practical. Status 2 requires a known Stata-19
+baseline, an expected native forecast and every action stage. It describes
+the empirical engineering model in ADR 0074, not a strict allocation or RSS
+bound. Other Stata versions, unknown baselines (including unmeasured frames)
+and unknown attempt storage remain partial, without a combined peak or reserve.
+
+The combined estimate is the maximum of entry allocation and pre-plugin Stata
+allocation plus the larger of native execution and subsequent posting growth,
+with the preexisting native owner added once. The additional reserve excludes
+resident baselines. Solver admission and safety headroom remain separate.
+The estimate's calibrated scope and extrapolation limits are described in
+[the memory model](memory_model.md#practical-whole-action-reporting).
+
+The low 16 gap bits retain strict proof limitations even at practical status 2.
+Bits 17/18 mark unknown expected use/Stata growth, bit 16 an unavailable
+baseline, and bits 20–29 missing action stages. Schema 2 status 2 permits only
+low-16 proof gaps; its validator checks phase composition. Schema 1 remains
+readable under its original stricter status-2 rule (zero gaps). Package metadata
+binds the independently versioned memory schema. Existing OLS/PPML runtime
+matrices retain their layout and observation boundaries.

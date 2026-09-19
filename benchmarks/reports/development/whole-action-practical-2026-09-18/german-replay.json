@@ -1,0 +1,23 @@
+{
+  "scope": "replay of preserved German 5% receipt through reporting-only phase composition; no estimation rerun",
+  "prior_validation_sha256": "c0d12738048b8b928bcca164335a9c5c58ffe96fa209502de3c91c2324444228",
+  "source_manifest_sha256": "a2ebe8928d30151fc4d7b409e37adf9307dc5fe85eff58b235d1ae88bbafd9d7",
+  "artifact_sha256": "bb1eb0cfc8f44889b8ad858bc4adcc2b189e7dc378501b5328ab6784a1e68018",
+  "input_sha256": "6498d6051aac8cce1ff545c1a0228f655fcf7d6e88845b0c6f1ce564e6e7f59e",
+  "reference_lock_sha256": "1f3d2e542e0164d4b9285fb609c46698686809997d97a852dc342360ca258adf",
+  "original_rows": 4553489,
+  "retained_rows": 4361733,
+  "native_predicted_bytes": 3705301141,
+  "native_observed_bytes": 3570575744,
+  "publication_predicted_bytes": 100757680,
+  "post_return_stata_growth_bytes": 100565748,
+  "publication_error_bytes": 191932,
+  "process_predicted_bytes": 4424928225,
+  "process_observed_peak_rss_bytes": 4347969536,
+  "process_error_bytes": 76958689,
+  "process_relative_error": 0.0176999144917652,
+  "process_accuracy_pass": true,
+  "native_science_from_preserved_run": true,
+  "old_schema_report_unmodified": true,
+  "reported_status2_on_German_candidate": false
+}

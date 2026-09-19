@@ -37,9 +37,26 @@ class MemoryAuditTests(unittest.TestCase):
             (root/'result.json').write_text(json.dumps({'arm': 'fereg'}))
             self.assertTrue(audit.audit_case(root)['native_accuracy_pass'])
 
+    def test_practical_schema_preserves_proof_gaps_and_checks_phase_composition(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self.fixture(root, 100, 100)
+            def report(whole=1140, reserve=100, gaps=125):
+                values = [2, 2, 800, 1000, 40, 100, 30, whole, reserve, 512, gaps]
+                with (root/'fereg_memory.csv').open('w') as stream:
+                    w = csv.writer(stream); w.writerow(['row','column','value'])
+                    for row, value in enumerate(values, 1):
+                        w.writerow([row,1,1]); w.writerow([row,2,value])
+            report()
+            self.assertEqual(audit.audit_case(root)['model_gap_bits'], 125)
+            for args in [(1139,100,125), (1140,130,125), (1140,100,2**17)]:
+                report(*args)
+                with self.assertRaises(ValueError): audit.audit_case(root)
+
     def test_published_wire_versions_match_package_metadata(self):
         root = Path(__file__).resolve().parents[2]
         package = (root/'scripts/stage_release.py').read_text()
+        self.assertIn('"memory_result_schema": 2', package)
         for filename, prefix, fields in [
             ('_fereg_estimate_ols.ado', 'fereg', {'action_protocol': '1.6', 'result_wire': '1.5'}),
             ('_fereg_estimate_ppml.ado', 'feppml', {'action_protocol': '1.6', 'request_wire': '1.6', 'result_wire': '1.3'}),

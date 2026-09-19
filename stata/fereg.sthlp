@@ -780,10 +780,13 @@ Web: {browse "https://www.stata.com/new-in-stata/high-dimensional-fixed-effects/
 {pstd}
 {cmd:e(fereg_memory)} is an 11-by-2 presence/value report for action
 memory. Its schema version and estimate status distinguish unavailable (0),
-partial (1), and calibrated practical estimates (2). The current partial
-report supplies the Stata allocation baseline, an uncalibrated native estimate,
-and estimated publication growth. Some routes retain conservative reservations.
-Combined peak and additional reserve remain unavailable. Absent values
+partial (1), and calibrated practical estimates (2). Schema 2 supplies a
+combined peak and additional reserve when the Stata-19 baseline and all native
+stages are known. It accounts for native execution and later result posting as
+separate phases. The reserve excludes already resident memory. Calibration
+targets the larger of 10% and 64 MiB on development cases; it is an estimate,
+not a guaranteed RSS bound. Strict proof gaps and safety headroom remain visible.
+Unknown scopes stay partial, without a combined peak or reserve. Absent values
 have presence zero and value zero. This report does not change memory admission
 or the existing runtime report. With multiple Stata frames, used memory is
 unavailable because Stata's used-data counter is frame-local; the allocated

@@ -1,0 +1,15 @@
+{
+  "original_fixture_sentinel": "FEREG_MEMORY_BASELINE_PASS",
+  "original_wrapper_status": 198,
+  "original_scheduler_exit_status": 2,
+  "cause": "wrapper used local rc = `_rc' instead of local rc = _rc after the fixture passed",
+  "corrected_fixture_sentinel": "FEREG_MEMORY_BASELINE_PASS",
+  "corrected_stata_rc": 0,
+  "corrected_scheduler_failed": 0,
+  "corrected_scheduler_exit_status": 0,
+  "repeated_estimator_measurements": false,
+  "corrected_wrapper_sha256": "fcc01af6c1193c1ca855a83f7a9629c87c9618fe68bf91a30672f1f9659d5e77",
+  "original_wrapper_sha256": "8f1eb5c04aefa6d3056c56d7424621ad85760c91b311f67321c3e0388ad9e16c",
+  "run.sh_sha256": "da30964bc54e5207f3859f18703d19c4de43a8af3d1296e3e8293fcb773b7d03",
+  "finish.sh_sha256": "d73096ca18f74ed183d044c6225cf2bee7f0af5bac9e791578a0ace1d23ace04"
+}

@@ -1,0 +1,39 @@
+{
+  "cases": [
+    {
+      "case": "ols_narrow",
+      "delta_seconds": -0.0040000000000000036,
+      "flag": false,
+      "medians": {
+        "baseline": 0.215,
+        "candidate": 0.211
+      },
+      "relative_change": -0.018604651162790715
+    },
+    {
+      "case": "ols_wide_missing",
+      "delta_seconds": -0.007000000000000006,
+      "flag": false,
+      "medians": {
+        "baseline": 0.739,
+        "candidate": 0.732
+      },
+      "relative_change": -0.009472259810554813
+    },
+    {
+      "case": "ppml_one",
+      "delta_seconds": 0.0010000000000000009,
+      "flag": false,
+      "medians": {
+        "baseline": 0.249,
+        "candidate": 0.25
+      },
+      "relative_change": 0.004016064257028116
+    }
+  ],
+  "native_accuracy_pass": true,
+  "performance_pass": true,
+  "practical_estimate_present": true,
+  "process_accuracy_pass": true,
+  "whole_action_accepted": false
+}

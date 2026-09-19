@@ -572,3 +572,36 @@ This establishes the retained-product handoff bound, not a proof of allocations
 inside the solver that produced the initial product or of allocator/process
 resident memory. Whole-action coverage remains incomplete and its ratio remains
 undefined until all outstanding owner families are covered.
+
+## Practical whole-action reporting
+
+The schema-2 expected-use estimate follows ADR 0074 separately from strict
+coverage and allocation admission. Native execution and Stata posting occur
+sequentially: native action owners are released at ABI return before ado calls
+`ereturn post`. The incremental forecast therefore takes their maximum. It
+adds the pre-plugin Stata allocation and preexisting native live bytes once,
+and also checks the Stata entry allocation. Resident bytes do not enter the
+additional reserve, because the OS available-memory figure already excludes
+them. No observed action peak is used to construct its own forecast.
+
+Stata sample and saved-output variables already exist at the pre-plugin
+boundary. Posting transfers the sample variable and renames saved outputs.
+Numeric matrix posting receives 24 bytes per result cell plus 64 KiB for
+descriptors and stripes. Factor-variable stripes additionally trigger
+`buildfvinfo` temporary data storage and retained allocator capacity. The
+Stata-19 engineering estimate rounds the larger of 20 bytes per original row
+and ten percent of the pre-plugin Stata allocation to 32 MiB. These terms
+describe measured publication behavior; they are not a proof of Stata's
+private allocator or a multiplier fitted to total native memory.
+
+Practical status 2 requires measured baselines, Stata 19, a valid expected-use
+forecast and no missing action stage. Unknown scopes stay partial. The empirical
+target is the larger of ten percent and 64 MiB on the fixed development cases;
+small cases passing the absolute allowance do not establish ten-percent
+relative accuracy. Calibration covers licensed Linux estimator runs and Mac
+Stata posting probes with 1/32-MiB segments. Other datasets, allocator settings,
+platforms and long-lived process fragmentation are extrapolations, not new
+qualification claims. Requested stacks, runtime heap and allocator retention
+retain explicit uncertainty and separate safety headroom. Strict gap bits,
+strict action-peak ratios, scientific routing and conservative admission are
+unchanged by practical calibration.

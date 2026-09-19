@@ -1,0 +1,30 @@
+{
+  "memory_fixture": {
+    "process_rc": 0,
+    "stata_rc": 0,
+    "sentinel": "FEREG_MEMORY_BASELINE_PASS",
+    "fixture_sha256": "28efac92bf4fccb5ee437aafde81b688b8fecffe9aaa98dd1518f1d4f0ff7ad4",
+    "raw_log_sha256": "31ea60516105a1d850e3b07862f34be63e556ab911488b29d0536b3fd6a17229"
+  },
+  "python_report_package": {
+    "test_count": 13,
+    "status": "pass",
+    "raw_log_sha256": "a327eb87b78aff7ed3099ef1c0c6e47e539b29e75d0095c69cb80a6c1e4654f4"
+  },
+  "repository_checks": {
+    "status": "pass",
+    "raw_log_sha256": "ab65a76e0f248481217961f3c175ebc2c84ccf7cce6b3e35d39ca124d9994258"
+  },
+  "qualification": false,
+  "python_inventory": {
+    "test_count": 39,
+    "status": "pass",
+    "raw_log_sha256": "33f4712b9f41821695473e3fa3907d7576558a14abef6b00ea2a508c6fed7551"
+  },
+  "native_tests": {
+    "test_count": 150,
+    "status": "pass"
+  },
+  "actual_loader": "pass",
+  "installed_macos_plugin_sha256": "4187efdfbd6235e63c369d9b42dede6381b8a9e50b5360fd63ee237bd6c11b08"
+}

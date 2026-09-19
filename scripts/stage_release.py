@@ -306,6 +306,7 @@ def write_manifest(
         "source_sha": source_sha,
         "source_dirty": source_dirty,
         "action_protocol": "1.6",
+        "memory_result_schema": 2,
         "ols_result_wire": "1.5",
         "ppml_request_wire": "1.6",
         "ppml_result_wire": "1.3",

@@ -675,7 +675,8 @@ program define _fereg_estimate_ols, eclass
         stata_growth_est combined_peak_est additional_reserve safety_headroom model_gap_bits
     matrix colnames `memory_shadow' = present value
     ereturn matrix fereg_memory = `memory_shadow', copy
-    ereturn local fereg_memory_method "phase-capacity-partial-v1"
+    ereturn local fereg_memory_method "phase-capacity-partial-v2"
+    if `memory_shadow'[2,2] == 2 ereturn local fereg_memory_method "phase-capacity-calibrated-v2"
     ereturn matrix fereg_receipt = `receipt_shadow', copy
 
     local kept_indepvars

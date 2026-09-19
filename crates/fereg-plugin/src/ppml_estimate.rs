@@ -467,7 +467,9 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             native_peak: expected.summary().accounted_peak.max(
                 publication_memory.parent_bytes + publication_memory.shadow_bytes),
             stata_growth: crate::memory_forecast::Forecast::publication_growth(
-                shadow.drop_reasons.len(), action.publication_matrix_cells as u128)?,
+                shadow.drop_reasons.len(), action.publication_matrix_cells as u128,
+                crate::memory_forecast::has_factor_stripes(&action.request.model),
+                action.memory_baseline.before_allocated)?,
         })
     } else { None };
     if let Some(forecast) = forecast {
@@ -3386,7 +3388,7 @@ mod tests {
         let (args, mut spi) = fixture();
         estimate_ppml_test(&args, &mut spi).unwrap();
         let report = &spi.matrices["RMEMORY"];
-        assert_eq!(report[0], vec![1.0, 1.0]);
+        assert_eq!(report[0], vec![1.0, 2.0]);
         assert_eq!(report[1], vec![1.0, 1.0]);
         assert_eq!(report[3], vec![0.0, 0.0]);
         assert_eq!(report[7], vec![0.0, 0.0]);

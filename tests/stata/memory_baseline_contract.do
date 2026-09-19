@@ -39,5 +39,28 @@ matrix report[8,1] = 0
 matrix report[4,2] = 123
 capture _fereg_memory_validate report
 assert _rc == 459
+matrix report = J(11,2,1)
+matrix report[1,2] = 2
+matrix report[2,2] = 2
+matrix report[3,2] = 800
+matrix report[4,2] = 1000
+matrix report[5,2] = 40
+matrix report[6,2] = 200
+matrix report[7,2] = 30
+matrix report[8,2] = 1240
+matrix report[9,2] = 200
+matrix report[11,2] = 125
+_fereg_memory_validate report
+foreach row in 8 9 11 {
+    matrix malformed = report
+    if `row' == 8 matrix malformed[`row',2] = 1239
+    if `row' == 9 matrix malformed[`row',2] = 201
+    if `row' == 11 matrix malformed[`row',2] = 2^17
+    capture _fereg_memory_validate malformed
+    assert _rc == 459
+}
+matrix report[1,2] = 1
+capture _fereg_memory_validate report
+assert _rc == 459
 display "FEREG_MEMORY_BASELINE_PASS"
 exit, clear

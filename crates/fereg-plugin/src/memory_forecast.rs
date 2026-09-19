@@ -19,7 +19,7 @@ impl Forecast {
                 (Some(stata), Some(native)) => Some(self.combined(stata, native)?),
                 _ => None,
             };
-            eprintln!("FEREG_MEMORY_FORECAST|version=2|calibrated=0|native_peak={}|stata_growth={}|combined={combined:?}", self.native_peak, self.stata_growth);
+            eprintln!("FEREG_MEMORY_FORECAST|version=3|native_peak={}|stata_growth={}|combined={combined:?}", self.native_peak, self.stata_growth);
         }
         Ok(())
     }
@@ -28,16 +28,46 @@ impl Forecast {
         sum(&[
             stata_before,
             u128::from(native_before),
-            self.native_peak,
-            self.stata_growth,
+            self.additional_reserve(),
         ])
     }
-    /// Observation outputs already exist in the pre-plugin Stata baseline.
-    /// Publication may copy e(sample) and each numeric result matrix. Descriptor
-    /// and stripe storage receives a separate small, explicitly estimated bank.
-    pub(crate) fn publication_growth(original_rows: usize, matrix_cells: u128) -> Result<u128> {
-        sum(&[original_rows as u128, mul(matrix_cells, 8)?, 64 << 10])
+
+    pub(crate) fn additional_reserve(self) -> u128 {
+        // Native result owners are dropped at ABI return, before ado posting.
+        self.native_peak.max(self.stata_growth)
     }
+
+    /// Stata 19 posting calibration: esample() transfers the existing byte
+    /// variable; saved outputs are renamed. Factor stripes trigger transient
+    /// buildfvinfo data storage. Its measured row term is 20 bytes/observation;
+    /// wider datasets can instead trigger allocator capacity growth. The 10%
+    /// capacity term and 32-MiB granularity are engineering estimates, not
+    /// proofs about Stata's private allocator or extra native admission.
+    pub(crate) fn publication_growth(
+        original_rows: usize,
+        matrix_cells: u128,
+        factor_stripes: bool,
+        stata_allocated: Option<u128>,
+    ) -> Result<u128> {
+        let factor = if factor_stripes {
+            let capacity_growth = stata_allocated.unwrap_or(0) / 10;
+            let bytes = mul(original_rows as u128, 20)?.max(capacity_growth);
+            let segment = 32_u128 << 20;
+            mul(sum(&[bytes, segment - 1])? / segment, segment)?
+        } else {
+            0
+        };
+        // Whole-matrix b/V construction and ereturn copies coexist briefly.
+        sum(&[factor, mul(matrix_cells, 24)?, 64 << 10])
+    }
+}
+
+pub(crate) fn has_factor_stripes(model: &fereg_core::metadata::CompiledTermGraph) -> bool {
+    model.terms.iter().any(|term| {
+        term.components
+            .iter()
+            .any(|component| component.kind == fereg_core::metadata::ComponentKind::Categorical)
+    })
 }
 
 pub(crate) fn ols_projection_parent(
@@ -98,8 +128,24 @@ mod tests {
             native_peak: 200,
             stata_growth: 30,
         };
-        assert_eq!(f.combined(1000, 40).unwrap(), 1270);
+        assert_eq!(f.combined(1000, 40).unwrap(), 1240);
+        let posting = Forecast {
+            native_peak: 20,
+            stata_growth: 300,
+        };
+        assert_eq!(posting.combined(1000, 40).unwrap(), 1340);
         assert!(f.combined(u128::MAX, 0).is_err());
         assert!(ols_projection_parent(u128::MAX, 1, 1, 1, 1, true).is_err());
+    }
+
+    #[test]
+    fn factor_posting_counts_original_rows_and_capacity_growth_without_output_copies() {
+        let numeric = Forecast::publication_growth(4_361_733, 100, false, Some(700 << 20)).unwrap();
+        assert_eq!(numeric, 2400 + (64 << 10));
+        let factor = Forecast::publication_growth(4_361_733, 100, true, Some(700 << 20)).unwrap();
+        assert_eq!(factor, (96 << 20) + numeric);
+        let wide = Forecast::publication_growth(1_048_576, 100, true, Some(475_004_928)).unwrap();
+        assert_eq!(wide, (64 << 20) + numeric);
+        assert!(Forecast::publication_growth(1, u128::MAX, true, None).is_err());
     }
 }
