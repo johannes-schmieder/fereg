@@ -1,0 +1,60 @@
+[
+  {
+    "case": "lifecycle-primary-n983040-k10-gdefault-shuffle0-t16",
+    "variants": {
+      "factor": {
+        "input": 0.0760903125,
+        "n": 2,
+        "native": 0.09229712500000001,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          1.0,
+          1.0
+        ],
+        "remaining": 0.022418562499999947,
+        "seconds": 0.19099999999999995
+      },
+      "lifecycle": {
+        "input": 0.075374625,
+        "n": 2,
+        "native": 0.09300385400000002,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          1.021276595744681,
+          0.9690721649484536
+        ],
+        "remaining": 0.021454103999999946,
+        "seconds": 0.18999999999999995
+      }
+    }
+  },
+  {
+    "case": "lifecycle-primary-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "factor": {
+        "input": 0.240421042,
+        "n": 2,
+        "native": 0.16332099999999997,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0
+        ],
+        "remaining": 0.07479960399999999,
+        "seconds": 0.479
+      },
+      "lifecycle": {
+        "input": 0.236467375,
+        "n": 2,
+        "native": 0.15829922899999999,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          0.9624217118997913,
+          0.9749478079331942
+        ],
+        "remaining": 0.06884058350000002,
+        "seconds": 0.464
+      }
+    }
+  }
+]

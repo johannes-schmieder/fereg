@@ -12,7 +12,12 @@ def main(root, baseline, candidate, label):
     output = root / ("metadata-check-" + candidate + label)
     output.mkdir(exist_ok=False)
     reference = root / baseline / "stata/_fereg_estimate_public.ado"
-    (output / "reference.do").write_text(reference.read_text().replace("program define _fereg_estimate_public,", "program define _fereg_public_reference,"))
+    hidden_reference = root / baseline / "stata/_fereg_estimate_ols.ado"
+    reference_text = reference.read_text().replace("program define _fereg_estimate_public,", "program define _fereg_public_reference,")
+    reference_text = reference_text.replace("_fereg_estimate_ols", "_fereg_ols_reference")
+    hidden_text = hidden_reference.read_text().replace("_fereg_estimate_ols", "_fereg_ols_reference")
+    hidden_text = hidden_text.replace("_fereg_eols_validate", "_fereg_eols_validate_reference")
+    (output / "reference.do").write_text(reference_text + "\n" + hidden_text)
     source = root / candidate
     script = f'''version 19.0
 clear all
@@ -54,6 +59,12 @@ foreach command in "y x z, absorb(group)" "y x copyx, absorb(group)" ///
     }}
     matrix old_status = e(fereg_status)
     local old_indepvars `"`e(indepvars)'"'
+    local old_macros : e(macros)
+    local macro_index 0
+    foreach item of local old_macros {{
+        local ++macro_index
+        local old_m`macro_index' `"`e(`item')'"'
+    }}
     quietly _fereg_estimate_public `command'
     assert e(fereg_receipt)[1,5] == `count'
     if `count' > 0 {{
@@ -66,6 +77,15 @@ foreach command in "y x z, absorb(group)" "y x copyx, absorb(group)" ///
     }}
     assert mreldif(e(fereg_status),old_status) == 0
     assert `"`e(indepvars)'"' == `"`old_indepvars'"'
+    local macro_index 0
+    foreach item of local old_macros {{
+        local ++macro_index
+        assert `"`e(`item')'"' == `"`old_m`macro_index''"'
+    }}
+    local new_macros : e(macros)
+    local old_macros : list sort old_macros
+    local new_macros : list sort new_macros
+    assert `"`old_macros'"' == `"`new_macros'"'
 }}
 display "PUBLIC_METADATA_IDENTITY_PASS"
 '''
@@ -75,7 +95,7 @@ display "PUBLIC_METADATA_IDENTITY_PASS"
             stdout=stdout, stderr=subprocess.STDOUT, timeout=180)
     assert result.returncode == 0 and "\nPUBLIC_METADATA_IDENTITY_PASS\n" in (output / "run.log").read_text(), output
     sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
-    record = dict(status="pass", cases=10, baseline=sha(reference), candidate=sha(source / "stata/_fereg_estimate_public.ado"), script=sha(output / "run.do"), log=sha(output / "run.log"))
+    record = dict(status="pass", cases=10, baseline=sha(reference), baseline_hidden=sha(hidden_reference), candidate=sha(source / "stata/_fereg_estimate_public.ado"), script=sha(output / "run.do"), log=sha(output / "run.log"))
     (root / ("metadata-check-" + candidate + ".json")).write_text(json.dumps(record, indent=2) + "\n")
     print("PUBLIC_METADATA_IDENTITY_PASS", candidate, flush=True)
 

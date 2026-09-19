@@ -1,0 +1,28 @@
+diff --git a/stata/_fereg_estimate_ols.ado b/stata/_fereg_estimate_ols.ado
+index d4037dd0..4a37bd43 100644
+--- a/stata/_fereg_estimate_ols.ado
++++ b/stata/_fereg_estimate_ols.ado
+@@ -585,6 +585,9 @@ program define _fereg_estimate_ols, eclass
+     if `has_aweight' local eweight "[aweight=`aweight']"
+     if `has_fweight' local eweight "[fweight=`fweight']"
+     if `has_pweight' local eweight "[pweight=`pweight']"
++    local fvinfo_option "buildfvinfo"
++    if `coefficient_count' > 0 & !strpos(`"`marked_names'"', ".") & ///
++        !strpos(`"`marked_names'"', "#") local fvinfo_option
+     if `coefficient_count' > 0 {
+         // Whole-matrix Mata construction preserves the pinned multiway CGM
+         // matrix through Stata's e(V) posting path. Cell-written SPI shadows
+@@ -592,11 +595,11 @@ program define _fereg_estimate_ols, eclass
+         // only input to `_ms_findomitted`.
+         ereturn post `posted_b' `posted_v' `eweight', ///
+             depname(`depvar') obs(`N_effective') dof(`df_r') ///
+-            esample(`sample_shadow') buildfvinfo
++            esample(`sample_shadow') `fvinfo_option'
+     }
+     else {
+         ereturn post `eweight', depname(`depvar') obs(`N_effective') ///
+-            dof(`df_r') esample(`sample_shadow') buildfvinfo
++            dof(`df_r') esample(`sample_shadow') `fvinfo_option'
+     }
+     if `"`inject'"' == "postereturn" exit 3498
+ 

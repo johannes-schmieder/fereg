@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "cases": 10,
+  "baseline": "55a734ae531687ab3915525c38a6011f3edc434edc50b8ef9c3e9dd8738c82d0",
+  "baseline_hidden": "b350c8718325d012d6c36d0c1de5273b2e7fd68905bb490788aac49e5424eb08",
+  "candidate": "55a734ae531687ab3915525c38a6011f3edc434edc50b8ef9c3e9dd8738c82d0",
+  "script": "f85ef45adb8c16ff423fe2e6abf4b16d9627a264a2c26c853427e271f58aebbf",
+  "log": "39b16b2badf25686c37c9ef838eb7cab5153533013b563abcfddbe19972c8612"
+}

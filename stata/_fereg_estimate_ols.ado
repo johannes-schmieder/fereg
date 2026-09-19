@@ -351,11 +351,19 @@ program define _fereg_estimate_ols, eclass
     local cluster_rows = max(`n_cluster_terms', 1)
     local subset_rows = max(2^`n_cluster_terms' - 1, 1)
 
-    tempvar sample_shadow residual_shadow xb_shadow xbd_shadow d_shadow
-    // The candidate marker is already the correct e(sample) value for retained
-    // and if/in-excluded observations. The plugin only has to clear rows that
-    // native missing-value or singleton logic subsequently removes.
-    generate byte `sample_shadow' = `touse'
+    tempvar residual_shadow xb_shadow xbd_shadow d_shadow
+    // With an unrestricted candidate universe, Rust never reads the candidate
+    // slot. Reuse the private marker as the result sample and bind that unused
+    // input slot to the numeric outcome; scientific inputs remain read-only.
+    local candidate_variable `touse'
+    if `candidate_all' {
+        local sample_shadow `touse'
+        local candidate_variable `depvar'
+    }
+    else {
+        tempvar sample_shadow
+        generate byte `sample_shadow' = `touse'
+    }
     local output_sample = `n_bindings' + 1
     local output_residual 0
     local output_xb 0
@@ -504,7 +512,7 @@ program define _fereg_estimate_ols, eclass
         local request_bundle "bundle_local=`request_bytes'"
     }
     else local request_bundle `"bundle=`request_bundle'"'
-    plugin call __fereg_estimate_plugin `touse' `depvar' `source_vars' ///
+    plugin call __fereg_estimate_plugin `candidate_variable' `depvar' `source_vars' ///
         `weight_variable' `output_variables', ///
         `"estimate-ols"' `"`request_bundle'"'
 

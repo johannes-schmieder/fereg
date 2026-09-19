@@ -6126,18 +6126,27 @@ where
     }
     let mut numerator = 0.0_f64;
     let mut numerator_correction = 0.0_f64;
-    let mut denominator = 0.0_f64;
-    let mut denominator_correction = 0.0_f64;
-    for row in 0..nrows {
-        let weight = weights.value(row)?;
-        compensated_add(
-            weight * (value(row)? / value_scale),
-            &mut numerator,
-            &mut numerator_correction,
-        )?;
-        compensated_add(weight, &mut denominator, &mut denominator_correction)?;
-    }
-    let denominator = denominator + denominator_correction;
+    // Unit mass sums exactly to N through 2^53; keep the value reduction's
+    // scale, compensation and observation order unchanged.
+    let denominator = if weights.values.is_none() && (nrows as u128) <= (1_u128 << 53) {
+        for row in 0..nrows {
+            compensated_add(value(row)? / value_scale, &mut numerator, &mut numerator_correction)?;
+        }
+        nrows as f64
+    } else {
+        let mut denominator = 0.0_f64;
+        let mut denominator_correction = 0.0_f64;
+        for row in 0..nrows {
+            let weight = weights.value(row)?;
+            compensated_add(
+                weight * (value(row)? / value_scale),
+                &mut numerator,
+                &mut numerator_correction,
+            )?;
+            compensated_add(weight, &mut denominator, &mut denominator_correction)?;
+        }
+        denominator + denominator_correction
+    };
     let mean = value_scale * ((numerator + numerator_correction) / denominator);
     if mean.is_finite() && denominator.is_finite() && denominator > 0.0 {
         Ok(mean)
@@ -9124,6 +9133,24 @@ mod tests {
         }
         for (actual, expected) in gram.iter().zip(reference_gram) {
             assert_close(*actual, expected, 2e-12);
+        }
+    }
+
+    #[test]
+    fn unit_mean_by_shortcut_matches_explicit_unit_weights_bits() {
+        for n in [0, 1, 127, 16384, 16387] {
+            let ones = vec![1.0; n];
+            let unit = NormalizedWeights { values: None, kind: None, raw_scale: 1.0 };
+            let supplied = NormalizedWeights { values: Some(&ones), kind: Some(WeightKind::Frequency), raw_scale: 1.0 };
+            for scale in [1e-200, 1.0, 1e200] {
+                let values: Vec<_> = (0..n).map(|r| ((r % 107) as f64 - 51.0) * scale).collect();
+                assert_eq!(weighted_mean_by(n, unit, |r| Ok(values[r])).map(f64::to_bits),
+                    weighted_mean_by(n, supplied, |r| Ok(values[r])).map(f64::to_bits));
+                for fail in [0, n / 2, n] {
+                    let get = |r| if r == fail { Err(invalid_data("injected mean input error")) } else { Ok(values[r]) };
+                    assert_eq!(weighted_mean_by(n, unit, get), weighted_mean_by(n, supplied, get));
+                }
+            }
         }
     }
 

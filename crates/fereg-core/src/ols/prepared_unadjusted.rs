@@ -1638,18 +1638,27 @@ pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) ->
     }
     let mut numerator = 0.0_f64;
     let mut numerator_correction = 0.0_f64;
-    let mut denominator = 0.0_f64;
-    let mut denominator_correction = 0.0_f64;
-    for (row, value) in values.iter().copied().enumerate() {
-        let weight = weights.value(row)?;
-        compensated_add(
-            weight * (value / value_scale),
-            &mut numerator,
-            &mut numerator_correction,
-        )?;
-        compensated_add(weight, &mut denominator, &mut denominator_correction)?;
-    }
-    let denominator = denominator + denominator_correction;
+    // Unit mass sums exactly to N through 2^53; keep the value reduction's
+    // scale, compensation and observation order unchanged.
+    let denominator = if weights.kind.is_none() && weights.values.is_none() && (values.len() as u128) <= (1_u128 << 53) {
+        for value in values {
+            compensated_add(*value / value_scale, &mut numerator, &mut numerator_correction)?;
+        }
+        values.len() as f64
+    } else {
+        let mut denominator = 0.0_f64;
+        let mut denominator_correction = 0.0_f64;
+        for (row, value) in values.iter().copied().enumerate() {
+            let weight = weights.value(row)?;
+            compensated_add(
+                weight * (value / value_scale),
+                &mut numerator,
+                &mut numerator_correction,
+            )?;
+            compensated_add(weight, &mut denominator, &mut denominator_correction)?;
+        }
+        denominator + denominator_correction
+    };
     let mean = value_scale * ((numerator + numerator_correction) / denominator);
     if mean.is_finite() && denominator.is_finite() && denominator > 0.0 {
         Ok(mean)
@@ -1873,6 +1882,33 @@ mod tests {
         Analytic(&'a [f64]),
         Probability(&'a [f64]),
         Frequency(&'a [u32]),
+    }
+
+    #[test]
+    fn unit_mean_shortcut_matches_explicit_frequency_unit_mass_bits() {
+        for n in [0, 1, 127, 16384, 16387] {
+            let ones = vec![1.0; n];
+            let unit = ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 };
+            let frequency = ReferenceWeightView { values: Some(&ones), kind: Some(WeightKind::Frequency), divisor: 1.0, multiplier: 1.0 };
+            for scale in [1e-200, 1.0, 1e200] {
+                for offset in [0.0, 1e6] {
+                    let mut values: Vec<_> = (0..n).map(|r| if r == 0 { -0.0 }
+                        else { (offset + (r % 101) as f64 - 50.0) * scale }).collect();
+                    let compare = |values: &[f64]| {
+                        let a = weighted_mean(values, unit).map(f64::to_bits);
+                        let b = weighted_mean(values, frequency).map(f64::to_bits);
+                        assert_eq!(a, b);
+                    };
+                    compare(&values);
+                    if n > 0 {
+                        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+                            values[n / 2] = bad;
+                            compare(&values);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[test]

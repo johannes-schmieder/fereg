@@ -10,14 +10,15 @@ import subprocess
 REPO = Path(__file__).resolve().parents[2]
 
 
-def main(root, variant):
+def main(root, variant, fixtures=None, label=""):
     root = root.resolve()
     source = root / variant
     shutil.copytree(REPO / "tests/fixtures", source / "tests/fixtures", dirs_exist_ok=True)
     records = []
-    for relative in ("development/ols_native_input.do", "development/candidate_input_oracle.do", "installation/estimate_ols_eclass_transaction.do"):
+    selected = fixtures or ("development/ols_native_input.do", "development/candidate_input_oracle.do", "installation/estimate_ols_eclass_transaction.do")
+    for relative in selected:
         fixture = REPO / "tests/stata" / relative
-        output = root / "fixtures" / variant / fixture.stem
+        output = root / "fixtures" / (variant + label) / fixture.stem
         output.mkdir(parents=True, exist_ok=False)
         shutil.copyfile(fixture, output / fixture.name)
         script = f'''version 19.0
@@ -42,7 +43,7 @@ display "ACCESSOR_FIXTURE_COMPLETE"
         record = dict(fixture=relative, sha256=hashlib.sha256(fixture.read_bytes()).hexdigest(), status="pass", process_returncode=result.returncode, fixture_sentinel=sentinel, terminal_sentinel=True)
         records.append(record)
         print(variant, fixture.stem, "pass", flush=True)
-    (root / ("fixtures-" + variant + ".json")).write_text(json.dumps(records, indent=2) + "\n")
+    (root / ("fixtures-" + variant + label + ".json")).write_text(json.dumps(records, indent=2) + "\n")
 
 
 if __name__ == "__main__":

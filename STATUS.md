@@ -13,6 +13,22 @@ completed optimization/calibration investigation chronology formerly here.
 ## One-FE optimization implementation — 2026-09-19
 
 
+Private sample ownership and exact unit-mass means now have adoption evidence
+in `benchmarks/reports/development/one-fe-sample-ownership-2026-09-19/`:
+173 accepted calls, exact native science, ten licensed fixture passes, ten
+public/hidden metadata cases and two focused native tests. Fresh five-pair
+baseline/sample-only/combined/fixest medians are 188/182/183/140 ms (K=10) and
+477/447/444/459 ms (K=50). All eleven protected controls pass; combined maximum
+median ratio is 0.98305 and geometric mean 0.94638. The sample marker becomes
+the private output only when the candidate slot is unread; scientific sources
+remain immutable, and restricted calls keep the previous transaction. The
+wide lead is about 3%, and the narrow target remains unmet. Outcome-scan overlap
+is an uncommitted prototype with exact tests/fixtures and initial 177/445 ms
+confirmation medians; its controls and finer preparation attribution are next.
+The lifecycle diagnostic and rejected plain-post screen are archived in
+`benchmarks/reports/development/one-fe-stata-lifecycle-2026-09-19/`.
+
+
 RHS construction during loading and parallel dense integer FE encoding have
 adoption evidence in
 `benchmarks/reports/development/one-fe-loaded-rhs-2026-09-19/`: 181 accepted calls,

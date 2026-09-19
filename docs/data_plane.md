@@ -37,6 +37,14 @@ On candidate rows, outcome, ordinary terms, weights, fixed effects, clusters,
 and time-series materializations are checked in the registered precedence.
 Candidate-excluded observations are not read for scientific domain errors.
 
+For unrestricted OLS, the transaction reuses its private candidate marker as
+the result-sample shadow after metadata parsing. The request already declares
+all rows as candidates, so the unread candidate input slot can bind the numeric
+outcome while its ordinary outcome slot remains unchanged. All scientific
+inputs remain disjoint from output writes. Native exclusion stores clear the
+private marker, and successful publication transfers it to `e(sample)`;
+restricted calls retain the separate candidate and result variables.
+
 For an unrestricted all-numeric OLS candidate universe, the Stata thread copies
 bounded observation-order batches directly into Rust-owned columns. Rust
 classifies the ordered numeric missing range using the SDK's runtime

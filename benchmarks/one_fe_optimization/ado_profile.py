@@ -10,7 +10,7 @@ import sys
 REPO = Path(__file__).resolve().parents[2]
 
 
-def stage(root, baseline, name):
+def stage(root, baseline, name, lifecycle=False):
     root = root.resolve()
     source = root / name
     source.mkdir(exist_ok=False)
@@ -35,18 +35,39 @@ def stage(root, baseline, name):
     bracket(source / "stata/_fereg_estimate_public.ado", "    syntax varlist(fv ts numeric min=1)", "         NOCONStant]", 86, "public_syntax")
     bracket(source / "stata/_fereg_estimate_ols.ado", "    syntax varlist(fv ts numeric min=1)", "         INJECT(string)]", 87, "transaction_syntax")
     bracket(source / "stata/_fereg_estimate_public.ado", "    local coefficient_count = e(fereg_receipt)[1,5]", "    local intended_indepvars = strtrim(`\"`intended_indepvars'\"')", 88, "public_names")
+    if lifecycle:
+        path = source / "stata/_fereg_estimate_ols.ado"
+        for line, timer, label in [
+            ("    marksample touse, novarlist", 89, "candidate_marker"),
+            ("    generate byte `sample_shadow' = `touse'", 90, "sample_shadow"),
+            ("    _estimates hold `held_estimates', restore nullok varname(`held_sample')", 92, "hold_estimates"),
+            ("        _estimates unhold `held_estimates', not", 93, "unhold_estimates"),
+        ]:
+            bracket(path, line, line, timer, label)
+        text = path.read_text()
+        needle = "\n    timer off 85"
+        assert text.count(needle) == 1
+        text = text.replace(needle, """
+    timer clear 94
+    timer on 94
+    drop `touse'
+    timer off 94
+""" + needle)
+        path.write_text(text)
+
     path = source / "stata/_fereg_estimate_public.ado"
     body = path.read_text()
     index = body.rindex("\nend")
+    timer_numbers = "81/90 92/94" if lifecycle else "81/88"
     body = body[:index] + """
     tempname phase_file
     file open `phase_file' using "ado-phases.tsv", write append text
-    forvalues phase_timer = 81/88 {
+    foreach phase_timer of numlist TIMER_NUMBERS {
         quietly timer list `phase_timer'
         file write `phase_file' %12.0f (_N) _tab %4.0f (`phase_timer') _tab %24.17g (r(t`phase_timer')) _n
     }
     file close `phase_file'
-""" + body[index:]
+""".replace("TIMER_NUMBERS", timer_numbers) + body[index:]
     path.write_text(body)
     identity = json.loads((root / ("identity-" + baseline + ".json")).read_text())
     identity["native_reused_from"] = baseline
@@ -63,5 +84,6 @@ if __name__ == "__main__":
     p.add_argument("root", type=Path)
     p.add_argument("baseline")
     p.add_argument("name")
+    p.add_argument("--lifecycle", action="store_true")
     a = p.parse_args()
-    stage(a.root, a.baseline, a.name)
+    stage(a.root, a.baseline, a.name, a.lifecycle)

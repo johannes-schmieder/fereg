@@ -27,7 +27,14 @@ foreach storage in byte int long float double {
         if "`weight'" != "none" local wt [`weight'=w]
         generate byte expected = !missing(y,x,z,group)
         if "`weight'" != "none" quietly replace expected = 0 if missing(w)
+        foreach source in y x z group w {
+            clonevar original_`source' = `source'
+        }
         quietly fereg y x z `wt', absorb(group) vce(robust) residuals(native_resid)
+        foreach source in y x z group w {
+            assert `source' == original_`source'
+            drop original_`source'
+        }
         assert row == _n
         assert e(sample) == expected
         matrix raw_b = e(b)
