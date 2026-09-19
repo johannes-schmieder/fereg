@@ -14,6 +14,7 @@ from memory import parse
 from oracle import expected
 from runner import fixture
 from report import eligible, summarize
+from followup_plan import select_cases
 
 
 class LightTests(unittest.TestCase):
@@ -96,6 +97,18 @@ class LightTests(unittest.TestCase):
         row=next(r for r in summarize({"calls":calls}) if r["arm"]=="fixest")
         self.assertEqual(row["seconds_ratio"],2)
         self.assertNotEqual(row["seconds_ratio"],4/3)
+
+    def test_longer_followup_selects_only_ppml_timeouts_and_pairs(self):
+        c=dict(cell("weak_d3",7680,k=2),model="ppml")
+        base=dict(cell=c,threads=4,repetition=1,input_sha256="same",command_time_lower_bound=300)
+        records=[(dict(base,arm="ppmlhdfe",status="command_timeout"),"timeout"),
+                 (dict(base,arm="fixest",status="pass"),"success"),
+                 (dict(base,arm="pyfixest",status="worker_failure"),"nonconvergence"),
+                 (dict(base,cell=dict(c,model="ols"),arm="reghdfe",status="command_timeout"),"ols")]
+        selected=select_cases(records)
+        self.assertEqual(len(selected),1)
+        self.assertEqual(selected[0]["arms"],["feppml","ppmlhdfe"])
+        self.assertEqual(selected[0]["repetitions"],3)
 
 
 if __name__=="__main__":

@@ -13,6 +13,9 @@ def inventory(root):
         files += [p for p in base.rglob("*") if p.is_file() and "__pycache__" not in p.parts]
     files += [p for p in HERE.iterdir() if p.is_file() and p.suffix in (".py",".R",".do",".sh",".json",".md")]
     files += [REPO/"benchmarks/systematic/generate.py",REPO/"scripts/two_fe_span_audit.py"]
+    if (root/"followup-plan.json").exists():
+        files.append(root/"followup-plan.json")
+        files.append(root/"continuation.json")
     return {str(p.relative_to(root)):sha256(p) for p in sorted(files) if p.is_file()}
 
 

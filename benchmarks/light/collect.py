@@ -30,7 +30,7 @@ def collect(root):
                         else:
                             raw=read_json(path)
                             for name in ("status","reason","seconds","process_seconds","process_returncode","sentinel","memory",
-                                         "input_sha256","runtime_identity","cpu_affinity","host","job_id","task_id","command_time_lower_bound"):
+                                         "input_sha256","runtime_identity","cpu_affinity","host","job_id","task_id","command_time_lower_bound","command_timeout_seconds"):
                                 if name in raw:
                                     call[name]=raw[name]
                             call["metadata"]={k:v for k,v in raw.get("metadata",{}).items() if k in META}
@@ -78,5 +78,24 @@ if __name__=="__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument("root",type=Path)
     parser.add_argument("output",type=Path)
+    parser.add_argument("--omit-short",action="store_true")
+    parser.add_argument("--followup",type=Path)
     args=parser.parse_args()
-    write_json(args.output,collect(args.root))
+    data=collect(args.root)
+    if args.omit_short:
+        data["omitted_calls"]=[x for x in data["calls"] if x["cell"]["design"]=="veneto_short"]
+        data["calls"]=[x for x in data["calls"] if x["cell"]["design"]!="veneto_short"]
+        data["scope_amendment"]="Short Veneto omitted at the owner's request; original unattempted receipts preserved."
+    if args.followup:
+        plan=read_json(args.followup/"followup-plan.json")
+        keys={(cell_id(b["cell"]),threads,arm,rep) for b in plan["cases"] for threads in b["threads"]
+              for arm in b["arms"] for rep in range(1,b["repetitions"]+1)}
+        followup=collect(args.followup)
+        followup["calls"]=[x for x in followup["calls"] if (cell_id(x["cell"]),x["threads"],x["arm"],x["repetition"]) in keys]
+        public_plan=dict(plan,cases=[dict(b,input={k:v for k,v in b["input"].items() if k!="path"})
+                                    if "input" in b else b for b in plan["cases"]])
+        followup["manifest"]=public_plan
+        followup["plan_sha256"]=sha256(args.followup/"followup-plan.json")
+        followup["tasks"]=[read_json(args.followup/"task.json")]
+        data["followup"]=followup
+    write_json(args.output,data)

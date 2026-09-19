@@ -88,3 +88,24 @@ python -m unittest discover -s benchmarks/light -p 'test_*.py' -v
 ```
 
 Current campaign progress belongs only in `STATUS.md`.
+
+## Owner amendments on September 19
+
+The short Veneto panel is omitted at the owner's request. Its original
+unattempted receipts remain historical evidence; do not recover, substitute,
+or rerun that sample. The long panel continues unchanged.
+
+The owner permits 15 minutes per PPML regression and up to 12 hours per SGE
+task. `followup.sh` runs one dependency-held continuation after the original
+campaign ends. `followup_plan.py` selects only recorded PPML command timeouts,
+with fresh native controls for paired comparisons, and freezes the selected
+inputs and original receipt hashes. It excludes nonconvergence errors and OLS
+timeouts. Each selected group gets three fresh repetitions, with later
+repetitions skipped after execution failure. The task deadline can leave
+explicit unattempted groups; there is no automatic further timeout increase.
+
+The original five-minute campaign and its harness remain immutable. Collect
+with `collect.py ORIGINAL OUTPUT --omit-short --followup CONTINUATION` after
+both are terminal. The report presents longer-allowance results separately,
+so original failures remain visible and timings from different hosts or
+attempts are never paired together.

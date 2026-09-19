@@ -33,9 +33,9 @@ three while Task 1 runs, keeping the campaign total at four. After Task 1 is
 terminal the array limit may rise to four; do not add tasks or repeat failures.
 
 [Submissions and local evidence](benchmarks/reports/development/light-2026-09-19/)
-record the attempts. The long Veneto raw-outcome inputs are prepared. Exact raw
-short-panel recovery is unresolved and must not be replaced by a nearly matching
-sample. Installed artifacts, dependency repositories and unrelated work remain
+record the attempts. The long Veneto raw-outcome inputs are prepared. The owner
+subsequently omitted short Veneto; do not recover or rerun it. Its original
+unattempted receipts remain preserved. Installed artifacts, dependency repositories and unrelated work remain
 unchanged. No benchmark conclusions or final report are accepted yet.
 
 The frozen measurement root is `20260919-light-e23f15ca/repair-1` under the SCC
@@ -45,6 +45,15 @@ Local reporting now uses median paired ratios, retains reference audit failures
 (with only ADR 0026's ppmlhdfe exception), and exports native phase/allocation
 diagnostics. Ten focused local checks pass. The LaTeX/vector-figure layout
 compiles; final measured figures still require rendering and visual review.
+
+The owner also allows 15 minutes per PPML regression while retaining a 12-hour
+task cap. Eleven focused checks pass for the bounded continuation. One separate
+dependency-held job `7643785` (after array `7643462`) selects original PPML command timeouts only, includes
+fresh native controls and three repeats where executions succeed, and preserves
+input bytes, numerical settings and original failures. Nonconvergence errors
+and OLS timeouts are not retried. Collection/reporting keeps this continuation
+separate; use `--omit-short --followup CONTINUATION` when collecting the final
+report. No short-panel follow-up was submitted.
 
 ## Practical whole-action memory reporting — 2026-09-18
 

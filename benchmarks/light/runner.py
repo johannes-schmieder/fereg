@@ -83,7 +83,7 @@ def import_audit(output, data):
     (output/"IMPORT.CHECKED").write_text("PASS\n")
 
 
-def measure(root,c,arm,threads,rep,data,warm,output,cpus,identity,deadline):
+def measure(root,c,arm,threads,rep,data,warm,output,cpus,identity,deadline,command_timeout=300):
     output.mkdir(parents=True,exist_ok=False)
     cfg = dict(cell=c,arm=arm,threads=threads,repetition=rep,data=str(data),warm=str(warm),output=str(output),
                source=str(root/"candidate"),refs=str(root/"references"),
@@ -127,7 +127,7 @@ def measure(root,c,arm,threads,rep,data,warm,output,cpus,identity,deadline):
                     reason = "task_deadline"
                 elif begun is None and now-start>180:
                     reason = "startup_timeout"
-                elif begun is not None and finished is None and now-begun>300:
+                elif begun is not None and finished is None and now-begun>command_timeout:
                     reason = "command_timeout"
                 elif finished is not None and now-finished>180:
                     reason = "extraction_timeout"
@@ -148,7 +148,8 @@ def measure(root,c,arm,threads,rep,data,warm,output,cpus,identity,deadline):
                   process_returncode=process.returncode,sentinel=sentinel,memory=memory,
                   input_sha256=sha256(data),runtime_identity=identity,cpu_affinity=cpus[:threads],
                   host=socket.gethostname(),job_id=os.environ.get("JOB_ID"),task_id=os.environ.get("LIGHT_TASK_ID"),
-                  command_time_lower_bound=300 if reason=="command_timeout" else None)
+                  command_timeout_seconds=command_timeout,
+                  command_time_lower_bound=command_timeout if reason=="command_timeout" else None)
     write_json(output/"result.json",result)
     if status=="pass":
         # Independent numerical work runs after DONE and outside memory/timing.

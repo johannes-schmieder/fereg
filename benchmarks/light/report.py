@@ -122,7 +122,7 @@ def panel(rows,path,model,metric,selector,xvalues,labels,ratio=False):
         ax.text(.5,.5,"No eligible measurements" if ratio else "No complete measurements",ha="center",va="center",transform=ax.transAxes)
     ax.set_xticks(range(len(xvalues)),labels,rotation=25 if len(labels)>3 else 0,ha="right" if len(labels)>3 else "center")
     ax.set_ylabel(unit)
-    ax.set_xlim(-.25,len(xvalues)-.75 if len(xvalues)>1 else .75)
+    ax.set_xlim((-.25,len(xvalues)-.75) if len(xvalues)>1 else (-.5,.5))
     fig.tight_layout()
     fig.savefig(path)
     plt.close(fig)
@@ -247,9 +247,9 @@ def build(data,output):
         for model in ARMS:
             for metric in ("seconds","pss_gib"):
                 name=f"veneto-{model}-{metric}-ratio{int(ratio)}.pdf"
-                panel(rows,figures/name,model,metric,lambda r:r["design"],["veneto_short","veneto_long"],["1999 / 2001","1996--2001"],ratio)
+                panel(rows,figures/name,model,metric,lambda r:r["design"],["veneto_long"],["1996--2001"],ratio)
                 panels.append((name,model.upper()+(" time" if metric=="seconds" else " PSS")))
-        exhibits.append(composite(panels,r"Veneto panels: 1,319,994 and 5,163,428 planned observations. "+(r"Ratios below one favor fereg. " if ratio else "")+legend,"fig:veneto"+str(int(ratio))))
+        exhibits.append(composite(panels,r"Long Veneto panel: 5,163,428 observations. The short panel was omitted at the owner's request. "+(r"Ratios below one favor fereg. " if ratio else "")+legend,"fig:veneto"+str(int(ratio))))
     counts=Counter(c["status"] for c in data["calls"])
     table="\n".join(tex(k)+" & "+str(v)+r" \\" for k,v in sorted(counts.items()))
     accounting=data.get("accounting",[])
@@ -263,7 +263,7 @@ def build(data,output):
 \author{fereg development benchmark}\date{September 2026}
 \begin{document}\maketitle
 \begin{abstract}
-This report compares OLS and Poisson pseudo-maximum-likelihood commands on four synthetic graph families and two Veneto panels. It measures complete estimation commands and concurrent peak process-tree proportional set size (PSS). The evidence is developmental, source-bound, and subject to the scientific and sampling checks below; it is not release qualification.
+This report compares OLS and Poisson pseudo-maximum-likelihood commands on four synthetic graph families and the long Veneto panel. It measures complete estimation commands and concurrent peak process-tree proportional set size (PSS). The evidence is developmental, source-bound, and subject to the scientific and sampling checks below; it is not release qualification.
 \end{abstract}
 \section{Evidence and results}
 """
@@ -287,10 +287,24 @@ Sample order, coefficients, covariance, available rank/DoF fields, objectives, p
 
 Filled absolute-performance points meet the applicable checks. Hollow points show completed measurements with unresolved discrepancies or evidence limitations. Ratio panels require three comparable repetitions and, for memory, adequate sampling. Missing ratios must not be interpreted as favorable performance. All dispositions and individual repetitions accompany the report in JSON/CSV.
 
-The short Veneto sample comprises 1999 and 2001; the long sample comprises 1996--2001. Their established sample membership is preserved. OLS uses raw log wages and PPML positive wage levels, with age and year controls estimated jointly with worker and firm effects. An unverifiable private-input recovery remains unattempted. Neither panel is described as an exact reconstruction of the historical published KSS sample.
+The Veneto sample comprises 1996--2001 and preserves FEVC's established long-panel membership. OLS uses raw log wages and PPML positive wage levels, with age and year controls estimated jointly with worker and firm effects. The owner omitted the short panel; its original unattempted dispositions remain archived. The long panel is not described as an exact reconstruction of the historical published KSS sample.
 \clearpage
 """
     content+=diagnostics(data,output)
+    if data.get("followup"):
+        extra=data["followup"]
+        extra_rows=summarize(extra)
+        with (output/"ppml_followup_summary.csv").open("w") as stream:
+            if extra_rows:
+                writer=csv.DictWriter(stream,fieldnames=list(extra_rows[0]));writer.writeheader();writer.writerows(extra_rows)
+        content+=r"\section{Longer PPML allowance}"+"\n"
+        content+=r"The owner subsequently allowed up to fifteen minutes per PPML regression, retaining the twelve-hour SGE task limit. One additional bundle revisits only configurations that timed out at five minutes and includes fresh native controls on the same host. Inputs, references, numerical options and scientific thresholds are unchanged. These results form a separate comparison; they do not overwrite the original failures or mix native timings across hosts. A new failure skips that arm's remaining repetitions. The table shows three-run medians where available; incomplete groups remain explicit. Full phases, memory and scientific diagnostics are in the supplemental receipts."+"\n"
+        content+=r"\begin{longtable}{p{.36\textwidth}rlrrl}\toprule Configuration & Cores & Package & Runs & Seconds & Eligible\\\midrule\endhead"+"\n"
+        for row in extra_rows:
+            label=LABELS[row["design"]]+", "+row["variant"].replace("-"," ")+", N="+f"{row['n']:,}"
+            seconds=f"{row['seconds']:.2f}" if row["seconds"] is not None else "--"
+            content+=f"{tex(label)} & {row['threads']} & {row['arm']} & {row['completed']}/3 & {seconds} & "+("yes" if row["science_eligible"] else "no")+r"\\"+"\n"
+        content+=r"\bottomrule\end{longtable}\clearpage"+"\n"
     content+="\n".join(exhibits)
     content+=r"\section*{Reproducibility files}The accompanying \texttt{summary.csv} gives medians, ranges, eligibility, and dispositions. \texttt{results.json} contains all allowlisted per-fit receipts, source/input/runtime identities, observer diagnostics, and scheduler accounting. \texttt{native\_diagnostics.csv} retains available native timing and memory fields. Individual vector figures have adjacent machine-readable selections. Private row data and licensed logs are retained separately and are not included.\end{document}"+"\n"
     (output/"benchmark_report.tex").write_text(content)
