@@ -912,6 +912,24 @@ pub fn fit_prepared_ols_coefficients_map(
     fit_prepared_ols_coefficients_view_map(prepared, config)
 }
 
+pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows(
+    prepared: &PreparedOlsData,
+    config: PreparedOlsFitConfig,
+    rows: Vec<f64>,
+) -> Result<CertifiedPreparedOlsFit> {
+    if config.execution.mode != PreparedOlsExecutionMode::Fast {
+        drop(rows);
+        return fit_prepared_ols_coefficients_map(prepared, config);
+    }
+    ThreadTeam::new(config.execution.threads).install(|| {
+        validate_config(prepared, config)?;
+        let frame = LinearSolveFrame::from_prepared_ols(prepared)?;
+        fit_with_controls_internal_mode_with_frame(prepared, frame, config,
+            &mut SystemFitReservation, FitPerturbations::default(), false,
+            MAX_FAST_SCORE_CACHE_BYTES, None, None, Some(rows))
+    })?
+}
+
 /// Fit the interaction-aware categorical prepared artifact through the exact
 /// same certified MAP, guarded Cholesky/QR, bread, residual, and score path used
 /// by the legacy prepared boundary.
@@ -992,6 +1010,7 @@ pub(crate) fn fit_prepared_weighted_linear_once<'a, P: PreparedOlsFitView + Sync
                 MAX_FAST_SCORE_CACHE_BYTES,
                 phase_probe,
                 phase_observation.as_deref_mut(),
+                None,
             ),
             PreparedOlsExecutionMode::Low => fit_with_controls_low_internal_with_frame(
                 prepared,
@@ -1774,6 +1793,7 @@ fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>
         MAX_FAST_SCORE_CACHE_BYTES,
         None,
         None,
+        None,
     )
 }
 
@@ -1905,6 +1925,7 @@ fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReserva
         max_fast_score_cache_bytes,
         None,
         None,
+        None,
     )
 }
 
@@ -1923,6 +1944,7 @@ fn fit_with_controls_internal_mode_with_frame<
     max_fast_score_cache_bytes: usize,
     phase_probe: Option<LinearSessionPhaseAllocatorProbe>,
     mut phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
+    loaded_rows: Option<Vec<f64>>,
 ) -> Result<CertifiedPreparedOlsFit> {
     let mut trace = PhaseTrace::new();
     frame.validate_for(prepared)?;
@@ -1953,7 +1975,7 @@ fn fit_with_controls_internal_mode_with_frame<
         phase_observation.as_deref_mut(),
         LinearSessionAllocationPhase::Projection,
     );
-    let raw = prepared.fit_build_rhs_with_response(frame.response())?;
+    let raw = prepared.fit_build_rhs_with_loaded_rows(frame.response(), loaded_rows)?;
     let rhs_seconds = trace.lap();
     let generated_columns = prepared.fit_model().columns.len();
     let use_strided_fast_score_cache =

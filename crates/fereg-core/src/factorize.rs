@@ -1,5 +1,6 @@
 use crate::error::{ErrorCode, FeregError, Result};
 use std::collections::HashMap;
+use rayon::prelude::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EncodedFactor<T> {
@@ -128,25 +129,34 @@ where
             levels: Vec::new(),
         }));
     }
-    let mut minimum = i64::MAX;
-    let mut maximum = i64::MIN;
-    for value in values {
-        if !value.is_finite() {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                "categorical numeric source contains a nonfinite value",
-            ));
+    let parallel = values.len() >= 16_384
+        && rayon::current_thread_index().is_some() && rayon::current_num_threads() > 1;
+    let scan = |start: usize, values: &[f64]| {
+        let mut minimum = i64::MAX;
+        let mut maximum = i64::MIN;
+        for (index, &value) in values.iter().enumerate() {
+            if !value.is_finite() { return (minimum, maximum, start + index, true); }
+            if value.fract() != 0.0 || value < i64::MIN as f64 || value >= i64::MAX as f64 {
+                return (minimum, maximum, start + index, false);
+            }
+            minimum = minimum.min(value as i64);
+            maximum = maximum.max(value as i64);
         }
-        let normalized = if *value == 0.0 { 0.0 } else { *value };
-        if normalized.fract() != 0.0
-            || normalized < i64::MIN as f64
-            || normalized >= i64::MAX as f64
-        {
-            return Ok(None);
-        }
-        let integer = normalized as i64;
-        minimum = minimum.min(integer);
-        maximum = maximum.max(integer);
+        (minimum, maximum, usize::MAX, false)
+    };
+    // The earliest row that rejects this specialization controls its result.
+    // A fractional value before a NaN still returns to the existing hash path.
+    let (minimum, maximum, stop, nonfinite) = if parallel {
+        values.par_chunks(4096).enumerate().map(|(chunk, values)| scan(chunk * 4096, values))
+            .reduce(|| (i64::MAX, i64::MIN, usize::MAX, false), |left, right| {
+                let first = if left.2 <= right.2 { left } else { right };
+                (left.0.min(right.0), left.1.max(right.1), first.2, first.3)
+            })
+    } else { scan(0, values) };
+    if stop != usize::MAX {
+        return if nonfinite {
+            Err(FeregError::new(ErrorCode::InvalidData, "categorical numeric source contains a nonfinite value"))
+        } else { Ok(None) };
     }
     let range_i128 = i128::from(maximum) - i128::from(minimum) + 1;
     let dense_limit = values.len().saturating_mul(2).max(4_096);
@@ -193,11 +203,19 @@ where
     codes
         .try_reserve_exact(values.len())
         .map_err(|_| allocation())?;
-    for value in values {
-        let integer = if *value == 0.0 { 0 } else { *value as i64 };
-        let offset =
-            usize::try_from(i128::from(integer) - i128::from(minimum)).map_err(|_| allocation())?;
-        codes.push(canonical_by_offset[offset]);
+    if parallel {
+        // The range scan proved every offset fits the admitted lookup table.
+        // Indexed collection initializes the already reserved codes in place.
+        values.par_iter().map(|value| {
+            let offset = (i128::from(*value as i64) - i128::from(minimum)) as usize;
+            canonical_by_offset[offset]
+        }).collect_into_vec(&mut codes);
+    } else {
+        for value in values {
+            let integer = if *value == 0.0 { 0 } else { *value as i64 };
+            let offset = usize::try_from(i128::from(integer) - i128::from(minimum)).map_err(|_| allocation())?;
+            codes.push(canonical_by_offset[offset]);
+        }
     }
     Ok(Some(EncodedFactor { codes, levels }))
 }
@@ -289,6 +307,29 @@ mod tests {
         let encoded = factorize_f64(&[2.0, -1.0, 2.0, 0.0, -1.0]).expect("factorize");
         assert_eq!(encoded.levels, vec![-1.0, 0.0, 2.0]);
         assert_eq!(encoded.codes, vec![2, 0, 2, 1, 0]);
+    }
+
+    #[test]
+    fn parallel_dense_factorization_preserves_codes_and_first_stop() {
+        use crate::{ThreadConfig, ThreadTeam};
+        let allocation = || FeregError::new(ErrorCode::Allocation, "injected allocation");
+        for rows in [16383, 16384, 32771] {
+            let mut values: Vec<_> = (0..rows).map(|r| if r % 59 == 0 { -0.0 }
+                else { ((r * 71) % 971) as f64 - 500.0 }).collect();
+            let reference = factorize_f64(&values).unwrap();
+            let team = ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap());
+            assert_eq!(reference, team.install(|| factorize_f64(&values)).unwrap().unwrap());
+            for first in [0, 4095, rows - 2] {
+                for pair in [[0.5, f64::NAN], [f64::NAN, 0.5], [i64::MAX as f64, f64::INFINITY], [f64::NEG_INFINITY, -0.5]] {
+                    let old = [values[first], values[first + 1]];
+                    values[first] = pair[0]; values[first + 1] = pair[1];
+                    assert_eq!(factorize_dense_integer_f64(&values, allocation),
+                        team.install(|| factorize_dense_integer_f64(&values, allocation)).unwrap());
+                    assert_eq!(factorize_f64(&values), team.install(|| factorize_f64(&values)).unwrap());
+                    values[first] = old[0]; values[first + 1] = old[1];
+                }
+            }
+        }
     }
 
     #[test]

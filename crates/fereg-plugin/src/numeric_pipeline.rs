@@ -60,8 +60,21 @@ pub(crate) fn try_read(
     team: ThreadTeam,
     memory: &mut InputMemory,
 ) -> Result<bool> {
+    try_read_with_rhs(spi, positions, columns, missing, team, memory, None)
+}
+
+pub(crate) fn try_read_with_rhs(
+    spi: &mut dyn SpiApi,
+    positions: &[u32],
+    columns: &mut [&mut [f64]],
+    missing: &mut [&mut [bool]],
+    team: ThreadTeam,
+    memory: &mut InputMemory,
+    mut rhs: Option<&mut Vec<f64>>,
+) -> Result<bool> {
+    let min_width = if rhs.is_some() { 8 } else { 16 };
     if !spi.supports_numeric_rows() || team.threads() <= 1
-        || !(16..=MAX_COLUMNS).contains(&positions.len())
+        || !(min_width..=MAX_COLUMNS).contains(&positions.len())
         || columns.is_empty() || columns[0].len() < 16_384
     {
         return Ok(false);
@@ -72,6 +85,9 @@ pub(crate) fn try_read(
         || columns.iter().zip(missing.iter()).any(|(values, flags)| values.len() != rows || flags.len() != rows)
     {
         return Err(FeregError::new(ErrorCode::InvalidArgument, "numeric pipeline has an invalid shape"));
+    }
+    if rhs.as_ref().is_some_and(|buffer| !buffer.is_empty() || rows.checked_mul(width).is_none_or(|n| buffer.capacity() < n)) {
+        return Err(FeregError::new(ErrorCode::InvalidArgument, "numeric RHS reservation has an invalid shape"));
     }
     let elements = TILE_ROWS * width;
     let bytes = 2 * elements * std::mem::size_of::<f64>() + std::mem::size_of::<Handoff>();
@@ -101,7 +117,7 @@ pub(crate) fn try_read(
             let _close = CloseOnDrop(&handoff);
             let mut index = 0;
             loop {
-                let tile = {
+                let mut tile = {
                     let mut slots = handoff.lock();
                     loop {
                         if let Some(tile) = slots.ready[index].take() {
@@ -119,6 +135,15 @@ pub(crate) fn try_read(
                         destination[tile.start + offset] = value;
                         missing_flags[tile.start + offset] = value >= tile.missing_boundary;
                     }
+                }
+                if let Some(rhs) = rhs.as_mut() {
+                    // This admitted recipe has outcome and continuous sources in
+                    // input order, followed by the one FE source. The original
+                    // FE values already reached their authoritative column.
+                    for row in tile.values[..tile.rows * width].chunks_exact_mut(width) {
+                        row[width - 1] = 1.0;
+                    }
+                    rhs.extend_from_slice(&tile.values[..tile.rows * width]);
                 }
                 handoff.lock().free[index] = Some(tile.values);
                 handoff.changed.notify_all();
@@ -225,6 +250,36 @@ mod tests {
             }
         }
         Ok(read)
+    }
+
+    #[test]
+    fn numeric_pipeline_constructs_owned_rhs_without_changing_fe_or_missing() {
+        for width in [9, 12, 52, 64] {
+            let rows = 16387;
+            let positions: Vec<u32> = (1..=width as u32).rev().collect();
+            let mut values = vec![vec![0.0; rows]; width];
+            let mut flags = vec![vec![false; rows]; width];
+            let mut columns: Vec<_> = values.iter_mut().map(Vec::as_mut_slice).collect();
+            let mut missing: Vec<_> = flags.iter_mut().map(Vec::as_mut_slice).collect();
+            let mut rhs = Vec::with_capacity(rows * width);
+            let capacity = rhs.capacity();
+            let mut input = Input::new();
+            assert!(try_read_with_rhs(&mut input, &positions, &mut columns, &mut missing,
+                ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
+                &mut InputMemory::new(None, (capacity * 8) as u128).unwrap(), Some(&mut rhs)).unwrap());
+            assert_eq!(rhs.capacity(), capacity);
+            assert_eq!(rhs.len(), rows * width);
+            for row in 0..rows {
+                for column in 0..width {
+                    let is_missing = (row + 1) % 197 == 0;
+                    let expected = if is_missing { input.boundary }
+                        else { (row + 1) as f64 + f64::from(positions[column]) * 100000.0 };
+                    assert_eq!(values[column][row], expected);
+                    assert_eq!(flags[column][row], is_missing);
+                    assert_eq!(rhs[row * width + column], if column == width - 1 { 1.0 } else { expected });
+                }
+            }
+        }
     }
 
     #[test]

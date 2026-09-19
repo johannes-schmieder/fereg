@@ -24,6 +24,7 @@ use fereg_core::ols::{
     fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
+    fit_prepared_ols_unadjusted_map_with_loaded_rows, PreparedOlsColumnKind,
     prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
     prepare_ols_data_owned, CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput,
     OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
@@ -140,6 +141,7 @@ struct EstimateAction {
     metadata_owner_bytes: u128,
     metadata_peak_bytes: u128,
     input_peak_bytes: u128,
+    loaded_rhs_bytes: u128,
     publication_memory: crate::ols_publication_memory::OlsPublicationMemory,
     requested_tolerance: f64,
     outputs: ObservationOutputs,
@@ -241,6 +243,11 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         && !action.request.bindings.iter().any(|binding| matches!(binding.role,
             OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight)))
         .then(|| ThreadTeam::new(action.fit.execution.threads));
+    let mut loaded_rhs = None;
+    let rhs_budget = if action.fit.execution.mode != PreparedOlsExecutionMode::Fast { 0 } else { action.memory_plan.usable_bytes.map_or(usize::MAX, |usable| {
+        usize::try_from(usable.saturating_sub(action.metadata_owner_bytes)
+            .saturating_sub(action.preparation_memory.preparation_peak_bytes(0).unwrap_or(u128::MAX))).unwrap_or(usize::MAX)
+    }) };
     let loaded = load_ols_input_with_team(
         &action.request,
         action.candidate_all,
@@ -248,7 +255,10 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &mut input_memory,
         spi,
         input_team,
+        &mut loaded_rhs,
+        rhs_budget,
     )?;
+    action.loaded_rhs_bytes = loaded_rhs.as_ref().map_or(0, |rows| rows.capacity() as u128 * 8);
     action.input_peak_bytes = input_memory.peak();
     let input_load_seconds = started.elapsed().as_secs_f64() - preflight_seconds;
     let observation = ActionObservation {
@@ -272,13 +282,14 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
-            let inference = fit_prepared_ols_unadjusted_map(
+            let inference = fit_prepared_ols_unadjusted_map_with_loaded_rows(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
                     fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     ..PreparedOlsUnadjustedConfig::default()
                 },
+                loaded_rhs,
             )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let inference_seconds = inference_started.elapsed().as_secs_f64();
@@ -543,7 +554,7 @@ impl EstimateAction {
             Stage::Preparation,
             Frame {
                 parents: self.metadata_owner_bytes,
-                workspace: self.preparation_memory.preparation_peak_bytes(0)?,
+                workspace: self.preparation_memory.preparation_peak_bytes(self.loaded_rhs_bytes)?,
             },
             Gaps::CONSTRUCTION.union(Gaps::WORKER_RUNTIME),
         )?;
@@ -610,7 +621,7 @@ impl EstimateAction {
             sum(&[self.execution_parent_bytes, u128::from(solver)])?
         };
         let preparation = sum(&[self.metadata_owner_bytes,
-            self.preparation_memory.preparation_peak_bytes(0)?])?;
+            self.preparation_memory.preparation_peak_bytes(self.loaded_rhs_bytes)?])?;
         let publication = sum(&[self.output_parent_bytes, self.publication_memory.peak_bytes()])?;
         let native_peak = fit.max(preparation).max(publication)
             .max(self.metadata_peak_bytes).max(self.input_peak_bytes);
@@ -1240,6 +1251,7 @@ impl EstimateActionSpec {
             metadata_owner_bytes: 0,
             metadata_peak_bytes,
             input_peak_bytes: 0,
+            loaded_rhs_bytes: 0,
             publication_memory,
             requested_tolerance: self.tolerance,
             outputs: self.outputs.clone(),
@@ -1590,7 +1602,7 @@ pub(crate) fn load_ols_input_with_memory(
     memory: &mut InputMemory,
     spi: &mut dyn SpiApi,
 ) -> Result<LoadedOlsInput> {
-    load_ols_input_with_team(request, candidate_all, input_complete, memory, spi, None)
+    load_ols_input_with_team(request, candidate_all, input_complete, memory, spi, None, &mut None, 0)
 }
 
 fn load_ols_input_with_team(
@@ -1600,6 +1612,8 @@ fn load_ols_input_with_team(
     memory: &mut InputMemory,
     spi: &mut dyn SpiApi,
     team: Option<ThreadTeam>,
+    rhs: &mut Option<Vec<f64>>,
+    rhs_budget: usize,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
     let mut candidate = reserved_filled(n, candidate_all, "OLS candidate marker")?;
@@ -1708,7 +1722,34 @@ fn load_ols_input_with_team(
         }
         let pipelined = if candidate_all && all_sources_numeric {
             if let Some(team) = team {
-                crate::numeric_pipeline::try_read(spi, &positions, &mut columns, &mut missing, team, memory)?
+                let width = positions.len();
+                if spi.supports_numeric_rows() && team.threads() > 1 && n >= 16_384
+                    && (9..=64).contains(&width)
+                    && request.absorbed_terms.len() == 1
+                    && request.absorbed_terms[0].categorical_sources.len() == 1
+                    && !request.bindings.iter().any(|binding| matches!(binding.role,
+                        OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight))
+                {
+                    let model = request.validate_and_compile()?;
+                    let shape_matches = model.columns.len() + 1 == width
+                        && matches!(model.columns.last().map(|c| &c.kind), Some(PreparedOlsColumnKind::Intercept))
+                        && model.columns[..model.columns.len() - 1].iter().enumerate().all(|(index, column)|
+                            matches!(column.kind, PreparedOlsColumnKind::Continuous { prepared_source_index, .. } if index == prepared_source_index));
+                    if shape_matches {
+                        if let Some(elements) = n.checked_mul(width) {
+                            if let Some(bytes) = elements.checked_mul(8).filter(|bytes| *bytes <= rhs_budget && *bytes <= memory.remaining().saturating_sub(2 * 4096 * width * 8 + 4096)) {
+                                memory.admit(bytes as u128)?;
+                                let mut rows = Vec::new();
+                                rows.try_reserve_exact(elements).map_err(|_| allocation("unable to reserve numeric loaded RHS"))?;
+                                if rows.capacity() == elements {
+                                    memory.retain(bytes as u128)?;
+                                    *rhs = Some(rows);
+                                }
+                            }
+                        }
+                    }
+                }
+                crate::numeric_pipeline::try_read_with_rhs(spi, &positions, &mut columns, &mut missing, team, memory, rhs.as_mut())?
             } else { false }
         } else { false };
         if !pipelined {
@@ -3549,6 +3590,7 @@ mod tests {
         string_variables: BTreeSet<u32>,
         strl_variables: BTreeSet<u32>,
         numeric_reads: usize,
+        numeric_rows_enabled: bool,
         numeric_batches: Vec<(usize, usize, Vec<u32>)>,
         store_calls: usize,
         fail_store_at: Option<usize>,
@@ -3559,6 +3601,17 @@ mod tests {
     }
 
     impl SpiApi for FakeSpi {
+        fn supports_numeric_rows(&self) -> bool { self.numeric_rows_enabled }
+        fn read_numeric_rows(&mut self, variables: &[u32], first: usize, output: &mut [f64]) -> Result<f64> {
+            for (row, values) in output.chunks_exact_mut(variables.len()).enumerate() {
+                for (value, variable) in values.iter_mut().zip(variables) {
+                    let (number, missing) = self.read_numeric(*variable, first + row)?;
+                    *value = if missing { 1e100 } else { number };
+                }
+            }
+            Ok(1e100)
+        }
+
         fn read_estimate_bundle(&mut self, buffer: &mut [u8]) -> Result<()> {
             self.macro_reads += 1;
             let value = self
@@ -4092,6 +4145,7 @@ mod tests {
                 string_variables: BTreeSet::new(),
                 strl_variables: BTreeSet::new(),
                 numeric_reads: 0,
+                numeric_rows_enabled: false,
                 numeric_batches: Vec::new(),
                 store_calls: 0,
                 fail_store_at: None,
@@ -5184,6 +5238,65 @@ mod tests {
                 assert!((stored_numeric(&spi, 11, observation) - (mean - overall)).abs() <= 1e-11);
             }
             assert_eq!(spi.receipt_complete(), 1.0);
+        }
+    }
+
+    #[test]
+    fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
+        let (_, mut spi) = fixture(OlsVceKind::Iid);
+        spi.nobs = 16_387;
+        spi.nvars = 13;
+        spi.numeric_rows_enabled = true;
+        spi.data.clear();
+        for row in 1..=spi.nobs {
+            for variable in 1..=13 {
+                let value = if variable == 1 { 1.0 } else if variable == 13 { ((row - 1) / 5 + 1) as f64 }
+                    else { ((row * variable as usize) as f64).sin() + ((row + variable as usize * 13) as f64).cos() };
+                spi.data.insert((variable, row), (value, false));
+            }
+        }
+        let mut request = OlsRequestV1 { model: CompiledTermGraph { sources: Vec::new(), terms: Vec::new() },
+            bindings: vec![OlsInputBinding { stata_var_position: 1, role: OlsInputRole::Candidate },
+                OlsInputBinding { stata_var_position: 2, role: OlsInputRole::Outcome }],
+            absorbed_terms: vec![AbsorbedTerm { id: AbsorbTermId::new(1).unwrap(), intercept: true,
+                categorical_sources: vec![SourceId::new(11).unwrap()], slope_sources: Vec::new(),
+                label: "g".to_owned(), saved_name: String::new() }], include_intercept: true, keep_singletons: false };
+        for id in 1..=11 {
+            let source = SourceId::new(id).unwrap();
+            request.model.sources.push(SourceEntry { id: source, canonical_name: format!("x{id}") });
+            request.bindings.push(OlsInputBinding { stata_var_position: id + 2, role: OlsInputRole::NumericSource(source) });
+            if id < 11 {
+                let mut term = continuous_term(source);
+                term.id = TermId::new(id).unwrap(); term.order = TermOrder::new(id).unwrap();
+                term.coefficient_slot = CoefficientSlot::new(id).unwrap(); term.canonical_token = format!("c.x{id}");
+                request.model.terms.push(term);
+            }
+        }
+        let required = spi.nobs * 12 * 8;
+        for (budget, threads, reorder, missing) in [(required, 4, false, false),
+            (required - 1, 4, false, false), (required, 1, false, false),
+            (required, 4, true, false), (required, 4, false, true)] {
+            let mut request = request.clone();
+            let mut spi = spi.clone();
+            if reorder { request.model.terms[0].components[0].source = SourceId::new(2).unwrap(); request.model.terms[1].components[0].source = SourceId::new(1).unwrap(); }
+            if missing { spi.data.insert((2, 3), (1e100, true)); }
+            let reference_loaded = load_ols_input(&request, true, false, &mut spi.clone()).unwrap();
+            let mut rhs = None;
+            let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
+            let loaded = load_ols_input_with_team(&request, true, false, &mut memory, &mut spi,
+                Some(ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())), &mut rhs, budget).unwrap();
+            assert_eq!(loaded, reference_loaded);
+            assert_eq!(rhs.is_some(), budget == required && threads > 1 && !reorder);
+            if let Some(rows) = rhs.as_ref() { assert_eq!(rows.capacity() * 8, required); assert!(memory.peak() >= required as u128); }
+            let prepared = prepare_ols_data_owned(&request, loaded).unwrap();
+            let mut config = PreparedOlsUnadjustedConfig::default();
+            config.fit.execution.threads = ThreadConfig::from_requested(4, false).unwrap();
+            let reference = fit_prepared_ols_unadjusted_map(&prepared, config).unwrap();
+            let actual = fit_prepared_ols_unadjusted_map_with_loaded_rows(&prepared, config, rhs).unwrap();
+            assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
+            assert_eq!(reference.covariance(), actual.covariance());
+            assert_eq!(reference.statistics(), actual.statistics());
+            assert_eq!(reference.certificate(), actual.certificate());
         }
     }
 

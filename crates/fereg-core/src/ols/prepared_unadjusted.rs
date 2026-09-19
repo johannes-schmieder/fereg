@@ -388,9 +388,22 @@ pub fn fit_prepared_ols_unadjusted_map(
     prepared: &PreparedOlsData,
     config: PreparedOlsUnadjustedConfig,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
+    fit_prepared_ols_unadjusted_map_with_loaded_rows(prepared, config, None)
+}
+
+/// Optional action-owned numeric input matrix. Its shape and every value are
+/// checked against the authoritative prepared columns before reuse.
+pub fn fit_prepared_ols_unadjusted_map_with_loaded_rows(
+    prepared: &PreparedOlsData,
+    config: PreparedOlsUnadjustedConfig,
+    rows: Option<Vec<f64>>,
+) -> Result<CertifiedPreparedOlsUnadjusted> {
     validate_config(config)?;
     reject_probability_iid(prepared)?;
-    let fit = fit_prepared_ols_coefficients_map(prepared, config.fit)?;
+    let fit = match rows {
+        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(prepared, config.fit, rows)?,
+        None => fit_prepared_ols_coefficients_map(prepared, config.fit)?,
+    };
     let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let mut reservation = SystemInferenceReservation;
     crate::ThreadTeam::new(config.fit.execution.threads).install(|| compose_internal(

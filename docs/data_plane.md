@@ -21,6 +21,17 @@ unsupported shape selects the existing column reader before any tiled read.
 The input-stage ledger retains the explicit worker-runtime coverage gap for
 opaque Rayon/native thread storage, as later native phases already do.
 
+For fast-memory calls whose generated design is the loaded continuous sources
+in order followed by an intercept, the worker may also append each tile to an
+admitted RHS owner. This extends overlap to 9–64 loaded columns. The worker
+copies the FE source before replacing its tile slot with the constant. The RHS
+capacity is charged beside input scratch and throughout preparation, then
+transferred into the fit's existing matrix allowance. The prepared RHS builder
+retains its validation order and checks every value bit against the final
+prepared design before consuming this owner. A changed sample or recipe
+releases the speculative matrix before ordinary construction. This is a
+same-call ownership transfer, with no reusable data cache or extra SPI call.
+
 For each original row, candidate exclusion from `if`/`in` is applied first.
 On candidate rows, outcome, ordinary terms, weights, fixed effects, clusters,
 and time-series materializations are checked in the registered precedence.

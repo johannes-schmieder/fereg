@@ -91,6 +91,27 @@ pub fn absorb_prepared_ols_rhs_map(
     absorb_borrowed_intercept_map_with_structural_constant_certified(&design, weights, rhs, config)
 }
 
+/// Reuse a speculative input matrix only after the authoritative sample and
+/// every numeric value agree. Failed speculation frees the owner before the
+/// ordinary builder runs; it cannot change samples, recipes or error ordering.
+pub(crate) fn build_prepared_ols_rhs_with_loaded_rows(
+    prepared: &PreparedOlsData,
+    response: &[f64],
+    rows: Option<Vec<f64>>,
+) -> Result<PreparedOlsRhs> {
+    if let Some(rows) = rows {
+        validate_prepared_rhs_inputs(prepared, response)?;
+        if let Some(columns) = NumericOlsColumns::bind(&prepared.model, &prepared.sample)? {
+            if columns.matches_rhs(response, &rows) {
+                return Ok(PreparedOlsRhs { values: DenseMatrix::from_row_major(
+                    response.len(), prepared.model.columns.len() + 1, rows,
+                )? });
+            }
+        }
+    }
+    build_prepared_ols_rhs_with_response(prepared, response)
+}
+
 fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
     prepared: &PreparedOlsData,
     response: &[f64],
@@ -287,6 +308,24 @@ impl<'a> NumericOlsColumns<'a> {
             width: model.columns.len(),
             rows: sample.n_active(),
         }))
+    }
+
+    fn matches_rhs(&self, response: &[f64], data: &[f64]) -> bool {
+        let width = self.width + 1;
+        response.len() == self.rows && self.rows.checked_mul(width) == Some(data.len())
+            && data.par_chunks(NUMERIC_TILE_ROWS * width).enumerate().all(|(tile, input)| {
+                let start = tile * NUMERIC_TILE_ROWS;
+                for (offset, row) in input.chunks_exact(width).enumerate() {
+                    if row[0].to_bits() != response[start + offset].to_bits() { return false; }
+                }
+                for (column, source) in self.columns[..self.width].iter().enumerate() {
+                    for (offset, row) in input.chunks_exact(width).enumerate() {
+                        let expected = source.map_or(1.0, |values| values[start + offset]);
+                        if row[column + 1].to_bits() != expected.to_bits() { return false; }
+                    }
+                }
+                true
+            })
     }
 
     pub(crate) fn fill_reserved_rhs(&self, response: &[f64], data: &mut Vec<f64>) -> Result<()> {
@@ -1027,6 +1066,55 @@ mod tests {
             },
         )
         .expect("prepared")
+    }
+
+    #[test]
+    fn loaded_rhs_reuse_preserves_bits_and_rejects_stale_rows() {
+        use crate::{ThreadConfig, ThreadTeam};
+        for width in [9_usize, 12, 52, 64] {
+            let n = 4099;
+            let mut request = request(false, true);
+            request.model.sources.clear();
+            request.model.terms.clear();
+            request.bindings.truncate(2);
+            let mut input = LoadedOlsInput { candidate: vec![true; n],
+                outcome: loaded((0..n).map(|r| (r as f64).cos()).collect()),
+                numeric_sources: Vec::new(), analytic_weight: None,
+                frequency_weight: None, probability_weight: None };
+            for j in 0..width - 2 {
+                let source = source(j as u32 + 1, &format!("x{j}"));
+                request.model.terms.push(continuous_term(j as u32 + 1, source.id));
+                request.bindings.push(OlsInputBinding { stata_var_position: j as u32 + 3,
+                    role: OlsInputRole::NumericSource(source.id) });
+                input.numeric_sources.push((source.id, loaded((0..n).map(|r|
+                    if r == 0 { -0.0 } else { ((r * 17 + j) as f64).sin() * if j % 2 == 0 { 1e90 } else { 1e-90 } }).collect())));
+                request.model.sources.push(source);
+            }
+            let mut prepared = prepare_ols_data(&request, &input).unwrap();
+            for threads in [1, 4] {
+                ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()).install(|| {
+                    let reference = build_prepared_ols_rhs(&prepared).unwrap().into_values();
+                    let rows = reference.as_slice().to_vec();
+                    let pointer = rows.as_ptr();
+                    let reused = build_prepared_ols_rhs_with_loaded_rows(&prepared, &prepared.sample.outcome, Some(rows)).unwrap().into_values();
+                    assert_eq!(pointer, reused.as_slice().as_ptr());
+                    assert!(reference.as_slice().iter().zip(reused.as_slice()).all(|(a,b)| a.to_bits() == b.to_bits()));
+                    for cell in [0, 1, width - 1, n * width / 2, n * width - 1] {
+                        let mut stale = reference.as_slice().to_vec();
+                        stale[cell] = f64::NAN;
+                        let result = build_prepared_ols_rhs_with_loaded_rows(&prepared, &prepared.sample.outcome, Some(stale)).unwrap().into_values();
+                        assert!(reference.as_slice().iter().zip(result.as_slice()).all(|(a,b)| a.to_bits() == b.to_bits()));
+                    }
+                    for length in [0, n * width - 1, n * width + 1] {
+                        let result = build_prepared_ols_rhs_with_loaded_rows(&prepared, &prepared.sample.outcome, Some(vec![0.0; length])).unwrap().into_values();
+                        assert_eq!(reference, result);
+                    }
+                }).unwrap();
+            }
+            prepared.sample.regressors[0][0] = f64::NAN;
+            assert_eq!(build_prepared_ols_rhs(&prepared).unwrap_err(),
+                build_prepared_ols_rhs_with_loaded_rows(&prepared, &prepared.sample.outcome, Some(Vec::new())).unwrap_err());
+        }
     }
 
     #[test]

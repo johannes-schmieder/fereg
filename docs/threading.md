@@ -26,6 +26,10 @@ OLS preparation installs this team from eight numeric sources and 16,384 rows;
 classification still selects errors in observation order. IID composition also
 uses the resolved team: for large samples its independent residual scan can
 overlap outcome mean/TSS scans without changing their arithmetic or error order.
+Dense integer FE encoding also uses an already installed team from 16,384
+rows: the range scan preserves the first ineligible/nonfinite row, and indexed
+collection fills the fallibly reserved code vector without another allocation.
+Canonical levels, signed-zero normalization and hash fallback remain unchanged.
 Retired scoped teams signal shutdown and join their worker handles after the
 cache mutex is released. New and old teams can coexist during replacement.
 The general Rust API avoids self-join when external asynchronous work drops the

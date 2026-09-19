@@ -1,0 +1,72 @@
+{
+  "status": "pass",
+  "unit_checks": {
+    "loaded-rhs-tests.log": "9dc34f6eaf74a7deac1fc2775d0d1889b15f8aae0a595a49c15b4b3f24dfd80a",
+    "loaded-rhs-pipeline-tests.log": "cc7cf005e7a04b216d700facf5523daabcceb70dcfdbe308e6095213aa4cd6a8",
+    "loaded-rhs-boundary-tests-final.log": "fa870451ada1459753e949398cbc2c20aa153b7b8d39ab8cc252cd8d2545bdae",
+    "factor-tests-final.log": "029c7773e5990262e242ffa6ec06377b3a41a7f0a546ff29711822c2c97e551a"
+  },
+  "licensed_fixtures": {
+    "loadedrhs": [
+      {
+        "fixture": "development/ols_native_input.do",
+        "sha256": "7496a8c52687fb150c140783dc9cfaaaef6c1c7b44f1173232695de8ab7cd813",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|ols_native_input|rc=0",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "development/candidate_input_oracle.do",
+        "sha256": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|candidate_input_oracle|rc=0",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "installation/estimate_ols_eclass_transaction.do",
+        "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+        "terminal_sentinel": true
+      }
+    ],
+    "factor": [
+      {
+        "fixture": "development/ols_native_input.do",
+        "sha256": "7496a8c52687fb150c140783dc9cfaaaef6c1c7b44f1173232695de8ab7cd813",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|ols_native_input|rc=0",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "development/candidate_input_oracle.do",
+        "sha256": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|candidate_input_oracle|rc=0",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "installation/estimate_ols_eclass_transaction.do",
+        "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+        "terminal_sentinel": true
+      }
+    ]
+  },
+  "scope": "Local arm64 development; no qualification, installed-artifact replacement or remote work.",
+  "test_only_additions_after_build": {
+    "crates/fereg-plugin/src/estimate.rs": "1573651345665e90268287109dcff62d739adc0f8521ad014f6b27e05e4eb51d"
+  },
+  "failed_attempts": [
+    "Factor test initially indexed one element beyond a threshold fixture; fixed and rerun.",
+    "RHS loader test initially removed a source use rather than reordering sources; corrected to a valid reordered model and rerun."
+  ],
+  "native_science": "All measured coefficient, covariance, status, DoF, fit and certificate exports are bit-identical to the baseline; existing fixest tolerances unchanged."
+}

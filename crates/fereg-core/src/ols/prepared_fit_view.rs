@@ -226,6 +226,12 @@ pub(crate) trait PreparedOlsFitView: Sync {
     /// response. Implementations retain their layout-specific hot path.
     fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix>;
 
+    fn fit_build_rhs_with_loaded_rows(&self, response: &[f64], rows: Option<Vec<f64>>) -> Result<DenseMatrix> {
+        drop(rows);
+        self.fit_build_rhs_with_response(response)
+    }
+
+
     /// Build a bounded contiguous block of generated columns. The outcome is
     /// included as column zero only when requested.
     #[allow(dead_code)]
@@ -718,6 +724,11 @@ impl PreparedOlsFitView for PreparedOlsData {
     fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix> {
         Ok(build_prepared_ols_rhs_with_response(self, response)?.into_values())
     }
+
+    fn fit_build_rhs_with_loaded_rows(&self, response: &[f64], rows: Option<Vec<f64>>) -> Result<DenseMatrix> {
+        Ok(crate::ols::build_prepared_ols_rhs_with_loaded_rows(self, response, rows)?.into_values())
+    }
+
 
     fn fit_absorb_map(
         &self,

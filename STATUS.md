@@ -12,6 +12,23 @@ completed optimization/calibration investigation chronology formerly here.
 
 ## One-FE optimization implementation — 2026-09-19
 
+
+RHS construction during loading and parallel dense integer FE encoding have
+adoption evidence in
+`benchmarks/reports/development/one-fe-loaded-rhs-2026-09-19/`: 181 accepted calls,
+bit-identical native science, focused ownership/fallback/threshold/error-order
+tests, six licensed fixtures and both ABI checks. Five fresh primary blocks give
+baseline/combined/fixest medians of 204/190/140 ms (K=10) and 502/479/462 ms (K=50).
+All eleven protected controls pass: maximum combined median ratio 1.0094,
+geometric mean 0.9709. Same-call RHS storage is admitted through preparation and
+checked against the authoritative prepared values before the fit consumes it.
+The wide observed native peak remains unchanged. The 5% win target is unmet.
+The public-name shortcut was also rejected; its 18 calls and metadata audit are
+in `benchmarks/reports/development/one-fe-metadata-screen-2026-09-19/`.
+New diagnostic ado timers show public/transaction syntax itself is negligible;
+the remaining Stata cost needs finer attribution to temporary data, publication
+and program-exit cleanup. Continue from these committed native improvements.
+
 Native preparation/statistics scheduling has adoption evidence in
 `benchmarks/reports/development/one-fe-native-scheduling-2026-09-19/`:
 133 accepted calls (including one five-pair control recheck), exact native
@@ -24,8 +41,6 @@ Plain numeric parsing and contiguous-group projection did not show enough
 repeatable command benefit and were removed. Their 56 accepted measurements,
 metadata/kernel checks and patches are preserved in
 `benchmarks/reports/development/one-fe-discarded-shortcuts-2026-09-19/`.
-The smaller public-name adapter shortcut is under measurement. Next substantial
-boundary: construct the RHS during loading to avoid later materialization.
 No win is claimed. The native scheduling milestone is committed in `223e3b05`.
 
 Rust-owned input overlap now has adoption evidence in
