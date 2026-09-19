@@ -20,8 +20,13 @@ passes and ABI checks. Narrow primary medians fall 216 to 204 ms; wide medians
 are 496/492 ms. Preparation starts the bounded team at eight numeric sources;
 IID composition overlaps independent scans without changing their arithmetic.
 The one initial >5% control slowdown was not confirmed in five new pairs.
-Plain numeric parsing remains a measured candidate awaiting confirmation;
-contiguous-group projection is an unaccepted prototype. No win is claimed.
+Plain numeric parsing and contiguous-group projection did not show enough
+repeatable command benefit and were removed. Their 56 accepted measurements,
+metadata/kernel checks and patches are preserved in
+`benchmarks/reports/development/one-fe-discarded-shortcuts-2026-09-19/`.
+The smaller public-name adapter shortcut is under measurement. Next substantial
+boundary: construct the RHS during loading to avoid later materialization.
+No win is claimed. The native scheduling milestone is committed in `223e3b05`.
 
 Rust-owned input overlap now has adoption evidence in
 `benchmarks/reports/development/one-fe-pipeline-adoption-2026-09-19/`:

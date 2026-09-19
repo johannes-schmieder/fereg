@@ -1,0 +1,174 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index 73544595..c3a8284f 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -6380,6 +6380,18 @@ fn project_effect_recording_impl<
+         .n_levels()
+         .checked_mul(values.ncols())
+         .ok_or_else(|| allocation("borrowed MAP parallel group-mean dimensions overflow"))?;
++    if !FROM_INPUT && !COMPLEMENT && coefficients.is_none()
++        && workspace.ols_norm_reduction && weights.values.is_none()
++        && values.nrows() >= PARALLEL_PROJECTION_MIN_ROWS
++        && values.ncols() <= PARALLEL_GROUP_MAX_RHS
++        && rayon::current_num_threads() > 1
++        && effect.level_index().is_observation_ordered()
++    {
++        return project_contiguous_levels(
++            effect, weights, values.nrows(), values.ncols(), 0, effect.n_levels(), 0,
++            values.as_mut_slice(), parallel_level_chunk_size(effect.n_levels()),
++        );
++    }
+     if rayon::current_num_threads() > 1
+         && workspace.parallel_group_means.len() >= parallel_mean_count
+         && (values.ncols() > 1 || values.nrows() >= PARALLEL_PROJECTION_MIN_ROWS)
+@@ -6404,6 +6416,58 @@ fn project_effect_recording_impl<
+     )
+ }
+ 
++/// Whole groups occupy disjoint row ranges. Keep each group's means on the
++/// stack and update its rows while they are hot, using the same scaled,
++/// compensated mean primitive as the general kernel. Certification remains
++/// a separate pass over the completed residual matrix.
++#[allow(clippy::too_many_arguments)]
++fn project_contiguous_levels(
++    effect: &crate::fe::BorrowedInterceptEffect<'_>,
++    weights: ValidatedWeights<'_>,
++    nrows: usize,
++    columns: usize,
++    first_level: usize,
++    end_level: usize,
++    first_row: usize,
++    values: &mut [f64],
++    level_chunk: usize,
++) -> Result<()> {
++    if end_level - first_level > level_chunk {
++        let middle = first_level + (end_level - first_level) / 2;
++        let middle_row = effect.level_index().checked_members(middle)?.first().copied()
++            .ok_or_else(|| invalid_argument("borrowed MAP effect contains an empty final level"))?;
++        let (left, right) = values.split_at_mut((middle_row - first_row) * columns);
++        let (left_result, right_result) = rayon::join(
++            || project_contiguous_levels(effect, weights, nrows, columns, first_level, middle,
++                first_row, left, level_chunk),
++            || project_contiguous_levels(effect, weights, nrows, columns, middle, end_level,
++                middle_row, right, level_chunk),
++        );
++        left_result?;
++        return right_result;
++    }
++    let mut means = [0.0; PARALLEL_GROUP_MAX_RHS];
++    let mut start = 0;
++    for level in first_level..end_level {
++        let rows = effect.level_index().checked_members(level)?.len();
++        let group_start = first_row + start / columns;
++        let end = start + rows * columns;
++        let group = &mut values[start..end];
++        fused_group_means_by_value(effect, level, weights, nrows, &mut means[..columns],
++            |row, column| group[(row - group_start) * columns + column])?;
++        for row in group.chunks_exact_mut(columns) {
++            for (value, mean) in row.iter_mut().zip(&means[..columns]) {
++                *value -= mean;
++                if !value.is_finite() {
++                    return Err(invalid_data("borrowed MAP projection produced a nonfinite residual"));
++                }
++            }
++        }
++        start = end;
++    }
++    Ok(())
++}
++
+ fn project_effect_serial<
+     R: InterceptCoefficientRecorder,
+     const FROM_INPUT: bool,
+@@ -11611,6 +11675,39 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn contiguous_group_projection_preserves_general_kernel_bits() {
++        let team = crate::ThreadTeam::new(crate::ThreadConfig::from_requested(4, true).unwrap());
++        team.install(|| {
++            let rows: usize = 20_003;
++            let codes: Vec<_> = (0..rows).map(|row| (row / 5) as u32).collect();
++            let levels = rows.div_ceil(5);
++            let index = LevelIndex::from_codes(&codes, levels).unwrap();
++            assert!(index.is_observation_ordered());
++            let source = ValidatedBorrowedInterceptSource::new(&codes, levels, &index).unwrap();
++            let effect = source.effect();
++            let design = BorrowedInterceptFeDesign::new(rows, vec![source.effect()]).unwrap();
++            let weights = validate_weights(BorrowedMapWeights::Unit, rows).unwrap();
++            for columns in [1, 12, 52, 64] {
++                let data: Vec<Vec<f64>> = (0..columns).map(|column| (0..rows).map(|row| {
++                    let value = ((row * 17 + column * 19) % 113) as f64 - 53.0;
++                    match column % 4 { 0 => value, 1 => value * 1e140, 2 => value * 1e-140, _ => 1.0 }
++                }).collect()).collect();
++                let mut expected = DenseMatrix::from_columns(&data).unwrap();
++                let mut actual = expected.clone();
++                let mut workspace = BorrowedMapWorkspace::new(&design, rows, columns, &mut SystemWorkspaceReservation).unwrap();
++                project_effect_parallel::<MapCoefficientAccumulator, false, false>(
++                    &effect, weights, &mut expected, &mut workspace, levels * columns, None, None,
++                ).unwrap();
++                workspace.ols_norm_reduction = true;
++                project_effect_recording::<MapCoefficientAccumulator>(&effect, weights, &mut actual, &mut workspace, None).unwrap();
++                assert!(expected.as_slice().iter().zip(actual.as_slice()).all(|(a, b)| a.to_bits() == b.to_bits()));
++            }
++            let shuffled: Vec<_> = (0..rows).map(|row| codes[rows - 1 - row]).collect();
++            assert!(!LevelIndex::from_codes(&shuffled, levels).unwrap().is_observation_ordered());
++        }).unwrap();
++    }
++
+     #[test]
+     fn one_way_projection_is_exact_and_invalid_shapes_and_configurations_fail() {
+         let codes = [0_u32, 0, 1, 1];
+diff --git a/crates/fereg-core/src/fe/design.rs b/crates/fereg-core/src/fe/design.rs
+index 8ad35e53..b484bf5f 100644
+--- a/crates/fereg-core/src/fe/design.rs
++++ b/crates/fereg-core/src/fe/design.rs
+@@ -133,6 +133,10 @@ impl LevelIndex {
+         self.observations.len()
+     }
+ 
++    pub(crate) fn is_observation_ordered(&self) -> bool {
++        self.observations.iter().enumerate().all(|(row, member)| row == *member)
++    }
++
+     fn storage_capacities(&self) -> (usize, usize) {
+         (self.offsets.capacity(), self.observations.capacity())
+     }
+diff --git a/stata/fereg_parse.ado b/stata/fereg_parse.ado
+index 93d98d6c..6cf4086e 100644
+--- a/stata/fereg_parse.ado
++++ b/stata/fereg_parse.ado
+@@ -26,8 +26,31 @@ program define fereg_parse, rclass
+     local absorb_saved_name_registry
+     local cluster_labels
+ 
++    // syntax has already expanded ordinary names, ranges and wildcards.
++    // Operators and repeated terms retain the authoritative FV parser.
++    local unique_rhs : list uniq rhs
++    local plain_numeric = strtrim(`"`rhs'"') != "" & ///
++        !strpos(`"`rhs'"', ".") & !strpos(`"`rhs'"', "#") & ///
++        `"`rhs'"' == `"`unique_rhs'"'
++    if `plain_numeric' {
++        local term_order 0
++        foreach token of local rhs {
++            local ++term_order
++            local source_vars `"`source_vars' `token'"'
++            local coefficient_names `"`coefficient_names' `token'"'
++            local component_raw_operators `"`component_raw_operators' 0:"'
++            local component_ts_operators `"`component_ts_operators' 0:"'
++            matrix `term_meta' = nullmat(`term_meta') \ ///
++                (`term_order', `term_order', `term_order', 1, 1, 0, 0, 0)
++            matrix `component_meta' = nullmat(`component_meta') \ ///
++                (`term_order', 1, `term_order', 1, 1, 0, 0, 2, ///
++                 1, `term_order', `term_order', 0, 0)
++        }
++        local term_rows `term_order'
++        local component_rows `term_order'
++    }
+     /* Ordinary factor-variable terms: expand names only; do not call fvrevar. */
+-    if strtrim(`"`rhs'"') != "" {
++    else if strtrim(`"`rhs'"') != "" {
+         quietly fvexpand `rhs' if `touse'
+         local expanded `"`r(varlist)'"'
+         local term_order 0

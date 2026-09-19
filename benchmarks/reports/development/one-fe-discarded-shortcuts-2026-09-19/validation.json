@@ -1,0 +1,10 @@
+{
+  "contiguous_kernel": {
+    "status": "pass",
+    "log_sha256": "543a0f79b8b4743984cddc9171c1130ce44e5aeef9c208f846651a0159c22578"
+  },
+  "limits": [
+    "Contiguous release snapshot predates two test-only compile fixes captured in prototypes.patch. Production kernel code is identical.",
+    "First parser-audit script used overlong Stata local names; the corrected 16-case audit passes."
+  ]
+}

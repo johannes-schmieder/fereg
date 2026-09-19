@@ -1,0 +1,203 @@
+{
+  "status": "pass",
+  "checks": [
+    {
+      "run": "contiguous-primary-n983040-k10-gdefault-shuffle0-t16-r1-statistics",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k10-gdefault-shuffle0-t16-r1-contiguous",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k10-gdefault-shuffle0-t16-r1-fixest",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "covariance.csv:value": 1.7893571010747095e-20
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k10-gdefault-shuffle0-t16-r2-contiguous",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k10-gdefault-shuffle0-t16-r2-fixest",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "covariance.csv:value": 1.7893571010747095e-20
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k10-gdefault-shuffle0-t16-r2-statistics",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k10-gdefault-shuffle0-t16-r3-fixest",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 1.354472090042691e-14,
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "covariance.csv:value": 1.7893571010747095e-20
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k10-gdefault-shuffle0-t16-r3-statistics",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k10-gdefault-shuffle0-t16-r3-contiguous",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k50-gdefault-shuffle0-t16-r1-statistics",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k50-gdefault-shuffle0-t16-r1-contiguous",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k50-gdefault-shuffle0-t16-r1-fixest",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "covariance.csv:value": 2.2711070898255928e-20
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k50-gdefault-shuffle0-t16-r2-contiguous",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k50-gdefault-shuffle0-t16-r2-fixest",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "covariance.csv:value": 2.2711070898255928e-20
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k50-gdefault-shuffle0-t16-r2-statistics",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k50-gdefault-shuffle0-t16-r3-fixest",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 1.6209256159527285e-14,
+          "coefficients.csv:se": 1.0007186052041206e-16,
+          "covariance.csv:value": 2.2711070898255928e-20
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k50-gdefault-shuffle0-t16-r3-statistics",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    },
+    {
+      "run": "contiguous-primary-n983040-k50-gdefault-shuffle0-t16-r3-contiguous",
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      }
+    }
+  ]
+}
