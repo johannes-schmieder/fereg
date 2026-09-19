@@ -100,6 +100,16 @@ After initial compaction:
 5. the original-row map and full-axis drop mask remain authoritative for
    `e(sample)` and saved outputs.
 
+For one effect with unit weights, no cluster sources and at least 16,384 active
+rows, preparation may construct the ordinary final membership index first.
+If every group has at least two members, that index certifies the singleton
+fixed point and transfers directly into final topology construction. No active
+mask or separate count table is needed. If a singleton exists, the index is
+released before the ordinary pruner allocates. The existing final topology
+validator still independently checks every membership and singleton invariant.
+This moves one owner within the existing topology allowance; it adds no
+retained index or observation-scale buffer.
+
 Lag, lead, and difference operators are materialized by Stata against the
 declared time/panel settings before native binding; gaps retain Stata's missing
 semantics.

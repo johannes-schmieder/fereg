@@ -1,0 +1,70 @@
+[
+  {
+    "phases": {
+      "prepare_fe": {
+        "compact": 0.000761459,
+        "factor": 0.003601375,
+        "prune": 0.004171916,
+        "topology": 0.00561825
+      },
+      "prepare_input": {
+        "complete_check": 0.0021745,
+        "sample_owner": 0.000625042,
+        "validate": 1.0791e-05
+      }
+    },
+    "run": "prepdetail-primary-n983040-k10-gdefault-shuffle0-t16-r1-prepdetail",
+    "stderr_sha256": "97d87b8c9a6a53798dae0d24060c503553c5f51db9c2375a567df59fdcff8843"
+  },
+  {
+    "phases": {
+      "prepare_fe": {
+        "compact": 0.000817125,
+        "factor": 0.003141916,
+        "prune": 0.004263959,
+        "topology": 0.005732458
+      },
+      "prepare_input": {
+        "complete_check": 0.002106792,
+        "sample_owner": 0.000732458,
+        "validate": 1.0625e-05
+      }
+    },
+    "run": "prepdetail-primary-n983040-k10-gdefault-shuffle0-t16-r2-prepdetail",
+    "stderr_sha256": "a8ff195bd9cf2799250fa762ed09667d11413885e2cb126796dc029ea45d980f"
+  },
+  {
+    "phases": {
+      "prepare_fe": {
+        "compact": 0.000780583,
+        "factor": 0.002304916,
+        "prune": 0.004057292,
+        "topology": 0.005569209
+      },
+      "prepare_input": {
+        "complete_check": 0.004299958,
+        "sample_owner": 0.000612875,
+        "validate": 2.6667e-05
+      }
+    },
+    "run": "prepdetail-primary-n983040-k50-gdefault-shuffle0-t16-r1-prepdetail",
+    "stderr_sha256": "0cb3f3da77a9b70180095b3a9c89b757d151a716143ef9d721e85005342e428e"
+  },
+  {
+    "phases": {
+      "prepare_fe": {
+        "compact": 0.000807958,
+        "factor": 0.002737917,
+        "prune": 0.004140167,
+        "topology": 0.005721167
+      },
+      "prepare_input": {
+        "complete_check": 0.004429916,
+        "sample_owner": 0.000677792,
+        "validate": 2.4542e-05
+      }
+    },
+    "run": "prepdetail-primary-n983040-k50-gdefault-shuffle0-t16-r2-prepdetail",
+    "stderr_sha256": "a6d40438f1127b8d0c1b239ce365fed308ec842fedd03ada22fa78a9a7f206c4"
+  }
+]

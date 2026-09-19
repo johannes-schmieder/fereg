@@ -15,7 +15,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays):
+def build(root, name, revision, overlays, profile_preparation=False):
     root = root.resolve()
     source = root / name
     source.mkdir(parents=True, exist_ok=False)
@@ -28,6 +28,9 @@ def build(root, name, revision, overlays):
         path = source / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes((REPO / relative).read_bytes())
+    if profile_preparation:
+        from prepare_profile import instrument
+        instrument(source)
     hashes = {str(p.relative_to(source)): sha(p) for p in sorted(source.rglob("*")) if p.is_file()}
     target = root / ("cargo-" + name)
     env = dict(os.environ, DEVELOPER_DIR="/Library/Developer/CommandLineTools",
@@ -51,6 +54,8 @@ def build(root, name, revision, overlays):
         run(["bash", "tests/mock_spi/run_actual_unix_plugin_test.sh", "dist/fereg_macos.plugin"])
     identity = dict(base_commit=commit, overlays=overlays, source=hashes, plugin=sha(source / "dist/fereg_macos.plugin"),
                     rust_archive=sha(library), abi="pass", target="aarch64-apple-darwin")
+    if profile_preparation:
+        identity["diagnostics"] = ["preparation_phases"]
     (root / ("identity-" + name + ".json")).write_text(json.dumps(identity, indent=2) + "\n")
     print("BUILD_PASS", name, identity["plugin"], flush=True)
 
@@ -61,5 +66,6 @@ if __name__ == "__main__":
     p.add_argument("name")
     p.add_argument("--revision", default="HEAD")
     p.add_argument("--overlay", nargs="*", default=[])
+    p.add_argument("--profile-preparation", action="store_true")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation)

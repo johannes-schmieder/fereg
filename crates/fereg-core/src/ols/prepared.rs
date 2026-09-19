@@ -794,54 +794,75 @@ pub(crate) fn prepare_ols_data_with_cluster_sources(
 fn finish_prepare_ols_data(
     request: &OlsRequestV1,
     cluster_sources: &[SourceId],
+    model: PreparedOlsModel,
+    sample: PreparedNumericSample,
+) -> Result<PreparedOlsData> {
+    finish_prepare_ols_data_with_membership(request, cluster_sources, model, sample, true)
+}
+
+fn finish_prepare_ols_data_with_membership(
+    request: &OlsRequestV1,
+    cluster_sources: &[SourceId],
     mut model: PreparedOlsModel,
     sample: PreparedNumericSample,
+    reuse_membership: bool,
 ) -> Result<PreparedOlsData> {
     // Cluster-only sources are deliberately absent from this pre-singleton
     // factorization. They affect availability (reason 6), never FE pruning;
     // cluster coding is created only on the final singleton fixed point below.
     let pruning_categorical_sources = factorize_categorical_sources(request, &sample, &[])?;
     let pruning_fixed_effects = prepare_fixed_effects(request, &pruning_categorical_sources, &[])?;
-    let singleton_result = prune_prepared_singletons(
-        request,
-        &sample,
-        &pruning_categorical_sources,
-        &pruning_fixed_effects,
-    )?;
-    let num_singletons = singleton_result.dropped_observations.len();
-    let cascade_events = singleton_result.cascade_events;
-    drop(singleton_result.dropped_observations);
-
-    // With no singleton deletion, the pruning codes already live on the final
-    // compact axis. Reusing them avoids a second observation-scale
-    // factorization. Cluster-only sources still require the complete final
-    // factorization because they were deliberately excluded from pruning.
-    let pruning_covers_final_sources = cluster_sources.iter().all(|source| {
-        pruning_categorical_sources
-            .iter()
-            .any(|candidate| candidate.source == *source)
-    });
-    let reusable_pruning = if num_singletons == 0 && pruning_covers_final_sources {
-        Some((pruning_categorical_sources, pruning_fixed_effects))
+    let prebuilt_index = if reuse_membership && cluster_sources.is_empty() {
+        one_fe_fixed_point_index(request, &sample, &pruning_categorical_sources, &pruning_fixed_effects)?
     } else {
-        // These codes/levels no longer describe the final sample. Release them
-        // before numeric compaction and final factorization allocate replacements.
-        drop(pruning_categorical_sources);
-        drop(pruning_fixed_effects);
         None
     };
-    let sample = sample.compact_active_rows(&singleton_result.active, crate::data::DropReason::Singleton)?;
-    drop(singleton_result.active);
-    let (categorical_sources, fixed_effects) = if let Some(reusable) = reusable_pruning {
-        reusable
-    } else {
-        let categorical_sources = factorize_categorical_sources(request, &sample, cluster_sources)?;
-        let fixed_effects = prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;
-        (categorical_sources, fixed_effects)
-    };
+    let (sample, categorical_sources, fixed_effects, num_singletons, cascade_events) =
+        if prebuilt_index.is_some() {
+            (sample, pruning_categorical_sources, pruning_fixed_effects, 0, 0)
+        } else {
+            let singleton_result = prune_prepared_singletons(
+                request,
+                &sample,
+                &pruning_categorical_sources,
+                &pruning_fixed_effects,
+            )?;
+            let num_singletons = singleton_result.dropped_observations.len();
+            let cascade_events = singleton_result.cascade_events;
+            drop(singleton_result.dropped_observations);
+
+            // With no singleton deletion, the pruning codes already live on the final
+            // compact axis. Reusing them avoids a second observation-scale
+            // factorization. Cluster-only sources still require the complete final
+            // factorization because they were deliberately excluded from pruning.
+            let pruning_covers_final_sources = cluster_sources.iter().all(|source| {
+                pruning_categorical_sources
+                    .iter()
+                    .any(|candidate| candidate.source == *source)
+            });
+            let reusable_pruning = if num_singletons == 0 && pruning_covers_final_sources {
+                Some((pruning_categorical_sources, pruning_fixed_effects))
+            } else {
+                // These codes/levels no longer describe the final sample. Release them
+                // before numeric compaction and final factorization allocate replacements.
+                drop(pruning_categorical_sources);
+                drop(pruning_fixed_effects);
+                None
+            };
+            let sample = sample.compact_active_rows(&singleton_result.active, crate::data::DropReason::Singleton)?;
+            drop(singleton_result.active);
+            let (categorical_sources, fixed_effects) = if let Some(reusable) = reusable_pruning {
+                reusable
+            } else {
+                let categorical_sources = factorize_categorical_sources(request, &sample, cluster_sources)?;
+                let fixed_effects = prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;
+                (categorical_sources, fixed_effects)
+            };
+            (sample, categorical_sources, fixed_effects, num_singletons, cascade_events)
+        };
     resolve_categorical_level_codes(&mut model, &categorical_sources)?;
     let fe_topology =
-        build_prepared_fe_topology(request, &sample, &categorical_sources, fixed_effects)?;
+        build_prepared_fe_topology(request, &sample, &categorical_sources, fixed_effects, prebuilt_index)?;
     Ok(PreparedOlsData {
         model,
         sample,
@@ -858,6 +879,37 @@ fn finish_prepare_ols_data(
             cascade_events,
         },
     })
+}
+
+// A one-effect unit sample is a singleton fixed point precisely when no final
+// level has one member. Build the ordinary final index once and reuse it for
+// that check. Final topology validation still independently checks every code,
+// membership and singleton invariant. A failed shortcut drops the index before
+// ordinary pruning allocates; its lifetime fits the existing topology peak.
+fn one_fe_fixed_point_index(
+    request: &OlsRequestV1,
+    sample: &PreparedNumericSample,
+    sources: &[PreparedCategoricalSource],
+    effects: &[PreparedOlsEffectRecipe],
+) -> Result<Option<(usize, LevelIndex)>> {
+    if request.keep_singletons || effects.len() != 1 || sample.n_active() < 16_384
+        || !matches!(sample.weights, PreparedWeights::None)
+    {
+        return Ok(None);
+    }
+    let source_index = effects[0].categorical_source_index;
+    let source = sources.get(source_index)
+        .ok_or_else(|| invalid("singleton fixed-effect source index is out of range"))?;
+    if source.encoded.codes.len() != sample.n_active() {
+        return Err(invalid("singleton fixed-effect source is not aligned with the numeric sample"));
+    }
+    let index = LevelIndex::from_codes(&source.encoded.codes, source.encoded.n_levels())?;
+    for level in 0..index.n_levels() {
+        if index.checked_members(level)?.len() == 1 {
+            return Ok(None);
+        }
+    }
+    Ok(Some((source_index, index)))
 }
 
 /// Materialize the overwhelmingly common complete, unweighted sample without
@@ -1358,6 +1410,7 @@ fn build_prepared_fe_topology(
     sample: &PreparedNumericSample,
     categorical_sources: &[PreparedCategoricalSource],
     recipes: Vec<PreparedOlsEffectRecipe>,
+    prebuilt_index: Option<(usize, LevelIndex)>,
 ) -> Result<PreparedOlsFeTopology> {
     let mut reservation = SystemFeTopologyReservation;
     build_prepared_fe_topology_with_reservation(
@@ -1366,6 +1419,7 @@ fn build_prepared_fe_topology(
         categorical_sources,
         recipes,
         &mut reservation,
+        prebuilt_index,
     )
 }
 
@@ -1375,6 +1429,7 @@ fn build_prepared_fe_topology_with_reservation<R: FeTopologyReservation>(
     categorical_sources: &[PreparedCategoricalSource],
     recipes: Vec<PreparedOlsEffectRecipe>,
     reservation: &mut R,
+    mut prebuilt_index: Option<(usize, LevelIndex)>,
 ) -> Result<PreparedOlsFeTopology> {
     let mut sources = Vec::new();
     reservation.reserve_vec(
@@ -1416,7 +1471,13 @@ fn build_prepared_fe_topology_with_reservation<R: FeTopologyReservation>(
             total_levels = total_levels
                 .checked_add(n_levels)
                 .ok_or_else(|| allocation("prepared FE topology total level count overflows"))?;
-            let level_index = LevelIndex::from_codes(&categorical.encoded.codes, n_levels)?;
+            let level_index = if prebuilt_index.as_ref()
+                .is_some_and(|(source, _)| *source == recipe.categorical_source_index)
+            {
+                prebuilt_index.take().expect("matched prepared membership").1
+            } else {
+                LevelIndex::from_codes(&categorical.encoded.codes, n_levels)?
+            };
             let index = sources.len();
             push_reserved(
                 &mut sources,
@@ -1444,6 +1505,9 @@ fn build_prepared_fe_topology_with_reservation<R: FeTopologyReservation>(
         )?;
     }
 
+    if prebuilt_index.is_some() {
+        return Err(invalid("prebuilt FE membership has no matching topology source"));
+    }
     let topology = PreparedOlsFeTopology {
         nobs: sample.n_active(),
         sources,
@@ -3654,6 +3718,51 @@ mod tests {
     }
 
     #[test]
+    fn one_fe_membership_reuse_matches_generic_fixed_point_and_sample_ledger() {
+        for n in [16_383, 16_384, 32_769] {
+            for shuffled in [false, true] {
+                for singleton in [false, true] {
+                    let mut request = request(1, false);
+                    request.absorbed_terms = vec![AbsorbedTerm {
+                        id: AbsorbTermId::new(1).unwrap(), intercept: true,
+                        categorical_sources: vec![SourceId::new(1).unwrap()],
+                        slope_sources: Vec::new(), label: "group".into(), saved_name: String::new(),
+                    }];
+                    let mut codes: Vec<_> = (0..n).map(|r| {
+                        let row = if shuffled { (r * 7919) % n } else { r };
+                        (row / 5) as f64 - 0.25
+                    }).collect();
+                    if singleton { codes[n / 2] = 1e12; }
+                    let mut loaded = LoadedOlsInput {
+                        candidate: vec![true; n],
+                        outcome: column(&(0..n).map(|r| (r % 97) as f64).collect::<Vec<_>>(), &vec![false; n]),
+                        numeric_sources: vec![(SourceId::new(1).unwrap(), column(&codes, &vec![false; n]))],
+                        analytic_weight: None, frequency_weight: None, probability_weight: None,
+                    };
+                    for exclusions in [false, true] {
+                        if exclusions {
+                            loaded.candidate[0] = false;
+                            loaded.outcome.missing[1] = true;
+                        }
+                        let finish = |reuse| {
+                            let sample = if is_full_retained_unweighted_sample(&loaded) {
+                                take_full_retained_unweighted_sample(loaded.clone()).unwrap()
+                            } else {
+                                take_classified_sample(&request, loaded.clone(), &[]).unwrap()
+                            };
+                            let model = request.validate_and_compile_with_cluster_sources(&[]).unwrap();
+                            finish_prepare_ols_data_with_membership(&request, &[], model, sample, reuse).unwrap()
+                        };
+                        let expected = finish(false);
+                        let actual = finish(true);
+                        assert!(expected == actual, "N={n}, shuffled={shuffled}, singleton={singleton}, exclusions={exclusions}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn frequency_multiplicity_and_prior_drop_reasons_are_preserved() {
         let mut request = request(1, false);
         request.absorbed_terms = vec![AbsorbedTerm {
@@ -4026,6 +4135,7 @@ mod tests {
             &categorical_sources,
             recipes,
             &mut successful,
+            None,
         )
         .expect("record topology reservations");
         assert_eq!(successful.calls, 2);
@@ -4043,6 +4153,7 @@ mod tests {
                 &categorical_sources,
                 recipes,
                 &mut injected,
+                None,
             )
             .expect_err("injected topology reservation must fail");
             assert_eq!(error.code, ErrorCode::Allocation, "call {fail_at}");
@@ -4064,6 +4175,7 @@ mod tests {
                 &categorical_sources,
                 recipes,
                 &mut undersized,
+                None,
             )
             .expect_err("topology capacity guard must fail");
             assert_eq!(error.code, ErrorCode::Allocation, "{skipped}");

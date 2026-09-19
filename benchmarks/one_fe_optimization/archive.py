@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import statistics
 
 REPO = Path(__file__).resolve().parents[2]
@@ -24,12 +25,14 @@ def main(root, output, label, baseline, candidate):
     for path in sorted((root / "runs").glob(label + "-*/result.json")):
         r = json.loads(path.read_text())
         name = path.parent.name
-        variant = name.rsplit("-", 1)[1]
+        match = re.fullmatch(r"(.+)-r(\d+)-([^-]+)", name)
+        assert match, name
+        case, repetition, variant = match.groups()
         assert r["status"] == "pass" and r["process_returncode"] == 0 and r["sentinel"]
         reference = path.parent.with_name(name.rsplit("-", 1)[0] + "-" + baseline)
         comparison = profile.compare(reference, path.parent)
-        row = dict(run=name, case=name.rsplit("-r", 1)[0], variant=variant,
-                   repetition=int(name.rsplit("-r", 1)[1].split("-")[0]),
+        row = dict(run=name, case=case, variant=variant,
+                   repetition=int(repetition),
                    seconds=r["seconds"], input_sha256=r["input_sha256"], sample_sha256=r["sample_sha256"])
         if r["arm"] == "fereg":
             with (path.parent / "fereg_runtime.csv").open() as f:

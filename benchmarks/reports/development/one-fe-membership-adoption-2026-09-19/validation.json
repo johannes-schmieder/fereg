@@ -1,0 +1,79 @@
+{
+  "licensed_fixtures": {
+    "membership": [
+      {
+        "fixture": "development/ols_native_input.do",
+        "fixture_sentinel": "END_FIXTURE|ols_native_input|rc=0",
+        "process_returncode": 0,
+        "sha256": "06382ca0558cddcf42c75f1b63c866e90b92853a8bd4a2d29a292ff44e9212e1",
+        "status": "pass",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "development/candidate_input_oracle.do",
+        "fixture_sentinel": "END_FIXTURE|candidate_input_oracle|rc=0",
+        "process_returncode": 0,
+        "sha256": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+        "status": "pass",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "installation/estimate_ols_eclass_transaction.do",
+        "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+        "process_returncode": 0,
+        "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+        "status": "pass",
+        "terminal_sentinel": true
+      }
+    ],
+    "narrowoutcome": [
+      {
+        "fixture": "development/ols_native_input.do",
+        "fixture_sentinel": "END_FIXTURE|ols_native_input|rc=0",
+        "process_returncode": 0,
+        "sha256": "06382ca0558cddcf42c75f1b63c866e90b92853a8bd4a2d29a292ff44e9212e1",
+        "status": "pass",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "development/candidate_input_oracle.do",
+        "fixture_sentinel": "END_FIXTURE|candidate_input_oracle|rc=0",
+        "process_returncode": 0,
+        "sha256": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+        "status": "pass",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "installation/estimate_ols_eclass_transaction.do",
+        "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+        "process_returncode": 0,
+        "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+        "status": "pass",
+        "terminal_sentinel": true
+      }
+    ]
+  },
+  "memory": "Membership index moves into the existing topology construction lifetime; fallback drops it before generic pruning. Independent outcome scan has no data buffer. Primary observed native peaks remain unchanged.",
+  "tests": [
+    {
+      "log": "outcome-overlap-bounded-tests.log",
+      "sha256": "2f766e9fe3f33a870af9d8aafc1d78dffa01aede0f3cd352cd3568d86656a301",
+      "status": "pass"
+    },
+    {
+      "log": "outcome-overlap-error-tests.log",
+      "sha256": "7a751daa5d5cb1e95d1c0f697a8b271adeb8a158a37881f4ec1d7525e87a80bf",
+      "status": "pass"
+    },
+    {
+      "log": "membership-tests.log",
+      "sha256": "cc410f13e247e5eae8dd68b9880e91648854ad19c1062951899bee208c42f0f9",
+      "status": "pass"
+    },
+    {
+      "log": "membership-preparation-tests.log",
+      "sha256": "77723939f6f42596ed2ff20f4373482495b6246e7982f1e77ab6b2a62c2936c7",
+      "status": "pass"
+    }
+  ]
+}

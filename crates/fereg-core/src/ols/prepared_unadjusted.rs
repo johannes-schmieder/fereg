@@ -398,11 +398,44 @@ pub fn fit_prepared_ols_unadjusted_map_with_loaded_rows(
     config: PreparedOlsUnadjustedConfig,
     rows: Option<Vec<f64>>,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
+    fit_with_outcome_overlap(prepared, config, rows, true)
+}
+
+fn fit_with_outcome_overlap(
+    prepared: &PreparedOlsData,
+    config: PreparedOlsUnadjustedConfig,
+    rows: Option<Vec<f64>>,
+    overlap: bool,
+) -> Result<CertifiedPreparedOlsUnadjusted> {
     validate_config(config)?;
     reject_probability_iid(prepared)?;
-    let fit = match rows {
-        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(prepared, config.fit, rows)?,
-        None => fit_prepared_ols_coefficients_map(prepared, config.fit)?,
+    let fit = || match rows {
+        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(prepared, config.fit, rows),
+        None => fit_prepared_ols_coefficients_map(prepared, config.fit),
+    };
+    // This is the independent IID source scan, using no fitted moments. Move
+    // it earlier on the same bounded team, retaining its error until all
+    // preceding fit, DoF and weight checks have passed. Restrict overlap to
+    // narrow designs with spare workers; wider/smaller teams lose to contention.
+    // The scan owns no heap buffer.
+    let (fit, outcome_tss) = if overlap
+        && matches!(prepared.sample.weights, PreparedWeights::None)
+        && prepared.fe_topology.effects().len() == 1
+        && prepared.sample.n_active() >= 16_384
+        && prepared.model.columns.len() <= 16
+        && config.fit.execution.mode == super::PreparedOlsExecutionMode::Fast
+        && config.fit.execution.threads.resolved() >= 8
+    {
+        let (fit, tss) = crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
+            rayon::join(fit, || independent_outcome_sum(
+                &prepared.sample.outcome,
+                ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 },
+                prepared.structural_intercept,
+            ))
+        })?;
+        (fit?, Some(tss))
+    } else {
+        (fit()?, None)
     };
     let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let mut reservation = SystemInferenceReservation;
@@ -413,6 +446,7 @@ pub fn fit_prepared_ols_unadjusted_map_with_loaded_rows(
         config.certificate_tolerance,
         &mut reservation,
         InferencePerturbations::default(),
+        outcome_tss,
     ))?
 }
 
@@ -435,6 +469,7 @@ pub fn fit_prepared_categorical_ols_unadjusted_map(
         config.certificate_tolerance,
         &mut reservation,
         InferencePerturbations::default(),
+        None,
     ))??;
     Ok(CertifiedPreparedCategoricalOlsUnadjusted {
         fit: components.fit,
@@ -469,6 +504,7 @@ fn compose_internal<R: InferenceReservation>(
     tolerance: f64,
     reservation: &mut R,
     perturbations: InferencePerturbations,
+    outcome_tss: Option<Result<f64>>,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
     let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, absorbed_dof.policy)?;
     let components = compose_view_internal(
@@ -478,6 +514,7 @@ fn compose_internal<R: InferenceReservation>(
         tolerance,
         reservation,
         perturbations,
+        outcome_tss,
     )?;
     Ok(CertifiedPreparedOlsUnadjusted {
         fit: components.fit,
@@ -497,6 +534,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
     tolerance: f64,
     reservation: &mut R,
     perturbations: InferencePerturbations,
+    outcome_tss: Option<Result<f64>>,
 ) -> Result<PreparedOlsUnadjustedComponents> {
     let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
     let total_started = Instant::now();
@@ -512,9 +550,13 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
             .ok_or_else(|| allocation("injected prepared iid residual DoF overflows"))?;
     }
 
-    let (certified_tss, certified_rss) = independent_fit_sums(
-        &prepared.fit_sample().outcome, fit.residuals(), weight_view, dof.has_structural_intercept,
-    )?;
+    let (certified_tss, certified_rss) = if let Some(tss) = outcome_tss {
+        (tss?, weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?)
+    } else {
+        independent_fit_sums(
+            &prepared.fit_sample().outcome, fit.residuals(), weight_view, dof.has_structural_intercept,
+        )?
+    };
     let certified_within_tss = if prepared.inference_has_explicit_absorbed_effects() {
         fit.initial_absorbed_outcome_sum_of_squares()
     } else {
@@ -1600,11 +1642,7 @@ fn independent_fit_sums(
     weight_view: ReferenceWeightView<'_>,
     has_intercept: bool,
 ) -> Result<(f64, f64)> {
-    let tss = || {
-        let mean = weighted_mean(outcome, weight_view)?;
-        let center = if has_intercept { mean } else { 0.0 };
-        weighted_sum_of_squares(outcome, weight_view, center)
-    };
+    let tss = || independent_outcome_sum(outcome, weight_view, has_intercept);
     let rss = || weighted_sum_of_squares(residuals, weight_view, 0.0);
     // These certificates use separate source/residual scans. Overlap their
     // work without changing either reduction or the established error order.
@@ -1616,6 +1654,15 @@ fn independent_fit_sums(
         (tss(), rss())
     };
     Ok((tss_result?, rss_result?))
+}
+
+fn independent_outcome_sum(
+    outcome: &[f64],
+    weights: ReferenceWeightView<'_>,
+    has_intercept: bool,
+) -> Result<f64> {
+    let mean = weighted_mean(outcome, weights)?;
+    weighted_sum_of_squares(outcome, weights, if has_intercept { mean } else { 0.0 })
 }
 
 pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) -> Result<f64> {
@@ -1882,6 +1929,51 @@ mod tests {
         Analytic(&'a [f64]),
         Probability(&'a [f64]),
         Frequency(&'a [u32]),
+    }
+
+    #[test]
+    fn outcome_overlap_preserves_complete_results_and_fit_errors() {
+        for n in [16_383, 16_384, 32_769] {
+            let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
+            let x: Vec<_> = (0..n).map(|r| ((r % 131) as f64 - 60.0) / 7.0).collect();
+            let y: Vec<_> = (0..n).map(|r| 1.7 * x[r] + groups[r] + 0.03 * (r as f64).sin()).collect();
+            let mut prepared = prepared(&y, &[x], Some(&groups), true, TestWeights::Unit);
+            for threads in [1, 4, 8, 16] {
+                let mut config = PreparedOlsUnadjustedConfig::default();
+                config.fit.execution.threads = crate::ThreadConfig::from_requested(threads, true).unwrap();
+                let expected = fit_with_outcome_overlap(&prepared, config, None, false).unwrap();
+                let actual = fit_with_outcome_overlap(&prepared, config, None, true).unwrap();
+                assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
+                assert_eq!(expected.weights, actual.weights);
+                assert_eq!(expected.dof, actual.dof);
+                assert_eq!(expected.statistics, actual.statistics);
+                assert_eq!(expected.covariance, actual.covariance);
+                assert_eq!(expected.certificate, actual.certificate);
+                let (a, b) = (expected.fit(), actual.fit());
+                assert_eq!(a.coefficients(), b.coefficients());
+                assert_eq!(a.rank_certificate(), b.rank_certificate());
+                assert_eq!(a.score_certificate(), b.score_certificate());
+                assert_eq!(a.bread(), b.bread());
+                assert_eq!(a.execution(), b.execution());
+                assert_eq!(a.residuals().len(), b.residuals().len());
+                assert!(a.residuals().iter().zip(b.residuals()).all(|(a, b)| a.to_bits() == b.to_bits()));
+                for (a, b) in [(a.absorption_report(), b.absorption_report()),
+                    (a.residual_absorption_report(), b.residual_absorption_report())] {
+                    let (mut a, mut b) = (a.clone(), b.clone());
+                    for report in [&mut a, &mut b] {
+                        report.setup_seconds = 0.0;
+                        report.solve_seconds = 0.0;
+                        report.certification_seconds = 0.0;
+                    }
+                    assert_eq!(a, b);
+                }
+            }
+            prepared.sample.outcome[1] = f64::NAN;
+            let mut config = PreparedOlsUnadjustedConfig::default();
+            config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
+            assert_eq!(fit_with_outcome_overlap(&prepared, config, None, false).unwrap_err(),
+                fit_with_outcome_overlap(&prepared, config, None, true).unwrap_err());
+        }
     }
 
     #[test]
@@ -2599,6 +2691,7 @@ mod tests {
             PreparedOlsUnadjustedConfig::default().certificate_tolerance,
             &mut reservation,
             InferencePerturbations::default(),
+            Some(Err(invalid_data("deferred outcome scan failure"))),
         )
         .expect_err("corrupted absorbed-DoF report must fail");
         assert_eq!(error.code, ErrorCode::InvalidArgument);
@@ -2628,6 +2721,7 @@ mod tests {
             PreparedOlsUnadjustedConfig::default().certificate_tolerance,
             &mut reservation,
             InferencePerturbations::default(),
+            None,
         )
         .expect_err("implicit DoF identity corruption must fail");
         assert_eq!(error.code, ErrorCode::InvalidArgument);
@@ -2677,6 +2771,7 @@ mod tests {
             PreparedOlsUnadjustedConfig::default().certificate_tolerance,
             reservation,
             perturbations,
+            None,
         )
     }
 

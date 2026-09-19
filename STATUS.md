@@ -13,6 +13,24 @@ completed optimization/calibration investigation chronology formerly here.
 ## One-FE optimization implementation — 2026-09-19
 
 
+Narrow outcome-scan overlap and one-FE membership reuse have adoption evidence
+in `benchmarks/reports/development/one-fe-membership-adoption-2026-09-19/`:
+173 accepted calls, bit-identical native science, 39 preparation tests, focused
+outcome/error-order tests, six licensed fixtures and both ABI checks. Five-pair
+baseline/narrow-overlap/combined/fixest medians are 182/176/173/140 ms (K=10)
+and 446/445/443/448 ms (K=50). Combined protected-control ratios have maximum
+1.00137 and geometric mean 0.98617. One-FE unit preparation reuses final
+membership to establish the no-singleton fixed point, retaining independent
+final topology validation and dropping failed speculation before generic
+pruning. Outcome scans overlap only with <=16 model columns and >=8 workers;
+the broader scope's first 5.82% slowdown was rejected and archived separately.
+The preparation diagnostic attributes about 4 ms to singleton counting and
+5.6 ms to topology construction. Current residual/bread overlap remains a
+separate uncommitted prototype: its unit/ABI/three licensed fixtures and fresh
+166/439 ms primary medians pass; protected controls are still being evaluated.
+The overall 5% win target on both widths remains unmet.
+
+
 Private sample ownership and exact unit-mass means now have adoption evidence
 in `benchmarks/reports/development/one-fe-sample-ownership-2026-09-19/`:
 173 accepted calls, exact native science, ten licensed fixture passes, ten
@@ -22,9 +40,8 @@ baseline/sample-only/combined/fixest medians are 188/182/183/140 ms (K=10) and
 median ratio is 0.98305 and geometric mean 0.94638. The sample marker becomes
 the private output only when the candidate slot is unread; scientific sources
 remain immutable, and restricted calls keep the previous transaction. The
-wide lead is about 3%, and the narrow target remains unmet. Outcome-scan overlap
-is an uncommitted prototype with exact tests/fixtures and initial 177/445 ms
-confirmation medians; its controls and finer preparation attribution are next.
+wide lead in that checkpoint was about 3%, and the narrow target remained unmet.
+Subsequent scheduling and membership evidence is recorded above.
 The lifecycle diagnostic and rejected plain-post screen are archived in
 `benchmarks/reports/development/one-fe-stata-lifecycle-2026-09-19/`.
 
