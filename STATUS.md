@@ -12,6 +12,17 @@ completed optimization/calibration investigation chronology formerly here.
 
 ## One-FE optimization implementation — 2026-09-19
 
+Native preparation/statistics scheduling has adoption evidence in
+`benchmarks/reports/development/one-fe-native-scheduling-2026-09-19/`:
+133 accepted calls (including one five-pair control recheck), exact native
+science, focused threshold/error-order/reduction tests, six licensed fixture
+passes and ABI checks. Narrow primary medians fall 216 to 204 ms; wide medians
+are 496/492 ms. Preparation starts the bounded team at eight numeric sources;
+IID composition overlaps independent scans without changing their arithmetic.
+The one initial >5% control slowdown was not confirmed in five new pairs.
+Plain numeric parsing remains a measured candidate awaiting confirmation;
+contiguous-group projection is an unaccepted prototype. No win is claimed.
+
 Rust-owned input overlap now has adoption evidence in
 `benchmarks/reports/development/one-fe-pipeline-adoption-2026-09-19/`:
 84 accepted calls, bit-identical native science, three licensed fixtures,
@@ -21,8 +32,7 @@ checks. The wide command falls from 528 to 506 ms; the narrow command remains
 Two admitted Rust tiles and an in-place scope on the existing team replace the
 prototype C buffers/pthread. SPI remains on the Stata thread and shutdown is
 tested on errors and panics. The loading ledger explicitly retains the opaque
-worker-runtime coverage gap. Plain numeric parsing and narrow preparation are
-the next candidates; the 5% win objective remains unmet.
+worker-runtime coverage gap. This milestone is committed in `9daa6534`.
 
 The guarded Mac numeric accessor now has fresh adoption evidence in
 `benchmarks/reports/development/one-fe-accessor-adoption-2026-09-19/`:
@@ -37,10 +47,9 @@ fixest on both 983,040-row, 10/50-regressor, 16-thread Mac cases. The other
 existing size/thread/group-layout cases remain protected controls. Near parity
 is not completion. The profiling and prototype evidence is committed in
 `8bf4e6e2`; the measured parallel validation change is retained in source with
-its focused test and threading contract. Next: integrate the guarded Mac
-numeric accessor and Rust-owned loading overlap as separate measured commits,
-then address Stata processing, narrow serial work, initialization and RHS
-materialization. Preserve unrelated pending work and historical receipts.
+its focused test and threading contract. Guarded input access and Rust-owned
+overlap are committed. Continue with Stata processing and reducing native data
+passes/RHS materialization, preserving unrelated work and historical receipts.
 
 ## One-FE pass and loading-overlap experiment — 2026-09-19
 

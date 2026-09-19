@@ -51,7 +51,11 @@ def main(root, output, label, baseline, candidate):
                                  if field in current[0]}
             variants[variant].update(n=len(current), paired_ratios=[r["seconds"]/paired[r["repetition"]]["seconds"] for r in current])
         summary.append(dict(case=case, variants=variants))
-    identities = {name: json.loads((root / ("identity-" + name + ".json")).read_text()) for name in (baseline, candidate)}
+    identities = {name: json.loads((root / ("identity-" + name + ".json")).read_text())
+                  for name in sorted({r["variant"] for r in rows if "plugin" in r})}
+    reference_runs = list((root / "runs").glob(label + "-*-fixest/result.json"))
+    if reference_runs:
+        identities["fixest"] = json.loads(reference_runs[0].read_text())["measurement_fingerprint"]
     identities["controller"] = {p.name: sha(p) for p in (root / "controller").iterdir() if p.is_file()}
     identities["harness"] = {p.name: sha(p) for p in Path(__file__).parent.glob("*.py")}
     fixtures = json.loads((root / ("fixtures-" + candidate + ".json")).read_text())

@@ -22,6 +22,10 @@ also check finite values on the already installed team. This Boolean check
 retains the same diagnostic before weight validation and workspace admission;
 it changes no numerical reduction. Calls outside a team and one-thread calls
 keep the serial check.
+OLS preparation installs this team from eight numeric sources and 16,384 rows;
+classification still selects errors in observation order. IID composition also
+uses the resolved team: for large samples its independent residual scan can
+overlap outcome mean/TSS scans without changing their arithmetic or error order.
 Retired scoped teams signal shutdown and join their worker handles after the
 cache mutex is released. New and old teams can coexist during replacement.
 The general Rust API avoids self-join when external asynchronous work drops the

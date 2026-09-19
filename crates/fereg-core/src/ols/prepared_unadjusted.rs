@@ -393,14 +393,14 @@ pub fn fit_prepared_ols_unadjusted_map(
     let fit = fit_prepared_ols_coefficients_map(prepared, config.fit)?;
     let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let mut reservation = SystemInferenceReservation;
-    compose_internal(
+    crate::ThreadTeam::new(config.fit.execution.threads).install(|| compose_internal(
         prepared,
         fit,
         absorbed_dof,
         config.certificate_tolerance,
         &mut reservation,
         InferencePerturbations::default(),
-    )
+    ))?
 }
 
 /// Fit and certify categorical-interaction OLS/WLS with conventional
@@ -415,14 +415,14 @@ pub fn fit_prepared_categorical_ols_unadjusted_map(
     let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
     let mut reservation = SystemInferenceReservation;
-    let components = compose_view_internal(
+    let components = crate::ThreadTeam::new(config.fit.execution.threads).install(|| compose_view_internal(
         prepared,
         fit,
         summary,
         config.certificate_tolerance,
         &mut reservation,
         InferencePerturbations::default(),
-    )?;
+    ))??;
     Ok(CertifiedPreparedCategoricalOlsUnadjusted {
         fit: components.fit,
         absorbed_dof,
@@ -499,20 +499,14 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
             .ok_or_else(|| allocation("injected prepared iid residual DoF overflows"))?;
     }
 
-    let outcome_mean = weighted_mean(&prepared.fit_sample().outcome, weight_view)?;
-    let center = if dof.has_structural_intercept {
-        outcome_mean
-    } else {
-        0.0
-    };
-    let certified_tss =
-        weighted_sum_of_squares(&prepared.fit_sample().outcome, weight_view, center)?;
+    let (certified_tss, certified_rss) = independent_fit_sums(
+        &prepared.fit_sample().outcome, fit.residuals(), weight_view, dof.has_structural_intercept,
+    )?;
     let certified_within_tss = if prepared.inference_has_explicit_absorbed_effects() {
         fit.initial_absorbed_outcome_sum_of_squares()
     } else {
         certified_tss
     };
-    let certified_rss = weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?;
     let mut tss = certified_tss;
     if perturbations.tss {
         tss *= 1.25;
@@ -1587,6 +1581,30 @@ pub(super) fn validate_sum_of_squares(rss: f64, tss: f64, within_tss: f64) -> Re
     Ok(())
 }
 
+fn independent_fit_sums(
+    outcome: &[f64],
+    residuals: &[f64],
+    weight_view: ReferenceWeightView<'_>,
+    has_intercept: bool,
+) -> Result<(f64, f64)> {
+    let tss = || {
+        let mean = weighted_mean(outcome, weight_view)?;
+        let center = if has_intercept { mean } else { 0.0 };
+        weighted_sum_of_squares(outcome, weight_view, center)
+    };
+    let rss = || weighted_sum_of_squares(residuals, weight_view, 0.0);
+    // These certificates use separate source/residual scans. Overlap their
+    // work without changing either reduction or the established error order.
+    let (tss_result, rss_result) = if outcome.len() >= 16_384
+        && rayon::current_thread_index().is_some() && rayon::current_num_threads() > 1
+    {
+        rayon::join(tss, rss)
+    } else {
+        (tss(), rss())
+    };
+    Ok((tss_result?, rss_result?))
+}
+
 pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) -> Result<f64> {
     if values.is_empty() {
         return Err(invalid_argument(
@@ -1842,6 +1860,31 @@ mod tests {
         Analytic(&'a [f64]),
         Probability(&'a [f64]),
         Frequency(&'a [u32]),
+    }
+
+    #[test]
+    fn independent_parallel_fit_sums_preserve_bits_and_error_precedence() {
+        for n in [16_383, 16_384, 32_769] {
+            let mut outcome: Vec<_> = (0..n).map(|i| ((i % 97) as f64 - 43.0) * 1e90).collect();
+            let mut residuals: Vec<_> = (0..n).map(|i| ((i % 41) as f64 - 17.0) * 1e-90).collect();
+            let values: Vec<_> = (0..n).map(|i| 1.0 + (i % 7) as f64).collect();
+            for kind in [None, Some(WeightKind::Frequency), Some(WeightKind::Analytic)] {
+                let weights = ReferenceWeightView { values: kind.map(|_| values.as_slice()), kind, divisor: 4.0, multiplier: 1.5 };
+                for intercept in [false, true] {
+                    let expected = independent_fit_sums(&outcome, &residuals, weights, intercept).unwrap();
+                    let actual = crate::ThreadTeam::new(crate::ThreadConfig::from_requested(4, true).unwrap())
+                        .install(|| independent_fit_sums(&outcome, &residuals, weights, intercept)).unwrap().unwrap();
+                    assert_eq!(expected.0.to_bits(), actual.0.to_bits());
+                    assert_eq!(expected.1.to_bits(), actual.1.to_bits());
+                }
+            }
+            outcome[1] = f64::NAN;
+            residuals[0] = f64::INFINITY;
+            let weights = ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 };
+            let error = crate::ThreadTeam::new(crate::ThreadConfig::from_requested(4, true).unwrap())
+                .install(|| independent_fit_sums(&outcome, &residuals, weights, true)).unwrap().unwrap_err();
+            assert_eq!(error.message, "prepared iid weighted-mean value is not finite");
+        }
     }
 
     #[derive(Default)]

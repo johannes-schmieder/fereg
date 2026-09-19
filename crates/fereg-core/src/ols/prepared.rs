@@ -931,7 +931,7 @@ fn is_full_retained_unweighted_sample(loaded: &LoadedOlsInput) -> bool {
             // This predicate chooses an ownership shortcut, not error order.
             // Failed checks still enter the authoritative classification
             // path. Never create Rayon's global pool for standalone callers.
-            if loaded.numeric_sources.len() >= 16
+            if loaded.numeric_sources.len() >= 8
                 && loaded.candidate.len() >= 16_384
                 && rayon::current_thread_index().is_some()
                 && rayon::current_num_threads() > 1
@@ -1056,7 +1056,7 @@ fn take_classified_sample(
         }
         Ok(())
     };
-    if loaded.numeric_sources.len() >= 16
+    if loaded.numeric_sources.len() >= 8
         && n_original >= 16_384
         && rayon::current_thread_index().is_some()
         && rayon::current_num_threads() > 1
@@ -2405,64 +2405,66 @@ mod tests {
     }
 
     #[test]
-    fn wide_owned_preparation_preserves_serial_sample_and_error_precedence() {
-        let request = request(16, true);
-        let n = 32_771;
-        let full = LoadedOlsInput {
-            candidate: vec![true; n],
-            outcome: LoadedNumericColumn {
-                values: vec![1.0; n],
-                missing: vec![false; n],
-            },
-            numeric_sources: (1..=16)
-                .map(|source| {
-                    (
-                        SourceId::new(source).expect("source"),
-                        LoadedNumericColumn {
-                            values: (0..n).map(|row| (row % 13) as f64).collect(),
-                            missing: vec![false; n],
-                        },
-                    )
-                })
-                .collect(),
-            analytic_weight: None,
-            frequency_weight: None,
-            probability_weight: None,
-        };
-        for case in 0..7 {
-            let mut loaded = full.clone();
-            if case > 0 {
-                loaded.numeric_sources[15].1.values[71] = f64::NAN;
-                loaded.numeric_sources[15].1.missing[71] = case == 1;
-                loaded.candidate[71] = case != 3;
-            }
-            if case == 4 {
-                loaded.candidate.fill(false);
-            }
-            if case == 5 {
-                loaded.outcome.missing.fill(true);
-            }
-            if case == 6 {
-                for row in 0..n {
-                    loaded.candidate[row] = row % 13 == 0;
+    fn parallel_owned_preparation_preserves_serial_sample_and_error_precedence() {
+        for width in [7, 8, 11, 16] {
+            let request = request(width, true);
+            let n = 32_771;
+            let full = LoadedOlsInput {
+                candidate: vec![true; n],
+                outcome: LoadedNumericColumn {
+                    values: vec![1.0; n],
+                    missing: vec![false; n],
+                },
+                numeric_sources: (1..=width)
+                    .map(|source| {
+                        (
+                            SourceId::new(source as u32).expect("source"),
+                            LoadedNumericColumn {
+                                values: (0..n).map(|row| (row % 13) as f64).collect(),
+                                missing: vec![false; n],
+                            },
+                        )
+                    })
+                    .collect(),
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            };
+            for case in 0..7 {
+                let mut loaded = full.clone();
+                if case > 0 {
+                    loaded.numeric_sources[width - 1].1.values[71] = f64::NAN;
+                    loaded.numeric_sources[width - 1].1.missing[71] = case == 1;
+                    loaded.candidate[71] = case != 3;
                 }
-            }
-            let serial = prepare_ols_data(&request, &loaded);
-            for threads in [1, 4] {
-                let input = loaded.clone();
-                let team = crate::ThreadTeam::new(
-                    crate::ThreadConfig::from_requested(threads, true).expect("threads"),
-                );
-                let parallel = team
-                    .install(|| prepare_ols_data_owned(&request, input))
-                    .expect("worker team");
-                match (&serial, parallel) {
-                    (Ok(expected), Ok(actual)) => assert_eq!(*expected, actual),
-                    (Err(expected), Err(actual)) => {
-                        assert_eq!(expected.code, actual.code);
-                        assert_eq!(expected.message, actual.message);
+                if case == 4 {
+                    loaded.candidate.fill(false);
+                }
+                if case == 5 {
+                    loaded.outcome.missing.fill(true);
+                }
+                if case == 6 {
+                    for row in 0..n {
+                        loaded.candidate[row] = row % 13 == 0;
                     }
-                    other => panic!("preparation outcome changed: {other:?}"),
+                }
+                let serial = prepare_ols_data(&request, &loaded);
+                for threads in [1, 4] {
+                    let input = loaded.clone();
+                    let team = crate::ThreadTeam::new(
+                        crate::ThreadConfig::from_requested(threads, true).expect("threads"),
+                    );
+                    let parallel = team
+                        .install(|| prepare_ols_data_owned(&request, input))
+                        .expect("worker team");
+                    match (&serial, parallel) {
+                        (Ok(expected), Ok(actual)) => assert_eq!(*expected, actual),
+                        (Err(expected), Err(actual)) => {
+                            assert_eq!(expected.code, actual.code);
+                            assert_eq!(expected.message, actual.message);
+                        }
+                        other => panic!("preparation outcome changed: {other:?}"),
+                    }
                 }
             }
         }

@@ -547,7 +547,7 @@ pub(crate) fn classify_numeric_sample_into_mask<P: NumericDomainPolicy + Sync>(
         }
         Ok(())
     };
-    if input.regressors.len() >= 16
+    if input.regressors.len() >= 8
         && n_original >= CHUNK_ROWS
         && rayon::current_thread_index().is_some()
         && rayon::current_num_threads() > 1

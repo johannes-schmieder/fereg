@@ -495,14 +495,14 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
 }
 
 // Loading has finished before this boundary; the closure captures no SPI session.
-// Reuse the solve's bounded team for wide native classification and compaction.
+// Reuse the solve's bounded team for native classification and compaction.
 fn prepare_loaded_ols<T: Send>(
     loaded: LoadedOlsInput,
     threads: ThreadConfig,
     prepare: impl FnOnce(LoadedOlsInput) -> Result<T> + Send,
 ) -> Result<T> {
     let started = Instant::now();
-    let prepared = if loaded.numeric_sources.len() >= 16 && loaded.candidate.len() >= 16_384 {
+    let prepared = if loaded.numeric_sources.len() >= 8 && loaded.candidate.len() >= 16_384 {
         ThreadTeam::new(threads).install(|| prepare(loaded))??
     } else {
         prepare(loaded)?

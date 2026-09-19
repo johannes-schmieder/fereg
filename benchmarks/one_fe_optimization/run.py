@@ -33,6 +33,9 @@ def main(a):
         cells = [(n, k, t, None, False) for n, k in [(245760, 10), (983040, 10), (983040, 50)]
                  for t in (1, 4, 16) if not (n == 983040 and t == 16)]
         cells += [(983040, 50, t, g, shuffled) for t in (4, 16) for g, shuffled in [(1000, False), (None, True)]]
+    if a.cell:
+        cells = [cell for cell in cells if f"n{cell[0]}-k{cell[1]}-g{cell[3] or 'default'}-s{int(cell[4])}-t{cell[2]}" == a.cell]
+        assert cells, "requested cell is outside the frozen development cases"
     checks = []
     for n, k, threads, groups, shuffled in cells:
         tag = f"n{n}-k{k}-g{groups or 'default'}-shuffle{int(shuffled)}"
@@ -75,4 +78,5 @@ if __name__ == "__main__":
     p.add_argument("--label", required=True)
     p.add_argument("--repeats", type=int, default=3)
     p.add_argument("--trace", action="store_true")
+    p.add_argument("--cell", help="select one existing case for a focused regression recheck")
     main(p.parse_args())
