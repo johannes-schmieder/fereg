@@ -901,6 +901,7 @@ struct FitPerturbations {
     finite_bread: bool,
     reported_intercept: bool,
     reported_bread_extension: bool,
+    residual_overlap_disabled: bool,
 }
 
 /// Fit the currently supported prepared OLS/WLS finite coefficients through
@@ -2159,7 +2160,26 @@ fn fit_with_controls_internal_mode_with_frame<
     } else {
         None
     };
-    let bread = finalize_reported_bread_and_intercept(
+    let pending_residuals = qr.within_residuals.take();
+    let mut project_residual = Some(|| {
+        let mut final_residuals = pending_residuals.ok_or_else(|| {
+            invalid_argument("fast prepared OLS QR did not retain its within residual")
+        })?;
+        if perturbations.reconstructed_within_residual_constant {
+            for residual in &mut final_residuals { *residual += 0.25; }
+        }
+        let matrix = DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, final_residuals)?;
+        absorb_fit_matrix(prepared, weights.borrowed(), matrix, config.final_absorb_config(),
+            &mut cmg, false, true)
+    });
+    let residual_overlap = !perturbations.residual_overlap_disabled
+        && phase_probe.is_none() && !retain_fast_score_cache && !config.absorb.retain_coefficients
+        && matches!(config.absorb.solver, FeSolverKind::Auto | FeSolverKind::Map)
+        && weights.values.is_none() && prepared.fit_has_one_ordinary_intercept_effect()
+        && prepared.fit_sample().n_active() >= 16_384 && (8..=16).contains(&generated_columns)
+        && rayon::current_thread_index().is_some() && rayon::current_num_threads() >= 8;
+    let mut early_residual_projection = None;
+    let mut finish_bread = || finalize_reported_bread_and_intercept(
         prepared,
         frame.response(),
         &mut qr,
@@ -2170,7 +2190,20 @@ fn fit_with_controls_internal_mode_with_frame<
         perturbations,
         fast_score_cache.as_ref(),
         raw_moments.as_ref(),
-    )?;
+    );
+    // Both jobs use existing owners. Projected residual errors remain deferred
+    // until bread and initial within-TSS validation have passed. Scoped work
+    // joins before either result is consumed; allocator phase probes retain
+    // their original sequential path.
+    let bread = if residual_overlap {
+        let project = project_residual.take().expect("pending residual projection");
+        rayon::in_place_scope(|scope| {
+            scope.spawn(|_| early_residual_projection = Some(project()));
+            finish_bread()
+        })?
+    } else {
+        finish_bread()?
+    };
     let bread_residual_seconds = trace.lap();
     drop(finite_phase);
     let initial_absorbed_outcome_sum_of_squares =
@@ -2182,30 +2215,13 @@ fn fit_with_controls_internal_mode_with_frame<
             "prepared OLS initial absorbed outcome sum of squares is invalid",
         ));
     }
-    let mut final_residuals = qr.within_residuals.take().ok_or_else(|| {
-        invalid_argument("fast prepared OLS QR did not retain its within residual")
-    })?;
-    if perturbations.reconstructed_within_residual_constant {
-        for residual in &mut final_residuals {
-            *residual += 0.25;
-        }
-    }
     let residual_projection_phase = LinearSessionPhaseAllocationGuard::new(
-        phase_probe,
-        phase_observation,
-        LinearSessionAllocationPhase::Projection,
+        phase_probe, phase_observation, LinearSessionAllocationPhase::Projection,
     );
-    let residual_matrix =
-        DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, final_residuals)?;
-    let residual_absorbed = absorb_fit_matrix(
-        prepared,
-        weights.borrowed(),
-        residual_matrix,
-        config.final_absorb_config(),
-        &mut cmg,
-        false,
-        true,
-    )?;
+    let residual_absorbed = match early_residual_projection {
+        Some(result) => result?,
+        None => project_residual.take().expect("pending residual projection")()?,
+    };
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS residual absorption returned an uncertified result",
@@ -2255,8 +2271,8 @@ fn fit_with_controls_internal_mode_with_frame<
     let finalize_seconds = trace.lap();
     if trace.enabled {
         eprintln!(
-            "FEREG_PHASE|fit|rhs={rhs_seconds:.9}|raw_moments={raw_moments_seconds:.9}|initial_absorb={initial_absorb_seconds:.9}|within_norms={within_norm_seconds:.9}|finite_solve={finite_solve_seconds:.9}|score_cache={score_cache_seconds:.9}|bread_raw_residual={bread_residual_seconds:.9}|residual_absorb={residual_absorb_seconds:.9}|score={score_seconds:.9}|finalize={finalize_seconds:.9}|total={:.9}",
-            trace.total()
+            "FEREG_PHASE|fit|rhs={rhs_seconds:.9}|raw_moments={raw_moments_seconds:.9}|initial_absorb={initial_absorb_seconds:.9}|within_norms={within_norm_seconds:.9}|finite_solve={finite_solve_seconds:.9}|score_cache={score_cache_seconds:.9}|bread_raw_residual={bread_residual_seconds:.9}|residual_absorb={residual_absorb_seconds:.9}|residual_overlap={}|score={score_seconds:.9}|finalize={finalize_seconds:.9}|total={:.9}",
+            usize::from(residual_overlap), trace.total()
         );
     }
     Ok(CertifiedPreparedOlsFit {
@@ -8563,6 +8579,37 @@ mod tests {
         fit.residual_absorption_report.setup_seconds = 0.0;
         fit.residual_absorption_report.solve_seconds = 0.0;
         fit
+    }
+
+    #[test]
+    fn final_residual_overlap_preserves_bits_and_rejection_order() {
+        for n in [16_383, 16_384, 32_771] {
+            let columns: Vec<Vec<f64>> = (0..9).map(|c| (0..n)
+                .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
+            let groups: Vec<_> = (0..n).map(|r| (r % 79) as f64).collect();
+            let response: Vec<_> = (0..n).map(|r| groups[r] + columns[0][r] * 1.3
+                + columns[1][r] * 0.7 + (r as f64).cos() * 0.1).collect();
+            let data = prepared(&response, &columns, &[false; 9], Some(&groups), true, TestWeights::Unit);
+            for threads in [4, 8, 16] {
+                let mut config = PreparedOlsFitConfig::default();
+                config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
+                for perturbation in [FitPerturbations::default(),
+                    FitPerturbations { reported_intercept: true, ..FitPerturbations::default() },
+                    FitPerturbations { reported_bread_extension: true, ..FitPerturbations::default() },
+                    FitPerturbations { reconstructed_within_residual_constant: true, ..FitPerturbations::default() },
+                    FitPerturbations { final_residual_constant: true, ..FitPerturbations::default() },
+                ] {
+                    let run = |disabled| ThreadTeam::new(config.execution.threads).install(|| {
+                        fit_with_controls_internal(&data, config, &mut SystemFitReservation,
+                            FitPerturbations { residual_overlap_disabled: disabled, ..perturbation })
+                    }).unwrap().map(without_solve_timings);
+                    let expected = run(true);
+                    let actual = run(false);
+                    assert!(expected == actual, "N={n}, threads={threads}, perturbation={perturbation:?}, errors={:?}/{:?}",
+                        expected.as_ref().err(), actual.as_ref().err());
+                }
+            }
+        }
     }
 
     #[test]

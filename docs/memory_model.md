@@ -93,6 +93,12 @@ private bounded scratch files. Scratch files:
 - are removed by `Drop` on success, ordinary error, panic unwinding, or Break
   propagation.
 
+Eligible narrow one-FE IID fits may overlap final residual projection with
+reported bread/intercept completion. The residual vector transfers from the
+existing QR owner into its existing one-column projection; the raw-residual
+reference and moment cache already coexist with both phases. No second data
+buffer or team is created. Allocation-phase probes keep the sequential route.
+
 Fast and low modes share the same rank policy, certificates, inference,
 omission status, result wire, and Stata transaction. Registered tests require
 scientific identity. Deterministic routes additionally require

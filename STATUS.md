@@ -26,9 +26,14 @@ pruning. Outcome scans overlap only with <=16 model columns and >=8 workers;
 the broader scope's first 5.82% slowdown was rejected and archived separately.
 The preparation diagnostic attributes about 4 ms to singleton counting and
 5.6 ms to topology construction. Current residual/bread overlap remains a
-separate uncommitted prototype: its unit/ABI/three licensed fixtures and fresh
-166/439 ms primary medians pass; protected controls are still being evaluated.
-The overall 5% win target on both widths remains unmet.
+separate adopted checkpoint, documented in
+`benchmarks/reports/development/one-fe-residual-overlap-2026-09-19/`:
+its 45 paired native configurations, ABI and three licensed fixtures pass.
+The fresh primary medians are 166/439 ms versus fixest 140/448 ms. All 66
+protected calls pass with maximum median ratio 1.02516 and geometric mean
+0.99796. It moves the unchanged residual projection beside bread completion
+on the existing team and preserves scientific error order. The overall 5%
+win target on both widths remains unmet; next inspect remaining raw-data scans.
 
 
 Private sample ownership and exact unit-mass means now have adoption evidence

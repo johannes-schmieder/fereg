@@ -179,6 +179,10 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_has_absorbed_intercept(&self) -> bool;
 
+    fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
+        false
+    }
+
     fn fit_report_intercept(&self) -> bool;
 
     fn fit_column_value(&self, column: usize, row: usize) -> Result<f64>;
@@ -580,6 +584,10 @@ fn admit_prepared_intercept_cg(
 }
 
 impl PreparedOlsFitView for PreparedOlsData {
+    fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
+        self.fe_topology.effects().len() == 1
+    }
+
     fn fit_categorical_codes(&self, source: usize) -> Result<&[u32]> {
         self.categorical_sources
             .get(source)

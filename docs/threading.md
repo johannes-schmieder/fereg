@@ -31,6 +31,12 @@ model columns and at least eight workers can run the independent outcome
 mean/TSS scan alongside fitting instead. The source remains immutable and no
 data buffer is added. Any scan error is deferred until the original fit, DoF
 and weight checks have succeeded; the final residual scan stays independent.
+Fresh ordinary one-FE unit fits with 8–16 generated columns, at least 16,384
+rows and eight installed workers can also overlap final residual projection
+with reported bread/intercept completion. This uses the same team and existing
+owners, without a score cache or saved coefficients. Projection errors remain
+deferred until bread and initial within-TSS checks pass. Phase-allocation probes
+retain sequential execution.
 Dense integer FE encoding also uses an already installed team from 16,384
 rows: the range scan preserves the first ineligible/nonfinite row, and indexed
 collection fills the fallibly reserved code vector without another allocation.
