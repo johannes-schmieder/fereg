@@ -6826,13 +6826,24 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
         } else {
             let mut sum = 0.0_f64;
             let mut correction = 0.0_f64;
-            for (row, residual) in residuals.iter().copied().enumerate() {
-                let root_weight = weights.root(row)?;
-                let regressor = prepared.fit_column_value(column, row)?;
-                let left = (root_weight * regressor) / denominator;
-                let right = (root_weight * residual) / response_scale;
-                let term = left * right;
-                compensated_add(term, &mut sum, &mut correction)?;
+            if weights.values.is_none()
+                && matches!(prepared.fit_model().columns[column].kind, PreparedOlsColumnKind::Intercept)
+            {
+                // Preserve the independently scaled compensated score, while
+                // hoisting the unit intercept and weight out of the row loop.
+                let left = 1.0 / denominator;
+                for residual in residuals.iter().copied() {
+                    compensated_add(left * (residual / response_scale), &mut sum, &mut correction)?;
+                }
+            } else {
+                for (row, residual) in residuals.iter().copied().enumerate() {
+                    let root_weight = weights.root(row)?;
+                    let regressor = prepared.fit_column_value(column, row)?;
+                    let left = (root_weight * regressor) / denominator;
+                    let right = (root_weight * residual) / response_scale;
+                    let term = left * right;
+                    compensated_add(term, &mut sum, &mut correction)?;
+                }
             }
             (sum + correction).abs()
         };
@@ -8579,6 +8590,27 @@ mod tests {
         fit.residual_absorption_report.setup_seconds = 0.0;
         fit.residual_absorption_report.solve_seconds = 0.0;
         fit
+    }
+
+    #[test]
+    fn unit_intercept_score_matches_generic_weights_and_errors() {
+        for n in [1, 127, 16_384, 16_387] {
+            let y: Vec<_> = (0..n).map(|r| (r as f64).sin()).collect();
+            let groups = vec![0.0; n];
+            let data = prepared(&y, &[], &[], Some(&groups), true, TestWeights::Unit);
+            let ones = vec![1.0; n];
+            let unit = NormalizedWeights { values: None, raw_scale: 1.0, kind: None };
+            let generic = NormalizedWeights { values: Some(&ones), raw_scale: 1.0, kind: Some(WeightKind::Frequency) };
+            for scale in [0.0, 1e-200, 1.0, 1e150] {
+                let mut residuals: Vec<_> = y.iter().map(|v| v * scale).collect();
+                let call = |residuals: &[f64], weights| certify_scores(&data, residuals, weights,
+                    &[(n as f64).sqrt()], &[0.0], FiniteScoreDraft::default(),
+                    &[PreparedOlsFitStatus::NormalizedAbsorbedIntercept], scale, 1e-10);
+                assert_eq!(call(&residuals, unit), call(&residuals, generic));
+                residuals[n / 2] = f64::NAN;
+                assert_eq!(call(&residuals, unit), call(&residuals, generic));
+            }
+        }
     }
 
     #[test]

@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "log": "unit-score-tests.log",
+      "sha256": "f40995075507bf0a67e54cc8be982fda385fd7904eb280d155953b0d1626d362",
+      "status": "pass"
+    }
+  ],
+  "abi": "pass"
+}

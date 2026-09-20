@@ -12,6 +12,15 @@ completed optimization/calibration investigation chronology formerly here.
 
 ## One-FE optimization implementation — 2026-09-19
 
+The unit-intercept score scan is validated in
+`benchmarks/reports/development/one-fe-unit-score-2026-09-19/`: 84 accepted
+calls, exact native science, the focused generic-weight comparison, ABI and
+three licensed fixtures pass. Its score phase falls about 2 ms at both widths;
+three-pair command medians are 163/438 ms versus pinned fixest 143/448 ms.
+Protected controls have maximum median ratio 1.01026 and geometric mean 0.99742.
+Raw-moment/preparation overlap is a separate prototype under measurement.
+The overall two-width 5% win target remains unmet.
+
 
 Narrow outcome-scan overlap and one-FE membership reuse have adoption evidence
 in `benchmarks/reports/development/one-fe-membership-adoption-2026-09-19/`:
