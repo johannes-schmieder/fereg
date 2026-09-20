@@ -45,17 +45,46 @@ use super::{
 const CATEGORICAL_SLOPE_MAP_TOLERANCE_CEILING: f64 = 1e-12;
 const CATEGORICAL_RECOVERY_CG_ITERATION_CAP: usize = 256;
 
+// Keep the owned sample behind a module-private field: even the surrounding
+// preparation code cannot forge this proof or obtain mutable access. Source
+// values and row/weight metadata therefore retain their constructor checks.
+mod validated_sample {
+    use super::{validate_numeric_sample, PreparedNumericSample, Result};
+
+    #[derive(Debug, PartialEq)]
+    pub(super) struct ValidatedSample(PreparedNumericSample);
+
+    impl ValidatedSample {
+        pub(super) fn new(sample: PreparedNumericSample) -> Result<Self> {
+            validate_numeric_sample(&sample)?;
+            Ok(Self(sample))
+        }
+
+        pub(super) const fn get(&self) -> &PreparedNumericSample {
+            &self.0
+        }
+    }
+
+    impl std::ops::Deref for ValidatedSample {
+        type Target = PreparedNumericSample;
+
+        fn deref(&self) -> &Self::Target {
+            self.get()
+        }
+    }
+}
+
 /// Complete native preparation result for numeric categorical absorbed
 /// effects, including interactions and arbitrary ordered absorbed slopes.
 #[derive(Debug, PartialEq)]
 pub struct PreparedCategoricalOlsData {
     model: PreparedOlsModel,
-    sample: PreparedNumericSample,
+    sample: validated_sample::ValidatedSample,
     /// Ordinary categorical sources on the final sample. Sources that also
     /// participate in an absorbed term borrow their N-row codes from
     /// `fe_topology`; only their small candidate-level table is retained here.
     categorical_sources: Vec<PreparedCategoricalModelSource>,
-    fe_topology: FinalizedCategoricalTopology,
+    fe_topology: crate::fe::ValidatedFinalizedTopology,
     effect_specs: Vec<CategoricalTopologyDofEffectSpec>,
     structural_intercept: bool,
     report_intercept: bool,
@@ -63,8 +92,8 @@ pub struct PreparedCategoricalOlsData {
     report_plan: PreparedCategoricalOlsReportPlan,
 }
 
-/// Only the allocation-free prefix of prepared validation may overlap fitting.
-/// The immutable owner keeps the sample and topology fixed until DoF creation;
+/// Only the allocation-free topology check may overlap fitting. The immutable
+/// owner keeps the validated sample and topology fixed until DoF creation;
 /// metadata checks and their allocations still run at the original boundary.
 pub(crate) struct ValidatedCategoricalDofInputs<'a> {
     prepared: &'a PreparedCategoricalOlsData,
@@ -140,7 +169,7 @@ impl PreparedCategoricalOlsData {
 
     #[must_use]
     pub const fn sample(&self) -> &PreparedNumericSample {
-        &self.sample
+        self.sample.get()
     }
 
     #[must_use]
@@ -150,7 +179,13 @@ impl PreparedCategoricalOlsData {
 
     #[must_use]
     pub const fn fe_topology(&self) -> &FinalizedCategoricalTopology {
-        &self.fe_topology
+        self.fe_topology.get()
+    }
+
+    pub(crate) fn validated_single_topology(
+        &self,
+    ) -> Result<Option<crate::fe::ValidatedSingleTopology<'_>>> {
+        self.fe_topology.single_source()
     }
 
     #[must_use]
@@ -247,7 +282,7 @@ impl PreparedCategoricalOlsData {
         &self,
         response: &[f64],
     ) -> Result<PreparedCategoricalOlsRhs> {
-        self.validate()?;
+        self.validate_with_reusable_topology(false)?;
         let nrows = self.sample.n_active();
         if response.len() != nrows {
             return Err(invalid(
@@ -296,7 +331,7 @@ impl PreparedCategoricalOlsData {
     /// Residualize the complete prepared batch through the strict borrowed MAP
     /// solver. A failure returns no caller-visible partially transformed batch.
     pub fn absorb_rhs_map(&self, config: MapConfig) -> Result<CertifiedBorrowedMap> {
-        self.validate()?;
+        self.validate_with_reusable_topology(false)?;
         let rhs = self.build_rhs()?.into_values();
         let weights = match &self.sample.weights {
             PreparedWeights::None => BorrowedMapWeights::Unit,
@@ -350,7 +385,7 @@ impl PreparedCategoricalOlsData {
         requested_channels: &[bool],
         config: MapConfig,
     ) -> Result<RecoveredCategoricalEffects> {
-        self.validate()?;
+        self.validate_with_reusable_topology(false)?;
         let effects = self.effect_views()?;
         recover_finalized_categorical_effects_map_certified(
             &self.fe_topology,
@@ -690,9 +725,12 @@ impl PreparedCategoricalOlsData {
         )
     }
 
-    /// Revalidate the complete prepared artifact before numerical use.
+    /// Explicitly revalidate the complete prepared artifact, including the
+    /// immutable sample checked at construction.
     pub fn validate(&self) -> Result<()> {
-        self.validate_with_reusable_topology(false).map(|_| ())
+        validate_numeric_sample(&self.sample)?;
+        self.fe_topology.validate()?;
+        self.validate_after_topology()
     }
 
     pub(crate) fn validate_dof_inputs_for_overlap(
@@ -705,8 +743,7 @@ impl PreparedCategoricalOlsData {
         {
             return Ok(None);
         }
-        validate_numeric_sample(&self.sample)?;
-        Ok(self.fe_topology.validate_single_source()?.map(|topology| {
+        Ok(self.validated_single_topology()?.map(|topology| {
             ValidatedCategoricalDofInputs { prepared: self, topology }
         }))
     }
@@ -715,15 +752,11 @@ impl PreparedCategoricalOlsData {
         &self,
         reuse_single: bool,
     ) -> Result<Option<crate::fe::ValidatedSingleTopology<'_>>> {
-        validate_numeric_sample(&self.sample)?;
         let validated_single = if reuse_single {
-            self.fe_topology.validate_single_source()?
+            self.validated_single_topology()?
         } else {
             None
         };
-        if validated_single.is_none() {
-            self.fe_topology.validate()?;
-        }
         self.validate_after_topology()?;
         Ok(validated_single)
     }
@@ -796,11 +829,8 @@ impl PreparedCategoricalOlsData {
             .get(source_index)
             .map(Vec::as_slice)
             .ok_or_else(|| invalid("prepared numeric source is out of range"))?;
-        if values.len() != self.sample.n_active() || values.iter().any(|value| !value.is_finite()) {
-            return Err(invalid_data(
-                "prepared numeric source is not finite and final-sample aligned",
-            ));
-        }
+        // Alignment and finiteness belong to the immutable sample owner;
+        // only the requested source identity still needs a lookup here.
         Ok(values)
     }
 
@@ -1072,6 +1102,8 @@ pub(crate) fn prepare_ppml_categorical_ols_data(
         &fe_topology,
         report_intercept,
     )?;
+    let sample = validated_sample::ValidatedSample::new(sample)?;
+    let fe_topology = crate::fe::ValidatedFinalizedTopology::new(fe_topology)?;
     let prepared = PreparedCategoricalOlsData {
         model: rebased.model,
         sample,
@@ -1083,7 +1115,7 @@ pub(crate) fn prepare_ppml_categorical_ols_data(
         singletons,
         report_plan: rebased.report_plan,
     };
-    prepared.validate()?;
+    prepared.validate_with_reusable_topology(false)?;
     Ok(prepared)
 }
 
@@ -1224,6 +1256,8 @@ fn finish_prepare_categorical_ols_data(
         report_intercept,
     )?;
     let effect_specs = effect_specs(&bound_effects, &request.model)?;
+    let sample = validated_sample::ValidatedSample::new(sample)?;
+    let fe_topology = crate::fe::ValidatedFinalizedTopology::new(fe_topology)?;
     let prepared = PreparedCategoricalOlsData {
         model: rebased.model,
         sample,
@@ -1239,7 +1273,7 @@ fn finish_prepare_categorical_ols_data(
         },
         report_plan: rebased.report_plan,
     };
-    prepared.validate()?;
+    prepared.validate_with_reusable_topology(false)?;
     Ok(prepared)
 }
 
@@ -1849,4 +1883,68 @@ fn invalid_data(message: impl Into<String>) -> FeregError {
 
 fn allocation(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Allocation, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn numeric_sample() -> PreparedNumericSample {
+        PreparedNumericSample {
+            n_original: 4,
+            n_candidate: 4,
+            original_row_by_active: vec![0, 1, 2, 3],
+            outcome: vec![0.0, -0.0, 2.0, 3.0],
+            regressors: vec![vec![1.0, 2.0, 3.0, 4.0]],
+            weights: PreparedWeights::None,
+            adjustment: crate::data::PreparedAdjustment::None,
+            drop_reasons: vec![DropReason::Retained; 4],
+        }
+    }
+
+    #[test]
+    fn validated_sample_owner_preserves_storage_and_rejects_invalid_inputs() {
+        let sample = numeric_sample();
+        let pointers = (sample.outcome.as_ptr(), sample.regressors[0].as_ptr(),
+            sample.original_row_by_active.as_ptr(), sample.drop_reasons.as_ptr());
+        let bytes = sample.owned_buffer_bytes();
+        let owned = validated_sample::ValidatedSample::new(sample).unwrap();
+        assert_eq!(pointers, (owned.outcome.as_ptr(), owned.regressors[0].as_ptr(),
+            owned.original_row_by_active.as_ptr(), owned.drop_reasons.as_ptr()));
+        assert_eq!(owned.owned_buffer_bytes(), bytes);
+        assert_eq!(std::mem::size_of_val(&owned), std::mem::size_of::<PreparedNumericSample>());
+        assert_eq!(owned.outcome[1].to_bits(), (-0.0_f64).to_bits());
+
+        let corruptions: &[fn(&mut PreparedNumericSample)] = &[
+            |s| s.n_candidate = 5,
+            |s| { s.drop_reasons.pop(); },
+            |s| { s.outcome.pop(); },
+            |s| { s.regressors[0].pop(); },
+            |s| s.outcome[2] = f64::NAN,
+            |s| s.regressors[0][2] = f64::INFINITY,
+            |s| s.original_row_by_active.swap(0, 1),
+            |s| s.original_row_by_active[3] = 4,
+            |s| s.drop_reasons[3] = DropReason::MissingOutcome,
+            |s| s.original_row_by_active[3] = 2,
+        ];
+        for corrupt in corruptions {
+            let mut sample = numeric_sample();
+            corrupt(&mut sample);
+            let expected = validate_numeric_sample(&sample).unwrap_err();
+            assert_eq!(validated_sample::ValidatedSample::new(sample).unwrap_err(), expected);
+        }
+        for kind in [WeightKind::Analytic, WeightKind::Frequency,
+            WeightKind::Probability, WeightKind::Importance]
+        {
+            for values in [vec![1.0, 2.0, 3.0, 4.0], vec![1.0; 3],
+                vec![0.0; 4], vec![-1.0; 4], vec![f64::NAN; 4],
+                vec![0.5; 4], vec![f64::from(u32::MAX) + 1.0; 4]]
+            {
+                let mut sample = numeric_sample();
+                sample.weights = PreparedWeights::Provided { kind, values };
+                let expected = validate_numeric_sample(&sample);
+                assert_eq!(validated_sample::ValidatedSample::new(sample).map(|_| ()), expected);
+            }
+        }
+    }
 }

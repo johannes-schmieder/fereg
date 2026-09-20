@@ -93,7 +93,7 @@ pub use topology_adapter::borrow_categorical_topology_design;
 pub use topology_finalize::{
     finalize_categorical_topology, CompactedCategoricalSource, FinalizedCategoricalTopology,
 };
-pub(crate) use topology_finalize::ValidatedSingleTopology;
+pub(crate) use topology_finalize::{ValidatedFinalizedTopology, ValidatedSingleTopology};
 pub use topology_map::{
     absorb_finalized_categorical_topology_auto_certified,
     absorb_finalized_categorical_topology_cg_certified,

@@ -960,7 +960,6 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
             && self.effect_specs().len() == 1
             && self.fit_supports_cmg_auto()
         {
-            self.fe_topology().validate()?;
             let design = self.fit_borrowed_cmg_design()?;
             // An intercept-only interaction is one projection, just like a
             // simple FE. Only fresh RHSs may skip the useful warm certificate.
@@ -1291,6 +1290,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
                 ErrorCode::Unsupported,
                 "solver(cmg) supports only categorical intercept-only absorbed effects; absorbed slopes are unsupported",
             ));
+        }
+        if let Some(validated) = self.validated_single_topology()? {
+            return validated.into_design(self.fit_sample().n_active());
         }
         let topology = self.fe_topology();
         let mut source_table = Vec::new();

@@ -10,6 +10,49 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Immutable prepared owners checkpoint — 2026-09-20
+
+The [validated-owner report](benchmarks/reports/development/one-fe-validated-owners-local-2026-09-20/README.md)
+archives 362 calls for checked, immutable numeric-sample and topology owners.
+Constructor validation remains complete; internal categorical consumers reuse
+its proof without rescanning unchanged values or membership. Public validation,
+working-response/weight checks, metadata, certificates, memory admission and
+transactional publication remain intact. Numeric ownership applies across
+categorical OLS and PPML preparation; direct borrowed-descriptor reuse requires
+one noninteraction topology source and one term. Ordinary unsaved numeric OLS
+uses the legacy representation and is a control for this increment.
+
+Final `topologyowner` plugin:
+`4339b23d7ff3249544ccd600751231139f21412675c43bee0535ae1a6d3f6366`.
+Twenty-four focused Rust tests, nine licensed Stata fixtures and actual-plugin
+ABI checks pass. Incremental screens show wide full outputs at 496/481 ms
+before/after the numeric owner; narrow robust and two-cluster saved FE at
+171/164 and 227/219 ms before/after the topology owner. The latter has no clear
+wide-model gain. All 44 incremental/profiling native and output comparisons are
+exact, and all 60 breadth comparisons match the prior `recoverycore` checkpoint
+exactly, including 24 saved-output bundles.
+
+The current twenty-cell screen wins 60/60 fixest pairs and meets the 0.90 margin
+in 19 cells. Wide full outputs remain at 485/525 ms, paired ratio 0.927342.
+A background Time Machine/Finder/UI CPU snapshot accompanies timing spikes;
+all runs remain recorded and this screen is not a final acceptance block.
+Breadth regression passes against original `normonly` (max 1.019851, geometric
+mean 0.689816). All eleven size/thread/group controls also pass (max 1.046178,
+geometric mean 1.002524), with 33 exact native comparisons. Original-baseline
+saved-FE fit/certificate residual differences predate this change; the report
+preserves the failed full-array audit and its exact prior-checkpoint adjudication.
+Coefficients, covariance, samples, statuses, DoF, pass flags and saved bytes
+remain exact against the original baseline.
+
+The goal remains active. Neither final five-pair acceptance block has run.
+Next measure wider independent-outcome and residual/bread/score overlap: both
+current width guards stop at 16 generated columns, and residual overlap also
+has a 16-slot anticipated-status array. Preserve numerical/error order and
+memory allowance, then measure broad effects and controls before retention.
+No widening is implemented. Raw-residual output substitution was not implemented
+because its negative-FMA sequence differs from the positive-FMA predictor and
+subtraction. No installed package, remote state or qualification changed.
+
 ## One-FE DoF validation checkpoint — 2026-09-20
 
 The [DoF validation report](benchmarks/reports/development/one-fe-dof-reuse-local-2026-09-20/README.md)

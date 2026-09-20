@@ -1,0 +1,343 @@
+[
+  {
+    "case": "owners-current-controls-n245760-k10-gdefault-shuffle0-t1",
+    "variants": {
+      "normonly": {
+        "input": 0.019627166999999997,
+        "n": 3,
+        "native": 0.071562292,
+        "native_allocation_peak_bytes": 57072938.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.008656916,
+        "seconds": 0.1
+      },
+      "topologyowner": {
+        "input": 0.019899417,
+        "n": 3,
+        "native": 0.071697208,
+        "native_allocation_peak_bytes": 57072938.0,
+        "paired_ratios": [
+          0.9901960784313727,
+          1.0,
+          1.0899999999999999
+        ],
+        "remaining": 0.009250125000000012,
+        "seconds": 0.101
+      }
+    }
+  },
+  {
+    "case": "owners-current-controls-n245760-k10-gdefault-shuffle0-t16",
+    "variants": {
+      "normonly": {
+        "input": 0.01782875,
+        "n": 3,
+        "native": 0.017331458999999997,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.008694624999999997,
+        "seconds": 0.044
+      },
+      "topologyowner": {
+        "input": 0.017697708,
+        "n": 3,
+        "native": 0.017083334000000006,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          0.9772727272727273,
+          1.0227272727272727,
+          1.0
+        ],
+        "remaining": 0.009053124999999995,
+        "seconds": 0.044
+      }
+    }
+  },
+  {
+    "case": "owners-current-controls-n245760-k10-gdefault-shuffle0-t4",
+    "variants": {
+      "normonly": {
+        "input": 0.019095792,
+        "n": 3,
+        "native": 0.026934291,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.008778916999999997,
+        "seconds": 0.055
+      },
+      "topologyowner": {
+        "input": 0.018979417,
+        "n": 3,
+        "native": 0.026023875000000005,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          0.9818181818181818,
+          0.9821428571428571,
+          0.9814814814814815
+        ],
+        "remaining": 0.008612166999999997,
+        "seconds": 0.054
+      }
+    }
+  },
+  {
+    "case": "owners-current-controls-n983040-k10-gdefault-shuffle0-t1",
+    "variants": {
+      "normonly": {
+        "input": 0.080105584,
+        "n": 3,
+        "native": 0.2819795,
+        "native_allocation_peak_bytes": 228269354.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.01584125000000003,
+        "seconds": 0.379
+      },
+      "topologyowner": {
+        "input": 0.083761625,
+        "n": 3,
+        "native": 0.27959591699999997,
+        "native_allocation_peak_bytes": 228269354.0,
+        "paired_ratios": [
+          0.9948453608247423,
+          0.9841688654353562,
+          1.0159574468085106
+        ],
+        "remaining": 0.01893358300000003,
+        "seconds": 0.382
+      }
+    }
+  },
+  {
+    "case": "owners-current-controls-n983040-k10-gdefault-shuffle0-t4",
+    "variants": {
+      "normonly": {
+        "input": 0.075260459,
+        "n": 3,
+        "native": 0.101193916,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.0127998329999999,
+        "seconds": 0.189
+      },
+      "topologyowner": {
+        "input": 0.075342084,
+        "n": 3,
+        "native": 0.09924254099999999,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          0.9790575916230372,
+          0.9840425531914899,
+          1.0052910052910053
+        ],
+        "remaining": 0.012256249999999996,
+        "seconds": 0.187
+      }
+    }
+  },
+  {
+    "case": "owners-current-controls-n983040-k50-g1000-shuffle0-t16",
+    "variants": {
+      "normonly": {
+        "input": 0.21554720800000002,
+        "n": 3,
+        "native": 0.13634808399999998,
+        "native_allocation_peak_bytes": 877949405.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.035805332999999995,
+        "seconds": 0.391
+      },
+      "topologyowner": {
+        "input": 0.21441570799999998,
+        "n": 3,
+        "native": 0.14264616700000005,
+        "native_allocation_peak_bytes": 877949405.0,
+        "paired_ratios": [
+          1.0233160621761659,
+          1.0153452685421995,
+          1.020460358056266
+        ],
+        "remaining": 0.03921191700000004,
+        "seconds": 0.397
+      }
+    }
+  },
+  {
+    "case": "owners-current-controls-n983040-k50-g1000-shuffle0-t4",
+    "variants": {
+      "normonly": {
+        "input": 0.238943334,
+        "n": 3,
+        "native": 0.34291475000000005,
+        "native_allocation_peak_bytes": 877873277.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.04068462500000003,
+        "seconds": 0.628
+      },
+      "topologyowner": {
+        "input": 0.24037145799999998,
+        "n": 3,
+        "native": 0.380086583,
+        "native_allocation_peak_bytes": 877873277.0,
+        "paired_ratios": [
+          1.0461783439490446,
+          1.0857605177993528,
+          0.9939485627836611
+        ],
+        "remaining": 0.038185417,
+        "seconds": 0.657
+      }
+    }
+  },
+  {
+    "case": "owners-current-controls-n983040-k50-gdefault-shuffle0-t1",
+    "variants": {
+      "normonly": {
+        "input": 0.270508125,
+        "n": 3,
+        "native": 1.2069282499999998,
+        "native_allocation_peak_bytes": 857489954.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.046897625000000165,
+        "seconds": 1.532
+      },
+      "topologyowner": {
+        "input": 0.265683083,
+        "n": 3,
+        "native": 1.2001569170000002,
+        "native_allocation_peak_bytes": 857489954.0,
+        "paired_ratios": [
+          0.9940594059405942,
+          1.0032509752925878,
+          0.9902088772845952
+        ],
+        "remaining": 0.04693283399999992,
+        "seconds": 1.517
+      }
+    }
+  },
+  {
+    "case": "owners-current-controls-n983040-k50-gdefault-shuffle0-t4",
+    "variants": {
+      "normonly": {
+        "input": 0.240276084,
+        "n": 3,
+        "native": 0.35007554099999993,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.03757233299999996,
+        "seconds": 0.631
+      },
+      "topologyowner": {
+        "input": 0.241385042,
+        "n": 3,
+        "native": 0.336371875,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0097244732576987,
+          1.0079239302694136,
+          0.9778129952456418
+        ],
+        "remaining": 0.04454587499999996,
+        "seconds": 0.623
+      }
+    }
+  },
+  {
+    "case": "owners-current-controls-n983040-k50-gdefault-shuffle1-t16",
+    "variants": {
+      "normonly": {
+        "input": 0.21804216699999998,
+        "n": 3,
+        "native": 0.15831324999999996,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.038890333,
+        "seconds": 0.413
+      },
+      "topologyowner": {
+        "input": 0.21531225,
+        "n": 3,
+        "native": 0.16066416599999997,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0096852300242132,
+          0.9811764705882353,
+          1.0
+        ],
+        "remaining": 0.04057583399999998,
+        "seconds": 0.417
+      }
+    }
+  },
+  {
+    "case": "owners-current-controls-n983040-k50-gdefault-shuffle1-t4",
+    "variants": {
+      "normonly": {
+        "input": 0.23956354200000002,
+        "n": 3,
+        "native": 0.422664375,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.039392333,
+        "seconds": 0.702
+      },
+      "topologyowner": {
+        "input": 0.24221425000000002,
+        "n": 3,
+        "native": 0.43065270799999994,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0286532951289398,
+          0.9958448753462604,
+          1.0
+        ],
+        "remaining": 0.04408941699999991,
+        "seconds": 0.718
+      }
+    }
+  }
+]

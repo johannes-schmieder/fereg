@@ -206,6 +206,31 @@ pub(crate) struct ValidatedBorrowedInterceptSource<'a> {
 }
 
 impl<'a> ValidatedBorrowedInterceptSource<'a> {
+    /// The owner has checked the exact partition and membership together and
+    /// exposes neither mutation nor replacement of either buffer.
+    pub(crate) fn from_finalized_owner(
+        owner: &'a super::topology_finalize::ValidatedFinalizedTopology,
+    ) -> Option<Self> {
+        let topology = owner.get();
+        if topology.compacted_sources().len() != 1
+            || topology.registry().sources().len() != 1
+            || topology.effect_to_topology().len() != 1
+        {
+            return None;
+        }
+        let source = &topology.registry().sources()[0];
+        if source.partition().is_interaction()
+            || source.partition().categorical_source_indices() != [0]
+        {
+            return None;
+        }
+        Some(Self {
+            codes: topology.compacted_sources()[0].codes(),
+            n_levels: source.n_levels(),
+            level_index: source.level_index(),
+        })
+    }
+
     pub(crate) fn new(
         codes: &'a [u32],
         n_levels: usize,

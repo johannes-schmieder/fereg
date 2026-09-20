@@ -62,6 +62,44 @@ pub struct FinalizedCategoricalTopology {
     registry: CategoricalTopologyRegistry,
 }
 
+// The private field prevents a caller from pairing a validation receipt with
+// replaced codes or membership. No mutable or consuming accessor is provided.
+mod validated_owner {
+    use super::{FinalizedCategoricalTopology, Result};
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub(crate) struct ValidatedFinalizedTopology(FinalizedCategoricalTopology);
+
+    impl ValidatedFinalizedTopology {
+        pub(crate) fn new(topology: FinalizedCategoricalTopology) -> Result<Self> {
+            topology.validate()?;
+            Ok(Self(topology))
+        }
+
+        pub(crate) const fn get(&self) -> &FinalizedCategoricalTopology {
+            &self.0
+        }
+    }
+
+    impl std::ops::Deref for ValidatedFinalizedTopology {
+        type Target = FinalizedCategoricalTopology;
+
+        fn deref(&self) -> &Self::Target { self.get() }
+    }
+}
+
+pub(crate) use validated_owner::ValidatedFinalizedTopology;
+
+impl ValidatedFinalizedTopology {
+    pub(crate) fn single_source(&self) -> Result<Option<ValidatedSingleTopology<'_>>> {
+        let Some(source) = super::design::ValidatedBorrowedInterceptSource::from_finalized_owner(self)
+        else {
+            return self.get().validate_single_source();
+        };
+        Ok(Some(ValidatedSingleTopology { topology: self.get(), source }))
+    }
+}
+
 /// A same-borrow validation receipt, bound to the immutable finalized owner.
 /// Recovery can build its single-effect view without scanning membership again.
 pub(crate) struct ValidatedSingleTopology<'a> {
@@ -723,6 +761,60 @@ mod tests {
                 &[CategoricalCodeView::new(&codes, levels)], &[&[0], &[0]], &vec![true; rows],
             ).unwrap();
             assert!(repeated.validate_single_source().unwrap().is_none());
+        }
+    }
+
+    #[test]
+    fn validated_topology_owner_preserves_storage_and_rejects_corruption() {
+        for codes in [vec![], vec![0], vec![0, 0, 1, 1, 2, 2], vec![2, 0, 1, 2, 0, 1]] {
+            let levels = codes.iter().max().map_or(0, |code| *code as usize + 1);
+            for source_index in [0, 2] {
+                let sources = vec![CategoricalCodeView::new(&codes, levels); 3];
+                let topology = finalize_categorical_topology(
+                    &sources, &[&[source_index]], &vec![true; codes.len()],
+                ).unwrap();
+                let codes_pointer = topology.compacted_sources()[0].codes().as_ptr();
+                let index_pointer = topology.registry().sources()[0].level_index().checked_members(0)
+                    .ok().map(|members| members.as_ptr());
+                let bytes = topology.owned_buffer_bytes();
+                let expected_topology = topology.clone();
+                let expected = expected_topology.validate_single_source().unwrap().unwrap()
+                    .into_design(codes.len()).unwrap();
+                let owner = ValidatedFinalizedTopology::new(topology).unwrap();
+                assert_eq!(owner.owned_buffer_bytes(), bytes);
+                assert_eq!(std::mem::size_of_val(&owner), std::mem::size_of::<FinalizedCategoricalTopology>());
+                assert_eq!(codes_pointer, owner.compacted_sources()[0].codes().as_ptr());
+                assert_eq!(index_pointer, owner.registry().sources()[0].level_index().checked_members(0)
+                    .ok().map(|members| members.as_ptr()));
+                let receipt = owner.single_source().unwrap().unwrap();
+                assert!(receipt.matches_owner(owner.get()));
+                assert!(!receipt.matches_owner(&expected_topology));
+                assert_eq!(receipt.into_design(codes.len()).unwrap(), expected);
+                assert!(owner.single_source().unwrap().unwrap().into_design(codes.len()+1).is_err());
+
+                if codes.len() > 1 {
+                    let mut malformed = expected_topology.clone();
+                    let changed = codes.iter().position(|code| *code != codes[0]).unwrap();
+                    malformed.compacted_sources[0].codes.swap(0, changed);
+                    let expected_error = malformed.validate().unwrap_err();
+                    assert_eq!(ValidatedFinalizedTopology::new(malformed).unwrap_err(), expected_error);
+                    let mut malformed = expected_topology.clone();
+                    malformed.compacted_sources[0].codes[0] = levels as u32;
+                    let expected_error = malformed.validate().unwrap_err();
+                    assert_eq!(ValidatedFinalizedTopology::new(malformed).unwrap_err(), expected_error);
+                }
+            }
+        }
+
+        let first = [0, 0, 1, 1, 2, 2];
+        let second = [0, 1, 0, 1, 0, 1];
+        let sources = [CategoricalCodeView::new(&first, 3), CategoricalCodeView::new(&second, 2)];
+        for recipes in [vec![], vec![&[0][..], &[0][..]], vec![&[0][..], &[1][..]], vec![&[0, 1][..]]] {
+            let topology = finalize_categorical_topology(&sources, &recipes, &[true; 6]).unwrap();
+            let owner = ValidatedFinalizedTopology::new(topology.clone()).unwrap();
+            assert_eq!(owner.get(), &topology);
+            assert!(owner.single_source().unwrap().is_none());
+            owner.validate().unwrap();
         }
     }
 

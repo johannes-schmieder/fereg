@@ -1,0 +1,782 @@
+[
+  {
+    "reference": "core-breadth-checkpoint-cluster2_cross-n983040-k10-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_cross-n983040-k10-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_cross-n983040-k10-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_cross-n983040-k10-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_cross-n983040-k10-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_cross-n983040-k10-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_cross-n983040-k50-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_cross-n983040-k50-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_cross-n983040-k50-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_cross-n983040-k50-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_cross-n983040-k50-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_cross-n983040-k50-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_nested-n983040-k10-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_nested-n983040-k10-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_nested-n983040-k10-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_nested-n983040-k10-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_nested-n983040-k10-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_nested-n983040-k10-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_nested-n983040-k50-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_nested-n983040-k50-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_nested-n983040-k50-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_nested-n983040-k50-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_nested-n983040-k50-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_nested-n983040-k50-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_saved-n983040-k10-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_saved-n983040-k10-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_saved-n983040-k10-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_saved-n983040-k10-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_saved-n983040-k10-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_saved-n983040-k10-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_saved-n983040-k50-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_saved-n983040-k50-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_saved-n983040-k50-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_saved-n983040-k50-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster2_saved-n983040-k50-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster2_saved-n983040-k50-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_cross-n983040-k10-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster_cross-n983040-k10-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_cross-n983040-k10-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster_cross-n983040-k10-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_cross-n983040-k10-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster_cross-n983040-k10-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_cross-n983040-k50-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster_cross-n983040-k50-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_cross-n983040-k50-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster_cross-n983040-k50-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_cross-n983040-k50-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster_cross-n983040-k50-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe-n983040-k10-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe-n983040-k10-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe-n983040-k10-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe-n983040-k10-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe-n983040-k10-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe-n983040-k10-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe-n983040-k50-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe-n983040-k50-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe-n983040-k50-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe-n983040-k50-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe-n983040-k50-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe-n983040-k50-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe_saved-n983040-k10-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe_saved-n983040-k10-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe_saved-n983040-k10-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe_saved-n983040-k10-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe_saved-n983040-k10-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe_saved-n983040-k10-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe_saved-n983040-k50-r1-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe_saved-n983040-k50-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe_saved-n983040-k50-r2-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe_saved-n983040-k50-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-cluster_fe_saved-n983040-k50-r3-recoverycore",
+    "actual": "owners-breadth-regression-cluster_fe_saved-n983040-k50-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid-n983040-k10-r1-recoverycore",
+    "actual": "owners-breadth-regression-iid-n983040-k10-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid-n983040-k10-r2-recoverycore",
+    "actual": "owners-breadth-regression-iid-n983040-k10-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid-n983040-k10-r3-recoverycore",
+    "actual": "owners-breadth-regression-iid-n983040-k10-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid-n983040-k50-r1-recoverycore",
+    "actual": "owners-breadth-regression-iid-n983040-k50-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid-n983040-k50-r2-recoverycore",
+    "actual": "owners-breadth-regression-iid-n983040-k50-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid-n983040-k50-r3-recoverycore",
+    "actual": "owners-breadth-regression-iid-n983040-k50-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_outputs-n983040-k10-r1-recoverycore",
+    "actual": "owners-breadth-regression-iid_outputs-n983040-k10-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_outputs-n983040-k10-r2-recoverycore",
+    "actual": "owners-breadth-regression-iid_outputs-n983040-k10-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_outputs-n983040-k10-r3-recoverycore",
+    "actual": "owners-breadth-regression-iid_outputs-n983040-k10-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_outputs-n983040-k50-r1-recoverycore",
+    "actual": "owners-breadth-regression-iid_outputs-n983040-k50-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_outputs-n983040-k50-r2-recoverycore",
+    "actual": "owners-breadth-regression-iid_outputs-n983040-k50-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_outputs-n983040-k50-r3-recoverycore",
+    "actual": "owners-breadth-regression-iid_outputs-n983040-k50-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_saved-n983040-k10-r1-recoverycore",
+    "actual": "owners-breadth-regression-iid_saved-n983040-k10-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_saved-n983040-k10-r2-recoverycore",
+    "actual": "owners-breadth-regression-iid_saved-n983040-k10-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_saved-n983040-k10-r3-recoverycore",
+    "actual": "owners-breadth-regression-iid_saved-n983040-k10-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_saved-n983040-k50-r1-recoverycore",
+    "actual": "owners-breadth-regression-iid_saved-n983040-k50-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_saved-n983040-k50-r2-recoverycore",
+    "actual": "owners-breadth-regression-iid_saved-n983040-k50-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-iid_saved-n983040-k50-r3-recoverycore",
+    "actual": "owners-breadth-regression-iid_saved-n983040-k50-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "core-breadth-checkpoint-robust-n983040-k10-r1-recoverycore",
+    "actual": "owners-breadth-regression-robust-n983040-k10-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-robust-n983040-k10-r2-recoverycore",
+    "actual": "owners-breadth-regression-robust-n983040-k10-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-robust-n983040-k10-r3-recoverycore",
+    "actual": "owners-breadth-regression-robust-n983040-k10-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-robust-n983040-k50-r1-recoverycore",
+    "actual": "owners-breadth-regression-robust-n983040-k50-r1-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-robust-n983040-k50-r2-recoverycore",
+    "actual": "owners-breadth-regression-robust-n983040-k50-r2-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  },
+  {
+    "reference": "core-breadth-checkpoint-robust-n983040-k50-r3-recoverycore",
+    "actual": "owners-breadth-regression-robust-n983040-k50-r3-topologyowner",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": null
+  }
+]

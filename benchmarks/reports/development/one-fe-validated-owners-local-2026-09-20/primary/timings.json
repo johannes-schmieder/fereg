@@ -1,0 +1,2686 @@
+[
+  {
+    "arms": {
+      "dofcore": {
+        "maximum_ms": 232.0,
+        "median_ms": 230.0,
+        "minimum_ms": 230.0,
+        "sampled_peak_rss_gib": 0.4384765625
+      },
+      "fixest": {
+        "maximum_ms": 345.0,
+        "median_ms": 338.0,
+        "minimum_ms": 331.0,
+        "sampled_peak_rss_gib": 0.6769866943359375
+      },
+      "sampleowner": {
+        "maximum_ms": 231.0,
+        "median_ms": 229.0,
+        "minimum_ms": 228.0,
+        "sampled_peak_rss_gib": 0.4425811767578125
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 10,
+    "paired_ratios": {
+      "dofcore/fixest": {
+        "median": 0.6804733727810651,
+        "values": [
+          0.6804733727810651,
+          0.6948640483383686,
+          0.6724637681159421
+        ],
+        "wins": 3
+      },
+      "dofcore/sampleowner": {
+        "median": 1.0043668122270741,
+        "values": [
+          0.9956709956709957,
+          1.0043668122270741,
+          1.0175438596491229
+        ],
+        "wins": 1
+      },
+      "fixest/dofcore": {
+        "median": 1.4695652173913043,
+        "values": [
+          1.4695652173913043,
+          1.4391304347826086,
+          1.487068965517241
+        ],
+        "wins": 0
+      },
+      "fixest/sampleowner": {
+        "median": 1.4632034632034632,
+        "values": [
+          1.4632034632034632,
+          1.445414847161572,
+          1.513157894736842
+        ],
+        "wins": 0
+      },
+      "sampleowner/dofcore": {
+        "median": 0.9956521739130435,
+        "values": [
+          1.0043478260869565,
+          0.9956521739130435,
+          0.9827586206896551
+        ],
+        "wins": 2
+      },
+      "sampleowner/fixest": {
+        "median": 0.6834319526627218,
+        "values": [
+          0.6834319526627218,
+          0.6918429003021148,
+          0.6608695652173914
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "sample-owner-screen"
+  },
+  {
+    "arms": {
+      "dofcore": {
+        "maximum_ms": 643.0,
+        "median_ms": 637.0,
+        "minimum_ms": 635.0,
+        "sampled_peak_rss_gib": 1.44189453125
+      },
+      "fixest": {
+        "maximum_ms": 1470.0,
+        "median_ms": 1427.0,
+        "minimum_ms": 1372.0,
+        "sampled_peak_rss_gib": 2.0603485107421875
+      },
+      "sampleowner": {
+        "maximum_ms": 644.0,
+        "median_ms": 635.0,
+        "minimum_ms": 625.0,
+        "sampled_peak_rss_gib": 1.449676513671875
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 50,
+    "paired_ratios": {
+      "dofcore/fixest": {
+        "median": 0.44639103013314646,
+        "values": [
+          0.4686588921282799,
+          0.44639103013314646,
+          0.4319727891156463
+        ],
+        "wins": 3
+      },
+      "dofcore/sampleowner": {
+        "median": 1.0031496062992127,
+        "values": [
+          1.0288,
+          1.0031496062992127,
+          0.9860248447204969
+        ],
+        "wins": 1
+      },
+      "fixest/dofcore": {
+        "median": 2.240188383045526,
+        "values": [
+          2.1337480559875583,
+          2.240188383045526,
+          2.3149606299212597
+        ],
+        "wins": 0
+      },
+      "fixest/sampleowner": {
+        "median": 2.247244094488189,
+        "values": [
+          2.1952000000000003,
+          2.247244094488189,
+          2.282608695652174
+        ],
+        "wins": 0
+      },
+      "sampleowner/dofcore": {
+        "median": 0.9968602825745683,
+        "values": [
+          0.9720062208398134,
+          0.9968602825745683,
+          1.0141732283464566
+        ],
+        "wins": 2
+      },
+      "sampleowner/fixest": {
+        "median": 0.444989488437281,
+        "values": [
+          0.45553935860058303,
+          0.444989488437281,
+          0.4380952380952381
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "sample-owner-screen"
+  },
+  {
+    "arms": {
+      "dofcore": {
+        "maximum_ms": 206.0,
+        "median_ms": 203.0,
+        "minimum_ms": 202.0,
+        "sampled_peak_rss_gib": 0.5922698974609375
+      },
+      "fixest": {
+        "maximum_ms": 231.0,
+        "median_ms": 225.0,
+        "minimum_ms": 223.0,
+        "sampled_peak_rss_gib": 0.58477783203125
+      },
+      "sampleowner": {
+        "maximum_ms": 204.0,
+        "median_ms": 203.0,
+        "minimum_ms": 199.0,
+        "sampled_peak_rss_gib": 0.6212615966796875
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "dofcore/fixest": {
+        "median": 0.8977777777777778,
+        "values": [
+          0.8977777777777778,
+          0.9103139013452916,
+          0.8917748917748917
+        ],
+        "wins": 3
+      },
+      "dofcore/sampleowner": {
+        "median": 1.0147783251231526,
+        "values": [
+          0.9901960784313727,
+          1.020100502512563,
+          1.0147783251231526
+        ],
+        "wins": 1
+      },
+      "fixest/dofcore": {
+        "median": 1.1138613861386137,
+        "values": [
+          1.1138613861386137,
+          1.0985221674876846,
+          1.121359223300971
+        ],
+        "wins": 0
+      },
+      "fixest/sampleowner": {
+        "median": 1.1206030150753767,
+        "values": [
+          1.1029411764705883,
+          1.1206030150753767,
+          1.1379310344827587
+        ],
+        "wins": 0
+      },
+      "sampleowner/dofcore": {
+        "median": 0.9854368932038836,
+        "values": [
+          1.0099009900990097,
+          0.9802955665024631,
+          0.9854368932038836
+        ],
+        "wins": 2
+      },
+      "sampleowner/fixest": {
+        "median": 0.8923766816143498,
+        "values": [
+          0.9066666666666666,
+          0.8923766816143498,
+          0.8787878787878788
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "sample-owner-screen"
+  },
+  {
+    "arms": {
+      "dofcore": {
+        "maximum_ms": 498.0,
+        "median_ms": 496.0,
+        "minimum_ms": 494.0,
+        "sampled_peak_rss_gib": 1.5359649658203125
+      },
+      "fixest": {
+        "maximum_ms": 550.0,
+        "median_ms": 531.0,
+        "minimum_ms": 513.0,
+        "sampled_peak_rss_gib": 1.8337249755859375
+      },
+      "sampleowner": {
+        "maximum_ms": 482.0,
+        "median_ms": 481.0,
+        "minimum_ms": 479.0,
+        "sampled_peak_rss_gib": 1.423370361328125
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {
+      "dofcore/fixest": {
+        "median": 0.9340866290018832,
+        "values": [
+          0.9340866290018832,
+          0.9054545454545454,
+          0.9629629629629629
+        ],
+        "wins": 3
+      },
+      "dofcore/sampleowner": {
+        "median": 1.0353430353430353,
+        "values": [
+          1.0354906054279749,
+          1.0353430353430353,
+          1.024896265560166
+        ],
+        "wins": 0
+      },
+      "fixest/dofcore": {
+        "median": 1.0705645161290323,
+        "values": [
+          1.0705645161290323,
+          1.1044176706827311,
+          1.0384615384615385
+        ],
+        "wins": 0
+      },
+      "fixest/sampleowner": {
+        "median": 1.1085594989561587,
+        "values": [
+          1.1085594989561587,
+          1.1434511434511436,
+          1.0643153526970954
+        ],
+        "wins": 0
+      },
+      "sampleowner/dofcore": {
+        "median": 0.9658634538152611,
+        "values": [
+          0.9657258064516129,
+          0.9658634538152611,
+          0.9757085020242915
+        ],
+        "wins": 3
+      },
+      "sampleowner/fixest": {
+        "median": 0.9020715630885121,
+        "values": [
+          0.9020715630885121,
+          0.8745454545454544,
+          0.9395711500974658
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "sample-owner-screen"
+  },
+  {
+    "arms": {
+      "dofcore": {
+        "maximum_ms": 186.0,
+        "median_ms": 170.0,
+        "minimum_ms": 169.0,
+        "sampled_peak_rss_gib": 0.4083099365234375
+      },
+      "fixest": {
+        "maximum_ms": 244.0,
+        "median_ms": 243.0,
+        "minimum_ms": 242.0,
+        "sampled_peak_rss_gib": 0.6105804443359375
+      },
+      "sampleowner": {
+        "maximum_ms": 170.0,
+        "median_ms": 170.0,
+        "minimum_ms": 166.0,
+        "sampled_peak_rss_gib": 0.3987884521484375
+      }
+    },
+    "case": "robust_saved",
+    "k": 10,
+    "paired_ratios": {
+      "dofcore/fixest": {
+        "median": 0.7024793388429753,
+        "values": [
+          0.7024793388429753,
+          0.6926229508196722,
+          0.7654320987654322
+        ],
+        "wins": 3
+      },
+      "dofcore/sampleowner": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          0.9941176470588236,
+          1.1204819277108433
+        ],
+        "wins": 1
+      },
+      "fixest/dofcore": {
+        "median": 1.4235294117647057,
+        "values": [
+          1.4235294117647057,
+          1.4437869822485205,
+          1.3064516129032258
+        ],
+        "wins": 0
+      },
+      "fixest/sampleowner": {
+        "median": 1.4352941176470586,
+        "values": [
+          1.4235294117647057,
+          1.4352941176470586,
+          1.463855421686747
+        ],
+        "wins": 0
+      },
+      "sampleowner/dofcore": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          1.0059171597633136,
+          0.89247311827957
+        ],
+        "wins": 1
+      },
+      "sampleowner/fixest": {
+        "median": 0.6967213114754099,
+        "values": [
+          0.7024793388429753,
+          0.6967213114754099,
+          0.6831275720164609
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "sample-owner-screen"
+  },
+  {
+    "arms": {
+      "dofcore": {
+        "maximum_ms": 563.0,
+        "median_ms": 552.0,
+        "minimum_ms": 548.9999999999999,
+        "sampled_peak_rss_gib": 1.421875
+      },
+      "fixest": {
+        "maximum_ms": 967.0,
+        "median_ms": 958.0,
+        "minimum_ms": 931.0,
+        "sampled_peak_rss_gib": 2.2126617431640625
+      },
+      "sampleowner": {
+        "maximum_ms": 546.9999999999999,
+        "median_ms": 540.0,
+        "minimum_ms": 537.0,
+        "sampled_peak_rss_gib": 1.4197845458984375
+      }
+    },
+    "case": "robust_saved",
+    "k": 50,
+    "paired_ratios": {
+      "dofcore/fixest": {
+        "median": 0.5876826722338204,
+        "values": [
+          0.5677352637021716,
+          0.5929108485499464,
+          0.5876826722338204
+        ],
+        "wins": 3
+      },
+      "dofcore/sampleowner": {
+        "median": 1.0223463687150836,
+        "values": [
+          1.0223463687150836,
+          1.0091407678244975,
+          1.0425925925925925
+        ],
+        "wins": 0
+      },
+      "fixest/dofcore": {
+        "median": 1.7015985790408528,
+        "values": [
+          1.761384335154827,
+          1.6865942028985508,
+          1.7015985790408528
+        ],
+        "wins": 0
+      },
+      "fixest/sampleowner": {
+        "median": 1.774074074074074,
+        "values": [
+          1.8007448789571694,
+          1.7020109689213898,
+          1.774074074074074
+        ],
+        "wins": 0
+      },
+      "sampleowner/dofcore": {
+        "median": 0.9781420765027324,
+        "values": [
+          0.9781420765027324,
+          0.990942028985507,
+          0.9591474245115454
+        ],
+        "wins": 3
+      },
+      "sampleowner/fixest": {
+        "median": 0.5636743215031316,
+        "values": [
+          0.5553257497414685,
+          0.5875402792696025,
+          0.5636743215031316
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "sample-owner-screen"
+  },
+  {
+    "arms": {
+      "sampleownerprofile": {
+        "maximum_ms": 208.0,
+        "median_ms": 205.5,
+        "minimum_ms": 203.0,
+        "sampled_peak_rss_gib": 0.585784912109375
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {},
+    "repetitions": 2,
+    "series": "sample-owner-phases"
+  },
+  {
+    "arms": {
+      "sampleownerprofile": {
+        "maximum_ms": 492.0,
+        "median_ms": 486.0,
+        "minimum_ms": 480.0,
+        "sampled_peak_rss_gib": 1.424407958984375
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {},
+    "repetitions": 2,
+    "series": "sample-owner-phases"
+  },
+  {
+    "arms": {
+      "sampleownerprofile": {
+        "maximum_ms": 172.0,
+        "median_ms": 170.0,
+        "minimum_ms": 168.0,
+        "sampled_peak_rss_gib": 0.4005889892578125
+      }
+    },
+    "case": "robust_saved",
+    "k": 10,
+    "paired_ratios": {},
+    "repetitions": 2,
+    "series": "sample-owner-phases"
+  },
+  {
+    "arms": {
+      "sampleownerprofile": {
+        "maximum_ms": 543.0,
+        "median_ms": 542.5,
+        "minimum_ms": 542.0,
+        "sampled_peak_rss_gib": 1.4261932373046875
+      }
+    },
+    "case": "robust_saved",
+    "k": 50,
+    "paired_ratios": {},
+    "repetitions": 2,
+    "series": "sample-owner-phases"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 336.0,
+        "median_ms": 336.0,
+        "minimum_ms": 320.0,
+        "sampled_peak_rss_gib": 0.607269287109375
+      },
+      "sampleowner": {
+        "maximum_ms": 228.0,
+        "median_ms": 227.0,
+        "minimum_ms": 221.0,
+        "sampled_peak_rss_gib": 0.4396820068359375
+      },
+      "topologyowner": {
+        "maximum_ms": 224.0,
+        "median_ms": 219.0,
+        "minimum_ms": 219.0,
+        "sampled_peak_rss_gib": 0.4414520263671875
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/sampleowner": {
+        "median": 1.4801762114537445,
+        "values": [
+          1.5203619909502264,
+          1.4801762114537445,
+          1.4035087719298245
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.5,
+        "values": [
+          1.5,
+          1.534246575342466,
+          1.461187214611872
+        ],
+        "wins": 0
+      },
+      "sampleowner/fixest": {
+        "median": 0.675595238095238,
+        "values": [
+          0.6577380952380952,
+          0.675595238095238,
+          0.7125
+        ],
+        "wins": 3
+      },
+      "sampleowner/topologyowner": {
+        "median": 1.0365296803652968,
+        "values": [
+          0.9866071428571428,
+          1.0365296803652968,
+          1.0410958904109588
+        ],
+        "wins": 1
+      },
+      "topologyowner/fixest": {
+        "median": 0.6666666666666666,
+        "values": [
+          0.6666666666666666,
+          0.6517857142857142,
+          0.684375
+        ],
+        "wins": 3
+      },
+      "topologyowner/sampleowner": {
+        "median": 0.9647577092511013,
+        "values": [
+          1.0135746606334841,
+          0.9647577092511013,
+          0.9605263157894737
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "topology-owner-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 1421.0,
+        "median_ms": 1382.0,
+        "minimum_ms": 1356.0,
+        "sampled_peak_rss_gib": 2.085205078125
+      },
+      "sampleowner": {
+        "maximum_ms": 624.0,
+        "median_ms": 622.0,
+        "minimum_ms": 613.0,
+        "sampled_peak_rss_gib": 1.4511871337890625
+      },
+      "topologyowner": {
+        "maximum_ms": 623.0,
+        "median_ms": 621.0,
+        "minimum_ms": 608.0,
+        "sampled_peak_rss_gib": 1.449798583984375
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/sampleowner": {
+        "median": 2.2147435897435894,
+        "values": [
+          2.2147435897435894,
+          2.3181076672104406,
+          2.180064308681672
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 2.2730263157894735,
+        "values": [
+          2.2730263157894735,
+          2.288244766505636,
+          2.1765650080256824
+        ],
+        "wins": 0
+      },
+      "sampleowner/fixest": {
+        "median": 0.4515195369030391,
+        "values": [
+          0.4515195369030391,
+          0.4313863476425053,
+          0.45870206489675514
+        ],
+        "wins": 3
+      },
+      "sampleowner/topologyowner": {
+        "median": 0.9983948635634029,
+        "values": [
+          1.0263157894736843,
+          0.9871175523349436,
+          0.9983948635634029
+        ],
+        "wins": 2
+      },
+      "topologyowner/fixest": {
+        "median": 0.4399421128798843,
+        "values": [
+          0.4399421128798843,
+          0.4370161857846587,
+          0.4594395280235988
+        ],
+        "wins": 3
+      },
+      "topologyowner/sampleowner": {
+        "median": 1.0016077170418007,
+        "values": [
+          0.9743589743589743,
+          1.0130505709624795,
+          1.0016077170418007
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "topology-owner-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 221.0,
+        "median_ms": 220.0,
+        "minimum_ms": 220.0,
+        "sampled_peak_rss_gib": 0.6175994873046875
+      },
+      "sampleowner": {
+        "maximum_ms": 204.0,
+        "median_ms": 198.0,
+        "minimum_ms": 198.0,
+        "sampled_peak_rss_gib": 0.6296844482421875
+      },
+      "topologyowner": {
+        "maximum_ms": 201.0,
+        "median_ms": 196.0,
+        "minimum_ms": 195.0,
+        "sampled_peak_rss_gib": 0.480377197265625
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/sampleowner": {
+        "median": 1.1111111111111112,
+        "values": [
+          1.1111111111111112,
+          1.0833333333333335,
+          1.1111111111111112
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.1275510204081631,
+        "values": [
+          1.1282051282051282,
+          1.1275510204081631,
+          1.0945273631840795
+        ],
+        "wins": 0
+      },
+      "sampleowner/fixest": {
+        "median": 0.9,
+        "values": [
+          0.9,
+          0.923076923076923,
+          0.9
+        ],
+        "wins": 3
+      },
+      "sampleowner/topologyowner": {
+        "median": 1.0153846153846153,
+        "values": [
+          1.0153846153846153,
+          1.040816326530612,
+          0.9850746268656716
+        ],
+        "wins": 1
+      },
+      "topologyowner/fixest": {
+        "median": 0.8868778280542987,
+        "values": [
+          0.8863636363636364,
+          0.8868778280542987,
+          0.9136363636363637
+        ],
+        "wins": 3
+      },
+      "topologyowner/sampleowner": {
+        "median": 0.9848484848484849,
+        "values": [
+          0.9848484848484849,
+          0.9607843137254903,
+          1.0151515151515151
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "topology-owner-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 529.0,
+        "median_ms": 524.0,
+        "minimum_ms": 518.0,
+        "sampled_peak_rss_gib": 1.8432769775390625
+      },
+      "sampleowner": {
+        "maximum_ms": 488.0,
+        "median_ms": 483.0,
+        "minimum_ms": 480.0,
+        "sampled_peak_rss_gib": 1.4246978759765625
+      },
+      "topologyowner": {
+        "maximum_ms": 489.0,
+        "median_ms": 487.0,
+        "minimum_ms": 483.0,
+        "sampled_peak_rss_gib": 1.420806884765625
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/sampleowner": {
+        "median": 1.0848861283643894,
+        "values": [
+          1.0614754098360657,
+          1.1020833333333335,
+          1.0848861283643894
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.081799591002045,
+        "values": [
+          1.0636550308008215,
+          1.081799591002045,
+          1.0848861283643894
+        ],
+        "wins": 0
+      },
+      "sampleowner/fixest": {
+        "median": 0.9217557251908396,
+        "values": [
+          0.9420849420849421,
+          0.9073724007561436,
+          0.9217557251908396
+        ],
+        "wins": 3
+      },
+      "sampleowner/topologyowner": {
+        "median": 1.0,
+        "values": [
+          1.002053388090349,
+          0.9815950920245399,
+          1.0
+        ],
+        "wins": 1
+      },
+      "topologyowner/fixest": {
+        "median": 0.9243856332703213,
+        "values": [
+          0.94015444015444,
+          0.9243856332703213,
+          0.9217557251908396
+        ],
+        "wins": 3
+      },
+      "topologyowner/sampleowner": {
+        "median": 1.0,
+        "values": [
+          0.9979508196721312,
+          1.01875,
+          1.0
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "topology-owner-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 255.0,
+        "median_ms": 240.0,
+        "minimum_ms": 236.0,
+        "sampled_peak_rss_gib": 0.6366424560546875
+      },
+      "sampleowner": {
+        "maximum_ms": 171.0,
+        "median_ms": 171.0,
+        "minimum_ms": 163.0,
+        "sampled_peak_rss_gib": 0.4015045166015625
+      },
+      "topologyowner": {
+        "maximum_ms": 166.0,
+        "median_ms": 164.0,
+        "minimum_ms": 163.0,
+        "sampled_peak_rss_gib": 0.4001922607421875
+      }
+    },
+    "case": "robust_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/sampleowner": {
+        "median": 1.4035087719298245,
+        "values": [
+          1.3801169590643274,
+          1.4035087719298245,
+          1.5644171779141105
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.4723926380368098,
+        "values": [
+          1.4390243902439024,
+          1.4723926380368098,
+          1.536144578313253
+        ],
+        "wins": 0
+      },
+      "sampleowner/fixest": {
+        "median": 0.7125000000000001,
+        "values": [
+          0.7245762711864407,
+          0.7125000000000001,
+          0.6392156862745099
+        ],
+        "wins": 3
+      },
+      "sampleowner/topologyowner": {
+        "median": 1.0426829268292683,
+        "values": [
+          1.0426829268292683,
+          1.049079754601227,
+          0.9819277108433735
+        ],
+        "wins": 1
+      },
+      "topologyowner/fixest": {
+        "median": 0.6791666666666667,
+        "values": [
+          0.6949152542372882,
+          0.6791666666666667,
+          0.6509803921568628
+        ],
+        "wins": 3
+      },
+      "topologyowner/sampleowner": {
+        "median": 0.9590643274853801,
+        "values": [
+          0.9590643274853801,
+          0.9532163742690059,
+          1.0184049079754602
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "topology-owner-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 962.0,
+        "median_ms": 942.0,
+        "minimum_ms": 941.0,
+        "sampled_peak_rss_gib": 2.1977996826171875
+      },
+      "sampleowner": {
+        "maximum_ms": 550.9999999999999,
+        "median_ms": 542.0,
+        "minimum_ms": 539.0,
+        "sampled_peak_rss_gib": 1.423126220703125
+      },
+      "topologyowner": {
+        "maximum_ms": 544.9999999999999,
+        "median_ms": 543.0,
+        "minimum_ms": 543.0,
+        "sampled_peak_rss_gib": 1.4257965087890625
+      }
+    },
+    "case": "robust_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/sampleowner": {
+        "median": 1.74582560296846,
+        "values": [
+          1.7096188747731398,
+          1.74582560296846,
+          1.7749077490774905
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.734806629834254,
+        "values": [
+          1.734806629834254,
+          1.726605504587156,
+          1.7716390423572743
+        ],
+        "wins": 0
+      },
+      "sampleowner/fixest": {
+        "median": 0.5727948990435707,
+        "values": [
+          0.5849256900212314,
+          0.5727948990435707,
+          0.5634095634095635
+        ],
+        "wins": 3
+      },
+      "sampleowner/topologyowner": {
+        "median": 0.998158379373849,
+        "values": [
+          1.0147329650092078,
+          0.9889908256880736,
+          0.998158379373849
+        ],
+        "wins": 2
+      },
+      "topologyowner/fixest": {
+        "median": 0.5764331210191084,
+        "values": [
+          0.5764331210191084,
+          0.5791710945802337,
+          0.5644490644490645
+        ],
+        "wins": 3
+      },
+      "topologyowner/sampleowner": {
+        "median": 1.0018450184501846,
+        "values": [
+          0.9854809437386571,
+          1.0111317254174395,
+          1.0018450184501846
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "topology-owner-screen"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 249.0,
+        "median_ms": 248.0,
+        "minimum_ms": 246.0,
+        "sampled_peak_rss_gib": 0.4281768798828125
+      },
+      "fixest": {
+        "maximum_ms": 255.0,
+        "median_ms": 253.0,
+        "minimum_ms": 247.0,
+        "sampled_peak_rss_gib": 0.5715484619140625
+      },
+      "topologyowner": {
+        "maximum_ms": 190.0,
+        "median_ms": 184.0,
+        "minimum_ms": 183.0,
+        "sampled_peak_rss_gib": 0.4168548583984375
+      }
+    },
+    "case": "cluster2_cross",
+    "k": 10,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.9802371541501976,
+        "values": [
+          0.9959514170040485,
+          0.9764705882352941,
+          0.9802371541501976
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 1.3442622950819672,
+        "values": [
+          1.3442622950819672,
+          1.3105263157894738,
+          1.3478260869565217
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 1.0201612903225807,
+        "values": [
+          1.0040650406504066,
+          1.0240963855421688,
+          1.0201612903225807
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.349726775956284,
+        "values": [
+          1.349726775956284,
+          1.3421052631578947,
+          1.375
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.7439024390243902,
+        "values": [
+          0.7439024390243902,
+          0.7630522088353414,
+          0.7419354838709677
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.7408906882591093,
+        "values": [
+          0.7408906882591093,
+          0.7450980392156863,
+          0.7272727272727273
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 747.0,
+        "median_ms": 738.0,
+        "minimum_ms": 737.0,
+        "sampled_peak_rss_gib": 1.5107269287109375
+      },
+      "fixest": {
+        "maximum_ms": 1354.0,
+        "median_ms": 1326.0,
+        "minimum_ms": 1304.0,
+        "sampled_peak_rss_gib": 2.02105712890625
+      },
+      "topologyowner": {
+        "maximum_ms": 587.0,
+        "median_ms": 583.0,
+        "minimum_ms": 575.0,
+        "sampled_peak_rss_gib": 1.491302490234375
+      }
+    },
+    "case": "cluster2_cross",
+    "k": 50,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.5633484162895928,
+        "values": [
+          0.5633484162895928,
+          0.5443131462333826,
+          0.5659509202453987
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 1.272572402044293,
+        "values": [
+          1.272572402044293,
+          1.2817391304347827,
+          1.2658662092624358
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 1.7751004016064258,
+        "values": [
+          1.7751004016064258,
+          1.837177747625509,
+          1.7669376693766938
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 2.2589437819420786,
+        "values": [
+          2.2589437819420786,
+          2.3547826086956527,
+          2.2367066895368786
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.785809906291834,
+        "values": [
+          0.785809906291834,
+          0.7801899592944369,
+          0.7899728997289972
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.4426847662141779,
+        "values": [
+          0.4426847662141779,
+          0.4246676514032496,
+          0.4470858895705521
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 235.0,
+        "median_ms": 234.0,
+        "minimum_ms": 233.0,
+        "sampled_peak_rss_gib": 0.4136962890625
+      },
+      "fixest": {
+        "maximum_ms": 245.0,
+        "median_ms": 243.0,
+        "minimum_ms": 236.0,
+        "sampled_peak_rss_gib": 0.6087646484375
+      },
+      "topologyowner": {
+        "maximum_ms": 178.0,
+        "median_ms": 175.0,
+        "minimum_ms": 174.0,
+        "sampled_peak_rss_gib": 0.40997314453125
+      }
+    },
+    "case": "cluster2_nested",
+    "k": 10,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.962962962962963,
+        "values": [
+          0.9957627118644068,
+          0.9510204081632654,
+          0.962962962962963
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 1.3390804597701151,
+        "values": [
+          1.342857142857143,
+          1.3390804597701151,
+          1.3146067415730338
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 1.0384615384615383,
+        "values": [
+          1.004255319148936,
+          1.0515021459227467,
+          1.0384615384615383
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.3651685393258428,
+        "values": [
+          1.3485714285714285,
+          1.4080459770114944,
+          1.3651685393258428
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.7467811158798282,
+        "values": [
+          0.7446808510638298,
+          0.7467811158798282,
+          0.7606837606837606
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.7325102880658436,
+        "values": [
+          0.7415254237288136,
+          0.710204081632653,
+          0.7325102880658436
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 766.0,
+        "median_ms": 750.0,
+        "minimum_ms": 742.0,
+        "sampled_peak_rss_gib": 1.4203643798828125
+      },
+      "fixest": {
+        "maximum_ms": 1297.0,
+        "median_ms": 1267.0,
+        "minimum_ms": 1255.0,
+        "sampled_peak_rss_gib": 2.2050323486328125
+      },
+      "topologyowner": {
+        "maximum_ms": 597.0,
+        "median_ms": 595.0,
+        "minimum_ms": 589.0,
+        "sampled_peak_rss_gib": 1.4200592041015625
+      }
+    },
+    "case": "cluster2_nested",
+    "k": 50,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.5919494869771114,
+        "values": [
+          0.6103585657370518,
+          0.5720894371626831,
+          0.5919494869771114
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 1.256281407035176,
+        "values": [
+          1.300509337860781,
+          1.2470588235294118,
+          1.256281407035176
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 1.6893333333333331,
+        "values": [
+          1.6383812010443863,
+          1.7479784366576818,
+          1.6893333333333331
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 2.130730050933786,
+        "values": [
+          2.130730050933786,
+          2.179831932773109,
+          2.1222780569514237
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.7959999999999999,
+        "values": [
+          0.768929503916449,
+          0.8018867924528301,
+          0.7959999999999999
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.4693227091633466,
+        "values": [
+          0.4693227091633466,
+          0.45875096376252894,
+          0.4711917916337806
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 366.0,
+        "median_ms": 360.0,
+        "minimum_ms": 360.0,
+        "sampled_peak_rss_gib": 0.54913330078125
+      },
+      "fixest": {
+        "maximum_ms": 342.0,
+        "median_ms": 335.0,
+        "minimum_ms": 332.0,
+        "sampled_peak_rss_gib": 0.6084442138671875
+      },
+      "topologyowner": {
+        "maximum_ms": 238.0,
+        "median_ms": 221.0,
+        "minimum_ms": 220.0,
+        "sampled_peak_rss_gib": 0.441253662109375
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 1.0746268656716418,
+        "values": [
+          1.0701754385964912,
+          1.0746268656716418,
+          1.0843373493975903
+        ],
+        "wins": 0
+      },
+      "fereg/topologyowner": {
+        "median": 1.6289592760180995,
+        "values": [
+          1.6636363636363636,
+          1.5126050420168067,
+          1.6289592760180995
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 0.9305555555555557,
+        "values": [
+          0.9344262295081968,
+          0.9305555555555557,
+          0.9222222222222223
+        ],
+        "wins": 3
+      },
+      "fixest/topologyowner": {
+        "median": 1.502262443438914,
+        "values": [
+          1.5545454545454547,
+          1.4075630252100841,
+          1.502262443438914
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.6138888888888889,
+        "values": [
+          0.6010928961748634,
+          0.6611111111111111,
+          0.6138888888888889
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.6656626506024096,
+        "values": [
+          0.6432748538011696,
+          0.7104477611940297,
+          0.6656626506024096
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 1033.0,
+        "median_ms": 1016.0,
+        "minimum_ms": 1014.9999999999999,
+        "sampled_peak_rss_gib": 1.4534759521484375
+      },
+      "fixest": {
+        "maximum_ms": 1453.0,
+        "median_ms": 1426.0,
+        "minimum_ms": 1406.0,
+        "sampled_peak_rss_gib": 2.0566558837890625
+      },
+      "topologyowner": {
+        "maximum_ms": 638.0,
+        "median_ms": 631.0,
+        "minimum_ms": 626.0,
+        "sampled_peak_rss_gib": 1.4387664794921875
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.7226173541963016,
+        "values": [
+          0.7244039270687237,
+          0.7226173541963016,
+          0.6985547143840329
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 1.6191222570532913,
+        "values": [
+          1.6191222570532913,
+          1.623003194888179,
+          1.6085578446909665
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 1.3838582677165354,
+        "values": [
+          1.3804453049370766,
+          1.3838582677165354,
+          1.4315270935960593
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 2.246006389776358,
+        "values": [
+          2.2351097178683386,
+          2.246006389776358,
+          2.302694136291601
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.6176185866408519,
+        "values": [
+          0.6176185866408519,
+          0.6161417322834646,
+          0.6216748768472907
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.44523470839260315,
+        "values": [
+          0.4474053295932679,
+          0.44523470839260315,
+          0.434273916035788
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 215.0,
+        "median_ms": 215.0,
+        "minimum_ms": 211.0,
+        "sampled_peak_rss_gib": 0.421600341796875
+      },
+      "fixest": {
+        "maximum_ms": 191.0,
+        "median_ms": 185.0,
+        "minimum_ms": 185.0,
+        "sampled_peak_rss_gib": 0.55499267578125
+      },
+      "topologyowner": {
+        "maximum_ms": 155.0,
+        "median_ms": 154.0,
+        "minimum_ms": 150.0,
+        "sampled_peak_rss_gib": 0.4106597900390625
+      }
+    },
+    "case": "cluster_cross",
+    "k": 10,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 1.1405405405405404,
+        "values": [
+          1.1405405405405404,
+          1.12565445026178,
+          1.162162162162162
+        ],
+        "wins": 0
+      },
+      "fereg/topologyowner": {
+        "median": 1.396103896103896,
+        "values": [
+          1.3612903225806452,
+          1.396103896103896,
+          1.4333333333333333
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 0.8767772511848342,
+        "values": [
+          0.8767772511848342,
+          0.8883720930232558,
+          0.8604651162790697
+        ],
+        "wins": 3
+      },
+      "fixest/topologyowner": {
+        "median": 1.2333333333333334,
+        "values": [
+          1.1935483870967742,
+          1.2402597402597404,
+          1.2333333333333334
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.7162790697674418,
+        "values": [
+          0.7345971563981043,
+          0.7162790697674418,
+          0.6976744186046512
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.8108108108108107,
+        "values": [
+          0.8378378378378378,
+          0.806282722513089,
+          0.8108108108108107
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 697.0000000000001,
+        "median_ms": 686.0,
+        "minimum_ms": 675.9999999999999,
+        "sampled_peak_rss_gib": 1.421600341796875
+      },
+      "fixest": {
+        "maximum_ms": 871.0,
+        "median_ms": 867.0,
+        "minimum_ms": 847.0,
+        "sampled_peak_rss_gib": 1.8256988525390625
+      },
+      "topologyowner": {
+        "maximum_ms": 584.0,
+        "median_ms": 517.0,
+        "minimum_ms": 514.0,
+        "sampled_peak_rss_gib": 1.421539306640625
+      }
+    },
+    "case": "cluster_cross",
+    "k": 50,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.8002296211251436,
+        "values": [
+          0.8002296211251436,
+          0.8099173553719008,
+          0.7797001153402536
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 1.3075435203094776,
+        "values": [
+          1.3560311284046693,
+          1.1746575342465753,
+          1.3075435203094776
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 1.249641319942611,
+        "values": [
+          1.249641319942611,
+          1.2346938775510206,
+          1.282544378698225
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.676982591876209,
+        "values": [
+          1.6945525291828794,
+          1.4503424657534247,
+          1.676982591876209
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.7647928994082841,
+        "values": [
+          0.7374461979913917,
+          0.8513119533527697,
+          0.7647928994082841
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.5963091118800462,
+        "values": [
+          0.5901262916188289,
+          0.6894923258559622,
+          0.5963091118800462
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 207.0,
+        "median_ms": 205.0,
+        "minimum_ms": 205.0,
+        "sampled_peak_rss_gib": 0.51068115234375
+      },
+      "fixest": {
+        "maximum_ms": 190.0,
+        "median_ms": 182.0,
+        "minimum_ms": 180.0,
+        "sampled_peak_rss_gib": 0.5291748046875
+      },
+      "topologyowner": {
+        "maximum_ms": 146.0,
+        "median_ms": 145.0,
+        "minimum_ms": 142.0,
+        "sampled_peak_rss_gib": 0.3999176025390625
+      }
+    },
+    "case": "cluster_fe",
+    "k": 10,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 1.1263736263736264,
+        "values": [
+          1.1388888888888888,
+          1.0894736842105261,
+          1.1263736263736264
+        ],
+        "wins": 0
+      },
+      "fereg/topologyowner": {
+        "median": 1.4178082191780823,
+        "values": [
+          1.4137931034482758,
+          1.4178082191780823,
+          1.443661971830986
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 0.8878048780487805,
+        "values": [
+          0.8780487804878049,
+          0.9178743961352658,
+          0.8878048780487805
+        ],
+        "wins": 3
+      },
+      "fixest/topologyowner": {
+        "median": 1.2816901408450705,
+        "values": [
+          1.2413793103448276,
+          1.3013698630136987,
+          1.2816901408450705
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.7053140096618358,
+        "values": [
+          0.7073170731707317,
+          0.7053140096618358,
+          0.6926829268292682
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.7802197802197802,
+        "values": [
+          0.8055555555555556,
+          0.7684210526315789,
+          0.7802197802197802
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 687.0,
+        "median_ms": 685.0,
+        "minimum_ms": 656.0,
+        "sampled_peak_rss_gib": 1.4890899658203125
+      },
+      "fixest": {
+        "maximum_ms": 998.0,
+        "median_ms": 978.0,
+        "minimum_ms": 967.0,
+        "sampled_peak_rss_gib": 1.9727935791015625
+      },
+      "topologyowner": {
+        "maximum_ms": 516.0,
+        "median_ms": 501.0,
+        "minimum_ms": 498.0,
+        "sampled_peak_rss_gib": 1.4874725341796875
+      }
+    },
+    "case": "cluster_fe",
+    "k": 50,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.686372745490982,
+        "values": [
+          0.6783867631851086,
+          0.7024539877300614,
+          0.686372745490982
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 1.3275193798449614,
+        "values": [
+          1.30938123752495,
+          1.3795180722891567,
+          1.3275193798449614
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 1.456934306569343,
+        "values": [
+          1.4740853658536583,
+          1.4235807860262006,
+          1.456934306569343
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.9341085271317828,
+        "values": [
+          1.9301397205588822,
+          1.963855421686747,
+          1.9341085271317828
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.7532846715328467,
+        "values": [
+          0.7637195121951219,
+          0.7248908296943231,
+          0.7532846715328467
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.5170340681362725,
+        "values": [
+          0.5180972078593589,
+          0.5092024539877301,
+          0.5170340681362725
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 316.0,
+        "median_ms": 313.0,
+        "minimum_ms": 312.0000000000001,
+        "sampled_peak_rss_gib": 0.4145050048828125
+      },
+      "fixest": {
+        "maximum_ms": 254.0,
+        "median_ms": 253.0,
+        "minimum_ms": 251.0,
+        "sampled_peak_rss_gib": 0.57269287109375
+      },
+      "topologyowner": {
+        "maximum_ms": 178.0,
+        "median_ms": 175.0,
+        "minimum_ms": 173.0,
+        "sampled_peak_rss_gib": 0.407501220703125
+      }
+    },
+    "case": "cluster_fe_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 1.2430278884462156,
+        "values": [
+          1.2371541501976284,
+          1.2440944881889764,
+          1.2430278884462156
+        ],
+        "wins": 0
+      },
+      "fereg/topologyowner": {
+        "median": 1.7885714285714287,
+        "values": [
+          1.7885714285714287,
+          1.8265895953757227,
+          1.7528089887640457
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 0.8044871794871792,
+        "values": [
+          0.8083067092651757,
+          0.8037974683544303,
+          0.8044871794871792
+        ],
+        "wins": 3
+      },
+      "fixest/topologyowner": {
+        "median": 1.4457142857142857,
+        "values": [
+          1.4457142857142857,
+          1.4682080924855492,
+          1.4101123595505618
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.5591054313099041,
+        "values": [
+          0.5591054313099041,
+          0.5474683544303797,
+          0.5705128205128203
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.691699604743083,
+        "values": [
+          0.691699604743083,
+          0.6811023622047243,
+          0.7091633466135457
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 924.0,
+        "median_ms": 923.0,
+        "minimum_ms": 921.0,
+        "sampled_peak_rss_gib": 1.4252777099609375
+      },
+      "fixest": {
+        "maximum_ms": 1060.0,
+        "median_ms": 1014.9999999999999,
+        "minimum_ms": 1000.9999999999999,
+        "sampled_peak_rss_gib": 1.998870849609375
+      },
+      "topologyowner": {
+        "maximum_ms": 540.0,
+        "median_ms": 536.0,
+        "minimum_ms": 534.0,
+        "sampled_peak_rss_gib": 1.427520751953125
+      }
+    },
+    "case": "cluster_fe_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.9093596059113301,
+        "values": [
+          0.9230769230769232,
+          0.9093596059113301,
+          0.8688679245283019
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 1.7220149253731343,
+        "values": [
+          1.711111111111111,
+          1.7220149253731343,
+          1.7247191011235954
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 1.0996749729144093,
+        "values": [
+          1.0833333333333333,
+          1.0996749729144093,
+          1.1509229098805647
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.8936567164179101,
+        "values": [
+          1.8537037037037034,
+          1.8936567164179101,
+          1.9850187265917603
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.580715059588299,
+        "values": [
+          0.5844155844155844,
+          0.580715059588299,
+          0.5798045602605864
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.5280788177339902,
+        "values": [
+          0.5394605394605395,
+          0.5280788177339902,
+          0.5037735849056604
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 132.0,
+        "median_ms": 130.0,
+        "minimum_ms": 129.0,
+        "sampled_peak_rss_gib": 0.50457763671875
+      },
+      "fixest": {
+        "maximum_ms": 150.0,
+        "median_ms": 148.0,
+        "minimum_ms": 139.0,
+        "sampled_peak_rss_gib": 0.523773193359375
+      },
+      "topologyowner": {
+        "maximum_ms": 130.0,
+        "median_ms": 127.0,
+        "minimum_ms": 127.0,
+        "sampled_peak_rss_gib": 0.460418701171875
+      }
+    },
+    "case": "iid",
+    "k": 10,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.8800000000000001,
+        "values": [
+          0.8783783783783784,
+          0.9280575539568344,
+          0.8800000000000001
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 1.015748031496063,
+        "values": [
+          1.0,
+          1.015748031496063,
+          1.0393700787401574
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 1.1363636363636362,
+        "values": [
+          1.1384615384615384,
+          1.0775193798449614,
+          1.1363636363636362
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.1384615384615384,
+        "values": [
+          1.1384615384615384,
+          1.094488188976378,
+          1.1811023622047243
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.9844961240310077,
+        "values": [
+          1.0,
+          0.9844961240310077,
+          0.962121212121212
+        ],
+        "wins": 2
+      },
+      "topologyowner/fixest": {
+        "median": 0.8783783783783784,
+        "values": [
+          0.8783783783783784,
+          0.9136690647482014,
+          0.8466666666666667
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 407.0,
+        "median_ms": 403.0,
+        "minimum_ms": 398.0,
+        "sampled_peak_rss_gib": 1.3995208740234375
+      },
+      "fixest": {
+        "maximum_ms": 506.0,
+        "median_ms": 497.0,
+        "minimum_ms": 477.0,
+        "sampled_peak_rss_gib": 1.824951171875
+      },
+      "topologyowner": {
+        "maximum_ms": 411.0,
+        "median_ms": 410.0,
+        "minimum_ms": 402.0,
+        "sampled_peak_rss_gib": 1.4003448486328125
+      }
+    },
+    "case": "iid",
+    "k": 50,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.8189134808853118,
+        "values": [
+          0.8448637316561846,
+          0.7865612648221344,
+          0.8189134808853118
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 0.9805352798053529,
+        "values": [
+          0.9805352798053529,
+          0.9707317073170733,
+          1.0124378109452734
+        ],
+        "wins": 2
+      },
+      "fixest/fereg": {
+        "median": 1.2211302211302213,
+        "values": [
+          1.183622828784119,
+          1.2713567839195978,
+          1.2211302211302213
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.2341463414634146,
+        "values": [
+          1.1605839416058394,
+          1.2341463414634146,
+          1.236318407960199
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 1.0198511166253101,
+        "values": [
+          1.0198511166253101,
+          1.0301507537688441,
+          0.9877149877149879
+        ],
+        "wins": 1
+      },
+      "topologyowner/fixest": {
+        "median": 0.8102766798418972,
+        "values": [
+          0.8616352201257862,
+          0.8102766798418972,
+          0.8088531187122737
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 409.0,
+        "median_ms": 381.0,
+        "minimum_ms": 360.0,
+        "sampled_peak_rss_gib": 0.499786376953125
+      },
+      "fixest": {
+        "maximum_ms": 307.0,
+        "median_ms": 259.0,
+        "minimum_ms": 214.0,
+        "sampled_peak_rss_gib": 0.6146087646484375
+      },
+      "topologyowner": {
+        "maximum_ms": 209.0,
+        "median_ms": 206.0,
+        "minimum_ms": 198.0,
+        "sampled_peak_rss_gib": 0.5634765625
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 1.471042471042471,
+        "values": [
+          1.6822429906542056,
+          1.3322475570032573,
+          1.471042471042471
+        ],
+        "wins": 0
+      },
+      "fereg/topologyowner": {
+        "median": 1.8495145631067962,
+        "values": [
+          1.8181818181818181,
+          1.956937799043062,
+          1.8495145631067962
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 0.6797900262467191,
+        "values": [
+          0.5944444444444444,
+          0.7506112469437654,
+          0.6797900262467191
+        ],
+        "wins": 3
+      },
+      "fixest/topologyowner": {
+        "median": 1.2572815533980584,
+        "values": [
+          1.0808080808080807,
+          1.4688995215311005,
+          1.2572815533980584
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.5406824146981627,
+        "values": [
+          0.55,
+          0.511002444987775,
+          0.5406824146981627
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.7953667953667953,
+        "values": [
+          0.9252336448598132,
+          0.6807817589576547,
+          0.7953667953667953
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 927.0,
+        "median_ms": 916.0,
+        "minimum_ms": 913.0,
+        "sampled_peak_rss_gib": 1.4265594482421875
+      },
+      "fixest": {
+        "maximum_ms": 531.0,
+        "median_ms": 525.0,
+        "minimum_ms": 523.0,
+        "sampled_peak_rss_gib": 1.83453369140625
+      },
+      "topologyowner": {
+        "maximum_ms": 493.0,
+        "median_ms": 485.0,
+        "minimum_ms": 479.0,
+        "sampled_peak_rss_gib": 1.5255126953125
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 1.7457627118644068,
+        "values": [
+          1.751434034416826,
+          1.7457627118644068,
+          1.739047619047619
+        ],
+        "wins": 0
+      },
+      "fereg/topologyowner": {
+        "median": 1.8886597938144332,
+        "values": [
+          1.8886597938144332,
+          1.8803245436105478,
+          1.9060542797494782
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 0.5728155339805825,
+        "values": [
+          0.5709606986899564,
+          0.5728155339805825,
+          0.5750273822562979
+        ],
+        "wins": 3
+      },
+      "fixest/topologyowner": {
+        "median": 1.0783505154639177,
+        "values": [
+          1.0783505154639177,
+          1.077079107505071,
+          1.0960334029227559
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.5294759825327511,
+        "values": [
+          0.5294759825327511,
+          0.5318230852211434,
+          0.524644030668127
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.9273422562141491,
+        "values": [
+          0.9273422562141491,
+          0.9284369114877589,
+          0.9123809523809523
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 287.0,
+        "median_ms": 285.0,
+        "minimum_ms": 282.0,
+        "sampled_peak_rss_gib": 0.447906494140625
+      },
+      "fixest": {
+        "maximum_ms": 217.0,
+        "median_ms": 212.0,
+        "minimum_ms": 208.0,
+        "sampled_peak_rss_gib": 0.60791015625
+      },
+      "topologyowner": {
+        "maximum_ms": 157.0,
+        "median_ms": 152.0,
+        "minimum_ms": 150.0,
+        "sampled_peak_rss_gib": 0.414581298828125
+      }
+    },
+    "case": "iid_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 1.3443396226415094,
+        "values": [
+          1.3443396226415094,
+          1.3557692307692306,
+          1.3225806451612903
+        ],
+        "wins": 0
+      },
+      "fereg/topologyowner": {
+        "median": 1.8749999999999998,
+        "values": [
+          1.8749999999999998,
+          1.7961783439490444,
+          1.9133333333333333
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 0.7438596491228071,
+        "values": [
+          0.7438596491228071,
+          0.7375886524822696,
+          0.7560975609756098
+        ],
+        "wins": 3
+      },
+      "fixest/topologyowner": {
+        "median": 1.394736842105263,
+        "values": [
+          1.394736842105263,
+          1.3248407643312101,
+          1.4466666666666668
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.5333333333333333,
+        "values": [
+          0.5333333333333333,
+          0.5567375886524824,
+          0.5226480836236934
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.7169811320754716,
+        "values": [
+          0.7169811320754716,
+          0.7548076923076923,
+          0.6912442396313364
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 765.0,
+        "median_ms": 761.0,
+        "minimum_ms": 754.0,
+        "sampled_peak_rss_gib": 1.424102783203125
+      },
+      "fixest": {
+        "maximum_ms": 545.0,
+        "median_ms": 536.0,
+        "minimum_ms": 526.0,
+        "sampled_peak_rss_gib": 1.8336944580078125
+      },
+      "topologyowner": {
+        "maximum_ms": 419.0,
+        "median_ms": 418.0,
+        "minimum_ms": 416.0,
+        "sampled_peak_rss_gib": 1.5478668212890625
+      }
+    },
+    "case": "iid_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 1.4272388059701493,
+        "values": [
+          1.38348623853211,
+          1.446768060836502,
+          1.4272388059701493
+        ],
+        "wins": 0
+      },
+      "fereg/topologyowner": {
+        "median": 1.8162291169451075,
+        "values": [
+          1.8125,
+          1.8162291169451075,
+          1.8301435406698565
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 0.7006535947712419,
+        "values": [
+          0.7228116710875332,
+          0.6911957950065704,
+          0.7006535947712419
+        ],
+        "wins": 3
+      },
+      "fixest/topologyowner": {
+        "median": 1.2822966507177034,
+        "values": [
+          1.310096153846154,
+          1.2553699284009547,
+          1.2822966507177034
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.5505913272010512,
+        "values": [
+          0.5517241379310345,
+          0.5505913272010512,
+          0.5464052287581699
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.7798507462686567,
+        "values": [
+          0.7633027522935779,
+          0.7965779467680608,
+          0.7798507462686567
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 196.0,
+        "median_ms": 192.0,
+        "minimum_ms": 190.9999999999999,
+        "sampled_peak_rss_gib": 0.505615234375
+      },
+      "fixest": {
+        "maximum_ms": 169.0,
+        "median_ms": 165.0,
+        "minimum_ms": 161.0,
+        "sampled_peak_rss_gib": 0.597320556640625
+      },
+      "topologyowner": {
+        "maximum_ms": 143.0,
+        "median_ms": 142.0,
+        "minimum_ms": 141.0,
+        "sampled_peak_rss_gib": 0.429290771484375
+      }
+    },
+    "case": "robust",
+    "k": 10,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 1.1636363636363636,
+        "values": [
+          1.1301775147928987,
+          1.2173913043478262,
+          1.1636363636363636
+        ],
+        "wins": 0
+      },
+      "fereg/topologyowner": {
+        "median": 1.3546099290780136,
+        "values": [
+          1.3546099290780136,
+          1.3706293706293708,
+          1.3521126760563382
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 0.859375,
+        "values": [
+          0.8848167539267021,
+          0.8214285714285714,
+          0.859375
+        ],
+        "wins": 3
+      },
+      "fixest/topologyowner": {
+        "median": 1.1619718309859157,
+        "values": [
+          1.1985815602836882,
+          1.125874125874126,
+          1.1619718309859157
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.7382198952879585,
+        "values": [
+          0.7382198952879585,
+          0.7295918367346937,
+          0.7395833333333333
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.8606060606060605,
+        "values": [
+          0.8343195266272188,
+          0.888198757763975,
+          0.8606060606060605
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  },
+  {
+    "arms": {
+      "fereg": {
+        "maximum_ms": 696.0,
+        "median_ms": 689.0,
+        "minimum_ms": 683.0,
+        "sampled_peak_rss_gib": 1.3991241455078125
+      },
+      "fixest": {
+        "maximum_ms": 939.0,
+        "median_ms": 934.0,
+        "minimum_ms": 905.0,
+        "sampled_peak_rss_gib": 2.1886444091796875
+      },
+      "topologyowner": {
+        "maximum_ms": 542.9999999999999,
+        "median_ms": 534.0,
+        "minimum_ms": 513.0,
+        "sampled_peak_rss_gib": 1.4016876220703125
+      }
+    },
+    "case": "robust",
+    "k": 50,
+    "paired_ratios": {
+      "fereg/fixest": {
+        "median": 0.7451820128479656,
+        "values": [
+          0.7337593184238551,
+          0.7451820128479656,
+          0.7546961325966851
+        ],
+        "wins": 3
+      },
+      "fereg/topologyowner": {
+        "median": 1.3033707865168538,
+        "values": [
+          1.2688766114180479,
+          1.3033707865168538,
+          1.331384015594542
+        ],
+        "wins": 0
+      },
+      "fixest/fereg": {
+        "median": 1.3419540229885059,
+        "values": [
+          1.362844702467344,
+          1.3419540229885059,
+          1.3250366032210834
+        ],
+        "wins": 0
+      },
+      "fixest/topologyowner": {
+        "median": 1.749063670411985,
+        "values": [
+          1.7292817679558012,
+          1.749063670411985,
+          1.7641325536062378
+        ],
+        "wins": 0
+      },
+      "topologyowner/fereg": {
+        "median": 0.767241379310345,
+        "values": [
+          0.788098693759071,
+          0.767241379310345,
+          0.7510980966325036
+        ],
+        "wins": 3
+      },
+      "topologyowner/fixest": {
+        "median": 0.5717344753747323,
+        "values": [
+          0.5782747603833865,
+          0.5717344753747323,
+          0.5668508287292817
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "owners-breadth-regression"
+  }
+]

@@ -1,0 +1,172 @@
+{
+  "candidate_plugin": "4339b23d7ff3249544ccd600751231139f21412675c43bee0535ae1a6d3f6366",
+  "source_overlays_match_working_tree": true,
+  "focused_rust_tests": 24,
+  "tests": [
+    {
+      "filter": "fe::topology_finalize::tests",
+      "returncode": 0,
+      "summary": [
+        "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 935 filtered out; finished in 0.02s"
+      ],
+      "log": "breadth-topology-owner-tests-0-20260920.log",
+      "sha256": "e880710e886bb31953dcf9f134903238369ea9b1f2a78aa638901e3c0721eb9c"
+    },
+    {
+      "filter": "validated_sample_owner_preserves_storage_and_rejects_invalid_inputs",
+      "returncode": 0,
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 945 filtered out; finished in 0.00s"
+      ],
+      "log": "breadth-topology-owner-tests-1-20260920.log",
+      "sha256": "4b1ad74fe1abef2289d9f0f27f3fce0a10b200e0448d566ff32c5b54080c2268"
+    },
+    {
+      "filter": "categorical_one_fe_initial_projection_preserves_warm_and_retained_paths",
+      "returncode": 0,
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 945 filtered out; finished in 13.76s"
+      ],
+      "log": "breadth-topology-owner-tests-2-20260920.log",
+      "sha256": "880da5d13aeb7407b0ca77987fd8eb5a06c84016978d3f9cf2f4c112814229a6"
+    },
+    {
+      "filter": "categorical_ols_adapter_and_borrowed_frame_are_exact",
+      "returncode": 0,
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 945 filtered out; finished in 0.00s"
+      ],
+      "log": "breadth-topology-owner-tests-3-20260920.log",
+      "sha256": "c4e942bffb9fb2ce8e16d57e0701acfbd500bc8ebdff1d5c311427c629478180"
+    },
+    {
+      "filter": "categorical_recovery_uses_explicit_final_hessian_weights_for_normalization",
+      "returncode": 0,
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 945 filtered out; finished in 0.00s"
+      ],
+      "log": "breadth-topology-owner-tests-4-20260920.log",
+      "sha256": "f1ee681551067ec13cae1498f210fe8d7e7d18c83039a139aebe477eda535c0a"
+    },
+    {
+      "filter": "empty_categorical_topology_preserves_finite_intercept_across_session_routes",
+      "returncode": 0,
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 945 filtered out; finished in 0.01s"
+      ],
+      "log": "breadth-topology-owner-tests-5-20260920.log",
+      "sha256": "94024807fdc552166b1895b1b3386482d11e0a94fcf651fefcb0179859658677"
+    },
+    {
+      "filter": "ppml::prepared_model::tests",
+      "returncode": 0,
+      "summary": [
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 938 filtered out; finished in 0.00s"
+      ],
+      "log": "breadth-topology-owner-tests-6-20260920.log",
+      "sha256": "4f6f3efe768a63d445850c19ea852a07547c89df3a6740e9e32931f312319823"
+    }
+  ],
+  "licensed_stata_fixtures": [
+    {
+      "fixture": "development/ols_one_fe_final_recovery.do",
+      "sha256": "a3a48d1bce0aac1816cbd538277feab9ea8299b58c5fe3373b93399b6974f543",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|ols_one_fe_final_recovery|rc=0",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "development/ols_prediction_scoring.do",
+      "sha256": "e40859c5c9738643e70c34a0b9857c4a6472f86260f642195e215cc5919dd6b5",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|ols_prediction_scoring|rc=0",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "development/candidate_input_oracle.do",
+      "sha256": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|candidate_input_oracle|rc=0",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "installation/estimate_ols_eclass_transaction.do",
+      "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "development/ols_private_output_initialization.do",
+      "sha256": "cf0653172d1b1cc1c80f1d431405446b7c056537ce41ea5161299c56e259500e",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|ols_private_output_initialization|rc=0",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "development/ols_categorical_one_fe.do",
+      "sha256": "90d42ea2ecd37d29e1f055cc89aede5e56294cd7bbecf67041920c50d5a36b81",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|ols_categorical_one_fe|rc=0",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+      "sha256": "dc4a29ae2f87a34b521997ba915fbf1c28eb6f0d1c0a352552d6acbf14819a59",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|estimate_ols_intercept_slope_parity|rc=0",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "parity_ppmlhdfe/feppml_native_preparation.do",
+      "sha256": "c58e0a93e89a6fc6f3c6214672b861226cc568c676a34f5399fd3c0997429a66",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|feppml_native_preparation|rc=0",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "parity_ppmlhdfe/feppml_saved_slopes.do",
+      "sha256": "2ee25d9d437e9b3fa20bb36cfe58d53047a4e2f3d22759014f6e4c6b0ea8b7bd",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|feppml_saved_slopes|rc=0",
+      "terminal_sentinel": true
+    }
+  ],
+  "abi": "pass",
+  "earlier_sampleowner_fixtures": "fixtures-sampleowner.json",
+  "initial_test_compilation": {
+    "log": "breadth-topology-owner-20260920.log",
+    "sha256": "f241d2109204cc35886744003a81169037ee5d2b4ae0f3ce916ec37e1bb29754",
+    "status": "failed; a test called map on a slice; corrected before the candidate build and passing tests"
+  },
+  "baseline_exact_audit": {
+    "initial_full_array_comparison": "failed",
+    "differing_tables": [
+      "fereg_certificate",
+      "fereg_fit"
+    ],
+    "differing_certificate_rows": [
+      7,
+      8,
+      23
+    ],
+    "differing_fit_rows": [
+      3,
+      7,
+      8,
+      12
+    ],
+    "adjudication": "All 60 candidate comparisons are exact against the prior recoverycore full-breadth checkpoint, including 24 saved-output bundles. These differences from original normonly predate the current owner changes. Original baseline samples, b, V, status, DoF, certificate pass flags and saved-output bytes remain exact; the unchanged registered numerical comparisons pass.",
+    "detail": "owners-breadth-regression-native-audit.json",
+    "prior_checkpoint_exact": "owners-breadth-recoverycore-exact-science.json"
+  }
+}

@@ -21,13 +21,16 @@ def instrument(root):
         body = body.replace(points[-1][1], report + points[-1][1])
         path.write_text(text[:first] + body + text[last:])
 
+    prepared_source = (root / "crates/fereg-core/src/ols/prepared_categorical_data.rs").read_text()
+    prepared_validation = ("let sample = validated_sample::ValidatedSample::new(sample)?;"
+                          if "mod validated_sample {" in prepared_source else "prepared.validate()?;")
     phases("crates/fereg-core/src/ols/prepared_categorical_data.rs",
            "fn finish_prepare_categorical_ols_data(", "\n#[derive(Debug)]", "categorical_prepare", [
         ("pruning", "let bound_effects ="),
         ("topology", "let rebuilt_topology ="),
         ("sample_sources", "let final_sources ="),
         ("rebase", "let structural_intercept ="),
-        ("validation", "prepared.validate()?;"),
+        ("validation", prepared_validation),
         ("end", "Ok(prepared)"),
     ])
     phases("crates/fereg-core/src/ols/prepared_categorical_data.rs",
