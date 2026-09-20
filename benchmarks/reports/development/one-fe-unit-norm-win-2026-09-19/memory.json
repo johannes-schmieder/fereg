@@ -1,0 +1,58 @@
+{
+  "status": "unchanged_reported_native_peak",
+  "cases": [
+    {
+      "case": "norm-confirm-primary-n983040-k10-gdefault-shuffle0-t16",
+      "reported_native_peak_bytes": 233169535.0
+    },
+    {
+      "case": "norm-confirm-primary-n983040-k50-gdefault-shuffle0-t16",
+      "reported_native_peak_bytes": 925859855.0
+    },
+    {
+      "case": "norm-controls-n245760-k10-gdefault-shuffle0-t1",
+      "reported_native_peak_bytes": 57072938.0
+    },
+    {
+      "case": "norm-controls-n245760-k10-gdefault-shuffle0-t16",
+      "reported_native_peak_bytes": 58295935.0
+    },
+    {
+      "case": "norm-controls-n245760-k10-gdefault-shuffle0-t4",
+      "reported_native_peak_bytes": 58295935.0
+    },
+    {
+      "case": "norm-controls-n983040-k10-gdefault-shuffle0-t1",
+      "reported_native_peak_bytes": 228269354.0
+    },
+    {
+      "case": "norm-controls-n983040-k10-gdefault-shuffle0-t4",
+      "reported_native_peak_bytes": 233169535.0
+    },
+    {
+      "case": "norm-controls-n983040-k50-g1000-shuffle0-t16",
+      "reported_native_peak_bytes": 877949405.0
+    },
+    {
+      "case": "norm-controls-n983040-k50-g1000-shuffle0-t4",
+      "reported_native_peak_bytes": 877873277.0
+    },
+    {
+      "case": "norm-controls-n983040-k50-gdefault-shuffle0-t1",
+      "reported_native_peak_bytes": 857489954.0
+    },
+    {
+      "case": "norm-controls-n983040-k50-gdefault-shuffle0-t4",
+      "reported_native_peak_bytes": 925859855.0
+    },
+    {
+      "case": "norm-controls-n983040-k50-gdefault-shuffle1-t16",
+      "reported_native_peak_bytes": 925859855.0
+    },
+    {
+      "case": "norm-controls-n983040-k50-gdefault-shuffle1-t4",
+      "reported_native_peak_bytes": 925859855.0
+    }
+  ],
+  "new_heap_owners": 0
+}

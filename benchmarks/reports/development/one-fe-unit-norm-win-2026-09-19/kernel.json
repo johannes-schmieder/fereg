@@ -1,0 +1,23 @@
+{
+  "status": "pass_no_repeatable_gain",
+  "source_sha256": "8b0cfbeccf9d3d695e543781bbe10c9e955b6f744f686a1bf76c175104f688db",
+  "log_sha256": "835e9e9e0c9d57fd18bc5c9b81926af689809cd277dedec62750a887b85ddbc8",
+  "compiler": "rustc 1.85.1 aarch64-apple-darwin",
+  "flags": [
+    "-C",
+    "opt-level=3",
+    "-C",
+    "codegen-units=1",
+    "-C",
+    "lto=fat",
+    "--edition=2021"
+  ],
+  "observations": 983040,
+  "inner_repetitions": 20,
+  "rotated_pairs": 5,
+  "bitwise_configurations": 56,
+  "median_seconds": {
+    "reference": 0.00084949,
+    "blocked": 0.000851398
+  }
+}

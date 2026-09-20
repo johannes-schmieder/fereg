@@ -1,0 +1,12 @@
+{
+  "native_calls": 126,
+  "exports": [
+    "b.csv",
+    "V.csv",
+    "fereg_status.csv",
+    "fereg_dof.csv",
+    "fereg_certificate.csv",
+    "fereg_fit.csv"
+  ],
+  "comparison": "byte-identical to same-repetition rawoverlap baseline"
+}

@@ -1,0 +1,32 @@
+{
+  "candidate": "normonly",
+  "candidate_plugin_sha256": "0ac6a0449cff224f02d6d7b7b7696b79fe6c6d182d89e3b406b4ea26a761e9fa",
+  "native_control": "rawoverlap",
+  "comparator": "fixest",
+  "fixest_archive_sha256": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9",
+  "blocks": [
+    "normwin-a",
+    "normwin-b"
+  ],
+  "repetitions_per_block": 5,
+  "primary_cells": [
+    {
+      "n": 983040,
+      "k": 10,
+      "threads": 16
+    },
+    {
+      "n": 983040,
+      "k": 50,
+      "threads": 16
+    }
+  ],
+  "maximum_median_candidate_reference_ratio_per_block": 0.95,
+  "minimum_paired_wins_per_width": 9,
+  "maximum_confirmed_protected_cell_ratio": 1.05,
+  "maximum_protected_geometric_mean_ratio": 1.02,
+  "control_recheck_policy": "Any initial median ratio above 1.05 triggers five new rotated pairs in that exact existing cell; retain both batches.",
+  "statistic": "median of same-repetition candidate/reference command-time ratios, separately in each block and width",
+  "control_label": "norm-controls",
+  "replaces_candidate_only": "rawoverlap; preserve rawwin-a and rawwin-b as unsuccessful stricter acceptance"
+}

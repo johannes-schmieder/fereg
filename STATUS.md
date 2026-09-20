@@ -12,175 +12,51 @@ completed optimization/calibration investigation chronology formerly here.
 
 ## One-FE optimization implementation — 2026-09-19
 
+**The owner-approved local Mac endpoint is achieved.** The
+[final unit-norm report](benchmarks/reports/development/one-fe-unit-norm-win-2026-09-19/README.md)
+records two preselected independent five-pair blocks for ordinary one-FE,
+unit-weight IID OLS with 983,040 rows and 16 native threads on the M2 Ultra.
 
-Starting final residual work before raw-residual construction now has adoption
-evidence in `benchmarks/reports/development/one-fe-residual-start-2026-09-19/`:
-124 development calls, 108 byte-identical native scientific exports, four
-focused native test executions (two on a rejected maximum-scan experiment),
-two ABI checks and six licensed fixtures. All eleven protected cells pass,
-with maximum paired ratio 1.010076 and geometric mean 0.991875. Five-pair
-predecessor/candidate/fixest medians are 137/134/151 ms and 395/391/454 ms.
-The new raw-residual owner occupies its existing allowance inside the bread
-job; allocation and scientific errors retain their original precedence.
+| Regressors | Block A fereg/fixest | Block B fereg/fixest | Median paired reductions |
+|---|---|---|---|
+| 10 | 131/139 ms | 129/142 ms | 6.5% / 9.2% |
+| 50 | 393/465 ms | 395/456 ms | 15.1% / 14.3% |
 
-The two preselected final blocks add 40 accepted calls. Candidate/fixest medians
-are 132/146 and 134/140 ms (K=10), and 390/450 and 395/479 ms (K=50).
-The narrow median paired ratios are 0.897959 and 0.963504, with nine of ten
-wins. The repeated 5% target remains unmet; both blocks are preserved. Eight
-additional diagnostic calls isolate the narrow critical path: final projection
-6.90 ms followed by score checking 4.44 ms, with independent RSS 3.84 ms
-concurrent with score. Next target serial finite-value scans and the unit norm
-inside residual projection, preserving validation and reduction order.
+Fereg wins all twenty pairs. Every block/width has median paired ratio <=0.95;
+all eleven protected size/thread/group-layout cases pass, with maximum ratio
+1.015915 and geometric mean 0.988444. No control recheck is required. The final
+archive contains 146 development calls plus forty final calls, 126 byte-identical
+native scientific export comparisons, four focused native test executions,
+three candidate ABI checks and nine licensed fixture passes. The final artifact
+has its own three scientific/transaction fixtures. All 509 source-manifest
+entries and its plugin SHA-256 are verified; reported native peaks are unchanged.
 
+The final change specializes the one-column unit norm while preserving the
+scaled recurrence, row order, finite-value errors and norm bits. The final
+candidate is `normonly`, plugin SHA-256
+`0ac6a0449cff224f02d6d7b7b7696b79fe6c6d182d89e3b406b4ea26a761e9fa`.
+Its source identity is base `78672b85` plus the explicit borrowed_map.rs overlay.
+Source and artifact identities, the acceptance plan and exact numerical receipts
+are in the final report. The isolated build remains under
+`target/one-fe-optimization-20260919/normonly/`.
 
+The committed path to this result includes guarded Mac input access, a bounded
+Rust-owned input/RHS pipeline, sample and topology reuse, and overlap of
+independent preparation, statistics and certification work. Important adoption
+receipts are in `one-fe-accessor-adoption-2026-09-19`,
+`one-fe-pipeline-adoption-2026-09-19`, `one-fe-loaded-rhs-2026-09-19`,
+`one-fe-input-completion-2026-09-19` and `one-fe-residual-start-2026-09-19`
+under `benchmarks/reports/development/`. Earlier unsuccessful final blocks and
+rejected parser, projection, metadata, validation and mean-scan experiments
+remain in their historical reports; no result was rewritten or substituted.
+The original local profile's fereg medians were 223 ms and 593 ms; the final
+win claim uses only the fresh paired blocks above.
 
-Reserved input initialization, ordered membership, parallel final preflight and
-narrow completion scheduling now have adoption evidence in
-`benchmarks/reports/development/one-fe-input-completion-2026-09-19/`: 313
-development calls, 267 byte-identical native scientific exports, 16 focused
-native test executions (one rejected experiment), eight ABI checks and 24
-licensed fixture passes. Eleven protected cells have maximum median paired
-ratio 1.046802 and geometric mean 0.980149. The separate completion-profile
-report attributes the remaining preparation critical path before these changes.
-All 509 source-manifest entries match the final measured earlyscore candidate.
-
-Two preselected five-pair final blocks add 40 accepted calls. Fereg wins all
-20 pairs; candidate/fixest command medians are 142/151 and 135/146 ms (K=10),
-and 407/467 and 393/468 ms (K=50). The first narrow block's median paired ratio
-is 0.966443, so the stricter repeated 5% target remains unmet despite passing
-ratios of command medians. Both blocks and the original acceptance plan are
-preserved. Continue from this checkpoint by starting residual work before raw
-residual construction, with unchanged scientific boundaries and a new measured
-candidate; do not replace the unfavorable final block with another draw.
-
-
-
-Validated FE-descriptor reuse and IID completion now have adoption evidence in
-`benchmarks/reports/development/one-fe-borrow-reuse-2026-09-19/`: 157 accepted
-calls, bit-identical native science, three focused native tests, both ABI checks
-and six licensed fixtures. Five-pair baseline/descriptor/combined/fixest medians
-are 159/156/154/149 ms (K=10) and 432/429/431/471 ms (K=50). Combined protected
-ratios have maximum 1.04239 and geometric mean 0.99257. Immutable borrowed FE
-descriptors avoid repeated topology validation; the existing outcome worker
-also validates DoF topology with deferred errors. Unit sum-of-squares preserves
-its exact scaled row-order arithmetic. The overall two-width repeated 5% win
-target remains unmet. Empty output traversal and removal of zero initialization
-during numeric loading are the next separately measured prototypes.
-
-The unit-intercept score scan is validated in
-`benchmarks/reports/development/one-fe-unit-score-2026-09-19/`: 84 accepted
-calls, exact native science, the focused generic-weight comparison, ABI and
-three licensed fixtures pass. Its score phase falls about 2 ms at both widths;
-three-pair command medians are 163/438 ms versus pinned fixest 143/448 ms.
-Protected controls have maximum median ratio 1.01026 and geometric mean 0.99742.
-Raw-moment/preparation overlap and exact unit reference mass now have adoption
-evidence in `benchmarks/reports/development/one-fe-moment-overlap-2026-09-19/`:
-190 accepted calls, exact native science, three focused native tests, both ABI
-checks and six licensed fixtures. Five-pair baseline/overlap/combined/fixest
-medians are 164/160/155/144 ms (K=10) and 439/432/431/467 ms (K=50). Combined
-protected ratios have maximum 1.01527 and geometric mean 0.98350. Same-call raw
-rows own their speculative statistics; preparation admits the small partial
-bank, and exact prepared matching and deferred errors gate consumption. Unit
-mass uses the independently validated physical count. The native primary peaks
-remain unchanged. The overall two-width 5% win target remains unmet. Reusing
-a validated immutable FE descriptor is adopted with the evidence above.
-
-
-Narrow outcome-scan overlap and one-FE membership reuse have adoption evidence
-in `benchmarks/reports/development/one-fe-membership-adoption-2026-09-19/`:
-173 accepted calls, bit-identical native science, 39 preparation tests, focused
-outcome/error-order tests, six licensed fixtures and both ABI checks. Five-pair
-baseline/narrow-overlap/combined/fixest medians are 182/176/173/140 ms (K=10)
-and 446/445/443/448 ms (K=50). Combined protected-control ratios have maximum
-1.00137 and geometric mean 0.98617. One-FE unit preparation reuses final
-membership to establish the no-singleton fixed point, retaining independent
-final topology validation and dropping failed speculation before generic
-pruning. Outcome scans overlap only with <=16 model columns and >=8 workers;
-the broader scope's first 5.82% slowdown was rejected and archived separately.
-The preparation diagnostic attributes about 4 ms to singleton counting and
-5.6 ms to topology construction. Current residual/bread overlap remains a
-separate adopted checkpoint, documented in
-`benchmarks/reports/development/one-fe-residual-overlap-2026-09-19/`:
-its 45 paired native configurations, ABI and three licensed fixtures pass.
-The fresh primary medians are 166/439 ms versus fixest 140/448 ms. All 66
-protected calls pass with maximum median ratio 1.02516 and geometric mean
-0.99796. It moves the unchanged residual projection beside bread completion
-on the existing team and preserves scientific error order. The overall 5%
-win target on both widths remains unmet; next inspect remaining raw-data scans.
-
-
-Private sample ownership and exact unit-mass means now have adoption evidence
-in `benchmarks/reports/development/one-fe-sample-ownership-2026-09-19/`:
-173 accepted calls, exact native science, ten licensed fixture passes, ten
-public/hidden metadata cases and two focused native tests. Fresh five-pair
-baseline/sample-only/combined/fixest medians are 188/182/183/140 ms (K=10) and
-477/447/444/459 ms (K=50). All eleven protected controls pass; combined maximum
-median ratio is 0.98305 and geometric mean 0.94638. The sample marker becomes
-the private output only when the candidate slot is unread; scientific sources
-remain immutable, and restricted calls keep the previous transaction. The
-wide lead in that checkpoint was about 3%, and the narrow target remained unmet.
-Subsequent scheduling and membership evidence is recorded above.
-The lifecycle diagnostic and rejected plain-post screen are archived in
-`benchmarks/reports/development/one-fe-stata-lifecycle-2026-09-19/`.
-
-
-RHS construction during loading and parallel dense integer FE encoding have
-adoption evidence in
-`benchmarks/reports/development/one-fe-loaded-rhs-2026-09-19/`: 181 accepted calls,
-bit-identical native science, focused ownership/fallback/threshold/error-order
-tests, six licensed fixtures and both ABI checks. Five fresh primary blocks give
-baseline/combined/fixest medians of 204/190/140 ms (K=10) and 502/479/462 ms (K=50).
-All eleven protected controls pass: maximum combined median ratio 1.0094,
-geometric mean 0.9709. Same-call RHS storage is admitted through preparation and
-checked against the authoritative prepared values before the fit consumes it.
-The wide observed native peak remains unchanged. The 5% win target is unmet.
-The public-name shortcut was also rejected; its 18 calls and metadata audit are
-in `benchmarks/reports/development/one-fe-metadata-screen-2026-09-19/`.
-New diagnostic ado timers show public/transaction syntax itself is negligible;
-the remaining Stata cost needs finer attribution to temporary data, publication
-and program-exit cleanup. Continue from these committed native improvements.
-
-Native preparation/statistics scheduling has adoption evidence in
-`benchmarks/reports/development/one-fe-native-scheduling-2026-09-19/`:
-133 accepted calls (including one five-pair control recheck), exact native
-science, focused threshold/error-order/reduction tests, six licensed fixture
-passes and ABI checks. Narrow primary medians fall 216 to 204 ms; wide medians
-are 496/492 ms. Preparation starts the bounded team at eight numeric sources;
-IID composition overlaps independent scans without changing their arithmetic.
-The one initial >5% control slowdown was not confirmed in five new pairs.
-Plain numeric parsing and contiguous-group projection did not show enough
-repeatable command benefit and were removed. Their 56 accepted measurements,
-metadata/kernel checks and patches are preserved in
-`benchmarks/reports/development/one-fe-discarded-shortcuts-2026-09-19/`.
-No win is claimed. The native scheduling milestone is committed in `223e3b05`.
-
-Rust-owned input overlap now has adoption evidence in
-`benchmarks/reports/development/one-fe-pipeline-adoption-2026-09-19/`:
-84 accepted calls, bit-identical native science, three licensed fixtures,
-four focused native tests, Mac UBSan/portable bridge and actual-plugin ABI
-checks. The wide command falls from 528 to 506 ms; the narrow command remains
-215 ms. Control median ratios have maximum 1.0089 and geometric mean 0.9693.
-Two admitted Rust tiles and an in-place scope on the existing team replace the
-prototype C buffers/pthread. SPI remains on the Stata thread and shutdown is
-tested on errors and panics. The loading ledger explicitly retains the opaque
-worker-runtime coverage gap. This milestone is committed in `9daa6534`.
-
-The guarded Mac numeric accessor now has fresh adoption evidence in
-`benchmarks/reports/development/one-fe-accessor-adoption-2026-09-19/`:
-84 accepted calls, exact native scientific outputs, three licensed fixtures,
-real-plugin ABI checks and portable/Mac-UBSan bridge checks. The wide median
-falls from 561 to 528 ms; the narrow median remains 221 ms. Protected-control
-median ratios have maximum 1.0145 and geometric mean 0.9766. Fixest medians are
-471 and 144 ms respectively. This accessor milestone is committed in `5ac9e9c5`.
-
-The owner-approved implementation target is a repeatable 5% win over pinned
-fixest on both 983,040-row, 10/50-regressor, 16-thread Mac cases. The other
-existing size/thread/group-layout cases remain protected controls. Near parity
-is not completion. The profiling and prototype evidence is committed in
-`8bf4e6e2`; the measured parallel validation change is retained in source with
-its focused test and threading contract. Guarded input access and Rust-owned
-overlap are committed. Continue with Stata processing and reducing native data
-passes/RHS materialization, preserving unrelated work and historical receipts.
+This completes the bounded development goal on main. Scientific contracts,
+Stata/Rust ownership boundaries and the pinned fixest reference are preserved.
+No installed-package replacement, push, remote run or release qualification
+occurred. These results concern ordinary one-FE IID OLS; the separate slope
+investigation and other release work retain their own status and evidence.
 
 ## One-FE pass and loading-overlap experiment — 2026-09-19
 

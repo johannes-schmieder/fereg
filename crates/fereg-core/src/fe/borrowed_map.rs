@@ -8231,19 +8231,34 @@ fn weighted_column_norms(
     }
     scales.fill(0.0);
     scaled_square_sums.fill(1.0);
-    for row in 0..values.nrows() {
-        let root_weight = weights.normalized(row).sqrt();
-        if !root_weight.is_finite() || root_weight <= 0.0 {
-            return Err(invalid_data(
-                "borrowed MAP normalized weight is not finite and positive",
-            ));
-        }
-        for rhs in 0..values.ncols() {
-            let value = root_weight * values[(row, rhs)];
+    if values.ncols() == 1 && weights.values.is_none() {
+        // Unit normalization is exactly one. Preserve the original scaled
+        // recurrence and row order, with scalar state for the single column.
+        let mut scale = 0.0_f64;
+        let mut square_sum = 1.0_f64;
+        for &value in values.as_slice() {
             if !value.is_finite() {
                 return Err(invalid_data("borrowed MAP weighted value is not finite"));
             }
-            update_scaled_sum_of_squares(value, &mut scales[rhs], &mut scaled_square_sums[rhs]);
+            update_scaled_sum_of_squares(value, &mut scale, &mut square_sum);
+        }
+        scales[0] = scale;
+        scaled_square_sums[0] = square_sum;
+    } else {
+        for row in 0..values.nrows() {
+            let root_weight = weights.normalized(row).sqrt();
+            if !root_weight.is_finite() || root_weight <= 0.0 {
+                return Err(invalid_data(
+                    "borrowed MAP normalized weight is not finite and positive",
+                ));
+            }
+            for rhs in 0..values.ncols() {
+                let value = root_weight * values[(row, rhs)];
+                if !value.is_finite() {
+                    return Err(invalid_data("borrowed MAP weighted value is not finite"));
+                }
+                update_scaled_sum_of_squares(value, &mut scales[rhs], &mut scaled_square_sums[rhs]);
+            }
         }
     }
     for rhs in 0..values.ncols() {
@@ -11608,6 +11623,35 @@ mod tests {
                     }
                 }
             });
+        }
+    }
+
+    #[test]
+    fn unit_single_column_norm_matches_generic_unit_weights_bitwise() {
+        for n in [0, 1, 7, 127, 16_383, 16_384, 32_771] {
+            for case in 0..7 {
+                let mut values: Vec<_> = (0..n).map(|r| (r as f64).sin()).collect();
+                if n > 0 {
+                    match case {
+                        1 => values.fill(-0.0),
+                        2 => values[n / 2] = f64::NAN,
+                        3 => values[n - 1] = f64::INFINITY,
+                        4 => for value in &mut values { *value *= 1e-300; },
+                        5 => for value in &mut values { *value *= 1e150; },
+                        6 => { values[0] = f64::MAX; values[n / 2] = -f64::MAX; },
+                        _ => (),
+                    }
+                }
+                let matrix = DenseMatrix::from_row_major(n, 1, values).unwrap();
+                let weights = vec![1.0; n];
+                let run = |weights| {
+                    let mut output = [0.0];let mut scale = [0.0];let mut sum = [0.0];
+                    weighted_column_norms(&matrix, weights, &mut output, &mut scale, &mut sum)
+                        .map(|()| (output[0].to_bits(), scale[0].to_bits(), sum[0].to_bits()))
+                };
+                assert_eq!(run(ValidatedWeights { values: None, raw_scale: 1.0 }),
+                    run(ValidatedWeights { values: Some(&weights), raw_scale: 1.0 }), "N={n}, case={case}");
+            }
         }
     }
 

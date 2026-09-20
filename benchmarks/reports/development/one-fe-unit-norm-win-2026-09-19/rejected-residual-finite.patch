@@ -1,0 +1,76 @@
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -4107,7 +4107,13 @@
+             "borrowed auto requires nonempty observation and RHS axes",
+         ));
+     }
+-    if values.as_slice().iter().any(|value| !value.is_finite()) {
++    let invalid_values = if design.effects().len() == 1 && values.ncols() == 1
++        && values.nrows() >= 16_384 && matches!(weights, BorrowedMapWeights::Unit)
++        && rayon::current_thread_index().is_some() && rayon::current_num_threads() >= 8
++    {
++        values.as_slice().par_iter().any(|value| !value.is_finite())
++    } else { values.as_slice().iter().any(|value| !value.is_finite()) };
++    if invalid_values {
+         return Err(invalid_data("borrowed auto values must be finite"));
+     }
+ 
+@@ -5947,15 +5953,16 @@
+             "borrowed MAP requires nonempty observation and RHS axes",
+         ));
+     }
+-    // Keep validation ahead of weight checks and workspace admission. Wide,
+-    // fresh one-effect fits can scan on the already installed team without
+-    // changing the diagnostic or any numerical reduction order.
+-    let invalid_values = if skip_initial_one_effect_certificate
+-        && design.effects().len() == 1
++    // Keep validation ahead of weight checks and workspace admission. Fresh
++    // wide fits and unit residuals use the installed team without changing
++    // either validation boundary or any numerical reduction order.
++    let invalid_values = if design.effects().len() == 1
+         && values.nrows() >= 16_384
+-        && values.ncols() >= 8
+         && rayon::current_thread_index().is_some()
+         && rayon::current_num_threads() > 1
++        && ((skip_initial_one_effect_certificate && values.ncols() >= 8)
++            || (values.ncols() == 1 && matches!(weights, BorrowedMapWeights::Unit)
++                && rayon::current_num_threads() >= 8))
+     {
+         values.as_slice().par_iter().any(|value| !value.is_finite())
+     } else {
+@@ -11612,6 +11619,35 @@
+     }
+ 
+     #[test]
++    fn residual_finite_scans_keep_auto_and_map_error_boundaries() {
++        for rows in [16_383, 16_384, 32_769] {
++            let codes = vec![0_u32; rows];
++            let index = LevelIndex::from_codes(&codes, 1).unwrap();
++            let source = ValidatedBorrowedInterceptSource::new(&codes, 1, &index).unwrap();
++            let design = BorrowedInterceptFeDesign::new(rows, vec![source.effect()]).unwrap();
++            for threads in [1, 4, 8, 16] {
++                let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
++                pool.install(|| {
++                    for row in [0, rows / 2, rows - 1] {
++                        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
++                            let mut data = vec![1.0; rows];data[row] = bad;
++                            let values = DenseMatrix::from_row_major(rows, 1, data).unwrap();
++                            let mut reservation = InjectedReservation { fail_at: Some(0), ..InjectedReservation::default() };
++                            let error = absorb_with_reservation(&design, BorrowedMapWeights::Unit,
++                                values.clone(), config(), true, &mut reservation).unwrap_err();
++                            assert_eq!(error.message, "borrowed MAP values must be finite");
++                            assert_eq!(reservation.calls, 0);
++                            let error = absorb_borrowed_intercept_auto_with_structural_constant_certified(
++                                &design, BorrowedMapWeights::Unit, values, config(), LsmrConfig::default(), None).unwrap_err();
++                            assert_eq!(error.message, "borrowed auto values must be finite");
++                        }
++                    }
++                });
++            }
++        }
++    }
++
++    #[test]
+     fn one_way_projection_is_exact_and_invalid_shapes_and_configurations_fail() {
+         let codes = [0_u32, 0, 1, 1];
+         let index = LevelIndex::from_codes(&codes, 2).expect("index");

@@ -1,0 +1,64 @@
+[
+  {
+    "case": "normwin-b-primary-n983040-k10-gdefault-shuffle0-t16",
+    "variants": {
+      "fixest": {
+        "n": 5,
+        "paired_ratios": [
+          1.1007751937984496,
+          1.0381679389312977,
+          1.0387596899224807,
+          1.1007751937984496,
+          1.141732283464567
+        ],
+        "seconds": 0.142
+      },
+      "normonly": {
+        "input": 0.070110125,
+        "n": 5,
+        "native": 0.04741433299999999,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.011426417000000008,
+        "seconds": 0.129
+      }
+    }
+  },
+  {
+    "case": "normwin-b-primary-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "fixest": {
+        "n": 5,
+        "paired_ratios": [
+          1.1662404092071612,
+          1.1949367088607594,
+          1.2299741602067182,
+          1.1544303797468354,
+          1.1468354430379746
+        ],
+        "seconds": 0.456
+      },
+      "normonly": {
+        "input": 0.216357584,
+        "n": 5,
+        "native": 0.136899041,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.03806845800000003,
+        "seconds": 0.395
+      }
+    }
+  }
+]
