@@ -1,0 +1,343 @@
+[
+  {
+    "case": "widecore-controls-controls-n245760-k10-gdefault-shuffle0-t1",
+    "variants": {
+      "normonly": {
+        "input": 0.0248195,
+        "n": 3,
+        "native": 0.073289959,
+        "native_allocation_peak_bytes": 57072938.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.011879708000000003,
+        "seconds": 0.109
+      },
+      "widecore": {
+        "input": 0.024643125,
+        "n": 3,
+        "native": 0.072520667,
+        "native_allocation_peak_bytes": 57072938.0,
+        "paired_ratios": [
+          0.9908256880733944,
+          1.0,
+          0.990990990990991
+        ],
+        "remaining": 0.011612790999999997,
+        "seconds": 0.109
+      }
+    }
+  },
+  {
+    "case": "widecore-controls-controls-n245760-k10-gdefault-shuffle0-t16",
+    "variants": {
+      "normonly": {
+        "input": 0.017698334,
+        "n": 3,
+        "native": 0.018314832999999996,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.009297832999999998,
+        "seconds": 0.045
+      },
+      "widecore": {
+        "input": 0.017708375,
+        "n": 3,
+        "native": 0.017371250000000005,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          0.9782608695652174,
+          0.9777777777777777,
+          0.9555555555555555
+        ],
+        "remaining": 0.008982541999999996,
+        "seconds": 0.044
+      }
+    }
+  },
+  {
+    "case": "widecore-controls-controls-n245760-k10-gdefault-shuffle0-t4",
+    "variants": {
+      "normonly": {
+        "input": 0.019274417,
+        "n": 3,
+        "native": 0.026370374999999998,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.008955875000000002,
+        "seconds": 0.055
+      },
+      "widecore": {
+        "input": 0.019194834,
+        "n": 3,
+        "native": 0.027349708000000004,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          0.9818181818181818,
+          1.0185185185185186,
+          1.0
+        ],
+        "remaining": 0.008328584,
+        "seconds": 0.055
+      }
+    }
+  },
+  {
+    "case": "widecore-controls-controls-n983040-k10-gdefault-shuffle0-t1",
+    "variants": {
+      "normonly": {
+        "input": 0.081972208,
+        "n": 3,
+        "native": 0.27957933300000004,
+        "native_allocation_peak_bytes": 228269354.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.016649208000000026,
+        "seconds": 0.381
+      },
+      "widecore": {
+        "input": 0.080394458,
+        "n": 3,
+        "native": 0.280229916,
+        "native_allocation_peak_bytes": 228269354.0,
+        "paired_ratios": [
+          0.9661458333333333,
+          1.0,
+          1.026525198938992
+        ],
+        "remaining": 0.014572209000000003,
+        "seconds": 0.381
+      }
+    }
+  },
+  {
+    "case": "widecore-controls-controls-n983040-k10-gdefault-shuffle0-t4",
+    "variants": {
+      "normonly": {
+        "input": 0.07501325,
+        "n": 3,
+        "native": 0.09979737499999998,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.012116500000000002,
+        "seconds": 0.187
+      },
+      "widecore": {
+        "input": 0.076411542,
+        "n": 3,
+        "native": 0.10003816699999998,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          1.0106951871657754,
+          1.0160427807486632,
+          0.9791666666666661
+        ],
+        "remaining": 0.012574833999999896,
+        "seconds": 0.189
+      }
+    }
+  },
+  {
+    "case": "widecore-controls-controls-n983040-k50-g1000-shuffle0-t16",
+    "variants": {
+      "normonly": {
+        "input": 0.215109958,
+        "n": 3,
+        "native": 0.14072504199999997,
+        "native_allocation_peak_bytes": 877949405.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.042006125000000005,
+        "seconds": 0.398
+      },
+      "widecore": {
+        "input": 0.214036209,
+        "n": 3,
+        "native": 0.127358041,
+        "native_allocation_peak_bytes": 877949405.0,
+        "paired_ratios": [
+          0.955,
+          0.9547738693467336,
+          0.9618320610687022
+        ],
+        "remaining": 0.03696441700000003,
+        "seconds": 0.38
+      }
+    }
+  },
+  {
+    "case": "widecore-controls-controls-n983040-k50-g1000-shuffle0-t4",
+    "variants": {
+      "normonly": {
+        "input": 0.241124167,
+        "n": 3,
+        "native": 0.35615550000000007,
+        "native_allocation_peak_bytes": 877873277.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.03720633299999998,
+        "seconds": 0.643
+      },
+      "widecore": {
+        "input": 0.236905583,
+        "n": 3,
+        "native": 0.3559453330000001,
+        "native_allocation_peak_bytes": 877873277.0,
+        "paired_ratios": [
+          1.0063191153238547,
+          0.9891135303265941,
+          1.0061068702290077
+        ],
+        "remaining": 0.04365975,
+        "seconds": 0.637
+      }
+    }
+  },
+  {
+    "case": "widecore-controls-controls-n983040-k50-gdefault-shuffle0-t1",
+    "variants": {
+      "normonly": {
+        "input": 0.269175458,
+        "n": 3,
+        "native": 1.21237275,
+        "native_allocation_peak_bytes": 857489954.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.04618454199999977,
+        "seconds": 1.53
+      },
+      "widecore": {
+        "input": 0.26757745800000005,
+        "n": 3,
+        "native": 1.2284214580000001,
+        "native_allocation_peak_bytes": 857489954.0,
+        "paired_ratios": [
+          1.0039087947882737,
+          1.0169934640522875,
+          1.0065573770491802
+        ],
+        "remaining": 0.047419791000000044,
+        "seconds": 1.541
+      }
+    }
+  },
+  {
+    "case": "widecore-controls-controls-n983040-k50-gdefault-shuffle0-t4",
+    "variants": {
+      "normonly": {
+        "input": 0.238941667,
+        "n": 3,
+        "native": 0.34225779200000006,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.03823995800000002,
+        "seconds": 0.622
+      },
+      "widecore": {
+        "input": 0.23787033300000002,
+        "n": 3,
+        "native": 0.33757079199999995,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          0.9839486356340289,
+          0.9903069466882067,
+          1.0112540192926045
+        ],
+        "remaining": 0.03821420799999997,
+        "seconds": 0.613
+      }
+    }
+  },
+  {
+    "case": "widecore-controls-controls-n983040-k50-gdefault-shuffle1-t16",
+    "variants": {
+      "normonly": {
+        "input": 0.214681167,
+        "n": 3,
+        "native": 0.15954570800000004,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.041029959000000005,
+        "seconds": 0.417
+      },
+      "widecore": {
+        "input": 0.21537762500000002,
+        "n": 3,
+        "native": 0.145753209,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          0.9827586206896551,
+          0.9688249400479617,
+          0.9341176470588236
+        ],
+        "remaining": 0.038867125,
+        "seconds": 0.399
+      }
+    }
+  },
+  {
+    "case": "widecore-controls-controls-n983040-k50-gdefault-shuffle1-t4",
+    "variants": {
+      "normonly": {
+        "input": 0.24017137500000002,
+        "n": 3,
+        "native": 0.419980333,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.03860079100000002,
+        "seconds": 0.701
+      },
+      "widecore": {
+        "input": 0.240206625,
+        "n": 3,
+        "native": 0.434802833,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0156918687589158,
+          1.0014005602240899,
+          1.0429799426934099
+        ],
+        "remaining": 0.043291957999999964,
+        "seconds": 0.7150000000000001
+      }
+    }
+  }
+]

@@ -424,14 +424,13 @@ fn fit_with_outcome_overlap(
     };
     // This is the independent IID source scan, using no fitted moments. Move
     // it earlier on the same bounded team, retaining its error until all
-    // preceding fit, DoF and weight checks have passed. Restrict overlap to
-    // narrow designs with spare workers; wider/smaller teams lose to contention.
-    // The scan owns no heap buffer.
+    // preceding fit, DoF and weight checks have passed. The bounded width and
+    // eight-worker minimum limit contention; the scan owns no heap buffer.
     let (fit, outcome_tss, dof_topology) = if overlap
         && matches!(prepared.sample.weights, PreparedWeights::None)
         && prepared.fe_topology.effects().len() == 1
         && prepared.sample.n_active() >= 16_384
-        && prepared.model.columns.len() <= 16
+        && prepared.model.columns.len() <= 64
         && config.fit.execution.mode == super::PreparedOlsExecutionMode::Fast
         && config.fit.execution.threads.resolved() >= 8
     {
@@ -531,7 +530,7 @@ fn fit_categorical_with_outcome_overlap(
     })?
 }
 
-/// Overlap the unchanged independent outcome scan with a narrow one-FE fit.
+/// Overlap the unchanged independent outcome scan with a bounded one-FE fit.
 /// The scan owns no heap buffers, and its error stays deferred until the caller
 /// reaches the original statistics boundary after fit, DoF and weight checks.
 pub(super) fn fit_with_independent_outcome<P, T, F>(
@@ -569,7 +568,7 @@ where
         && matches!(prepared.fit_sample().weights, PreparedWeights::None)
         && prepared.fit_has_one_ordinary_intercept_effect()
         && prepared.fit_sample().n_active() >= 16_384
-        && prepared.fit_model().columns.len() <= 16
+        && prepared.fit_model().columns.len() <= 64
         && config.execution.mode == super::PreparedOlsExecutionMode::Fast
         && config.execution.threads.resolved() >= 8
     {
@@ -2184,6 +2183,49 @@ mod tests {
             &prepared, config, || Ok(()), || panic!("sequential fit ran the speculative check"), true,
         ).unwrap();
         assert!(tss.is_none() && checked.is_none());
+    }
+
+    #[test]
+    fn wide_outcome_overlap_preserves_numeric_and_categorical_inference() {
+        let n = 16_385;
+        let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
+        let mut columns: Vec<Vec<f64>> = (0..50).map(|c| (0..n)
+            .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
+        columns[49] = columns[0].clone();
+        let y: Vec<_> = (0..n).map(|r| 1.7 * columns[0][r] + groups[r] + 0.03 * (r as f64).sin()).collect();
+        let mut config = PreparedOlsUnadjustedConfig::default();
+        config.fit.execution.threads = crate::ThreadConfig::from_requested(8, true).unwrap();
+        let data = prepared(&y, &columns, Some(&groups), true, TestWeights::Unit);
+        let expected = fit_with_outcome_overlap(&data, config, None, false).unwrap();
+        let actual = fit_with_outcome_overlap(&data, config, None, true).unwrap();
+        assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
+        assert_eq!(expected.weights, actual.weights);
+        assert_eq!(expected.dof, actual.dof);
+        assert_eq!(expected.statistics, actual.statistics);
+        assert_eq!(expected.covariance, actual.covariance);
+        assert_eq!(expected.certificate, actual.certificate);
+        assert_eq!(expected.fit.coefficients(), actual.fit.coefficients());
+        assert_eq!(expected.fit.bread(), actual.fit.bread());
+        assert_eq!(expected.fit.score_certificate(), actual.fit.score_certificate());
+        assert!(expected.fit.residuals().iter().zip(actual.fit.residuals()).all(|(a,b)| a.to_bits()==b.to_bits()));
+
+        let (mut request, input) = prepared_input(&y, &columns, Some(&groups), true, TestWeights::Unit);
+        request.absorbed_terms[0].saved_name = "saved_g".to_owned();
+        let data = crate::prepare_categorical_ols_data(&request, &input).unwrap();
+        config.fit.allow_final_fe_recovery = true;
+        config.fit.absorb.retain_coefficients = true;
+        let expected = fit_categorical_with_outcome_overlap(&data, config, None, false).unwrap();
+        let actual = fit_categorical_with_outcome_overlap(&data, config, None, true).unwrap();
+        assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
+        assert_eq!(expected.weights, actual.weights);
+        assert_eq!(expected.dof, actual.dof);
+        assert_eq!(expected.statistics, actual.statistics);
+        assert_eq!(expected.covariance, actual.covariance);
+        assert_eq!(expected.certificate, actual.certificate);
+        assert_eq!(expected.fit.coefficients(), actual.fit.coefficients());
+        assert_eq!(expected.fit.bread(), actual.fit.bread());
+        assert_eq!(expected.fit.score_certificate(), actual.fit.score_certificate());
+        assert!(expected.fit.residuals().iter().zip(actual.fit.residuals()).all(|(a,b)| a.to_bits()==b.to_bits()));
     }
 
     #[test]

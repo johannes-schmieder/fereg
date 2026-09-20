@@ -1,0 +1,218 @@
+[
+  {
+    "case": "iid",
+    "rep": 1,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 925859855.0,
+        "sampled_peak_rss_gib": 1.3939971923828125
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 925859855.0,
+        "sampled_peak_rss_gib": 1.396331787109375
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 925859855.0,
+        "sampled_peak_rss_gib": 1.3971710205078125
+      }
+    }
+  },
+  {
+    "case": "iid",
+    "rep": 2,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 925859855.0,
+        "sampled_peak_rss_gib": 1.3946075439453125
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 925859855.0,
+        "sampled_peak_rss_gib": 1.3940277099609375
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 925859855.0,
+        "sampled_peak_rss_gib": 1.3964080810546875
+      }
+    }
+  },
+  {
+    "case": "iid",
+    "rep": 3,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 925859855.0,
+        "sampled_peak_rss_gib": 1.3955078125
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 925859855.0,
+        "sampled_peak_rss_gib": 1.398223876953125
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 925859855.0,
+        "sampled_peak_rss_gib": 1.3983001708984375
+      }
+    }
+  },
+  {
+    "case": "iid_outputs",
+    "rep": 1,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 932938085.0,
+        "sampled_peak_rss_gib": 1.4222412109375
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 932938085.0,
+        "sampled_peak_rss_gib": 1.4172210693359375
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 932938085.0,
+        "sampled_peak_rss_gib": 1.420074462890625
+      }
+    }
+  },
+  {
+    "case": "iid_outputs",
+    "rep": 2,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 932938085.0,
+        "sampled_peak_rss_gib": 1.4255218505859375
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 932938085.0,
+        "sampled_peak_rss_gib": 1.420654296875
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 932938085.0,
+        "sampled_peak_rss_gib": 1.4220123291015625
+      }
+    }
+  },
+  {
+    "case": "iid_outputs",
+    "rep": 3,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 932938085.0,
+        "sampled_peak_rss_gib": 1.4218292236328125
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 932938085.0,
+        "sampled_peak_rss_gib": 1.4200592041015625
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 932938085.0,
+        "sampled_peak_rss_gib": 1.4185333251953125
+      }
+    }
+  },
+  {
+    "case": "robust_saved",
+    "rep": 1,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 932938901.0,
+        "sampled_peak_rss_gib": 1.40966796875
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 932938901.0,
+        "sampled_peak_rss_gib": 1.4208984375
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 932938901.0,
+        "sampled_peak_rss_gib": 1.4949798583984375
+      }
+    }
+  },
+  {
+    "case": "robust_saved",
+    "rep": 2,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 932938901.0,
+        "sampled_peak_rss_gib": 1.53485107421875
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 932938901.0,
+        "sampled_peak_rss_gib": 1.4224090576171875
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 932938901.0,
+        "sampled_peak_rss_gib": 1.424652099609375
+      }
+    }
+  },
+  {
+    "case": "robust_saved",
+    "rep": 3,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 932938901.0,
+        "sampled_peak_rss_gib": 1.411590576171875
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 932938901.0,
+        "sampled_peak_rss_gib": 1.4287872314453125
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 932938901.0,
+        "sampled_peak_rss_gib": 1.427520751953125
+      }
+    }
+  },
+  {
+    "case": "cluster2_saved",
+    "rep": 1,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 956542689.0,
+        "sampled_peak_rss_gib": 1.4434051513671875
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 956542689.0,
+        "sampled_peak_rss_gib": 1.4499664306640625
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 956542689.0,
+        "sampled_peak_rss_gib": 1.446746826171875
+      }
+    }
+  },
+  {
+    "case": "cluster2_saved",
+    "rep": 2,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 956542689.0,
+        "sampled_peak_rss_gib": 1.43603515625
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 956542689.0,
+        "sampled_peak_rss_gib": 1.45233154296875
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 956542689.0,
+        "sampled_peak_rss_gib": 1.4496612548828125
+      }
+    }
+  },
+  {
+    "case": "cluster2_saved",
+    "rep": 3,
+    "arms": {
+      "topologyowner": {
+        "native_allocation_peak_bytes": 956542689.0,
+        "sampled_peak_rss_gib": 1.4420318603515625
+      },
+      "wideoutcome": {
+        "native_allocation_peak_bytes": 956542689.0,
+        "sampled_peak_rss_gib": 1.4459228515625
+      },
+      "wideoverlap": {
+        "native_allocation_peak_bytes": 956542689.0,
+        "sampled_peak_rss_gib": 1.449981689453125
+      }
+    }
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "case": "iid",
+    "median_ms": {
+      "topologyowner": 389.0,
+      "wideoutcome": 384.0,
+      "wideoverlap": 370.0,
+      "fixest": 456.0
+    },
+    "paired_ratios": {
+      "topologyowner": 0.9511568123393316,
+      "wideoutcome": 0.9736842105263158,
+      "fixest": 0.8289473684210527
+    }
+  },
+  {
+    "case": "iid_outputs",
+    "median_ms": {
+      "topologyowner": 481.0,
+      "wideoutcome": 476.0,
+      "wideoverlap": 467.0,
+      "fixest": 520.0
+    },
+    "paired_ratios": {
+      "topologyowner": 0.9711340206185567,
+      "wideoutcome": 0.98109243697479,
+      "fixest": 0.8961538461538462
+    }
+  },
+  {
+    "case": "robust_saved",
+    "median_ms": {
+      "topologyowner": 545.0,
+      "wideoutcome": 542.0,
+      "wideoverlap": 521.0,
+      "fixest": 927.0
+    },
+    "paired_ratios": {
+      "topologyowner": 0.9596330275229358,
+      "wideoutcome": 0.9612546125461254,
+      "fixest": 0.5620280474649406
+    }
+  },
+  {
+    "case": "cluster2_saved",
+    "median_ms": {
+      "topologyowner": 626.0,
+      "wideoutcome": 615.0,
+      "wideoverlap": 608.0,
+      "fixest": 1384.0
+    },
+    "paired_ratios": {
+      "topologyowner": 0.9712460063897763,
+      "wideoutcome": 0.9886178861788618,
+      "fixest": 0.43858381502890176
+    }
+  }
+]

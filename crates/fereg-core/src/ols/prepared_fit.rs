@@ -2292,11 +2292,13 @@ fn fit_with_controls_internal_mode_with_frame<
         )?);
     }
     let score_cache_seconds = trace.lap();
+    const RESIDUAL_OVERLAP_MAX_COLUMNS: usize = 64;
     let residual_overlap = !perturbations.residual_overlap_disabled
         && phase_probe.is_none() && !config.absorb.retain_coefficients
         && matches!(config.absorb.solver, FeSolverKind::Auto | FeSolverKind::Map)
         && weights.values.is_none() && prepared.fit_has_one_ordinary_intercept_effect()
-        && prepared.fit_sample().n_active() >= 16_384 && (8..=16).contains(&generated_columns)
+        && prepared.fit_sample().n_active() >= 16_384
+        && (8..=RESIDUAL_OVERLAP_MAX_COLUMNS).contains(&generated_columns)
         && rayon::current_thread_index().is_some() && rayon::current_num_threads() >= 8;
     let needs_raw_residuals = prepared.fit_has_absorbed_intercept() && raw_moments.is_some()
         && qr.generated_coefficients.iter().any(Option::is_some);
@@ -2326,7 +2328,7 @@ fn fit_with_controls_internal_mode_with_frame<
     let mut early_residual_projection = None;
     let mut early_score = None;
     let mut early_residual_sum = None;
-    let mut anticipated_statuses = [PreparedOlsFitStatus::SyntaxOmitted; 16];
+    let mut anticipated_statuses = [PreparedOlsFitStatus::SyntaxOmitted; RESIDUAL_OVERLAP_MAX_COLUMNS];
     let overlap_score = residual_overlap && !perturbations.early_score_disabled
         && !perturbations.final_residual_constant && qr.generated_statuses.len() == generated_columns;
     if overlap_score {
@@ -9062,6 +9064,38 @@ mod tests {
                     let actual = run(false);
                     assert!(expected == actual, "N={n}, threads={threads}, perturbation={perturbation:?}, errors={:?}/{:?}",
                         expected.as_ref().err(), actual.as_ref().err());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn wide_residual_overlap_preserves_fits_caches_and_error_order() {
+        let n = 16_385;
+        for width in [17, 50] {
+            let mut columns: Vec<Vec<f64>> = (0..width).map(|c| (0..n)
+                .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
+            columns[width - 1] = columns[0].clone();
+            let groups: Vec<_> = (0..n).map(|r| (r % 79) as f64).collect();
+            let response: Vec<_> = (0..n).map(|r| groups[r] + columns[0][r] * 1.3
+                + columns[1][r] * 0.7 + (r as f64).cos() * 0.1).collect();
+            let data = prepared(&response, &columns, &vec![false; width], Some(&groups), true, TestWeights::Unit);
+            let mut config = PreparedOlsFitConfig::default();
+            config.execution.threads = ThreadConfig::from_requested(8, true).unwrap();
+            for (cache, limit) in [(false, 0), (true, 0), (true, MAX_FAST_SCORE_CACHE_BYTES)] {
+                for perturbation in [FitPerturbations::default(),
+                    FitPerturbations { reported_bread_extension: true, reconstructed_within_residual_constant: true,
+                        ..FitPerturbations::default() },
+                    FitPerturbations { final_residual_constant: true, ..FitPerturbations::default() },
+                ] {
+                    let run = |disabled| ThreadTeam::new(config.execution.threads).install(|| {
+                        fit_with_controls_internal_mode(&data, config, &mut SystemFitReservation,
+                            FitPerturbations { residual_overlap_disabled: disabled, ..perturbation }, cache, limit)
+                    }).unwrap().map(|fit| {
+                        assert_eq!(fit.independent_unit_residual_sum.is_some(), !disabled);
+                        without_solve_timings(fit)
+                    });
+                    assert_eq!(run(false), run(true), "width={width} cache={cache} limit={limit} perturbation={perturbation:?}");
                 }
             }
         }

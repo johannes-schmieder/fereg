@@ -10,6 +10,33 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Wide one-FE overlap checkpoint — 2026-09-20
+
+The [wide-overlap report](benchmarks/reports/development/one-fe-wide-overlap-local-2026-09-20/README.md)
+archives 442 calls. Existing independent-outcome and residual/bread/score
+scheduling now extends through 64 generated columns, retaining the unit-weight,
+one-FE, fast-mode, large-sample and eight-worker guards. No new heap owner,
+changed arithmetic, certificate or error order is introduced. Incremental wide
+medians improve IID 389→370 ms, full outputs 481→467 ms, robust saved FE
+545→521 ms and two-cluster saved FE 626→608 ms. Allocation peaks are unchanged.
+
+Final plugin `ee6eb5df6ef656b6765dea5bfc5b016b4154ffb6ed9395833236649bc34e20e1`
+passes real-plugin ABI checks, the two final-source wide tests and three Stata
+fixtures; eleven tests also pass on the preceding combined experiment.
+There are 221 exact nonself native and 84 byte-identical output comparisons.
+All 31 original-baseline regression cells pass: breadth max/geomean
+0.976744/0.677801, size/thread/layout max/geomean 1.015692/0.992741.
+
+The first frozen five-pair block wins all 100 comparisons but fails the 0.90
+margin in narrow IID (0.907143) and narrow full outputs (0.917051). Wide full
+outputs passes at 0.898855. The failed block and its original plan are retained;
+block B was not run. The goal remains active and the margin is not weakened.
+The next candidate needs new final blocks. Current narrow phase profiles put
+legacy descriptor/RHS validation at 5.3–5.6 ms versus 1.3–1.7 ms for categorical
+saved fits. Investigate redundant checks there, then output-pass opportunities,
+without silently reviving prior rejected implementations. No next optimization
+is implemented yet. No installed package, remote state or qualification changed.
+
 ## Immutable prepared owners checkpoint — 2026-09-20
 
 The [validated-owner report](benchmarks/reports/development/one-fe-validated-owners-local-2026-09-20/README.md)

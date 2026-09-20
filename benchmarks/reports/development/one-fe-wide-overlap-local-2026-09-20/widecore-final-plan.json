@@ -1,0 +1,18 @@
+{
+  "artifact": "widecore",
+  "plugin": "ee6eb5df6ef656b6765dea5bfc5b016b4154ffb6ed9395833236649bc34e20e1",
+  "implementation_frozen": true,
+  "source": "6cb8c2300e8cdc296bcd29132c94207506f5925f",
+  "overlays": {
+    "crates/fereg-core/src/ols/prepared_unadjusted.rs": "93433a4f9bfb457c68f20f2d381bc6bd43fd16f27914c5212f6c18ec2fe9218f",
+    "crates/fereg-core/src/ols/prepared_fit.rs": "1cbcfaaa5e0388e6c0da6811d014ef1d657ba9124298e82e2bb1d02c33149b18"
+  },
+  "acceptance_manifest_sha256": "35cb4c0778ced529a5a0aa776d207326fae2ac5e103391e7d87bd6a442bc1bad",
+  "blocks": [
+    "widecore-final-a",
+    "widecore-final-b"
+  ],
+  "rule": "Two blocks of five pairs on all twenty cells; <=0.90 median ratio per cell per block and >=9/10 wins; refresh 20+11 original-baseline controls on this artifact.",
+  "prior_screen": "wide-overlap-screen",
+  "status": "first block started; no acceptance claim"
+}
