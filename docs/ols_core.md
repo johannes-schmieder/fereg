@@ -101,6 +101,15 @@ requires `df_r > 0`. IID, HC1 robust, and one-/multiway clustered paths have
 independent score, correction, subset, PSD/repair, Wald, and statistic
 certificates.
 
+Eligible fast intercept-FE fits with at least 16,384 rows, at most 64 model
+columns and at least eight workers overlap independent source weight/outcome
+statistics with fitting. Reuse requires the same immutable sources and exact
+fitted weight-scale bits; a mismatch uses the original fitted-view scan.
+Only source borrows and scalar results are retained, and each error remains
+at its original inference boundary. Unit, AW, PW and FW semantics and all
+certificates remain unchanged; see
+[ADR 0084](adr/0084-weighted-independent-statistics-overlap.md).
+
 Fast robust/clustered OLS packs candidate score values up to 32 MiB. Larger
 eligible Cholesky fits retain the standardized solve allocation through the
 existing strided view, with stable raw reference moments and independent score

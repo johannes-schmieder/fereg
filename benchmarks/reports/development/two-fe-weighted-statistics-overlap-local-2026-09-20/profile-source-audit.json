@@ -1,0 +1,10 @@
+{
+  "diagnostic_changes": [
+    "crates/fereg-core/src/ols/prepared_unadjusted.rs"
+  ],
+  "instrumentation_replay_matches": true,
+  "parent_plugin": "6456f0911703da8c16db50692ae9705459ded36074edd39e81b8a26b1d354561",
+  "profile_plugin": "21de989125057bdf33b6c99d6799d3f0c29ff694bb88473cd63022f2e49e8f47",
+  "source_files": 516,
+  "unchanged_files": 515
+}

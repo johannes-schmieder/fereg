@@ -1,0 +1,44 @@
+[
+  {
+    "finite_score_per_observation": 2.3372815049712717e-16,
+    "group_residual_mean_max": [
+      2.0847521240183496e-15,
+      1.4339186006552377e-13
+    ],
+    "output_reconstruction_max_errors": [
+      3.1086244689504383e-15,
+      1.3322676295501878e-15,
+      3.1086244689504383e-15
+    ],
+    "run": "weighted-statistics-main-shuffled-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r1-weightedstatistics",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.3372815049712717e-16,
+    "group_residual_mean_max": [
+      2.0847521240183496e-15,
+      1.4339186006552377e-13
+    ],
+    "output_reconstruction_max_errors": [
+      3.1086244689504383e-15,
+      1.3322676295501878e-15,
+      3.1086244689504383e-15
+    ],
+    "run": "weighted-statistics-main-shuffled-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r2-weightedstatistics",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.3372815049712717e-16,
+    "group_residual_mean_max": [
+      2.0847521240183496e-15,
+      1.4339186006552377e-13
+    ],
+    "output_reconstruction_max_errors": [
+      3.1086244689504383e-15,
+      1.3322676295501878e-15,
+      3.1086244689504383e-15
+    ],
+    "run": "weighted-statistics-main-shuffled-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r3-weightedstatistics",
+    "status": "pass"
+  }
+]

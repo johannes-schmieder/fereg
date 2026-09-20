@@ -24,7 +24,8 @@ use super::prepared_scores::{
 };
 use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{
-    build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
+    build_reference_weight_report_with_outcome, build_residual_dof_view, build_statistics,
+    checked_square, DeferredOutcome,
     compensated_add, exact_integer_as_f64, relative_difference, validate_sum_of_squares,
     fit_with_independent_outcome, independent_outcome_sum, independent_residual_sum, ReferenceWeightView,
 };
@@ -674,7 +675,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
     score_scratch: Option<PreparedOlsScratch>,
-    outcome_tss: Option<Result<f64>>,
+    mut outcome_tss: DeferredOutcome<'_>,
 ) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
 {
     let ols = prepared.clustered_ols();
@@ -690,7 +691,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
         ols.inference_clustered_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
 
     let (weights, weight_view, weight_error) =
-        build_reference_weight_report_view(ols, &fit, config.certificate_tolerance, true)?;
+        build_reference_weight_report_with_outcome(ols, &fit, config.certificate_tolerance, true, &mut outcome_tss)?;
     let base_dof = build_residual_dof_view(ols, &fit, absorbed_summary, weights)?;
     let expected_dof = build_clustered_dof(prepared, weights, base_dof, absorbed_summary)?;
     let mut dof = expected_dof;
@@ -707,7 +708,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     }
 
     let tss = match outcome_tss {
-        Some(tss) => tss?,
+        Some(tss) => tss?.tss?,
         None => independent_outcome_sum(&ols.fit_sample().outcome, weight_view, dof.has_structural_intercept)?,
     };
     let within_tss = if ols.inference_has_explicit_absorbed_effects() {
@@ -3444,6 +3445,7 @@ mod tests {
     use super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit;
     use super::*;
     use crate::ols::prepare_ols_clustered_data;
+    use crate::data::WeightKind;
 
     struct CountingReservation {
         calls: usize,
@@ -3518,22 +3520,40 @@ mod tests {
             column.values = column.values.repeat(2049);
             column.missing = column.missing.repeat(2049);
         }
-        let prepared = prepare_ols_clustered_data(&request, &loaded).unwrap();
-        let mut config = PreparedOlsClusteredConfig::default();
-        config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
-        let actual = fit_prepared_ols_clustered_map(&prepared, config).unwrap();
-        let (fit, scratch) = super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference(
-            prepared.ols(), config.fit,
-        ).unwrap();
-        let expected = ThreadTeam::new(config.fit.execution.threads).install(|| compose_clustered_view(
-            &prepared, fit, config, &mut SystemPreparedInferenceReservation,
-            ClusteredPerturbations::default(), scratch, None,
-        )).unwrap().unwrap();
-        assert_eq!(actual.statistics, expected.statistics);
-        assert_eq!(actual.covariance, expected.covariance);
-        assert_eq!(actual.certificate, expected.certificate);
-        assert_eq!(actual.dof, expected.dof);
-        assert_eq!(actual.fit.coefficients(), expected.fit.coefficients());
+        let n = loaded.candidate.len();
+        for kind in [None, Some(WeightKind::Analytic), Some(WeightKind::Probability), Some(WeightKind::Frequency)] {
+            let (mut request, mut loaded) = (request.clone(), loaded.clone());
+            if let Some(kind) = kind {
+                let column = super::super::LoadedNumericColumn {
+                    values: (0..n).map(|r| if kind == WeightKind::Frequency { (1 + r % 7) as f64 }
+                        else { 0.125 + (r % 17) as f64 / 11.0 }).collect(),
+                    missing: vec![false; n],
+                };
+                let role = match kind {
+                    WeightKind::Analytic => { loaded.analytic_weight = Some(column); super::super::OlsInputRole::AnalyticWeight },
+                    WeightKind::Probability => { loaded.probability_weight = Some(column); super::super::OlsInputRole::ProbabilityWeight },
+                    WeightKind::Frequency => { loaded.frequency_weight = Some(column); super::super::OlsInputRole::FrequencyWeight },
+                    _ => unreachable!(),
+                };
+                request.ols.bindings.push(super::super::OlsInputBinding { stata_var_position: request.ols.bindings.len() as u32 + 1, role });
+            }
+            let prepared = prepare_ols_clustered_data(&request, &loaded).unwrap();
+            let mut config = PreparedOlsClusteredConfig::default();
+            config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
+            let actual = fit_prepared_ols_clustered_map(&prepared, config).unwrap();
+            let (fit, scratch) = super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference(
+                prepared.ols(), config.fit,
+            ).unwrap();
+            let expected = ThreadTeam::new(config.fit.execution.threads).install(|| compose_clustered_view(
+                &prepared, fit, config, &mut SystemPreparedInferenceReservation,
+                ClusteredPerturbations::default(), scratch, None,
+            )).unwrap().unwrap();
+            assert_eq!(actual.statistics, expected.statistics);
+            assert_eq!(actual.covariance, expected.covariance);
+            assert_eq!(actual.certificate, expected.certificate);
+            assert_eq!(actual.dof, expected.dof);
+            assert_eq!(actual.fit.coefficients(), expected.fit.coefficients());
+        }
     }
 
     #[test]

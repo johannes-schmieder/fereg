@@ -10,6 +10,34 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: weighted statistics overlap — 2026-09-20
+
+The [weighted statistics overlap report](benchmarks/reports/development/two-fe-weighted-statistics-overlap-local-2026-09-20/README.md)
+retains 170 successful application calls, 67 bitwise-exact native scientific
+pairs (65 production, two diagnostic), sixteen exact and independently audited
+output pairs, nine focused tests and three final-artifact Stata fixtures.
+All native allocation peaks are unchanged. [ADR 0084](docs/adr/0084-weighted-independent-statistics-overlap.md)
+extends bounded independent source scans to AW/PW/FW, keeping exact source and
+fitted-scale checks and original deferred error order. No cell median paired
+native regression exceeds 5%; nine default-reference output discrepancies
+remain explicit.
+
+Three-pair shuffled AW K=6 IID improves 305 -> 292 ms versus fixest's 302 ms;
+ordered K=50 improves 748 -> 721 ms. Degree-three/six/unbalanced K=6 AW remains
+84/79/82 ms versus 83/72/79 ms. Weighted narrow one-FE also still trails fixest.
+The isolated profile moves 22.170 ms of independent source work beside fitting
+and reduces the large shuffled post-fit weight report 10.192 -> 0.001 ms.
+Plugin `6456f0911703da8c16db50692ae9705459ded36074edd39e81b8a26b1d354561`
+uses base `70a79e8c` plus three OLS overlays; all 516 source entries match.
+Both production/diagnostic ABI checks pass and the diagnostic instrumentation
+replays exactly. All checkpoint processes have finished.
+
+The full goal remains active. Next fuse left-mean restoration into existing
+reconstruction, then reduce duplicate Schur probe/initialization. The 111
+native controls, sixteen fresh-seed holdouts and two final five-pair blocks
+remain outstanding. Raw work is `target/two-fe-broad-20260920`; preserve
+unrelated dirt. No installed package, remote state or qualification changed.
+
 ## Broad two-way OLS milestone: weighted statistics profile — 2026-09-20
 
 The [weighted statistics profile](benchmarks/reports/development/two-fe-weighted-statistics-profile-local-2026-09-20/README.md)
