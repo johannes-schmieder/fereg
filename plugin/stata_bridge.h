@@ -78,6 +78,12 @@ FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vstore(
     ST_int observation,
     ST_double value
 );
+FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vstore_columns(
+    const ST_int *variables,
+    ST_int variable_count,
+    ST_int observation_count,
+    const ST_double *const *columns
+);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_sdata(
     ST_int variable,
     ST_int observation,

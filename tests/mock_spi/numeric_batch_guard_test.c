@@ -8,6 +8,17 @@
 #include <string.h>
 
 static int calls, failure_at;
+static int store_calls, store_failure_at;
+static ST_double stored[12];
+static ST_int store_value(ST_int v, ST_int o, ST_double value)
+{
+    const ST_int order[] = {4, 1, 2};
+    assert(store_calls < 12 && v == order[store_calls % 3] && o == store_calls / 3 + 1);
+    ++store_calls;
+    if (store_calls == store_failure_at) return 918;
+    stored[store_calls - 1] = value;
+    return 0;
+}
 static ST_int nobs(void) { return 65540; }
 static ST_int nvars(void) { return 4; }
 static ST_boolean isstr(ST_int v) { assert(v >= 1 && v <= 4); return (ST_boolean)(v == 3); }
@@ -39,6 +50,8 @@ static void *worker(void *unused)
     (void)unused;
     assert(fereg_spi_vdata_columns(vars, 1, 1, 1, cols, &missing) == 498);
     assert(fereg_spi_vdata_rows(vars, 1, 1, 1, data, &missing) == 498);
+    const double *outputs[] = {data};
+    assert(fereg_spi_vstore_columns(vars, 1, 1, outputs) == 498);
     return NULL;
 }
 
@@ -51,6 +64,7 @@ int main(void)
     memset(&plugin, 0, sizeof(plugin));
     plugin.nobs = nobs; plugin.nvars = nvars; plugin.isstr = isstr;
     plugin.safevdata = checked_read; plugin.vdata = read_value;
+    plugin.safestore = store_value; plugin.store = store_value;
     plugin.missval = 0x1p+1023;
     assert(fereg_spi_vdata_columns(vars, 3, 1, 4, cols, &missing) == 498);
     assert(pginit(&plugin) == SD_PLUGINVER);
@@ -114,5 +128,36 @@ int main(void)
     assert(fereg_spi_vdata_rows(vars, 3, 1, 4, rows, &missing) == 919);
     assert(calls == 5 && rows[0] == 400001 && rows[3] == 400002 && rows[12] == -77);
     puts("INPUT_GUARD_PASS");
+    const double *outputs[] = {a, b, c};
+    assert(store_calls == 0);
+    assert(fereg_spi_vstore_columns(NULL, 3, 4, outputs) == 198);
+    assert(fereg_spi_vstore_columns(vars, 0, 4, outputs) == 198);
+    assert(fereg_spi_vstore_columns(vars, 65, 4, outputs) == 198);
+    assert(fereg_spi_vstore_columns(vars, 3, 0, outputs) == 198);
+    assert(fereg_spi_vstore_columns(vars, 3, 65541, outputs) == 498);
+    assert(fereg_spi_vstore_columns(vars, 3, 4, NULL) == 198);
+    outputs[2] = NULL;
+    assert(fereg_spi_vstore_columns(vars, 3, 4, outputs) == 198);
+    outputs[2] = c;
+    for (int bad = -1; bad <= 5; ++bad) {
+        if (bad == 1 || bad == 2 || bad == 4) continue;
+        vars[2] = bad;
+        assert(fereg_spi_vstore_columns(vars, 3, 4, outputs) == 498);
+    }
+    vars[2] = 2;
+    plugin.safestore = NULL; plugin.store = NULL;
+    assert(fereg_spi_vstore_columns(vars, 3, 4, outputs) == 498);
+    plugin.safestore = store_value; plugin.store = store_value;
+    assert(store_calls == 0);
+    a[0] = -0.0;
+    assert(fereg_spi_vstore_columns(vars, 3, 4, outputs) == 0);
+    assert(store_calls == 12);
+    for (int i = 0; i < 12; ++i) assert(memcmp(&stored[i], &outputs[i % 3][i / 3], sizeof(double)) == 0);
+    for (int failure = 1; failure <= 12; ++failure) {
+        store_calls = 0; store_failure_at = failure;
+        assert(fereg_spi_vstore_columns(vars, 3, 4, outputs) == 918);
+        assert(store_calls == failure);
+    }
+    puts("OUTPUT_GUARD_PASS");
     return 0;
 }

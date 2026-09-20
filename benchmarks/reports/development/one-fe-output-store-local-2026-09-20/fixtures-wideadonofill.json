@@ -1,0 +1,26 @@
+[
+  {
+    "fixture": "development/ols_private_output_initialization.do",
+    "sha256": "cf0653172d1b1cc1c80f1d431405446b7c056537ce41ea5161299c56e259500e",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|ols_private_output_initialization|rc=0",
+    "terminal_sentinel": true
+  },
+  {
+    "fixture": "development/ols_prediction_scoring.do",
+    "sha256": "e40859c5c9738643e70c34a0b9857c4a6472f86260f642195e215cc5919dd6b5",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|ols_prediction_scoring|rc=0",
+    "terminal_sentinel": true
+  },
+  {
+    "fixture": "installation/estimate_ols_eclass_transaction.do",
+    "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+    "terminal_sentinel": true
+  }
+]

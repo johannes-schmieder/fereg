@@ -10,6 +10,39 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Checked OLS output-store checkpoint — 2026-09-20
+
+The [output-store report](benchmarks/reports/development/one-fe-output-store-local-2026-09-20/README.md)
+archives 317 calls. Full-sample OLS numeric publication now batches borrowed
+columns across one Rust/C call, retaining the checked SDK accessor, main-thread
+confinement, scalar row/column order, first-error behavior and COMPLETE-last
+transaction. The guard requires at least 4,096 rows, no drop-reason output and
+at most 64 columns; the real adapter enables it only on macOS. Partial samples
+and other adapters retain their prior path. No heap owner or public API changes.
+
+Final plugin `76f8ec6018fa047fc1277880120502dc9499a9f4deba72ee900279a359d1161e`
+passes final-source publication/failure tests, UBSan bridge guards, actual ABI
+checks and three Stata oracle/rollback fixtures. All twelve incremental pairs
+win against `widecore`, with identical native allocation peaks. Full-output
+medians improve 196→192 ms (K=10) and 470→459 ms (K=50); saved FE improves
+150→148 and 408→403 ms. All 31 regression cells pass: breadth max/geomean
+0.969231/0.669356, size/thread/layout 1.030303/0.989931. The archive contains
+141 exact nonself native and 51 byte-identical output comparisons.
+
+RHS finite/match fusion was removed after its five-pair narrow confirmation
+showed 127/127 ms and only two wins. Pure-ado deferred output initialization
+remains unadopted after slower partial-sample results. Rejected patches, runs,
+fixture-setup failure and correction are preserved. Production ado is unchanged.
+
+Eight exact diagnostic calls show narrow SPI reads at about 69 ms, overlapped
+consumer work at 39–40 ms and negligible producer waiting. Preparation takes
+9.6–11.5 ms versus concurrent raw moments 7.1–7.6 ms; improving moments alone
+would leave preparation on the critical path. Next test fewer passes for
+ordered numeric FE factorization, retaining canonical codes, finite/error
+behavior, memory admission and the unordered fallback. This is not implemented
+yet. The goal remains active; neither final acceptance block has run for this
+candidate. No installed package, remote state or qualification changed.
+
 ## Wide one-FE overlap checkpoint — 2026-09-20
 
 The [wide-overlap report](benchmarks/reports/development/one-fe-wide-overlap-local-2026-09-20/README.md)

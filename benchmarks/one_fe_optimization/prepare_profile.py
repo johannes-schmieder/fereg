@@ -49,7 +49,7 @@ def instrument(root):
         start = "fn finish_prepare_with_early_factor(" if "fn finish_prepare_with_early_factor(" in text else "fn finish_prepare_ols_data_with_membership("
         change(start, "\n// A one-effect", [
             ("    let pruning_categorical_sources =", f"    let profile_start = {stamp};\n    let pruning_categorical_sources ="),
-            ("    let prebuilt_index =", f"    let profile_factorized = {stamp};\n    let prebuilt_index ="),
+            ("    let prebuilt_index = if reuse_membership", f"    let profile_factorized = {stamp};\n    let prebuilt_index = if reuse_membership"),
             ("    let (sample, categorical_sources, fixed_effects, num_singletons, cascade_events) =",
              f"    let profile_indexed = {stamp};\n    let (sample, categorical_sources, fixed_effects, num_singletons, cascade_events) ="),
             ("    resolve_categorical_level_codes", f"    let profile_selected = {stamp};\n    resolve_categorical_level_codes"),
@@ -75,9 +75,81 @@ def instrument(root):
         ])
     path.write_text(text)
 
+    path = root / "crates/fereg-core/src/ols/prepared_fit.rs"
+    text = path.read_text()
+    first = text.index("fn fill_raw_moment_cache_fused<")
+    last = text.index("fn fill_raw_moment_cache_blocked<", first)
+    body = text[first:last]
+    for marker, insertion in [
+        ("    let columns = raw.ncols();", "    let profile_moments_start = std::time::Instant::now();\n"),
+        ("    partials.fill(0.0);", "    let profile_norms_done = std::time::Instant::now();\n"),
+        ("    Ok(())\n}", '''    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+        eprintln!("FEREG_PHASE|moment_passes|norms={:.9}|means={:.9}",
+            profile_norms_done.duration_since(profile_moments_start).as_secs_f64(),
+            profile_norms_done.elapsed().as_secs_f64());
+    }
+'''),
+    ]:
+        assert body.count(marker) == 1, marker
+        body = body.replace(marker, insertion + marker)
+    path.write_text(text[:first] + body + text[last:])
+
+    path = root / "crates/fereg-plugin/src/numeric_pipeline.rs"
+    text = path.read_text()
+    first = text.index("fn read_tiles(")
+    last = text.index("\n#[cfg(test)]", first)
+    body = text[first:last]
+    for old, new in [
+        ("            let mut index = 0;", "            let mut index = 0;\n            let mut profile_consume_seconds = 0.0;"),
+        ("if slots.closed { return; }", '''if slots.closed {
+                            if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+                                eprintln!("FEREG_PHASE|input_consumer|compute={:.9}", profile_consume_seconds);
+                            }
+                            return;
+                        }'''),
+        ("                consume(tile.start, tile.rows, &mut tile.values, tile.missing_boundary);",
+         "                let profile_consume_start = std::time::Instant::now();\n"
+         "                consume(tile.start, tile.rows, &mut tile.values, tile.missing_boundary);\n"
+         "                profile_consume_seconds += profile_consume_start.elapsed().as_secs_f64();"),
+        ("        for (sequence, start) in", "        let mut profile_wait_seconds = 0.0;\n        let mut profile_spi_seconds = 0.0;\n        for (sequence, start) in"),
+        ("            let mut buffer = {", "            let profile_wait_start = std::time::Instant::now();\n            let mut buffer = {"),
+        ("            spi.check_interrupted()?;", "            profile_wait_seconds += profile_wait_start.elapsed().as_secs_f64();\n            let profile_spi_start = std::time::Instant::now();\n            spi.check_interrupted()?;"),
+        ("            if !boundary.is_finite()", "            profile_spi_seconds += profile_spi_start.elapsed().as_secs_f64();\n            if !boundary.is_finite()"),
+        ("        Ok(())\n    })??;", '''        if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+            eprintln!("FEREG_PHASE|input_producer|wait={:.9}|spi={:.9}", profile_wait_seconds, profile_spi_seconds);
+        }
+        Ok(())
+    })??;'''),
+    ]:
+        assert body.count(old) == 1, old
+        body = body.replace(old, new)
+    path.write_text(text[:first] + body + text[last:])
+
     # Distinguish the critical worker from work hidden by the admitted overlap.
     path = root / "crates/fereg-plugin/src/estimate.rs"
     text = path.read_text()
+    if "fn prepare_loaded_ols_with_moments" in text:
+        before = '''                || prepare(request, loaded),
+                || loaded_rhs.map(|rows| LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)),'''
+        assert text.count(before) == 1
+        text = text.replace(before, '''                || {
+                    let started = Instant::now();
+                    let result = prepare(request, loaded);
+                    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+                        eprintln!("FEREG_PHASE|prepare_job|seconds={:.9}", started.elapsed().as_secs_f64());
+                    }
+                    result
+                },
+                || {
+                    let started = Instant::now();
+                    let result = loaded_rhs.map(|rows| LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes));
+                    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+                        eprintln!("FEREG_PHASE|moment_job|seconds={:.9}", started.elapsed().as_secs_f64());
+                    }
+                    result
+                },''')
+        path.write_text(text)
+        return
     before = '''                        || prepare_ols_data_owned(&action.request, loaded),
                         || loaded_rhs.map(|rows| LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)),'''
     if "with_unit_moments" in text:

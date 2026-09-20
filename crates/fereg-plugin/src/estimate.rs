@@ -2912,11 +2912,12 @@ fn store_shadow(
     // Final preflight already proved exact agreement between the retained map
     // and drop reasons. A full sample keeps its initialized private marker;
     // without requested observation products there is no row store to perform.
-    let observation_rows = if shadow.retained_rows.len() == shadow.drop_reasons.len()
+    let batched = try_store_full_observation_outputs(action, shadow, derived, spi)?;
+    let observation_rows = if batched || (shadow.retained_rows.len() == shadow.drop_reasons.len()
         && action.outputs.residual.is_none() && action.outputs.drop_reason.is_none()
         && action.outputs.xb.is_none() && action.outputs.xbd.is_none()
         && action.outputs.absorbed.is_none()
-        && action.outputs.saved_channels.iter().all(Option::is_none)
+        && action.outputs.saved_channels.iter().all(Option::is_none))
     { 0 } else { shadow.drop_reasons.len() };
     let mut retained_cursor = 0_usize;
     for (zero_based, reason) in shadow.drop_reasons.iter().copied().enumerate().take(observation_rows) {
@@ -3035,6 +3036,44 @@ fn store_shadow(
     // This must remain the final operation: no allocation, polling, display,
     // computation, or store is permitted after the completion cell succeeds.
     spi.store_matrix(&action.matrices.receipt, 1, RECEIPT_COMPLETE_COLUMN, 1.0)
+}
+
+fn try_store_full_observation_outputs(
+    action: &EstimateAction,
+    shadow: &OlsShadowResult<'_>,
+    derived: &DerivedObservationOutputs,
+    spi: &mut dyn SpiApi,
+) -> Result<bool> {
+    // Complete preflight proved an identity row map. Preserve the scalar store
+    // order using borrowed columns; partial samples keep their marker updates.
+    if shadow.retained_rows.len() != shadow.drop_reasons.len()
+        || shadow.retained_rows.len() < 4096 || action.outputs.drop_reason.is_some()
+    { return Ok(false); }
+    let mut columns = [(0_u32, &[] as &[f64]); crate::input::MAX_NUMERIC_STORE_COLUMNS];
+    let mut count = 0;
+    if let Some(position) = action.outputs.residual {
+        columns[count] = (position, shadow.residuals);
+        count += 1;
+    }
+    for (position, values) in [
+        (action.outputs.xb, derived.xb.as_deref()),
+        (action.outputs.xbd, derived.xbd.as_deref()),
+        (action.outputs.absorbed, derived.absorbed.as_deref()),
+    ] {
+        if let (Some(position), Some(values)) = (position, values) {
+            columns[count] = (position, values);
+            count += 1;
+        }
+    }
+    for (position, values) in action.outputs.saved_channels.iter().zip(&derived.saved_channels) {
+        if let (Some(position), Some(values)) = (*position, values.as_deref()) {
+            if count == columns.len() { return Ok(false); }
+            columns[count] = (position, values);
+            count += 1;
+        }
+    }
+    if count == 0 { return Ok(false); }
+    spi.try_store_numeric_columns(&columns[..count])
 }
 
 fn store_matrix(
@@ -3703,6 +3742,8 @@ mod tests {
         strl_variables: BTreeSet<u32>,
         numeric_reads: usize,
         numeric_rows_enabled: bool,
+        numeric_column_stores_enabled: bool,
+        numeric_column_batches: usize,
         numeric_batches: Vec<(usize, usize, Vec<u32>)>,
         store_calls: usize,
         fail_store_at: Option<usize>,
@@ -3814,6 +3855,17 @@ mod tests {
             self.stores
                 .push(StoreEvent::Numeric(variable, observation, value));
             Ok(())
+        }
+
+        fn try_store_numeric_columns(&mut self, columns: &[(u32, &[f64])]) -> Result<bool> {
+            if !self.numeric_column_stores_enabled { return Ok(false); }
+            self.numeric_column_batches += 1;
+            for row in 0..columns[0].1.len() {
+                for (position, values) in columns {
+                    self.store_numeric(*position, row + 1, values[row])?;
+                }
+            }
+            Ok(true)
         }
 
         fn store_matrix(
@@ -4258,6 +4310,8 @@ mod tests {
                 strl_variables: BTreeSet::new(),
                 numeric_reads: 0,
                 numeric_rows_enabled: false,
+                numeric_column_stores_enabled: false,
+                numeric_column_batches: 0,
                 numeric_batches: Vec::new(),
                 store_calls: 0,
                 fail_store_at: None,
@@ -5576,6 +5630,55 @@ mod tests {
                     &categorical_clustered, cluster_config, clustered_rows.map(LoadedOlsRows::from)).unwrap();
                 assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
                 assert_eq!(reference.covariance(), actual.covariance());
+            }
+        }
+    }
+
+    #[test]
+    fn full_sample_output_batch_preserves_store_order_and_failure_atomicity() {
+        for n in [4095, 4096, 4097] {
+            for missing in [false, true] {
+                let (mut args, mut base) = saved_output_fixture();
+                replace_argument(&mut args, "candidate_all", "candidate_all=1".to_owned());
+                replace_argument(&mut args, "output_drop_reason", "output_drop_reason=0".to_owned());
+                replace_argument(&mut args, "output_xb", "output_xb=7".to_owned());
+                replace_argument(&mut args, "output_xbd", "output_xbd=8".to_owned());
+                replace_argument(&mut args, "output_absorbed", "output_absorbed=9".to_owned());
+                replace_argument(&mut args, "output_saved_channels", "output_saved_channels=2:10".to_owned());
+                base.nvars = 10;
+                for row in 7..=n {
+                    for position in 1..=5 {
+                        base.data.insert((position, row), base.data[&(position, (row - 1) % 6 + 1)]);
+                    }
+                }
+                base.nobs = n;
+                if missing { base.data.insert((2, 3), (0.0, true)); }
+                base.stores.reserve(5 * n + 512);
+                let mut scalar = base.clone();
+                estimate_ols_test(&args, &mut scalar).unwrap();
+                let mut batched = base.clone();
+                batched.numeric_column_stores_enabled = true;
+                estimate_ols_test(&args, &mut batched).unwrap();
+                assert_eq!(batched.numeric_column_batches, usize::from(n >= 4096 && !missing));
+                let observation_events = |spi: &FakeSpi| spi.stores.iter()
+                    .take_while(|event| matches!(event, StoreEvent::Numeric(..))).cloned().collect::<Vec<_>>();
+                assert_eq!(observation_events(&scalar), observation_events(&batched));
+                for name in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCERT"] {
+                    assert_eq!(scalar.matrices[name], batched.matrices[name], "{name}");
+                }
+                assert_eq!(batched.receipt_complete(), 1.0);
+                if n == 4096 && !missing {
+                    let numeric = observation_events(&batched).len();
+                    for failure in [1, 2, 1024, numeric, numeric + 1, batched.store_calls] {
+                        let mut spi = base.clone();
+                        spi.numeric_column_stores_enabled = true;
+                        spi.fail_store_at = Some(failure);
+                        assert!(estimate_ols_test(&args, &mut spi).is_err());
+                        assert_eq!(spi.store_calls, failure);
+                        assert_eq!(spi.receipt_complete(), 0.0);
+                        assert_eq!(spi.numeric_column_batches, 1);
+                    }
+                }
             }
         }
     }

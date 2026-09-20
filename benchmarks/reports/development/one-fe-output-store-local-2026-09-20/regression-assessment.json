@@ -1,0 +1,191 @@
+{
+  "breadth": {
+    "cells": [
+      {
+        "case": "cluster2_cross",
+        "k": 10,
+        "median_paired_ratio": 0.7581967213114754,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster2_cross",
+        "k": 50,
+        "median_paired_ratio": 0.7530364372469637,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster2_nested",
+        "k": 10,
+        "median_paired_ratio": 0.7319148936170212,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster2_nested",
+        "k": 50,
+        "median_paired_ratio": 0.758575197889182,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster2_saved",
+        "k": 10,
+        "median_paired_ratio": 0.6043956043956045,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster2_saved",
+        "k": 50,
+        "median_paired_ratio": 0.5913978494623656,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster_cross",
+        "k": 10,
+        "median_paired_ratio": 0.6986301369863014,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster_cross",
+        "k": 50,
+        "median_paired_ratio": 0.738872403560831,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster_fe",
+        "k": 10,
+        "median_paired_ratio": 0.7128712871287127,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster_fe",
+        "k": 50,
+        "median_paired_ratio": 0.7201210287443267,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster_fe_saved",
+        "k": 10,
+        "median_paired_ratio": 0.5414012738853503,
+        "pass_cell": true
+      },
+      {
+        "case": "cluster_fe_saved",
+        "k": 50,
+        "median_paired_ratio": 0.5542299349240781,
+        "pass_cell": true
+      },
+      {
+        "case": "iid",
+        "k": 10,
+        "median_paired_ratio": 0.9692307692307692,
+        "pass_cell": true
+      },
+      {
+        "case": "iid",
+        "k": 50,
+        "median_paired_ratio": 0.9509043927648578,
+        "pass_cell": true
+      },
+      {
+        "case": "iid_outputs",
+        "k": 10,
+        "median_paired_ratio": 0.5276243093922652,
+        "pass_cell": true
+      },
+      {
+        "case": "iid_outputs",
+        "k": 50,
+        "median_paired_ratio": 0.4895833333333333,
+        "pass_cell": true
+      },
+      {
+        "case": "iid_saved",
+        "k": 10,
+        "median_paired_ratio": 0.5087719298245614,
+        "pass_cell": true
+      },
+      {
+        "case": "iid_saved",
+        "k": 50,
+        "median_paired_ratio": 0.5351351351351352,
+        "pass_cell": true
+      },
+      {
+        "case": "robust",
+        "k": 10,
+        "median_paired_ratio": 0.7539267015706805,
+        "pass_cell": true
+      },
+      {
+        "case": "robust",
+        "k": 50,
+        "median_paired_ratio": 0.7402985074626867,
+        "pass_cell": true
+      }
+    ],
+    "geometric_mean": 0.6693556645222266,
+    "maximum": 0.9692307692307692,
+    "pass": true
+  },
+  "controls": {
+    "cells": [
+      {
+        "case": "batch-store-controls-controls-n245760-k10-gdefault-shuffle0-t1",
+        "median_paired_ratio": 1.0303030303030303,
+        "pass_cell": true
+      },
+      {
+        "case": "batch-store-controls-controls-n245760-k10-gdefault-shuffle0-t16",
+        "median_paired_ratio": 1.0,
+        "pass_cell": true
+      },
+      {
+        "case": "batch-store-controls-controls-n245760-k10-gdefault-shuffle0-t4",
+        "median_paired_ratio": 0.9821428571428571,
+        "pass_cell": true
+      },
+      {
+        "case": "batch-store-controls-controls-n983040-k10-gdefault-shuffle0-t1",
+        "median_paired_ratio": 0.9868073878627969,
+        "pass_cell": true
+      },
+      {
+        "case": "batch-store-controls-controls-n983040-k10-gdefault-shuffle0-t4",
+        "median_paired_ratio": 0.9947089947089947,
+        "pass_cell": true
+      },
+      {
+        "case": "batch-store-controls-controls-n983040-k50-g1000-shuffle0-t16",
+        "median_paired_ratio": 0.9310344827586207,
+        "pass_cell": true
+      },
+      {
+        "case": "batch-store-controls-controls-n983040-k50-g1000-shuffle0-t4",
+        "median_paired_ratio": 0.962178517397882,
+        "pass_cell": true
+      },
+      {
+        "case": "batch-store-controls-controls-n983040-k50-gdefault-shuffle0-t1",
+        "median_paired_ratio": 1.029683377308707,
+        "pass_cell": true
+      },
+      {
+        "case": "batch-store-controls-controls-n983040-k50-gdefault-shuffle0-t4",
+        "median_paired_ratio": 1.0032467532467533,
+        "pass_cell": true
+      },
+      {
+        "case": "batch-store-controls-controls-n983040-k50-gdefault-shuffle1-t16",
+        "median_paired_ratio": 0.9569377990430623,
+        "pass_cell": true
+      },
+      {
+        "case": "batch-store-controls-controls-n983040-k50-gdefault-shuffle1-t4",
+        "median_paired_ratio": 1.0171184022824538,
+        "pass_cell": true
+      }
+    ],
+    "geometric_mean": 0.9899314176816317,
+    "maximum": 1.0303030303030303,
+    "pass": true
+  }
+}

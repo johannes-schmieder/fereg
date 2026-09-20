@@ -1,0 +1,94 @@
+{
+  "ado-nofill-sparse": {
+    "checks": [
+      {
+        "case": "iid_outputs",
+        "k": 10,
+        "n": 983040,
+        "outputs": {
+          "max_abs_errors": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "names": [
+            "fe",
+            "residual",
+            "xb",
+            "xbd"
+          ]
+        },
+        "rep": 1,
+        "science": {
+          "errors": {
+            "coefficients.csv:se": 0.0,
+            "coefficients.csv:value": 0.0,
+            "covariance.csv:value": 0.0
+          },
+          "sample_exact": true
+        },
+        "variant": "wideadonofill"
+      },
+      {
+        "case": "iid_outputs",
+        "k": 10,
+        "n": 983040,
+        "outputs": {
+          "max_abs_errors": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "names": [
+            "fe",
+            "residual",
+            "xb",
+            "xbd"
+          ]
+        },
+        "rep": 2,
+        "science": {
+          "errors": {
+            "coefficients.csv:se": 0.0,
+            "coefficients.csv:value": 0.0,
+            "covariance.csv:value": 0.0
+          },
+          "sample_exact": true
+        },
+        "variant": "wideadonofill"
+      },
+      {
+        "case": "iid_outputs",
+        "k": 10,
+        "n": 983040,
+        "outputs": {
+          "max_abs_errors": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "names": [
+            "fe",
+            "residual",
+            "xb",
+            "xbd"
+          ]
+        },
+        "rep": 3,
+        "science": {
+          "errors": {
+            "coefficients.csv:se": 0.0,
+            "coefficients.csv:value": 0.0,
+            "covariance.csv:value": 0.0
+          },
+          "sample_exact": true
+        },
+        "variant": "wideadonofill"
+      }
+    ],
+    "status": "pass"
+  }
+}

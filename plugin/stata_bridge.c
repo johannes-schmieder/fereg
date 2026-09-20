@@ -293,6 +293,43 @@ ST_int fereg_spi_vstore(ST_int variable, ST_int observation, ST_double value)
     return SF_vstore(variable, observation, value);
 }
 
+ST_int fereg_spi_vstore_columns(
+    const ST_int *variables,
+    ST_int variable_count,
+    ST_int observation_count,
+    const ST_double *const *columns
+)
+{
+    ST_int variable, observation, rc;
+    ST_int variables_available;
+    ST_int (*store)(ST_int, ST_int, ST_double);
+    if (variables == NULL || columns == NULL || variable_count <= 0 ||
+        variable_count > 64 || observation_count <= 0) return FEREG_SPI_RC_SYNTAX;
+    if (fereg_bridge_require_main_thread() != 0) return FEREG_SPI_RC_UNAVAILABLE;
+#if defined(SD_SAFEMODE)
+    store = _stata_->safestore;
+#else
+    store = _stata_->store;
+#endif
+    if (store == NULL) return FEREG_SPI_RC_UNAVAILABLE;
+    if (observation_count > SF_nobs()) return FEREG_SPI_RC_UNAVAILABLE;
+    variables_available = SF_nvars();
+    for (variable = 0; variable < variable_count; ++variable) {
+        if (columns[variable] == NULL) return FEREG_SPI_RC_SYNTAX;
+        if (variables[variable] <= 0 || variables[variable] > variables_available ||
+            SF_var_is_string(variables[variable])) return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    /* Keep the checked SDK accessor and the scalar row/column error order.
+       Only the per-value Rust/C crossing and thread check move out of the loop. */
+    for (observation = 0; observation < observation_count; ++observation) {
+        for (variable = 0; variable < variable_count; ++variable) {
+            rc = store(variables[variable], observation + 1, columns[variable][observation]);
+            if (rc != 0) return rc;
+        }
+    }
+    return 0;
+}
+
 ST_int fereg_spi_sdata(ST_int variable, ST_int observation, char *buffer)
 {
     if (buffer == NULL) return FEREG_SPI_RC_SYNTAX;

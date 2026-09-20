@@ -1,0 +1,102 @@
+{
+  "candidate_plugin": "76f8ec6018fa047fc1277880120502dc9499a9f4deba72ee900279a359d1161e",
+  "base_commit": "039062468d56fdee9613a7f3c2a905844b028a58",
+  "overlays": {
+    "crates/fereg-plugin/src/input.rs": "5eef437aa3ca52badf81ce1d1cef024944def93d60d2d58f76ceba941edea16e",
+    "crates/fereg-plugin/src/estimate.rs": "20067bcd8304ad74aececc82bb6b715d2cc57dab61e77abc69dbb3c9907843b7",
+    "crates/fereg-plugin/src/ffi.rs": "d207597349a9048a7453c786bb530b5a81aa622c31e671e551ac37e41ffc091c",
+    "plugin/stata_bridge.c": "ada15d1f21cf6dcc87bc72174e4f1b56aca32a0d1e4b6aa37c12fe6b4d8edf20",
+    "plugin/stata_bridge.h": "4d3723f8695a67e8073de28fd1ee50f68974909f114b8bcc4b241df16ebe677b",
+    "tests/mock_spi/numeric_batch_guard_test.c": "361c4a43648a702424eceac2905092c6feccd0fdaaa50e5d402e9db601d0abfd"
+  },
+  "source_overlays_match_working_tree": true,
+  "abi": "pass",
+  "tests": [
+    {
+      "log": "breadth-batch-store-guard-20260920.log",
+      "sha256": "21cc387ac57b6b8ad6ab9b7cbed774d22590a280ba5f05d0dd8b8b95348cf59d",
+      "summary": [
+        "INPUT_GUARD_PASS",
+        "OUTPUT_GUARD_PASS"
+      ]
+    },
+    {
+      "log": "breadth-batch-store-compile-20260920.log",
+      "sha256": "bce6fe2f7bcbae63c94d59cb8dafc53b4daffe1a54a3664bb364e565e5b1ffda",
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 161 filtered out; finished in 0.01s"
+      ]
+    },
+    {
+      "log": "breadth-batch-store-test-20260920.log",
+      "sha256": "2d485bef5fa6cfce471811fd831ed63357e0fe17e0fa37854766b1e77e27f48b",
+      "summary": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 162 filtered out; finished in 0.05s"
+      ]
+    },
+    {
+      "log": "breadth-batch-store-test-corrected-20260920.log",
+      "sha256": "e221bd44a4ff31a268653f4413d596710b386409a6d6e6714159503a4e4677a2",
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 162 filtered out; finished in 0.93s"
+      ]
+    },
+    {
+      "log": "breadth-batch-store-final-test-20260920.log",
+      "sha256": "3e6a84e7befc586f617f0bc7cf54c56ef173712786f00e0de0c27f0ea30a8d0f",
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 162 filtered out; finished in 0.91s"
+      ]
+    },
+    {
+      "log": "breadth-fused-rhs-tests-20260920.log",
+      "sha256": "e62880915ae04eb9209bd8d40aef056f7696ac3b0ca1e3265503c94748a02d0b",
+      "summary": [
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 938 filtered out; finished in 0.65s"
+      ]
+    }
+  ],
+  "licensed_stata_fixtures": [
+    {
+      "fixture": "development/ols_one_fe_final_recovery.do",
+      "sha256": "a3a48d1bce0aac1816cbd538277feab9ea8299b58c5fe3373b93399b6974f543",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|ols_one_fe_final_recovery|rc=0",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "development/ols_private_output_initialization.do",
+      "sha256": "cf0653172d1b1cc1c80f1d431405446b7c056537ce41ea5161299c56e259500e",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|ols_private_output_initialization|rc=0",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "installation/estimate_ols_eclass_transaction.do",
+      "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+      "status": "pass",
+      "process_returncode": 0,
+      "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+      "terminal_sentinel": true
+    }
+  ],
+  "accepted_application_calls": 317,
+  "exact_nonself_native_comparisons": 141,
+  "byte_identical_saved_output_comparisons": 51,
+  "regression_cells": 31,
+  "final_acceptance": "not run; goal remains active",
+  "diagnostic": {
+    "plugin": "940e22e698ac9dd2ef40d182080ec82e0de7c48972fe8dcfc6040414f02e0809",
+    "instrumenter_sha256": "9dcdda6e0e4af276da67990517c02fd1f961138b9cc5c6f6bc931df48240a2d6",
+    "initial_build_failed_before_compilation": {
+      "log": "build-batchprepareprofile.stdout.txt",
+      "sha256": "df9558d10565b8afb4bbfdf40c1ba3f64a62d3a98713412d61e8a17960f387be",
+      "reason": "nonunique prebuilt_index insertion marker"
+    },
+    "accepted_calls": 8,
+    "exact_comparisons": 4
+  },
+  "build_date_note": "Build helper embedded date is 2026-09-19; these runs and collection occurred on 2026-09-20."
+}

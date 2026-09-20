@@ -585,6 +585,8 @@ extern "C" {
         missing_value: *mut f64,
     ) -> c_int;
     fn fereg_spi_vstore(variable: c_int, observation: c_int, value: f64) -> c_int;
+    fn fereg_spi_vstore_columns(variables: *const c_int, variable_count: c_int,
+        observation_count: c_int, columns: *const *const f64) -> c_int;
     fn fereg_spi_vdata_rows(
         variables: *const c_int,
         variable_count: c_int,
@@ -670,6 +672,11 @@ unsafe fn fereg_spi_vdata_columns(
 }
 #[cfg(test)]
 unsafe fn fereg_spi_vstore(_variable: c_int, _observation: c_int, _value: f64) -> c_int {
+    498
+}
+#[cfg(test)]
+unsafe fn fereg_spi_vstore_columns(_variables: *const c_int, _variable_count: c_int,
+    _observation_count: c_int, _columns: *const *const f64) -> c_int {
     498
 }
 #[cfg(test)]
@@ -1136,6 +1143,32 @@ impl SpiApi for SpiSession {
             unsafe { fereg_spi_vstore(variable, observation, value) },
             &mut self.numeric_store_error,
         )
+    }
+
+    fn try_store_numeric_columns(&mut self, columns: &[(u32, &[f64])]) -> Result<bool, FeregError> {
+        const MAX: usize = crate::input::MAX_NUMERIC_STORE_COLUMNS;
+        if !cfg!(target_os = "macos") || columns.is_empty() || columns.len() > MAX {
+            return Ok(false);
+        }
+        let rows = columns[0].1.len();
+        if rows == 0 || rows > c_int::MAX as usize
+            || columns.iter().any(|(position, values)| *position == 0
+                || *position > c_int::MAX as u32 || values.len() != rows)
+        { return Ok(false); }
+        let mut positions = [0 as c_int; MAX];
+        let mut pointers = [std::ptr::null(); MAX];
+        for (i, (position, values)) in columns.iter().enumerate() {
+            positions[i] = *position as c_int;
+            pointers[i] = values.as_ptr();
+        }
+        // SAFETY: every borrowed column covers the checked row count and stays
+        // live through this call. The C adapter validates all Stata coordinates
+        // before any store and enforces the same caller-thread confinement.
+        Self::store_rc(unsafe {
+            fereg_spi_vstore_columns(positions.as_ptr(), columns.len() as c_int,
+                rows as c_int, pointers.as_ptr())
+        }, &mut self.numeric_store_error)?;
+        Ok(true)
     }
 
     fn store_matrix(

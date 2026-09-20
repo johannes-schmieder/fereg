@@ -18,6 +18,7 @@ use fereg_core::{MapConfig, SolveStopReason};
 pub const ACTION_PREPARE_OLS_TEST: &str = "prepare-ols-test";
 const CONFIRMATION: &str = "developer-preparation-test";
 const BINDING_ROW_WIDTH: usize = 3;
+pub(crate) const MAX_NUMERIC_STORE_COLUMNS: usize = 64;
 const PREPARED_MAP_CHECK_CONFIG: MapConfig = MapConfig {
     tolerance: 1e-10,
     max_iterations: 20_000,
@@ -188,6 +189,11 @@ pub trait SpiApi {
     fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize)>;
     fn matrix_element(&mut self, name: &str, row: usize, column: usize) -> Result<f64>;
     fn store_numeric(&mut self, variable: u32, observation: usize, value: f64) -> Result<()>;
+    /// Store aligned, prevalidated full-sample columns in row/column order.
+    /// A declined batch performs no writes, so the ordinary stores remain valid.
+    fn try_store_numeric_columns(&mut self, _columns: &[(u32, &[f64])]) -> Result<bool> {
+        Ok(false)
+    }
     fn store_matrix(
         &mut self,
         name: &PreparedMatrixStoreName,
