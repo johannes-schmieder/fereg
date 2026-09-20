@@ -428,7 +428,7 @@ fn fit_with_outcome_overlap(
     // eight-worker minimum limit contention; the scan owns no heap buffer.
     let (fit, outcome_tss, dof_topology) = if overlap
         && matches!(prepared.sample.weights, PreparedWeights::None)
-        && prepared.fe_topology.effects().len() == 1
+        && !prepared.fe_topology.effects().is_empty()
         && prepared.sample.n_active() >= 16_384
         && prepared.model.columns.len() <= 64
         && config.fit.execution.mode == super::PreparedOlsExecutionMode::Fast
@@ -530,7 +530,7 @@ fn fit_categorical_with_outcome_overlap(
     })?
 }
 
-/// Overlap the unchanged independent outcome scan with a bounded one-FE fit.
+/// Overlap the unchanged independent outcome scan with a bounded intercept-FE fit.
 /// The scan owns no heap buffers, and its error stays deferred until the caller
 /// reaches the original statistics boundary after fit, DoF and weight checks.
 pub(super) fn fit_with_independent_outcome<P, T, F>(
@@ -566,7 +566,8 @@ where
 {
     if overlap
         && matches!(prepared.fit_sample().weights, PreparedWeights::None)
-        && prepared.fit_has_one_ordinary_intercept_effect()
+        && prepared.inference_has_explicit_absorbed_effects()
+        && prepared.fit_has_absorbed_intercept() && prepared.fit_supports_cmg_auto()
         && prepared.fit_sample().n_active() >= 16_384
         && prepared.fit_model().columns.len() <= 64
         && config.execution.mode == super::PreparedOlsExecutionMode::Fast
@@ -2158,6 +2159,55 @@ mod tests {
     }
 
     #[test]
+    fn multi_fe_outcome_overlap_preserves_ordinary_and_categorical_inference() {
+        let n = 16_385;
+        let groups = [
+            (0..n).map(|r| (r % 41) as f64).collect::<Vec<_>>(),
+            (0..n).map(|r| ((r / 41) % 37) as f64).collect::<Vec<_>>(),
+            (0..n).map(|r| ((r * 13) % 29) as f64).collect::<Vec<_>>(),
+        ];
+        let columns = (0..10).map(|c| (0..n)
+            .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect::<Vec<_>>()).collect::<Vec<_>>();
+        let y = (0..n).map(|r| 1.7 * columns[0][r] + groups[0][r] + groups[1][r]
+            + 0.03 * (r as f64).sin()).collect::<Vec<_>>();
+        for effects in [2, 3] {
+            let (mut request, mut input) = prepared_input(&y, &columns, Some(&groups[0]), true, TestWeights::Unit);
+            for effect in 1..effects {
+                let source = SourceId::new(request.model.sources.len() as u32 + 1).unwrap();
+                request.model.sources.push(SourceEntry { id: source, canonical_name: format!("g{effect}") });
+                request.bindings.push(OlsInputBinding { stata_var_position: request.bindings.len() as u32 + 1,
+                    role: OlsInputRole::NumericSource(source) });
+                request.absorbed_terms.push(AbsorbedTerm { id: AbsorbTermId::new(effect as u32 + 1).unwrap(),
+                    intercept: true, categorical_sources: vec![source], slope_sources: Vec::new(),
+                    label: format!("g{effect}"), saved_name: String::new() });
+                input.numeric_sources.push((source, loaded(&groups[effect])));
+            }
+            let ordinary = prepare_ols_data(&request, &input).unwrap();
+            let categorical = crate::prepare_categorical_ols_data(&request, &input).unwrap();
+            let mut config = PreparedOlsUnadjustedConfig::default();
+            config.fit.execution.threads = crate::ThreadConfig::from_requested(8, true).unwrap();
+            let expected = fit_with_outcome_overlap(&ordinary, config, None, false).unwrap();
+            let actual = fit_with_outcome_overlap(&ordinary, config, None, true).unwrap();
+            assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
+            assert_eq!(expected.dof, actual.dof);
+            assert_eq!(expected.statistics, actual.statistics);
+            assert_eq!(expected.covariance, actual.covariance);
+            assert_eq!(expected.certificate, actual.certificate);
+            assert_eq!(expected.fit.coefficients(), actual.fit.coefficients());
+            assert_eq!(expected.fit.residuals(), actual.fit.residuals());
+            let expected = fit_categorical_with_outcome_overlap(&categorical, config, None, false).unwrap();
+            let actual = fit_categorical_with_outcome_overlap(&categorical, config, None, true).unwrap();
+            assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
+            assert_eq!(expected.dof, actual.dof);
+            assert_eq!(expected.statistics, actual.statistics);
+            assert_eq!(expected.covariance, actual.covariance);
+            assert_eq!(expected.certificate, actual.certificate);
+            assert_eq!(expected.fit.coefficients(), actual.fit.coefficients());
+            assert_eq!(expected.fit.residuals(), actual.fit.residuals());
+        }
+    }
+
+    #[test]
     fn outcome_overlap_defers_check_errors_and_skips_small_teams() {
         let n = 16_384;
         let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
@@ -2181,6 +2231,12 @@ mod tests {
         config.execution.threads = crate::ThreadConfig::from_requested(4, true).unwrap();
         let (_, tss, checked) = fit_with_independent_outcome_and_check(
             &prepared, config, || Ok(()), || panic!("sequential fit ran the speculative check"), true,
+        ).unwrap();
+        assert!(tss.is_none() && checked.is_none());
+        let no_effect = super::tests::prepared(&y, &[vec![0.0; n]], None, true, TestWeights::Unit);
+        config.execution.threads = crate::ThreadConfig::from_requested(8, true).unwrap();
+        let (_, tss, checked) = fit_with_independent_outcome_and_check(
+            &no_effect, config, || Ok(()), || panic!("no-FE fit ran the speculative check"), true,
         ).unwrap();
         assert!(tss.is_none() && checked.is_none());
     }

@@ -161,6 +161,10 @@ impl LevelIndex {
     }
 
     pub fn checked_members(&self, level: usize) -> Result<&[usize]> {
+        Ok(&self.observations[self.checked_member_range(level)?])
+    }
+
+    pub(crate) fn checked_member_range(&self, level: usize) -> Result<std::ops::Range<usize>> {
         let start = self.offsets.get(level).copied().ok_or_else(|| {
             FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -178,7 +182,8 @@ impl LevelIndex {
                 ErrorCode::Internal,
                 "fixed-effect membership offsets are inconsistent",
             )
-        })
+        })?;
+        Ok(start..end)
     }
 }
 

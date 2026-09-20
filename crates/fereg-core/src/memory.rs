@@ -627,6 +627,8 @@ pub(crate) fn estimate_intercept_recovery_memory(
             8,
             "recovery output and certificate values",
         )?,
+        // Graph recovery needs 16 bytes/level for coefficients and its queue;
+        // the queue dies before normalization. This reserve also covers it.
         // Parent/rank/observed/component labels, component means/weights and
         // normalized coefficients coexist with the retained coefficient input.
         checked_mul(levels, 128, "recovery normalization and coefficient state")?,

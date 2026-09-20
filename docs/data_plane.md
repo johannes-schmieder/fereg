@@ -11,7 +11,7 @@ variable types and destination pointers before using the SDK's direct `vdata`
 callback. Every callback return code is checked. Scalar reads and other
 platforms retain the checked accessor; this does not enable global fast mode.
 
-Eligible unrestricted Mac IID OLS calls with one ordinary categorical effect,
+Eligible unrestricted Mac OLS calls with ordinary categorical intercept effects,
 unit weights, at least 16,384 rows and 16–64 loaded numeric columns may overlap
 loading with native conversion. The Stata thread fills two Rust-owned 4,096-row
 tiles; one job on the resolved native team writes the existing source columns
@@ -24,13 +24,17 @@ opaque Rayon/native thread storage, as later native phases already do.
 For fast-memory calls whose generated design is the loaded continuous sources
 in order followed by an intercept, the worker may also append each tile to an
 admitted RHS owner. This extends overlap to 9–64 loaded columns. The worker
-copies the FE source before replacing its tile slot with the constant. The RHS
+copies all source values before writing the constant into the RHS tile. The RHS
 capacity is charged beside input scratch and throughout preparation, then
 transferred into the fit's existing matrix allowance. The prepared RHS builder
 retains its validation order and checks every value bit against the final
 prepared design before consuming this owner. A changed sample or recipe
 releases the speculative matrix before ordinary construction. This is a
 same-call ownership transfer, with no reusable data cache or extra SPI call.
+Each absorbed effect must have one categorical source and no slopes. Robust,
+clustered and saved-output requests can use the same input mechanism; inference
+and publication retain their separate contracts. See
+[ADR 0075](adr/0075-dense-two-fe-ols-data-and-solver-passes.md).
 
 For each original row, candidate exclusion from `if`/`in` is applied first.
 On candidate rows, outcome, ordinary terms, weights, fixed effects, clusters,
@@ -160,7 +164,7 @@ variables on every failed or interrupted path.
 Memory bounds and scratch behavior are in `memory_model.md`; version and
 transaction rules are in `plugin_protocol.md`.
 
-Eligible one-FE loaded RHS storage can carry its raw-moment cache through
+Eligible ordinary-intercept FE loaded RHS storage can carry its raw-moment cache through
 preparation. Both are private fields of one consumed native owner. Cache reuse
 requires exact agreement with the authoritative prepared rows, source recipes
 and all values; a nonunit frame or any mismatch uses ordinary fitting. The

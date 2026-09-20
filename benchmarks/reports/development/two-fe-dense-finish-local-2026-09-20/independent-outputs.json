@@ -1,0 +1,90 @@
+[
+  {
+    "finite_score_per_observation": 4.816748851628934e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8844941256931415e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "finalschur-breadth-cluster2_saved-n983040-k10-s8675309-shuffle0-t16-r1-finalschur",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7118829502097792e-16,
+    "group_residual_mean_max": [
+      2.886579864025407e-15,
+      2.599720126183879e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "finalschur-breadth-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r1-finalschur",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.816748851628934e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8844941256931415e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "finalschur-breadth-cluster_fe_saved-n983040-k10-s8675309-shuffle0-t16-r1-finalschur",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7118829502097792e-16,
+    "group_residual_mean_max": [
+      2.886579864025407e-15,
+      2.599720126183879e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "finalschur-breadth-cluster_fe_saved-n983040-k50-s8675309-shuffle0-t16-r1-finalschur",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.816748851628934e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8844941256931415e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.4424906541753444e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "finalschur-breadth-iid_outputs-n983040-k10-s8675309-shuffle0-t16-r1-finalschur",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7118829502097792e-16,
+    "group_residual_mean_max": [
+      2.886579864025407e-15,
+      2.599720126183879e-13
+    ],
+    "output_reconstruction_max_errors": [
+      5.218048215738236e-15,
+      4.884981308350689e-15,
+      5.329070518200751e-15
+    ],
+    "run": "finalschur-breadth-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r1-finalschur",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.816748851628934e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8844941256931415e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "finalschur-breadth-iid_saved-n983040-k10-s8675309-shuffle0-t16-r1-finalschur",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7118829502097792e-16,
+    "group_residual_mean_max": [
+      2.886579864025407e-15,
+      2.599720126183879e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "finalschur-breadth-iid_saved-n983040-k50-s8675309-shuffle0-t16-r1-finalschur",
+    "status": "pass"
+  }
+]

@@ -1,0 +1,343 @@
+[
+  {
+    "case": "regression-controls-controls-n245760-k10-gdefault-shuffle0-t1",
+    "variants": {
+      "baseline": {
+        "input": 0.022411375,
+        "n": 3,
+        "native": 0.07158795800000001,
+        "native_allocation_peak_bytes": 57072938.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.009523041999999995,
+        "seconds": 0.107
+      },
+      "densewin": {
+        "input": 0.023049125,
+        "n": 3,
+        "native": 0.073253958,
+        "native_allocation_peak_bytes": 57072938.0,
+        "paired_ratios": [
+          1.0,
+          0.9532710280373832,
+          1.1414141414141414
+        ],
+        "remaining": 0.010512459000000002,
+        "seconds": 0.107
+      }
+    }
+  },
+  {
+    "case": "regression-controls-controls-n245760-k10-gdefault-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.012097667000000001,
+        "n": 3,
+        "native": 0.016775665999999995,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.008969417,
+        "seconds": 0.038
+      },
+      "densewin": {
+        "input": 0.012156541,
+        "n": 3,
+        "native": 0.017698042,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          0.9743589743589743,
+          1.0,
+          1.0263157894736843
+        ],
+        "remaining": 0.008682625,
+        "seconds": 0.038
+      }
+    }
+  },
+  {
+    "case": "regression-controls-controls-n245760-k10-gdefault-shuffle0-t4",
+    "variants": {
+      "baseline": {
+        "input": 0.013679374999999999,
+        "n": 3,
+        "native": 0.026496291,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.008576709000000002,
+        "seconds": 0.049
+      },
+      "densewin": {
+        "input": 0.013604541,
+        "n": 3,
+        "native": 0.026911208000000002,
+        "native_allocation_peak_bytes": 58295935.0,
+        "paired_ratios": [
+          1.0,
+          1.0208333333333333,
+          1.0
+        ],
+        "remaining": 0.008394625000000003,
+        "seconds": 0.049
+      }
+    }
+  },
+  {
+    "case": "regression-controls-controls-n983040-k10-gdefault-shuffle0-t1",
+    "variants": {
+      "baseline": {
+        "input": 0.079877083,
+        "n": 3,
+        "native": 0.286485917,
+        "native_allocation_peak_bytes": 228269354.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.01571849999999997,
+        "seconds": 0.38
+      },
+      "densewin": {
+        "input": 0.081629084,
+        "n": 3,
+        "native": 0.278717542,
+        "native_allocation_peak_bytes": 228269354.0,
+        "paired_ratios": [
+          1.0135135135135136,
+          1.0052631578947369,
+          0.9639175257731959
+        ],
+        "remaining": 0.017282958999999987,
+        "seconds": 0.375
+      }
+    }
+  },
+  {
+    "case": "regression-controls-controls-n983040-k10-gdefault-shuffle0-t4",
+    "variants": {
+      "baseline": {
+        "input": 0.054022084,
+        "n": 3,
+        "native": 0.09890766699999999,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.01285887500000002,
+        "seconds": 0.167
+      },
+      "densewin": {
+        "input": 0.053357291999999994,
+        "n": 3,
+        "native": 0.099213792,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          0.9704142011834319,
+          0.9880239520958084,
+          1.0182926829268293
+        ],
+        "remaining": 0.012843875000000005,
+        "seconds": 0.165
+      }
+    }
+  },
+  {
+    "case": "regression-controls-controls-n983040-k50-g1000-shuffle0-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.213162375,
+        "n": 3,
+        "native": 0.12575254099999997,
+        "native_allocation_peak_bytes": 877949405.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.03847375000000003,
+        "seconds": 0.377
+      },
+      "densewin": {
+        "input": 0.213711708,
+        "n": 3,
+        "native": 0.122235917,
+        "native_allocation_peak_bytes": 877949405.0,
+        "paired_ratios": [
+          1.023872679045093,
+          0.9689922480620154,
+          0.9973190348525469
+        ],
+        "remaining": 0.03991662499999998,
+        "seconds": 0.375
+      }
+    }
+  },
+  {
+    "case": "regression-controls-controls-n983040-k50-g1000-shuffle0-t4",
+    "variants": {
+      "baseline": {
+        "input": 0.237282833,
+        "n": 3,
+        "native": 0.34768937499999997,
+        "native_allocation_peak_bytes": 877873277.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.03940891600000007,
+        "seconds": 0.632
+      },
+      "densewin": {
+        "input": 0.238220666,
+        "n": 3,
+        "native": 0.35855745800000005,
+        "native_allocation_peak_bytes": 877873277.0,
+        "paired_ratios": [
+          1.014240506329114,
+          1.0483091787439613,
+          0.9587786259541985
+        ],
+        "remaining": 0.042652625,
+        "seconds": 0.641
+      }
+    }
+  },
+  {
+    "case": "regression-controls-controls-n983040-k50-gdefault-shuffle0-t1",
+    "variants": {
+      "baseline": {
+        "input": 0.271183834,
+        "n": 3,
+        "native": 1.226008125,
+        "native_allocation_peak_bytes": 857489954.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.048696375000000014,
+        "seconds": 1.547
+      },
+      "densewin": {
+        "input": 0.272284875,
+        "n": 3,
+        "native": 1.2205540000000001,
+        "native_allocation_peak_bytes": 857489954.0,
+        "paired_ratios": [
+          0.9844861021331609,
+          1.002592352559948,
+          0.9942307692307691
+        ],
+        "remaining": 0.04255945799999994,
+        "seconds": 1.547
+      }
+    }
+  },
+  {
+    "case": "regression-controls-controls-n983040-k50-gdefault-shuffle0-t4",
+    "variants": {
+      "baseline": {
+        "input": 0.23770850000000002,
+        "n": 3,
+        "native": 0.3459827500000001,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.043279332999999975,
+        "seconds": 0.63
+      },
+      "densewin": {
+        "input": 0.238373542,
+        "n": 3,
+        "native": 0.33748691599999997,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          0.9920255183413078,
+          0.9825396825396825,
+          0.9669291338582677
+        ],
+        "remaining": 0.04258804199999999,
+        "seconds": 0.619
+      }
+    }
+  },
+  {
+    "case": "regression-controls-controls-n983040-k50-gdefault-shuffle1-t16",
+    "variants": {
+      "baseline": {
+        "input": 0.21341445799999997,
+        "n": 3,
+        "native": 0.14709091700000002,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.04143583300000003,
+        "seconds": 0.403
+      },
+      "densewin": {
+        "input": 0.215968292,
+        "n": 3,
+        "native": 0.14167816700000002,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          0.9875930521091811,
+          0.9876543209876543,
+          0.9975062344139651
+        ],
+        "remaining": 0.041739250000000006,
+        "seconds": 0.4
+      }
+    }
+  },
+  {
+    "case": "regression-controls-controls-n983040-k50-gdefault-shuffle1-t4",
+    "variants": {
+      "baseline": {
+        "input": 0.238377375,
+        "n": 3,
+        "native": 0.428104167,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.04353275000000001,
+        "seconds": 0.712
+      },
+      "densewin": {
+        "input": 0.2400705,
+        "n": 3,
+        "native": 0.423918041,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          0.9708333333333333,
+          1.0182584269662922,
+          1.0115107913669064
+        ],
+        "remaining": 0.038972334,
+        "seconds": 0.703
+      }
+    }
+  }
+]

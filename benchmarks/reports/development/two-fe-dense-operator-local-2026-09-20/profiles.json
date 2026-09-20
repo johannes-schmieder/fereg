@@ -1,0 +1,135 @@
+{
+  "edgecounts-phases-iid-n983040-k10-s31415927-shuffle1-t16-r1-edgecounts": {
+    "warmup_then_measured": [
+      "FEREG_PHASE|ols_prepare|seconds=0.000282959",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.000306042",
+      "FEREG_PHASE|cmg_batch|rhs=0.000080958|solve=0.000814125|subtract=0.000110375|width=10|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg_batch|rhs=0.000022167|solve=0.000462000|subtract=0.000025833|width=2|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg|norms=0.000529750|bulk=0.001635250|polish=0.001012292",
+      "FEREG_PHASE|fit|rhs=0.003791917|raw_moments=0.000430042|initial_absorb=0.003208708|within_norms=0.000310417|finite_solve=0.001454917|score_cache=0.000000000|bread_raw_residual=0.000124167|residual_absorb=0.000785791|residual_overlap=0|score=0.000058958|finalize=0.000000417|total=0.010165667",
+      "FEREG_PHASE|iid|setup_statistics=0.000093292|covariance=0.000002250|wald=0.000002458|certificate=0.000002125|total=0.000100250",
+      "FEREG_PHASE|iid_plugin|prepare=0.000319167|inference=0.010792041|outputs=0.000027208|shadow=0.000012792|prestore_total=0.011151375",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.025836041",
+      "FEREG_PHASE|schur_route|contraction=0.004594987|probe=0.023964500|selected=true",
+      "FEREG_PHASE|schur|init=0.024718000|operator=0.054731707|recurrence=0.023346080|reconstruct=0.003630458|certificate=0.009701250|iterations=35|passed=true",
+      "FEREG_PHASE|schur|init=0.003198958|operator=0.003827249|recurrence=0.000956209|reconstruct=0.000924000|certificate=0.004013375|iterations=3|passed=true",
+      "FEREG_PHASE|fit|rhs=0.007485792|raw_moments=0.000001375|initial_absorb=0.150345750|within_norms=0.000000542|finite_solve=0.006400417|score_cache=0.000000000|bread_raw_residual=0.010637792|residual_absorb=0.017026958|residual_overlap=0|score=0.004245250|finalize=0.000001125|total=0.196145542",
+      "FEREG_PHASE|iid|setup_statistics=0.007704333|covariance=0.000001958|wald=0.000002542|certificate=0.000001458|total=0.007710542",
+      "FEREG_PHASE|iid_plugin|prepare=0.025881000|inference=0.217496417|outputs=0.000011208|shadow=0.000009417|prestore_total=0.243398125"
+    ]
+  },
+  "narrowloops-profile-iid-n983040-k10-s31415927-shuffle1-t16-r1-narrowloops": {
+    "warmup_then_measured": [
+      "FEREG_PHASE|ols_prepare|seconds=0.000278292",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.000307167",
+      "FEREG_PHASE|cmg_batch|rhs=0.000081750|solve=0.000836125|subtract=0.000109000|width=10|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg_batch|rhs=0.000022917|solve=0.000665750|subtract=0.000026667|width=2|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg|norms=0.000531666|bulk=0.001854792|polish=0.001026042",
+      "FEREG_PHASE|fit|rhs=0.003788500|raw_moments=0.000433458|initial_absorb=0.003456875|within_norms=0.000375291|finite_solve=0.001224583|score_cache=0.000000042|bread_raw_residual=0.000239375|residual_absorb=0.000791042|residual_overlap=0|score=0.000055166|finalize=0.000000542|total=0.010365375",
+      "FEREG_PHASE|iid|setup_statistics=0.000108000|covariance=0.000004083|wald=0.000003417|certificate=0.000002334|total=0.000118041",
+      "FEREG_PHASE|iid_plugin|prepare=0.000320667|inference=0.011054125|outputs=0.000025375|shadow=0.000011208|prestore_total=0.011411542",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.028872416",
+      "FEREG_PHASE|schur_route|contraction=0.004594987|probe=0.024853292|selected=true",
+      "FEREG_PHASE|schur|init=0.014229791|operator=0.074172583|recurrence=0.022650045|reconstruct=0.003775875|certificate=0.010754667|iterations=35|passed=true",
+      "FEREG_PHASE|schur|init=0.002698417|operator=0.004077167|recurrence=0.000326457|reconstruct=0.000812250|certificate=0.003847667|iterations=3|passed=true",
+      "FEREG_PHASE|fit|rhs=0.008917625|raw_moments=0.000002000|initial_absorb=0.161558750|within_norms=0.000000375|finite_solve=0.005746708|score_cache=0.000000042|bread_raw_residual=0.007596167|residual_absorb=0.015906833|residual_overlap=0|score=0.004133250|finalize=0.000000917|total=0.203863167",
+      "FEREG_PHASE|iid|setup_statistics=0.007811666|covariance=0.000001584|wald=0.000003791|certificate=0.000001208|total=0.007818417",
+      "FEREG_PHASE|iid_plugin|prepare=0.028912666|inference=0.225326875|outputs=0.000027875|shadow=0.000009875|prestore_total=0.254277541"
+    ]
+  },
+  "narrowloops-profile-iid-n983040-k10-s31415927-shuffle1-t16-r1-neighborcache": {
+    "warmup_then_measured": [
+      "FEREG_PHASE|ols_prepare|seconds=0.000285208",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.000311083",
+      "FEREG_PHASE|cmg_batch|rhs=0.000079125|solve=0.000893625|subtract=0.000118084|width=10|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg_batch|rhs=0.000025875|solve=0.000469459|subtract=0.000025917|width=2|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg|norms=0.000529583|bulk=0.001801417|polish=0.000959541",
+      "FEREG_PHASE|fit|rhs=0.003610042|raw_moments=0.000433667|initial_absorb=0.003323792|within_norms=0.000265500|finite_solve=0.001333333|score_cache=0.000000041|bread_raw_residual=0.000304083|residual_absorb=0.000749500|residual_overlap=0|score=0.000057250|finalize=0.000000584|total=0.010078250",
+      "FEREG_PHASE|iid|setup_statistics=0.000092875|covariance=0.000002917|wald=0.000002833|certificate=0.000002583|total=0.000101333",
+      "FEREG_PHASE|iid_plugin|prepare=0.000324583|inference=0.010712875|outputs=0.000015875|shadow=0.000012792|prestore_total=0.011066458",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.036438667",
+      "FEREG_PHASE|schur_route|contraction=0.004594987|probe=0.027070083|selected=true",
+      "FEREG_PHASE|schur|init=0.013629333|operator=0.075039418|recurrence=0.022966248|reconstruct=0.004806458|certificate=0.015216125|iterations=35|passed=true",
+      "FEREG_PHASE|schur|init=0.003191625|operator=0.004549751|recurrence=0.000974083|reconstruct=0.001296084|certificate=0.003909083|iterations=3|passed=true",
+      "FEREG_PHASE|fit|rhs=0.008675834|raw_moments=0.000002292|initial_absorb=0.169570125|within_norms=0.000000500|finite_solve=0.007681792|score_cache=0.000000083|bread_raw_residual=0.006628625|residual_absorb=0.018270791|residual_overlap=0|score=0.004314000|finalize=0.000001458|total=0.215146250",
+      "FEREG_PHASE|iid|setup_statistics=0.007950000|covariance=0.000001709|wald=0.000003042|certificate=0.000001166|total=0.007956292",
+      "FEREG_PHASE|iid_plugin|prepare=0.036627625|inference=0.237178000|outputs=0.000014125|shadow=0.000009916|prestore_total=0.273829958"
+    ]
+  },
+  "narrowloops-profile-iid-n983040-k10-s31415927-shuffle1-t16-r2-narrowloops": {
+    "warmup_then_measured": [
+      "FEREG_PHASE|ols_prepare|seconds=0.000280667",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.000324709",
+      "FEREG_PHASE|cmg_batch|rhs=0.000078542|solve=0.000877833|subtract=0.000115458|width=10|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg_batch|rhs=0.000023042|solve=0.000603958|subtract=0.000023209|width=2|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg|norms=0.000526917|bulk=0.001821208|polish=0.001028792",
+      "FEREG_PHASE|fit|rhs=0.003786083|raw_moments=0.000444875|initial_absorb=0.003412292|within_norms=0.000252708|finite_solve=0.001352166|score_cache=0.000000042|bread_raw_residual=0.000277250|residual_absorb=0.000845750|residual_overlap=0|score=0.000057292|finalize=0.000000500|total=0.010429458",
+      "FEREG_PHASE|iid|setup_statistics=0.000093250|covariance=0.000002583|wald=0.000005208|certificate=0.000002875|total=0.000105667",
+      "FEREG_PHASE|iid_plugin|prepare=0.000347792|inference=0.011176666|outputs=0.000020084|shadow=0.000010250|prestore_total=0.011554917",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.027375208",
+      "FEREG_PHASE|schur_route|contraction=0.004594987|probe=0.023279875|selected=true",
+      "FEREG_PHASE|schur|init=0.013715625|operator=0.075244749|recurrence=0.022060626|reconstruct=0.003752958|certificate=0.011745250|iterations=35|passed=true",
+      "FEREG_PHASE|schur|init=0.002051666|operator=0.004015625|recurrence=0.000323625|reconstruct=0.001015458|certificate=0.004350250|iterations=3|passed=true",
+      "FEREG_PHASE|fit|rhs=0.007671042|raw_moments=0.000001917|initial_absorb=0.161228834|within_norms=0.000000334|finite_solve=0.006073791|score_cache=0.000000000|bread_raw_residual=0.007777041|residual_absorb=0.016078542|residual_overlap=0|score=0.004107625|finalize=0.000001292|total=0.202940917",
+      "FEREG_PHASE|iid|setup_statistics=0.007577875|covariance=0.000001125|wald=0.000003708|certificate=0.000001375|total=0.007584375",
+      "FEREG_PHASE|iid_plugin|prepare=0.027436208|inference=0.224289333|outputs=0.000020167|shadow=0.000010500|prestore_total=0.251756292"
+    ]
+  },
+  "narrowloops-profile-iid-n983040-k10-s31415927-shuffle1-t16-r2-neighborcache": {
+    "warmup_then_measured": [
+      "FEREG_PHASE|ols_prepare|seconds=0.000285917",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.000310583",
+      "FEREG_PHASE|cmg_batch|rhs=0.000086209|solve=0.000780041|subtract=0.000115000|width=10|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg_batch|rhs=0.000023292|solve=0.000704750|subtract=0.000023875|width=2|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg|norms=0.000519625|bulk=0.001899042|polish=0.001022458",
+      "FEREG_PHASE|fit|rhs=0.003767875|raw_moments=0.000421250|initial_absorb=0.003476375|within_norms=0.000238416|finite_solve=0.000784417|score_cache=0.000000000|bread_raw_residual=0.000274334|residual_absorb=0.000784750|residual_overlap=0|score=0.000059333|finalize=0.000000417|total=0.009807625",
+      "FEREG_PHASE|iid|setup_statistics=0.000095375|covariance=0.000002583|wald=0.000002375|certificate=0.000002542|total=0.000103000",
+      "FEREG_PHASE|iid_plugin|prepare=0.000322625|inference=0.010453333|outputs=0.000017167|shadow=0.000007750|prestore_total=0.010800959",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.029523041",
+      "FEREG_PHASE|schur_route|contraction=0.004594987|probe=0.028746083|selected=true",
+      "FEREG_PHASE|schur|init=0.013797709|operator=0.074475876|recurrence=0.022030791|reconstruct=0.004638250|certificate=0.015301125|iterations=35|passed=true",
+      "FEREG_PHASE|schur|init=0.003996417|operator=0.004690833|recurrence=0.000946124|reconstruct=0.001938833|certificate=0.004438666|iterations=3|passed=true",
+      "FEREG_PHASE|fit|rhs=0.008062125|raw_moments=0.000001542|initial_absorb=0.171144792|within_norms=0.000000583|finite_solve=0.008695375|score_cache=0.000000042|bread_raw_residual=0.006616166|residual_absorb=0.020846500|residual_overlap=0|score=0.004342666|finalize=0.000001792|total=0.219712000",
+      "FEREG_PHASE|iid|setup_statistics=0.007494709|covariance=0.000001584|wald=0.000002792|certificate=0.000001458|total=0.007500666",
+      "FEREG_PHASE|iid_plugin|prepare=0.029571750|inference=0.242561500|outputs=0.000019000|shadow=0.000010416|prestore_total=0.272162916"
+    ]
+  },
+  "narrowloops-profile-iid-n983040-k10-s31415927-shuffle1-t16-r3-narrowloops": {
+    "warmup_then_measured": [
+      "FEREG_PHASE|ols_prepare|seconds=0.000279459",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.000304917",
+      "FEREG_PHASE|cmg_batch|rhs=0.000078750|solve=0.000849083|subtract=0.000118875|width=10|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg_batch|rhs=0.000022208|solve=0.000573083|subtract=0.000022834|width=2|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg|norms=0.000522375|bulk=0.001765750|polish=0.001022250",
+      "FEREG_PHASE|fit|rhs=0.003243375|raw_moments=0.000432708|initial_absorb=0.003343917|within_norms=0.000291750|finite_solve=0.001426791|score_cache=0.000000000|bread_raw_residual=0.000316417|residual_absorb=0.000770167|residual_overlap=0|score=0.000058959|finalize=0.000000584|total=0.009885416",
+      "FEREG_PHASE|iid|setup_statistics=0.000091083|covariance=0.000003167|wald=0.000002917|certificate=0.000002041|total=0.000099500",
+      "FEREG_PHASE|iid_plugin|prepare=0.000317625|inference=0.010503166|outputs=0.000014083|shadow=0.000009583|prestore_total=0.010844583",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.027458750",
+      "FEREG_PHASE|schur_route|contraction=0.004594987|probe=0.025438250|selected=true",
+      "FEREG_PHASE|schur|init=0.013768833|operator=0.077521751|recurrence=0.033032205|reconstruct=0.004120750|certificate=0.012065667|iterations=35|passed=true",
+      "FEREG_PHASE|schur|init=0.002736500|operator=0.004879542|recurrence=0.000319833|reconstruct=0.001570708|certificate=0.003745208|iterations=3|passed=true",
+      "FEREG_PHASE|fit|rhs=0.008028000|raw_moments=0.000002167|initial_absorb=0.176010208|within_norms=0.000000542|finite_solve=0.007046250|score_cache=0.000000000|bread_raw_residual=0.007677083|residual_absorb=0.017818583|residual_overlap=0|score=0.004205833|finalize=0.000001083|total=0.220790125",
+      "FEREG_PHASE|iid|setup_statistics=0.007943917|covariance=0.000001458|wald=0.000002750|certificate=0.000001250|total=0.007949625",
+      "FEREG_PHASE|iid_plugin|prepare=0.027510042|inference=0.243652250|outputs=0.000010959|shadow=0.000012084|prestore_total=0.271185458"
+    ]
+  },
+  "narrowloops-profile-iid-n983040-k10-s31415927-shuffle1-t16-r3-neighborcache": {
+    "warmup_then_measured": [
+      "FEREG_PHASE|ols_prepare|seconds=0.000272541",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.000296334",
+      "FEREG_PHASE|cmg_batch|rhs=0.000081667|solve=0.000795375|subtract=0.000112709|width=10|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg_batch|rhs=0.000022250|solve=0.000513375|subtract=0.000022041|width=2|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg|norms=0.000529167|bulk=0.001646167|polish=0.001019458",
+      "FEREG_PHASE|fit|rhs=0.003245417|raw_moments=0.000652500|initial_absorb=0.003230791|within_norms=0.000268833|finite_solve=0.000751041|score_cache=0.000000042|bread_raw_residual=0.000195250|residual_absorb=0.000777166|residual_overlap=0|score=0.000057084|finalize=0.000000666|total=0.009179125",
+      "FEREG_PHASE|iid|setup_statistics=0.000092167|covariance=0.000002291|wald=0.000002375|certificate=0.000002458|total=0.000099459",
+      "FEREG_PHASE|iid_plugin|prepare=0.000308834|inference=0.009829292|outputs=0.000018375|shadow=0.000008500|prestore_total=0.010165167",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.028448542",
+      "FEREG_PHASE|schur_route|contraction=0.004594987|probe=0.025042792|selected=true",
+      "FEREG_PHASE|schur|init=0.013982458|operator=0.072993501|recurrence=0.021366501|reconstruct=0.003832375|certificate=0.014202542|iterations=35|passed=true",
+      "FEREG_PHASE|schur|init=0.002549917|operator=0.004305916|recurrence=0.001194750|reconstruct=0.001240000|certificate=0.003907625|iterations=3|passed=true",
+      "FEREG_PHASE|fit|rhs=0.008044542|raw_moments=0.000001875|initial_absorb=0.161529416|within_norms=0.000000417|finite_solve=0.006479666|score_cache=0.000000000|bread_raw_residual=0.007492125|residual_absorb=0.017580916|residual_overlap=0|score=0.004259084|finalize=0.000001209|total=0.205389708",
+      "FEREG_PHASE|iid|setup_statistics=0.007859500|covariance=0.000001959|wald=0.000003459|certificate=0.000001584|total=0.007866750",
+      "FEREG_PHASE|iid_plugin|prepare=0.028491625|inference=0.226553750|outputs=0.000030542|shadow=0.000009375|prestore_total=0.255085583"
+    ]
+  }
+}

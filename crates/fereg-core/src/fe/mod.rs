@@ -49,6 +49,7 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
     absorb_borrowed_intercept_map_retaining_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified, absorb_ols_schur_certified,
+    absorb_ols_schur_reusing_probe_certified,
     borrowed_cg_recovery_workspace_bytes, recover_borrowed_intercept_sd_lsmr_coefficients,
     schur_ols_probe_with_workspace, schur_ols_workspace_bytes, BorrowedInterceptRecoveryMethod,
     BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS,
@@ -120,6 +121,7 @@ pub use topology_slope_map::{
 pub(crate) use topology_slope_map::{
     absorb_finalized_categorical_slope_map_with_budget_certified,
     recover_finalized_categorical_effects_cg_certified,
+    recover_finalized_two_effects_graph_certified,
     recover_finalized_categorical_effects_from_coefficients_selected_certified,
     recover_finalized_categorical_effects_lsmr_certified,
     recover_finalized_categorical_effects_sd_lsmr_certified, slope_map_workspace_bytes,

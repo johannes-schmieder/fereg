@@ -1,0 +1,90 @@
+[
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "densewin-output-science-cluster2_saved-n983040-k10-s8675309-shuffle0-t16-r1-densewin",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "densewin-output-science-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r1-densewin",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "densewin-output-science-cluster_fe_saved-n983040-k10-s8675309-shuffle0-t16-r1-densewin",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "densewin-output-science-cluster_fe_saved-n983040-k50-s8675309-shuffle0-t16-r1-densewin",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.886579864025407e-15,
+      1.3322676295501878e-15,
+      2.886579864025407e-15
+    ],
+    "run": "densewin-output-science-iid_outputs-n983040-k10-s8675309-shuffle0-t16-r1-densewin",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": [
+      5.551115123125783e-15,
+      3.9968028886505635e-15,
+      5.551115123125783e-15
+    ],
+    "run": "densewin-output-science-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r1-densewin",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "densewin-output-science-iid_saved-n983040-k10-s8675309-shuffle0-t16-r1-densewin",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "densewin-output-science-iid_saved-n983040-k50-s8675309-shuffle0-t16-r1-densewin",
+    "status": "pass"
+  }
+]

@@ -10,6 +10,44 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Completed local dense two-FE optimization — 2026-09-20
+
+The [final dense two-FE report](benchmarks/reports/development/two-fe-dense-final-local-2026-09-20/README.md)
+closes the frozen local 10% margin target. Both independent five-pair blocks
+pass all 24 cells: twenty primary inference/output requests and four fresh-seed/
+order holdouts at N=983,040, K=10/50 and sixteen workers. Median paired
+fereg/default-fixest ratios span 0.356625–0.891304; every cell wins ten of ten
+pairs (240/240 total). All forty-one regression controls pass, with maximum/
+geometric-mean ratios 1.034483/0.995921 and no confirmation runs.
+
+The retained source extends eligible multi-FE numeric loading/RHS/moment reuse,
+independent outcome overlap, narrow unit-weight Schur admission, strict final
+probe reuse, counted graph edges in idle scratch, bounded certificate reduction,
+certified graph recovery and final-projection/bread overlap. Guards, independent
+certificates, memory admission, original error ordering and fallback policies
+remain. [ADR 0075](docs/adr/0075-dense-two-fe-ols-data-and-solver-passes.md) records
+the development decision and its scope.
+
+Final plugin `4e8e640ec2fb50ec1d7ca8b07066281a3be531ebdda2887fa1d72ccdcc31599e`
+uses baseline `637f2407` plus the recorded overlays. All 513 captured source
+entries match. Twelve Schur, seven outcome-overlap and two graph-recovery tests,
+actual-plugin ABI checks and three completed-artifact Stata fixtures pass.
+The archive contains 742 successful application calls. All 123 checked regression
+result bundles and native allocation peaks equal baseline. All 24 final cells
+repeat their checked native outputs exactly across ten calls.
+
+Default fixest saved outputs miss the unchanged output tolerance in 80 final
+comparisons; those discrepancies remain explicit. Eight separate tight-reference
+output cases pass, as do independent group, normalization, reconstruction and
+normal-equation audits. Default-reference speed and tight-reference accuracy
+remain separate evidence. The previous failed shuffled candidate and every
+stopped/failed attempt remain in the linked historical reports.
+
+The completed campaign is `target/two-fe-dense-final-20260920`. It is local Mac
+development evidence, not a claim for every graph, weight, width, thread count,
+PPML or platform. No installed package, remote state or release qualification
+changed. There is no pending timing or regression gate for this local target.
+
 ## Completed local one-FE optimization — 2026-09-20
 
 The [final input-loop report](benchmarks/reports/development/one-fe-input-unroll-local-2026-09-20/README.md)

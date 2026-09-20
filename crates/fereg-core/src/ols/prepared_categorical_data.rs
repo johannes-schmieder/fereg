@@ -16,6 +16,7 @@ use crate::fe::{
     absorb_finalized_categorical_topology_map_certified, finalize_categorical_topology,
     plan_categorical_absorbed_request, prune_categorical_partition_singletons,
     recover_finalized_categorical_effects_cg_certified,
+    recover_finalized_two_effects_graph_certified,
     recover_finalized_categorical_effects_from_coefficients_selected_certified,
     recover_finalized_categorical_effects_lsmr_certified,
     recover_finalized_categorical_effects_map_certified,
@@ -399,7 +400,8 @@ impl PreparedCategoricalOlsData {
 
     /// Recover saved FE channels without repeating symmetric observation-space
     /// MAP. Retained fit coefficients are the zero-extra-solve path.
-    /// Intercept-only fallback first uses reconstruction-aware CG, then a
+    /// Eligible unit-weight two-effect targets next try certified graph
+    /// propagation. Iterative recovery uses reconstruction-aware CG, then a
     /// deterministic four-sweep SD-Kaczmarz pilot plus LSMR remainder solve;
     /// slopes use strict LSMR. Strict MAP remains the final certified fallback.
     #[allow(clippy::too_many_arguments)]
@@ -607,6 +609,20 @@ impl PreparedCategoricalOlsData {
             .iter()
             .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
         {
+            if allow_lsmr && effects.len() == 2 && matches!(weights, BorrowedMapWeights::Unit)
+                && target.len() >= 16_384 && rayon::current_num_threads() >= 8
+                && recovery_memory.is_some_and(|memory| fits(memory.retained_peak_bytes))
+            {
+                record_attempt(&mut attempted_peak, recovery_memory.map(|memory| memory.retained_peak_bytes))?;
+                match recover_finalized_two_effects_graph_certified(&self.fe_topology, &effects,
+                    weights, target, requested_channels, map.tolerance, known_connected,
+                    materialize_absorbed_sum)
+                {
+                    Ok(recovered) => return Ok(recovered.with_solver_workspace_peak(attempted_peak)),
+                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => return Err(error),
+                    Err(_) => {}
+                }
+            }
             if effects.len() > 1 && recovery_memory.is_none_or(|memory| fits(memory.cg_peak_bytes))
             {
                 record_attempt(

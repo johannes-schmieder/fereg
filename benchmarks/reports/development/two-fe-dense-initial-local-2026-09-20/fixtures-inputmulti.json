@@ -1,0 +1,26 @@
+[
+  {
+    "fixture": "development/ols_native_input.do",
+    "sha256": "06382ca0558cddcf42c75f1b63c866e90b92853a8bd4a2d29a292ff44e9212e1",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|ols_native_input|rc=0",
+    "terminal_sentinel": true
+  },
+  {
+    "fixture": "development/candidate_input_oracle.do",
+    "sha256": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|candidate_input_oracle|rc=0",
+    "terminal_sentinel": true
+  },
+  {
+    "fixture": "installation/estimate_ols_eclass_transaction.do",
+    "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+    "terminal_sentinel": true
+  }
+]

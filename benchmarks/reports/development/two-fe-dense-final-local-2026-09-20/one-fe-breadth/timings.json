@@ -1,0 +1,802 @@
+[
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 162.0,
+        "median_ms": 159.0,
+        "minimum_ms": 157.0,
+        "sampled_peak_rss_gib": 0.4230499267578125
+      },
+      "densewin": {
+        "maximum_ms": 161.0,
+        "median_ms": 160.0,
+        "minimum_ms": 157.0,
+        "sampled_peak_rss_gib": 0.4234771728515625
+      }
+    },
+    "case": "cluster2_cross",
+    "k": 10,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.9875776397515528,
+        "values": [
+          0.98125,
+          1.0318471337579618,
+          0.9875776397515528
+        ],
+        "wins": 2
+      },
+      "densewin/baseline": {
+        "median": 1.0125786163522013,
+        "values": [
+          1.019108280254777,
+          0.9691358024691358,
+          1.0125786163522013
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 552.9999999999999,
+        "median_ms": 552.0,
+        "minimum_ms": 552.0,
+        "sampled_peak_rss_gib": 1.433685302734375
+      },
+      "densewin": {
+        "maximum_ms": 566.0,
+        "median_ms": 562.0,
+        "minimum_ms": 558.0,
+        "sampled_peak_rss_gib": 1.4348907470703125
+      }
+    },
+    "case": "cluster2_cross",
+    "k": 50,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.9822064056939501,
+        "values": [
+          0.989247311827957,
+          0.9822064056939501,
+          0.9770318021201413
+        ],
+        "wins": 3
+      },
+      "densewin/baseline": {
+        "median": 1.0181159420289856,
+        "values": [
+          1.0108695652173914,
+          1.0181159420289856,
+          1.0235081374321882
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 149.0,
+        "median_ms": 146.0,
+        "minimum_ms": 145.0,
+        "sampled_peak_rss_gib": 0.418060302734375
+      },
+      "densewin": {
+        "maximum_ms": 153.0,
+        "median_ms": 150.0,
+        "minimum_ms": 147.0,
+        "sampled_peak_rss_gib": 0.4120635986328125
+      }
+    },
+    "case": "cluster2_nested",
+    "k": 10,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.9666666666666667,
+        "values": [
+          0.9666666666666667,
+          0.9542483660130718,
+          1.0136054421768708
+        ],
+        "wins": 2
+      },
+      "densewin/baseline": {
+        "median": 1.0344827586206897,
+        "values": [
+          1.0344827586206897,
+          1.047945205479452,
+          0.9865771812080537
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 584.0000000000001,
+        "median_ms": 572.0000000000001,
+        "minimum_ms": 563.0,
+        "sampled_peak_rss_gib": 1.550994873046875
+      },
+      "densewin": {
+        "maximum_ms": 568.0,
+        "median_ms": 560.0,
+        "minimum_ms": 558.0,
+        "sampled_peak_rss_gib": 1.4212188720703125
+      }
+    },
+    "case": "cluster2_nested",
+    "k": 50,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 1.007042253521127,
+        "values": [
+          1.0465949820788532,
+          1.0053571428571426,
+          1.007042253521127
+        ],
+        "wins": 0
+      },
+      "densewin/baseline": {
+        "median": 0.9930069930069928,
+        "values": [
+          0.9554794520547945,
+          0.9946714031971583,
+          0.9930069930069928
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 191.9999999999999,
+        "median_ms": 191.0,
+        "minimum_ms": 191.0,
+        "sampled_peak_rss_gib": 0.431732177734375
+      },
+      "densewin": {
+        "maximum_ms": 197.0,
+        "median_ms": 195.0,
+        "minimum_ms": 192.0,
+        "sampled_peak_rss_gib": 0.55108642578125
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 10,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.9794871794871794,
+        "values": [
+          0.9794871794871794,
+          0.9746192893401009,
+          0.9947916666666666
+        ],
+        "wins": 3
+      },
+      "densewin/baseline": {
+        "median": 1.0209424083769634,
+        "values": [
+          1.0209424083769634,
+          1.0260416666666672,
+          1.0052356020942408
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 600.0,
+        "median_ms": 593.0,
+        "minimum_ms": 588.0,
+        "sampled_peak_rss_gib": 1.4391937255859375
+      },
+      "densewin": {
+        "maximum_ms": 607.0,
+        "median_ms": 600.0,
+        "minimum_ms": 591.0,
+        "sampled_peak_rss_gib": 1.4404296875
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 50,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.98,
+        "values": [
+          1.015228426395939,
+          0.9769357495881383,
+          0.98
+        ],
+        "wins": 2
+      },
+      "densewin/baseline": {
+        "median": 1.0204081632653061,
+        "values": [
+          0.985,
+          1.0236087689713322,
+          1.0204081632653061
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 131.0,
+        "median_ms": 128.0,
+        "minimum_ms": 126.0,
+        "sampled_peak_rss_gib": 0.5223846435546875
+      },
+      "densewin": {
+        "maximum_ms": 138.0,
+        "median_ms": 128.0,
+        "minimum_ms": 128.0,
+        "sampled_peak_rss_gib": 0.5235137939453125
+      }
+    },
+    "case": "cluster_cross",
+    "k": 10,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          0.9130434782608695,
+          1.0234375
+        ],
+        "wins": 1
+      },
+      "densewin/baseline": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          1.0952380952380953,
+          0.9770992366412213
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 492.0,
+        "median_ms": 487.0,
+        "minimum_ms": 486.0,
+        "sampled_peak_rss_gib": 1.518096923828125
+      },
+      "densewin": {
+        "maximum_ms": 492.0,
+        "median_ms": 490.0,
+        "minimum_ms": 484.0,
+        "sampled_peak_rss_gib": 1.4854583740234375
+      }
+    },
+    "case": "cluster_cross",
+    "k": 50,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 1.0040816326530613,
+        "values": [
+          0.9898373983739838,
+          1.0040816326530613,
+          1.0041322314049588
+        ],
+        "wins": 1
+      },
+      "densewin/baseline": {
+        "median": 0.9959349593495935,
+        "values": [
+          1.0102669404517455,
+          0.9959349593495935,
+          0.9958847736625515
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 119.0,
+        "median_ms": 118.0,
+        "minimum_ms": 117.0,
+        "sampled_peak_rss_gib": 0.3740692138671875
+      },
+      "densewin": {
+        "maximum_ms": 121.0,
+        "median_ms": 121.0,
+        "minimum_ms": 117.0,
+        "sampled_peak_rss_gib": 0.5109710693359375
+      }
+    },
+    "case": "cluster_fe",
+    "k": 10,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.9834710743801652,
+        "values": [
+          0.9834710743801652,
+          1.0,
+          0.9752066115702479
+        ],
+        "wins": 2
+      },
+      "densewin/baseline": {
+        "median": 1.0168067226890756,
+        "values": [
+          1.0168067226890756,
+          1.0,
+          1.0254237288135593
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 478.0,
+        "median_ms": 469.0,
+        "minimum_ms": 465.0,
+        "sampled_peak_rss_gib": 1.4085540771484375
+      },
+      "densewin": {
+        "maximum_ms": 482.0,
+        "median_ms": 472.0,
+        "minimum_ms": 468.0,
+        "sampled_peak_rss_gib": 1.408782958984375
+      }
+    },
+    "case": "cluster_fe",
+    "k": 50,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.9936440677966102,
+        "values": [
+          0.9936440677966102,
+          0.9647302904564317,
+          1.0213675213675213
+        ],
+        "wins": 2
+      },
+      "densewin/baseline": {
+        "median": 1.0063965884861408,
+        "values": [
+          1.0063965884861408,
+          1.036559139784946,
+          0.9790794979079499
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 152.0,
+        "median_ms": 148.0,
+        "minimum_ms": 145.0,
+        "sampled_peak_rss_gib": 0.414886474609375
+      },
+      "densewin": {
+        "maximum_ms": 149.0,
+        "median_ms": 148.0,
+        "minimum_ms": 147.0,
+        "sampled_peak_rss_gib": 0.412628173828125
+      }
+    },
+    "case": "cluster_fe_saved",
+    "k": 10,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 1.0068027210884354,
+        "values": [
+          0.9797297297297297,
+          1.0068027210884354,
+          1.0201342281879195
+        ],
+        "wins": 1
+      },
+      "densewin/baseline": {
+        "median": 0.9932432432432432,
+        "values": [
+          1.0206896551724138,
+          0.9932432432432432,
+          0.9802631578947368
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 514.0,
+        "median_ms": 505.0,
+        "minimum_ms": 504.0,
+        "sampled_peak_rss_gib": 1.474578857421875
+      },
+      "densewin": {
+        "maximum_ms": 514.0,
+        "median_ms": 511.0,
+        "minimum_ms": 511.0,
+        "sampled_peak_rss_gib": 1.5934906005859375
+      }
+    },
+    "case": "cluster_fe_saved",
+    "k": 50,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.9882583170254403,
+        "values": [
+          0.9863013698630136,
+          1.0,
+          0.9882583170254403
+        ],
+        "wins": 2
+      },
+      "densewin/baseline": {
+        "median": 1.011881188118812,
+        "values": [
+          1.0138888888888888,
+          1.0,
+          1.011881188118812
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 106.0,
+        "median_ms": 104.0,
+        "minimum_ms": 103.0,
+        "sampled_peak_rss_gib": 0.3562774658203125
+      },
+      "densewin": {
+        "maximum_ms": 107.0,
+        "median_ms": 104.0,
+        "minimum_ms": 104.0,
+        "sampled_peak_rss_gib": 0.3553009033203125
+      }
+    },
+    "case": "iid",
+    "k": 10,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.9903846153846154,
+        "values": [
+          1.0192307692307692,
+          0.9903846153846154,
+          0.9719626168224299
+        ],
+        "wins": 2
+      },
+      "densewin/baseline": {
+        "median": 1.0097087378640777,
+        "values": [
+          0.9811320754716981,
+          1.0097087378640777,
+          1.028846153846154
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 379.0,
+        "median_ms": 374.0,
+        "minimum_ms": 369.0,
+        "sampled_peak_rss_gib": 1.3976898193359375
+      },
+      "densewin": {
+        "maximum_ms": 383.0,
+        "median_ms": 371.0,
+        "minimum_ms": 369.0,
+        "sampled_peak_rss_gib": 1.397125244140625
+      }
+    },
+    "case": "iid",
+    "k": 50,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 1.0080862533692723,
+        "values": [
+          1.02710027100271,
+          0.9634464751958224,
+          1.0080862533692723
+        ],
+        "wins": 1
+      },
+      "densewin/baseline": {
+        "median": 0.9919786096256684,
+        "values": [
+          0.9736147757255936,
+          1.037940379403794,
+          0.9919786096256684
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 170.0,
+        "median_ms": 169.0,
+        "minimum_ms": 168.0,
+        "sampled_peak_rss_gib": 0.490081787109375
+      },
+      "densewin": {
+        "maximum_ms": 170.0,
+        "median_ms": 169.0,
+        "minimum_ms": 168.0,
+        "sampled_peak_rss_gib": 0.4934539794921875
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 1.0059171597633136,
+        "values": [
+          1.005952380952381,
+          0.9882352941176471,
+          1.0059171597633136
+        ],
+        "wins": 1
+      },
+      "densewin/baseline": {
+        "median": 0.9941176470588236,
+        "values": [
+          0.9940828402366864,
+          1.0119047619047619,
+          0.9941176470588236
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 458.0,
+        "median_ms": 456.0,
+        "minimum_ms": 450.0,
+        "sampled_peak_rss_gib": 1.4272613525390625
+      },
+      "densewin": {
+        "maximum_ms": 506.0,
+        "median_ms": 467.0,
+        "minimum_ms": 457.0,
+        "sampled_peak_rss_gib": 1.4246978759765625
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.9807280513918629,
+        "values": [
+          0.8893280632411067,
+          0.9807280513918629,
+          0.9978118161925602
+        ],
+        "wins": 3
+      },
+      "densewin/baseline": {
+        "median": 1.019650655021834,
+        "values": [
+          1.1244444444444444,
+          1.019650655021834,
+          1.0021929824561404
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 127.0,
+        "median_ms": 122.0,
+        "minimum_ms": 122.0,
+        "sampled_peak_rss_gib": 0.3566131591796875
+      },
+      "densewin": {
+        "maximum_ms": 127.0,
+        "median_ms": 125.0,
+        "minimum_ms": 122.0,
+        "sampled_peak_rss_gib": 0.5323944091796875
+      }
+    },
+    "case": "iid_saved",
+    "k": 10,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          0.9606299212598425,
+          1.016
+        ],
+        "wins": 1
+      },
+      "densewin/baseline": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          1.040983606557377,
+          0.984251968503937
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 401.0,
+        "median_ms": 395.0,
+        "minimum_ms": 395.0,
+        "sampled_peak_rss_gib": 1.421783447265625
+      },
+      "densewin": {
+        "maximum_ms": 398.0,
+        "median_ms": 397.0,
+        "minimum_ms": 392.0,
+        "sampled_peak_rss_gib": 1.4194183349609375
+      }
+    },
+    "case": "iid_saved",
+    "k": 50,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 1.0076530612244898,
+        "values": [
+          1.0100755667506298,
+          1.0076530612244898,
+          0.992462311557789
+        ],
+        "wins": 1
+      },
+      "densewin/baseline": {
+        "median": 0.9924050632911392,
+        "values": [
+          0.9900249376558603,
+          0.9924050632911392,
+          1.0075949367088608
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 120.0,
+        "median_ms": 117.0,
+        "minimum_ms": 115.0,
+        "sampled_peak_rss_gib": 0.373016357421875
+      },
+      "densewin": {
+        "maximum_ms": 119.0,
+        "median_ms": 119.0,
+        "minimum_ms": 119.0,
+        "sampled_peak_rss_gib": 0.3739166259765625
+      }
+    },
+    "case": "robust",
+    "k": 10,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 0.9831932773109244,
+        "values": [
+          1.0084033613445378,
+          0.9831932773109244,
+          0.9663865546218489
+        ],
+        "wins": 2
+      },
+      "densewin/baseline": {
+        "median": 1.017094017094017,
+        "values": [
+          0.9916666666666667,
+          1.017094017094017,
+          1.034782608695652
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  },
+  {
+    "arms": {
+      "baseline": {
+        "maximum_ms": 503.0,
+        "median_ms": 500.0,
+        "minimum_ms": 487.0,
+        "sampled_peak_rss_gib": 1.4018096923828125
+      },
+      "densewin": {
+        "maximum_ms": 493.0,
+        "median_ms": 492.0,
+        "minimum_ms": 486.0,
+        "sampled_peak_rss_gib": 1.399688720703125
+      }
+    },
+    "case": "robust",
+    "k": 50,
+    "paired_ratios": {
+      "baseline/densewin": {
+        "median": 1.016260162601626,
+        "values": [
+          1.0349794238683128,
+          1.016260162601626,
+          0.9878296146044625
+        ],
+        "wins": 1
+      },
+      "densewin/baseline": {
+        "median": 0.984,
+        "values": [
+          0.9662027833001988,
+          0.984,
+          1.0123203285420945
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "regression-breadth"
+  }
+]

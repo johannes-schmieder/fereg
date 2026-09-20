@@ -2518,10 +2518,23 @@ fn absorb_two_fe_pcg_reusing(
     }
     let mut reconstruct = active_rhs == 0;
     let mut breakdown = false;
+    // Group-statistics scratch is idle until the final certificate. In eligible
+    // unit-weight OLS solves, combine repeated pairs into counted graph edges.
+    // The private bank stores packed u32 codes/counts as bits; no floating-point
+    // arithmetic touches that representation before certification overwrites it.
+    let cached_neighbors = ols_cap.is_some() && weights.values.is_none()
+        && rayon::current_num_threads() >= 8
+        && cache_unit_schur_edges(design, graph, &mut certificate_workspace.parallel_group_means)?;
     let initialization_seconds = phase_start.elapsed().as_secs_f64();
     while !reconstruct && iterations < pcg_iteration_limit {
         let op_start = Instant::now();
-        graph.apply_schur(design, weights, rhs_count, stride)?;
+        if cached_neighbors {
+            let (left, right) = certificate_workspace.parallel_group_means[..2 * design.nobs()]
+                .split_at(design.nobs());
+            graph.apply_schur_parallel(design, weights, rhs_count, stride, Some((left, right)))?;
+        } else {
+            graph.apply_schur(design, weights, rhs_count, stride)?;
+        }
         operator_seconds += op_start.elapsed().as_secs_f64();
         let rec_start = Instant::now();
         direction_projection.fill(0.0);
@@ -2790,6 +2803,64 @@ fn absorb_two_fe_pcg_reusing(
     Err(invalid_data(reason))
 }
 
+fn cache_unit_schur_edges(
+    design: &BorrowedInterceptFeDesign<'_>, graph: &TwoFePcgWorkspace, scratch: &mut [f64],
+) -> Result<bool> {
+    let Some(cells) = design.nobs().checked_mul(2)
+        .filter(|&cells| design.nobs() <= u32::MAX as usize && cells <= scratch.len()) else {
+        return Ok(false);
+    };
+    for (bank, (effect, other)) in scratch[..cells].chunks_mut(design.nobs()).zip([
+        (&design.effects()[graph.left_effect], &design.effects()[graph.right_effect]),
+        (&design.effects()[graph.right_effect], &design.effects()[graph.left_effect]),
+    ]) {
+        cache_unit_schur_edge_groups(effect, other.codes(), 0..effect.n_levels(), 0, bank,
+            parallel_level_chunk_size(effect.n_levels()).max(64))?;
+    }
+    Ok(true)
+}
+
+fn cache_unit_schur_edge_groups(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>, other_codes: &[u32],
+    levels: std::ops::Range<usize>, first_offset: usize, bank: &mut [f64], grain: usize,
+) -> Result<()> {
+    if levels.len() > grain {
+        let middle = levels.start + levels.len() / 2;
+        let offset = effect.level_index().checked_member_range(middle)?.start;
+        let (left, right) = bank.split_at_mut(offset - first_offset);
+        let (a, b) = rayon::join(
+            || cache_unit_schur_edge_groups(effect, other_codes, levels.start..middle,
+                first_offset, left, grain),
+            || cache_unit_schur_edge_groups(effect, other_codes, middle..levels.end,
+                offset, right, grain),
+        );
+        a?;
+        return b;
+    }
+    for level in levels {
+        let range = effect.level_index().checked_member_range(level)?;
+        let neighbors = &mut bank[range.start - first_offset..range.end - first_offset];
+        for (out, &row) in neighbors.iter_mut().zip(effect.level_index().checked_members(level)?) {
+            let code = *other_codes.get(row)
+                .ok_or_else(|| invalid_argument("Schur cache membership exceeds the observation axis"))?;
+            *out = f64::from_bits(u64::from(code));
+        }
+        neighbors.sort_unstable_by_key(|value| value.to_bits());
+        let mut read = 0;
+        let mut written = 0;
+        while read < neighbors.len() {
+            let code = neighbors[read].to_bits();
+            let mut end = read + 1;
+            while end < neighbors.len() && neighbors[end].to_bits() == code { end += 1; }
+            neighbors[written] = f64::from_bits(((end - read) as u64) << 32 | code);
+            written += 1;
+            read = end;
+        }
+        neighbors[written..].fill(0.0);
+    }
+    Ok(())
+}
+
 impl TwoFePcgWorkspace {
     fn apply_schur(
         &mut self,
@@ -2799,7 +2870,7 @@ impl TwoFePcgWorkspace {
         stride: usize,
     ) -> Result<()> {
         if design.nobs() >= TWO_FE_PCG_PARALLEL_MIN_ROWS && rayon::current_num_threads() > 1 {
-            return self.apply_schur_parallel(design, weights, rhs_count, stride);
+            return self.apply_schur_parallel(design, weights, rhs_count, stride, None);
         }
         self.left_work.fill(0.0);
         self.operator.fill(0.0);
@@ -2851,6 +2922,7 @@ impl TwoFePcgWorkspace {
         weights: ValidatedWeights<'_>,
         rhs_count: usize,
         stride: usize,
+        neighbors: Option<(&[f64], &[f64])>,
     ) -> Result<()> {
         let left = &design.effects()[self.left_effect];
         let right = &design.effects()[self.right_effect];
@@ -2871,19 +2943,32 @@ impl TwoFePcgWorkspace {
                 for local_level in 0..work.len() / stride {
                     let level = first_level + local_level;
                     let level_work = &mut work[local_level * stride..(local_level + 1) * stride];
-                    let members = left.level_index().checked_members(level)?;
-                    for &row in members {
-                        if row >= design.nobs() {
-                            return Err(invalid_argument(
-                                "two-FE PCG membership exceeds the observation axis",
-                            ));
+                    if let Some((left_neighbors, _)) = neighbors {
+                        for &neighbor in &left_neighbors[left.level_index().checked_member_range(level)?] {
+                            let packed = neighbor.to_bits();
+                            let count = (packed >> 32) as f64;
+                            if count == 0.0 { break; }
+                            let right_level = packed as u32 as usize;
+                            let source = &direction[right_level * stride..right_level * stride + rhs_count];
+                            for (value, &term) in level_work[..rhs_count].iter_mut().zip(source) {
+                                *value += count * term;
+                            }
                         }
-                        let weight = weights.normalized(row);
-                        let right_level = right_codes[row] as usize;
-                        let source =
-                            &direction[right_level * stride..right_level * stride + rhs_count];
-                        for (value, &term) in level_work[..rhs_count].iter_mut().zip(source) {
-                            *value += weight * term;
+                    } else {
+                        let members = left.level_index().checked_members(level)?;
+                        for &row in members {
+                            if row >= design.nobs() {
+                                return Err(invalid_argument(
+                                    "two-FE PCG membership exceeds the observation axis",
+                                ));
+                            }
+                            let weight = weights.normalized(row);
+                            let right_level = right_codes[row] as usize;
+                            let source =
+                                &direction[right_level * stride..right_level * stride + rhs_count];
+                            for (value, &term) in level_work[..rhs_count].iter_mut().zip(source) {
+                                *value += weight * term;
+                            }
                         }
                     }
                     let denominator = left_weights[level];
@@ -2914,19 +2999,32 @@ impl TwoFePcgWorkspace {
                     for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
                         *value = right_weights[level] * term;
                     }
-                    let members = right.level_index().checked_members(level)?;
-                    for &row in members {
-                        if row >= design.nobs() {
-                            return Err(invalid_argument(
-                                "two-FE PCG membership exceeds the observation axis",
-                            ));
+                    if let Some((_, right_neighbors)) = neighbors {
+                        for &neighbor in &right_neighbors[right.level_index().checked_member_range(level)?] {
+                            let packed = neighbor.to_bits();
+                            let count = (packed >> 32) as f64;
+                            if count == 0.0 { break; }
+                            let left_level = packed as u32 as usize;
+                            let source = &left_work[left_level * stride..left_level * stride + rhs_count];
+                            for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
+                                *value -= count * term;
+                            }
                         }
-                        let weight = weights.normalized(row);
-                        let left_level = left_codes[row] as usize;
-                        let source =
-                            &left_work[left_level * stride..left_level * stride + rhs_count];
-                        for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
-                            *value -= weight * term;
+                    } else {
+                        let members = right.level_index().checked_members(level)?;
+                        for &row in members {
+                            if row >= design.nobs() {
+                                return Err(invalid_argument(
+                                    "two-FE PCG membership exceeds the observation axis",
+                                ));
+                            }
+                            let weight = weights.normalized(row);
+                            let left_level = left_codes[row] as usize;
+                            let source =
+                                &left_work[left_level * stride..left_level * stride + rhs_count];
+                            for (value, &term) in level_operator[..rhs_count].iter_mut().zip(source) {
+                                *value -= weight * term;
+                            }
                         }
                     }
                 }
@@ -7261,7 +7359,7 @@ fn certify_effects_parallel(
         )?;
         if workspace.ols_norm_reduction
             && ((16..=64).contains(&columns)
-                || ((8..16).contains(&columns) && design.effects().len() == 1
+                || ((8..16).contains(&columns) && design.effects().len() <= 2
                     && mean_count >= 65_536))
             && workspace.parallel_dot_sums.len()
                 >= levels.div_ceil(OLS_CERTIFICATE_GROUP_CHUNK) * (columns + 2)
@@ -8705,13 +8803,39 @@ fn absorb_ols_schur_at_cap(
     contraction: f64,
     cap: usize,
 ) -> Result<CertifiedBorrowedMap> {
+    absorb_ols_schur_with_probe_count(design, weights, values, config, probe_seconds,
+        contraction, cap, OLS_SCHUR_PROBE_ITERATIONS)
+}
+
+/// Same immutable graph/weights as an accepted initial OLS probe. The final
+/// projection has a fresh tolerance and certificate, and spends no pilot steps.
+pub(crate) fn absorb_ols_schur_reusing_probe_certified(
+    design: BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: crate::fe::AbsorbConfig,
+    contraction: f64,
+) -> Result<CertifiedBorrowedMap> {
+    if values.ncols() != 1 || contraction > OLS_SCHUR_MAX_CONTRACTION {
+        return Err(invalid_argument("final Schur projection requires an accepted probe"));
+    }
+    absorb_ols_schur_with_probe_count(design, weights, values, config, 0.0,
+        contraction, OLS_SCHUR_MAX_ITERATIONS, 0)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn absorb_ols_schur_with_probe_count(
+    design: BorrowedInterceptFeDesign<'_>, weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix, config: crate::fe::AbsorbConfig,
+    probe_seconds: f64, contraction: f64, cap: usize, probe_iterations: usize,
+) -> Result<CertifiedBorrowedMap> {
     validate_config(config.map)?;
     if config.retain_coefficients
         || !probe_seconds.is_finite()
         || probe_seconds < 0.0
         || !contraction.is_finite()
         || contraction < 0.0
-        || config.map.max_iterations <= OLS_SCHUR_PROBE_ITERATIONS
+        || config.map.max_iterations <= probe_iterations
     {
         return Err(invalid_argument("OLS Schur configuration is unsupported"));
     }
@@ -8740,7 +8864,7 @@ fn absorb_ols_schur_at_cap(
     let solve_started = Instant::now();
     let mut map = config.map;
     map.tolerance = crate::fe::auto::direct_lsmr_tolerance(map.tolerance);
-    map.max_iterations -= OLS_SCHUR_PROBE_ITERATIONS;
+    map.max_iterations -= probe_iterations;
     let mut graph = absorber
         .two_fe_pcg
         .take()
@@ -8769,9 +8893,9 @@ fn absorb_ols_schur_at_cap(
             result.report.solver_workspace_peak = attempted_peak;
             result.report.requested_solver = FeSolverKind::Auto;
             result.report.used_solver = FeSolverKind::Cg;
-            result.report.iterations += OLS_SCHUR_PROBE_ITERATIONS;
+            result.report.iterations += probe_iterations;
             result.report.setup_seconds += probe_seconds;
-            result.report.pilot_iterations = OLS_SCHUR_PROBE_ITERATIONS;
+            result.report.pilot_iterations = probe_iterations;
             result.report.pilot_contraction = contraction;
             result.with_residual_norms(std::mem::take(&mut absorber.workspace.residual_norms))
         }
@@ -8832,10 +8956,10 @@ fn absorb_ols_schur_at_cap(
                     .with_retained(reference_norms.capacity() as u128 * 8)?,
             );
             result.report.requested_solver = FeSolverKind::Auto;
-            result.report.iterations += iterations + OLS_SCHUR_PROBE_ITERATIONS;
+            result.report.iterations += iterations + probe_iterations;
             result.report.setup_seconds += setup_seconds + probe_seconds;
             result.report.solve_seconds += solve_seconds;
-            result.report.pilot_iterations = OLS_SCHUR_PROBE_ITERATIONS;
+            result.report.pilot_iterations = probe_iterations;
             result.report.pilot_contraction = contraction;
             result.report.fallback_used = true;
             result.report.warnings.insert(0, format!("automatic two-FE Schur CG continued with symmetric CG after {iterations} iterations (reconstructed candidate: {candidate})"));
@@ -10482,6 +10606,106 @@ mod tests {
             .zip(oracle.residualized().as_slice())
         {
             assert!((left - right).abs() <= 5e-11, "{left} != {right}");
+        }
+    }
+
+    #[test]
+    fn counted_unit_schur_edges_match_observation_operator_and_budget() {
+        let rows = 20_000;
+        let left_codes = (0..rows).map(|r| ((r * 8191 % rows) / 5) as u32).collect::<Vec<_>>();
+        let right_codes = (0..rows).map(|r| {
+            let row = r * 8191 % rows;
+            let firm = if row % 5 < 3 { row / 5 * 17 } else { row / 5 * 389 + row % 5 * 97 };
+            (firm % 997) as u32
+        }).collect::<Vec<_>>();
+        let left_index = LevelIndex::from_codes(&left_codes, 4000).unwrap();
+        let right_index = LevelIndex::from_codes(&right_codes, 997).unwrap();
+        let left = ValidatedBorrowedInterceptSource::new(&left_codes, 4000, &left_index).unwrap();
+        let right = ValidatedBorrowedInterceptSource::new(&right_codes, 997, &right_index).unwrap();
+        let design = BorrowedInterceptFeDesign::new(rows, vec![left.effect(), right.effect()]).unwrap();
+        let weights = validate_weights(BorrowedMapWeights::Unit, rows).unwrap();
+        for rhs in [1, 3, 12, 52] {
+            let stride = rhs + 1;
+            let mut reservation = SystemWorkspaceReservation;
+            let mut graph = TwoFePcgWorkspace::new(&design, stride, &mut reservation).unwrap();
+            for row in 0..rows {
+                graph.left_weights[left_codes[row] as usize] += 1.0;
+                graph.right_weights[right_codes[row] as usize] += 1.0;
+            }
+            for (index, value) in graph.direction.iter_mut().enumerate() {
+                *value = ((index * 17 % 101) as f64 - 50.0) / 37.0;
+            }
+            rayon::ThreadPoolBuilder::new().num_threads(1).build().unwrap().install(|| {
+                graph.apply_schur(&design, weights, rhs, stride).unwrap();
+            });
+            let expected_left = graph.left_work.clone();
+            let expected_operator = graph.operator.clone();
+            let mut scratch = vec![0.0; rows * 2];
+            assert!(!cache_unit_schur_edges(&design, &graph, &mut scratch[..rows * 2 - 1]).unwrap());
+            assert!(cache_unit_schur_edges(&design, &graph, &mut scratch).unwrap());
+            for threads in [8, 16] {
+                rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                    let (left, right) = scratch.split_at(rows);
+                    graph.apply_schur_parallel(&design, weights, rhs, stride, Some((left, right))).unwrap();
+                });
+                for (actual, expected) in [(&graph.left_work, &expected_left), (&graph.operator, &expected_operator)] {
+                    for (&actual, &expected) in actual.iter().zip(expected) {
+                        assert!((actual - expected).abs() <= 2e-12, "{actual} != {expected}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn counted_unit_schur_projection_matches_independent_map() {
+        let rows = 20_000;
+        let left_codes = (0..rows).map(|r| ((r * 8191 % rows) / 5) as u32).collect::<Vec<_>>();
+        let right_codes = (0..rows).map(|r| {
+            let row = r * 8191 % rows;
+            let firm = if row % 5 < 3 { row / 5 * 17 } else { row / 5 * 389 + row % 5 * 97 };
+            (firm % 997) as u32
+        }).collect::<Vec<_>>();
+        let left_index = LevelIndex::from_codes(&left_codes, 4000).unwrap();
+        let right_index = LevelIndex::from_codes(&right_codes, 997).unwrap();
+        let left = ValidatedBorrowedInterceptSource::new(&left_codes, 4000, &left_index).unwrap();
+        let right = ValidatedBorrowedInterceptSource::new(&right_codes, 997, &right_index).unwrap();
+        let design = || BorrowedInterceptFeDesign::new(rows, vec![left.effect(), right.effect()]).unwrap();
+        let columns = (0..12).map(|column| (0..rows).map(|row| {
+            ((row * (column + 13) % 1009) as f64).sin() + f64::from(left_codes[row]) * 0.01
+        }).collect::<Vec<_>>()).collect::<Vec<_>>();
+        let values = DenseMatrix::from_columns(&columns).unwrap();
+        let expected = absorb_borrowed_intercept_map_certified(&design(), BorrowedMapWeights::Unit,
+            values.clone(), MapConfig { tolerance: 1e-13, ..config() }).unwrap();
+        let solve = |threads, tolerance| {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                let probe = schur_ols_probe(&design(), BorrowedMapWeights::Unit, &values).unwrap();
+                assert!(probe <= OLS_SCHUR_MAX_CONTRACTION);
+                absorb_ols_schur_certified(design(), BorrowedMapWeights::Unit, values.clone(),
+                    crate::fe::AbsorbConfig { map: MapConfig { tolerance, ..config() },
+                        ..crate::fe::AbsorbConfig::default() }, 0.0, probe).unwrap()
+            })
+        };
+        let uncached = solve(4, 1e-8);
+        let cached = solve(8, 1e-8);
+        let distance = |a: &CertifiedBorrowedMap, b: &CertifiedBorrowedMap| {
+            a.residualized().as_slice().iter().zip(b.residualized().as_slice())
+                .map(|(a,b)| (a-b).abs()).fold(0.0_f64, f64::max)
+        };
+        assert!(distance(&cached, &uncached) < 2e-9);
+        eprintln!("counted Schur default tolerance: uncached/MAP={}, cached/MAP={}, cached/uncached={}",
+            distance(&uncached, &expected), distance(&cached, &expected), distance(&cached, &uncached));
+        // The absolute oracle bound here is tighter than the default norm-scaled
+        // stopping rule on the deliberately large raw FE contribution.
+        let mut previous = None;
+        for threads in [8, 16] {
+            let actual = solve(threads, 1e-12);
+            assert!(actual.report().certified());
+            for (&actual, &expected) in actual.residualized().as_slice().iter().zip(expected.residualized().as_slice()) {
+                assert!((actual - expected).abs() < 2e-9, "{actual} != {expected}");
+            }
+            if let Some(previous) = previous { assert_eq!(actual.residualized(), &previous); }
+            previous = Some(actual.residualized().clone());
         }
     }
 

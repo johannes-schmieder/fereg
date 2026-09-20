@@ -113,16 +113,26 @@ used only for saved-effect recovery and do not change ordinary CG estimation.
 For fast OLS, [ADR 0035](adr/0035-guarded-wide-ols-schur.md), extended to supplied
 weights by [ADR 0037](adr/0037-weighted-ols-schur-admission.md), adds a guarded
 two-FE Schur route at 16–64 actual RHS columns and at least 16,384 rows.
+[ADR 0075](adr/0075-dense-two-fe-ols-data-and-solver-passes.md) additionally
+admits 8–15 RHS columns for unit weights on at least eight requested workers.
 An eight-step probe on three RHSs selects full-width coefficient-space CG
 only when its contraction is at most 0.01 and workspace plus continuation
 fit the joint budget. The route retains fresh FE/OLS certificates and can
 continue with ordinary symmetric CG within the shared iteration budget.
 Requested `auto`, used `cg`, eight pilot iterations and an accepted contraction
 identify the route;
-explicit `solver(cg)` keeps its symmetric-MAP/Hestenes contract. Low-memory,
-saved-FE, narrow, higher-dimensional and slope models retain the
-previous routing envelope. One-FE OLS uses its direct initial projection and
+explicit `solver(cg)` keeps its symmetric-MAP/Hestenes contract. Saved-FE OLS
+may use final-target recovery under [ADR 0064](adr/0064-saved-ols-final-target-recovery.md).
+Low-memory, out-of-envelope narrow, higher-dimensional and slope models retain
+their previous routing. One-FE OLS uses its direct initial projection and
 reuses the residual norms from its fresh certificate.
+
+An accepted unit-weight initial probe on at least eight workers may be reused
+for the same fit's final one-RHS Schur projection. The final solve retains its
+fresh strict tolerance and independent certificate, its 64-step cap and charged
+CG continuation. Reuse reports zero new pilot iterations. Eligible saved effects
+can then be recovered by graph propagation, component normalization and complete
+reconstruction certification, with the existing iterative recovery fallback.
 
 The Schur probe forms its three RHS group statistics and degrees using the
 actual normalized weights, then applies that same weighted operator. Tiny
@@ -134,8 +144,17 @@ parallel recurrence updates above seven workers as well; the chain-tuned
 seven-worker crossover still governs the shared PPML path. Probe thresholds,
 iteration accounting and continuation eligibility are unchanged.
 
+Eligible capped unit-weight attempts combine repeated FE pairs into counted
+edges in idle group-statistics scratch. The bank must hold 2N words and N must
+fit u32. Codes and multiplicities are stored as private bits; operator arithmetic
+uses the count as a weight. This changes summation order but preserves the
+mathematical operator and independent certification. Construction uses disjoint
+membership ranges on the existing team. It adds no heap owner, and the final
+certificate overwrites the bank. Weighted and insufficient-scratch calls retain
+their observation-membership operator.
+
 Wide one-FE/Schur OLS certificates use fixed 1,024-group partials in the
-existing norm scratch when that storage fits. One-FE OLS also uses these
+existing norm scratch when that storage fits. One-/two-FE OLS also uses these
 partials at 8–15 RHS columns when the group-by-RHS table has at least 65,536
 elements. Each moment, absolute maximum,
 relative maximum and pass/fail comparison retains its arithmetic. The

@@ -524,6 +524,67 @@ pub(crate) fn recover_finalized_categorical_effects_from_coefficients_selected_c
     )
 }
 
+/// Propagate an already projected two-effect target over a spanning forest.
+/// Every edge is checked by the ordinary reconstruction certificate afterward;
+/// inconsistent targets and accumulated roundoff fall back to iterative recovery.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn recover_finalized_two_effects_graph_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    tolerance: f64,
+    known_connected: bool,
+    materialize_absorbed_sum: bool,
+) -> Result<RecoveredCategoricalEffects> {
+    validate_recovery_inputs(topology, effects, target, requested_channels)?;
+    if effects.len() != 2 || effects.iter().any(|e| !e.has_intercept() || !e.slopes().is_empty()) {
+        return Err(invalid_argument("graph recovery requires two intercept-only effects"));
+    }
+    let sources = topology_source_table(topology)?;
+    let design = borrow_categorical_topology_design(target.len(), topology.registry(),
+        &sources, topology.effect_to_topology())?;
+    let left = &design.effects()[0];
+    let right = &design.effects()[1];
+    let offset = left.n_levels();
+    let count = offset.checked_add(right.n_levels())
+        .ok_or_else(|| allocation("graph recovery level count overflows"))?;
+    // NaN is only an unvisited marker. All assigned coefficients must be finite.
+    let mut coefficients = fallible_filled(count, f64::NAN, "graph recovery coefficients")?;
+    {
+        let mut queue = fallible_with_capacity(count, "graph recovery traversal")?;
+        for root in 0..offset {
+            if !coefficients[root].is_nan() { continue; }
+            coefficients[root] = 0.0;
+            queue.clear();
+            queue.push(root);
+            let mut head = 0;
+            while head < queue.len() {
+                let node = queue[head];
+                head += 1;
+                let (effect, level) = if node < offset { (left, node) } else { (right, node - offset) };
+                for &row in effect.level_index().checked_members(level)? {
+                    let other = if node < offset { offset + right.codes()[row] as usize }
+                        else { left.codes()[row] as usize };
+                    if coefficients[other].is_nan() {
+                        let value = target[row] - coefficients[node];
+                        if !value.is_finite() {
+                            return Err(invalid_data("graph recovery coefficient is nonfinite"));
+                        }
+                        coefficients[other] = value;
+                        queue.push(other);
+                    }
+                }
+            }
+        }
+    }
+    let weights = validate_weights(weights, target.len())?;
+    normalize_intercept_components(topology, effects, weights, &mut coefficients, known_connected)?;
+    finish_channel_major_recovery(topology, effects, weights, target, requested_channels,
+        &coefficients, 0, tolerance, CategoricalRecoveryMethod::Direct, materialize_absorbed_sum)
+}
+
 /// Recover effects with one coefficient-producing modified-LSMR solve.
 ///
 /// This is the bounded fallback for observation-space MAP/CG/extrapolation
@@ -3589,6 +3650,48 @@ mod tests {
             assert!((actual - expected).abs() < 1e-10);
         }
         assert!(recovered.channels()[1].is_none());
+    }
+
+    #[test]
+    fn two_effect_graph_recovery_certifies_disconnected_and_inconsistent_targets() {
+        for disconnected in [false, true] {
+            for reversed in [false, true] {
+                let mut left = vec![0_u32, 0, 1, 1, 2, 2, 3, 3];
+                let mut right = if disconnected { vec![0_u32, 1, 0, 1, 2, 3, 2, 3] }
+                    else { vec![0_u32, 1, 1, 2, 2, 3, 3, 0] };
+                if reversed { left.reverse(); right.reverse(); }
+                let topology = finalize_categorical_topology(&[
+                    CategoricalCodeView::new(&left, 4), CategoricalCodeView::new(&right, 4),
+                ], &[&[0], &[1]], &[true; 8]).unwrap();
+                let effects = [CategoricalAbsorbedEffectView::new(true, Vec::new()).unwrap(),
+                    CategoricalAbsorbedEffectView::new(true, Vec::new()).unwrap()];
+                let target = left.iter().zip(&right).map(|(&a,&b)|
+                    (a as f64 * 0.7).sin() + (b as f64 * 0.9).cos()).collect::<Vec<_>>();
+                for requested in [[true,true], [true,false], [false,true]] {
+                    for materialize in [false,true] {
+                        let actual = recover_finalized_two_effects_graph_certified(&topology,
+                            &effects, BorrowedMapWeights::Unit, &target, &requested, 1e-12,
+                            !disconnected, materialize).unwrap();
+                        let expected = recover_finalized_categorical_effects_map_certified(&topology,
+                            &effects, BorrowedMapWeights::Unit, &target, &requested, config()).unwrap();
+                        assert_eq!(actual.recovery_method(), CategoricalRecoveryMethod::Direct);
+                        assert!(actual.reconstruction_relative_infinity() < 1e-12);
+                        for (a,b) in actual.channels().iter().zip(expected.channels()) {
+                            assert_eq!(a.is_some(),b.is_some());
+                            if let (Some(a),Some(b)) = (a,b) {
+                                for (&a,&b) in a.iter().zip(b) { assert!((a-b).abs()<1e-10); }
+                            }
+                        }
+                        assert_eq!(actual.absorbed_sum.is_some(), materialize);
+                    }
+                }
+                let mut inconsistent = target.clone();
+                inconsistent[0] += 0.001;
+                assert_eq!(recover_finalized_two_effects_graph_certified(&topology, &effects,
+                    BorrowedMapWeights::Unit, &inconsistent, &[true,true], 1e-12,
+                    !disconnected, true).unwrap_err().code, ErrorCode::InvalidData);
+            }
+        }
     }
 
     #[test]

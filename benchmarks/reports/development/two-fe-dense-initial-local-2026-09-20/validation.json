@@ -1,0 +1,34 @@
+[
+  {
+    "log": "two-fe-dense-input-unit-20260920.log",
+    "log_sha256": "154b88d16cee7c46c92a6f0301c14b6898c96e00673f49bb2e5f3133fa2862dc",
+    "artifact_context": "inputmulti",
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 162 filtered out; finished in 79.15s"
+    ]
+  },
+  {
+    "log": "two-fe-dense-schur-tests-20260920.log",
+    "log_sha256": "2c89e172f2b7f4ccbbac7333f4a940348bb99b06346847ce26b8d490307e8538",
+    "artifact_context": "narrow8",
+    "summaries": [
+      "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 946 filtered out; finished in 16.05s"
+    ]
+  },
+  {
+    "log": "two-fe-dense-narrow-cycle-20260920.log",
+    "log_sha256": "e73ad2a18d9a17c675661fba969230ef23062eb8dd1634c9c2049e805cfaac5f",
+    "artifact_context": "graphrecover",
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 951 filtered out; finished in 0.56s"
+    ]
+  },
+  {
+    "log": "two-fe-dense-graph-unit-20260920.log",
+    "log_sha256": "36327b20f00326548b0fd8140dcbf9906a1b23eb3fc0db67aa9125dd61c867a2",
+    "artifact_context": "graphrecover",
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 951 filtered out; finished in 0.03s"
+    ]
+  }
+]

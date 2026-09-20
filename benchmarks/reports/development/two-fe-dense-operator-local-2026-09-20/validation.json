@@ -1,0 +1,88 @@
+[
+  {
+    "log": "two-fe-dense-neighbor-tests-20260920.log",
+    "sha256": "c03dd1021bac4769386f6d189ce0ddfa591a3466d1ecb9df8166ecfe9bd85594",
+    "summaries": [
+      "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 944 filtered out; finished in 49.97s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s"
+    ]
+  },
+  {
+    "log": "two-fe-dense-narrow-loops-tests-20260920.log",
+    "sha256": "19ab48367f70aae0267fa68b88273619b69b62794a2e1d9189e75d646b7752e4",
+    "summaries": [
+      "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 944 filtered out; finished in 50.05s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s"
+    ]
+  },
+  {
+    "log": "two-fe-dense-edge-cache-tests-20260920.log",
+    "sha256": "1c021023e74ccb8404f4092253439910587daa68f1f486bc40c52416a133e918",
+    "summaries": [
+      "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 944 filtered out; finished in 48.79s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s"
+    ]
+  },
+  {
+    "log": "two-fe-dense-edge-map-tests-20260920.log",
+    "sha256": "2166b28c9b241c80ab9ef1ce0f536d70d9d33a6aebdfaab4265dcf951a6c80f6",
+    "summaries": [
+      "test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 953 filtered out; finished in 6.12s"
+    ]
+  },
+  {
+    "log": "two-fe-dense-edge-map-strict-tests-20260920.log",
+    "sha256": "aed5bec1fe09237f58f0298d6a60e979db6132ce5fd919b35dbca490fb7367c8",
+    "summaries": [
+      "counted Schur default tolerance: uncached/MAP=0.0000001103823060732978, cached/MAP=0.00000011038230252058412, cached/uncached=0.000000000000014210854715202004",
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 953 filtered out; finished in 6.27s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s"
+    ]
+  },
+  {
+    "log": "two-fe-dense-multi-outcome-tests-20260920.log",
+    "sha256": "f3a444bccebb158993028f2c18975aa9d508705c269fed2f241d2f10fa4f02c2",
+    "summaries": [
+      "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 949 filtered out; finished in 11.62s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s"
+    ]
+  },
+  {
+    "log": "two-fe-dense-parallel-edge-tests-20260920.log",
+    "sha256": "2e22db504e2cce8686060b42816c2e1d2e1b175c8466ecbe0db4ba53834f2126",
+    "summaries": [
+      "counted Schur default tolerance: uncached/MAP=0.0000001103823060732978, cached/MAP=0.00000011038230252058412, cached/uncached=0.000000000000014210854715202004",
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 954 filtered out; finished in 6.46s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s"
+    ]
+  },
+  {
+    "log": "two-fe-dense-final-overlap-tests-20260920.log",
+    "sha256": "8b77724f5d9e4e31649109f807f7d2d3a406975a84737c68623c41465d218d41",
+    "summaries": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 956 filtered out; finished in 2.71s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s"
+    ]
+  }
+]

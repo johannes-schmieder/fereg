@@ -1,0 +1,7 @@
+{
+  "source_entries": 513,
+  "mismatches": [],
+  "plugin": "4e8e640ec2fb50ec1d7ca8b07066281a3be531ebdda2887fa1d72ccdcc31599e",
+  "abi": "pass",
+  "note": "Restored one post-freeze comment word to the built source; no executable code difference."
+}

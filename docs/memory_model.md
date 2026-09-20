@@ -101,7 +101,8 @@ Insufficient headroom leaves moment construction at its original fit phase.
 No additional observation-scale matrix is allocated, and stale speculative
 statistics are dropped before ordinary fit-time reconstruction.
 
-Eligible narrow one-FE OLS fits may overlap final residual projection with
+Eligible bounded-width one-FE OLS fits and unit-weight two-FE fits with an
+accepted initial Schur probe may overlap final residual projection with
 reported bread/intercept completion. The residual vector transfers from the
 existing QR owner into its existing one-column projection; the raw-residual
 reference and moment cache already coexist with both phases. No second data
@@ -109,11 +110,26 @@ buffer or team is created. Retained packed/strided inference scores are already
 charged as owners across both phases; overlapping them adds no cache or buffer.
 Allocation-phase probes keep the sequential route.
 
+The capped unit-weight two-FE Schur operator may store counted neighboring
+edges in its idle group-statistics scratch. Admission checks N <= u32::MAX and
+an existing capacity of at least 2N words. Codes/counts occupy the bits of those
+words until the final certificate overwrites them. Parallel construction uses
+disjoint membership ranges; it introduces no new allocation or resident owner.
+Graph-based saved-effect recovery uses the existing admitted finishing reserve:
+16 bytes per level for coefficients and a traversal queue, with the queue
+released before component normalization. Reconstruction remains certified.
+
 Categorical one-FE inference can overlap its numeric/topology validation prefix
 with fitting on the same bounded team. The successful prefix retains only
 immutable references. Effect-view and DoF-report allocations stay after fitting,
 and interaction re-factorization stays outside this overlap. No additional
 observation-sized owner or persistent validation cache is introduced.
+
+Eligible multi-FE OLS also overlaps the independent outcome scan with fitting.
+The scan owns no buffer. Ordinary topology validation borrows existing state;
+categorical multi-FE DoF construction stays after the fit. Deferred errors
+retain their original order. See
+[ADR 0075](adr/0075-dense-two-fe-ols-data-and-solver-passes.md).
 
 Fast and low modes share the same rank policy, certificates, inference,
 omission status, result wire, and Stata transaction. Registered tests require
