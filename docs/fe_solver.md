@@ -148,8 +148,10 @@ seven-worker crossover still governs the shared PPML path. Probe thresholds,
 iteration accounting and continuation eligibility are unchanged.
 
 Eligible capped unit-weight attempts combine repeated FE pairs into counted
-edges in idle group-statistics scratch. The bank must hold 2N words and N must
-fit u32. Codes and multiplicities are stored as private bits; operator arithmetic
+edges in idle group-statistics scratch. With 2N words both gathers are cached;
+with N words only the right gather may be cached after a bounded repeated-edge
+sample passes. N must fit u32. See
+[ADR 0079](adr/0079-narrow-one-sided-schur-edge-cache.md). Codes and multiplicities are stored as private bits; operator arithmetic
 uses the count as a weight. This changes summation order but preserves the
 mathematical operator and independent certification. Construction uses disjoint
 membership ranges on the existing team. It adds no heap owner, and the final

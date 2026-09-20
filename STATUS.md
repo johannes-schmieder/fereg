@@ -10,6 +10,33 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: narrow cache checkpoint — 2026-09-20
+
+The [narrow-cache report](benchmarks/reports/development/two-fe-narrow-edge-cache-local-2026-09-20/README.md)
+records the accepted guarded one-bank unit Schur cache and its failed initial
+admission. Existing idle scratch can cache the more expensive right gather
+when two banks do not fit; a bounded repeated-edge sample avoids unprofitable
+sorting. No heap owner, memory allowance or scientific contract changes.
+[ADR 0079](docs/adr/0079-narrow-one-sided-schur-edge-cache.md) defines the guard.
+
+Final three-pair ordered K=3/5/6 medians improve 241/270/264 -> 224/257/242 ms.
+Shuffled medians improve 266/300/284 -> 243/279/265 ms but remain slower than
+fixest (paired ratios 1.0084/1.1377/1.0315). The first prototype's 5.9% degree-six
+regression is preserved; five guarded-candidate pairs have median ratio 1.02985.
+All sixty native pairs preserve status/DoF, pass numerical comparisons and
+raise no native peak. Two focused tests and three final-artifact Stata fixtures
+pass. The report retains all 164 calls and both prototype source patches.
+
+Final plugin `8ec5df3a1686c9f476dcf2a83b63318ee252f789b1e49b75c624d5300d76efb2`
+uses base `329bc17c` plus the recorded core overlay; all 514 source entries match.
+All cache screen/validation processes have completed. The full goal remains
+active. Next run the predeclared 77-cell single-pair primary screen using this
+artifact, then prioritize weighted operator reuse and narrow input/probe passes
+from the remaining losses. The 111 controls, two final five-pair blocks, broad
+weight-distribution/bridge science and routing holdouts remain pending. Raw
+work remains in `target/two-fe-broad-20260920`. No installed package, remote
+state or qualification changes; preserve unrelated worktree dirt.
+
 ## Broad two-way graph and weighted-oracle checkpoint — 2026-09-20
 
 The [graph/science report](benchmarks/reports/development/two-fe-broad-graph-science-local-2026-09-20/README.md)

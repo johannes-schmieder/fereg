@@ -1,0 +1,5 @@
+test fe::borrowed_map::tests::counted_unit_schur_edges_match_observation_operator_and_budget ... ok
+counted Schur default tolerance: uncached/MAP=0.00000009061954497902036, cached/MAP=0.00000009061954497902036, cached/uncached=0.000000000000007105427357601002
+counted Schur default tolerance: uncached/MAP=0.0000001103823060732978, cached/MAP=0.00000011038230252058412, cached/uncached=0.000000000000014210854715202004
+test fe::borrowed_map::tests::counted_unit_schur_projection_matches_independent_map ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 956 filtered out; finished in 11.40s
