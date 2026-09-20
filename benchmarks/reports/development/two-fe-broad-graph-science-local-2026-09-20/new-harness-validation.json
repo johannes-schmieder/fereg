@@ -1,0 +1,11 @@
+{
+  "native_control_cells": 111,
+  "primary_cells": 77,
+  "source_sha256": {
+    "broad.py": "4abbb3e4a2f97c6548e1b96a8ffb2d25431cd8b735e029a9e2ab5ceabb1e6125",
+    "check_graph_oracle.py": "32f6425847b7b66b38b87f5cd0242625de989d125c372f2eac69dabb2d7e7564",
+    "graph_oracle.py": "21b4a6e2a80aefbfb93212bdf6dafd4ca262bac3ac44fe1d3ae86fbbfc406553",
+    "run.py": "2a4af11e79387a431d22023aaf052d8eddc098364519a4dc6f550f62b2337918"
+  },
+  "sparse_direct_self_checks": 12
+}

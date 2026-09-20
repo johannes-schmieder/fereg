@@ -97,8 +97,8 @@ def compare(a, b, exact_native=True):
         assert x.index.equals(y.index)
         for col in values:
             rtol = 1e-7 if file == "coefficients.csv" and col == "value" else 1e-6
-            np.testing.assert_allclose(x[col], y[col], rtol=rtol, atol=1e-10)
-            errors[file + ":" + col] = float(np.max(np.abs(x[col] - y[col])))
+            np.testing.assert_allclose(x[col].to_numpy(dtype=float), y[col].to_numpy(dtype=float), rtol=rtol, atol=1e-10)
+            errors[file + ":" + col] = float(np.max(np.abs(x[col] - y[col]))) if len(x) else 0.0
     np.testing.assert_allclose(results[0]["metadata"]["rss"], results[1]["metadata"]["rss"], rtol=1e-8)
     if exact_native and results[0]["arm"] == results[1]["arm"] == "fereg":
         for name in ("b", "V", "fereg_status", "fereg_dof", "fereg_certificate", "fereg_fit"):

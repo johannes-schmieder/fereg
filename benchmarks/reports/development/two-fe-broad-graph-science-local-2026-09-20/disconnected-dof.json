@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "n": 960,
+  "independent_rank": 243,
+  "fit_nparams": 244,
+  "default_nonnested_df_K": 242,
+  "matched_full_df_K": 243,
+  "neither_FE_nested": true,
+  "covariance_rescale": 1.00139470013947,
+  "max_rescale_error": 1.0842021724855e-19,
+  "native_vcov_max_error": 1.0006699787366846e-12,
+  "native_reference_run": "oracle-aw-native-cluster2_cross-n960-k3-s8675309-shuffle0-t16-r1-densewin"
+}

@@ -44,7 +44,7 @@ def audit(root, label, variant):
             counts = np.bincount(codes,weights=weight)
             means = np.bincount(codes,weights=weighted_residual)/counts
             group_means.append(float(np.max(np.abs(means))))
-        finite_score = max(abs(float(columns[f'x{j+1}']@weighted_residual))/total_weight for j in range(k))
+        finite_score = max((abs(float(columns[f'x{j+1}']@weighted_residual))/total_weight for j in range(k)), default=0.0)
         assert max(group_means)<1e-9 and finite_score<1e-9
         assert abs(float(weighted_residual.sum()/total_weight))<1e-9
         assert abs(float(np.average(outputs[0],weights=weight)))<1e-9

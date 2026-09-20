@@ -1,0 +1,402 @@
+{
+  "graph-baseline-bottleneck_ring-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3005272485686377 (ACTUAL), 0.300526329863441 (DESIRED)\n [1]: -0.1009376128686954 (ACTUAL), -0.100939114284421 (DESIRED)\n [2]: 0.0998192831584602 (ACTUAL), 0.099817488017038 (DESIRED)\n [3]: -0.04751437892463129 (ACTUAL), -0.0475114195344804 (DESIRED)\n [4]: 0.05899264014083879 (ACTUAL), 0.0589949197567994 (DESIRED)\nMax absolute difference among violations: 2.95939015e-06\nMax relative difference among violations: 8.62940822e-05\n ACTUAL: array([ 0.300527, -0.100938,  0.099819, -0.047514,  0.058993, -0.030969])\n DESIRED: array([ 0.300526, -0.100939,  0.099817, -0.047511,  0.058995, -0.030966])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "graph-baseline-bottleneck_ring-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3003091346051243 (ACTUAL), 0.30030681185678 (DESIRED)\n [1]: -0.1013286036825022 (ACTUAL), -0.101330157305067 (DESIRED)\n [2]: 0.09993767817062808 (ACTUAL), 0.0999369471631457 (DESIRED)\n [3]: -0.0481887022926342 (ACTUAL), -0.0481856327215647 (DESIRED)\n [4]: 0.0593279160980777 (ACTUAL), 0.0593302072076429 (DESIRED)\nMax absolute difference among violations: 5.59191689e-06\nMax relative difference among violations: 0.00017729\n ACTUAL: array([ 0.300309, -0.101329,  0.099938, -0.048189,  0.059328, -0.031547])\n DESIRED: array([ 0.300307, -0.10133 ,  0.099937, -0.048186,  0.05933 , -0.031542])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "graph-baseline-cycle-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3007408024069055 (ACTUAL), 0.300735022792967 (DESIRED)\n [1]: -0.1012368548644366 (ACTUAL), -0.101224117675624 (DESIRED)\n [2]: 0.0997382985805922 (ACTUAL), 0.0997342251492713 (DESIRED)\n [3]: -0.04750330494815949 (ACTUAL), -0.0475029439354505 (DESIRED)\n [4]: 0.05908230754306639 (ACTUAL), 0.0590838404185271 (DESIRED)\nMax absolute difference among violations: 1.27371888e-05\nMax relative difference among violations: 0.00021004\n ACTUAL: array([ 0.300741, -0.101237,  0.099738, -0.047503,  0.059082, -0.030781])\n DESIRED: array([ 0.300735, -0.101224,  0.099734, -0.047503,  0.059084, -0.030774])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "graph-baseline-cycle-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004033482251678 (ACTUAL), 0.300396926173183 (DESIRED)\n [1]: -0.1015093824502605 (ACTUAL), -0.101500850091342 (DESIRED)\n [2]: 0.0997411466342656 (ACTUAL), 0.0997371783171352 (DESIRED)\n [3]: -0.0480982866113529 (ACTUAL), -0.048099051940647 (DESIRED)\n [4]: 0.0593684790720072 (ACTUAL), 0.059366466167916 (DESIRED)\nMax absolute difference among violations: 8.53235892e-06\nMax relative difference among violations: 8.40619454e-05\n ACTUAL: array([ 0.300403, -0.101509,  0.099741, -0.048098,  0.059368, -0.031431])\n DESIRED: array([ 0.300397, -0.101501,  0.099737, -0.048099,  0.059366, -0.031432])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "graph-baseline-disconnected_blocks-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 1.4988010832439613e-15,
+              "covariance.csv:value": 6.670384459627615e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-baseline-disconnected_blocks-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 1.797173521111972e-15,
+              "covariance.csv:value": 6.268043809681823e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-baseline-strong_d2-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.299787207233921 (ACTUAL), 0.299787172081566 (DESIRED)\n [1]: -0.1019711421023118 (ACTUAL), -0.101971084799084 (DESIRED)\n [2]: 0.0988425315285066 (ACTUAL), 0.0988426065269401 (DESIRED)\n [3]: -0.0482429484508644 (ACTUAL), -0.0482429586570002 (DESIRED)\n [4]: 0.05999758076083949 (ACTUAL), 0.0599975329127098 (DESIRED)\nMax absolute difference among violations: 1.46936549e-07\nMax relative difference among violations: 4.72927481e-06\n ACTUAL: array([ 0.299787, -0.101971,  0.098843, -0.048243,  0.059998, -0.031069])\n DESIRED: array([ 0.299787, -0.101971,  0.098843, -0.048243,  0.059998, -0.03107 ])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "graph-baseline-strong_d2-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 1 / 6 (16.7%)\nMismatch at index:\n [2]: 0.0993973208113896 (ACTUAL), 0.0993973353558206 (DESIRED)\nMax absolute difference among violations: 1.4544431e-08\nMax relative difference among violations: 1.46326166e-07\n ACTUAL: array([ 0.2995  , -0.102327,  0.099397, -0.048876,  0.060273, -0.031767])\n DESIRED: array([ 0.2995  , -0.102327,  0.099397, -0.048876,  0.060273, -0.031767])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "graph-baseline-strong_d3-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.1011838102769076e-16,
+              "coefficients.csv:value": 1.2639889135357407e-13,
+              "covariance.csv:value": 5.48665591583973e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-baseline-strong_d3-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.2999584048101198e-15,
+              "coefficients.csv:value": 3.9938885532109225e-13,
+              "covariance.csv:value": 3.332015856261604e-18
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-baseline-strong_d6-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 1.2490009027033011e-14,
+              "covariance.csv:value": 4.8492636230308694e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-baseline-strong_d6-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 8.998878031629687e-17,
+              "coefficients.csv:value": 1.8318679906315083e-15,
+              "covariance.csv:value": 3.832824086325709e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-baseline-two_fe_sparse-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.2998475055209179 (ACTUAL), 0.299847968434586 (DESIRED)\n [1]: -0.0993339187527354 (ACTUAL), -0.0993333529708734 (DESIRED)\n [2]: 0.1015851583483346 (ACTUAL), 0.101585803285647 (DESIRED)\n [3]: -0.04972438062825469 (ACTUAL), -0.049723541445182 (DESIRED)\n [4]: 0.05873231718397269 (ACTUAL), 0.0587334254828105 (DESIRED)\nMax absolute difference among violations: 1.10829884e-06\nMax relative difference among violations: 1.88699847e-05\n ACTUAL: array([ 0.299848, -0.099334,  0.101585, -0.049724,  0.058732, -0.032739])\n DESIRED: array([ 0.299848, -0.099333,  0.101586, -0.049724,  0.058733, -0.032738])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "graph-baseline-two_fe_sparse-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002009204914771 (ACTUAL), 0.300200861752747 (DESIRED)\n [1]: -0.0999436979335804 (ACTUAL), -0.099943532417383 (DESIRED)\n [2]: 0.1008919937630139 (ACTUAL), 0.100892052676558 (DESIRED)\n [3]: -0.04987143988134529 (ACTUAL), -0.0498713673130152 (DESIRED)\n [4]: 0.05801980660843199 (ACTUAL), 0.0580198153790627 (DESIRED)\nMax absolute difference among violations: 1.73135074e-07\nMax relative difference among violations: 5.22280778e-06\n ACTUAL: array([ 0.300201, -0.099944,  0.100892, -0.049871,  0.05802 , -0.03315 ])\n DESIRED: array([ 0.300201, -0.099944,  0.100892, -0.049871,  0.05802 , -0.03315 ])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "graph-baseline-unbalanced-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.9992688060632702e-16,
+              "coefficients.csv:value": 7.360084763874397e-14,
+              "covariance.csv:value": 5.166900978251232e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-baseline-unbalanced-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.3099577806107163e-14,
+              "covariance.csv:value": 8.237395412048071e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-baseline-weak_d3-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.099925674105336e-15,
+              "coefficients.csv:value": 4.407307852005715e-12,
+              "covariance.csv:value": 2.3935033507038392e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-baseline-weak_d3-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.060002779995628e-14,
+              "coefficients.csv:value": 1.065390831112012e-12,
+              "covariance.csv:value": 2.766536660674633e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  }
+}

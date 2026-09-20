@@ -28,6 +28,9 @@ def load(name, path):
 breadth = load("dense_breadth", REPO / "benchmarks/one_fe_breadth/run.py")
 profile = load("dense_profile", REPO / "benchmarks/one_fe_profile/run.py")
 CASES = breadth.CASES
+GRAPH_DESIGNS = ('two_fe_dense', 'two_fe_sparse', 'strong_d2', 'strong_d3', 'strong_d6',
+                 'weak_d3', 'bottleneck_ring', 'cycle', 'disconnected_blocks', 'unbalanced',
+                 'weighted_bridge')
 
 
 def write(path, value):
@@ -37,14 +40,27 @@ def write(path, value):
 def stage(root):
     folder = breadth.stage(root, profile)
     p = folder / "stata_worker.do"
-    text = p.read_text().replace('local outputvars out_fe\n', 'local outputvars out_fe1 out_fe2\n')
+    text = p.read_text().replace('local outputvars out_fe\n',
+        "local outputvars out_fe1\n        if `dimensions' == 2 local outputvars `outputvars' out_fe2\n")
     text = text.replace('local outputvars out_fe out_resid out_xb out_xbd',
-                        'local outputvars out_fe1 out_fe2 out_resid out_xb out_xbd')
+                        "local outputvars `outputvars' out_resid out_xb out_xbd")
+    text = text.replace("forvalues j = 1/`k' {", "forvalues j = 1(1)`k' {")
     p.write_text(text)
     p = folder / "r_worker.R"
     text = p.read_text()
+    text = breadth.replace_once(text, 'paste(paste0("x", seq_len(cell$k)), collapse=" + ")',
+                                'if (cell$k == 0) "1" else paste(paste0("x", seq_len(cell$k)), collapse=" + ")')
+    text = breadth.replace_once(text,
+        'data.frame(name=names(b), value=unname(b), se=unname(standard_errors))',
+        'data.frame(name=as.character(names(b)), value=as.double(b), se=as.double(standard_errors))')
+    text = breadth.replace_once(text,
+        'expand.grid(row=rownames(V), column=colnames(V), stringsAsFactors=FALSE)',
+        'expand.grid(row=as.character(rownames(V)), column=as.character(colnames(V)), stringsAsFactors=FALSE)')
+    text = breadth.replace_once(text, 'rows$value <- as.vector(V)', 'rows$value <- as.double(V)')
+    text = breadth.replace_once(text, '"with explicit nonnested-K/min-G SSC"',
+                                'paste("with explicit", cell$reference_fixef_dof, "K/min-G SSC")')
     text = breadth.replace_once(text, 'ssc(K.adj=TRUE, K.fixef="nonnested",',
-                                'ssc(K.adj=TRUE, K.fixef="nonnested", K.exact=isTRUE(cell$exact_dof),')
+                                'ssc(K.adj=TRUE, K.fixef=cell$reference_fixef_dof, K.exact=isTRUE(cell$exact_dof),')
     text = breadth.replace_once(text, 'nthreads=cell$threads, vcov=if',
                                 'nthreads=cell$threads, fixef.tol=cell$fixest_tolerance, vcov=if')
     start = text.index('feols(formula,')
@@ -59,6 +75,13 @@ def stage(root):
     if (is.null(fit) || cell$outputs == "none") return(NULL)
     effects <- fixef(fit, sorted=FALSE, notes=FALSE, fixef.tol=cell$fixest_recovery_tolerance)
     left <- unname(effects$g1[fit$fixef_id$g1])
+    if (length(cell$effects) == 1) {
+        intercept <- if (cell$weight_kind == "none") mean(left) else weighted.mean(left, data$w[obs(fit)])
+        saved_outputs <- list(left - intercept)
+        if (cell$outputs == "all") saved_outputs <- c(saved_outputs,
+            list(resid(fit), fitted(fit) - left + intercept, fitted(fit)))
+        return(saved_outputs)
+    }
     right <- unname(effects$g2[fit$fixef_id$g2])
     contribution <- left + right
     component <- as.integer(data$component[obs(fit)])
@@ -104,8 +127,37 @@ def dataset(root, n, k, seed, shuffled=False, design="two_fe_dense", weight_desi
     generator = load('dense_generator', REPO / 'benchmarks/systematic/generate.py')
     manifest = json.loads((REPO / 'benchmarks/systematic/manifest.json').read_text())
     parent = root / 'generated' / path.name
-    generator.generate(dict(model='ols', design=design, n=n, k=k, section='width'), seed, parent, manifest)
+    parent_design = design if design in manifest['designs'] else 'strong_d3'
+    generator.generate(dict(model='ols', design=parent_design, n=n, k=k, section='width'), seed, parent, manifest)
     frame = pd.read_stata(parent, convert_categoricals=False)
+    if design not in manifest['designs']:
+        # Reuse the established routing-holdout memberships. Estimator output
+        # never enters these recipes; retain the parent hash before transforming.
+        i = np.arange(n)
+        worker, period, firms = i // 3, i % 3, n // 120
+        base, layer = worker % firms, worker // firms
+        offset = np.where(period == 1, 1 + layer % 15,
+                          np.where(period == 2, 5 + 7 * layer, 0))
+        firm = (base // 16) * 16 + (base + offset) % 16
+        if design == 'bottleneck_ring':
+            bridge = (layer == 0) & (base % 16 == 0) & (period == 2)
+            firm[bridge] = (base[bridge] + 16) % firms
+        elif design == 'cycle':
+            firm = np.where(period == 1, (base + 1) % firms, base)
+        elif design == 'unbalanced':
+            remap = np.arange(firms)
+            remap[firms // 2:] = np.arange(firms - firms // 2) // 4
+            firm = remap[frame.g2.to_numpy(dtype=np.int64) - 1]
+        elif design == 'weighted_bridge':
+            groups = max(2, n // 480)
+            base = i // 4 % groups
+            frame['g1'] = i // 4 + 1
+            firm = np.where(i % 4 == 0, base, np.where(i % 4 == 1,
+                (base + 1) % groups, (i * 37 + i // (4 * groups) * 19) % groups))
+        else:
+            assert design == 'disconnected_blocks'
+        frame['g2'] = firm + 1
+        frame['y'] += np.sin(2 * np.pi * firm / max(1, int(firm.max()) + 1))
     _, left = np.unique(frame.g1, return_inverse=True)
     _, right = np.unique(frame.g2, return_inverse=True)
     graph = coo_matrix((np.ones(n), (left, right + left.max() + 1)),
@@ -121,6 +173,11 @@ def dataset(root, n, k, seed, shuffled=False, design="two_fe_dense", weight_desi
         frame['w'] = (np.random.default_rng(seed + 524287).integers(1, 6, n)).astype(float)
     elif weight_design == 'dispersed':
         frame['w'] = 10.0 ** np.random.default_rng(seed + 524287).integers(-4, 5, n)
+    elif weight_design == 'group_concentrated':
+        frame['w'] = 10.0 ** ((frame.g2.to_numpy(dtype=np.int64) * 37) % 9 - 4)
+    elif weight_design == 'bridge_cut':
+        assert design == 'weighted_bridge', 'bridge weights require the declared bridge topology'
+        frame['w'] = np.where((frame.obs_id.to_numpy(dtype=np.int64) - 1) % 4 < 2, 1.0, 1e-10)
     else:
         assert weight_design == 'none'
     if shuffled:
@@ -131,6 +188,7 @@ def dataset(root, n, k, seed, shuffled=False, design="two_fe_dense", weight_desi
     write(path.with_suffix('.json'), dict(n=n,k=k,seed=seed,design=design,shuffled=shuffled,weight_design=weight_design,
           components=int(components), columns=list(frame), parent_sha256=breadth.sha(parent), sha256=breadth.sha(path),
           generator_sha256=breadth.sha(REPO/'benchmarks/systematic/generate.py'),
+          transformation_sha256=breadth.sha(Path(__file__)),
           levels={c:int(frame[c].nunique()) for c in ['g1','g2','c1','c2']},
           column_sha256={c:hashlib.sha256(np.asarray(frame[c],dtype='<f8').tobytes()).hexdigest() for c in frame}))
     with path.with_suffix('.bin').open('wb') as stream:
@@ -139,17 +197,18 @@ def dataset(root, n, k, seed, shuffled=False, design="two_fe_dense", weight_desi
     return path
 
 
-def compare_outputs(a, b, n, mode, record_disagreement=False):
+def compare_outputs(a, b, n, mode, record_disagreement=False, effect_count=2):
     if mode == 'none':
         return {}
-    count = 5 if mode == 'all' else 2
+    count = effect_count + 3 if mode == 'all' else effect_count
     x,y = [np.fromfile(p/'outputs.bin',dtype='<f8').reshape(count,n) for p in [a,b]]
     mismatch = np.abs(x-y) > 1e-9 + 1e-7*np.abs(y)
     finite = bool(np.isfinite(x).all() and np.isfinite(y).all())
     if not record_disagreement:
         np.testing.assert_allclose(x,y,rtol=1e-7,atol=1e-9)
     assert finite, 'nonfinite saved outputs'
-    return dict(names=['fe1','fe2','residual','xb','xbd'][:count],
+    names = [f'fe{j+1}' for j in range(effect_count)] + (['residual','xb','xbd'] if mode == 'all' else [])
+    return dict(names=names,
                 status='mismatch' if mismatch.any() else 'pass',
                 mismatched_values=mismatch.sum(axis=1).tolist(),
                 max_abs_errors=np.max(np.abs(x-y),axis=1).tolist())
@@ -194,7 +253,8 @@ def oracle(data, output, cell):
         scores = influence*score_weight[:,None]
         V = scores.T@scores*effective_n/(effective_n-full_rank)
     else:
-        names = vce.split()[1:]
+        cluster_names = vce.split()[1:]
+        names = cluster_names
         V = np.zeros((k,k))
         for count in range(1,len(names)+1):
             for subset in itertools.combinations(names,count):
@@ -211,8 +271,8 @@ def oracle(data, output, cell):
         if eig.min()<0:
             V = (vectors*np.maximum(eig,0))@vectors.T
     names = [f'x{j}' for j in range(1,k+1)]
-    actual = pd.read_csv(output/'coefficients.csv').set_index('name').loc[names,'value'].to_numpy()
-    actual_v = pd.read_csv(output/'covariance.csv').pivot(index='row',columns='column',values='value').loc[names,names].to_numpy()
+    actual = pd.read_csv(output/'coefficients.csv').set_index('name').loc[names,'value'].to_numpy(dtype=float)
+    actual_v = pd.read_csv(output/'covariance.csv').pivot(index='row',columns='column',values='value').loc[names,names].to_numpy(dtype=float)
     np.testing.assert_allclose(actual,beta,rtol=1e-7,atol=1e-10)
     np.testing.assert_allclose(actual_v,V,rtol=1e-6,atol=1e-10)
     output_error = None
@@ -236,6 +296,7 @@ def oracle(data, output, cell):
     result = json.loads((output/'result.json').read_text())
     assert result['metadata']['N']==effective_n
     np.testing.assert_allclose(result['metadata']['rss'],residual@(weight*residual),rtol=1e-8)
+    expansion = None
     if kind == 'fw':
         # Literal expansion is a separate numerical witness for the FW contract.
         Z = np.column_stack([X,D])
@@ -244,7 +305,31 @@ def oracle(data, output, cell):
         expanded_beta,_,expanded_rank,_ = lstsq(expanded_Z,expanded_y,lapack_driver='gelsd')
         np.testing.assert_allclose(beta,expanded_beta[:k],rtol=1e-7,atol=1e-10)
         assert int(expanded_rank)==full_rank
-    return dict(status='pass',rank=full_rank,covariance_max_error=float(np.max(np.abs(actual_v-V))),output_max_error=output_error)
+        expanded_residual = expanded_y - expanded_Z @ expanded_beta
+        expanded_bread = np.linalg.inv(expanded_Z.T @ expanded_Z)[:, :k]
+        expanded_influence = (expanded_Z @ expanded_bread) * expanded_residual[:, None]
+        if not vce:
+            expanded_V = expanded_bread[:k] * (expanded_residual @ expanded_residual) / (effective_n - full_rank)
+        elif vce == 'robust':
+            expanded_V = expanded_influence.T @ expanded_influence * effective_n / (effective_n - full_rank)
+        else:
+            expanded_V = np.zeros((k,k))
+            for count in range(1,len(cluster_names)+1):
+                for subset in itertools.combinations(cluster_names,count):
+                    _, codes = np.unique(np.repeat(frame[list(subset)].to_numpy(), copies, axis=0),
+                                         axis=0, return_inverse=True)
+                    sums = np.zeros((codes.max()+1,k))
+                    np.add.at(sums,codes,expanded_influence)
+                    expanded_V += (-1)**(count+1)*(sums.T@sums)
+            expanded_V *= (effective_n-1)/(effective_n-df_model)*g/(g-1)
+            eig,vectors = np.linalg.eigh(expanded_V)
+            if eig.min()<0:
+                expanded_V = (vectors*np.maximum(eig,0))@vectors.T
+        np.testing.assert_allclose(V,expanded_V,rtol=1e-6,atol=1e-10)
+        np.testing.assert_allclose(residual@(weight*residual),expanded_residual@expanded_residual,rtol=1e-10)
+        expansion = dict(rows=int(len(expanded_y)), rank=int(expanded_rank),
+                         covariance_max_error=float(np.max(np.abs(V-expanded_V),initial=0.0)))
+    return dict(status='pass',rank=full_rank,covariance_max_error=float(np.max(np.abs(actual_v-V),initial=0.0)),output_max_error=output_error,frequency_expansion=expansion)
 
 
 def main(a):
@@ -255,7 +340,7 @@ def main(a):
     sys.path.insert(0,str(folder))
     measure=load('dense_measure',folder/'measure.py').measure
     manifest=json.loads((REPO/'benchmarks/systematic/manifest.json').read_text())
-    manifest['measurement'].update(command_timeout_seconds=240,rss_interval_seconds=.05)
+    manifest['measurement'].update(command_timeout_seconds=a.timeout,rss_interval_seconds=.05)
     (root/'work/refs').mkdir(parents=True,exist_ok=True)
     artifacts=(a.artifacts or a.root).resolve()
     identities={}
@@ -281,15 +366,22 @@ def main(a):
         data_info = json.loads(data.with_suffix('.json').read_text())
         for case in a.cases:
             vce,r_vce,mode=CASES[case]
-            cell=dict(model='ols',design=a.design,n=a.n,k=k,threads=a.threads,effects=['g1','g2'],
+            if a.reference_full_dof and vce.startswith('cluster'):
+                columns = ['g1', 'g2', *vce.split()[1:]]
+                frame = pd.read_stata(data, columns=list(dict.fromkeys(columns)))
+                assert not any(frame.groupby(effect)[cluster].nunique().max() == 1
+                               for effect in ['g1', 'g2'] for cluster in vce.split()[1:]), \
+                    'full FE degrees of freedom are equivalent only when neither effect is nested'
+            cell=dict(model='ols',design=a.design,n=a.n,k=k,threads=a.threads,effects=a.effects,
                       case=case,seed=a.seed,shuffled=a.shuffled,vce=vce,r_vce=r_vce,outputs=mode,
                       weight_kind=a.weight_kind,weight_design=a.weight_design,
                       weight='' if a.weight_kind=='none' else f'[{a.weight_kind}=w]',
-                      exact_dof=data_info['components'] > 1,
+                      exact_dof=len(a.effects)==2 and data_info['components'] > 1,
+                      reference_fixef_dof='full' if a.reference_full_dof else 'nonnested',
                       fixest_tolerance=a.reference_tolerance if a.reference_precision else 1e-6,
                       fixest_recovery_tolerance=a.reference_tolerance if a.reference_precision or a.reference_recovery_precision else 1e-5,
-                      absorb='out_fe1=g1 out_fe2=g2' if mode!='none' else 'g1 g2',
-                      fit_options='residuals(out_resid)' if mode=='all' else '')
+                      absorb=' '.join(f'out_fe{j+1}={effect}' for j,effect in enumerate(a.effects)) if mode!='none' else ' '.join(a.effects),
+                      fit_options=('residuals(out_resid) ' if mode=='all' else '') + f'memory({a.memory})')
             os.environ['ONE_FE_BREADTH_OUTPUTS']=mode
             for rep in range(1,a.repeats+1):
                 rotation=(rep-1)%len(a.variants);order=a.variants[rotation:]+a.variants[:rotation]
@@ -307,15 +399,22 @@ def main(a):
                         checks.append(dict(run=output.name,oracle=oracle(data,output,cell)))
                 for variant in a.variants[1:]:
                     reference,actual=outputs[a.variants[0]],outputs[variant]
-                    comparison=profile.compare(reference,actual,exact_native=False)
+                    try:
+                        comparison=profile.compare(reference,actual,exact_native=False)
+                    except AssertionError as error:
+                        if not (a.record_reference_science_disagreement and variant=='fixest'):
+                            raise
+                        comparison=dict(status='mismatch', detail=str(error))
                     if variant!='fixest' and a.variants[0]!='fixest':
                         for name in ['fereg_status','fereg_dof']:
                             np.testing.assert_array_equal(pd.read_csv(reference/(name+'.csv')),pd.read_csv(actual/(name+'.csv')))
                     checks.append(dict(case=case,n=a.n,k=k,rep=rep,variant=variant,science=comparison,
                                        outputs=compare_outputs(reference,actual,a.n,mode,
-                                           a.record_reference_output_disagreement and variant=='fixest')))
+                                           a.record_reference_output_disagreement and variant=='fixest', len(a.effects))))
                 write(root/(a.label+'-progress.json'),checks)
     status = 'reference_output_mismatch' if any(c.get('outputs',{}).get('status')=='mismatch' for c in checks) else 'pass'
+    if any(c.get('science',{}).get('status')=='mismatch' for c in checks):
+        status = 'reference_science_mismatch'
     write(root/(a.label+'-complete.json'),dict(status=status,checks=checks))
     print('TWO_FE_DENSE_COMPLETE',a.label,status,flush=True)
 
@@ -328,20 +427,29 @@ if __name__=='__main__':
     p.add_argument('--widths',nargs='+',type=int,default=[10,50]);p.add_argument('--n',type=int,default=983040)
     p.add_argument('--seed',type=int,default=8675309);p.add_argument('--shuffled',action='store_true')
     p.add_argument('--threads',type=int,default=16);p.add_argument('--repeats',type=int,default=3)
-    p.add_argument('--design',choices=['two_fe_dense','two_fe_sparse'],default='two_fe_dense')
+    p.add_argument('--design',choices=GRAPH_DESIGNS,default='two_fe_dense')
+    p.add_argument('--effects',choices=['g1','g2'],nargs='+',default=['g1','g2'])
+    p.add_argument('--memory',choices=['fast','low'],default='fast')
+    p.add_argument('--timeout',type=int,default=240)
     p.add_argument('--trace',action='store_true');p.add_argument('--oracle',action='store_true')
     p.add_argument('--reference-precision',action='store_true',help='separate tight-reference diagnostic; headline timing retains defaults')
     p.add_argument('--reference-recovery-precision',action='store_true',help='tighten only fixef recovery for a separate output-accuracy diagnostic')
+    p.add_argument('--reference-full-dof',action='store_true',
+                   help='matched full-rank reference correction; clustered cases require neither FE to be nested')
     p.add_argument('--reference-tolerance',type=float,default=1e-10,help='precision for explicitly requested tight-reference diagnostics')
     p.add_argument('--record-reference-output-disagreement',action='store_true',
                    help='record observed reference output mismatches explicitly; never classify them as passing science')
+    p.add_argument('--record-reference-science-disagreement',action='store_true',
+                   help='retain failed reference science comparisons during diagnostic screens; does not satisfy science gates')
     p.add_argument('--solver',choices=['auto','map','cg','lsmr','cmg'],default='auto')
     p.add_argument('--weight-kind',choices=['none','aw','pw','fw'],default='none')
-    p.add_argument('--weight-design',choices=['none','constant','moderate','dispersed'],default='none')
+    p.add_argument('--weight-design',choices=['none','constant','moderate','dispersed','group_concentrated','bridge_cut'],default='none')
     a=p.parse_args()
+    if a.effects not in (['g1'], ['g1','g2']):p.error('supported effect controls are g1 or g1 g2')
+    if a.oracle and a.effects!=['g1','g2']:p.error('explicit dummy oracle requires two effects')
     if a.oracle and a.n>3840:p.error('explicit dummy oracle is bounded to small inputs')
     if (a.weight_kind=='none') != (a.weight_design=='none'):p.error('weight kind and design must both be supplied')
-    if a.weight_kind=='fw' and ('fixest' in a.variants or a.weight_design=='dispersed'):
+    if a.weight_kind=='fw' and ('fixest' in a.variants or a.weight_design not in ('constant','moderate')):
         p.error('FW uses native comparisons and independent literal-expansion checks; fixest weights are not frequency semantics')
     if a.weight_kind=='pw' and any(CASES[c][0]=='' for c in a.cases):p.error('pweights require robust or clustered inference')
     main(a)

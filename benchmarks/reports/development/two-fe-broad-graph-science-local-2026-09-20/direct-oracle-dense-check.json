@@ -1,0 +1,98 @@
+[
+  {
+    "disconnected": false,
+    "kind": "none",
+    "reversed": false,
+    "status": "pass",
+    "rank": 32,
+    "coefficient_error": 2.0261570199409107e-15
+  },
+  {
+    "disconnected": false,
+    "kind": "none",
+    "reversed": true,
+    "status": "pass",
+    "rank": 32,
+    "coefficient_error": 1.3877787807814457e-15
+  },
+  {
+    "disconnected": false,
+    "kind": "aw",
+    "reversed": false,
+    "status": "pass",
+    "rank": 32,
+    "coefficient_error": 3.8441472227646045e-15
+  },
+  {
+    "disconnected": false,
+    "kind": "aw",
+    "reversed": true,
+    "status": "pass",
+    "rank": 32,
+    "coefficient_error": 3.3861802251067274e-15
+  },
+  {
+    "disconnected": false,
+    "kind": "fw",
+    "reversed": false,
+    "status": "pass",
+    "rank": 32,
+    "coefficient_error": 2.456368441983159e-15
+  },
+  {
+    "disconnected": false,
+    "kind": "fw",
+    "reversed": true,
+    "status": "pass",
+    "rank": 32,
+    "coefficient_error": 1.6653345369377348e-15
+  },
+  {
+    "disconnected": true,
+    "kind": "none",
+    "reversed": false,
+    "status": "pass",
+    "rank": 61,
+    "coefficient_error": 7.424616477180734e-16
+  },
+  {
+    "disconnected": true,
+    "kind": "none",
+    "reversed": true,
+    "status": "pass",
+    "rank": 61,
+    "coefficient_error": 9.575673587391975e-16
+  },
+  {
+    "disconnected": true,
+    "kind": "aw",
+    "reversed": false,
+    "status": "pass",
+    "rank": 61,
+    "coefficient_error": 2.220446049250313e-15
+  },
+  {
+    "disconnected": true,
+    "kind": "aw",
+    "reversed": true,
+    "status": "pass",
+    "rank": 61,
+    "coefficient_error": 1.582067810090848e-15
+  },
+  {
+    "disconnected": true,
+    "kind": "fw",
+    "reversed": false,
+    "status": "pass",
+    "rank": 61,
+    "coefficient_error": 4.385380947269368e-15
+  },
+  {
+    "disconnected": true,
+    "kind": "fw",
+    "reversed": true,
+    "status": "pass",
+    "rank": 61,
+    "coefficient_error": 5.620504062164855e-15
+  }
+]

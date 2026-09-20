@@ -1,0 +1,86 @@
+[
+  {
+    "case": "d0-aw-r0",
+    "reported_rank": 33,
+    "mathematical_rank": 32,
+    "smallest_singular_value": 9.734607164372646e-14,
+    "largest_singular_value": 27.400483248791755
+  },
+  {
+    "case": "d0-aw-r1",
+    "reported_rank": 33,
+    "mathematical_rank": 32,
+    "smallest_singular_value": 9.734607164372646e-14,
+    "largest_singular_value": 27.400483248791762
+  },
+  {
+    "case": "d0-fw-r0",
+    "reported_rank": 33,
+    "mathematical_rank": 32,
+    "smallest_singular_value": 1.7451561876257918e-13,
+    "largest_singular_value": 49.12177972684358
+  },
+  {
+    "case": "d0-fw-r1",
+    "reported_rank": 33,
+    "mathematical_rank": 32,
+    "smallest_singular_value": 1.7451561876258163e-13,
+    "largest_singular_value": 49.12177972684358
+  },
+  {
+    "case": "d0-none-r0",
+    "reported_rank": 32,
+    "mathematical_rank": 32,
+    "smallest_singular_value": 1.7001543779003864e-15,
+    "largest_singular_value": 26.220518155596828
+  },
+  {
+    "case": "d0-none-r1",
+    "reported_rank": 32,
+    "mathematical_rank": 32,
+    "smallest_singular_value": 2.1912877408147195e-15,
+    "largest_singular_value": 26.22051815559683
+  },
+  {
+    "case": "d1-aw-r0",
+    "reported_rank": 62,
+    "mathematical_rank": 61,
+    "smallest_singular_value": 1.815425731546076e-15,
+    "largest_singular_value": 27.40793649162179
+  },
+  {
+    "case": "d1-aw-r1",
+    "reported_rank": 62,
+    "mathematical_rank": 61,
+    "smallest_singular_value": 2.0017899950060893e-15,
+    "largest_singular_value": 27.40793649162179
+  },
+  {
+    "case": "d1-fw-r0",
+    "reported_rank": 61,
+    "mathematical_rank": 61,
+    "smallest_singular_value": 3.3421336608166437e-15,
+    "largest_singular_value": 49.11622580567769
+  },
+  {
+    "case": "d1-fw-r1",
+    "reported_rank": 62,
+    "mathematical_rank": 61,
+    "smallest_singular_value": 3.4026010606452467e-15,
+    "largest_singular_value": 49.116225805677665
+  },
+  {
+    "case": "d1-none-r0",
+    "reported_rank": 62,
+    "mathematical_rank": 61,
+    "smallest_singular_value": 1.9322135626432497e-15,
+    "largest_singular_value": 26.22214270405905
+  },
+  {
+    "case": "d1-none-r1",
+    "reported_rank": 63,
+    "mathematical_rank": 61,
+    "smallest_singular_value": 9.315976507216925e-14,
+    "largest_singular_value": 26.22214270405904
+  }
+]

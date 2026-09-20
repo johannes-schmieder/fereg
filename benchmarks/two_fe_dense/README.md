@@ -54,3 +54,37 @@ the tight-reference and independent output receipts, fixtures, source identity
 and reference fingerprints. A predeclared regression confirmation must retain
 its initial failing measurement; the final campaign required none. The audit
 refuses to overwrite an existing acceptance receipt.
+
+`broad_milestone.json` defines the separate broad two-way milestone: 77 primary
+cells and 111 native controls. `broad.py ROOT --artifacts ARTIFACT_ROOT
+--candidate VARIANT --label LABEL --phase screen|block-a|block-b|controls`
+expands the inventory and records an immutable execution plan. Screens use
+one pair; each primary acceptance block uses five; controls use three.
+A resumed label skips every recorded attempt, including failures. Rechecks
+require a new label. Completing attempts does not establish acceptance.
+`--dry-run` prints the exact plan without running applications.
+
+Graph inputs include the systematic strong/weak designs plus disconnected
+blocks, a bottleneck ring, a cycle, an unbalanced graph and a weighted bridge
+control. Additional `group_concentrated` and `bridge_cut` weights are determined
+from input identities; estimator output never selects graph memberships or
+weights. `--memory low` and `--effects g1` provide explicit native regression
+controls. One-effect saved-output comparisons export exactly one FE channel.
+
+`--record-reference-science-disagreement` preserves a reference coefficient or
+covariance disagreement while completing diagnostic calls; it is never a
+scientific pass. `graph_oracle.py OUTPUT RESULT_JSON...` independently audits
+full-sample IID graph results using grounded sparse dummy cross-products,
+SuperLU, residual refinement and fresh weighted normal equations. It checks
+all shared input column hashes and keeps each mismatch explicit. Its result
+receipt records the implementation hash, numerical checks and direct-factor
+size. The small dense-SVD oracle remains independently implemented.
+
+For disconnected clustered cases with neither FE nested in a declared cluster,
+`--reference-full-dof` explicitly requests fixest's exact full FE rank correction.
+The harness checks nonnesting from the shared data before admitting this option.
+This avoids the pinned reference's distinct nonnested/exact rank calculation;
+the fitted objective and native correction are unchanged. Keep its source
+adjudication with the relevant receipt. Zero-regressor CSVs retain their empty
+schemas. FW small-oracle runs separately check literal replicated-row IID,
+robust and clustered covariance, coefficients, RSS, rank and effective N.

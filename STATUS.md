@@ -10,6 +10,37 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way graph and weighted-oracle checkpoint — 2026-09-20
+
+The [graph/science report](benchmarks/reports/development/two-fe-broad-graph-science-local-2026-09-20/README.md)
+archives 80 application calls and preserves all reference and harness failures.
+The first eighteen graph cells use K=6 and unit/moderate AW weights. An independent
+grounded sparse-direct oracle passes all native coefficients, covariance, RSS
+and effective N; eight default fixest coefficient comparisons fail. Twelve
+small explicit-dummy SVD self-checks validate that independent implementation.
+Four tight-reference degree-two/sparse comparisons pass; all four tight
+bottleneck/cycle references reach their 10,000-iteration cap. Neither failed
+reference timing nor a tightened reference substitutes for the default target.
+
+The disconnected clustered covariance discrepancy is localized to the pinned
+reference's nonnested/exact rank correction (242 versus independent/native
+243). Explicit full/exact correction passes when neither FE is nested; the
+harness verifies that precondition. Zero-width outputs, literal FW expansion
+including clustered covariance, and weighted one-FE output controls pass.
+The broad controller expands the frozen plan to 77 primary cells and 111 native
+controls; the full screen and final acceptance blocks remain pending.
+
+Production remains the committed weighted-input checkpoint `329bc17c`. A
+one-sided unit Schur edge-cache prototype improves dense K=3/5/6 but slows the
+degree-six control by 5.9%. Its evidence is retained under the uncommitted
+narrow-edge report. A revised bounded repeated-edge guard passes two focused
+operator/projection tests and its actual-plugin ABI build. Its paired screen
+and final-artifact fixtures are running under
+`target/two-fe-broad-20260920/screen-narrowedges2.py` (exec session 2743).
+Do not accept the cache until that measured control passes. The full goal
+remains active; weighted/narrow operator work, graph routing, broader controls
+and repeated scoreboards remain. No installed package or remote state changes.
+
 ## Broad two-way OLS milestone: weighted input checkpoint — 2026-09-20
 
 The [weighted input report](benchmarks/reports/development/two-fe-weighted-input-local-2026-09-20/README.md)

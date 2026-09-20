@@ -1,0 +1,114 @@
+{
+  "graph-precision-bottleneck_ring-aw": {
+    "checks": null,
+    "complete": false
+  },
+  "graph-precision-bottleneck_ring-none": {
+    "checks": null,
+    "complete": false
+  },
+  "graph-precision-cycle-aw": {
+    "checks": null,
+    "complete": false
+  },
+  "graph-precision-cycle-none": {
+    "checks": null,
+    "complete": false
+  },
+  "graph-precision-strong_d2-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 7.993605777301127e-15,
+              "covariance.csv:value": 5.039846036163087e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-precision-strong_d2-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 5.000340419503146e-16,
+              "coefficients.csv:value": 1.6141254999268995e-13,
+              "covariance.csv:value": 1.520000623847842e-18
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-precision-two_fe_sparse-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 7.101524229780054e-16,
+              "coefficients.csv:value": 1.5469570069370775e-13,
+              "covariance.csv:value": 1.5725166665776086e-18
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "graph-precision-two_fe_sparse-none": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 6.900079466132247e-15,
+              "coefficients.csv:value": 3.7113090378682045e-12,
+              "covariance.csv:value": 1.9832636222165326e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  }
+}
