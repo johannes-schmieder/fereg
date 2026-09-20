@@ -1,0 +1,22 @@
+{
+  "scope": "Local Mac development goal; not release or cross-platform qualification",
+  "source_baseline": "82e23357af64d65dd9e7162e2317b2ace62e1495",
+  "cases": ["iid", "robust", "cluster_fe", "cluster_cross", "cluster2_cross", "cluster2_nested", "iid_saved", "cluster_fe_saved", "cluster2_saved", "iid_outputs"],
+  "observations": 983040,
+  "regressor_counts": [10, 50],
+  "native_threads": 16,
+  "final_blocks": 2,
+  "pairs_per_block": 5,
+  "maximum_median_paired_fereg_fixest_ratio_per_cell_per_block": 0.90,
+  "minimum_fereg_wins_across_both_blocks_per_cell": 9,
+  "regression_controls": {
+    "suite": "Existing one_fe_optimization controls: all eleven size/thread/group-layout cells, plus the twenty breadth cells",
+    "pairs": 3,
+    "maximum_median_paired_candidate_baseline_ratio": 1.05,
+    "maximum_geometric_mean_of_cell_median_ratios": 1.02,
+    "confirmation": "An initial failing regression cell gets one predeclared five-pair confirmation; preserve both blocks"
+  },
+  "science": "Unchanged samples, statuses, weight/DoF semantics, tolerances, certificates, memory admission and transactional publication. Independent dummy or mathematical oracles supplement pinned fixest. Focused boundary fixtures cover each widened path, including relevant weighted/missing/cluster/output and constrained-memory controls.",
+  "winning_cases": "Inspect native phase costs in already-winning cases and test clear opportunities; record rejected experiments rather than retaining unmeasured complexity.",
+  "timing": "Fresh processes, small warm-up, alternating paired order, identical audited values and requested numerical outputs; no builds/tests concurrent with timed runs. Final implementation fixed before final blocks. Preserve failed blocks."
+}

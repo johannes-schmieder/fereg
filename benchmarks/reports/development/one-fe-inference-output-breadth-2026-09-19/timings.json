@@ -1,0 +1,1182 @@
+[
+  {
+    "case": "cluster2_cross",
+    "fereg_fit_ms": {
+      "maximum": 255.0,
+      "median": 253.0,
+      "minimum": 251.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 1.0000000000000009,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 0.4235382080078125,
+      "median": 0.4225006103515625,
+      "minimum": 0.4190673828125
+    },
+    "fereg_total_ms": {
+      "maximum": 255.0,
+      "median": 254.0,
+      "minimum": 251.0
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 287.0,
+      "median": 268.0,
+      "minimum": 267.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 0.60272216796875,
+      "median": 0.5531158447265625,
+      "minimum": 0.5404510498046875
+    },
+    "fixest_total_ms": {
+      "maximum": 287.0,
+      "median": 268.0,
+      "minimum": 267.0
+    },
+    "k": 10,
+    "median_paired_ratio": 0.9400749063670412,
+    "native_phases_ms": {
+      "input": 88.94908299999999,
+      "native_to_precommit": 151.323584,
+      "preflight": 0.175291,
+      "total_to_precommit": 241.50199999999998,
+      "wrapper_store_cleanup": 11.498000000000008
+    },
+    "paired_ratios": [
+      0.9400749063670412,
+      0.9477611940298507,
+      0.8885017421602789
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster2_cross",
+    "fereg_fit_ms": {
+      "maximum": 760.0,
+      "median": 748.0,
+      "minimum": 742.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 1.436492919921875,
+      "median": 1.4332275390625,
+      "minimum": 1.432464599609375
+    },
+    "fereg_total_ms": {
+      "maximum": 760.0,
+      "median": 748.0,
+      "minimum": 742.0
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 1335.0,
+      "median": 1312.0,
+      "minimum": 1294.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 2.0260772705078125,
+      "median": 2.0247802734375,
+      "minimum": 2.01947021484375
+    },
+    "fixest_total_ms": {
+      "maximum": 1335.0,
+      "median": 1312.0,
+      "minimum": 1294.0
+    },
+    "k": 50,
+    "median_paired_ratio": 0.5701219512195121,
+    "native_phases_ms": {
+      "input": 289.450292,
+      "native_to_precommit": 418.784916,
+      "preflight": 0.455,
+      "total_to_precommit": 707.2814589999999,
+      "wrapper_store_cleanup": 40.71854100000005
+    },
+    "paired_ratios": [
+      0.5692883895131087,
+      0.5734157650695517,
+      0.5701219512195121
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster2_nested",
+    "fereg_fit_ms": {
+      "maximum": 239.0,
+      "median": 238.0,
+      "minimum": 235.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 0.4159088134765625,
+      "median": 0.4104461669921875,
+      "minimum": 0.4102325439453125
+    },
+    "fereg_total_ms": {
+      "maximum": 239.0,
+      "median": 238.0,
+      "minimum": 235.0
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 251.0,
+      "median": 249.0,
+      "minimum": 240.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 1.0000000000000009,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 0.61163330078125,
+      "median": 0.57867431640625,
+      "minimum": 0.5706024169921875
+    },
+    "fixest_total_ms": {
+      "maximum": 252.0,
+      "median": 249.0,
+      "minimum": 240.0
+    },
+    "k": 10,
+    "median_paired_ratio": 0.9558232931726908,
+    "native_phases_ms": {
+      "input": 85.86433299999997,
+      "native_to_precommit": 139.5555,
+      "preflight": 0.16941699999999,
+      "total_to_precommit": 226.06925,
+      "wrapper_store_cleanup": 11.930749999999989
+    },
+    "paired_ratios": [
+      0.9958333333333333,
+      0.9558232931726908,
+      0.9325396825396824
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster2_nested",
+    "fereg_fit_ms": {
+      "maximum": 756.0,
+      "median": 753.0,
+      "minimum": 750.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 1.42523193359375,
+      "median": 1.4212646484375,
+      "minimum": 1.4207305908203125
+    },
+    "fereg_total_ms": {
+      "maximum": 756.0,
+      "median": 753.0,
+      "minimum": 750.0
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 1251.0,
+      "median": 1249.0,
+      "minimum": 1247.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 2.1993560791015625,
+      "median": 2.1990203857421875,
+      "minimum": 2.1968536376953125
+    },
+    "fixest_total_ms": {
+      "maximum": 1251.0,
+      "median": 1249.0,
+      "minimum": 1247.0
+    },
+    "k": 50,
+    "median_paired_ratio": 0.6019184652278178,
+    "native_phases_ms": {
+      "input": 279.21670800000004,
+      "native_to_precommit": 435.20808300000004,
+      "preflight": 0.419042,
+      "total_to_precommit": 715.928083,
+      "wrapper_store_cleanup": 36.75458300000001
+    },
+    "paired_ratios": [
+      0.6019184652278178,
+      0.6014434643143544,
+      0.6052842273819055
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster2_saved",
+    "fereg_fit_ms": {
+      "maximum": 374.0,
+      "median": 367.0,
+      "minimum": 366.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 0.450347900390625,
+      "median": 0.4497528076171875,
+      "minimum": 0.447967529296875
+    },
+    "fereg_total_ms": {
+      "maximum": 374.0,
+      "median": 367.0,
+      "minimum": 366.0
+    },
+    "fereg_wins": 0,
+    "fixest_fit_ms": {
+      "maximum": 282.0,
+      "median": 274.0,
+      "minimum": 268.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 83.00000000000001,
+      "median": 77.99999999999996,
+      "minimum": 77.99999999999996
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 0.6626434326171875,
+      "median": 0.6069488525390625,
+      "minimum": 0.6032867431640625
+    },
+    "fixest_total_ms": {
+      "maximum": 365.0,
+      "median": 352.0,
+      "minimum": 346.0
+    },
+    "k": 10,
+    "median_paired_ratio": 1.0397727272727273,
+    "native_phases_ms": {
+      "input": 88.896375,
+      "native_to_precommit": 253.79495799999995,
+      "preflight": 0.18437499999999998,
+      "total_to_precommit": 342.397833,
+      "wrapper_store_cleanup": 24.868292000000014
+    },
+    "paired_ratios": [
+      1.0397727272727273,
+      1.0246575342465754,
+      1.060693641618497
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster2_saved",
+    "fereg_fit_ms": {
+      "maximum": 1039.0,
+      "median": 1026.0,
+      "minimum": 1020.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 1.4475250244140625,
+      "median": 1.44561767578125,
+      "minimum": 1.4412841796875
+    },
+    "fereg_total_ms": {
+      "maximum": 1039.0,
+      "median": 1026.0,
+      "minimum": 1020.0
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 1317.0,
+      "median": 1308.0,
+      "minimum": 1304.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 74.99999999999996,
+      "median": 74.99999999999996,
+      "minimum": 72.99999999999996
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 2.085723876953125,
+      "median": 2.0252532958984375,
+      "minimum": 2.0252532958984375
+    },
+    "fixest_total_ms": {
+      "maximum": 1392.0,
+      "median": 1381.0,
+      "minimum": 1379.0
+    },
+    "k": 50,
+    "median_paired_ratio": 0.7440174039158811,
+    "native_phases_ms": {
+      "input": 290.37800000000004,
+      "native_to_precommit": 673.958708,
+      "preflight": 0.49762500000000004,
+      "total_to_precommit": 961.451916,
+      "wrapper_store_cleanup": 64.05508299999995
+    },
+    "paired_ratios": [
+      0.7523533671252715,
+      0.7440174039158811,
+      0.7327586206896552
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster_cross",
+    "fereg_fit_ms": {
+      "maximum": 234.0,
+      "median": 221.0,
+      "minimum": 217.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 1.0000000000000009,
+      "median": 0.9999999999999731,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 0.465728759765625,
+      "median": 0.4178924560546875,
+      "minimum": 0.4071807861328125
+    },
+    "fereg_total_ms": {
+      "maximum": 235.0,
+      "median": 222.0,
+      "minimum": 217.0
+    },
+    "fereg_wins": 0,
+    "fixest_fit_ms": {
+      "maximum": 205.0,
+      "median": 194.0,
+      "minimum": 193.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 0.5463104248046875,
+      "median": 0.5279693603515625,
+      "minimum": 0.5256195068359375
+    },
+    "fixest_total_ms": {
+      "maximum": 205.0,
+      "median": 194.0,
+      "minimum": 193.0
+    },
+    "k": 10,
+    "median_paired_ratio": 1.150259067357513,
+    "native_phases_ms": {
+      "input": 87.35516699999998,
+      "native_to_precommit": 121.267083,
+      "preflight": 0.17775000000000002,
+      "total_to_precommit": 208.81091700000002,
+      "wrapper_store_cleanup": 12.18908299999999
+    },
+    "paired_ratios": [
+      1.150259067357513,
+      1.0585365853658537,
+      1.211340206185567
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster_cross",
+    "fereg_fit_ms": {
+      "maximum": 679.0,
+      "median": 674.0,
+      "minimum": 673.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 1.4212493896484375,
+      "median": 1.4210052490234375,
+      "minimum": 1.419219970703125
+    },
+    "fereg_total_ms": {
+      "maximum": 679.0,
+      "median": 674.0,
+      "minimum": 673.0
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 824.0,
+      "median": 824.0,
+      "minimum": 819.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 1.8232421875,
+      "median": 1.8221282958984375,
+      "minimum": 1.8200531005859375
+    },
+    "fixest_total_ms": {
+      "maximum": 824.0,
+      "median": 824.0,
+      "minimum": 819.0
+    },
+    "k": 50,
+    "median_paired_ratio": 0.822954822954823,
+    "native_phases_ms": {
+      "input": 280.672167,
+      "native_to_precommit": 349.753542,
+      "preflight": 0.526209,
+      "total_to_precommit": 633.032291,
+      "wrapper_store_cleanup": 40.96770900000002
+    },
+    "paired_ratios": [
+      0.8167475728155341,
+      0.822954822954823,
+      0.8240291262135924
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster_fe",
+    "fereg_fit_ms": {
+      "maximum": 211.0,
+      "median": 208.0,
+      "minimum": 206.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 0.5162200927734375,
+      "median": 0.5123138427734375,
+      "minimum": 0.5096588134765625
+    },
+    "fereg_total_ms": {
+      "maximum": 211.0,
+      "median": 208.0,
+      "minimum": 206.0
+    },
+    "fereg_wins": 0,
+    "fixest_fit_ms": {
+      "maximum": 194.0,
+      "median": 189.0,
+      "minimum": 188.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 0.5271759033203125,
+      "median": 0.5251617431640625,
+      "minimum": 0.52447509765625
+    },
+    "fixest_total_ms": {
+      "maximum": 194.0,
+      "median": 189.0,
+      "minimum": 188.0
+    },
+    "k": 10,
+    "median_paired_ratio": 1.0957446808510638,
+    "native_phases_ms": {
+      "input": 82.585916,
+      "native_to_precommit": 112.845666,
+      "preflight": 0.169209,
+      "total_to_precommit": 195.324292,
+      "wrapper_store_cleanup": 12.67570799999998
+    },
+    "paired_ratios": [
+      1.1005291005291005,
+      1.0876288659793814,
+      1.0957446808510638
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster_fe",
+    "fereg_fit_ms": {
+      "maximum": 671.0,
+      "median": 661.9999999999999,
+      "minimum": 655.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 1.56103515625,
+      "median": 1.5135345458984375,
+      "minimum": 1.44964599609375
+    },
+    "fereg_total_ms": {
+      "maximum": 671.0,
+      "median": 661.9999999999999,
+      "minimum": 655.0
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 994.0,
+      "median": 975.0,
+      "minimum": 973.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 1.971099853515625,
+      "median": 1.9699249267578125,
+      "minimum": 1.9654388427734375
+    },
+    "fixest_total_ms": {
+      "maximum": 994.0,
+      "median": 975.0,
+      "minimum": 973.0
+    },
+    "k": 50,
+    "median_paired_ratio": 0.6750503018108652,
+    "native_phases_ms": {
+      "input": 275.254166,
+      "native_to_precommit": 349.523709,
+      "preflight": 0.470542,
+      "total_to_precommit": 625.270625,
+      "wrapper_store_cleanup": 36.75937500000004
+    },
+    "paired_ratios": [
+      0.6789743589743589,
+      0.6750503018108652,
+      0.6731757451181912
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster_fe_saved",
+    "fereg_fit_ms": {
+      "maximum": 323.0,
+      "median": 323.0,
+      "minimum": 320.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 0.4182281494140625,
+      "median": 0.4164886474609375,
+      "minimum": 0.411102294921875
+    },
+    "fereg_total_ms": {
+      "maximum": 323.0,
+      "median": 323.0,
+      "minimum": 320.0
+    },
+    "fereg_wins": 0,
+    "fixest_fit_ms": {
+      "maximum": 200.0,
+      "median": 199.0,
+      "minimum": 186.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 85.99999999999997,
+      "median": 84.99999999999997,
+      "minimum": 79.00000000000001
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 0.6462249755859375,
+      "median": 0.6417236328125,
+      "minimum": 0.5725250244140625
+    },
+    "fixest_total_ms": {
+      "maximum": 286.0,
+      "median": 284.0,
+      "minimum": 265.0
+    },
+    "k": 10,
+    "median_paired_ratio": 1.137323943661972,
+    "native_phases_ms": {
+      "input": 83.624833,
+      "native_to_precommit": 214.011625,
+      "preflight": 0.19479100000000002,
+      "total_to_precommit": 298.152208,
+      "wrapper_store_cleanup": 24.47895900000002
+    },
+    "paired_ratios": [
+      1.2075471698113207,
+      1.1293706293706296,
+      1.137323943661972
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "cluster_fe_saved",
+    "fereg_fit_ms": {
+      "maximum": 945.0,
+      "median": 945.0,
+      "minimum": 927.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 1.0000000000000009,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 1.427398681640625,
+      "median": 1.4189453125,
+      "minimum": 1.4177398681640625
+    },
+    "fereg_total_ms": {
+      "maximum": 946.0,
+      "median": 945.0,
+      "minimum": 927.0
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 950.0,
+      "median": 942.0,
+      "minimum": 928.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 76.99999999999984,
+      "median": 74.00000000000007,
+      "minimum": 72.99999999999996
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 1.9778289794921875,
+      "median": 1.9737396240234375,
+      "minimum": 1.9722747802734375
+    },
+    "fixest_total_ms": {
+      "maximum": 1022.9999999999999,
+      "median": 1016.0,
+      "minimum": 1004.9999999999999
+    },
+    "k": 50,
+    "median_paired_ratio": 0.9237536656891496,
+    "native_phases_ms": {
+      "input": 281.248958,
+      "native_to_precommit": 595.627375,
+      "preflight": 0.433958,
+      "total_to_precommit": 888.012708,
+      "wrapper_store_cleanup": 54.58937499999994
+    },
+    "paired_ratios": [
+      0.9124015748031497,
+      0.9412935323383085,
+      0.9237536656891496
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "iid",
+    "fereg_fit_ms": {
+      "maximum": 133.0,
+      "median": 132.0,
+      "minimum": 129.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 0.5067291259765625,
+      "median": 0.5057830810546875,
+      "minimum": 0.468841552734375
+    },
+    "fereg_total_ms": {
+      "maximum": 133.0,
+      "median": 132.0,
+      "minimum": 129.0
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 153.0,
+      "median": 149.0,
+      "minimum": 144.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 0.5235443115234375,
+      "median": 0.5235137939453125,
+      "minimum": 0.5225372314453125
+    },
+    "fixest_total_ms": {
+      "maximum": 153.0,
+      "median": 149.0,
+      "minimum": 144.0
+    },
+    "k": 10,
+    "median_paired_ratio": 0.8926174496644296,
+    "native_phases_ms": {
+      "input": 69.94404199999998,
+      "native_to_precommit": 49.619583,
+      "preflight": 0.172083,
+      "total_to_precommit": 119.75625,
+      "wrapper_store_cleanup": 12.243750000000011
+    },
+    "paired_ratios": [
+      0.8431372549019608,
+      0.8926174496644296,
+      0.9166666666666667
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "iid",
+    "fereg_fit_ms": {
+      "maximum": 411.0,
+      "median": 395.0,
+      "minimum": 393.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 1.3983306884765625,
+      "median": 1.3961029052734375,
+      "minimum": 1.3955841064453125
+    },
+    "fereg_total_ms": {
+      "maximum": 411.0,
+      "median": 395.0,
+      "minimum": 393.0
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 517.0,
+      "median": 487.0,
+      "minimum": 480.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 1.82513427734375,
+      "median": 1.8213958740234375,
+      "minimum": 1.817718505859375
+    },
+    "fixest_total_ms": {
+      "maximum": 517.0,
+      "median": 487.0,
+      "minimum": 480.0
+    },
+    "k": 50,
+    "median_paired_ratio": 0.8069815195071869,
+    "native_phases_ms": {
+      "input": 215.775125,
+      "native_to_precommit": 143.891209,
+      "preflight": 0.396667,
+      "total_to_precommit": 359.59695899999997,
+      "wrapper_store_cleanup": 37.29924999999995
+    },
+    "paired_ratios": [
+      0.8229166666666667,
+      0.8069815195071869,
+      0.7949709864603481
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "iid_outputs",
+    "fereg_fit_ms": {
+      "maximum": 318.0,
+      "median": 317.9999999999999,
+      "minimum": 315.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 50.0000000000001,
+      "median": 49.999999999999986,
+      "minimum": 49.999999999999986
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 0.49700927734375,
+      "median": 0.49432373046875,
+      "minimum": 0.494171142578125
+    },
+    "fereg_total_ms": {
+      "maximum": 368.0,
+      "median": 368.0,
+      "minimum": 365.0
+    },
+    "fereg_wins": 0,
+    "fixest_fit_ms": {
+      "maximum": 156.0,
+      "median": 147.0,
+      "minimum": 145.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 79.99999999999999,
+      "median": 79.00000000000001,
+      "minimum": 75.00000000000001
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 0.5729522705078125,
+      "median": 0.5416717529296875,
+      "minimum": 0.5318450927734375
+    },
+    "fixest_total_ms": {
+      "maximum": 236.0,
+      "median": 226.0,
+      "minimum": 220.0
+    },
+    "k": 10,
+    "median_paired_ratio": 1.6150442477876106,
+    "native_phases_ms": {
+      "input": 79.124375,
+      "native_to_precommit": 182.68733300000002,
+      "preflight": 0.17758300000000002,
+      "total_to_precommit": 261.87154200000003,
+      "wrapper_store_cleanup": 56.010832999999984
+    },
+    "paired_ratios": [
+      1.6727272727272726,
+      1.6150442477876106,
+      1.5593220338983051
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "iid_outputs",
+    "fereg_fit_ms": {
+      "maximum": 776.0,
+      "median": 773.0,
+      "minimum": 764.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 157.99999999999991,
+      "median": 155.00000000000003,
+      "minimum": 154.00000000000003
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 1.4262847900390625,
+      "median": 1.4257965087890625,
+      "minimum": 1.4190521240234375
+    },
+    "fereg_total_ms": {
+      "maximum": 933.9999999999999,
+      "median": 928.0,
+      "minimum": 918.0
+    },
+    "fereg_wins": 0,
+    "fixest_fit_ms": {
+      "maximum": 465.0,
+      "median": 461.0,
+      "minimum": 461.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 77.00000000000001,
+      "median": 75.00000000000001,
+      "minimum": 75.00000000000001
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 1.8341522216796875,
+      "median": 1.833648681640625,
+      "minimum": 1.8302154541015625
+    },
+    "fixest_total_ms": {
+      "maximum": 540.0,
+      "median": 538.0,
+      "minimum": 536.0
+    },
+    "k": 50,
+    "median_paired_ratio": 1.7185185185185186,
+    "native_phases_ms": {
+      "input": 275.97729100000004,
+      "native_to_precommit": 425.4905839999999,
+      "preflight": 0.458667,
+      "total_to_precommit": 701.960709,
+      "wrapper_store_cleanup": 70.19437500000004
+    },
+    "paired_ratios": [
+      1.736059479553903,
+      1.7185185185185186,
+      1.712686567164179
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "iid_saved",
+    "fereg_fit_ms": {
+      "maximum": 292.0,
+      "median": 291.0,
+      "minimum": 286.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 0.5384979248046875,
+      "median": 0.5023345947265625,
+      "minimum": 0.4233245849609375
+    },
+    "fereg_total_ms": {
+      "maximum": 292.0,
+      "median": 291.0,
+      "minimum": 286.0
+    },
+    "fereg_wins": 0,
+    "fixest_fit_ms": {
+      "maximum": 147.0,
+      "median": 145.0,
+      "minimum": 138.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 79.00000000000001,
+      "median": 75.00000000000001,
+      "minimum": 72.99999999999999
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 0.61114501953125,
+      "median": 0.596343994140625,
+      "minimum": 0.5666961669921875
+    },
+    "fixest_total_ms": {
+      "maximum": 226.0,
+      "median": 220.0,
+      "minimum": 211.0
+    },
+    "k": 10,
+    "median_paired_ratio": 1.3272727272727272,
+    "native_phases_ms": {
+      "input": 80.676875,
+      "native_to_precommit": 182.61191700000003,
+      "preflight": 0.18525,
+      "total_to_precommit": 266.46387500000003,
+      "wrapper_store_cleanup": 24.536124999999963
+    },
+    "paired_ratios": [
+      1.2654867256637168,
+      1.3791469194312795,
+      1.3272727272727272
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "iid_saved",
+    "fereg_fit_ms": {
+      "maximum": 758.0,
+      "median": 757.0,
+      "minimum": 757.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 1.4194488525390625,
+      "median": 1.41131591796875,
+      "minimum": 1.4080047607421875
+    },
+    "fereg_total_ms": {
+      "maximum": 758.0,
+      "median": 757.0,
+      "minimum": 757.0
+    },
+    "fereg_wins": 0,
+    "fixest_fit_ms": {
+      "maximum": 457.0,
+      "median": 455.0,
+      "minimum": 451.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 73.00000000000001,
+      "median": 73.00000000000001,
+      "minimum": 73.00000000000001
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 1.83135986328125,
+      "median": 1.8300018310546875,
+      "minimum": 1.8250885009765625
+    },
+    "fixest_total_ms": {
+      "maximum": 530.0,
+      "median": 528.0,
+      "minimum": 524.0
+    },
+    "k": 50,
+    "median_paired_ratio": 1.433712121212121,
+    "native_phases_ms": {
+      "input": 276.901541,
+      "native_to_precommit": 419.5877499999999,
+      "preflight": 0.49229099999999,
+      "total_to_precommit": 697.149583,
+      "wrapper_store_cleanup": 59.85041700000004
+    },
+    "paired_ratios": [
+      1.4283018867924528,
+      1.433712121212121,
+      1.4465648854961832
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "robust",
+    "fereg_fit_ms": {
+      "maximum": 196.0,
+      "median": 194.0,
+      "minimum": 192.0
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 0.504150390625,
+      "median": 0.3896026611328125,
+      "minimum": 0.381744384765625
+    },
+    "fereg_total_ms": {
+      "maximum": 196.0,
+      "median": 194.0,
+      "minimum": 192.0
+    },
+    "fereg_wins": 0,
+    "fixest_fit_ms": {
+      "maximum": 178.0,
+      "median": 165.0,
+      "minimum": 162.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 0.596588134765625,
+      "median": 0.5963287353515625,
+      "minimum": 0.5240631103515625
+    },
+    "fixest_total_ms": {
+      "maximum": 178.0,
+      "median": 165.0,
+      "minimum": 162.0
+    },
+    "k": 10,
+    "median_paired_ratio": 1.1757575757575758,
+    "native_phases_ms": {
+      "input": 81.296875,
+      "native_to_precommit": 100.477542,
+      "preflight": 0.16487500000000002,
+      "total_to_precommit": 181.5065,
+      "wrapper_store_cleanup": 12.16408300000002
+    },
+    "paired_ratios": [
+      1.101123595505618,
+      1.1757575757575758,
+      1.1851851851851851
+    ],
+    "pairs": 3
+  },
+  {
+    "case": "robust",
+    "fereg_fit_ms": {
+      "maximum": 721.0,
+      "median": 709.0000000000001,
+      "minimum": 677.9999999999999
+    },
+    "fereg_postfit_output_ms": {
+      "maximum": 0.0,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fereg_sampled_rss_gib": {
+      "maximum": 1.4228057861328125,
+      "median": 1.3963623046875,
+      "minimum": 1.3946075439453125
+    },
+    "fereg_total_ms": {
+      "maximum": 721.0,
+      "median": 709.0000000000001,
+      "minimum": 677.9999999999999
+    },
+    "fereg_wins": 3,
+    "fixest_fit_ms": {
+      "maximum": 911.0,
+      "median": 906.0,
+      "minimum": 894.0
+    },
+    "fixest_postfit_output_ms": {
+      "maximum": 1.0000000000000009,
+      "median": 0.0,
+      "minimum": 0.0
+    },
+    "fixest_sampled_rss_gib": {
+      "maximum": 2.1898193359375,
+      "median": 2.18798828125,
+      "minimum": 2.186065673828125
+    },
+    "fixest_total_ms": {
+      "maximum": 911.0,
+      "median": 906.0,
+      "minimum": 895.0
+    },
+    "k": 50,
+    "median_paired_ratio": 0.778265642151482,
+    "native_phases_ms": {
+      "input": 288.72900000000004,
+      "native_to_precommit": 381.153208,
+      "preflight": 0.399541,
+      "total_to_precommit": 672.326,
+      "wrapper_store_cleanup": 36.67400000000009
+    },
+    "paired_ratios": [
+      0.7958057395143487,
+      0.778265642151482,
+      0.7575418994413406
+    ],
+    "pairs": 3
+  }
+]

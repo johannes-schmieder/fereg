@@ -10,6 +10,29 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## One-FE inference and output breadth — 2026-09-19
+
+The [local breadth comparison](benchmarks/reports/development/one-fe-inference-output-breadth-2026-09-19/README.md)
+times unchanged source `82e23357` against pinned fixest 0.14.2 for ten request
+types at 983,040 rows, K=10/50 and sixteen native threads. All 120 primary calls,
+28 explicit-dummy oracle calls and twelve native phase traces pass. Source,
+artifact, input, sample, full b/V, DoF and requested-output evidence is archived.
+
+At K=10, fereg/fixest medians are 208/189 ms for clustering at the FE level,
+254/268 ms for two crossing clusters, and 291/220 ms for IID plus a saved FE.
+At K=50 the same cells are 662/975, 748/1312 and 757/528 ms. The full saved FE,
+residual, xb and xbd bundle takes 368/226 and 928/538 ms. Wide robust/clustered
+fits win here; narrow one-way inference and saved IID remain clear gaps.
+
+The loading/RHS pipeline's public guard currently excludes robust, clustered
+and saved-FE requests. Saved calls also choose categorical preparation and
+retain initial FE products for all RHS columns; traced K=50 initial absorption
+rises from 37 to 207 ms. Suggested next work is certified one-FE final-target
+saved recovery, then carrying owned loading/RHS into these fit entry points,
+topology/inference pass reuse and output/prediction pass reduction. Guards for
+weights, changed samples, memory and multiple/slope FEs remain authoritative.
+No estimator changes, installed-package replacement or qualification occurred.
+
 ## One-FE optimization implementation — 2026-09-19
 
 **The owner-approved local Mac endpoint is achieved.** The
