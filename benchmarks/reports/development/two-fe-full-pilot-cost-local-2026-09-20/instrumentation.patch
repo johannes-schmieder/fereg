@@ -1,0 +1,176 @@
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -8937,9 +8937,14 @@
+     // weak weighted cuts can be hidden by well-connected unweighted topology.
+     let weights = validate_weights(weights, values.nrows())?;
+     let mut reservation = SystemWorkspaceReservation;
+-    let mut graph = TwoFePcgWorkspace::new(design, 3, &mut reservation)?;
++    let width = values.ncols();
++    let full = (3..=8).contains(&width);
++    let stride = if full { width } else { 3 };
++    let mut graph = TwoFePcgWorkspace::new(design, stride, &mut reservation)?;
+     let peak = SolverWorkspacePeak::from_bytes(graph.capacity_elements() as u128 * 8)?;
+-    let contraction = schur_probe_reusing(design, weights, values, &mut graph, 3)?;
++    let contraction = if full {
++        schur_probe_fullwidth_cost(design, weights, values, &mut graph, stride)?
++    } else { schur_probe_reusing(design, weights, values, &mut graph, stride)? };
+     Ok((contraction, peak))
+ }
+ 
+@@ -9072,6 +9077,156 @@
+         square = next;
+     }
+     Ok((0..3)
++        .map(|rhs| {
++            if initial[rhs] == 0.0 {
++                0.0
++            } else {
++                (square[rhs] / initial[rhs]).sqrt()
++            }
++        })
++        .fold(0.0, f64::max))
++}
++
++fn schur_probe_fullwidth_cost(
++    design: &BorrowedInterceptFeDesign<'_>,
++    weights: ValidatedWeights<'_>,
++    values: &DenseMatrix,
++    graph: &mut TwoFePcgWorkspace,
++    stride: usize,
++) -> Result<f64> {
++    if design.effects().len() != 2
++        || design.nobs() != values.nrows()
++        || values.ncols() < 3
++        || stride < 3
++        || graph.left_rhs.len() != graph.left_weights.len().saturating_mul(stride)
++        || graph.residual.len() != graph.right_weights.len().saturating_mul(stride)
++    {
++        return Err(invalid_argument(
++            "Schur probe workspace dimensions are inconsistent",
++        ));
++    }
++    let rhs_count = values.ncols();
++    let selected = [0, 1, rhs_count / 2];
++    let mut discarded = 0_u8;
++    graph.solution.fill(0.0);
++    // A previous failed full-width attempt may leave nonfinite inactive lanes.
++    // Serial application validates the whole operator bank, including its tail.
++    graph.operator.fill(0.0);
++    let left = &design.effects()[graph.left_effect];
++    let right = &design.effects()[graph.right_effect];
++    let all_columns = [0, 1, 2, 3, 4, 5, 6, 7];
++    let columns = &all_columns[..rhs_count];
++    graph
++        .left_rhs
++        .par_chunks_mut(stride)
++        .zip(graph.left_weights.par_iter_mut())
++        .enumerate()
++        .try_for_each(|(level, (sum, total))| -> Result<()> {
++            sum[..rhs_count].fill(0.0);
++            *total = 0.0;
++            for &row in left.level_index().checked_members(level)? {
++                let weight = weights.normalized(row);
++                *total += weight;
++                for (rhs, &column) in columns.iter().enumerate() {
++                    sum[rhs] += weight * values[(row, column)];
++                }
++            }
++            for value in &mut sum[..rhs_count] {
++                *value /= *total;
++            }
++            Ok(())
++        })?;
++    let left_rhs = &graph.left_rhs;
++    graph
++        .residual
++        .par_chunks_mut(stride)
++        .zip(graph.right_weights.par_iter_mut())
++        .enumerate()
++        .try_for_each(|(level, (sum, total))| -> Result<()> {
++            let members = right.level_index().checked_members(level)?;
++            sum[..rhs_count].fill(0.0);
++            *total = 0.0;
++            for &row in members {
++                let weight = weights.normalized(row);
++                *total += weight;
++                for (rhs, &column) in columns.iter().enumerate() {
++                    sum[rhs] += weight * values[(row, column)];
++                }
++            }
++            for &row in members {
++                let weight = weights.normalized(row);
++                let a = left.codes()[row] as usize;
++                for rhs in 0..rhs_count {
++                    sum[rhs] -= weight * left_rhs[a * stride + rhs];
++                }
++            }
++            Ok(())
++        })?;
++    let mut square = [0.0; 8];
++    for level in 0..right.n_levels() {
++        for rhs in 0..rhs_count {
++            let i = level * stride + rhs;
++            graph.direction[i] = graph.residual[i] / graph.right_weights[level];
++            square[rhs] = graph.residual[i].mul_add(graph.direction[i], square[rhs]);
++        }
++    }
++    let initial = square;
++    if initial.iter().any(|v| !v.is_finite() || *v < 0.0) {
++        return Ok(f64::INFINITY);
++    }
++    for _ in 0..OLS_SCHUR_PROBE_ITERATIONS {
++        graph.apply_schur(design, weights, rhs_count, stride)?;
++        let mut projection = [0.0; 8];
++        for level in 0..right.n_levels() {
++            for rhs in 0..rhs_count {
++                let i = level * stride + rhs;
++                projection[rhs] = graph.direction[i].mul_add(graph.operator[i], projection[rhs]);
++            }
++        }
++        let mut step = [0.0; 8];
++        for rhs in 0..rhs_count {
++            if square[rhs] <= initial[rhs] * 1e-24 || square[rhs] == 0.0 {
++                continue;
++            }
++            if !projection[rhs].is_finite() || projection[rhs] <= 0.0 {
++                if selected.contains(&rhs) { return Ok(f64::INFINITY); }
++                discarded |= 1 << rhs;
++                continue;
++            }
++            step[rhs] = square[rhs] / projection[rhs];
++        }
++        let mut next = [0.0; 8];
++        for level in 0..right.n_levels() {
++            for rhs in 0..rhs_count {
++                let i = level * stride + rhs;
++                graph.solution[i] = step[rhs].mul_add(graph.direction[i], graph.solution[i]);
++                graph.residual[i] = (-step[rhs]).mul_add(graph.operator[i], graph.residual[i]);
++                next[rhs] = graph.residual[i]
++                    .mul_add(graph.residual[i] / graph.right_weights[level], next[rhs]);
++            }
++        }
++        for rhs in 0..rhs_count {
++            if !next[rhs].is_finite() || next[rhs] < 0.0 {
++                return Ok(f64::INFINITY);
++            }
++        }
++        for level in 0..right.n_levels() {
++            for rhs in 0..rhs_count {
++                let i = level * stride + rhs;
++                graph.direction[i] = if step[rhs] == 0.0 {
++                    0.0
++                } else {
++                    graph.residual[i] / graph.right_weights[level]
++                        + next[rhs] / square[rhs] * graph.direction[i]
++                };
++            }
++        }
++        square = next;
++    }
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
++        eprintln!("FEREG_PHASE|full_pilot_cost|width={rhs_count}|discarded_nonselected_mask={discarded}");
++    }
++    Ok(selected.into_iter()
+         .map(|rhs| {
+             if initial[rhs] == 0.0 {
+                 0.0

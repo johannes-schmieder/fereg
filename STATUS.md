@@ -10,6 +10,37 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: useful pilot cost — 2026-09-20
+
+The [full-width pilot cost report](benchmarks/reports/development/two-fe-full-pilot-cost-local-2026-09-20/README.md)
+records sixteen successful diagnostic calls and eight exact native scientific
+and non-timing solver pairs, including full-precision contraction. No native
+allocation peak increases. Production remains `3fa869fa`: the isolated
+`fullpilotcost` artifact advances every narrow RHS but still discards its state.
+Its one-file overlay replays exactly; the other 515 files and original shared
+three-column function are unchanged. Plugin
+`c9f1837fa142cc05ad9e9902b6af4b70f7577a2e4a36fe37201f58fa93665e5a`
+passes the ABI check. All processes have finished.
+
+Full-width pilot costs are 8.257/9.378/9.749 ms for weighted degree-six,
+degree-three and unbalanced designs, versus 7.669/6.922/7.283 ms for the old
+three-column pilot. The premium is promising relative to repeated full-solve
+initialization and eight steps, but retained-state speedup is not implemented
+or proven. Shuffled unit K=5 and AW K=6 cost 39.237/46.414 ms versus
+23.120/34.703 ms; their net benefit particularly needs measurement.
+
+Next implement an opaque same-call handoff owning original values, full graph
+and recurrence scalars. Preserve the selected-column admission decision and
+handle unsafe extra-column state via the prior certified solve. Rejected
+probes must return untouched data, release state and record actual peak/cost.
+Count useful steps once within the unchanged former eight-plus-64 allowance;
+certification, current-value norms and fallback remain authoritative. Tests
+must cover near-absorbed columns, weighted cuts, rejection and charged caps
+before benchmarking. The full goal, 111 controls, sixteen fresh holdouts and
+two five-pair final blocks remain active. Raw work remains
+`target/two-fe-broad-20260920`; preserve unrelated dirt. No installed package,
+remote state or qualification changed.
+
 ## Broad two-way OLS milestone: fused reconstruction — 2026-09-20
 
 The [fused reconstruction report](benchmarks/reports/development/two-fe-fused-reconstruction-local-2026-09-20/README.md)

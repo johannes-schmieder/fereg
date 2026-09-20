@@ -1,0 +1,114 @@
+[
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_diagnostic": 220917744,
+    "peak_parent": 220917744,
+    "run": "full-pilot-cost-shuffled-aw-iid-n983040-k6-s31415927-shuffle1-t16-r1-fullpilotcost",
+    "solver_nontiming_exact": true
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_diagnostic": 192275796,
+    "peak_parent": 192275796,
+    "run": "full-pilot-cost-shuffled-unit-iid-n983040-k5-s31415927-shuffle1-t16-r1-fullpilotcost",
+    "solver_nontiming_exact": true
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_diagnostic": 62457672,
+    "peak_parent": 62457672,
+    "run": "full-pilot-cost-strong_d3-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-fullpilotcost",
+    "solver_nontiming_exact": true
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_diagnostic": 60491580,
+    "peak_parent": 60491580,
+    "run": "full-pilot-cost-strong_d3-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-fullpilotcost",
+    "solver_nontiming_exact": true
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_diagnostic": 52995912,
+    "peak_parent": 52995912,
+    "run": "full-pilot-cost-strong_d6-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-fullpilotcost",
+    "solver_nontiming_exact": true
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_diagnostic": 51029820,
+    "peak_parent": 51029820,
+    "run": "full-pilot-cost-strong_d6-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-fullpilotcost",
+    "solver_nontiming_exact": true
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_diagnostic": 62170952,
+    "peak_parent": 62170952,
+    "run": "full-pilot-cost-unbalanced-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-fullpilotcost",
+    "solver_nontiming_exact": true
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_diagnostic": 60204860,
+    "peak_parent": 60204860,
+    "run": "full-pilot-cost-unbalanced-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-fullpilotcost",
+    "solver_nontiming_exact": true
+  }
+]
