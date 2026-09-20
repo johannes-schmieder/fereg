@@ -1050,20 +1050,11 @@ fn certify_strided_score_gram<R: PreparedInferenceReservation>(
             let remainder = nrows % chunks;
             let start = chunk * rows_per_chunk + chunk.min(remainder);
             let end = start + rows_per_chunk + usize::from(chunk < remainder);
-            for row in start..end {
-                let values =
-                    &storage.within.as_slice()[row * matrix_columns..(row + 1) * matrix_columns];
-                for left in 0..rank {
-                    let left_value =
-                        values[storage.generated_columns[left] + 1] * storage.reference_norms[left];
-                    let scaled_left = multiplier * left_value;
-                    for right in left..rank {
-                        let right_value = values[storage.generated_columns[right] + 1]
-                            * storage.reference_norms[right];
-                        partial[left * rank + right] += scaled_left * right_value;
-                    }
-                }
-            }
+            accumulate_strided_score_gram_rows(
+                &storage.within.as_slice()[start * matrix_columns..end * matrix_columns],
+                matrix_columns, &storage.generated_columns, &storage.reference_norms,
+                multiplier, partial,
+            );
             if partial.iter().all(|value| value.is_finite()) {
                 Ok(())
             } else {
@@ -1109,6 +1100,50 @@ fn certify_strided_score_gram<R: PreparedInferenceReservation>(
         }
     }
     Ok(gram)
+}
+
+fn accumulate_strided_score_gram_rows(
+    rows: &[f64],
+    matrix_columns: usize,
+    generated_columns: &[usize],
+    reference_norms: &[f64],
+    multiplier: f64,
+    partial: &mut [f64],
+) {
+    let rank = generated_columns.len();
+    let mut reconstructed = [0.0_f64; 64];
+    for values in rows.chunks_exact(matrix_columns) {
+        // Each selected value has one fixed reconstruction scale. Reuse
+        // that product across the Gram row without changing any entry's
+        // observation order, multiplication order, or reduction tree.
+        if (8..=reconstructed.len()).contains(&rank) {
+            let reconstructed = &mut reconstructed[..rank];
+            for ((value, &generated), &norm) in reconstructed.iter_mut()
+                .zip(generated_columns).zip(reference_norms)
+            {
+                *value = values[generated + 1] * norm;
+            }
+            for left in 0..rank {
+                let scaled_left = multiplier * reconstructed[left];
+                for (destination, &right_value) in partial[left * rank + left..(left + 1) * rank]
+                    .iter_mut().zip(&reconstructed[left..])
+                {
+                    *destination += scaled_left * right_value;
+                }
+            }
+            continue;
+        }
+        for left in 0..rank {
+            let left_value =
+                values[generated_columns[left] + 1] * reference_norms[left];
+            let scaled_left = multiplier * left_value;
+            for right in left..rank {
+                let right_value = values[generated_columns[right] + 1]
+                    * reference_norms[right];
+                partial[left * rank + right] += scaled_left * right_value;
+            }
+        }
+    }
 }
 
 fn certify_dense_score_gram<R: PreparedInferenceReservation>(
@@ -1358,4 +1393,41 @@ fn invalid_argument(message: impl Into<String>) -> FeregError {
 
 fn invalid_data(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::InvalidData, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strided_gram_row_cache_preserves_products_and_nonfinite_rejection() {
+        for rank in [1, 7, 8, 10, 50, 64, 65] {
+            let columns = 2 * rank + 1;
+            let generated: Vec<_> = (0..rank).rev().map(|column| 2 * column).collect();
+            let norms: Vec<_> = (0..rank).map(|column| 10.0_f64.powi(column as i32 % 9 - 4)).collect();
+            let mut rows: Vec<_> = (0..257 * columns)
+                .map(|index| ((index * 37 % 101) as f64 - 50.0) / 17.0).collect();
+            for multiplier in [1.0, 0.17, 3.7, 1e-120, 1e120] {
+                let mut expected = vec![0.0; rank * rank];
+                for values in rows.chunks_exact(columns) {
+                    for left in 0..rank {
+                        let scaled = multiplier * (values[generated[left] + 1] * norms[left]);
+                        for right in left..rank {
+                            expected[left * rank + right] += scaled * (values[generated[right] + 1] * norms[right]);
+                        }
+                    }
+                }
+                let mut actual = vec![0.0; rank * rank];
+                accumulate_strided_score_gram_rows(&rows, columns, &generated, &norms, multiplier, &mut actual);
+                assert_eq!(actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                    expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>(), "rank={rank}, multiplier={multiplier}");
+            }
+            for nonfinite in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, f64::MAX] {
+                rows[generated[0] + 1] = nonfinite;
+                let mut partial = vec![0.0; rank * rank];
+                accumulate_strided_score_gram_rows(&rows, columns, &generated, &norms, 1.0, &mut partial);
+                assert!(partial.iter().any(|value| !value.is_finite()));
+            }
+        }
+    }
 }

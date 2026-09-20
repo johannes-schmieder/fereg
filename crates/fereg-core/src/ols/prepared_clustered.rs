@@ -17,7 +17,6 @@ use rayon::prelude::*;
 use super::prepared_clustered_view::PreparedOlsClusteredView;
 #[cfg(test)]
 use super::prepared_fit::fit_prepared_ols_coefficients_view_map;
-use super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference;
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
@@ -544,9 +543,18 @@ pub fn fit_prepared_ols_clustered_map(
     prepared: &PreparedOlsClusteredData,
     config: PreparedOlsClusteredConfig,
 ) -> Result<CertifiedPreparedOlsClustered> {
+    fit_prepared_ols_clustered_map_with_loaded_moments(prepared, config, None)
+}
+
+/// Consume optional same-call numeric rows after authoritative sample validation.
+pub fn fit_prepared_ols_clustered_map_with_loaded_moments(
+    prepared: &PreparedOlsClusteredData,
+    config: PreparedOlsClusteredConfig,
+    rows: Option<super::LoadedOlsRows>,
+) -> Result<CertifiedPreparedOlsClustered> {
     ThreadTeam::new(config.fit.execution.threads).install(|| {
         let mut reservation = SystemPreparedInferenceReservation;
-        fit_with_reservation(prepared, config, &mut reservation)
+        fit_with_loaded_reservation(prepared, config, &mut reservation, rows)
     })?
 }
 
@@ -556,9 +564,18 @@ pub fn fit_prepared_categorical_ols_clustered_map(
     prepared: &PreparedCategoricalOlsClusteredData,
     config: PreparedOlsClusteredConfig,
 ) -> Result<CertifiedPreparedCategoricalOlsClustered> {
+    fit_prepared_categorical_ols_clustered_map_with_loaded_moments(prepared, config, None)
+}
+
+/// Consume optional same-call numeric rows after authoritative sample validation.
+pub fn fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
+    prepared: &PreparedCategoricalOlsClusteredData,
+    config: PreparedOlsClusteredConfig,
+    rows: Option<super::LoadedOlsRows>,
+) -> Result<CertifiedPreparedCategoricalOlsClustered> {
     let components = ThreadTeam::new(config.fit.execution.threads).install(|| {
         let mut reservation = SystemPreparedInferenceReservation;
-        fit_clustered_view_with_reservation(prepared, config, &mut reservation)
+        fit_clustered_view_with_reservation(prepared, config, &mut reservation, rows)
     })??;
     Ok(CertifiedPreparedCategoricalOlsClustered {
         fit: components.fit,
@@ -573,12 +590,22 @@ pub fn fit_prepared_categorical_ols_clustered_map(
     })
 }
 
+#[cfg(test)]
 fn fit_with_reservation<R: PreparedInferenceReservation>(
     prepared: &PreparedOlsClusteredData,
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
 ) -> Result<CertifiedPreparedOlsClustered> {
-    let components = fit_clustered_view_with_reservation(prepared, config, reservation)?;
+    fit_with_loaded_reservation(prepared, config, reservation, None)
+}
+
+fn fit_with_loaded_reservation<R: PreparedInferenceReservation>(
+    prepared: &PreparedOlsClusteredData,
+    config: PreparedOlsClusteredConfig,
+    reservation: &mut R,
+    rows: Option<super::LoadedOlsRows>,
+) -> Result<CertifiedPreparedOlsClustered> {
+    let components = fit_clustered_view_with_reservation(prepared, config, reservation, rows)?;
     Ok(CertifiedPreparedOlsClustered {
         fit: components.fit,
         absorbed_dof: components.absorbed_dof,
@@ -599,11 +626,12 @@ fn fit_clustered_view_with_reservation<
     prepared: &P,
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
+    rows: Option<super::LoadedOlsRows>,
 ) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
 {
     validate_config(prepared, config)?;
     let (fit, score_scratch) =
-        fit_prepared_ols_coefficients_view_map_for_inference(prepared.clustered_ols(), config.fit)?;
+        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared.clustered_ols(), config.fit, rows)?;
     compose_clustered_view(
         prepared,
         fit,

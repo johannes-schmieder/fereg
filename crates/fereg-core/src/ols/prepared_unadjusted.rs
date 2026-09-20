@@ -474,9 +474,21 @@ pub fn fit_prepared_categorical_ols_unadjusted_map(
     prepared: &PreparedCategoricalOlsData,
     config: PreparedOlsUnadjustedConfig,
 ) -> Result<CertifiedPreparedCategoricalOlsUnadjusted> {
+    fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(prepared, config, None)
+}
+
+/// Consume optional same-call numeric rows after authoritative sample validation.
+pub fn fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
+    prepared: &PreparedCategoricalOlsData,
+    config: PreparedOlsUnadjustedConfig,
+    rows: Option<super::LoadedOlsRows>,
+) -> Result<CertifiedPreparedCategoricalOlsUnadjusted> {
     validate_config(config)?;
     reject_probability_iid(prepared)?;
-    let fit = fit_prepared_categorical_ols_coefficients_map(prepared, config.fit)?;
+    let fit = match rows {
+        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(prepared, config.fit, rows)?,
+        None => fit_prepared_categorical_ols_coefficients_map(prepared, config.fit)?,
+    };
     let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
     let mut reservation = SystemInferenceReservation;

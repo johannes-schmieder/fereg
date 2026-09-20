@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-19
+**Last updated:** 2026-09-20
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,46 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
+
+## One-FE breadth optimization — 2026-09-20
+
+The [development milestone](benchmarks/reports/development/one-fe-breadth-improvements-local-2026-09-20/README.md)
+broadens owned-input/RHS/moment reuse to all OLS inference, reuses FE codes when
+adding clusters, accelerates certified one-FE saved output and public numeric
+prediction, and reuses strided score products. The owner goal and predeclared
+endpoint in `benchmarks/one_fe_breadth/acceptance-20260920.json` remain active;
+the goal is not achieved.
+
+Three-pair K=50 native/fixest medians are 509/867 ms for robust, 487/921 ms
+for FE clustering, and 580/1308 ms for two crossing clusters (`scorecache`).
+The later `savedprep` artifact records saved IID at 190/211 ms for K=10 and
+461/542 ms for K=50. Full outputs remain the bottleneck: 240/224 and 524/532 ms.
+Historical measurements retain their actual source and artifact identities.
+
+The committed code is the `breadthmilestone` source snapshot, plugin
+`f413c53e847d3a3f09794ee247c635257f1728285a8595d2040347b34ee9c246`, including the
+reviewed restoration of the generic pruning mask's early release. All 511 source
+files and production overlays were verified. Four Stata fixtures and the focused
+construction-allocation test pass on this final artifact; eight paired follow-up
+checks pass against `savedprep`. The complete report archives 288 development
+calls. Earlier native checks cover 72 topology tests, 128 preparation scenarios,
+weighted strided arithmetic, loaded-row fallbacks, exact budgets and fast/low
+inference equivalence. All eleven three-pair size/thread/group-layout controls
+against `normonly` pass on `savedprep`: geomean 0.995912, maximum 1.022222.
+
+Source inspection corrected the prior explanation of saved-FE cost: automatic
+one-FE absorption already omitted initial coefficient products, but the request
+flag blocked fresh-projection and descriptor shortcuts. A checked output batch
+was removed for negligible gain. Direct Mac stores failed the actual Stata
+oracle despite passing the mock ABI check and were rejected. Their local failed
+artifacts remain under `target/one-fe-breadth-optimization-20260920/`.
+
+Next: reduce categorical saved-FE preparation/recovery passes and extend the
+independent outcome-statistics overlap where eligible. Narrow full outputs and
+comfortable margins in the narrow ordinary/inference cells remain open. The
+final two five-pair blocks and complete final-source regression blocks have not
+run. No installed-package replacement, push, release or cross-platform
+qualification occurred.
 
 ## One-FE inference and output breadth — 2026-09-19
 

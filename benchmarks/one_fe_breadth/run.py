@@ -216,11 +216,18 @@ def main(a):
     manifest = json.loads((REPO / "benchmarks/systematic/manifest.json").read_text())
     manifest["measurement"].update(command_timeout_seconds=120, rss_interval_seconds=.05)
     (root / "work/refs").mkdir(parents=True, exist_ok=True)
-    source = ARTIFACTS / "normonly"
-    native_identity = json.loads((ARTIFACTS / "identity-normonly.json").read_text())
-    assert sha(source / "dist/fereg_macos.plugin") == native_identity["plugin"]
-    identity = dict(native=native_identity, fixest_archive_sha256=sha(DATA / "fixest.tar.gz"),
-                    controller={p.name: sha(p) for p in folder.iterdir() if p.is_file()}, harness_sha256=sha(Path(__file__)))
+    identities = {}
+    for variant in a.variants:
+        if variant == "fixest":
+            continue
+        artifact_root, name = (ARTIFACTS, "normonly") if variant == "fereg" else (a.artifacts.resolve(), variant)
+        source = artifact_root / name
+        native_identity = json.loads((artifact_root / f"identity-{name}.json").read_text())
+        assert sha(source / "dist/fereg_macos.plugin") == native_identity["plugin"]
+        identities[variant] = (source, native_identity)
+    controller_hashes = {p.name: sha(p) for p in folder.iterdir() if p.is_file()}
+    shared_identity = dict(fixest_archive_sha256=sha(DATA / "fixest.tar.gz"), controller=controller_hashes,
+                           harness_sha256=sha(Path(__file__)), audit_sha256=sha(REPO / "benchmarks/one_fe_profile/run.py"))
     checks = []
     for n, k in ([(360, 10)] if a.part == "smoke" else [(983040, k) for k in a.widths]):
         data, warm = dataset(root, n, k), dataset(root, 7680, k)
@@ -232,21 +239,33 @@ def main(a):
                         fit_options="residuals(out_resid)" if mode == "all" else "")
             os.environ["ONE_FE_BREADTH_OUTPUTS"] = mode
             for rep in range(1, a.repeats+1):
-                order = ["fereg"] if a.trace else (["fereg", "fixest"] if rep % 2 else ["fixest", "fereg"])
+                rotation = (rep-1) % len(a.variants)
+                order = a.variants[rotation:] + a.variants[:rotation]
+                if a.trace:
+                    order = [variant for variant in order if variant != "fixest"]
                 outputs = {}
-                for arm in order:
-                    output = root / "runs" / f"{a.label}-{case}-n{n}-k{k}-r{rep}-{arm}"
+                for variant in order:
+                    arm = "fixest" if variant == "fixest" else "fereg"
+                    source, native_identity = identities.get(variant, (None, None))
+                    identity = dict(shared_identity, native=native_identity)
+                    output = root / "runs" / f"{a.label}-{case}-n{n}-k{k}-r{rep}-{variant}"
                     result = measure(root, cell, arm, "warm", data, warm, output, manifest,
                                      identity=identity, source=source, trace=a.trace)
                     print(output.name, result["status"], result["seconds"], flush=True)
                     assert result["status"] == "pass", output
-                    outputs[arm] = output
+                    outputs[variant] = output
                     if a.part == "smoke":
                         checks.append(dict(run=output.name, oracle=oracle(data, output, cell)))
                 if not a.trace:
-                    checks.append(dict(case=case, n=n, k=k, rep=rep,
-                                       science=profile.compare(outputs["fereg"], outputs["fixest"]),
-                                       outputs=compare_outputs(outputs["fereg"], outputs["fixest"], n, mode)))
+                    for variant in a.variants[1:]:
+                        reference, actual = outputs[a.variants[0]], outputs[variant]
+                        comparison = profile.compare(reference, actual, exact_native=False)
+                        if variant != "fixest" and a.variants[0] != "fixest":
+                            for name in ("fereg_status", "fereg_dof"):
+                                np.testing.assert_array_equal(pd.read_csv(reference / (name+".csv")),
+                                                              pd.read_csv(actual / (name+".csv")))
+                        checks.append(dict(case=case, n=n, k=k, rep=rep, variant=variant,
+                                           science=comparison, outputs=compare_outputs(reference, actual, n, mode)))
                 (root / (a.label + "-progress.json")).write_text(json.dumps(checks, indent=2)+"\n")
     (root / (a.label + "-complete.json")).write_text(json.dumps(dict(status="pass", checks=checks), indent=2)+"\n")
     print("ONE_FE_BREADTH_COMPLETE", a.label, flush=True)
@@ -261,4 +280,6 @@ if __name__ == "__main__":
     p.add_argument("--widths", type=int, nargs="+", choices=(10, 50), default=[10, 50])
     p.add_argument("--repeats", type=int, default=3)
     p.add_argument("--trace", action="store_true")
+    p.add_argument("--variants", nargs="+", default=["fereg", "fixest"])
+    p.add_argument("--artifacts", type=Path, default=ARTIFACTS)
     main(p.parse_args())

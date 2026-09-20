@@ -70,7 +70,7 @@ pub(crate) fn try_read_with_rhs(
     missing: &mut [&mut [bool]],
     team: ThreadTeam,
     memory: &mut InputMemory,
-    mut rhs: Option<&mut Vec<f64>>,
+    mut rhs: Option<(&mut Vec<f64>, usize)>,
 ) -> Result<bool> {
     let min_width = if rhs.is_some() { 8 } else { 16 };
     if !spi.supports_numeric_rows() || team.threads() <= 1
@@ -86,7 +86,7 @@ pub(crate) fn try_read_with_rhs(
     {
         return Err(FeregError::new(ErrorCode::InvalidArgument, "numeric pipeline has an invalid shape"));
     }
-    if rhs.as_ref().is_some_and(|buffer| !buffer.is_empty() || rows.checked_mul(width).is_none_or(|n| buffer.capacity() < n)) {
+    if rhs.as_ref().is_some_and(|(buffer, rhs_width)| *rhs_width < 2 || *rhs_width > width || !buffer.is_empty() || rows.checked_mul(*rhs_width).is_none_or(|n| buffer.capacity() < n)) {
         return Err(FeregError::new(ErrorCode::InvalidArgument, "numeric RHS reservation has an invalid shape"));
     }
     read_tiles(spi, positions, rows, team, memory, |start, count, values, boundary| {
@@ -99,14 +99,8 @@ pub(crate) fn try_read_with_rhs(
                         missing_flags[start + offset] = value >= boundary;
                     }
                 }
-                if let Some(rhs) = rhs.as_mut() {
-                    // This admitted recipe has outcome and continuous sources in
-                    // input order, followed by the one FE source. The original
-                    // FE values already reached their authoritative column.
-                    for row in values[..count * width].chunks_exact_mut(width) {
-                        row[width - 1] = 1.0;
-                    }
-                    rhs.extend_from_slice(&values[..count * width]);
+                if let Some((rhs, rhs_width)) = rhs.as_mut() {
+                    append_rhs(rhs, *rhs_width, width, count, values);
                 }
     })
 }
@@ -121,7 +115,7 @@ pub(crate) fn try_read_reserved(
     missing: &mut [&mut Vec<bool>],
     team: ThreadTeam,
     memory: &mut InputMemory,
-    mut rhs: Option<&mut Vec<f64>>,
+    mut rhs: Option<(&mut Vec<f64>, usize)>,
 ) -> Result<bool> {
     let width = positions.len();
     let min_width = if rhs.is_some() { 8 } else { 16 };
@@ -131,8 +125,8 @@ pub(crate) fn try_read_reserved(
     if columns.len() != width || missing.len() != width
         || columns.iter().zip(missing.iter()).any(|(v, m)|
             !v.is_empty() || !m.is_empty() || v.capacity() < rows || m.capacity() < rows)
-        || rhs.as_ref().is_some_and(|v| !v.is_empty()
-            || rows.checked_mul(width).is_none_or(|n| v.capacity() < n))
+        || rhs.as_ref().is_some_and(|(v, rhs_width)| *rhs_width < 2 || *rhs_width > width || !v.is_empty()
+            || rows.checked_mul(*rhs_width).is_none_or(|n| v.capacity() < n))
     { return Err(FeregError::new(ErrorCode::InvalidArgument, "reserved numeric pipeline has an invalid shape")); }
     read_tiles(spi, positions, rows, team, memory, |start, count, values, boundary| {
         for (column, (destination, flags)) in columns.iter_mut().zip(missing.iter_mut()).enumerate() {
@@ -144,11 +138,23 @@ pub(crate) fn try_read_reserved(
                 flags.push(value >= boundary);
             }
         }
-        if let Some(rhs) = rhs.as_mut() {
-            for row in values[..count * width].chunks_exact_mut(width) { row[width - 1] = 1.0; }
-            rhs.extend_from_slice(&values[..count * width]);
+        if let Some((rhs, rhs_width)) = rhs.as_mut() {
+            append_rhs(rhs, *rhs_width, width, count, values);
         }
     })
+}
+
+// The admitted recipe is outcome, ordered continuous sources, then a constant.
+// FE and extra cluster sources have already reached their authoritative columns.
+// Compact within the owned tile, requiring no additional row-scale allocation.
+fn append_rhs(rhs: &mut Vec<f64>, rhs_width: usize, width: usize, count: usize, values: &mut [f64]) {
+    for row in 0..count {
+        if rhs_width < width {
+            values.copy_within(row * width..row * width + rhs_width - 1, row * rhs_width);
+        }
+        values[(row + 1) * rhs_width - 1] = 1.0;
+    }
+    rhs.extend_from_slice(&values[..count * rhs_width]);
 }
 
 fn read_tiles(
@@ -309,28 +315,33 @@ mod tests {
     #[test]
     fn numeric_pipeline_constructs_owned_rhs_without_changing_fe_or_missing() {
         for width in [9, 12, 52, 64] {
-            let rows = 16387;
-            let positions: Vec<u32> = (1..=width as u32).rev().collect();
-            let mut values = vec![vec![0.0; rows]; width];
-            let mut flags = vec![vec![false; rows]; width];
-            let mut columns: Vec<_> = values.iter_mut().map(Vec::as_mut_slice).collect();
-            let mut missing: Vec<_> = flags.iter_mut().map(Vec::as_mut_slice).collect();
-            let mut rhs = Vec::with_capacity(rows * width);
-            let capacity = rhs.capacity();
-            let mut input = Input::new();
-            assert!(try_read_with_rhs(&mut input, &positions, &mut columns, &mut missing,
-                ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
-                &mut InputMemory::new(None, (capacity * 8) as u128).unwrap(), Some(&mut rhs)).unwrap());
-            assert_eq!(rhs.capacity(), capacity);
-            assert_eq!(rhs.len(), rows * width);
-            for row in 0..rows {
-                for column in 0..width {
-                    let is_missing = (row + 1) % 197 == 0;
-                    let expected = if is_missing { input.boundary }
-                        else { (row + 1) as f64 + f64::from(positions[column]) * 100000.0 };
-                    assert_eq!(values[column][row], expected);
-                    assert_eq!(flags[column][row], is_missing);
-                    assert_eq!(rhs[row * width + column], if column == width - 1 { 1.0 } else { expected });
+            for extra_sources in [0, 1, 2, 5] {
+                let rhs_width = width - extra_sources;
+                let rows = 16387;
+                let positions: Vec<u32> = (1..=width as u32).rev().collect();
+                let mut values = vec![vec![0.0; rows]; width];
+                let mut flags = vec![vec![false; rows]; width];
+                let mut columns: Vec<_> = values.iter_mut().map(Vec::as_mut_slice).collect();
+                let mut missing: Vec<_> = flags.iter_mut().map(Vec::as_mut_slice).collect();
+                let mut rhs = Vec::with_capacity(rows * rhs_width);
+                let capacity = rhs.capacity();
+                let mut input = Input::new();
+                assert!(try_read_with_rhs(&mut input, &positions, &mut columns, &mut missing,
+                    ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
+                    &mut InputMemory::new(None, (capacity * 8) as u128).unwrap(), Some((&mut rhs, rhs_width))).unwrap());
+                assert_eq!(rhs.capacity(), capacity);
+                assert_eq!(rhs.len(), rows * rhs_width);
+                for row in 0..rows {
+                    for column in 0..width {
+                        let is_missing = (row + 1) % 197 == 0;
+                        let expected = if is_missing { input.boundary }
+                            else { (row + 1) as f64 + f64::from(positions[column]) * 100000.0 };
+                        assert_eq!(values[column][row], expected);
+                        assert_eq!(flags[column][row], is_missing);
+                        if column < rhs_width {
+                            assert_eq!(rhs[row * rhs_width + column], if column == rhs_width - 1 { 1.0 } else { expected });
+                        }
+                    }
                 }
             }
         }
@@ -351,7 +362,7 @@ mod tests {
                 let result = try_read_reserved(&mut input, &positions, rows,
                     &mut values.iter_mut().collect::<Vec<_>>(), &mut flags.iter_mut().collect::<Vec<_>>(),
                     ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
-                    &mut InputMemory::new(None, 0).unwrap(), Some(&mut rhs));
+                    &mut InputMemory::new(None, 0).unwrap(), Some((&mut rhs, width)));
                 if failure == usize::MAX { assert_eq!(result, Ok(true)); }
                 else { assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted); }
                 let initialized = rows.min(failure.saturating_sub(1).saturating_mul(TILE_ROWS));

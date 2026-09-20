@@ -1,0 +1,333 @@
+{
+  "status": "pass",
+  "checks": [
+    {
+      "case": "iid",
+      "k": 10,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "iid",
+      "k": 50,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "robust",
+      "k": 10,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "robust",
+      "k": 50,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "cluster_fe",
+      "k": 10,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "cluster_fe",
+      "k": 50,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "cluster_cross",
+      "k": 10,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "cluster_cross",
+      "k": 50,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "cluster2_cross",
+      "k": 10,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "cluster2_cross",
+      "k": 50,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "cluster2_nested",
+      "k": 10,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "cluster2_nested",
+      "k": 50,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {}
+    },
+    {
+      "case": "iid_saved",
+      "k": 10,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {
+        "max_abs_errors": [
+          0.0
+        ],
+        "names": [
+          "fe"
+        ]
+      }
+    },
+    {
+      "case": "iid_saved",
+      "k": 50,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {
+        "max_abs_errors": [
+          0.0
+        ],
+        "names": [
+          "fe"
+        ]
+      }
+    },
+    {
+      "case": "cluster_fe_saved",
+      "k": 10,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {
+        "max_abs_errors": [
+          0.0
+        ],
+        "names": [
+          "fe"
+        ]
+      }
+    },
+    {
+      "case": "cluster_fe_saved",
+      "k": 50,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {
+        "max_abs_errors": [
+          0.0
+        ],
+        "names": [
+          "fe"
+        ]
+      }
+    },
+    {
+      "case": "cluster2_saved",
+      "k": 10,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {
+        "max_abs_errors": [
+          0.0
+        ],
+        "names": [
+          "fe"
+        ]
+      }
+    },
+    {
+      "case": "cluster2_saved",
+      "k": 50,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {
+        "max_abs_errors": [
+          0.0
+        ],
+        "names": [
+          "fe"
+        ]
+      }
+    },
+    {
+      "case": "iid_outputs",
+      "k": 10,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {
+        "max_abs_errors": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "names": [
+          "fe",
+          "residual",
+          "xb",
+          "xbd"
+        ]
+      }
+    },
+    {
+      "case": "iid_outputs",
+      "k": 50,
+      "science": {
+        "sample_exact": true,
+        "errors": {
+          "coefficients.csv:value": 0.0,
+          "coefficients.csv:se": 0.0,
+          "covariance.csv:value": 0.0
+        }
+      },
+      "outputs": {
+        "max_abs_errors": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "names": [
+          "fe",
+          "residual",
+          "xb",
+          "xbd"
+        ]
+      }
+    }
+  ]
+}

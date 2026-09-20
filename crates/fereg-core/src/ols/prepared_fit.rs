@@ -32,7 +32,8 @@ use super::{PreparedOlsCoefficientStatus, PreparedOlsColumnKind, PreparedOlsData
 pub struct PreparedOlsFitConfig {
     pub absorb: AbsorbConfig,
     /// The one-shot OLS publisher can recover saved effects from the certified
-    /// final target when an accepted Schur solve omits its initial product.
+    /// final target when a direct one-FE or accepted Schur solve omits its
+    /// initial product.
     /// Other weighted-linear callers retain their coefficient requirement.
     pub allow_final_fe_recovery: bool,
     /// Optional tighter final projection for pointwise residual-derived outputs.
@@ -971,6 +972,7 @@ struct FitPerturbations {
     residual_sums_overlap_disabled: bool,
     early_score_disabled: bool,
     raw_residual_overlap_disabled: bool,
+    one_fe_final_recovery_disabled: bool,
 }
 
 /// Fit the currently supported prepared OLS/WLS finite coefficients through
@@ -982,14 +984,14 @@ pub fn fit_prepared_ols_coefficients_map(
     fit_prepared_ols_coefficients_view_map(prepared, config)
 }
 
-pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows(
-    prepared: &PreparedOlsData,
+pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows<P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &P,
     config: PreparedOlsFitConfig,
     rows: LoadedOlsRows,
 ) -> Result<CertifiedPreparedOlsFit> {
     if config.execution.mode != PreparedOlsExecutionMode::Fast {
         drop(rows);
-        return fit_prepared_ols_coefficients_map(prepared, config);
+        return fit_prepared_ols_coefficients_view_map(prepared, config);
     }
     ThreadTeam::new(config.execution.threads).install(|| {
         validate_config(prepared, config)?;
@@ -1465,18 +1467,28 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
     }
 }
 
+#[cfg(test)]
 pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
     P: PreparedOlsFitView + Sync + ?Sized,
 >(
     prepared: &P,
     config: PreparedOlsFitConfig,
 ) -> Result<(CertifiedPreparedOlsFit, Option<PreparedOlsScratch>)> {
+    fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config, None)
+}
+
+pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments<
+    P: PreparedOlsFitView + Sync + ?Sized,
+>(prepared: &P, config: PreparedOlsFitConfig, rows: Option<LoadedOlsRows>)
+    -> Result<(CertifiedPreparedOlsFit, Option<PreparedOlsScratch>)>
+{
     let mut scratch = None;
     let fit = fit_for_inference_with_scratch(
         prepared,
         config,
         MAX_FAST_SCORE_CACHE_BYTES.min(32 * 1024 * 1024),
         Some(&mut scratch),
+        rows,
     )?;
     Ok((fit, scratch))
 }
@@ -1489,7 +1501,7 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_cache_li
     config: PreparedOlsFitConfig,
     max_fast_score_cache_bytes: usize,
 ) -> Result<CertifiedPreparedOlsFit> {
-    fit_for_inference_with_scratch(prepared, config, max_fast_score_cache_bytes, None)
+    fit_for_inference_with_scratch(prepared, config, max_fast_score_cache_bytes, None, None)
 }
 
 fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
@@ -1497,6 +1509,7 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
     config: PreparedOlsFitConfig,
     max_fast_score_cache_bytes: usize,
     retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
+    rows: Option<LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsFit> {
     let team = ThreadTeam::new(config.execution.threads);
     // Inference needs the projected columns again. Prefer a packed cache when
@@ -1507,14 +1520,14 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
     team.install(|| {
         let mut reservation = SystemFitReservation;
         match config.execution.mode {
-            PreparedOlsExecutionMode::Fast => fit_with_controls_internal_mode(
-                prepared,
-                config,
-                &mut reservation,
-                FitPerturbations::default(),
-                retain_fast_score_cache,
-                max_fast_score_cache_bytes,
-            ),
+            PreparedOlsExecutionMode::Fast => {
+                validate_config(prepared, config)?;
+                let frame = LinearSolveFrame::from_prepared_ols(prepared)?;
+                fit_with_controls_internal_mode_with_frame(
+                    prepared, frame, config, &mut reservation, FitPerturbations::default(),
+                    retain_fast_score_cache, max_fast_score_cache_bytes, None, None, rows,
+                )
+            },
             PreparedOlsExecutionMode::Low => fit_with_controls_low_internal(
                 prepared,
                 config,
@@ -2019,6 +2032,7 @@ fn combine_recovered_fe_coefficients<R: FitReservation>(
     Ok(Some(combined))
 }
 
+#[cfg(test)]
 fn fit_with_controls_internal_mode<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     config: PreparedOlsFitConfig,
@@ -2063,6 +2077,19 @@ fn fit_with_controls_internal_mode_with_frame<
     let mut trace = PhaseTrace::new();
     frame.validate_for(prepared)?;
     let weights = frame.weights();
+    let mut config = config;
+    if !perturbations.one_fe_final_recovery_disabled
+        && config.allow_final_fe_recovery && config.absorb.retain_coefficients
+        && config.absorb.solver == FeSolverKind::Auto
+        && config.execution.mode == PreparedOlsExecutionMode::Fast
+        && prepared.fit_has_one_ordinary_intercept_effect()
+    {
+        // Automatic one-partition absorption already omits coefficient
+        // products. Clear the unused request so fresh absorption can use its
+        // direct path; publication keeps the existing certified final-target
+        // recovery and memory admission. Other callers retain their policy.
+        config.absorb.retain_coefficients = false;
+    }
     // Admit retained products before constructing any retained solver session,
     // so its captured budget covers the later residual call as well. The
     // execution parent excludes FE storage; sequential solver calls share the
@@ -2072,7 +2099,6 @@ fn fit_with_controls_internal_mode_with_frame<
     } else {
         0
     };
-    let mut config = config;
     if let Some(budget) = config.absorb.solver_memory_budget.as_mut() {
         budget.execution_bytes = budget
             .execution_bytes
@@ -8521,7 +8547,7 @@ mod tests {
         regressors: &[Vec<f64>],
         effects: &[Vec<f64>],
     ) -> crate::PreparedCategoricalOlsData {
-        assert!(matches!(effects.len(), 2 | 3));
+        assert!((1..=3).contains(&effects.len()));
         assert!(regressors
             .iter()
             .chain(effects)
@@ -8858,6 +8884,67 @@ mod tests {
                 &mut SystemFitReservation,
                 FitPerturbations { one_fe_borrow_reuse_disabled: disabled, ..FitPerturbations::default() });
             assert_eq!(run(true).unwrap_err(), run(false).unwrap_err());
+        }
+    }
+
+    #[test]
+    fn one_fe_final_target_recovery_preserves_saved_results() {
+        for n in [360, 16_385] {
+            let mut columns: Vec<Vec<f64>> = (0..9).map(|c| (0..n)
+                .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
+            if n == 360 { columns.push(columns[0].clone()); }
+            let groups: Vec<_> = (0..n).map(|r| (r / 5) as f64).collect();
+            let response: Vec<_> = (0..n).map(|r| (groups[r] / 19.0).sin()
+                + columns[0][r] * 1.3 + columns[1][r] * 0.7 + (r as f64).cos() * 0.1).collect();
+            let data = prepared_multiway_categorical(&response, &columns, &[groups]);
+            for threads in [1, 16] {
+                let mut config = PreparedOlsFitConfig::default();
+                config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
+                config.absorb.retain_coefficients = true;
+                config.allow_final_fe_recovery = true;
+                config.final_residual_tolerance = Some(1e-14);
+                let run = |disabled| ThreadTeam::new(config.execution.threads).install(|| {
+                    fit_with_controls_internal(&data, config, &mut SystemFitReservation,
+                        FitPerturbations { one_fe_final_recovery_disabled: disabled, ..FitPerturbations::default() })
+                }).unwrap().unwrap();
+                let expected = run(true);
+                let actual = run(false);
+                assert!(expected.recovered_fe_coefficients().is_none());
+                assert!(actual.recovered_fe_coefficients().is_none());
+                assert_eq!(actual.finite_rank(), expected.finite_rank());
+                for (a, b) in actual.coefficients().iter().zip(expected.coefficients()) {
+                    assert_eq!(a.status, b.status);
+                    match (a.value, b.value) {
+                        (Some(a), Some(b)) => assert_close(a, b, 1e-10),
+                        (None, None) => {},
+                        _ => panic!("coefficient presence changed"),
+                    }
+                }
+                for (&a, &b) in actual.residuals().iter().zip(expected.residuals()) {
+                    assert_close(a, b, 1e-10);
+                }
+                let recover = |fit: &CertifiedPreparedOlsFit| {
+                    let target: Vec<_> = (0..n).map(|r| {
+                        let mut xb = 0.0_f64;
+                        for (column, coefficient) in columns.iter().zip(fit.coefficients()) {
+                            if let Some(value) = coefficient.value { xb = value.mul_add(column[r], xb); }
+                        }
+                        xb += fit.coefficients().last().unwrap().value.unwrap();
+                        response[r] - xb - fit.residuals()[r]
+                    }).collect();
+                    ThreadTeam::new(config.execution.threads).install(|| {
+                        data.recover_absorbed_effects_fast(&target, &[true], fit.recovered_fe_coefficients(),
+                            false, false, config.absorb.lsmr,
+                            crate::fe::MapConfig { tolerance: 1e-12, ..config.absorb.map }, None)
+                    }).unwrap().unwrap().into_optional_parts().1.remove(0).unwrap()
+                };
+                for (a, b) in recover(&actual).into_iter().zip(recover(&expected)) {
+                    assert_close(a, b, 1e-9);
+                }
+                config.allow_final_fe_recovery = false;
+                let required = fit_prepared_ols_coefficients_view_map(&data, config).unwrap();
+                assert_eq!(required.recovered_fe_coefficients(), expected.recovered_fe_coefficients());
+            }
         }
     }
 

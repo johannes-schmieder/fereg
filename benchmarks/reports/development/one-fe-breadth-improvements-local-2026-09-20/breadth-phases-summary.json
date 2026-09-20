@@ -1,0 +1,986 @@
+[
+  {
+    "case": "cluster2_cross",
+    "k": 10,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.01482125
+      },
+      "fit": {
+        "rhs": 0.006431167,
+        "raw_moments": 1.958e-06,
+        "initial_absorb": 0.014724541,
+        "within_norms": 1.208e-06,
+        "finite_solve": 0.006916792,
+        "score_cache": 2.5e-07,
+        "bread_raw_residual": 0.011479667,
+        "residual_absorb": 0.003881625,
+        "residual_overlap": 0.0,
+        "score": 0.004247084,
+        "finalize": 1.167e-06,
+        "total": 0.047685834
+      },
+      "score_design": {
+        "setup": 7.5e-07,
+        "storage": 4.17e-07,
+        "certificate": 0.007970917,
+        "finalize": 4.17e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.007972834
+      },
+      "publication": {
+        "planning": 1.475e-05,
+        "validation": 0.000373208
+      },
+      "publication_store": {
+        "seconds": 8.3958e-05
+      }
+    }
+  },
+  {
+    "case": "cluster2_cross",
+    "k": 50,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.0299685
+      },
+      "fit": {
+        "rhs": 0.014483708,
+        "raw_moments": 2.834e-06,
+        "initial_absorb": 0.03430975,
+        "within_norms": 8.75e-07,
+        "finite_solve": 0.0323115,
+        "score_cache": 6.25e-07,
+        "bread_raw_residual": 0.010964917,
+        "residual_absorb": 0.003896458,
+        "residual_overlap": 0.0,
+        "score": 0.004108958,
+        "finalize": 1.5e-06,
+        "total": 0.10008175
+      },
+      "score_design": {
+        "setup": 1.792e-06,
+        "storage": 4.17e-07,
+        "certificate": 0.097507,
+        "finalize": 2.92e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.097509834
+      },
+      "publication": {
+        "planning": 1.3417e-05,
+        "validation": 0.000374417
+      },
+      "publication_store": {
+        "seconds": 0.000695208
+      }
+    }
+  },
+  {
+    "case": "cluster2_nested",
+    "k": 10,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.014821958
+      },
+      "fit": {
+        "rhs": 0.006137083,
+        "raw_moments": 2e-06,
+        "initial_absorb": 0.014963083,
+        "within_norms": 1e-06,
+        "finite_solve": 0.006879416,
+        "score_cache": 6.25e-07,
+        "bread_raw_residual": 0.010264875,
+        "residual_absorb": 0.004065416,
+        "residual_overlap": 0.0,
+        "score": 0.004283417,
+        "finalize": 1.083e-06,
+        "total": 0.046598292
+      },
+      "score_design": {
+        "setup": 9.58e-07,
+        "storage": 2.08e-07,
+        "certificate": 0.00768675,
+        "finalize": 6.66e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.007688833
+      },
+      "publication": {
+        "planning": 1.6791e-05,
+        "validation": 0.000855709
+      },
+      "publication_store": {
+        "seconds": 8.8834e-05
+      }
+    }
+  },
+  {
+    "case": "cluster2_nested",
+    "k": 50,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.028327667
+      },
+      "fit": {
+        "rhs": 0.0139935,
+        "raw_moments": 2.875e-06,
+        "initial_absorb": 0.034265417,
+        "within_norms": 1.625e-06,
+        "finite_solve": 0.032638208,
+        "score_cache": 5.83e-07,
+        "bread_raw_residual": 0.0104355,
+        "residual_absorb": 0.003520417,
+        "residual_overlap": 0.0,
+        "score": 0.004060667,
+        "finalize": 3.291e-06,
+        "total": 0.098922625
+      },
+      "score_design": {
+        "setup": 1.458e-06,
+        "storage": 3.33e-07,
+        "certificate": 0.094744667,
+        "finalize": 3.75e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.094750083
+      },
+      "publication": {
+        "planning": 1.2167e-05,
+        "validation": 0.000388625
+      },
+      "publication_store": {
+        "seconds": 0.000723375
+      }
+    }
+  },
+  {
+    "case": "cluster2_saved",
+    "k": 10,
+    "phases": {
+      "categorical_prepare": {
+        "pruning": 0.005067541,
+        "topology": 0.011685709,
+        "sample_sources": 0.004576875,
+        "rebase": 3.5e-06,
+        "validation": 0.005870125
+      },
+      "ols_prepare_moments": {
+        "seconds": 0.050855333
+      },
+      "fit": {
+        "rhs": 0.003404542,
+        "raw_moments": 1.209e-06,
+        "initial_absorb": 0.015587834,
+        "within_norms": 1.042e-06,
+        "finite_solve": 0.006244625,
+        "score_cache": 5.42e-07,
+        "bread_raw_residual": 0.008686,
+        "residual_absorb": 0.004093208,
+        "residual_overlap": 0.0,
+        "score": 0.004406583,
+        "finalize": 1e-06,
+        "total": 0.042426958
+      },
+      "score_design": {
+        "setup": 1.125e-06,
+        "storage": 4.17e-07,
+        "certificate": 0.007413541,
+        "finalize": 2.5e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.0074155
+      },
+      "recovery_setup": {
+        "validation": 0.005834958,
+        "planning": 5.917e-06
+      },
+      "recovery_direct": {
+        "validation_design": 0.003821375,
+        "solve": 0.004014875,
+        "normalization": 3.2041e-05
+      },
+      "ols_outputs": {
+        "target": 0.001408791,
+        "recovery": 0.015393834,
+        "total": 0.016803708
+      },
+      "publication": {
+        "planning": 1.2333e-05,
+        "validation": 0.000743625
+      },
+      "publication_store": {
+        "seconds": 0.008674291
+      }
+    }
+  },
+  {
+    "case": "cluster2_saved",
+    "k": 50,
+    "phases": {
+      "categorical_prepare": {
+        "pruning": 0.004836417,
+        "topology": 0.011366583,
+        "sample_sources": 0.003294667,
+        "rebase": 1.1292e-05,
+        "validation": 0.007023833
+      },
+      "ols_prepare_moments": {
+        "seconds": 0.067731583
+      },
+      "fit": {
+        "rhs": 0.009785834,
+        "raw_moments": 3.417e-06,
+        "initial_absorb": 0.034700833,
+        "within_norms": 1.583e-06,
+        "finite_solve": 0.031351917,
+        "score_cache": 6.67e-07,
+        "bread_raw_residual": 0.009771458,
+        "residual_absorb": 0.003675333,
+        "residual_overlap": 0.0,
+        "score": 0.004033375,
+        "finalize": 1.416e-06,
+        "total": 0.093326167
+      },
+      "score_design": {
+        "setup": 2.208e-06,
+        "storage": 6.66e-07,
+        "certificate": 0.095984583,
+        "finalize": 4.17e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.095988041
+      },
+      "recovery_setup": {
+        "validation": 0.007259209,
+        "planning": 6.958e-06
+      },
+      "recovery_direct": {
+        "validation_design": 0.004519833,
+        "solve": 0.004255042,
+        "normalization": 4.2041e-05
+      },
+      "ols_outputs": {
+        "target": 0.005715458,
+        "recovery": 0.018114584,
+        "total": 0.023831458
+      },
+      "publication": {
+        "planning": 1.1667e-05,
+        "validation": 0.001289
+      },
+      "publication_store": {
+        "seconds": 0.014227458
+      }
+    }
+  },
+  {
+    "case": "cluster_cross",
+    "k": 10,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.011931542
+      },
+      "fit": {
+        "rhs": 0.006158709,
+        "raw_moments": 2.542e-06,
+        "initial_absorb": 0.015793833,
+        "within_norms": 8.34e-07,
+        "finite_solve": 0.007833292,
+        "score_cache": 5e-07,
+        "bread_raw_residual": 0.008224209,
+        "residual_absorb": 0.003882084,
+        "residual_overlap": 0.0,
+        "score": 0.004275084,
+        "finalize": 1.333e-06,
+        "total": 0.046173042
+      },
+      "score_design": {
+        "setup": 1.208e-06,
+        "storage": 3.33e-07,
+        "certificate": 0.008540292,
+        "finalize": 5e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.008542583
+      },
+      "publication": {
+        "planning": 0.000288,
+        "validation": 0.000831958
+      },
+      "publication_store": {
+        "seconds": 8.6e-05
+      }
+    }
+  },
+  {
+    "case": "cluster_cross",
+    "k": 50,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.028740708
+      },
+      "fit": {
+        "rhs": 0.014668958,
+        "raw_moments": 2.667e-06,
+        "initial_absorb": 0.036664834,
+        "within_norms": 1.417e-06,
+        "finite_solve": 0.032367542,
+        "score_cache": 4.59e-07,
+        "bread_raw_residual": 0.010172834,
+        "residual_absorb": 0.003725375,
+        "residual_overlap": 0.0,
+        "score": 0.00430975,
+        "finalize": 2.208e-06,
+        "total": 0.101916667
+      },
+      "score_design": {
+        "setup": 1.542e-06,
+        "storage": 5.83e-07,
+        "certificate": 0.096321833,
+        "finalize": 6.25e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.096324792
+      },
+      "publication": {
+        "planning": 1.35e-05,
+        "validation": 0.000861542
+      },
+      "publication_store": {
+        "seconds": 0.000696541
+      }
+    }
+  },
+  {
+    "case": "cluster_fe",
+    "k": 10,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.0112785
+      },
+      "fit": {
+        "rhs": 0.005529584,
+        "raw_moments": 2.333e-06,
+        "initial_absorb": 0.015419458,
+        "within_norms": 9.16e-07,
+        "finite_solve": 0.006918833,
+        "score_cache": 4.59e-07,
+        "bread_raw_residual": 0.007921542,
+        "residual_absorb": 0.003903625,
+        "residual_overlap": 0.0,
+        "score": 0.00431975,
+        "finalize": 1.334e-06,
+        "total": 0.04401825
+      },
+      "score_design": {
+        "setup": 1.125e-06,
+        "storage": 5.42e-07,
+        "certificate": 0.007498583,
+        "finalize": 5.84e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.007501333
+      },
+      "publication": {
+        "planning": 0.000145084,
+        "validation": 0.000740833
+      },
+      "publication_store": {
+        "seconds": 8.4708e-05
+      }
+    }
+  },
+  {
+    "case": "cluster_fe",
+    "k": 50,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.027718
+      },
+      "fit": {
+        "rhs": 0.013521709,
+        "raw_moments": 3.208e-06,
+        "initial_absorb": 0.035275958,
+        "within_norms": 1.375e-06,
+        "finite_solve": 0.033881875,
+        "score_cache": 5.84e-07,
+        "bread_raw_residual": 0.010283584,
+        "residual_absorb": 0.003677084,
+        "residual_overlap": 0.0,
+        "score": 0.004339042,
+        "finalize": 2e-06,
+        "total": 0.100987125
+      },
+      "score_design": {
+        "setup": 1.75e-06,
+        "storage": 5.83e-07,
+        "certificate": 0.094794583,
+        "finalize": 3.33e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.094797458
+      },
+      "publication": {
+        "planning": 1.0541e-05,
+        "validation": 0.000468875
+      },
+      "publication_store": {
+        "seconds": 0.000705333
+      }
+    }
+  },
+  {
+    "case": "cluster_fe_saved",
+    "k": 10,
+    "phases": {
+      "categorical_prepare": {
+        "pruning": 0.005011208,
+        "topology": 0.011484584,
+        "sample_sources": 0.000820708,
+        "rebase": 5.125e-06,
+        "validation": 0.005594333
+      },
+      "ols_prepare_moments": {
+        "seconds": 0.041039375
+      },
+      "fit": {
+        "rhs": 0.003154125,
+        "raw_moments": 2.167e-06,
+        "initial_absorb": 0.015034875,
+        "within_norms": 1.167e-06,
+        "finite_solve": 0.007467833,
+        "score_cache": 5.83e-07,
+        "bread_raw_residual": 0.010228667,
+        "residual_absorb": 0.003642042,
+        "residual_overlap": 0.0,
+        "score": 0.004346,
+        "finalize": 3.167e-06,
+        "total": 0.043881125
+      },
+      "score_design": {
+        "setup": 5.84e-07,
+        "storage": 4.16e-07,
+        "certificate": 0.006641084,
+        "finalize": 1.66e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.006642542
+      },
+      "recovery_setup": {
+        "validation": 0.005406917,
+        "planning": 3.667e-06
+      },
+      "recovery_direct": {
+        "validation_design": 0.003909333,
+        "solve": 0.003913208,
+        "normalization": 6.3292e-05
+      },
+      "ols_outputs": {
+        "target": 0.002046583,
+        "recovery": 0.015126667,
+        "total": 0.017175
+      },
+      "publication": {
+        "planning": 1.2916e-05,
+        "validation": 0.000730709
+      },
+      "publication_store": {
+        "seconds": 0.008792875
+      }
+    }
+  },
+  {
+    "case": "cluster_fe_saved",
+    "k": 50,
+    "phases": {
+      "categorical_prepare": {
+        "pruning": 0.005160625,
+        "topology": 0.012199958,
+        "sample_sources": 0.000804834,
+        "rebase": 4.375e-06,
+        "validation": 0.006901375
+      },
+      "ols_prepare_moments": {
+        "seconds": 0.059269958
+      },
+      "fit": {
+        "rhs": 0.009502542,
+        "raw_moments": 2.542e-06,
+        "initial_absorb": 0.033890709,
+        "within_norms": 1.125e-06,
+        "finite_solve": 0.030199792,
+        "score_cache": 5.42e-07,
+        "bread_raw_residual": 0.01025975,
+        "residual_absorb": 0.003486209,
+        "residual_overlap": 0.0,
+        "score": 0.003972167,
+        "finalize": 2.291e-06,
+        "total": 0.091318167
+      },
+      "score_design": {
+        "setup": 2.25e-06,
+        "storage": 5.41e-07,
+        "certificate": 0.096210667,
+        "finalize": 2.09e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.096214084
+      },
+      "recovery_setup": {
+        "validation": 0.006950917,
+        "planning": 3.625e-06
+      },
+      "recovery_direct": {
+        "validation_design": 0.003823916,
+        "solve": 0.003963667,
+        "normalization": 7.6583e-05
+      },
+      "ols_outputs": {
+        "target": 0.004039,
+        "recovery": 0.016409791,
+        "total": 0.020450166
+      },
+      "publication": {
+        "planning": 1.9291e-05,
+        "validation": 0.000848917
+      },
+      "publication_store": {
+        "seconds": 0.013853208
+      }
+    }
+  },
+  {
+    "case": "iid",
+    "k": 10,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.010993833
+      },
+      "fit": {
+        "rhs": 0.005615417,
+        "raw_moments": 2.084e-06,
+        "initial_absorb": 0.015392709,
+        "within_norms": 4.17e-07,
+        "finite_solve": 0.007934208,
+        "score_cache": 4.1e-08,
+        "bread_raw_residual": 0.00899975,
+        "residual_absorb": 4.59e-07,
+        "residual_overlap": 1.0,
+        "score": 3.34e-07,
+        "finalize": 9.17e-07,
+        "total": 0.037946792
+      },
+      "iid": {
+        "setup_statistics": 2.125e-06,
+        "covariance": 1.125e-06,
+        "wald": 2.333e-06,
+        "certificate": 1.292e-06,
+        "total": 7.083e-06
+      },
+      "iid_plugin": {
+        "prepare": 0.011034167,
+        "inference": 0.039485916,
+        "outputs": 2.4083e-05,
+        "shadow": 8.417e-06,
+        "prestore_total": 0.050552708
+      },
+      "publication": {
+        "planning": 1.4334e-05,
+        "validation": 0.00091525
+      },
+      "publication_store": {
+        "seconds": 9.2334e-05
+      }
+    }
+  },
+  {
+    "case": "iid",
+    "k": 50,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.028125959
+      },
+      "fit": {
+        "rhs": 0.013589958,
+        "raw_moments": 1.833e-06,
+        "initial_absorb": 0.035980292,
+        "within_norms": 2.92e-07,
+        "finite_solve": 0.032731167,
+        "score_cache": 4.2e-08,
+        "bread_raw_residual": 0.012965334,
+        "residual_absorb": 0.00364675,
+        "residual_overlap": 0.0,
+        "score": 0.004079917,
+        "finalize": 2.334e-06,
+        "total": 0.102998333
+      },
+      "iid": {
+        "setup_statistics": 0.00765575,
+        "covariance": 2.958e-06,
+        "wald": 3.0708e-05,
+        "certificate": 6.667e-06,
+        "total": 0.007696291
+      },
+      "iid_plugin": {
+        "prepare": 0.028203625,
+        "inference": 0.113489209,
+        "outputs": 1.1709e-05,
+        "shadow": 5.3583e-05,
+        "prestore_total": 0.141758208
+      },
+      "publication": {
+        "planning": 1.5083e-05,
+        "validation": 0.000431625
+      },
+      "publication_store": {
+        "seconds": 0.000721083
+      }
+    }
+  },
+  {
+    "case": "iid_outputs",
+    "k": 10,
+    "phases": {
+      "categorical_prepare": {
+        "pruning": 0.005030041,
+        "topology": 0.011612875,
+        "sample_sources": 0.000823,
+        "rebase": 5.875e-06,
+        "validation": 0.004468209
+      },
+      "ols_prepare_moments": {
+        "seconds": 0.036075458
+      },
+      "fit": {
+        "rhs": 0.0037735,
+        "raw_moments": 1.708e-06,
+        "initial_absorb": 0.014836084,
+        "within_norms": 5.84e-07,
+        "finite_solve": 0.006170167,
+        "score_cache": 2.91e-07,
+        "bread_raw_residual": 0.00869875,
+        "residual_absorb": 4.58e-07,
+        "residual_overlap": 1.0,
+        "score": 2.5e-07,
+        "finalize": 9.16e-07,
+        "total": 0.033483167
+      },
+      "iid": {
+        "setup_statistics": 0.007814333,
+        "covariance": 1.083e-06,
+        "wald": 2.833e-06,
+        "certificate": 1.417e-06,
+        "total": 0.00781975
+      },
+      "recovery_setup": {
+        "validation": 0.004180334,
+        "planning": 3.833e-06
+      },
+      "recovery_direct": {
+        "validation_design": 0.003899459,
+        "solve": 0.005390416,
+        "normalization": 0.000243334
+      },
+      "ols_outputs": {
+        "target": 0.001751791,
+        "recovery": 0.015780542,
+        "total": 0.017534458
+      },
+      "publication": {
+        "planning": 0.000151583,
+        "validation": 0.001414333
+      },
+      "publication_store": {
+        "seconds": 0.015367792
+      }
+    }
+  },
+  {
+    "case": "iid_outputs",
+    "k": 50,
+    "phases": {
+      "categorical_prepare": {
+        "pruning": 0.00477,
+        "topology": 0.011568833,
+        "sample_sources": 0.0007725,
+        "rebase": 7.417e-06,
+        "validation": 0.00528225
+      },
+      "ols_prepare_moments": {
+        "seconds": 0.052927916
+      },
+      "fit": {
+        "rhs": 0.009557417,
+        "raw_moments": 1.417e-06,
+        "initial_absorb": 0.037011583,
+        "within_norms": 5.83e-07,
+        "finite_solve": 0.032491833,
+        "score_cache": 4.2e-08,
+        "bread_raw_residual": 0.010307084,
+        "residual_absorb": 0.00377425,
+        "residual_overlap": 0.0,
+        "score": 0.00392075,
+        "finalize": 2e-06,
+        "total": 0.097067417
+      },
+      "iid": {
+        "setup_statistics": 0.007591166,
+        "covariance": 3.416e-06,
+        "wald": 3.0042e-05,
+        "certificate": 6.541e-06,
+        "total": 0.007633958
+      },
+      "recovery_setup": {
+        "validation": 0.005491375,
+        "planning": 3.625e-06
+      },
+      "recovery_direct": {
+        "validation_design": 0.003968,
+        "solve": 0.004421292,
+        "normalization": 5.1416e-05
+      },
+      "ols_outputs": {
+        "target": 0.004713084,
+        "recovery": 0.015766708,
+        "total": 0.020481
+      },
+      "publication": {
+        "planning": 1.725e-05,
+        "validation": 0.000736541
+      },
+      "publication_store": {
+        "seconds": 0.0236555
+      }
+    }
+  },
+  {
+    "case": "iid_saved",
+    "k": 10,
+    "phases": {
+      "categorical_prepare": {
+        "pruning": 0.005041833,
+        "topology": 0.0116725,
+        "sample_sources": 0.000819167,
+        "rebase": 2.583e-06,
+        "validation": 0.004126375
+      },
+      "ols_prepare_moments": {
+        "seconds": 0.036620708
+      },
+      "fit": {
+        "rhs": 0.003151416,
+        "raw_moments": 2.167e-06,
+        "initial_absorb": 0.014355125,
+        "within_norms": 4.16e-07,
+        "finite_solve": 0.006820167,
+        "score_cache": 4.2e-08,
+        "bread_raw_residual": 0.008296625,
+        "residual_absorb": 7.08e-07,
+        "residual_overlap": 1.0,
+        "score": 3.34e-07,
+        "finalize": 1.292e-06,
+        "total": 0.03262875
+      },
+      "iid": {
+        "setup_statistics": 0.007867292,
+        "covariance": 1.208e-06,
+        "wald": 3.125e-06,
+        "certificate": 1.375e-06,
+        "total": 0.007873209
+      },
+      "recovery_setup": {
+        "validation": 0.004229083,
+        "planning": 3.333e-06
+      },
+      "recovery_direct": {
+        "validation_design": 0.004096667,
+        "solve": 0.005415458,
+        "normalization": 3.0459e-05
+      },
+      "ols_outputs": {
+        "target": 0.001944583,
+        "recovery": 0.015683167,
+        "total": 0.01762925
+      },
+      "publication": {
+        "planning": 1.5917e-05,
+        "validation": 0.001190166
+      },
+      "publication_store": {
+        "seconds": 0.009228917
+      }
+    }
+  },
+  {
+    "case": "iid_saved",
+    "k": 50,
+    "phases": {
+      "categorical_prepare": {
+        "pruning": 0.004776791,
+        "topology": 0.011405959,
+        "sample_sources": 0.000807,
+        "rebase": 6.666e-06,
+        "validation": 0.005388875
+      },
+      "ols_prepare_moments": {
+        "seconds": 0.047407375
+      },
+      "fit": {
+        "rhs": 0.009818042,
+        "raw_moments": 1.833e-06,
+        "initial_absorb": 0.033962583,
+        "within_norms": 6.25e-07,
+        "finite_solve": 0.030670167,
+        "score_cache": 0.0,
+        "bread_raw_residual": 0.010014334,
+        "residual_absorb": 0.003725208,
+        "residual_overlap": 0.0,
+        "score": 0.004178541,
+        "finalize": 1.583e-06,
+        "total": 0.092373417
+      },
+      "iid": {
+        "setup_statistics": 0.007818542,
+        "covariance": 3.708e-06,
+        "wald": 3.0666e-05,
+        "certificate": 6.708e-06,
+        "total": 0.007859916
+      },
+      "recovery_setup": {
+        "validation": 0.00531675,
+        "planning": 3.666e-06
+      },
+      "recovery_direct": {
+        "validation_design": 0.003785875,
+        "solve": 0.005405625,
+        "normalization": 3.8625e-05
+      },
+      "ols_outputs": {
+        "target": 0.004593458,
+        "recovery": 0.016094959,
+        "total": 0.020689833
+      },
+      "publication": {
+        "planning": 1.5667e-05,
+        "validation": 0.00084625
+      },
+      "publication_store": {
+        "seconds": 0.013836625
+      }
+    }
+  },
+  {
+    "case": "robust",
+    "k": 10,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.00841725
+      },
+      "fit": {
+        "rhs": 0.005214042,
+        "raw_moments": 2.125e-06,
+        "initial_absorb": 0.014886375,
+        "within_norms": 8.33e-07,
+        "finite_solve": 0.006489,
+        "score_cache": 5.84e-07,
+        "bread_raw_residual": 0.0083195,
+        "residual_absorb": 0.003637292,
+        "residual_overlap": 0.0,
+        "score": 0.004162084,
+        "finalize": 1e-06,
+        "total": 0.04271325
+      },
+      "score_design": {
+        "setup": 8.34e-07,
+        "storage": 2.5e-07,
+        "certificate": 0.007903125,
+        "finalize": 5.42e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.007904958
+      },
+      "robust": {
+        "setup_statistics": 0.011518708,
+        "score_design": 0.00799175,
+        "covariance": 0.008411375,
+        "covariance_certificate": 8.375e-06,
+        "psd": 1.334e-06,
+        "wald": 2.875e-06,
+        "finalize": 8.75e-07,
+        "total": 0.027935541
+      },
+      "robust_plugin": {
+        "prepare": 0.008463542,
+        "inference": 0.073563709,
+        "outputs": 2.575e-05,
+        "shadow": 8.917e-06,
+        "prestore_total": 0.082062083
+      },
+      "publication": {
+        "planning": 1.3792e-05,
+        "validation": 0.000951125
+      },
+      "publication_store": {
+        "seconds": 8.6792e-05
+      }
+    }
+  },
+  {
+    "case": "robust",
+    "k": 50,
+    "phases": {
+      "ols_prepare_moments": {
+        "seconds": 0.025485916
+      },
+      "fit": {
+        "rhs": 0.013442625,
+        "raw_moments": 2.375e-06,
+        "initial_absorb": 0.034544375,
+        "within_norms": 1.333e-06,
+        "finite_solve": 0.033141041,
+        "score_cache": 5.84e-07,
+        "bread_raw_residual": 0.009777959,
+        "residual_absorb": 0.003883042,
+        "residual_overlap": 0.0,
+        "score": 0.004244167,
+        "finalize": 1.25e-06,
+        "total": 0.099039041
+      },
+      "score_design": {
+        "setup": 1.917e-06,
+        "storage": 2.92e-07,
+        "certificate": 0.096531375,
+        "finalize": 5e-07,
+        "strided": 1.0,
+        "reabsorbed": 0.0,
+        "total": 0.09653425
+      },
+      "robust": {
+        "setup_statistics": 0.010715042,
+        "score_design": 0.096634208,
+        "covariance": 0.089798959,
+        "covariance_certificate": 0.000843916,
+        "psd": 2.5708e-05,
+        "wald": 3.2709e-05,
+        "finalize": 7.92e-07,
+        "total": 0.198051667
+      },
+      "robust_plugin": {
+        "prepare": 0.02553375,
+        "inference": 0.299923583,
+        "outputs": 1.6417e-05,
+        "shadow": 6.0417e-05,
+        "prestore_total": 0.325534167
+      },
+      "publication": {
+        "planning": 1.8e-05,
+        "validation": 0.000381834
+      },
+      "publication_store": {
+        "seconds": 0.000695084
+      }
+    }
+  }
+]

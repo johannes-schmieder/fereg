@@ -6,6 +6,7 @@
 //! without cloning observation-scale state or changing result-wire dimensions.
 
 use fereg_core::error::Result;
+use rayon::prelude::*;
 use fereg_core::{
     PreparedCategoricalOlsClusteredData, PreparedCategoricalOlsData, PreparedNumericSample,
     PreparedOlsClusterDesign, PreparedOlsClusteredData, PreparedOlsData, PreparedOlsModel,
@@ -46,6 +47,18 @@ impl<'a> PreparedOlsResultData<'a> {
             Self::Legacy(value) => value.column_value(column, row),
             Self::Categorical(value) => value.column_value(column, row),
         }
+    }
+
+    pub(crate) fn add_fitted_terms(self, terms: &[(usize, f64)], output: &mut [f64]) -> Result<()> {
+        if !fereg_core::ols::add_numeric_ols_predictor(self.model(), self.sample(), terms, output)? {
+            output.par_iter_mut().enumerate().try_for_each(|(row, value)| -> Result<()> {
+                for &(column, coefficient) in terms {
+                    *value = coefficient.mul_add(self.column_value(column, row)?, *value);
+                }
+                Ok(())
+            })?;
+        }
+        Ok(())
     }
 
     pub(crate) const fn singletons(self) -> PreparedOlsSingletons {

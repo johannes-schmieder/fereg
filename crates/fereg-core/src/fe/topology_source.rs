@@ -55,7 +55,10 @@ impl CategoricalTopologySource {
     ) -> Result<Self> {
         validate_categorical_partition(&partition, sources)?;
         let codes = partition.codes(sources)?;
-        let level_index = LevelIndex::from_codes(codes, partition.n_levels())?;
+        let level_index = match LevelIndex::try_from_ordered_codes(codes, partition.n_levels())? {
+            Some(index) => index,
+            None => LevelIndex::from_codes(codes, partition.n_levels())?,
+        };
         ValidatedBorrowedInterceptSource::new(codes, partition.n_levels(), &level_index)?;
         Ok(Self {
             partition,

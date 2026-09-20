@@ -22,7 +22,7 @@ use crate::fe::{
     recover_finalized_categorical_effects_sd_lsmr_certified, BorrowedMapWeights,
     BoundCategoricalAbsorbEffect, CategoricalAbsorbRequestPlan, CategoricalAbsorbedEffectView, CategoricalCodeView,
     CertifiedBorrowedMap, FeCoefficientBatch, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
-    RecoveredCategoricalEffects, SingletonMultiplicity,
+    RecoveredCategoricalEffects, SingletonMultiplicity, SingletonResult,
 };
 use crate::memory::{estimate_intercept_recovery_memory, FeSolverMemoryBudget};
 use crate::metadata::SourceId;
@@ -1078,15 +1078,31 @@ fn finish_prepare_categorical_ols_data(
         } => SingletonMultiplicity::Frequency(values.as_slice()),
         PreparedWeights::None | PreparedWeights::Provided { .. } => SingletonMultiplicity::Unit,
     };
-    let singleton_result = prune_categorical_partition_singletons(
-        &candidate_views,
-        &recipe_views,
-        &initially_active,
-        multiplicity,
-        plan.requested_keep_singletons(),
-    )?;
-    let (singleton, _, _) = singleton_result.into_parts();
-    drop(initially_active);
+    // Availability already owns a validated membership index. For one ordinary
+    // unit-weight partition, member counts prove whether pruning changes the
+    // sample; the generic queue is needed only when a singleton exists.
+    let fixed_point = if availability.sample.n_active() >= 16_384
+        && matches!(availability.sample.weights, PreparedWeights::None)
+        && bound_effects.len() == 1 && recipe_views[0].len() == 1
+        && availability.fe_topology.sources().len() == 1
+    {
+        let source = &availability.fe_topology.sources()[0];
+        source.categorical_source_index() == recipe_views[0][0]
+            && (plan.requested_keep_singletons() || (0..source.n_levels())
+                .try_fold(true, |clear, level| -> Result<bool> {
+                    Ok(clear && source.members(level)?.len() > 1)
+                })?)
+    } else { false };
+    let singleton = if fixed_point {
+        SingletonResult { active: initially_active, dropped_observations: Vec::new(), cascade_events: 0 }
+    } else {
+        let singleton = prune_categorical_partition_singletons(
+            &candidate_views, &recipe_views, &initially_active, multiplicity,
+            plan.requested_keep_singletons(),
+        )?.into_parts().0;
+        drop(initially_active);
+        singleton
+    };
     let num_singletons = singleton.dropped_observations.len();
     let cascade_events = singleton.cascade_events;
     drop(singleton.dropped_observations);

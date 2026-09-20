@@ -13,6 +13,7 @@ use std::time::Instant;
 
 #[cfg(test)]
 use super::prepared_fit::fit_prepared_ols_coefficients_view_map;
+#[cfg(test)]
 use super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference;
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 use super::prepared_scores::{
@@ -381,9 +382,18 @@ pub fn fit_prepared_ols_robust_map(
     prepared: &PreparedOlsData,
     config: PreparedOlsRobustConfig,
 ) -> Result<CertifiedPreparedOlsRobust> {
+    fit_prepared_ols_robust_map_with_loaded_moments(prepared, config, None)
+}
+
+/// Consume optional same-call numeric rows after authoritative sample validation.
+pub fn fit_prepared_ols_robust_map_with_loaded_moments(
+    prepared: &PreparedOlsData,
+    config: PreparedOlsRobustConfig,
+    rows: Option<super::LoadedOlsRows>,
+) -> Result<CertifiedPreparedOlsRobust> {
     validate_config(config)?;
     let (fit, score_scratch) =
-        fit_prepared_ols_coefficients_view_map_for_inference(prepared, config.fit)?;
+        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)?;
     let absorbed_dof = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
     ThreadTeam::new(config.fit.execution.threads).install(|| {
         let mut reservation = SystemPreparedInferenceReservation;
@@ -405,9 +415,18 @@ pub fn fit_prepared_categorical_ols_robust_map(
     prepared: &PreparedCategoricalOlsData,
     config: PreparedOlsRobustConfig,
 ) -> Result<CertifiedPreparedCategoricalOlsRobust> {
+    fit_prepared_categorical_ols_robust_map_with_loaded_moments(prepared, config, None)
+}
+
+/// Consume optional same-call numeric rows after authoritative sample validation.
+pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
+    prepared: &PreparedCategoricalOlsData,
+    config: PreparedOlsRobustConfig,
+    rows: Option<super::LoadedOlsRows>,
+) -> Result<CertifiedPreparedCategoricalOlsRobust> {
     validate_config(config)?;
     let (fit, score_scratch) =
-        fit_prepared_ols_coefficients_view_map_for_inference(prepared, config.fit)?;
+        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)?;
     let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let absorbed_summary =
         prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;

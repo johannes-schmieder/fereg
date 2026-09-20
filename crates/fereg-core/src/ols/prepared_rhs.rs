@@ -269,6 +269,22 @@ pub(crate) fn numeric_sources_are_finite(sample: &crate::data::PreparedNumericSa
 const NUMERIC_TILE_ROWS: usize = 128;
 pub(crate) const MAX_BOUND_NUMERIC_COLUMNS: usize = 64;
 
+/// Add a numeric prepared predictor in coefficient-slot order using bounded
+/// row tiles. Unsupported designs return false without changing the output.
+/// This shares the solver's numeric binding with final output construction.
+pub fn add_numeric_ols_predictor(
+    model: &super::PreparedOlsModel,
+    sample: &crate::data::PreparedNumericSample,
+    selected: &[(usize, f64)],
+    output: &mut [f64],
+) -> Result<bool> {
+    let Some(columns) = NumericOlsColumns::bind(model, sample)? else {
+        return Ok(false);
+    };
+    columns.add_selected_columns(selected, output)?;
+    Ok(true)
+}
+
 /// Stack-only bindings for the common numeric design. Keeping a row tile in
 /// cache avoids per-cell recipe dispatch and repeated full residual scans.
 /// None denotes an explicit intercept; unsupported recipes use the existing
@@ -317,7 +333,7 @@ impl<'a> NumericOlsColumns<'a> {
         }))
     }
 
-    fn matches_rhs(&self, response: &[f64], data: &[f64]) -> bool {
+    pub(crate) fn matches_rhs(&self, response: &[f64], data: &[f64]) -> bool {
         let width = self.width + 1;
         response.len() == self.rows && self.rows.checked_mul(width) == Some(data.len())
             && data.par_chunks(NUMERIC_TILE_ROWS * width).enumerate().all(|(tile, input)| {

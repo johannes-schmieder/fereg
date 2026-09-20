@@ -85,7 +85,7 @@ file close `meta\'''' )
     return folder
 
 
-def compare(a, b):
+def compare(a, b, exact_native=True):
     results = [json.loads((p / "result.json").read_text()) for p in (a, b)]
     assert all(r["status"] == "pass" for r in results), results
     assert results[0]["sample_sha256"] == results[1]["sample_sha256"]
@@ -100,7 +100,7 @@ def compare(a, b):
             np.testing.assert_allclose(x[col], y[col], rtol=rtol, atol=1e-10)
             errors[file + ":" + col] = float(np.max(np.abs(x[col] - y[col])))
     np.testing.assert_allclose(results[0]["metadata"]["rss"], results[1]["metadata"]["rss"], rtol=1e-8)
-    if results[0]["arm"] == results[1]["arm"] == "fereg":
+    if exact_native and results[0]["arm"] == results[1]["arm"] == "fereg":
         for name in ("b", "V", "fereg_status", "fereg_dof", "fereg_certificate", "fereg_fit"):
             x, y = [pd.read_csv(p / (name + ".csv")) for p in (a, b)]
             np.testing.assert_array_equal(x.to_numpy(), y.to_numpy())

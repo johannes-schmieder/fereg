@@ -727,7 +727,7 @@ pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
     validate_loaded(request, &loaded)?;
     validate_candidate_categorical_domain(request, &loaded, cluster_sources)?;
     validate_candidate_weight_domain(&loaded)?;
-    let early_source = if cluster_sources.is_empty() && loaded.candidate.len() >= 16_384
+    let early_source = if loaded.candidate.len() >= 16_384
         && (8..=16).contains(&loaded.numeric_sources.len()) && rayon::current_thread_index().is_some()
         && rayon::current_num_threads() >= 8 && loaded.analytic_weight.is_none()
         && loaded.frequency_weight.is_none() && loaded.probability_weight.is_none()
@@ -846,14 +846,22 @@ fn finish_prepare_with_early_factor(
         sources
     } else { factorize_categorical_sources(request, &sample, &[])? };
     let pruning_fixed_effects = prepare_fixed_effects(request, &pruning_categorical_sources, &[])?;
-    let prebuilt_index = if reuse_membership && cluster_sources.is_empty() {
+    let prebuilt_index = if reuse_membership {
         one_fe_fixed_point_index(request, &sample, &pruning_categorical_sources, &pruning_fixed_effects)?
     } else {
         None
     };
+    let indexed_source = prebuilt_index.as_ref().map(|(index, _)| pruning_categorical_sources[*index].source);
     let (sample, categorical_sources, fixed_effects, num_singletons, cascade_events) =
         if prebuilt_index.is_some() {
-            (sample, pruning_categorical_sources, pruning_fixed_effects, 0, 0)
+            let (sources, effects) = if cluster_sources.is_empty() {
+                (pruning_categorical_sources, pruning_fixed_effects)
+            } else {
+                let sources = factorize_categorical_sources_reusing(request, &sample, cluster_sources, pruning_categorical_sources)?;
+                let effects = prepare_fixed_effects(request, &sources, cluster_sources)?;
+                (sources, effects)
+            };
+            (sample, sources, effects, 0, 0)
         } else {
             let singleton_result = prune_prepared_singletons(
                 request,
@@ -867,14 +875,14 @@ fn finish_prepare_with_early_factor(
 
             // With no singleton deletion, the pruning codes already live on the final
             // compact axis. Reusing them avoids a second observation-scale
-            // factorization. Cluster-only sources still require the complete final
-            // factorization because they were deliberately excluded from pruning.
+            // factorization. Cluster-only sources are added after this fixed
+            // point, preserving canonical source order without recoding FE data.
             let pruning_covers_final_sources = cluster_sources.iter().all(|source| {
                 pruning_categorical_sources
                     .iter()
                     .any(|candidate| candidate.source == *source)
             });
-            let reusable_pruning = if num_singletons == 0 && pruning_covers_final_sources {
+            let reusable_pruning = if num_singletons == 0 && (pruning_covers_final_sources || reuse_membership) {
                 Some((pruning_categorical_sources, pruning_fixed_effects))
             } else {
                 // These codes/levels no longer describe the final sample. Release them
@@ -886,7 +894,13 @@ fn finish_prepare_with_early_factor(
             let sample = sample.compact_active_rows(&singleton_result.active, crate::data::DropReason::Singleton)?;
             drop(singleton_result.active);
             let (categorical_sources, fixed_effects) = if let Some(reusable) = reusable_pruning {
-                reusable
+                if pruning_covers_final_sources {
+                    reusable
+                } else {
+                    let sources = factorize_categorical_sources_reusing(request, &sample, cluster_sources, reusable.0)?;
+                    let effects = prepare_fixed_effects(request, &sources, cluster_sources)?;
+                    (sources, effects)
+                }
             } else {
                 let categorical_sources = factorize_categorical_sources(request, &sample, cluster_sources)?;
                 let fixed_effects = prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;
@@ -894,6 +908,13 @@ fn finish_prepare_with_early_factor(
             };
             (sample, categorical_sources, fixed_effects, num_singletons, cascade_events)
         };
+    // An earlier cluster-only source can move the FE within the final source
+    // table. Its membership index is unchanged, but its source slot must move.
+    let prebuilt_index = prebuilt_index.map(|(_, index)| -> Result<_> {
+        let source = categorical_sources.iter().position(|source| Some(source.source) == indexed_source)
+            .ok_or_else(|| invalid("reused FE membership lost its final categorical source"))?;
+        Ok((source, index))
+    }).transpose()?;
     resolve_categorical_level_codes(&mut model, &categorical_sources)?;
     let fe_topology =
         build_prepared_fe_topology(request, &sample, &categorical_sources, fixed_effects, prebuilt_index)?;
@@ -926,7 +947,7 @@ fn one_fe_fixed_point_index(
     sources: &[PreparedCategoricalSource],
     effects: &[PreparedOlsEffectRecipe],
 ) -> Result<Option<(usize, LevelIndex)>> {
-    if request.keep_singletons || effects.len() != 1 || sample.n_active() < 16_384
+    if effects.len() != 1 || sample.n_active() < 16_384
         || !matches!(sample.weights, PreparedWeights::None)
     {
         return Ok(None);
@@ -942,7 +963,7 @@ fn one_fe_fixed_point_index(
         None => LevelIndex::from_codes(&source.encoded.codes, source.encoded.n_levels())?,
     };
     for level in 0..index.n_levels() {
-        if index.checked_members(level)?.len() == 1 {
+        if index.checked_members(level)?.len() == 1 && !request.keep_singletons {
             return Ok(None);
         }
     }
@@ -1337,13 +1358,27 @@ fn factorize_categorical_sources(
     sample: &PreparedNumericSample,
     cluster_sources: &[SourceId],
 ) -> Result<Vec<PreparedCategoricalSource>> {
+    factorize_categorical_sources_reusing(request, sample, cluster_sources, Vec::new())
+}
+
+fn factorize_categorical_sources_reusing(
+    request: &OlsRequestV1,
+    sample: &PreparedNumericSample,
+    cluster_sources: &[SourceId],
+    previous: Vec<PreparedCategoricalSource>,
+) -> Result<Vec<PreparedCategoricalSource>> {
     let categorical = categorical_source_indices(request, cluster_sources)?;
+    let mut previous = previous.into_iter().peekable();
     let mut output = Vec::new();
     output
         .try_reserve_exact(categorical.len())
         .map_err(|_| allocation("unable to reserve prepared categorical sources"))?;
     for source in &request.model.sources {
         if !categorical.contains_key(&source.id) {
+            continue;
+        }
+        if previous.peek().is_some_and(|candidate| candidate.source == source.id) {
+            output.push(previous.next().expect("peeked retained categorical source"));
             continue;
         }
         let prepared_source_index = source_index(source.id)?;
@@ -1356,6 +1391,9 @@ fn factorize_categorical_sources(
             prepared_source_index,
             encoded: factorize_f64(values)?,
         });
+    }
+    if previous.next().is_some() {
+        return Err(invalid("retained categorical source is absent from the final source plan"));
     }
     Ok(output)
 }
@@ -3832,6 +3870,69 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    #[test]
+    fn one_fe_and_multiway_cluster_reuse_preserves_source_order_weights_and_sample_changes() {
+        for effect_count in [1, 2] {
+        for weight in [None, Some(WeightKind::Analytic), Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
+            for cluster_ids in [vec![2], vec![1], vec![9], vec![1, 9]] {
+                for (changed_sample, keep_singletons) in [(false, false), (true, false), (false, true), (true, true)] {
+                    let n = 16_387;
+                    let mut request = request(9, true);
+                    request.keep_singletons = keep_singletons;
+                    request.absorbed_terms = vec![AbsorbedTerm {
+                        id: AbsorbTermId::new(1).unwrap(), intercept: true,
+                        categorical_sources: vec![SourceId::new(2).unwrap()],
+                        slope_sources: Vec::new(), label: "group".into(), saved_name: String::new(),
+                    }];
+                    if effect_count == 2 {
+                        request.absorbed_terms.push(AbsorbedTerm {
+                            id: AbsorbTermId::new(2).unwrap(), intercept: true,
+                            categorical_sources: vec![SourceId::new(3).unwrap()],
+                            slope_sources: Vec::new(), label: "second group".into(), saved_name: String::new(),
+                        });
+                    }
+                    let clusters: Vec<_> = cluster_ids.iter().copied().map(|id| SourceId::new(id).unwrap()).collect();
+                    let mut loaded = LoadedOlsInput {
+                        candidate: vec![true; n],
+                        outcome: column(&(0..n).map(|r| (r % 97) as f64).collect::<Vec<_>>(), &vec![false; n]),
+                        numeric_sources: (1..=9).map(|id| {
+                            let values: Vec<_> = (0..n).map(|r| if id == 2 { (r / 5) as f64 - 0.25 }
+                                else { (r % (id as usize * 17)) as f64 }).collect();
+                            (SourceId::new(id).unwrap(), column(&values, &vec![false; n]))
+                        }).collect(),
+                        analytic_weight: None, frequency_weight: None, probability_weight: None,
+                    };
+                    if let Some(kind) = weight {
+                        let values = column(&(0..n).map(|r| (r % 3 + 1) as f64).collect::<Vec<_>>(), &vec![false; n]);
+                        let role = match kind {
+                            WeightKind::Analytic => { loaded.analytic_weight = Some(values); OlsInputRole::AnalyticWeight },
+                            WeightKind::Frequency => { loaded.frequency_weight = Some(values); OlsInputRole::FrequencyWeight },
+                            WeightKind::Probability => { loaded.probability_weight = Some(values); OlsInputRole::ProbabilityWeight },
+                            WeightKind::Importance => unreachable!("fixture selects supported OLS weights"),
+                        };
+                        request.bindings.push(OlsInputBinding { stata_var_position: 12, role });
+                    }
+                    if changed_sample {
+                        loaded.candidate[0] = false;
+                        loaded.outcome.missing[1] = true;
+                        loaded.numeric_sources[0].1.missing[3] = true;
+                        loaded.numeric_sources[1].1.values[10] = 1e12;
+                    }
+                    crate::ThreadTeam::new(crate::ThreadConfig::from_requested(16, true).unwrap()).install(|| {
+                        let sample = if is_full_retained_unweighted_sample(&loaded) {
+                            take_full_retained_unweighted_sample(loaded.clone()).unwrap()
+                        } else { take_classified_sample(&request, loaded.clone(), &clusters).unwrap() };
+                        let model = request.validate_and_compile_with_cluster_sources(&clusters).unwrap();
+                        let expected = finish_prepare_ols_data_with_membership(&request, &clusters, model, sample, false).unwrap();
+                        let actual = prepare_ols_data_owned_with_cluster_sources(&request, loaded, &clusters).unwrap();
+                        assert_eq!(actual, expected, "effects={effect_count}, weight={weight:?}, clusters={clusters:?}, changed={changed_sample}, keepsingletons={keep_singletons}");
+                    }).unwrap();
+                }
+            }
+        }
         }
     }
 

@@ -15,7 +15,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False):
+def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False):
     root = root.resolve()
     source = root / name
     source.mkdir(parents=True, exist_ok=False)
@@ -34,6 +34,12 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
     if profile_completion:
         from completion_profile import instrument
         instrument(source)
+    if profile_breadth:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("breadth_probes", REPO / "benchmarks/one_fe_breadth/profile.py")
+        probes = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probes)
+        probes.instrument(source)
     hashes = {str(p.relative_to(source)): sha(p) for p in sorted(source.rglob("*")) if p.is_file()}
     target = root / ("cargo-" + name)
     env = dict(os.environ, DEVELOPER_DIR="/Library/Developer/CommandLineTools",
@@ -61,6 +67,8 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         identity.setdefault("diagnostics", []).append("preparation_phases")
     if profile_completion:
         identity.setdefault("diagnostics", []).append("completion_phases")
+    if profile_breadth:
+        identity.setdefault("diagnostics", []).append("breadth_phases")
     (root / ("identity-" + name + ".json")).write_text(json.dumps(identity, indent=2) + "\n")
     print("BUILD_PASS", name, identity["plugin"], flush=True)
 
@@ -73,5 +81,6 @@ if __name__ == "__main__":
     p.add_argument("--overlay", nargs="*", default=[])
     p.add_argument("--profile-preparation", action="store_true")
     p.add_argument("--profile-completion", action="store_true")
+    p.add_argument("--profile-breadth", action="store_true")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth)

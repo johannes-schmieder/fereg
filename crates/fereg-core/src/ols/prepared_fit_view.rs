@@ -231,7 +231,15 @@ pub(crate) trait PreparedOlsFitView: Sync {
     fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix>;
 
     fn fit_build_rhs_with_loaded_rows(&self, response: &[f64], rows: Option<Vec<f64>>) -> Result<(DenseMatrix, bool)> {
-        drop(rows);
+        if let Some(rows) = rows {
+            if let Some(columns) = crate::ols::NumericOlsColumns::bind(self.fit_model(), self.fit_sample())? {
+                if columns.matches_rhs(response, &rows) {
+                    return Ok((DenseMatrix::from_row_major(
+                        response.len(), self.fit_model().columns.len() + 1, rows,
+                    )?, true));
+                }
+            }
+        }
         self.fit_build_rhs_with_response(response).map(|matrix| (matrix, false))
     }
 
@@ -924,6 +932,11 @@ impl PreparedOlsFitView for PreparedOlsData {
 }
 
 impl PreparedOlsFitView for PreparedCategoricalOlsData {
+    fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
+        let effects = self.effect_specs();
+        effects.len() == 1 && effects[0].intercept && effects[0].slopes.is_empty()
+    }
+
     fn fit_categorical_codes(&self, source: usize) -> Result<&[u32]> {
         self.categorical_sources()
             .get(source)

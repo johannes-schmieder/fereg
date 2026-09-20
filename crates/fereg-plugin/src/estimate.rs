@@ -20,10 +20,11 @@ use fereg_core::metadata::{
     ComponentKind, ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH,
     ABSORB_TERM_ROW_WIDTH, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
+#[cfg(test)]
+use fereg_core::ols::{fit_prepared_categorical_ols_clustered_map,
+    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,
+    fit_prepared_ols_clustered_map, fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map};
 use fereg_core::ols::{
-    fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
-    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
-    fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
     fit_prepared_ols_unadjusted_map_with_loaded_moments, LoadedOlsRows, PreparedOlsColumnKind,
     prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
     prepare_ols_data_owned, CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput,
@@ -135,6 +136,7 @@ struct EstimateAction {
     preparation_memory: crate::ols_preparation_memory::OlsPreparationMemory,
     frame_memory: crate::ols_frame_memory::OlsFrameMemory,
     generated_columns: usize,
+    loaded_rhs_width: Option<usize>,
     prepared_owner_bytes: u128,
     execution_parent_bytes: u128,
     output_parent_bytes: u128,
@@ -238,8 +240,6 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         && action.request.absorbed_terms.len() == 1
         && action.request.absorbed_terms[0].categorical_sources.len() == 1
         && action.request.absorbed_terms[0].slope_sources.is_empty()
-        && action.request.absorbed_terms[0].saved_name.is_empty()
-        && matches!(action.vce, OlsVceKind::Iid)
         && !action.request.bindings.iter().any(|binding| matches!(binding.role,
             OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight)))
         .then(|| ThreadTeam::new(action.fit.execution.threads));
@@ -257,6 +257,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         input_team,
         &mut loaded_rhs,
         rhs_budget,
+        action.loaded_rhs_width,
     )?;
     action.loaded_fit_workspace_bytes = loaded_rhs.as_ref().map_or(0, |rows| rows.capacity() as u128 * 8);
     action.input_peak_bytes = input_memory.peak();
@@ -276,35 +277,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         (OlsVceKind::Iid, false) => {
             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
             let trace_started = Instant::now();
-            let nrows = loaded.candidate.len();
-            let columns = action.generated_columns.checked_add(1)
-                .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "loaded OLS moment width overflows"))?;
-            let moment_bytes = LoadedOlsRows::moment_workspace_bytes(nrows, columns).filter(|bytes| {
-                loaded_rhs.is_some() && action.fit.execution.threads.resolved() >= 8
-                    && action.request.absorbed_terms.len() == 1
-                    && action.memory_plan.usable_bytes.is_none_or(|usable| {
-                        action.preparation_memory.preparation_peak_bytes(action.loaded_fit_workspace_bytes + *bytes as u128)
-                            .ok().and_then(|peak| peak.checked_add(action.metadata_owner_bytes))
-                            .is_some_and(|peak| peak <= usable)
-                    })
-            });
-            let (prepared, loaded_rows) = if let Some(bytes) = moment_bytes {
-                // The two jobs own disjoint Rust input buffers. No SPI call is
-                // made here; join before authoritative preparation is consumed.
-                action.loaded_fit_workspace_bytes += bytes as u128;
-                ThreadTeam::new(action.fit.execution.threads).install(|| {
-                    let (prepared, rows) = rayon::join(
-                        || prepare_ols_data_owned(&action.request, loaded),
-                        || loaded_rhs.map(|rows| LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)),
-                    );
-                    prepared.map(|prepared| (prepared, rows))
-                })??
-            } else {
-                let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
-                    prepare_ols_data_owned(&action.request, loaded)
-                })?;
-                (prepared, loaded_rhs.map(LoadedOlsRows::from))
-            };
+            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
+                loaded, loaded_rhs, &mut action, |request, loaded| prepare_ols_data_owned(request, loaded),
+            )?;
             action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
@@ -349,19 +324,20 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         (OlsVceKind::Robust, false) => {
             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
             let trace_started = Instant::now();
-            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
-                prepare_ols_data_owned(&action.request, loaded)
-            })?;
+            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
+                loaded, loaded_rhs, &mut action, |request, loaded| prepare_ols_data_owned(request, loaded),
+            )?;
             action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
-            let inference = fit_prepared_ols_robust_map(
+            let inference = fereg_core::ols::fit_prepared_ols_robust_map_with_loaded_moments(
                 &prepared,
                 PreparedOlsRobustConfig {
                     fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     ..PreparedOlsRobustConfig::default()
                 },
+                loaded_rows,
             )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let inference_seconds = inference_started.elapsed().as_secs_f64();
@@ -397,12 +373,12 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 ols: action.request.clone(),
                 clusters: action.clusters.clone(),
             };
-            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
-                prepare_ols_clustered_data_owned(&request, loaded)
-            })?;
+            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
+                loaded, loaded_rhs, &mut action, |_, loaded| prepare_ols_clustered_data_owned(&request, loaded),
+            )?;
             drop(request);
             action.admit_prepared_parent(prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes())?;
-            let inference = fit_prepared_ols_clustered_map(
+            let inference = fereg_core::ols::fit_prepared_ols_clustered_map_with_loaded_moments(
                 &prepared,
                 PreparedOlsClusteredConfig {
                     fit: action.fit,
@@ -410,6 +386,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     account_cluster_nesting: action.account_cluster_nesting,
                     ..PreparedOlsClusteredConfig::default()
                 },
+                loaded_rows,
             )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::legacy(prepared.ols());
@@ -430,17 +407,18 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Iid, true) => {
-            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
-                prepare_categorical_ols_data_owned(&action.request, loaded)
-            })?;
+            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
+                loaded, loaded_rhs, &mut action, |request, loaded| prepare_categorical_ols_data_owned(request, loaded),
+            )?;
             action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
-            let inference = fit_prepared_categorical_ols_unadjusted_map(
+            let inference = fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
                     fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     ..PreparedOlsUnadjustedConfig::default()
                 },
+                loaded_rows,
             )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::categorical(&prepared);
@@ -461,17 +439,18 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
         (OlsVceKind::Robust, true) => {
-            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
-                prepare_categorical_ols_data_owned(&action.request, loaded)
-            })?;
+            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
+                loaded, loaded_rhs, &mut action, |request, loaded| prepare_categorical_ols_data_owned(request, loaded),
+            )?;
             action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
-            let inference = fit_prepared_categorical_ols_robust_map(
+            let inference = fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
                 &prepared,
                 PreparedOlsRobustConfig {
                     fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     ..PreparedOlsRobustConfig::default()
                 },
+                loaded_rows,
             )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::categorical(&prepared);
@@ -496,12 +475,12 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 ols: action.request.clone(),
                 clusters: action.clusters.clone(),
             };
-            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
-                prepare_categorical_ols_clustered_data_owned(&request, loaded)
-            })?;
+            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
+                loaded, loaded_rhs, &mut action, |_, loaded| prepare_categorical_ols_clustered_data_owned(&request, loaded),
+            )?;
             drop(request);
             action.admit_prepared_parent(prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes())?;
-            let inference = fit_prepared_categorical_ols_clustered_map(
+            let inference = fereg_core::ols::fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
                 &prepared,
                 PreparedOlsClusteredConfig {
                     fit: action.fit,
@@ -509,6 +488,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     account_cluster_nesting: action.account_cluster_nesting,
                     ..PreparedOlsClusteredConfig::default()
                 },
+                loaded_rows,
             )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::categorical(prepared.ols());
@@ -529,6 +509,47 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             precommit_and_store(&action, &shadow, &derived, &observation, spi)
         }
     }
+}
+
+// Preparation and raw moments borrow disjoint Rust-owned inputs. The optional
+// cache has the same whole-action admission and deferred errors as the IID path.
+fn prepare_loaded_ols_with_moments<T: Send>(
+    loaded: LoadedOlsInput,
+    loaded_rhs: Option<Vec<f64>>,
+    action: &mut EstimateAction,
+    prepare: impl FnOnce(&OlsRequestV1, LoadedOlsInput) -> Result<T> + Send,
+) -> Result<(T, Option<LoadedOlsRows>)> {
+    let started = Instant::now();
+    let nrows = loaded.candidate.len();
+    let columns = action.generated_columns.checked_add(1)
+        .ok_or_else(|| allocation("loaded OLS moment width overflows"))?;
+    let moment_bytes = LoadedOlsRows::moment_workspace_bytes(nrows, columns).filter(|bytes| {
+        loaded_rhs.is_some() && action.fit.execution.threads.resolved() >= 8
+            && action.request.absorbed_terms.len() == 1
+            && action.memory_plan.usable_bytes.is_none_or(|usable| {
+                action.preparation_memory.preparation_peak_bytes(action.loaded_fit_workspace_bytes + *bytes as u128)
+                    .ok().and_then(|peak| peak.checked_add(action.metadata_owner_bytes))
+                    .is_some_and(|peak| peak <= usable)
+            })
+    });
+    let result = if let Some(bytes) = moment_bytes {
+        action.loaded_fit_workspace_bytes += bytes as u128;
+        let request = &action.request;
+        ThreadTeam::new(action.fit.execution.threads).install(|| {
+            let (prepared, rows) = rayon::join(
+                || prepare(request, loaded),
+                || loaded_rhs.map(|rows| LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)),
+            );
+            prepared.map(|prepared| (prepared, rows))
+        })?
+    } else {
+        let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| prepare(&action.request, loaded))?;
+        Ok((prepared, loaded_rhs.map(LoadedOlsRows::from)))
+    };
+    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+        eprintln!("FEREG_PHASE|ols_prepare_moments|seconds={:.9}", started.elapsed().as_secs_f64());
+    }
+    result
 }
 
 // Loading has finished before this boundary; the closure captures no SPI session.
@@ -1271,6 +1292,7 @@ impl EstimateActionSpec {
             preparation_memory,
             frame_memory,
             generated_columns: prepared_model.columns.len(),
+            loaded_rhs_width: numeric_loaded_rhs_width(&prepared_model),
             prepared_owner_bytes: 0,
             execution_parent_bytes: 0,
             output_parent_bytes: 0,
@@ -1628,7 +1650,16 @@ pub(crate) fn load_ols_input_with_memory(
     memory: &mut InputMemory,
     spi: &mut dyn SpiApi,
 ) -> Result<LoadedOlsInput> {
-    load_ols_input_with_team(request, candidate_all, input_complete, memory, spi, None, &mut None, 0)
+    load_ols_input_with_team(request, candidate_all, input_complete, memory, spi, None, &mut None, 0, None)
+}
+
+// Use the already validated finite model, including its cluster-source graph.
+// Loading only materializes this recipe; the final fit checks every row/value.
+fn numeric_loaded_rhs_width(model: &fereg_core::ols::PreparedOlsModel) -> Option<usize> {
+    (matches!(model.columns.last().map(|c| &c.kind), Some(PreparedOlsColumnKind::Intercept))
+        && model.columns[..model.columns.len().saturating_sub(1)].iter().enumerate().all(|(index, column)|
+            matches!(column.kind, PreparedOlsColumnKind::Continuous { prepared_source_index, .. } if index == prepared_source_index)))
+        .then_some(model.columns.len() + 1)
 }
 
 fn load_ols_input_with_team(
@@ -1640,6 +1671,7 @@ fn load_ols_input_with_team(
     team: Option<ThreadTeam>,
     rhs: &mut Option<Vec<f64>>,
     rhs_budget: usize,
+    compiled_rhs_width: Option<usize>,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
     let mut candidate = reserved_filled(n, candidate_all, "OLS candidate marker")?;
@@ -1707,6 +1739,7 @@ fn load_ols_input_with_team(
     let all_sources_numeric = source_loaders
         .iter()
         .all(|(_, loader)| matches!(loader, OlsSourceLoader::Numeric(_)));
+    let mut rhs_width = 0;
     if candidate_all && all_sources_numeric {
         if let Some(team) = team {
                 let width = request.model.sources.len() + 1;
@@ -1717,13 +1750,9 @@ fn load_ols_input_with_team(
                     && !request.bindings.iter().any(|binding| matches!(binding.role,
                         OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight))
                 {
-                    let model = request.validate_and_compile()?;
-                    let shape_matches = model.columns.len() + 1 == width
-                        && matches!(model.columns.last().map(|c| &c.kind), Some(PreparedOlsColumnKind::Intercept))
-                        && model.columns[..model.columns.len() - 1].iter().enumerate().all(|(index, column)|
-                            matches!(column.kind, PreparedOlsColumnKind::Continuous { prepared_source_index, .. } if index == prepared_source_index));
-                    if shape_matches {
-                        if let Some(elements) = n.checked_mul(width) {
+                    if let Some(compiled_width) = compiled_rhs_width.filter(|w| (8..=width).contains(w)) {
+                        rhs_width = compiled_width;
+                        if let Some(elements) = n.checked_mul(rhs_width) {
                             if let Some(bytes) = elements.checked_mul(8).filter(|bytes| *bytes <= rhs_budget && *bytes <= memory.remaining().saturating_sub(2 * 4096 * width * 8 + 4096)) {
                                 memory.admit(bytes as u128)?;
                                 let mut rows = Vec::new();
@@ -1752,7 +1781,7 @@ fn load_ols_input_with_team(
             missing.push(&mut column.missing);
         }
         crate::numeric_pipeline::try_read_reserved(spi, &positions, n, &mut columns,
-            &mut missing, team.expect("deferred input has a team"), memory, rhs.as_mut())?
+            &mut missing, team.expect("deferred input has a team"), memory, rhs.as_mut().map(|rows| (rows, rhs_width)))?
     } else { false };
     if defer_columns && !reserved_read {
         // A rejected optional path has not read observations. Restore the
@@ -1812,7 +1841,7 @@ fn load_ols_input_with_team(
         }
         let pipelined = if reserved_read { true } else if candidate_all && all_sources_numeric {
             if let Some(team) = team {
-                crate::numeric_pipeline::try_read_with_rhs(spi, &positions, &mut columns, &mut missing, team, memory, rhs.as_mut())?
+                crate::numeric_pipeline::try_read_with_rhs(spi, &positions, &mut columns, &mut missing, team, memory, rhs.as_mut().map(|rows| (rows, rhs_width)))?
             } else { false }
         } else { false };
         if !pipelined {
@@ -2092,6 +2121,7 @@ fn build_derived_observation_outputs_in_team(
             )?,
         });
     }
+    let started = Instant::now();
     let n = prepared.sample().n_active();
     if fit.residuals().len() != n || fit.coefficients().len() != prepared.model().coefficients.len()
     {
@@ -2142,14 +2172,7 @@ fn build_derived_observation_outputs_in_team(
         None
     };
     if let Some(xb) = xb_work.as_mut() {
-        xb.par_iter_mut()
-            .enumerate()
-            .try_for_each(|(row, value)| -> Result<()> {
-                for &(column, coefficient) in &fitted_terms {
-                    *value = coefficient.mul_add(prepared.column_value(column, row)?, *value);
-                }
-                Ok(())
-            })?;
+        prepared.add_fitted_terms(&fitted_terms, xb)?;
     }
     if xb_work
         .as_ref()
@@ -2171,17 +2194,10 @@ fn build_derived_observation_outputs_in_team(
             // Saved-only publication does not need an xb vector after target
             // construction. Accumulate xb in the target buffer, then convert
             // it in place; this preserves the ordinary xb rounding exactly.
-            target
-                .par_iter_mut()
-                .enumerate()
-                .try_for_each(|(row, value)| -> Result<()> {
-                    let mut xb = 0.0_f64;
-                    for &(column, coefficient) in &fitted_terms {
-                        xb = coefficient.mul_add(prepared.column_value(column, row)?, xb);
-                    }
-                    *value = prepared.sample().outcome[row] - xb - fit.residuals()[row];
-                    Ok(())
-                })?;
+            prepared.add_fitted_terms(&fitted_terms, target)?;
+            target.par_iter_mut().enumerate().for_each(|(row, value)| {
+                *value = prepared.sample().outcome[row] - *value - fit.residuals()[row];
+            });
         }
     }
     if absorbed_target
@@ -2191,6 +2207,7 @@ fn build_derived_observation_outputs_in_team(
         return Err(invalid_data("derived OLS absorbed target is not finite"));
     }
 
+    let target_seconds = started.elapsed().as_secs_f64();
     let mut saved_channels = reserved_empty(
         requested.saved_channels.len(),
         "derived saved-output registry",
@@ -2262,6 +2279,7 @@ fn build_derived_observation_outputs_in_team(
         saved_channels.resize_with(requested.saved_channels.len(), || None);
     }
 
+    let recovery_seconds = started.elapsed().as_secs_f64() - target_seconds;
     let xbd = if requested.xbd.is_some() {
         let mut values = reserved_filled(n, 0.0, "derived OLS xbd output")?;
         values.par_iter_mut().enumerate().for_each(|(row, value)| {
@@ -2285,6 +2303,9 @@ fn build_derived_observation_outputs_in_team(
     } else {
         None
     };
+    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+        eprintln!("FEREG_PHASE|ols_outputs|target={target_seconds:.9}|recovery={recovery_seconds:.9}|total={:.9}", started.elapsed().as_secs_f64());
+    }
     Ok(DerivedObservationOutputs {
         xb,
         xbd,
@@ -5390,11 +5411,11 @@ mod tests {
     fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
         let (_, mut spi) = fixture(OlsVceKind::Iid);
         spi.nobs = 16_387;
-        spi.nvars = 13;
+        spi.nvars = 15;
         spi.numeric_rows_enabled = true;
         spi.data.clear();
         for row in 1..=spi.nobs {
-            for variable in 1..=13 {
+            for variable in 1..=15 {
                 let value = if variable == 1 { 1.0 } else if variable == 13 { ((row - 1) / 5 + 1) as f64 }
                     else { ((row * variable as usize) as f64).sin() + ((row + variable as usize * 13) as f64).cos() };
                 spi.data.insert((variable, row), (value, false));
@@ -5418,32 +5439,69 @@ mod tests {
             }
         }
         let required = spi.nobs * 12 * 8;
-        for (budget, threads, reorder, missing) in [(required, 4, false, false),
-            (required - 1, 4, false, false), (required, 1, false, false),
-            (required, 4, true, false), (required, 4, false, true),
-            (required, 8, false, false), (required - 1, 8, false, false),
-            (required, 16, true, false), (required, 16, false, true)] {
-            let mut request = request.clone();
-            let mut spi = spi.clone();
-            if reorder { request.model.terms[0].components[0].source = SourceId::new(2).unwrap(); request.model.terms[1].components[0].source = SourceId::new(1).unwrap(); }
-            if missing { spi.data.insert((2, 3), (1e100, true)); }
-            let reference_loaded = load_ols_input(&request, true, false, &mut spi.clone()).unwrap();
-            let mut rhs = None;
-            let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
-            let loaded = load_ols_input_with_team(&request, true, false, &mut memory, &mut spi,
-                Some(ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())), &mut rhs, budget).unwrap();
-            assert_eq!(loaded, reference_loaded);
-            assert_eq!(rhs.is_some(), budget == required && threads > 1 && !reorder);
-            if let Some(rows) = rhs.as_ref() { assert_eq!(rows.capacity() * 8, required); assert!(memory.peak() >= required as u128); }
-            let prepared = prepare_ols_data_owned(&request, loaded).unwrap();
-            let mut config = PreparedOlsUnadjustedConfig::default();
-            config.fit.execution.threads = ThreadConfig::from_requested(4, false).unwrap();
-            let reference = fit_prepared_ols_unadjusted_map(&prepared, config).unwrap();
-            let actual = fereg_core::ols::fit_prepared_ols_unadjusted_map_with_loaded_rows(&prepared, config, rhs).unwrap();
-            assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
-            assert_eq!(reference.covariance(), actual.covariance());
-            assert_eq!(reference.statistics(), actual.statistics());
-            assert_eq!(reference.certificate(), actual.certificate());
+        for extra_sources in [0, 2] {
+            for (budget, threads, reorder, missing) in [(required, 4, false, false),
+                (required - 1, 4, false, false), (required, 1, false, false),
+                (required, 4, true, false), (required, 4, false, true),
+                (required, 8, false, false), (required - 1, 8, false, false),
+                (required, 16, true, false), (required, 16, false, true)] {
+                let mut request = request.clone();
+                let mut spi = spi.clone();
+                for id in 12..12+extra_sources {
+                    let source = SourceId::new(id).unwrap();
+                    request.model.sources.push(SourceEntry { id: source, canonical_name: format!("cluster{id}") });
+                    request.bindings.push(OlsInputBinding { stata_var_position: id + 2, role: OlsInputRole::NumericSource(source) });
+                }
+                if reorder { request.model.terms[0].components[0].source = SourceId::new(2).unwrap(); request.model.terms[1].components[0].source = SourceId::new(1).unwrap(); }
+                if missing { spi.data.insert((2, 3), (1e100, true)); }
+                let clustered_request = OlsClusteredRequestV1 {
+                    ols: request.clone(),
+                    clusters: vec![OlsClusterTermV1 { label: "c".to_owned(),
+                        sources: if extra_sources == 0 { vec![SourceId::new(11).unwrap()] }
+                            else { vec![SourceId::new(12).unwrap(), SourceId::new(13).unwrap()] } }],
+                };
+                let compiled_width = numeric_loaded_rhs_width(&clustered_request.validate_and_compile().unwrap());
+                let reference_loaded = load_ols_input(&request, true, false, &mut spi.clone()).unwrap();
+                let mut rhs = None;
+                let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
+                let loaded = load_ols_input_with_team(&request, true, false, &mut memory, &mut spi,
+                    Some(ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())), &mut rhs, budget, compiled_width).unwrap();
+                assert_eq!(loaded, reference_loaded);
+                assert_eq!(rhs.is_some(), budget == required && threads > 1 && !reorder);
+                if let Some(rows) = rhs.as_ref() { assert_eq!(rows.capacity() * 8, required); assert!(memory.peak() >= required as u128); }
+                let categorical_clustered = prepare_categorical_ols_clustered_data_owned(&clustered_request, loaded.clone()).unwrap();
+                let categorical = categorical_clustered.ols();
+                let categorical_rows = rhs.clone();
+                let robust_rows = rhs.clone();
+                let clustered_rows = rhs.clone();
+                let prepared_clustered = prepare_ols_clustered_data_owned(&clustered_request, loaded).unwrap();
+                let prepared = prepared_clustered.ols();
+                let mut config = PreparedOlsUnadjustedConfig::default();
+                config.fit.execution.threads = ThreadConfig::from_requested(4, false).unwrap();
+                let reference = fit_prepared_ols_unadjusted_map(prepared, config).unwrap();
+                let actual = fereg_core::ols::fit_prepared_ols_unadjusted_map_with_loaded_rows(prepared, config, rhs).unwrap();
+                assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
+                assert_eq!(reference.covariance(), actual.covariance());
+                assert_eq!(reference.statistics(), actual.statistics());
+                assert_eq!(reference.certificate(), actual.certificate());
+                let reference = fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map(categorical, config).unwrap();
+                let actual = fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
+                    categorical, config, categorical_rows.map(LoadedOlsRows::from)).unwrap();
+                assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
+                assert_eq!(reference.covariance(), actual.covariance());
+                let robust_config = PreparedOlsRobustConfig { fit: config.fit, ..PreparedOlsRobustConfig::default() };
+                let reference = fereg_core::ols::fit_prepared_categorical_ols_robust_map(categorical, robust_config).unwrap();
+                let actual = fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
+                    categorical, robust_config, robust_rows.map(LoadedOlsRows::from)).unwrap();
+                assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
+                assert_eq!(reference.covariance(), actual.covariance());
+                let cluster_config = PreparedOlsClusteredConfig { fit: config.fit, ..PreparedOlsClusteredConfig::default() };
+                let reference = fereg_core::ols::fit_prepared_categorical_ols_clustered_map(&categorical_clustered, cluster_config).unwrap();
+                let actual = fereg_core::ols::fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
+                    &categorical_clustered, cluster_config, clustered_rows.map(LoadedOlsRows::from)).unwrap();
+                assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
+                assert_eq!(reference.covariance(), actual.covariance());
+            }
         }
     }
 
