@@ -230,9 +230,9 @@ pub(crate) trait PreparedOlsFitView: Sync {
     /// response. Implementations retain their layout-specific hot path.
     fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix>;
 
-    fn fit_build_rhs_with_loaded_rows(&self, response: &[f64], rows: Option<Vec<f64>>) -> Result<DenseMatrix> {
+    fn fit_build_rhs_with_loaded_rows(&self, response: &[f64], rows: Option<Vec<f64>>) -> Result<(DenseMatrix, bool)> {
         drop(rows);
-        self.fit_build_rhs_with_response(response)
+        self.fit_build_rhs_with_response(response).map(|matrix| (matrix, false))
     }
 
 
@@ -733,8 +733,9 @@ impl PreparedOlsFitView for PreparedOlsData {
         Ok(build_prepared_ols_rhs_with_response(self, response)?.into_values())
     }
 
-    fn fit_build_rhs_with_loaded_rows(&self, response: &[f64], rows: Option<Vec<f64>>) -> Result<DenseMatrix> {
-        Ok(crate::ols::build_prepared_ols_rhs_with_loaded_rows(self, response, rows)?.into_values())
+    fn fit_build_rhs_with_loaded_rows(&self, response: &[f64], rows: Option<Vec<f64>>) -> Result<(DenseMatrix, bool)> {
+        let (rhs, reused) = crate::ols::build_prepared_ols_rhs_with_loaded_rows_and_reuse(self, response, rows)?;
+        Ok((rhs.into_values(), reused))
     }
 
 

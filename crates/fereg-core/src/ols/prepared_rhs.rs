@@ -94,22 +94,29 @@ pub fn absorb_prepared_ols_rhs_map(
 /// Reuse a speculative input matrix only after the authoritative sample and
 /// every numeric value agree. Failed speculation frees the owner before the
 /// ordinary builder runs; it cannot change samples, recipes or error ordering.
-pub(crate) fn build_prepared_ols_rhs_with_loaded_rows(
+#[cfg(test)]
+fn build_prepared_ols_rhs_with_loaded_rows(
     prepared: &PreparedOlsData,
     response: &[f64],
     rows: Option<Vec<f64>>,
 ) -> Result<PreparedOlsRhs> {
+    build_prepared_ols_rhs_with_loaded_rows_and_reuse(prepared, response, rows).map(|result| result.0)
+}
+
+pub(crate) fn build_prepared_ols_rhs_with_loaded_rows_and_reuse(
+    prepared: &PreparedOlsData, response: &[f64], rows: Option<Vec<f64>>,
+) -> Result<(PreparedOlsRhs, bool)> {
     if let Some(rows) = rows {
         validate_prepared_rhs_inputs(prepared, response)?;
         if let Some(columns) = NumericOlsColumns::bind(&prepared.model, &prepared.sample)? {
             if columns.matches_rhs(response, &rows) {
-                return Ok(PreparedOlsRhs { values: DenseMatrix::from_row_major(
+                return Ok((PreparedOlsRhs { values: DenseMatrix::from_row_major(
                     response.len(), prepared.model.columns.len() + 1, rows,
-                )? });
+                )? }, true));
             }
         }
     }
-    build_prepared_ols_rhs_with_response(prepared, response)
+    build_prepared_ols_rhs_with_response(prepared, response).map(|rhs| (rhs, false))
 }
 
 fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(

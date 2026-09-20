@@ -24,7 +24,7 @@ use fereg_core::ols::{
     fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map,
-    fit_prepared_ols_unadjusted_map_with_loaded_rows, PreparedOlsColumnKind,
+    fit_prepared_ols_unadjusted_map_with_loaded_moments, LoadedOlsRows, PreparedOlsColumnKind,
     prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
     prepare_ols_data_owned, CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput,
     OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
@@ -141,7 +141,7 @@ struct EstimateAction {
     metadata_owner_bytes: u128,
     metadata_peak_bytes: u128,
     input_peak_bytes: u128,
-    loaded_rhs_bytes: u128,
+    loaded_fit_workspace_bytes: u128,
     publication_memory: crate::ols_publication_memory::OlsPublicationMemory,
     requested_tolerance: f64,
     outputs: ObservationOutputs,
@@ -258,7 +258,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &mut loaded_rhs,
         rhs_budget,
     )?;
-    action.loaded_rhs_bytes = loaded_rhs.as_ref().map_or(0, |rows| rows.capacity() as u128 * 8);
+    action.loaded_fit_workspace_bytes = loaded_rhs.as_ref().map_or(0, |rows| rows.capacity() as u128 * 8);
     action.input_peak_bytes = input_memory.peak();
     let input_load_seconds = started.elapsed().as_secs_f64() - preflight_seconds;
     let observation = ActionObservation {
@@ -276,20 +276,46 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         (OlsVceKind::Iid, false) => {
             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
             let trace_started = Instant::now();
-            let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
-                prepare_ols_data_owned(&action.request, loaded)
-            })?;
+            let nrows = loaded.candidate.len();
+            let columns = action.generated_columns.checked_add(1)
+                .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "loaded OLS moment width overflows"))?;
+            let moment_bytes = LoadedOlsRows::moment_workspace_bytes(nrows, columns).filter(|bytes| {
+                loaded_rhs.is_some() && action.fit.execution.threads.resolved() >= 8
+                    && action.request.absorbed_terms.len() == 1
+                    && action.memory_plan.usable_bytes.is_none_or(|usable| {
+                        action.preparation_memory.preparation_peak_bytes(action.loaded_fit_workspace_bytes + *bytes as u128)
+                            .ok().and_then(|peak| peak.checked_add(action.metadata_owner_bytes))
+                            .is_some_and(|peak| peak <= usable)
+                    })
+            });
+            let (prepared, loaded_rows) = if let Some(bytes) = moment_bytes {
+                // The two jobs own disjoint Rust input buffers. No SPI call is
+                // made here; join before authoritative preparation is consumed.
+                action.loaded_fit_workspace_bytes += bytes as u128;
+                ThreadTeam::new(action.fit.execution.threads).install(|| {
+                    let (prepared, rows) = rayon::join(
+                        || prepare_ols_data_owned(&action.request, loaded),
+                        || loaded_rhs.map(|rows| LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)),
+                    );
+                    prepared.map(|prepared| (prepared, rows))
+                })??
+            } else {
+                let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                    prepare_ols_data_owned(&action.request, loaded)
+                })?;
+                (prepared, loaded_rhs.map(LoadedOlsRows::from))
+            };
             action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
             let inference_started = Instant::now();
-            let inference = fit_prepared_ols_unadjusted_map_with_loaded_rows(
+            let inference = fit_prepared_ols_unadjusted_map_with_loaded_moments(
                 &prepared,
                 PreparedOlsUnadjustedConfig {
                     fit: action.fit,
                     absorbed_dof: action.absorbed_dof,
                     ..PreparedOlsUnadjustedConfig::default()
                 },
-                loaded_rhs,
+                loaded_rows,
             )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let inference_seconds = inference_started.elapsed().as_secs_f64();
@@ -554,7 +580,7 @@ impl EstimateAction {
             Stage::Preparation,
             Frame {
                 parents: self.metadata_owner_bytes,
-                workspace: self.preparation_memory.preparation_peak_bytes(self.loaded_rhs_bytes)?,
+                workspace: self.preparation_memory.preparation_peak_bytes(self.loaded_fit_workspace_bytes)?,
             },
             Gaps::CONSTRUCTION.union(Gaps::WORKER_RUNTIME),
         )?;
@@ -621,7 +647,7 @@ impl EstimateAction {
             sum(&[self.execution_parent_bytes, u128::from(solver)])?
         };
         let preparation = sum(&[self.metadata_owner_bytes,
-            self.preparation_memory.preparation_peak_bytes(self.loaded_rhs_bytes)?])?;
+            self.preparation_memory.preparation_peak_bytes(self.loaded_fit_workspace_bytes)?])?;
         let publication = sum(&[self.output_parent_bytes, self.publication_memory.peak_bytes()])?;
         let native_peak = fit.max(preparation).max(publication)
             .max(self.metadata_peak_bytes).max(self.input_peak_bytes);
@@ -1251,7 +1277,7 @@ impl EstimateActionSpec {
             metadata_owner_bytes: 0,
             metadata_peak_bytes,
             input_peak_bytes: 0,
-            loaded_rhs_bytes: 0,
+            loaded_fit_workspace_bytes: 0,
             publication_memory,
             requested_tolerance: self.tolerance,
             outputs: self.outputs.clone(),
@@ -5292,7 +5318,7 @@ mod tests {
             let mut config = PreparedOlsUnadjustedConfig::default();
             config.fit.execution.threads = ThreadConfig::from_requested(4, false).unwrap();
             let reference = fit_prepared_ols_unadjusted_map(&prepared, config).unwrap();
-            let actual = fit_prepared_ols_unadjusted_map_with_loaded_rows(&prepared, config, rhs).unwrap();
+            let actual = fereg_core::ols::fit_prepared_ols_unadjusted_map_with_loaded_rows(&prepared, config, rhs).unwrap();
             assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
             assert_eq!(reference.covariance(), actual.covariance());
             assert_eq!(reference.statistics(), actual.statistics());

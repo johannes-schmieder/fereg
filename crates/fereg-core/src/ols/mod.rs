@@ -72,7 +72,7 @@ pub use prepared_dof::{
 };
 pub use prepared_fit::{
     fit_prepared_categorical_ols_coefficients_map, fit_prepared_ols_coefficients_map,
-    CertifiedPreparedOlsFit, PreparedOlsBread, PreparedOlsBreadCertificate,
+    CertifiedPreparedOlsFit, LoadedOlsRows, PreparedOlsBread, PreparedOlsBreadCertificate,
     PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind, PreparedOlsBreadWeightScale,
     PreparedOlsExecutionConfig, PreparedOlsExecutionMode, PreparedOlsExecutionReport,
     PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsFittedCoefficient,
@@ -86,7 +86,7 @@ pub(crate) use prepared_fit::{
 };
 pub use prepared_rhs::{absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, PreparedOlsRhs};
 pub(crate) use prepared_rhs::{
-    build_prepared_ols_rhs_with_response, build_prepared_ols_rhs_with_loaded_rows, numeric_sources_are_finite, NumericOlsColumns,
+    build_prepared_ols_rhs_with_response, build_prepared_ols_rhs_with_loaded_rows_and_reuse, numeric_sources_are_finite, NumericOlsColumns,
 };
 pub use prepared_robust::{
     fit_prepared_categorical_ols_robust_map, fit_prepared_ols_robust_map,
@@ -95,7 +95,7 @@ pub use prepared_robust::{
 };
 pub use prepared_unadjusted::{
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_unadjusted_map,
-    fit_prepared_ols_unadjusted_map_with_loaded_rows,
+    fit_prepared_ols_unadjusted_map_with_loaded_rows, fit_prepared_ols_unadjusted_map_with_loaded_moments,
     CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsUnadjusted,
     PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
     PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig, PreparedOlsUnadjustedCovariance,

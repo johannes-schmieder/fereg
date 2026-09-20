@@ -18,8 +18,17 @@ calls, exact native science, the focused generic-weight comparison, ABI and
 three licensed fixtures pass. Its score phase falls about 2 ms at both widths;
 three-pair command medians are 163/438 ms versus pinned fixest 143/448 ms.
 Protected controls have maximum median ratio 1.01026 and geometric mean 0.99742.
-Raw-moment/preparation overlap is a separate prototype under measurement.
-The overall two-width 5% win target remains unmet.
+Raw-moment/preparation overlap and exact unit reference mass now have adoption
+evidence in `benchmarks/reports/development/one-fe-moment-overlap-2026-09-19/`:
+190 accepted calls, exact native science, three focused native tests, both ABI
+checks and six licensed fixtures. Five-pair baseline/overlap/combined/fixest
+medians are 164/160/155/144 ms (K=10) and 439/432/431/467 ms (K=50). Combined
+protected ratios have maximum 1.01527 and geometric mean 0.98350. Same-call raw
+rows own their speculative statistics; preparation admits the small partial
+bank, and exact prepared matching and deferred errors gate consumption. Unit
+mass uses the independently validated physical count. The native primary peaks
+remain unchanged. The overall two-width 5% win target remains unmet. Reusing
+a validated immutable FE descriptor is the next separate prototype.
 
 
 Narrow outcome-scan overlap and one-FE membership reuse have adoption evidence

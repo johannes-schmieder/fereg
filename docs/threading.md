@@ -37,6 +37,12 @@ with reported bread/intercept completion. This uses the same team and existing
 owners, without a score cache or saved coefficients. Projection errors remain
 deferred until bread and initial within-TSS checks pass. Phase-allocation probes
 retain sequential execution.
+After SPI loading ends, eligible unit one-FE fits may compute raw moments
+from their already loaded matrix beside sample/FE preparation on the same
+team. This requires 16,384 rows, 8–64 RHS columns, eight workers and admitted
+workspace. Their private row owner and cache stay paired; exact prepared-value
+matching gates reuse. Preparation and fit-input errors keep their original
+precedence over a deferred moment error.
 Dense integer FE encoding also uses an already installed team from 16,384
 rows: the range scan preserves the first ineligible/nonfinite row, and indexed
 collection fills the fallibly reserved code vector without another allocation.

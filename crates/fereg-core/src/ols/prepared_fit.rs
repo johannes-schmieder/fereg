@@ -893,6 +893,64 @@ struct RawMomentCache {
     weight_sum: f64,
 }
 
+/// Same-call speculative RHS storage. Cached statistics remain tied to its
+/// private row owner and are consumed only after exact prepared-value matching.
+#[derive(Debug)]
+pub struct LoadedOlsRows {
+    rows: Vec<f64>,
+    moments: Option<Result<RawMomentCache>>,
+}
+
+impl From<Vec<f64>> for LoadedOlsRows {
+    fn from(rows: Vec<f64>) -> Self { Self { rows, moments: None } }
+}
+
+impl LoadedOlsRows {
+    /// Bound the three result vectors and deterministic fused partial bank.
+    /// Returning None keeps the ordinary fit-time computation.
+    pub fn moment_workspace_bytes(nrows: usize, columns: usize) -> Option<usize> {
+        if nrows < 16_384 || !(8..=FUSED_MOMENT_MAX_COLUMNS).contains(&columns) { return None; }
+        let chunks = nrows.div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS).clamp(1, FUSED_MOMENT_MAX_BLOCKS);
+        columns.checked_mul(3)?.checked_mul(chunks.checked_add(1)?)?.checked_mul(8)
+    }
+
+    /// Compute unit-weight moments on an installed team before preparation
+    /// finishes. Allocation admission belongs to the whole-action caller.
+    /// Errors stay deferred until the original fit-time moment boundary.
+    pub fn with_unit_moments(mut self, nrows: usize, columns: usize, admitted_bytes: usize) -> Self {
+        let Some(required) = Self::moment_workspace_bytes(nrows, columns) else { return self; };
+        if self.moments.is_some() || required > admitted_bytes || nrows.checked_mul(columns) != Some(self.rows.len())
+            || rayon::current_thread_index().is_none() || rayon::current_num_threads() < 8
+        { return self; }
+        // Shape was checked above; failure here cannot leave a usable capsule.
+        let raw = DenseMatrix::from_row_major(nrows, columns, std::mem::take(&mut self.rows))
+            .expect("checked loaded OLS row dimensions");
+        self.moments = Some(build_raw_moment_cache(&raw,
+            NormalizedWeights { values: None, raw_scale: 1.0, kind: None },
+            &mut LoadedMomentReservation { remaining: admitted_bytes }));
+        self.rows = raw.into_row_major();
+        self
+    }
+}
+
+struct LoadedMomentReservation { remaining: usize }
+
+impl FitReservation for LoadedMomentReservation {
+    fn reserve<T>(&mut self, target: &mut Vec<T>, elements: usize, label: &'static str) -> Result<()> {
+        let bytes = elements.checked_mul(std::mem::size_of::<T>())
+            .ok_or_else(|| allocation("loaded OLS moment reservation overflows"))?;
+        if !target.is_empty() || target.capacity() != 0 || bytes > self.remaining {
+            return Err(allocation("loaded OLS moments exceed admitted workspace"));
+        }
+        target.try_reserve_exact(elements).map_err(|_| allocation(label))?;
+        let actual = target.capacity().checked_mul(std::mem::size_of::<T>())
+            .ok_or_else(|| allocation("loaded OLS moment capacity overflows"))?;
+        self.remaining = self.remaining.checked_sub(actual)
+            .ok_or_else(|| allocation("loaded OLS moment capacity exceeds admission"))?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 struct FitPerturbations {
     first_coefficient: bool,
@@ -916,7 +974,7 @@ pub fn fit_prepared_ols_coefficients_map(
 pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows(
     prepared: &PreparedOlsData,
     config: PreparedOlsFitConfig,
-    rows: Vec<f64>,
+    rows: LoadedOlsRows,
 ) -> Result<CertifiedPreparedOlsFit> {
     if config.execution.mode != PreparedOlsExecutionMode::Fast {
         drop(rows);
@@ -1945,7 +2003,7 @@ fn fit_with_controls_internal_mode_with_frame<
     max_fast_score_cache_bytes: usize,
     phase_probe: Option<LinearSessionPhaseAllocatorProbe>,
     mut phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
-    loaded_rows: Option<Vec<f64>>,
+    loaded_rows: Option<LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsFit> {
     let mut trace = PhaseTrace::new();
     frame.validate_for(prepared)?;
@@ -1976,7 +2034,9 @@ fn fit_with_controls_internal_mode_with_frame<
         phase_observation.as_deref_mut(),
         LinearSessionAllocationPhase::Projection,
     );
-    let raw = prepared.fit_build_rhs_with_loaded_rows(frame.response(), loaded_rows)?;
+    let (rows, pending_moments) = loaded_rows.map_or((None, None), |loaded| (Some(loaded.rows), loaded.moments));
+    let (raw, reused_rows) = prepared.fit_build_rhs_with_loaded_rows(frame.response(), rows)?;
+    let pending_moments = if reused_rows && weights.values.is_none() { pending_moments } else { None };
     let rhs_seconds = trace.lap();
     let generated_columns = prepared.fit_model().columns.len();
     let use_strided_fast_score_cache =
@@ -2006,7 +2066,10 @@ fn fit_with_controls_internal_mode_with_frame<
     let raw_moments = if (prepared.fit_has_absorbed_intercept() && !retain_fast_score_cache)
         || use_strided_fast_score_cache
     {
-        let cache = build_raw_moment_cache(&raw, weights, reservation)?;
+        let cache = match pending_moments {
+            Some(result) => result?,
+            None => build_raw_moment_cache(&raw, weights, reservation)?,
+        };
         for (column, norm) in reference_norms.iter_mut().enumerate() {
             *norm = cache.norms[column + 1];
         }
@@ -8590,6 +8653,68 @@ mod tests {
         fit.residual_absorption_report.setup_seconds = 0.0;
         fit.residual_absorption_report.solve_seconds = 0.0;
         fit
+    }
+
+    #[test]
+    fn loaded_moments_preserve_fit_bits_fallback_and_admission() {
+        for n in [16_383, 16_384, 32_771] {
+            let columns: Vec<Vec<f64>> = (0..9).map(|c| (0..n)
+                .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
+            let groups: Vec<_> = (0..n).map(|r| (r % 79) as f64).collect();
+            let response: Vec<_> = (0..n).map(|r| groups[r] + columns[0][r] * 1.3
+                + columns[1][r] * 0.7 + (r as f64).cos() * 0.1).collect();
+            let data = prepared(&response, &columns, &[false; 9], Some(&groups), true, TestWeights::Unit);
+            let raw = data.fit_build_rhs().unwrap();
+            let required = LoadedOlsRows::moment_workspace_bytes(n, raw.ncols());
+            for threads in [4, 8, 16] {
+                let mut config = PreparedOlsFitConfig::default();
+                config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
+                let expected = without_solve_timings(fit_prepared_ols_coefficients_map(&data, config).unwrap());
+                for short in [false, true] {
+                    for stale in [false, true] {
+                        let mut rows = raw.as_slice().to_vec();
+                        if stale { rows[1] += 0.25; }
+                        let budget = required.map_or(0, |b| b - usize::from(short));
+                        let loaded = ThreadTeam::new(config.execution.threads).install(|| {
+                            LoadedOlsRows::from(rows).with_unit_moments(n, raw.ncols(), budget)
+                        }).unwrap();
+                        assert_eq!(loaded.moments.is_some(), required.is_some() && !short && threads >= 8);
+                        let actual = without_solve_timings(fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded).unwrap());
+                        assert!(expected == actual, "N={n}, threads={threads}, short={short}, stale={stale}");
+                    }
+                }
+            }
+        }
+        let mut reservation = LoadedMomentReservation { remaining: 7 };
+        let mut values: Vec<f64> = Vec::new();
+        assert!(reservation.reserve(&mut values, 1, "test").is_err());
+        assert_eq!(values.capacity(), 0);
+    }
+
+    #[test]
+    fn loaded_moment_errors_remain_after_validation_and_stale_rows_are_discarded() {
+        let n = 16_384;
+        let columns: Vec<Vec<f64>> = (0..8).map(|c| (0..n)
+            .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
+        let groups: Vec<_> = (0..n).map(|r| (r % 79) as f64).collect();
+        let response: Vec<_> = (0..n).map(|r| groups[r] + columns[0][r] + (r as f64).cos()).collect();
+        let mut data = prepared(&response, &columns, &[false; 8], Some(&groups), true, TestWeights::Unit);
+        let raw = data.fit_build_rhs().unwrap();
+        let mut config = PreparedOlsFitConfig::default();
+        config.execution.threads = ThreadConfig::from_requested(8, true).unwrap();
+        let error = invalid_data("deferred raw moment error");
+        let loaded = |stale| {
+            let mut rows = raw.as_slice().to_vec();
+            if stale { rows[1] += 0.5; }
+            LoadedOlsRows { rows, moments: Some(Err(error.clone())) }
+        };
+        assert_eq!(fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(false)).unwrap_err(), error);
+        let expected = without_solve_timings(fit_prepared_ols_coefficients_map(&data, config).unwrap());
+        let actual = without_solve_timings(fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(true)).unwrap());
+        assert!(actual == expected);
+        data.sample.outcome[0] = f64::NAN;
+        assert_eq!(fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(false)).unwrap_err(),
+            fit_prepared_ols_coefficients_map(&data, config).unwrap_err());
     }
 
     #[test]

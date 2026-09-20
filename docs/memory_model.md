@@ -93,6 +93,14 @@ private bounded scratch files. Scratch files:
 - are removed by `Drop` on success, ordinary error, panic unwinding, or Break
   propagation.
 
+Raw-moment/preparation overlap adds the existing three K-length result
+vectors and deterministic partial bank to the preparation allowance beside
+loaded RHS storage. The bound is `3*K*(chunks+1)*8` bytes, with the existing
+chunk count capped at 64; a fallible reservation checks actual capacities.
+Insufficient headroom leaves moment construction at its original fit phase.
+No additional observation-scale matrix is allocated, and stale speculative
+statistics are dropped before ordinary fit-time reconstruction.
+
 Eligible narrow one-FE IID fits may overlap final residual projection with
 reported bread/intercept completion. The residual vector transfers from the
 existing QR owner into its existing one-column projection; the raw-residual

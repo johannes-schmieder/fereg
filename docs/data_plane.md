@@ -159,3 +159,10 @@ variables on every failed or interrupted path.
 
 Memory bounds and scratch behavior are in `memory_model.md`; version and
 transaction rules are in `plugin_protocol.md`.
+
+Eligible one-FE loaded RHS storage can carry its raw-moment cache through
+preparation. Both are private fields of one consumed native owner. Cache reuse
+requires exact agreement with the authoritative prepared rows, source recipes
+and all values; a nonunit frame or any mismatch uses ordinary fitting. The
+cache is formed only from the raw input matrix, and independent final residual,
+FE and inference certificates remain unchanged.

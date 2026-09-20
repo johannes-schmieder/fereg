@@ -398,13 +398,22 @@ pub fn fit_prepared_ols_unadjusted_map_with_loaded_rows(
     config: PreparedOlsUnadjustedConfig,
     rows: Option<Vec<f64>>,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
+    fit_with_outcome_overlap(prepared, config, rows.map(super::LoadedOlsRows::from), true)
+}
+
+/// Consume same-call loaded rows and optional admitted raw moments.
+pub fn fit_prepared_ols_unadjusted_map_with_loaded_moments(
+    prepared: &PreparedOlsData,
+    config: PreparedOlsUnadjustedConfig,
+    rows: Option<super::LoadedOlsRows>,
+) -> Result<CertifiedPreparedOlsUnadjusted> {
     fit_with_outcome_overlap(prepared, config, rows, true)
 }
 
 fn fit_with_outcome_overlap(
     prepared: &PreparedOlsData,
     config: PreparedOlsUnadjustedConfig,
-    rows: Option<Vec<f64>>,
+    rows: Option<super::LoadedOlsRows>,
     overlap: bool,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
     validate_config(config)?;
@@ -939,12 +948,7 @@ pub(super) fn build_reference_weight_report_view<'a, P: PreparedOlsInferenceView
         divisor: bread_scale.solver_weight_divisor,
         multiplier: bread_scale.reference_weight_multiplier,
     };
-    let mut computed_sum = 0.0_f64;
-    let mut correction = 0.0_f64;
-    for row in 0..nobs {
-        compensated_add(view.value(row)?, &mut computed_sum, &mut correction)?;
-    }
-    let computed_sum = computed_sum + correction;
+    let computed_sum = reference_weight_sum(view, nobs)?;
     let computed_error = relative_difference(computed_sum, effective_f64, effective_f64.max(1.0))?;
     if computed_error > tolerance {
         return Err(invalid_data(
@@ -963,6 +967,20 @@ pub(super) fn build_reference_weight_report_view<'a, P: PreparedOlsInferenceView
         view,
         computed_error.max(reference_sum_error),
     ))
+}
+
+fn reference_weight_sum(view: ReferenceWeightView<'_>, nobs: usize) -> Result<f64> {
+    if view.kind.is_none() && view.values.is_none() {
+        // Unit mass is fixed by the independently validated physical row
+        // count, not by the fitted bread's declared weight sum.
+        return exact_integer_as_f64(nobs as u128);
+    }
+    let mut sum = 0.0_f64;
+    let mut correction = 0.0_f64;
+    for row in 0..nobs {
+        compensated_add(view.value(row)?, &mut sum, &mut correction)?;
+    }
+    Ok(sum + correction)
 }
 
 pub(super) fn build_residual_dof_view<P: PreparedOlsInferenceView + ?Sized>(
@@ -1929,6 +1947,23 @@ mod tests {
         Analytic(&'a [f64]),
         Probability(&'a [f64]),
         Frequency(&'a [u32]),
+    }
+
+    #[test]
+    fn unit_reference_mass_matches_explicit_weights_and_preserves_limits() {
+        for n in [0, 1, 127, 16_384, 16_387] {
+            let values = vec![1.0; n];
+            let unit = ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 };
+            let explicit = ReferenceWeightView { values: Some(&values), kind: Some(WeightKind::Frequency), ..unit };
+            assert_eq!(reference_weight_sum(unit, n), reference_weight_sum(explicit, n));
+            if n > 0 {
+                let malformed = ReferenceWeightView { values: Some(&values), ..unit };
+                assert_eq!(reference_weight_sum(malformed, n).unwrap_err(), malformed.value(0).unwrap_err());
+            }
+        }
+        let unit = ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 };
+        assert_eq!(reference_weight_sum(unit, 1_usize << 53).unwrap(), (1_u64 << 53) as f64);
+        assert!(reference_weight_sum(unit, (1_usize << 53) + 1).is_err());
     }
 
     #[test]
