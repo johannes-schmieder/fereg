@@ -40,6 +40,15 @@ RHS path. Their domains, normalization and sample remain preparation-owned;
 raw unit-weight moment overlap excludes supplied weights. See
 [ADR 0078](adr/0078-weighted-native-input-overlap.md).
 
+With at least eight workers, the same admitted transport/RHS mechanism extends
+to 3–64 loaded columns and at least three compiled RHS columns. The consumer
+has a separate narrow binding guard at 16,384 retained rows and eight actual
+workers; exact bit matching remains mandatory. Ordinary RHS construction,
+predictor and residual-update width guards are unchanged. Unit-weight loaded
+moments may overlap at these narrower widths too. Existing input/preparation
+capacity charges remain, including the measured earlier-lifetime peak cost in
+some narrow output calls. See [ADR 0081](adr/0081-narrow-ols-loaded-rhs-reuse.md).
+
 For each original row, candidate exclusion from `if`/`in` is applied first.
 On candidate rows, outcome, ordinary terms, weights, fixed effects, clusters,
 and time-series materializations are checked in the registered precedence.

@@ -1,0 +1,184 @@
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -1683,7 +1683,7 @@
+         OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight));
+     let numeric_width = request.model.sources.len() + 1 + usize::from(has_weight);
+     let defer_columns = candidate_all && n >= 16_384
+-        && (9..=64).contains(&numeric_width)
++        && (3..=64).contains(&numeric_width)
+         && team.is_some_and(|t| t.threads() >= 8) && spi.supports_numeric_rows();
+     let mut outcome = loaded_column_reservation(n, "OLS outcome", defer_columns)?;
+     let mut source_loaders = reserved_empty(request.model.sources.len(), "OLS source table")?;
+@@ -1743,13 +1743,15 @@
+     if candidate_all && all_sources_numeric {
+         if let Some(team) = team {
+                 let width = numeric_width;
++                let min_rhs_width = if team.threads() >= 8 { 3 } else { 8 };
++                let min_numeric_width = if team.threads() >= 8 { 3 } else { 9 };
+                 if spi.supports_numeric_rows() && team.threads() > 1 && n >= 16_384
+-                    && (9..=64).contains(&width)
++                    && (min_numeric_width..=64).contains(&width)
+                     && !request.absorbed_terms.is_empty()
+                     && request.absorbed_terms.iter().all(|term| term.intercept
+                         && term.categorical_sources.len() == 1 && term.slope_sources.is_empty())
+                 {
+-                    if let Some(compiled_width) = compiled_rhs_width.filter(|w| (8..=width).contains(w)) {
++                    if let Some(compiled_width) = compiled_rhs_width.filter(|w| (min_rhs_width..=width).contains(w)) {
+                         rhs_width = compiled_width;
+                         if let Some(elements) = n.checked_mul(rhs_width) {
+                             if let Some(bytes) = elements.checked_mul(8).filter(|bytes| *bytes <= rhs_budget && *bytes <= memory.remaining().saturating_sub(2 * 4096 * width * 8 + 4096)) {
+@@ -5706,9 +5708,24 @@
+                     label: format!("g{id}"), saved_name: String::new() });
+             }
+         }
++        for k in [1, 3, 5, 6] {
+         for role in [OlsInputRole::AnalyticWeight, OlsInputRole::FrequencyWeight, OlsInputRole::ProbabilityWeight] {
+             for case in 0..9 {
+                 let mut request = template.clone();
++                request.model.terms.truncate(k);
++                request.model.sources.retain(|source| source.id.get() <= k as u32 || source.id.get() >= 7);
++                request.bindings.retain(|binding| !matches!(binding.role,
++                    OlsInputRole::NumericSource(id) if id.get() > k as u32 && id.get() < 7));
++                let compact_id = |id: SourceId| if id.get() >= 7 {
++                    SourceId::new(id.get() - 6 + k as u32).unwrap()
++                } else { id };
++                for source in &mut request.model.sources { source.id = compact_id(source.id); }
++                for binding in &mut request.bindings {
++                    if let OlsInputRole::NumericSource(id) = &mut binding.role { *id = compact_id(*id); }
++                }
++                for effect in &mut request.absorbed_terms {
++                    effect.categorical_sources[0] = compact_id(effect.categorical_sources[0]);
++                }
+                 request.bindings.push(OlsInputBinding { stata_var_position: 11, role: role.clone() });
+                 let mut spi = base.clone();
+                 let candidate_all = case != 5;
+@@ -5731,7 +5748,7 @@
+                     }
+                     _ => {}
+                 }
+-                let budget = if case == 6 { 0 } else { spi.nobs * 8 * 8 };
++                let budget = if case == 6 { 0 } else { spi.nobs * (k + 2) * 8 };
+                 let threads = ThreadConfig::from_requested(if case == 7 { 4 } else { 8 }, false).unwrap();
+                 let compiled_width = numeric_loaded_rhs_width(&request.validate_and_compile().unwrap());
+                 let reference = load_ols_input(&request, candidate_all, false, &mut spi.clone()).unwrap();
+@@ -5740,7 +5757,7 @@
+                 let loaded = load_ols_input_with_team(&request, candidate_all, false, &mut memory,
+                     &mut spi, Some(ThreadTeam::new(threads)), &mut rhs, budget, compiled_width).unwrap();
+                 assert_eq!(loaded, reference);
+-                assert_eq!(rhs.is_some(), candidate_all && budget > 0);
++                assert_eq!(rhs.is_some(), candidate_all && budget > 0 && (threads.resolved() >= 8 || k == 6));
+                 let expected = prepare_categorical_ols_data_owned(&request, reference);
+                 let actual = prepare_categorical_ols_data_owned(&request, loaded);
+                 match (expected, actual) {
+@@ -5760,6 +5777,7 @@
+                     _ => panic!("weighted speculative loading changed preparation success"),
+                 }
+             }
++        }
+         }
+     }
+ 
+--- a/crates/fereg-plugin/src/numeric_pipeline.rs
++++ b/crates/fereg-plugin/src/numeric_pipeline.rs
+@@ -72,7 +72,7 @@
+     memory: &mut InputMemory,
+     mut rhs: Option<(&mut Vec<f64>, usize)>,
+ ) -> Result<bool> {
+-    let min_width = if rhs.is_some() { 8 } else { 16 };
++    let min_width = if rhs.is_some() { if team.threads() >= 8 { 3 } else { 8 } } else { 16 };
+     if !spi.supports_numeric_rows() || team.threads() <= 1
+         || !(min_width..=MAX_COLUMNS).contains(&positions.len())
+         || columns.is_empty() || columns[0].len() < 16_384
+@@ -118,7 +118,7 @@
+     mut rhs: Option<(&mut Vec<f64>, usize)>,
+ ) -> Result<bool> {
+     let width = positions.len();
+-    let min_width = if rhs.is_some() { 8 } else { 16 };
++    let min_width = if rhs.is_some() { if team.threads() >= 8 { 3 } else { 8 } } else { 16 };
+     if !spi.supports_numeric_rows() || team.threads() <= 1
+         || !(min_width..=MAX_COLUMNS).contains(&width) || rows < 16_384
+     { return Ok(false); }
+@@ -314,8 +314,9 @@
+ 
+     #[test]
+     fn numeric_pipeline_constructs_owned_rhs_without_changing_fe_or_missing() {
+-        for width in [9, 12, 52, 64] {
++        for (width, threads) in [(3,8), (4,8), (6,8), (8,8), (9,4), (12,4), (52,4), (64,4)] {
+             for extra_sources in [0, 1, 2, 5] {
++                if extra_sources + 2 > width { continue; }
+                 let rhs_width = width - extra_sources;
+                 let rows = 16387;
+                 let positions: Vec<u32> = (1..=width as u32).rev().collect();
+@@ -326,8 +327,15 @@
+                 let mut rhs = Vec::with_capacity(rows * rhs_width);
+                 let capacity = rhs.capacity();
+                 let mut input = Input::new();
++                if width < 8 {
++                    assert!(!try_read_with_rhs(&mut input, &positions, &mut columns, &mut missing,
++                        ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
++                        &mut InputMemory::new(None, 0).unwrap(), Some((&mut rhs, rhs_width))).unwrap());
++                    assert_eq!(input.calls, 0);
++                    assert!(rhs.is_empty());
++                }
+                 assert!(try_read_with_rhs(&mut input, &positions, &mut columns, &mut missing,
+-                    ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
++                    ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()),
+                     &mut InputMemory::new(None, (capacity * 8) as u128).unwrap(), Some((&mut rhs, rhs_width))).unwrap());
+                 assert_eq!(rhs.capacity(), capacity);
+                 assert_eq!(rhs.len(), rows * rhs_width);
+@@ -349,7 +357,7 @@
+ 
+     #[test]
+     fn reserved_pipeline_preserves_values_capacities_and_failure_shutdown() {
+-        for width in [9, 16, 52, 64] {
++        for (width, threads) in [(3,8), (4,8), (6,8), (8,8), (9,4), (16,4), (52,4), (64,4)] {
+             for failure in [usize::MAX, 1, 3, 5] {
+                 let rows = 16387;
+                 let positions: Vec<u32> = (1..=width as u32).rev().collect();
+@@ -361,7 +369,7 @@
+                 input.failure = failure;
+                 let result = try_read_reserved(&mut input, &positions, rows,
+                     &mut values.iter_mut().collect::<Vec<_>>(), &mut flags.iter_mut().collect::<Vec<_>>(),
+-                    ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
++                    ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()),
+                     &mut InputMemory::new(None, 0).unwrap(), Some((&mut rhs, width)));
+                 if failure == usize::MAX { assert_eq!(result, Ok(true)); }
+                 else { assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted); }
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -917,7 +917,7 @@
+     /// Bound the three result vectors and deterministic fused partial bank.
+     /// Returning None keeps the ordinary fit-time computation.
+     pub fn moment_workspace_bytes(nrows: usize, columns: usize) -> Option<usize> {
+-        if nrows < 16_384 || !(8..=FUSED_MOMENT_MAX_COLUMNS).contains(&columns) { return None; }
++        if nrows < 16_384 || !(3..=FUSED_MOMENT_MAX_COLUMNS).contains(&columns) { return None; }
+         let chunks = nrows.div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS).clamp(1, FUSED_MOMENT_MAX_BLOCKS);
+         columns.checked_mul(3)?.checked_mul(chunks.checked_add(1)?)?.checked_mul(8)
+     }
+@@ -8827,13 +8827,13 @@
+ 
+     #[test]
+     fn loaded_moments_preserve_fit_bits_fallback_and_admission() {
+-        for n in [16_383, 16_384, 32_771] {
+-            let columns: Vec<Vec<f64>> = (0..9).map(|c| (0..n)
++        for (n, width) in [(16_383,9), (16_384,9), (32_771,9), (16_384,1), (16_384,3), (16_384,5)] {
++            let columns: Vec<Vec<f64>> = (0..width).map(|c| (0..n)
+                 .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
+             let groups: Vec<_> = (0..n).map(|r| (r % 79) as f64).collect();
+             let response: Vec<_> = (0..n).map(|r| groups[r] + columns[0][r] * 1.3
+-                + columns[1][r] * 0.7 + (r as f64).cos() * 0.1).collect();
+-            let data = prepared(&response, &columns, &[false; 9], Some(&groups), true, TestWeights::Unit);
++                + columns[width - 1][r] * 0.7 + (r as f64).cos() * 0.1).collect();
++            let data = prepared(&response, &columns, &vec![false; width], Some(&groups), true, TestWeights::Unit);
+             let raw = data.fit_build_rhs().unwrap();
+             let required = LoadedOlsRows::moment_workspace_bytes(n, raw.ncols());
+             for threads in [4, 8, 16] {
+@@ -8850,7 +8850,7 @@
+                         }).unwrap();
+                         assert_eq!(loaded.moments.is_some(), required.is_some() && !short && threads >= 8);
+                         let actual = without_solve_timings(fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded).unwrap());
+-                        assert!(expected == actual, "N={n}, threads={threads}, short={short}, stale={stale}");
++                        assert!(expected == actual, "N={n}, width={width}, threads={threads}, short={short}, stale={stale}");
+                     }
+                 }
+             }

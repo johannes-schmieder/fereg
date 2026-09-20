@@ -917,7 +917,7 @@ impl LoadedOlsRows {
     /// Bound the three result vectors and deterministic fused partial bank.
     /// Returning None keeps the ordinary fit-time computation.
     pub fn moment_workspace_bytes(nrows: usize, columns: usize) -> Option<usize> {
-        if nrows < 16_384 || !(8..=FUSED_MOMENT_MAX_COLUMNS).contains(&columns) { return None; }
+        if nrows < 16_384 || !(3..=FUSED_MOMENT_MAX_COLUMNS).contains(&columns) { return None; }
         let chunks = nrows.div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS).clamp(1, FUSED_MOMENT_MAX_BLOCKS);
         columns.checked_mul(3)?.checked_mul(chunks.checked_add(1)?)?.checked_mul(8)
     }
@@ -8827,13 +8827,13 @@ mod tests {
 
     #[test]
     fn loaded_moments_preserve_fit_bits_fallback_and_admission() {
-        for n in [16_383, 16_384, 32_771] {
-            let columns: Vec<Vec<f64>> = (0..9).map(|c| (0..n)
+        for (n, width) in [(16_383,9), (16_384,9), (32_771,9), (16_384,1), (16_384,3), (16_384,5)] {
+            let columns: Vec<Vec<f64>> = (0..width).map(|c| (0..n)
                 .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
             let groups: Vec<_> = (0..n).map(|r| (r % 79) as f64).collect();
             let response: Vec<_> = (0..n).map(|r| groups[r] + columns[0][r] * 1.3
-                + columns[1][r] * 0.7 + (r as f64).cos() * 0.1).collect();
-            let data = prepared(&response, &columns, &[false; 9], Some(&groups), true, TestWeights::Unit);
+                + columns[width - 1][r] * 0.7 + (r as f64).cos() * 0.1).collect();
+            let data = prepared(&response, &columns, &vec![false; width], Some(&groups), true, TestWeights::Unit);
             let raw = data.fit_build_rhs().unwrap();
             let required = LoadedOlsRows::moment_workspace_bytes(n, raw.ncols());
             for threads in [4, 8, 16] {
@@ -8850,7 +8850,7 @@ mod tests {
                         }).unwrap();
                         assert_eq!(loaded.moments.is_some(), required.is_some() && !short && threads >= 8);
                         let actual = without_solve_timings(fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded).unwrap());
-                        assert!(expected == actual, "N={n}, threads={threads}, short={short}, stale={stale}");
+                        assert!(expected == actual, "N={n}, width={width}, threads={threads}, short={short}, stale={stale}");
                     }
                 }
             }

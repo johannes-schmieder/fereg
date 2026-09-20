@@ -10,6 +10,35 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: narrow input checkpoint — 2026-09-20
+
+The [narrow-input report](benchmarks/reports/development/two-fe-narrow-input-local-2026-09-20/README.md)
+retains the 107-call incomplete-consumer prototype and corrected 226-call
+screen. All 114 native pairs preserve the checked science exactly; seven
+independent output audits, focused transport/consumer/weighted tests and three
+final-artifact Stata fixtures pass. The consumer separately admits narrow
+loaded-RHS binding, preserving other numeric-kernel guards and exact final
+value checks. [ADR 0081](docs/adr/0081-narrow-ols-loaded-rhs-reuse.md) records
+scope and the accepted earlier-lifetime memory cost: two K=1 output peaks rise
+about 4 MB (2.8–3.3%) within unchanged estimates; one robust case adds 72 bytes.
+Two unchanged low-memory/four-thread controls retain pre-existing gaps relative
+to the early fixed estimate; no full memory-qualification claim is made.
+
+Three-pair shuffled unit K=5/6 improves 285/269 -> 273/258 ms; narrow one-FE
+K=1/5 improves 78/114 -> 67/100 ms. Weighted shuffled K=6 IID is still
+338 ms versus 300 ms fixest. Weighted degree-six is 82 versus 71 ms;
+other narrow losses remain. No native cell has a median paired regression
+above 5%. Seven default-reference output disagreements remain explicit.
+
+Plugin `ed58adbeb34ef6ff34a56b3ad90b98ea9962f387b939f554d4896f9add30a24b`
+uses base `c9635415` plus five overlays; all 515 source entries match. All
+narrow-input builds, tests, fixtures and benchmarks have finished. The full
+goal remains active. Next measure whether both repeated-edge operator gathers
+can use existing idle banks, then weighted finishing scans and duplicate
+probe work. The 111 controls, sixteen fresh holdouts and two final five-pair
+blocks remain. Raw work: `target/two-fe-broad-20260920`. Preserve unrelated
+dirt; no installed package, remote state or qualification changed.
+
 ## Broad two-way OLS milestone: routing diagnostics — 2026-09-20
 
 The [forced-solver report](benchmarks/reports/development/two-fe-narrow-solvers-local-2026-09-20/README.md)

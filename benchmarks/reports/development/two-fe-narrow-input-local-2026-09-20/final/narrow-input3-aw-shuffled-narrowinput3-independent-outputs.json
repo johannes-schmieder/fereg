@@ -1,0 +1,44 @@
+[
+  {
+    "finite_score_per_observation": 2.327641243041095e-16,
+    "group_residual_mean_max": [
+      1.7541523789077474e-15,
+      1.4338136976922808e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.609024107869118e-15,
+      1.3322676295501878e-15,
+      2.6645352591003757e-15
+    ],
+    "run": "narrow-input3-aw-shuffled-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r1-narrowinput3",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.327641243041095e-16,
+    "group_residual_mean_max": [
+      1.7541523789077474e-15,
+      1.4338136976922808e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.609024107869118e-15,
+      1.3322676295501878e-15,
+      2.6645352591003757e-15
+    ],
+    "run": "narrow-input3-aw-shuffled-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r2-narrowinput3",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.327641243041095e-16,
+    "group_residual_mean_max": [
+      1.7541523789077474e-15,
+      1.4338136976922808e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.609024107869118e-15,
+      1.3322676295501878e-15,
+      2.6645352591003757e-15
+    ],
+    "run": "narrow-input3-aw-shuffled-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r3-narrowinput3",
+    "status": "pass"
+  }
+]

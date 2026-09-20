@@ -1683,7 +1683,7 @@ fn load_ols_input_with_team(
         OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight));
     let numeric_width = request.model.sources.len() + 1 + usize::from(has_weight);
     let defer_columns = candidate_all && n >= 16_384
-        && (9..=64).contains(&numeric_width)
+        && (3..=64).contains(&numeric_width)
         && team.is_some_and(|t| t.threads() >= 8) && spi.supports_numeric_rows();
     let mut outcome = loaded_column_reservation(n, "OLS outcome", defer_columns)?;
     let mut source_loaders = reserved_empty(request.model.sources.len(), "OLS source table")?;
@@ -1743,13 +1743,15 @@ fn load_ols_input_with_team(
     if candidate_all && all_sources_numeric {
         if let Some(team) = team {
                 let width = numeric_width;
+                let min_rhs_width = if team.threads() >= 8 { 3 } else { 8 };
+                let min_numeric_width = if team.threads() >= 8 { 3 } else { 9 };
                 if spi.supports_numeric_rows() && team.threads() > 1 && n >= 16_384
-                    && (9..=64).contains(&width)
+                    && (min_numeric_width..=64).contains(&width)
                     && !request.absorbed_terms.is_empty()
                     && request.absorbed_terms.iter().all(|term| term.intercept
                         && term.categorical_sources.len() == 1 && term.slope_sources.is_empty())
                 {
-                    if let Some(compiled_width) = compiled_rhs_width.filter(|w| (8..=width).contains(w)) {
+                    if let Some(compiled_width) = compiled_rhs_width.filter(|w| (min_rhs_width..=width).contains(w)) {
                         rhs_width = compiled_width;
                         if let Some(elements) = n.checked_mul(rhs_width) {
                             if let Some(bytes) = elements.checked_mul(8).filter(|bytes| *bytes <= rhs_budget && *bytes <= memory.remaining().saturating_sub(2 * 4096 * width * 8 + 4096)) {
@@ -5706,9 +5708,24 @@ mod tests {
                     label: format!("g{id}"), saved_name: String::new() });
             }
         }
+        for k in [1, 3, 5, 6] {
         for role in [OlsInputRole::AnalyticWeight, OlsInputRole::FrequencyWeight, OlsInputRole::ProbabilityWeight] {
             for case in 0..9 {
                 let mut request = template.clone();
+                request.model.terms.truncate(k);
+                request.model.sources.retain(|source| source.id.get() <= k as u32 || source.id.get() >= 7);
+                request.bindings.retain(|binding| !matches!(binding.role,
+                    OlsInputRole::NumericSource(id) if id.get() > k as u32 && id.get() < 7));
+                let compact_id = |id: SourceId| if id.get() >= 7 {
+                    SourceId::new(id.get() - 6 + k as u32).unwrap()
+                } else { id };
+                for source in &mut request.model.sources { source.id = compact_id(source.id); }
+                for binding in &mut request.bindings {
+                    if let OlsInputRole::NumericSource(id) = &mut binding.role { *id = compact_id(*id); }
+                }
+                for effect in &mut request.absorbed_terms {
+                    effect.categorical_sources[0] = compact_id(effect.categorical_sources[0]);
+                }
                 request.bindings.push(OlsInputBinding { stata_var_position: 11, role: role.clone() });
                 let mut spi = base.clone();
                 let candidate_all = case != 5;
@@ -5731,7 +5748,7 @@ mod tests {
                     }
                     _ => {}
                 }
-                let budget = if case == 6 { 0 } else { spi.nobs * 8 * 8 };
+                let budget = if case == 6 { 0 } else { spi.nobs * (k + 2) * 8 };
                 let threads = ThreadConfig::from_requested(if case == 7 { 4 } else { 8 }, false).unwrap();
                 let compiled_width = numeric_loaded_rhs_width(&request.validate_and_compile().unwrap());
                 let reference = load_ols_input(&request, candidate_all, false, &mut spi.clone()).unwrap();
@@ -5740,7 +5757,7 @@ mod tests {
                 let loaded = load_ols_input_with_team(&request, candidate_all, false, &mut memory,
                     &mut spi, Some(ThreadTeam::new(threads)), &mut rhs, budget, compiled_width).unwrap();
                 assert_eq!(loaded, reference);
-                assert_eq!(rhs.is_some(), candidate_all && budget > 0);
+                assert_eq!(rhs.is_some(), candidate_all && budget > 0 && (threads.resolved() >= 8 || k == 6));
                 let expected = prepare_categorical_ols_data_owned(&request, reference);
                 let actual = prepare_categorical_ols_data_owned(&request, loaded);
                 match (expected, actual) {
@@ -5760,6 +5777,7 @@ mod tests {
                     _ => panic!("weighted speculative loading changed preparation success"),
                 }
             }
+        }
         }
     }
 

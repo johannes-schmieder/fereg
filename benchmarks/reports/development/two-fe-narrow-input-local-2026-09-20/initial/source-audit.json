@@ -1,0 +1,7 @@
+{
+  "artifact_source_matches": true,
+  "current_worktree_match": false,
+  "plugin_sha256": "06bea1324b6e3a3930cf04798361d258322dc287f2cc7f6db4c7b66799cf10ee",
+  "reason": "The loaded-RHS consumer guard was subsequently widened in the next prototype.",
+  "source_files_verified": 515
+}

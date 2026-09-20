@@ -1,0 +1,70 @@
+{
+  "early_estimate_audit_sha256": "1cbdbe9a58df8508a6abfd4cb6cc57cf899666c0dd2eee2da61c581d5312052c",
+  "early_estimate_exceptions": [
+    {
+      "parent_peak": 81237321,
+      "peak": 81237321,
+      "peak_did_not_increase": true,
+      "plan_unchanged": true,
+      "run": "narrow-input3-control-low-iid-n245760-k1-s8675309-shuffle0-t16-r1-narrowinput3",
+      "selected_plan_bytes": 32505888,
+      "within_plan": false
+    },
+    {
+      "parent_peak": 238079029,
+      "peak": 238079029,
+      "peak_did_not_increase": true,
+      "plan_unchanged": true,
+      "run": "narrow-input3-control-threads-iid-n983040-k1-s8675309-shuffle0-t4-r1-narrowinput3",
+      "selected_plan_bytes": 133693472,
+      "within_plan": false
+    }
+  ],
+  "increased_peak_runs": [
+    {
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "outputs_exact": true,
+      "peak_candidate": 149476243,
+      "peak_parent": 145439683,
+      "ratio": 0.9761904761904762,
+      "run": "narrow-input3-output-check-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r1-narrowinput3"
+    },
+    {
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "outputs_exact": true,
+      "peak_candidate": 125871709,
+      "peak_parent": 121835927,
+      "ratio": 1.0,
+      "run": "narrow-input3-output-check-iid_outputs-n983040-k1-s8675309-shuffle0-t16-r1-narrowinput3"
+    },
+    {
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "peak_candidate": 114796877,
+      "peak_parent": 114796805,
+      "ratio": 0.9523809523809523,
+      "run": "narrow-input3-output-check-robust-n983040-k1-s8675309-shuffle0-t16-r1-narrowinput3"
+    }
+  ],
+  "interpretation": "The two low-memory/four-thread exceptions already exceed the early fixed estimate in the parent and have identical measured peaks. The complete memory model includes additional solver workspace/coverage declarations; this receipt is not a full memory qualification. All three increased peaks fit the unchanged early estimate."
+}

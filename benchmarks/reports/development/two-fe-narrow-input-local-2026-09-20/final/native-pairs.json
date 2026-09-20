@@ -1,0 +1,1087 @@
+[
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 122661169,
+    "peak_parent": 122661169,
+    "ratio": 0.9893238434163701,
+    "run": "narrow-input3-aw-iid-n983040-k1-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 122661169,
+    "peak_parent": 122661169,
+    "ratio": 1.0036363636363637,
+    "run": "narrow-input3-aw-iid-n983040-k1-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 122661169,
+    "peak_parent": 122661169,
+    "ratio": 1.006993006993007,
+    "run": "narrow-input3-aw-iid-n983040-k1-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 158584895,
+    "peak_parent": 158584895,
+    "ratio": 1.0034843205574913,
+    "run": "narrow-input3-aw-iid-n983040-k3-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 158584895,
+    "peak_parent": 158584895,
+    "ratio": 0.9464882943143812,
+    "run": "narrow-input3-aw-iid-n983040-k3-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 158584895,
+    "peak_parent": 158584895,
+    "ratio": 0.9898648648648648,
+    "run": "narrow-input3-aw-iid-n983040-k3-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 200140127,
+    "peak_parent": 200140127,
+    "ratio": 0.9847560975609756,
+    "run": "narrow-input3-aw-iid-n983040-k5-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 200140127,
+    "peak_parent": 200140127,
+    "ratio": 1.009090909090909,
+    "run": "narrow-input3-aw-iid-n983040-k5-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 200140127,
+    "peak_parent": 200140127,
+    "ratio": 0.9938080495356038,
+    "run": "narrow-input3-aw-iid-n983040-k5-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "ratio": 1.0033333333333334,
+    "run": "narrow-input3-aw-iid-n983040-k6-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "ratio": 0.9897610921501706,
+    "run": "narrow-input3-aw-iid-n983040-k6-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "ratio": 1.0067114093959733,
+    "run": "narrow-input3-aw-iid-n983040-k6-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 220917744,
+    "peak_parent": 220917744,
+    "ratio": 1.0,
+    "run": "narrow-input3-aw-profile-iid-n983040-k6-s31415927-shuffle1-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "ratio": 0.9883040935672515,
+    "run": "narrow-input3-aw-shuffled-iid-n983040-k6-s31415927-shuffle1-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "ratio": 0.9792284866468842,
+    "run": "narrow-input3-aw-shuffled-iid-n983040-k6-s31415927-shuffle1-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "ratio": 0.9715099715099716,
+    "run": "narrow-input3-aw-shuffled-iid-n983040-k6-s31415927-shuffle1-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "outputs_exact": true,
+    "peak_candidate": 227956853,
+    "peak_parent": 227956853,
+    "ratio": 0.9598393574297188,
+    "run": "narrow-input3-aw-shuffled-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "outputs_exact": true,
+    "peak_candidate": 227956853,
+    "peak_parent": 227956853,
+    "ratio": 0.9546351084812623,
+    "run": "narrow-input3-aw-shuffled-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "outputs_exact": true,
+    "peak_candidate": 227956853,
+    "peak_parent": 227956853,
+    "ratio": 1.002008032128514,
+    "run": "narrow-input3-aw-shuffled-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 81237321,
+    "peak_parent": 81237321,
+    "ratio": 1.0168776371308017,
+    "run": "narrow-input3-control-low-iid-n245760-k1-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 238079029,
+    "peak_parent": 238079029,
+    "ratio": 0.9943342776203966,
+    "run": "narrow-input3-control-threads-iid-n983040-k1-s8675309-shuffle0-t4-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 1127268597,
+    "peak_parent": 1127268597,
+    "ratio": 0.9881129271916791,
+    "run": "narrow-input3-control-wide-iid-n983040-k50-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 89866455,
+    "peak_parent": 89866455,
+    "ratio": 0.858974358974359,
+    "run": "narrow-input3-onefe-iid-n983040-k1-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 89866455,
+    "peak_parent": 89866455,
+    "ratio": 0.8607594936708861,
+    "run": "narrow-input3-onefe-iid-n983040-k1-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 89866455,
+    "peak_parent": 89866455,
+    "ratio": 0.858974358974359,
+    "run": "narrow-input3-onefe-iid-n983040-k1-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 152782843,
+    "peak_parent": 152782843,
+    "ratio": 0.8474576271186441,
+    "run": "narrow-input3-onefe-iid-n983040-k5-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 152782843,
+    "peak_parent": 152782843,
+    "ratio": 0.8928571428571429,
+    "run": "narrow-input3-onefe-iid-n983040-k5-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 152782843,
+    "peak_parent": 152782843,
+    "ratio": 0.894736842105263,
+    "run": "narrow-input3-onefe-iid-n983040-k5-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "outputs_exact": true,
+    "peak_candidate": 149476243,
+    "peak_parent": 145439683,
+    "ratio": 0.9761904761904762,
+    "run": "narrow-input3-output-check-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "outputs_exact": true,
+    "peak_candidate": 222918785,
+    "peak_parent": 222918785,
+    "ratio": 0.968565815324165,
+    "run": "narrow-input3-output-check-cluster2_saved-n983040-k5-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "outputs_exact": true,
+    "peak_candidate": 125871709,
+    "peak_parent": 121835927,
+    "ratio": 1.0,
+    "run": "narrow-input3-output-check-iid_outputs-n983040-k1-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "outputs_exact": true,
+    "peak_candidate": 199314901,
+    "peak_parent": 199314901,
+    "ratio": 0.952020202020202,
+    "run": "narrow-input3-output-check-iid_outputs-n983040-k5-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 114796877,
+    "peak_parent": 114796805,
+    "ratio": 0.9523809523809523,
+    "run": "narrow-input3-output-check-robust-n983040-k1-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 192275891,
+    "peak_parent": 192275891,
+    "ratio": 0.929368029739777,
+    "run": "narrow-input3-output-check-robust-n983040-k5-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 192275796,
+    "peak_parent": 192275796,
+    "ratio": 0.9496402877697842,
+    "run": "narrow-input3-profile-iid-n983040-k5-s31415927-shuffle1-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 62457671,
+    "peak_parent": 62457671,
+    "ratio": 0.9891304347826086,
+    "run": "narrow-input3-strong_d3-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 62457671,
+    "peak_parent": 62457671,
+    "ratio": 0.9666666666666667,
+    "run": "narrow-input3-strong_d3-aw-iid-n245760-k6-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 62457671,
+    "peak_parent": 62457671,
+    "ratio": 0.9444444444444445,
+    "run": "narrow-input3-strong_d3-aw-iid-n245760-k6-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 60491579,
+    "peak_parent": 60491771,
+    "ratio": 0.9605263157894737,
+    "run": "narrow-input3-strong_d3-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 60491579,
+    "peak_parent": 60491771,
+    "ratio": 0.9722222222222224,
+    "run": "narrow-input3-strong_d3-none-iid-n245760-k6-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 60491579,
+    "peak_parent": 60491771,
+    "ratio": 1.0422535211267605,
+    "run": "narrow-input3-strong_d3-none-iid-n245760-k6-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 52995911,
+    "peak_parent": 52995911,
+    "ratio": 1.025,
+    "run": "narrow-input3-strong_d6-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 52995911,
+    "peak_parent": 52995911,
+    "ratio": 0.9759036144578314,
+    "run": "narrow-input3-strong_d6-aw-iid-n245760-k6-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 52995911,
+    "peak_parent": 52995911,
+    "ratio": 0.9764705882352941,
+    "run": "narrow-input3-strong_d6-aw-iid-n245760-k6-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 51029819,
+    "peak_parent": 51030011,
+    "ratio": 0.9253731343283581,
+    "run": "narrow-input3-strong_d6-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 51029819,
+    "peak_parent": 51030011,
+    "ratio": 0.9295774647887325,
+    "run": "narrow-input3-strong_d6-none-iid-n245760-k6-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 51029819,
+    "peak_parent": 51030011,
+    "ratio": 0.9710144927536232,
+    "run": "narrow-input3-strong_d6-none-iid-n245760-k6-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 62170951,
+    "peak_parent": 62170951,
+    "ratio": 0.9270833333333333,
+    "run": "narrow-input3-unbalanced-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 62170951,
+    "peak_parent": 62170951,
+    "ratio": 0.9361702127659574,
+    "run": "narrow-input3-unbalanced-aw-iid-n245760-k6-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 62170951,
+    "peak_parent": 62170951,
+    "ratio": 0.967032967032967,
+    "run": "narrow-input3-unbalanced-aw-iid-n245760-k6-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 60204859,
+    "peak_parent": 60205051,
+    "ratio": 0.9733333333333333,
+    "run": "narrow-input3-unbalanced-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 60204859,
+    "peak_parent": 60205051,
+    "ratio": 0.9733333333333333,
+    "run": "narrow-input3-unbalanced-none-iid-n245760-k6-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 60204859,
+    "peak_parent": 60205051,
+    "ratio": 0.9102564102564101,
+    "run": "narrow-input3-unbalanced-none-iid-n245760-k6-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 114796837,
+    "peak_parent": 114796837,
+    "ratio": 0.9951456310679612,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k1-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 114796837,
+    "peak_parent": 114796837,
+    "ratio": 0.9852216748768473,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k1-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 114796837,
+    "peak_parent": 114796837,
+    "ratio": 0.9577464788732394,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k1-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 150720563,
+    "peak_parent": 150720563,
+    "ratio": 0.9732142857142857,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k3-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 150720563,
+    "peak_parent": 150720563,
+    "ratio": 0.9603524229074889,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k3-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 150720563,
+    "peak_parent": 150720563,
+    "ratio": 0.9555555555555555,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k3-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 192275795,
+    "peak_parent": 192275795,
+    "ratio": 0.984313725490196,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k5-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 192275795,
+    "peak_parent": 192275795,
+    "ratio": 0.9762845849802372,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k5-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 192275795,
+    "peak_parent": 192275795,
+    "ratio": 0.9484126984126984,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k5-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 213053411,
+    "peak_parent": 213053603,
+    "ratio": 0.9957805907172996,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k6-s8675309-shuffle0-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 213053411,
+    "peak_parent": 213053603,
+    "ratio": 0.979253112033195,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k6-s8675309-shuffle0-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 213053411,
+    "peak_parent": 213053603,
+    "ratio": 1.004255319148936,
+    "run": "narrow-input3-unit-ordered-iid-n983040-k6-s8675309-shuffle0-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 114796837,
+    "peak_parent": 114796837,
+    "ratio": 0.9823008849557522,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k1-s31415927-shuffle1-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 114796837,
+    "peak_parent": 114796837,
+    "ratio": 0.9521739130434782,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k1-s31415927-shuffle1-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 114796837,
+    "peak_parent": 114796837,
+    "ratio": 0.9911894273127754,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k1-s31415927-shuffle1-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 150720563,
+    "peak_parent": 150720563,
+    "ratio": 0.9708333333333334,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k3-s31415927-shuffle1-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 150720563,
+    "peak_parent": 150720563,
+    "ratio": 0.9918032786885246,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k3-s31415927-shuffle1-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 150720563,
+    "peak_parent": 150720563,
+    "ratio": 0.9634146341463414,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k3-s31415927-shuffle1-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 192275795,
+    "peak_parent": 192275795,
+    "ratio": 0.9578947368421055,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k5-s31415927-shuffle1-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 192275795,
+    "peak_parent": 192275795,
+    "ratio": 0.9929078014184399,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k5-s31415927-shuffle1-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 192275795,
+    "peak_parent": 192275795,
+    "ratio": 0.9342560553633219,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k5-s31415927-shuffle1-t16-r3-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 213053411,
+    "peak_parent": 213053603,
+    "ratio": 0.9699248120300752,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k6-s31415927-shuffle1-t16-r1-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 213053411,
+    "peak_parent": 213053603,
+    "ratio": 0.9595588235294117,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k6-s31415927-shuffle1-t16-r2-narrowinput3"
+  },
+  {
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "peak_candidate": 213053411,
+    "peak_parent": 213053603,
+    "ratio": 0.9516728624535316,
+    "run": "narrow-input3-unit-shuffled-iid-n983040-k6-s31415927-shuffle1-t16-r3-narrowinput3"
+  }
+]

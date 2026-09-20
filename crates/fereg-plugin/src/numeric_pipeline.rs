@@ -72,7 +72,7 @@ pub(crate) fn try_read_with_rhs(
     memory: &mut InputMemory,
     mut rhs: Option<(&mut Vec<f64>, usize)>,
 ) -> Result<bool> {
-    let min_width = if rhs.is_some() { 8 } else { 16 };
+    let min_width = if rhs.is_some() { if team.threads() >= 8 { 3 } else { 8 } } else { 16 };
     if !spi.supports_numeric_rows() || team.threads() <= 1
         || !(min_width..=MAX_COLUMNS).contains(&positions.len())
         || columns.is_empty() || columns[0].len() < 16_384
@@ -118,7 +118,7 @@ pub(crate) fn try_read_reserved(
     mut rhs: Option<(&mut Vec<f64>, usize)>,
 ) -> Result<bool> {
     let width = positions.len();
-    let min_width = if rhs.is_some() { 8 } else { 16 };
+    let min_width = if rhs.is_some() { if team.threads() >= 8 { 3 } else { 8 } } else { 16 };
     if !spi.supports_numeric_rows() || team.threads() <= 1
         || !(min_width..=MAX_COLUMNS).contains(&width) || rows < 16_384
     { return Ok(false); }
@@ -314,8 +314,9 @@ mod tests {
 
     #[test]
     fn numeric_pipeline_constructs_owned_rhs_without_changing_fe_or_missing() {
-        for width in [9, 12, 52, 64] {
+        for (width, threads) in [(3,8), (4,8), (6,8), (8,8), (9,4), (12,4), (52,4), (64,4)] {
             for extra_sources in [0, 1, 2, 5] {
+                if extra_sources + 2 > width { continue; }
                 let rhs_width = width - extra_sources;
                 let rows = 16387;
                 let positions: Vec<u32> = (1..=width as u32).rev().collect();
@@ -326,8 +327,15 @@ mod tests {
                 let mut rhs = Vec::with_capacity(rows * rhs_width);
                 let capacity = rhs.capacity();
                 let mut input = Input::new();
+                if width < 8 {
+                    assert!(!try_read_with_rhs(&mut input, &positions, &mut columns, &mut missing,
+                        ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
+                        &mut InputMemory::new(None, 0).unwrap(), Some((&mut rhs, rhs_width))).unwrap());
+                    assert_eq!(input.calls, 0);
+                    assert!(rhs.is_empty());
+                }
                 assert!(try_read_with_rhs(&mut input, &positions, &mut columns, &mut missing,
-                    ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
+                    ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()),
                     &mut InputMemory::new(None, (capacity * 8) as u128).unwrap(), Some((&mut rhs, rhs_width))).unwrap());
                 assert_eq!(rhs.capacity(), capacity);
                 assert_eq!(rhs.len(), rows * rhs_width);
@@ -349,7 +357,7 @@ mod tests {
 
     #[test]
     fn reserved_pipeline_preserves_values_capacities_and_failure_shutdown() {
-        for width in [9, 16, 52, 64] {
+        for (width, threads) in [(3,8), (4,8), (6,8), (8,8), (9,4), (16,4), (52,4), (64,4)] {
             for failure in [usize::MAX, 1, 3, 5] {
                 let rows = 16387;
                 let positions: Vec<u32> = (1..=width as u32).rev().collect();
@@ -361,7 +369,7 @@ mod tests {
                 input.failure = failure;
                 let result = try_read_reserved(&mut input, &positions, rows,
                     &mut values.iter_mut().collect::<Vec<_>>(), &mut flags.iter_mut().collect::<Vec<_>>(),
-                    ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
+                    ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()),
                     &mut InputMemory::new(None, 0).unwrap(), Some((&mut rhs, width)));
                 if failure == usize::MAX { assert_eq!(result, Ok(true)); }
                 else { assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted); }

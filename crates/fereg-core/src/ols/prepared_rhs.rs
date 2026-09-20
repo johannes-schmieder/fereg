@@ -108,7 +108,7 @@ pub(crate) fn build_prepared_ols_rhs_with_loaded_rows_and_reuse(
 ) -> Result<(PreparedOlsRhs, bool)> {
     if let Some(rows) = rows {
         validate_prepared_rhs_inputs(prepared, response)?;
-        if let Some(columns) = NumericOlsColumns::bind(&prepared.model, &prepared.sample)? {
+        if let Some(columns) = NumericOlsColumns::bind_loaded_rhs(&prepared.model, &prepared.sample)? {
             if columns.matches_rhs(response, &rows) {
                 return Ok((PreparedOlsRhs { values: DenseMatrix::from_row_major(
                     response.len(), prepared.model.columns.len() + 1, rows,
@@ -300,8 +300,26 @@ impl<'a> NumericOlsColumns<'a> {
         model: &super::PreparedOlsModel,
         sample: &'a crate::data::PreparedNumericSample,
     ) -> Result<Option<Self>> {
+        Self::bind_with_minimum(model, sample, 8)
+    }
+
+    pub(crate) fn bind_loaded_rhs(
+        model: &super::PreparedOlsModel,
+        sample: &'a crate::data::PreparedNumericSample,
+    ) -> Result<Option<Self>> {
+        // Narrow transport admission does not widen the separate predictor,
+        // residual-update and ordinary RHS-construction fast paths.
+        let minimum = if sample.n_active() >= 16_384 && rayon::current_num_threads() >= 8 { 2 } else { 8 };
+        Self::bind_with_minimum(model, sample, minimum)
+    }
+
+    fn bind_with_minimum(
+        model: &super::PreparedOlsModel,
+        sample: &'a crate::data::PreparedNumericSample,
+        minimum: usize,
+    ) -> Result<Option<Self>> {
         if sample.n_active() < 4096
-            || !(8..=MAX_BOUND_NUMERIC_COLUMNS).contains(&model.columns.len())
+            || !(minimum..=MAX_BOUND_NUMERIC_COLUMNS).contains(&model.columns.len())
             || model.columns.iter().any(|c| {
                 !matches!(
                     c.kind,
@@ -1094,8 +1112,8 @@ mod tests {
     #[test]
     fn loaded_rhs_reuse_preserves_bits_and_rejects_stale_rows() {
         use crate::{ThreadConfig, ThreadTeam};
-        for width in [9_usize, 12, 52, 64] {
-            let n = 4099;
+        for (width, n) in [(3_usize,16383), (3,16384), (5,16384), (7,16384), (8,16384),
+            (9,4099), (12,4099), (52,4099), (64,4099)] {
             let mut request = request(false, true);
             request.model.sources.clear();
             request.model.terms.clear();
@@ -1114,13 +1132,15 @@ mod tests {
                 request.model.sources.push(source);
             }
             let mut prepared = prepare_ols_data(&request, &input).unwrap();
-            for threads in [1, 4] {
+            for threads in [1, 4, 8, 16] {
                 ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()).install(|| {
                     let reference = build_prepared_ols_rhs(&prepared).unwrap().into_values();
                     let rows = reference.as_slice().to_vec();
                     let pointer = rows.as_ptr();
-                    let reused = build_prepared_ols_rhs_with_loaded_rows(&prepared, &prepared.sample.outcome, Some(rows)).unwrap().into_values();
-                    assert_eq!(pointer, reused.as_slice().as_ptr());
+                    let (rhs, transferred) = build_prepared_ols_rhs_with_loaded_rows_and_reuse(&prepared, &prepared.sample.outcome, Some(rows)).unwrap();
+                    let reused = rhs.into_values();
+                    assert_eq!(transferred, width >= 9 || n >= 16384 && threads >= 8);
+                    if transferred { assert_eq!(pointer, reused.as_slice().as_ptr()); }
                     assert!(reference.as_slice().iter().zip(reused.as_slice()).all(|(a,b)| a.to_bits() == b.to_bits()));
                     for cell in [0, 1, width - 1, n * width / 2, n * width - 1] {
                         let mut stale = reference.as_slice().to_vec();

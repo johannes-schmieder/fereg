@@ -232,7 +232,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_build_rhs_with_loaded_rows(&self, response: &[f64], rows: Option<Vec<f64>>) -> Result<(DenseMatrix, bool)> {
         if let Some(rows) = rows {
-            if let Some(columns) = crate::ols::NumericOlsColumns::bind(self.fit_model(), self.fit_sample())? {
+            if let Some(columns) = crate::ols::NumericOlsColumns::bind_loaded_rhs(self.fit_model(), self.fit_sample())? {
                 if columns.matches_rhs(response, &rows) {
                     return Ok((DenseMatrix::from_row_major(
                         response.len(), self.fit_model().columns.len() + 1, rows,
