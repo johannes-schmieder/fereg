@@ -26,6 +26,9 @@ CASES = {
     "cluster2_saved": ("cluster c1 c2", "~c1+c2", "saved"),
     "iid_outputs": ("", "iid", "all"),
 }
+PRIMARY_CASES = tuple(CASES)
+# Focused diagnostic outside the frozen twenty-cell primary matrix.
+CASES["robust_saved"] = ("robust", "hetero", "saved")
 
 
 def load(name, path):
@@ -278,7 +281,7 @@ if __name__ == "__main__":
     p.add_argument("root", type=Path)
     p.add_argument("--part", choices=("smoke", "primary"), required=True)
     p.add_argument("--label", required=True)
-    p.add_argument("--cases", choices=list(CASES), nargs="+", default=list(CASES))
+    p.add_argument("--cases", choices=list(CASES), nargs="+", default=list(PRIMARY_CASES))
     p.add_argument("--widths", type=int, nargs="+", choices=(10, 50), default=[10, 50])
     p.add_argument("--repeats", type=int, default=3)
     p.add_argument("--trace", action="store_true")

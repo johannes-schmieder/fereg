@@ -18,6 +18,10 @@ put `Rscript` on `PATH`, and set `R_LIBS_USER` to the pinned stock library plus
 its dependencies. Existing run directories are never overwritten. Process
 sampling requires access to the local process list.
 
+`--cases robust_saved` additionally probes robust inference with saved FE. It
+is a focused diagnostic; the default ten cases and the frozen twenty-cell
+acceptance matrix are unchanged.
+
 The complete command includes Stata-to-native loading, inference, and any
 requested saved FE/residual publication. The output bundle also times public
 `predict` calls for `xb` and `xbd`. R times `feols`, then `fixef(sorted=FALSE)`,

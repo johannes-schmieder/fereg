@@ -427,12 +427,15 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedCategoricalOlsRobust> {
     validate_config(config)?;
-    let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(prepared, config.fit, ||
-        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows), true)?;
-    // Include DoF validation in the resolved team so existing source checks
-    // can use it too, without changing their order or adding live data buffers.
+    let ((fit, score_scratch), outcome_tss, dof_inputs) =
+        super::prepared_unadjusted::fit_with_independent_outcome_and_check(prepared, config.fit, ||
+            super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows),
+            || prepared.validate_dof_inputs_for_overlap(), true)?;
     crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
-        let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
+        let absorbed_dof = match dof_inputs.transpose()?.flatten() {
+            Some(inputs) => inputs.compute(super::prepared_inference_view::categorical_policy(config.absorbed_dof), &[])?,
+            None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
+        };
         let absorbed_summary =
             prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
         let mut reservation = SystemPreparedInferenceReservation;

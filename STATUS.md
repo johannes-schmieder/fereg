@@ -10,6 +10,43 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## One-FE DoF validation checkpoint — 2026-09-20
+
+The [DoF validation report](benchmarks/reports/development/one-fe-dof-reuse-local-2026-09-20/README.md)
+archives 284 distinct calls, 102 nonself exact native scientific comparisons
+and 39 byte-identical saved-output comparisons. Categorical absorbed-DoF now
+reuses the same immutable single-source topology proof. Eligible narrow,
+unit-weight, fast categorical IID/robust fits overlap allocation-free numeric
+and topology checks with fitting, preserving error order and later metadata
+allocations. Saved clustered/weighted calls use the duplicate-check removal;
+ordinary unsaved one-FE commands remain controls for this increment.
+
+Final `dofcore` plugin:
+`8ef3246e53db3385580c6bff3072498155d436f0cf7783707cf084371171218a`.
+Six focused Rust tests, five final-artifact Stata fixtures, the added robust-
+saved explicit-dummy oracle and real-plugin ABI/panic checks pass. Narrow
+saved-IID overlap medians are 160/156 ms before/after; robust saved FE is
+178/172 ms against the preceding committed core. Clustered saved gains are
+small; wide controls show no clear increment. The sparse 95%-missing control
+passes at 149/147 ms with exact scientific/output results.
+
+The current artifact's eleven size/thread/group-layout controls now pass
+against frozen `normonly`: maximum median paired cell ratio 1.021705,
+geometric mean 0.995187. These are cumulative current-core controls.
+Final full-output medians are 204/222 ms (K=10) and 500/535 ms (K=50) versus
+fixest, with six wins but median paired ratios 0.918919/0.934579. The 0.90
+margin target is still unmet. The current artifact's complete twenty-cell
+breadth regression screen and both final five-pair acceptance blocks remain
+pending; the previous full breadth screen belongs to `recoverycore`.
+
+The goal remains active. Next investigate retaining the already constructed
+independent raw residual for saved-output construction, which currently scans
+the same regressors again; explicitly verify target rounding and the longer
+owner lifetime before reuse. Also audit constructor-enforced immutability as
+a basis for reusing prepared validation beyond one stage. Neither broader
+change is implemented. No installed package, remote state or qualification
+changed.
+
 ## One-FE certificate and recovery checkpoint — 2026-09-20
 
 The [certificate/recovery report](benchmarks/reports/development/one-fe-certificate-recovery-local-2026-09-20/README.md)

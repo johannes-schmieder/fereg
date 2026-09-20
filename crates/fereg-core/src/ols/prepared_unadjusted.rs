@@ -498,11 +498,16 @@ fn fit_categorical_with_outcome_overlap(
         Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(prepared, config.fit, rows),
         None => fit_prepared_categorical_ols_coefficients_map(prepared, config.fit),
     };
-    let (fit, outcome_tss) = fit_with_independent_outcome(prepared, config.fit, fit, overlap)?;
-    // Include DoF validation in the resolved team so existing source checks
-    // can use it too, without changing their order or adding live data buffers.
+    let (fit, outcome_tss, dof_inputs) = fit_with_independent_outcome_and_check(
+        prepared, config.fit, fit, || prepared.validate_dof_inputs_for_overlap(), overlap,
+    )?;
+    // Surface prefix-validation errors after the fit. Metadata validation and
+    // DoF report allocation retain their original position on the same team.
     crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
-        let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
+        let absorbed_dof = match dof_inputs.transpose()?.flatten() {
+            Some(inputs) => inputs.compute(super::prepared_inference_view::categorical_policy(config.absorbed_dof), &[])?,
+            None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
+        };
         let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
         let mut reservation = SystemInferenceReservation;
         let components = compose_view_internal(
@@ -540,6 +545,26 @@ where
     T: Send,
     F: FnOnce() -> Result<T> + Send,
 {
+    let (fit, tss, _) = fit_with_independent_outcome_and_check(prepared, config, fit, || (), overlap)?;
+    Ok((fit, tss))
+}
+
+/// The caller consumes the deferred check only at its original error boundary.
+/// Successful checks must retain no allocation beside the running fit.
+pub(super) fn fit_with_independent_outcome_and_check<P, T, F, C, H>(
+    prepared: &P,
+    config: PreparedOlsFitConfig,
+    fit: F,
+    check: H,
+    overlap: bool,
+) -> Result<(T, Option<Result<f64>>, Option<C>)>
+where
+    P: PreparedOlsInferenceView + ?Sized,
+    T: Send,
+    F: FnOnce() -> Result<T> + Send,
+    C: Send,
+    H: FnOnce() -> C + Send,
+{
     if overlap
         && matches!(prepared.fit_sample().weights, PreparedWeights::None)
         && prepared.fit_has_one_ordinary_intercept_effect()
@@ -548,16 +573,20 @@ where
         && config.execution.mode == super::PreparedOlsExecutionMode::Fast
         && config.execution.threads.resolved() >= 8
     {
-        let (fit, tss) = crate::ThreadTeam::new(config.execution.threads).install(|| {
-            rayon::join(fit, || independent_outcome_sum(
-                &prepared.fit_sample().outcome,
-                ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 },
-                prepared.fit_structural_intercept(),
-            ))
+        let (fit, (tss, checked)) = crate::ThreadTeam::new(config.execution.threads).install(|| {
+            rayon::join(fit, || {
+                let checked = check();
+                let tss = independent_outcome_sum(
+                    &prepared.fit_sample().outcome,
+                    ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 },
+                    prepared.fit_structural_intercept(),
+                );
+                (tss, checked)
+            })
         })?;
-        Ok((fit?, Some(tss)))
+        Ok((fit?, Some(tss), Some(checked)))
     } else {
-        Ok((fit()?, None))
+        Ok((fit()?, None, None))
     }
 }
 
@@ -2127,6 +2156,34 @@ mod tests {
             assert_eq!(fit_with_outcome_overlap(&prepared, config, None, false).unwrap_err(),
                 fit_with_outcome_overlap(&prepared, config, None, true).unwrap_err());
         }
+    }
+
+    #[test]
+    fn outcome_overlap_defers_check_errors_and_skips_small_teams() {
+        let n = 16_384;
+        let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
+        let x: Vec<_> = (0..n).map(|r| ((r % 131) as f64 - 60.0) / 7.0).collect();
+        let y: Vec<_> = (0..n).map(|r| 1.7 * x[r] + groups[r]).collect();
+        let prepared = prepared(&y, &[x], Some(&groups), true, TestWeights::Unit);
+        let mut config = PreparedOlsFitConfig::default();
+        config.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
+        let fit_error = invalid_data("fit must fail first");
+        let check_error = invalid_data("deferred validation failure");
+        let error = fit_with_independent_outcome_and_check(
+            &prepared, config, || Err::<(), _>(fit_error.clone()),
+            || Err::<(), _>(check_error.clone()), true,
+        ).unwrap_err();
+        assert_eq!(error, fit_error);
+        let (_, tss, checked) = fit_with_independent_outcome_and_check(
+            &prepared, config, || Ok(()), || Err::<(), _>(check_error.clone()), true,
+        ).unwrap();
+        assert!(tss.unwrap().is_ok());
+        assert_eq!(checked.unwrap().unwrap_err(), check_error);
+        config.execution.threads = crate::ThreadConfig::from_requested(4, true).unwrap();
+        let (_, tss, checked) = fit_with_independent_outcome_and_check(
+            &prepared, config, || Ok(()), || panic!("sequential fit ran the speculative check"), true,
+        ).unwrap();
+        assert!(tss.is_none() && checked.is_none());
     }
 
     #[test]

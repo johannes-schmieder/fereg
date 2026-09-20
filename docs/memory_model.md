@@ -109,6 +109,12 @@ buffer or team is created. Retained packed/strided inference scores are already
 charged as owners across both phases; overlapping them adds no cache or buffer.
 Allocation-phase probes keep the sequential route.
 
+Categorical one-FE inference can overlap its numeric/topology validation prefix
+with fitting on the same bounded team. The successful prefix retains only
+immutable references. Effect-view and DoF-report allocations stay after fitting,
+and interaction re-factorization stays outside this overlap. No additional
+observation-sized owner or persistent validation cache is introduced.
+
 Fast and low modes share the same rank policy, certificates, inference,
 omission status, result wire, and Stata transaction. Registered tests require
 scientific identity. Deterministic routes additionally require

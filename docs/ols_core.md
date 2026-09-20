@@ -71,6 +71,15 @@ each observation. Source, result and overflow checks remain in force; no extra
 observation-scale matrix or solver-route change is introduced. Other recipes
 and widths retain the general evaluator.
 
+Categorical absorbed-DoF construction may reuse the topology check from its
+complete prepared-data validation for one immutable single-source owner. All
+numeric, recipe, slope, cluster-nesting and rank-policy checks still run.
+Eligible unit-weight, fast one-FE IID and robust fits with at most 16 generated
+columns, at least 16,384 active rows and at least eight workers may run the
+allocation-free numeric/topology validation prefix beside fitting. Its errors
+remain deferred until the original DoF boundary; metadata checks and report
+allocation remain there. Interaction topologies retain ordinary validation.
+
 Low-memory categorical projection reuses the fixed LSMR operator and
 preconditioner across response/regressor batches under ADR 0032. Every batch
 still receives its independent FE certificate. Retained LSMR state is

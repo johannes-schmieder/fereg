@@ -1,0 +1,42 @@
+[
+  {
+    "arms": {
+      "dofoverlap": {
+        "maximum_ms": 147.0,
+        "median_ms": 147.0,
+        "minimum_ms": 145.0,
+        "sampled_peak_rss_gib": 0.422119140625
+      },
+      "recoverycore": {
+        "maximum_ms": 150.0,
+        "median_ms": 149.0,
+        "minimum_ms": 148.0,
+        "sampled_peak_rss_gib": 0.423004150390625
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "dofoverlap/recoverycore": {
+        "median": 0.9865771812080537,
+        "values": [
+          0.9932432432432432,
+          0.9865771812080537,
+          0.9666666666666667
+        ],
+        "wins": 3
+      },
+      "recoverycore/dofoverlap": {
+        "median": 1.0136054421768708,
+        "values": [
+          1.0068027210884354,
+          1.0136054421768708,
+          1.0344827586206897
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "dof-sparse-guard"
+  }
+]

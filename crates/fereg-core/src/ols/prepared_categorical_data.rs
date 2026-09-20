@@ -63,6 +63,33 @@ pub struct PreparedCategoricalOlsData {
     report_plan: PreparedCategoricalOlsReportPlan,
 }
 
+/// Only the allocation-free prefix of prepared validation may overlap fitting.
+/// The immutable owner keeps the sample and topology fixed until DoF creation;
+/// metadata checks and their allocations still run at the original boundary.
+pub(crate) struct ValidatedCategoricalDofInputs<'a> {
+    prepared: &'a PreparedCategoricalOlsData,
+    topology: crate::fe::ValidatedSingleTopology<'a>,
+}
+
+impl ValidatedCategoricalDofInputs<'_> {
+    pub(crate) fn compute(
+        self,
+        policy: CategoricalTopologyDofPolicy,
+        cluster_dimensions: &[&[u32]],
+    ) -> Result<CategoricalTopologyDofReport> {
+        self.prepared.validate_after_topology()?;
+        compute_categorical_topology_absorbed_dof_with_slopes(
+            &self.prepared.fe_topology,
+            &self.prepared.effect_specs,
+            self.prepared.structural_intercept,
+            policy,
+            cluster_dimensions,
+            &self.prepared.sample.regressors,
+            Some(self.topology),
+        )
+    }
+}
+
 impl PreparedCategoricalOlsData {
     /// Retained heap buffers, with topology-backed codes counted only at their
     /// owner. Construction scratch and numerical/dependency frames are separate.
@@ -651,7 +678,7 @@ impl PreparedCategoricalOlsData {
         policy: CategoricalTopologyDofPolicy,
         cluster_dimensions: &[&[u32]],
     ) -> Result<CategoricalTopologyDofReport> {
-        self.validate()?;
+        let validated_single = self.validate_with_reusable_topology(true)?;
         compute_categorical_topology_absorbed_dof_with_slopes(
             &self.fe_topology,
             &self.effect_specs,
@@ -659,12 +686,29 @@ impl PreparedCategoricalOlsData {
             policy,
             cluster_dimensions,
             &self.sample.regressors,
+            validated_single,
         )
     }
 
     /// Revalidate the complete prepared artifact before numerical use.
     pub fn validate(&self) -> Result<()> {
         self.validate_with_reusable_topology(false).map(|_| ())
+    }
+
+    pub(crate) fn validate_dof_inputs_for_overlap(
+        &self,
+    ) -> Result<Option<ValidatedCategoricalDofInputs<'_>>> {
+        if self.fe_topology.compacted_sources().len() != 1
+            || self.fe_topology.registry().sources().len() != 1
+            || self.fe_topology.effect_to_topology().len() != 1
+            || self.fe_topology.registry().sources()[0].partition().is_interaction()
+        {
+            return Ok(None);
+        }
+        validate_numeric_sample(&self.sample)?;
+        Ok(self.fe_topology.validate_single_source()?.map(|topology| {
+            ValidatedCategoricalDofInputs { prepared: self, topology }
+        }))
     }
 
     fn validate_with_reusable_topology(
@@ -680,6 +724,11 @@ impl PreparedCategoricalOlsData {
         if validated_single.is_none() {
             self.fe_topology.validate()?;
         }
+        self.validate_after_topology()?;
+        Ok(validated_single)
+    }
+
+    fn validate_after_topology(&self) -> Result<()> {
         if self.fe_topology.retained_rows().len() != self.sample.n_active() {
             return Err(invalid(
                 "prepared categorical topology is not aligned with the final sample",
@@ -703,7 +752,7 @@ impl PreparedCategoricalOlsData {
         )?;
         validate_model_recipes(&self.model, &self.categorical_sources, &self.fe_topology)?;
         validate_report_plan(&self.model, &self.report_plan)?;
-        Ok(validated_single)
+        Ok(())
     }
 
     pub(crate) fn effect_views(&self) -> Result<Vec<CategoricalAbsorbedEffectView<'_>>> {
