@@ -1,0 +1,44 @@
+[
+  {
+    "finite_score_per_observation": 9.992936480530655e-16,
+    "group_residual_mean_max": [
+      9.758860386455126e-14,
+      7.298252179733e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.4654943925052066e-13,
+      8.881784197001252e-16,
+      1.4654943925052066e-13
+    ],
+    "run": "weighted-input2-low-confirm-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r1-weightedinput2",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 9.992936480530655e-16,
+    "group_residual_mean_max": [
+      9.758860386455126e-14,
+      7.298252179733e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.4654943925052066e-13,
+      8.881784197001252e-16,
+      1.4654943925052066e-13
+    ],
+    "run": "weighted-input2-low-confirm-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r2-weightedinput2",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 9.992936480530655e-16,
+    "group_residual_mean_max": [
+      9.758860386455126e-14,
+      7.298252179733e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.4654943925052066e-13,
+      8.881784197001252e-16,
+      1.4654943925052066e-13
+    ],
+    "run": "weighted-input2-low-confirm-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r3-weightedinput2",
+    "status": "pass"
+  }
+]

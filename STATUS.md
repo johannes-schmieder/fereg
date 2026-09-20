@@ -10,6 +10,33 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: weighted input checkpoint — 2026-09-20
+
+The [weighted input report](benchmarks/reports/development/two-fe-weighted-input-local-2026-09-20/README.md)
+records the next bounded change: supplied AW/FW/PW columns join the existing
+numeric transport and speculative raw RHS path. Authoritative preparation and
+exact final matching remain; weighted raw moments retain their prepared scan.
+[ADR 0078](docs/adr/0078-weighted-native-input-overlap.md) defines the scope.
+
+Three-pair AW K=50 IID improves 937 -> 851 ms; full outputs 1112 -> 1033 ms.
+K=6 gains are smaller. Shuffled AW and strong-d3 AW fitting still lose to
+fixest. All 34 native scientific pairs and 15 saved-output pairs are exact,
+with no native peak increase. Fifteen independent output audits, three Stata
+fixtures, focused weighted transport/pipeline tests and actual ABI checks pass.
+The first low-memory pair's 6.6% slowdown did not repeat: three confirmation
+pairs give median ratio 0.967611. All 110 calls, including the 39-call inactive
+prototype and original slower control, remain in the report.
+
+Candidate plugin `7adc6377c38d280007de94985fb05478456459def6263ebf6cfd6941ff21cfdf`
+uses `3a02a7da` plus the recorded plugin overlay; all 514 source entries match.
+The full goal remains active. The raw root is `target/two-fe-broad-20260920`;
+weighted-input validation/confirmation and the 18-cell first graph screen are
+complete, with no running process. Next: archive the graph/DoF/zero-width
+harness evidence, independently adjudicate eight default-reference coefficient
+discrepancies, and target narrow/shuffled operator costs and graph routing.
+The wider predeclared scoreboard has not run. Preserve unrelated worktree
+changes; no installed package, remote state or qualification changed.
+
 ## Broad two-way OLS milestone: weighted finishing checkpoint — 2026-09-20
 
 The full user-approved plan remains active: weighted lifecycle and semantics,

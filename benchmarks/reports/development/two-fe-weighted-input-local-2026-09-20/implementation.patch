@@ -1,0 +1,224 @@
+diff --git a/crates/fereg-plugin/src/estimate.rs b/crates/fereg-plugin/src/estimate.rs
+index 4af1ca17..056778f9 100644
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -239,9 +239,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+     let input_team = (action.candidate_all
+         && !action.request.absorbed_terms.is_empty()
+         && action.request.absorbed_terms.iter().all(|term| term.intercept
+-            && term.categorical_sources.len() == 1 && term.slope_sources.is_empty())
+-        && !action.request.bindings.iter().any(|binding| matches!(binding.role,
+-            OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight)))
++            && term.categorical_sources.len() == 1 && term.slope_sources.is_empty()))
+         .then(|| ThreadTeam::new(action.fit.execution.threads));
+     let mut loaded_rhs = None;
+     let rhs_budget = if action.fit.execution.mode != PreparedOlsExecutionMode::Fast { 0 } else { action.memory_plan.usable_bytes.map_or(usize::MAX, |usable| {
+@@ -524,7 +522,9 @@ fn prepare_loaded_ols_with_moments<T: Send>(
+     let columns = action.generated_columns.checked_add(1)
+         .ok_or_else(|| allocation("loaded OLS moment width overflows"))?;
+     let moment_bytes = LoadedOlsRows::moment_workspace_bytes(nrows, columns).filter(|bytes| {
+-        loaded_rhs.is_some() && action.fit.execution.threads.resolved() >= 8
++        loaded_rhs.is_some() && loaded.analytic_weight.is_none()
++            && loaded.frequency_weight.is_none() && loaded.probability_weight.is_none()
++            && action.fit.execution.threads.resolved() >= 8
+             && action.memory_plan.usable_bytes.is_none_or(|usable| {
+                 action.preparation_memory.preparation_peak_bytes(action.loaded_fit_workspace_bytes + *bytes as u128)
+                     .ok().and_then(|peak| peak.checked_add(action.metadata_owner_bytes))
+@@ -1679,11 +1679,12 @@ fn load_ols_input_with_team(
+     } else {
+         Some(role_position(request, InputRoleTag::Candidate)?)
+     };
++    let has_weight = request.bindings.iter().any(|binding| matches!(binding.role,
++        OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight));
++    let numeric_width = request.model.sources.len() + 1 + usize::from(has_weight);
+     let defer_columns = candidate_all && n >= 16_384
+-        && (9..=64).contains(&(request.model.sources.len() + 1))
+-        && team.is_some_and(|t| t.threads() >= 8) && spi.supports_numeric_rows()
+-        && !request.bindings.iter().any(|binding| matches!(binding.role,
+-            OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight));
++        && (9..=64).contains(&numeric_width)
++        && team.is_some_and(|t| t.threads() >= 8) && spi.supports_numeric_rows();
+     let mut outcome = loaded_column_reservation(n, "OLS outcome", defer_columns)?;
+     let mut source_loaders = reserved_empty(request.model.sources.len(), "OLS source table")?;
+     for source in &request.model.sources {
+@@ -1719,13 +1720,13 @@ fn load_ols_input_with_team(
+     let frequency_position = weight_position(request, OlsInputRole::FrequencyWeight);
+     let probability_position = weight_position(request, OlsInputRole::ProbabilityWeight);
+     let mut analytic_weight = analytic_position
+-        .map(|_| empty_loaded_column(n, "analytic weight"))
++        .map(|_| loaded_column_reservation(n, "analytic weight", defer_columns))
+         .transpose()?;
+     let mut frequency_weight = frequency_position
+-        .map(|_| empty_loaded_column(n, "frequency weight"))
++        .map(|_| loaded_column_reservation(n, "frequency weight", defer_columns))
+         .transpose()?;
+     let mut probability_weight = probability_position
+-        .map(|_| empty_loaded_column(n, "probability weight"))
++        .map(|_| loaded_column_reservation(n, "probability weight", defer_columns))
+         .transpose()?;
+     let mut source_positions = reserved_empty(request.model.sources.len(), "OLS source positions")?;
+     for source in &request.model.sources {
+@@ -1741,14 +1742,12 @@ fn load_ols_input_with_team(
+     let mut rhs_width = 0;
+     if candidate_all && all_sources_numeric {
+         if let Some(team) = team {
+-                let width = request.model.sources.len() + 1;
++                let width = numeric_width;
+                 if spi.supports_numeric_rows() && team.threads() > 1 && n >= 16_384
+                     && (9..=64).contains(&width)
+                     && !request.absorbed_terms.is_empty()
+                     && request.absorbed_terms.iter().all(|term| term.intercept
+                         && term.categorical_sources.len() == 1 && term.slope_sources.is_empty())
+-                    && !request.bindings.iter().any(|binding| matches!(binding.role,
+-                        OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight))
+                 {
+                     if let Some(compiled_width) = compiled_rhs_width.filter(|w| (8..=width).contains(w)) {
+                         rhs_width = compiled_width;
+@@ -1768,9 +1767,9 @@ fn load_ols_input_with_team(
+         }
+     }
+     let reserved_read = if defer_columns && all_sources_numeric {
+-        let mut positions = reserved_empty(source_positions.len() + 1, "reserved numeric SPI positions")?;
+-        let mut columns = reserved_empty(source_positions.len() + 1, "reserved numeric SPI columns")?;
+-        let mut missing = reserved_empty(source_positions.len() + 1, "reserved numeric SPI missing columns")?;
++        let mut positions = reserved_empty(numeric_width, "reserved numeric SPI positions")?;
++        let mut columns = reserved_empty(numeric_width, "reserved numeric SPI columns")?;
++        let mut missing = reserved_empty(numeric_width, "reserved numeric SPI missing columns")?;
+         positions.push(outcome_position);
+         columns.push(&mut outcome.values);
+         missing.push(&mut outcome.missing);
+@@ -1780,6 +1779,15 @@ fn load_ols_input_with_team(
+             columns.push(&mut column.values);
+             missing.push(&mut column.missing);
+         }
++        for (position, column) in [(analytic_position, analytic_weight.as_mut()),
++            (frequency_position, frequency_weight.as_mut()),
++            (probability_position, probability_weight.as_mut())] {
++            if let (Some(position), Some(column)) = (position, column) {
++                positions.push(position);
++                columns.push(&mut column.values);
++                missing.push(&mut column.missing);
++            }
++        }
+         crate::numeric_pipeline::try_read_reserved(spi, &positions, n, &mut columns,
+             &mut missing, team.expect("deferred input has a team"), memory, rhs.as_mut().map(|rows| (rows, rhs_width)))?
+     } else { false };
+@@ -1794,6 +1802,11 @@ fn load_ols_input_with_team(
+                 column.missing.resize(n, false);
+             }
+         }
++        for column in [&mut analytic_weight, &mut frequency_weight, &mut probability_weight]
++            .into_iter().flatten() {
++            column.values.resize(n, 0.0);
++            column.missing.resize(n, false);
++        }
+     }
+     if candidate_all && all_sources_numeric || n >= INPUT_CANDIDATE_BATCH_MIN_ROWS {
+         if let Some(position) = candidate_position {
+@@ -5650,6 +5663,106 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn weighted_loaded_rhs_preserves_sample_domains_and_inference() {
++        let (_, mut base) = fixture(OlsVceKind::Iid);
++        base.nobs = 16_387;
++        base.nvars = 11;
++        base.numeric_rows_enabled = true;
++        base.data.clear();
++        for row in 1..=base.nobs {
++            for variable in 1..=11 {
++                let value = match variable {
++                    1 => 1.0,
++                    9 => (row % 17) as f64,
++                    10 => ((row / 17) % 13) as f64,
++                    11 => (1 + row % 7) as f64,
++                    _ => ((row * variable as usize) as f64).sin(),
++                };
++                base.data.insert((variable, row), (value, false));
++            }
++        }
++        let mut template = OlsRequestV1 {
++            model: CompiledTermGraph { sources: Vec::new(), terms: Vec::new() },
++            bindings: vec![OlsInputBinding { stata_var_position: 1, role: OlsInputRole::Candidate },
++                OlsInputBinding { stata_var_position: 2, role: OlsInputRole::Outcome }],
++            absorbed_terms: Vec::new(), include_intercept: true, keep_singletons: false,
++        };
++        for id in 1..=8 {
++            let source = SourceId::new(id).unwrap();
++            template.model.sources.push(SourceEntry { id: source, canonical_name: format!("x{id}") });
++            template.bindings.push(OlsInputBinding { stata_var_position: id + 2,
++                role: OlsInputRole::NumericSource(source) });
++            if id <= 6 {
++                let mut term = continuous_term(source);
++                term.id = TermId::new(id).unwrap();
++                term.order = TermOrder::new(id).unwrap();
++                term.coefficient_slot = CoefficientSlot::new(id).unwrap();
++                term.canonical_token = format!("c.x{id}");
++                template.model.terms.push(term);
++            } else {
++                template.absorbed_terms.push(AbsorbedTerm { id: AbsorbTermId::new(id - 6).unwrap(),
++                    intercept: true, categorical_sources: vec![source], slope_sources: Vec::new(),
++                    label: format!("g{id}"), saved_name: String::new() });
++            }
++        }
++        for role in [OlsInputRole::AnalyticWeight, OlsInputRole::FrequencyWeight, OlsInputRole::ProbabilityWeight] {
++            for case in 0..9 {
++                let mut request = template.clone();
++                request.bindings.push(OlsInputBinding { stata_var_position: 11, role: role.clone() });
++                let mut spi = base.clone();
++                let candidate_all = case != 5;
++                match case {
++                    1 => { spi.data.insert((11, 3), (1e100, true)); }
++                    2 => { spi.data.insert((11, 3), (0.0, false)); }
++                    3 => { spi.data.insert((11, 3), (-1.0, false)); }
++                    4 => { spi.data.insert((11, 3), (1.5, false)); }
++                    5 => {
++                        spi.data.insert((1, 3), (0.0, false));
++                        spi.data.insert((11, 3), (-1.0, false));
++                    }
++                    8 => {
++                        // Missing weight removes one row of a two-row FE level;
++                        // physical singleton pruning then invalidates the speculative RHS.
++                        spi.data.insert((9, 1), (100.0, false));
++                        spi.data.insert((9, 2), (100.0, false));
++                        spi.data.insert((11, 1), (1e100, true));
++                        spi.data.insert((11, 2), (1.0, false));
++                    }
++                    _ => {}
++                }
++                let budget = if case == 6 { 0 } else { spi.nobs * 8 * 8 };
++                let threads = ThreadConfig::from_requested(if case == 7 { 4 } else { 8 }, false).unwrap();
++                let compiled_width = numeric_loaded_rhs_width(&request.validate_and_compile().unwrap());
++                let reference = load_ols_input(&request, candidate_all, false, &mut spi.clone()).unwrap();
++                let mut rhs = None;
++                let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
++                let loaded = load_ols_input_with_team(&request, candidate_all, false, &mut memory,
++                    &mut spi, Some(ThreadTeam::new(threads)), &mut rhs, budget, compiled_width).unwrap();
++                assert_eq!(loaded, reference);
++                assert_eq!(rhs.is_some(), candidate_all && budget > 0);
++                let expected = prepare_categorical_ols_data_owned(&request, reference);
++                let actual = prepare_categorical_ols_data_owned(&request, loaded);
++                match (expected, actual) {
++                    (Err(expected), Err(actual)) => assert_eq!(actual, expected),
++                    (Ok(expected), Ok(actual)) => {
++                        assert_eq!(expected.sample(), actual.sample());
++                        let mut config = PreparedOlsRobustConfig::default();
++                        config.fit.execution.threads = threads;
++                        let expected = fereg_core::ols::fit_prepared_categorical_ols_robust_map(&expected, config).unwrap();
++                        let actual = fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
++                            &actual, config, rhs.map(LoadedOlsRows::from)).unwrap();
++                        assert_eq!(expected.fit().coefficients(), actual.fit().coefficients());
++                        assert_eq!(expected.covariance(), actual.covariance());
++                        assert_eq!(expected.statistics(), actual.statistics());
++                        assert_eq!(expected.certificate(), actual.certificate());
++                    }
++                    _ => panic!("weighted speculative loading changed preparation success"),
++                }
++            }
++        }
++    }
++
+     #[test]
+     fn full_sample_output_batch_preserves_store_order_and_failure_atomicity() {
+         for n in [4095, 4096, 4097] {

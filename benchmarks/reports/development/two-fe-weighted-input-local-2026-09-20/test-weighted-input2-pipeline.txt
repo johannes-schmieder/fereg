@@ -1,0 +1,7 @@
+test numeric_pipeline::tests::numeric_pipeline_worker_panic_wakes_producer_before_scope_join ... ok
+test numeric_pipeline::tests::numeric_pipeline_declines_before_reads_and_accounts_scratch ... ok
+test numeric_pipeline::tests::numeric_pipeline_joins_after_read_failure_invalid_boundary_and_producer_panic ... ok
+test numeric_pipeline::tests::numeric_pipeline_transposes_tail_and_preserves_missing_on_caller_thread ... ok
+test numeric_pipeline::tests::reserved_pipeline_preserves_values_capacities_and_failure_shutdown ... ok
+test numeric_pipeline::tests::numeric_pipeline_constructs_owned_rhs_without_changing_fe_or_missing ... ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 158 filtered out; finished in 0.72s

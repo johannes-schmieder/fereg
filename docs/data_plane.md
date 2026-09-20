@@ -12,7 +12,7 @@ callback. Every callback return code is checked. Scalar reads and other
 platforms retain the checked accessor; this does not enable global fast mode.
 
 Eligible unrestricted Mac OLS calls with ordinary categorical intercept effects,
-unit weights, at least 16,384 rows and 16–64 loaded numeric columns may overlap
+at least 16,384 rows and 16–64 loaded numeric columns may overlap
 loading with native conversion. The Stata thread fills two Rust-owned 4,096-row
 tiles; one job on the resolved native team writes the existing source columns
 and missing masks. Scratch capacity is admitted and charged to the input peak
@@ -34,7 +34,11 @@ same-call ownership transfer, with no reusable data cache or extra SPI call.
 Each absorbed effect must have one categorical source and no slopes. Robust,
 clustered and saved-output requests can use the same input mechanism; inference
 and publication retain their separate contracts. See
-[ADR 0075](adr/0075-dense-two-fe-ols-data-and-solver-passes.md).
+[ADR 0075](adr/0075-dense-two-fe-ols-data-and-solver-passes.md). Supplied AW/FW/PW
+weights occupy an additional numeric column and use the same transport and raw
+RHS path. Their domains, normalization and sample remain preparation-owned;
+raw unit-weight moment overlap excludes supplied weights. See
+[ADR 0078](adr/0078-weighted-native-input-overlap.md).
 
 For each original row, candidate exclusion from `if`/`in` is applied first.
 On candidate rows, outcome, ordinary terms, weights, fixed effects, clusters,
