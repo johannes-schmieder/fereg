@@ -1,0 +1,262 @@
+[
+  {
+    "reference": "membership-screen-cluster2_cross-n983040-k10-r1-inferencetss",
+    "candidate": "membership-screen-cluster2_cross-n983040-k10-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-cluster2_cross-n983040-k50-r1-inferencetss",
+    "candidate": "membership-screen-cluster2_cross-n983040-k50-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-cluster2_nested-n983040-k10-r1-inferencetss",
+    "candidate": "membership-screen-cluster2_nested-n983040-k10-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-cluster2_nested-n983040-k50-r1-inferencetss",
+    "candidate": "membership-screen-cluster2_nested-n983040-k50-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-cluster2_saved-n983040-k10-r1-inferencetss",
+    "candidate": "membership-screen-cluster2_saved-n983040-k10-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": true
+  },
+  {
+    "reference": "membership-screen-cluster2_saved-n983040-k50-r1-inferencetss",
+    "candidate": "membership-screen-cluster2_saved-n983040-k50-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": true
+  },
+  {
+    "reference": "membership-screen-cluster_cross-n983040-k10-r1-inferencetss",
+    "candidate": "membership-screen-cluster_cross-n983040-k10-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-cluster_cross-n983040-k50-r1-inferencetss",
+    "candidate": "membership-screen-cluster_cross-n983040-k50-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-cluster_fe-n983040-k10-r1-inferencetss",
+    "candidate": "membership-screen-cluster_fe-n983040-k10-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-cluster_fe-n983040-k50-r1-inferencetss",
+    "candidate": "membership-screen-cluster_fe-n983040-k50-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-cluster_fe_saved-n983040-k10-r1-inferencetss",
+    "candidate": "membership-screen-cluster_fe_saved-n983040-k10-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": true
+  },
+  {
+    "reference": "membership-screen-cluster_fe_saved-n983040-k50-r1-inferencetss",
+    "candidate": "membership-screen-cluster_fe_saved-n983040-k50-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": true
+  },
+  {
+    "reference": "membership-screen-iid-n983040-k10-r1-inferencetss",
+    "candidate": "membership-screen-iid-n983040-k10-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-iid-n983040-k50-r1-inferencetss",
+    "candidate": "membership-screen-iid-n983040-k50-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-iid_outputs-n983040-k10-r1-inferencetss",
+    "candidate": "membership-screen-iid_outputs-n983040-k10-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": true
+  },
+  {
+    "reference": "membership-screen-iid_outputs-n983040-k50-r1-inferencetss",
+    "candidate": "membership-screen-iid_outputs-n983040-k50-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": true
+  },
+  {
+    "reference": "membership-screen-iid_saved-n983040-k10-r1-inferencetss",
+    "candidate": "membership-screen-iid_saved-n983040-k10-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": true
+  },
+  {
+    "reference": "membership-screen-iid_saved-n983040-k50-r1-inferencetss",
+    "candidate": "membership-screen-iid_saved-n983040-k50-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": true
+  },
+  {
+    "reference": "membership-screen-robust-n983040-k10-r1-inferencetss",
+    "candidate": "membership-screen-robust-n983040-k10-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  },
+  {
+    "reference": "membership-screen-robust-n983040-k50-r1-inferencetss",
+    "candidate": "membership-screen-robust-n983040-k50-r1-parallelmembership",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "output_bytes_exact": null
+  }
+]

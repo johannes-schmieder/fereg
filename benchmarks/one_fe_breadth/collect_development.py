@@ -51,6 +51,18 @@ def collect(root, output, labels):
             phases.pop("ols_prepare", None)
             if phases:
                 result["diagnostic_phases"] = phases
+            ado_phases = path.with_name("ado-phases.tsv")
+            if ado_phases.exists():
+                observations = {}
+                for line in ado_phases.read_text().splitlines():
+                    timer, seconds = line.split()
+                    observations.setdefault(timer, []).append(float(seconds))
+                assert all(len(values) == 2 for values in observations.values())
+                result["diagnostic_ado_phases"] = {
+                    timer: dict(warmup_seconds=values[0], main_seconds=values[1])
+                    for timer, values in observations.items()
+                }
+                result["exports"][ado_phases.name] = sha(ado_phases)
             receipts.append(result)
             cell = result["cell"]
             grouped.setdefault((cell["case"], cell["k"]), {}).setdefault(result["variant"], []).append(result)

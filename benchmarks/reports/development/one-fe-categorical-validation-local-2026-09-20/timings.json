@@ -1,0 +1,3267 @@
+[
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 253.0,
+        "median_ms": 253.0,
+        "minimum_ms": 253.0,
+        "sampled_peak_rss_gib": 0.5458526611328125
+      },
+      "inferencetss": {
+        "maximum_ms": 198.0,
+        "median_ms": 198.0,
+        "minimum_ms": 198.0,
+        "sampled_peak_rss_gib": 0.524505615234375
+      },
+      "parallelmembership": {
+        "maximum_ms": 198.0,
+        "median_ms": 198.0,
+        "minimum_ms": 198.0,
+        "sampled_peak_rss_gib": 0.4135894775390625
+      }
+    },
+    "case": "cluster2_cross",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.2777777777777777,
+        "values": [
+          1.2777777777777777
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.2777777777777777,
+        "values": [
+          1.2777777777777777
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.782608695652174,
+        "values": [
+          0.782608695652174
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0,
+        "values": [
+          1.0
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.782608695652174,
+        "values": [
+          0.782608695652174
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 1.0,
+        "values": [
+          1.0
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 1337.0,
+        "median_ms": 1337.0,
+        "minimum_ms": 1337.0,
+        "sampled_peak_rss_gib": 2.0196990966796875
+      },
+      "inferencetss": {
+        "maximum_ms": 565.0,
+        "median_ms": 565.0,
+        "minimum_ms": 565.0,
+        "sampled_peak_rss_gib": 1.4286956787109375
+      },
+      "parallelmembership": {
+        "maximum_ms": 570.0000000000001,
+        "median_ms": 570.0000000000001,
+        "minimum_ms": 570.0000000000001,
+        "sampled_peak_rss_gib": 1.455963134765625
+      }
+    },
+    "case": "cluster2_cross",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 2.3663716814159295,
+        "values": [
+          2.3663716814159295
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 2.345614035087719,
+        "values": [
+          2.345614035087719
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.4225878833208676,
+        "values": [
+          0.4225878833208676
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 0.9912280701754383,
+        "values": [
+          0.9912280701754383
+        ],
+        "wins": 1
+      },
+      "parallelmembership/fixest": {
+        "median": 0.42632759910246826,
+        "values": [
+          0.42632759910246826
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 1.0088495575221241,
+        "values": [
+          1.0088495575221241
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 253.0,
+        "median_ms": 253.0,
+        "minimum_ms": 253.0,
+        "sampled_peak_rss_gib": 0.5782470703125
+      },
+      "inferencetss": {
+        "maximum_ms": 185.0,
+        "median_ms": 185.0,
+        "minimum_ms": 185.0,
+        "sampled_peak_rss_gib": 0.4020538330078125
+      },
+      "parallelmembership": {
+        "maximum_ms": 186.0,
+        "median_ms": 186.0,
+        "minimum_ms": 186.0,
+        "sampled_peak_rss_gib": 0.4010467529296875
+      }
+    },
+    "case": "cluster2_nested",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.3675675675675676,
+        "values": [
+          1.3675675675675676
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.360215053763441,
+        "values": [
+          1.360215053763441
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.7312252964426877,
+        "values": [
+          0.7312252964426877
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 0.9946236559139785,
+        "values": [
+          0.9946236559139785
+        ],
+        "wins": 1
+      },
+      "parallelmembership/fixest": {
+        "median": 0.7351778656126482,
+        "values": [
+          0.7351778656126482
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 1.0054054054054054,
+        "values": [
+          1.0054054054054054
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 1249.0,
+        "median_ms": 1249.0,
+        "minimum_ms": 1249.0,
+        "sampled_peak_rss_gib": 2.19769287109375
+      },
+      "inferencetss": {
+        "maximum_ms": 582.0000000000001,
+        "median_ms": 582.0000000000001,
+        "minimum_ms": 582.0000000000001,
+        "sampled_peak_rss_gib": 1.4216766357421875
+      },
+      "parallelmembership": {
+        "maximum_ms": 599.0,
+        "median_ms": 599.0,
+        "minimum_ms": 599.0,
+        "sampled_peak_rss_gib": 1.4206695556640625
+      }
+    },
+    "case": "cluster2_nested",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 2.1460481099656357,
+        "values": [
+          2.1460481099656357
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 2.0851419031719534,
+        "values": [
+          2.0851419031719534
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.4659727782225781,
+        "values": [
+          0.4659727782225781
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 0.971619365609349,
+        "values": [
+          0.971619365609349
+        ],
+        "wins": 1
+      },
+      "parallelmembership/fixest": {
+        "median": 0.47958366693354676,
+        "values": [
+          0.47958366693354676
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 1.029209621993127,
+        "values": [
+          1.029209621993127
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 337.0,
+        "median_ms": 337.0,
+        "minimum_ms": 337.0,
+        "sampled_peak_rss_gib": 0.607330322265625
+      },
+      "inferencetss": {
+        "maximum_ms": 248.0,
+        "median_ms": 248.0,
+        "minimum_ms": 248.0,
+        "sampled_peak_rss_gib": 0.4339141845703125
+      },
+      "parallelmembership": {
+        "maximum_ms": 242.0,
+        "median_ms": 242.0,
+        "minimum_ms": 242.0,
+        "sampled_peak_rss_gib": 0.4316253662109375
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.3588709677419355,
+        "values": [
+          1.3588709677419355
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.3925619834710745,
+        "values": [
+          1.3925619834710745
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.7359050445103857,
+        "values": [
+          0.7359050445103857
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.024793388429752,
+        "values": [
+          1.024793388429752
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.7181008902077151,
+        "values": [
+          0.7181008902077151
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.9758064516129032,
+        "values": [
+          0.9758064516129032
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 1391.0,
+        "median_ms": 1391.0,
+        "minimum_ms": 1391.0,
+        "sampled_peak_rss_gib": 2.03375244140625
+      },
+      "inferencetss": {
+        "maximum_ms": 643.0,
+        "median_ms": 643.0,
+        "minimum_ms": 643.0,
+        "sampled_peak_rss_gib": 1.4411163330078125
+      },
+      "parallelmembership": {
+        "maximum_ms": 635.0,
+        "median_ms": 635.0,
+        "minimum_ms": 635.0,
+        "sampled_peak_rss_gib": 1.4378662109375
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 2.1632970451010887,
+        "values": [
+          2.1632970451010887
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 2.190551181102362,
+        "values": [
+          2.190551181102362
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.46225736879942486,
+        "values": [
+          0.46225736879942486
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0125984251968505,
+        "values": [
+          1.0125984251968505
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.4565061107117182,
+        "values": [
+          0.4565061107117182
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.9875583203732504,
+        "values": [
+          0.9875583203732504
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 186.0,
+        "median_ms": 186.0,
+        "minimum_ms": 186.0,
+        "sampled_peak_rss_gib": 0.5260772705078125
+      },
+      "inferencetss": {
+        "maximum_ms": 167.0,
+        "median_ms": 167.0,
+        "minimum_ms": 167.0,
+        "sampled_peak_rss_gib": 0.401947021484375
+      },
+      "parallelmembership": {
+        "maximum_ms": 166.0,
+        "median_ms": 166.0,
+        "minimum_ms": 166.0,
+        "sampled_peak_rss_gib": 0.4019622802734375
+      }
+    },
+    "case": "cluster_cross",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.1137724550898203,
+        "values": [
+          1.1137724550898203
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.1204819277108433,
+        "values": [
+          1.1204819277108433
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.8978494623655915,
+        "values": [
+          0.8978494623655915
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0060240963855422,
+        "values": [
+          1.0060240963855422
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.89247311827957,
+        "values": [
+          0.89247311827957
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.9940119760479041,
+        "values": [
+          0.9940119760479041
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 834.0,
+        "median_ms": 834.0,
+        "minimum_ms": 834.0,
+        "sampled_peak_rss_gib": 1.8236083984375
+      },
+      "inferencetss": {
+        "maximum_ms": 511.0,
+        "median_ms": 511.0,
+        "minimum_ms": 511.0,
+        "sampled_peak_rss_gib": 1.4202728271484375
+      },
+      "parallelmembership": {
+        "maximum_ms": 515.0,
+        "median_ms": 515.0,
+        "minimum_ms": 515.0,
+        "sampled_peak_rss_gib": 1.420623779296875
+      }
+    },
+    "case": "cluster_cross",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.6320939334637963,
+        "values": [
+          1.6320939334637963
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.6194174757281552,
+        "values": [
+          1.6194174757281552
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.6127098321342926,
+        "values": [
+          0.6127098321342926
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 0.9922330097087378,
+        "values": [
+          0.9922330097087378
+        ],
+        "wins": 1
+      },
+      "parallelmembership/fixest": {
+        "median": 0.617505995203837,
+        "values": [
+          0.617505995203837
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 1.0078277886497065,
+        "values": [
+          1.0078277886497065
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 172.0,
+        "median_ms": 172.0,
+        "minimum_ms": 172.0,
+        "sampled_peak_rss_gib": 0.5253753662109375
+      },
+      "inferencetss": {
+        "maximum_ms": 160.0,
+        "median_ms": 160.0,
+        "minimum_ms": 160.0,
+        "sampled_peak_rss_gib": 0.392120361328125
+      },
+      "parallelmembership": {
+        "maximum_ms": 155.0,
+        "median_ms": 155.0,
+        "minimum_ms": 155.0,
+        "sampled_peak_rss_gib": 0.3889312744140625
+      }
+    },
+    "case": "cluster_fe",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.075,
+        "values": [
+          1.075
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.1096774193548387,
+        "values": [
+          1.1096774193548387
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.930232558139535,
+        "values": [
+          0.930232558139535
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.032258064516129,
+        "values": [
+          1.032258064516129
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.9011627906976745,
+        "values": [
+          0.9011627906976745
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.96875,
+        "values": [
+          0.96875
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 936.0,
+        "median_ms": 936.0,
+        "minimum_ms": 936.0,
+        "sampled_peak_rss_gib": 1.96417236328125
+      },
+      "inferencetss": {
+        "maximum_ms": 493.0,
+        "median_ms": 493.0,
+        "minimum_ms": 493.0,
+        "sampled_peak_rss_gib": 1.584259033203125
+      },
+      "parallelmembership": {
+        "maximum_ms": 498.0,
+        "median_ms": 498.0,
+        "minimum_ms": 498.0,
+        "sampled_peak_rss_gib": 1.51385498046875
+      }
+    },
+    "case": "cluster_fe",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.898580121703854,
+        "values": [
+          1.898580121703854
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.8795180722891567,
+        "values": [
+          1.8795180722891567
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.5267094017094017,
+        "values": [
+          0.5267094017094017
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 0.9899598393574297,
+        "values": [
+          0.9899598393574297
+        ],
+        "wins": 1
+      },
+      "parallelmembership/fixest": {
+        "median": 0.532051282051282,
+        "values": [
+          0.532051282051282
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 1.0101419878296145,
+        "values": [
+          1.0101419878296145
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 266.0,
+        "median_ms": 266.0,
+        "minimum_ms": 266.0,
+        "sampled_peak_rss_gib": 0.569427490234375
+      },
+      "inferencetss": {
+        "maximum_ms": 209.0,
+        "median_ms": 209.0,
+        "minimum_ms": 209.0,
+        "sampled_peak_rss_gib": 0.416839599609375
+      },
+      "parallelmembership": {
+        "maximum_ms": 206.0,
+        "median_ms": 206.0,
+        "minimum_ms": 206.0,
+        "sampled_peak_rss_gib": 0.4144439697265625
+      }
+    },
+    "case": "cluster_fe_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.272727272727273,
+        "values": [
+          1.272727272727273
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.2912621359223302,
+        "values": [
+          1.2912621359223302
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.7857142857142856,
+        "values": [
+          0.7857142857142856
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0145631067961165,
+        "values": [
+          1.0145631067961165
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.7744360902255638,
+        "values": [
+          0.7744360902255638
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.9856459330143541,
+        "values": [
+          0.9856459330143541
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 1008.0,
+        "median_ms": 1008.0,
+        "minimum_ms": 1008.0,
+        "sampled_peak_rss_gib": 1.970367431640625
+      },
+      "inferencetss": {
+        "maximum_ms": 546.9999999999999,
+        "median_ms": 546.9999999999999,
+        "minimum_ms": 546.9999999999999,
+        "sampled_peak_rss_gib": 1.42657470703125
+      },
+      "parallelmembership": {
+        "maximum_ms": 552.0,
+        "median_ms": 552.0,
+        "minimum_ms": 552.0,
+        "sampled_peak_rss_gib": 1.4125823974609375
+      }
+    },
+    "case": "cluster_fe_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.8427787934186475,
+        "values": [
+          1.8427787934186475
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.826086956521739,
+        "values": [
+          1.826086956521739
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.5426587301587301,
+        "values": [
+          0.5426587301587301
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 0.990942028985507,
+        "values": [
+          0.990942028985507
+        ],
+        "wins": 1
+      },
+      "parallelmembership/fixest": {
+        "median": 0.5476190476190477,
+        "values": [
+          0.5476190476190477
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 1.0091407678244975,
+        "values": [
+          1.0091407678244975
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 147.0,
+        "median_ms": 147.0,
+        "minimum_ms": 147.0,
+        "sampled_peak_rss_gib": 0.5235748291015625
+      },
+      "inferencetss": {
+        "maximum_ms": 129.0,
+        "median_ms": 129.0,
+        "minimum_ms": 129.0,
+        "sampled_peak_rss_gib": 0.5035858154296875
+      },
+      "parallelmembership": {
+        "maximum_ms": 129.0,
+        "median_ms": 129.0,
+        "minimum_ms": 129.0,
+        "sampled_peak_rss_gib": 0.5048065185546875
+      }
+    },
+    "case": "iid",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.13953488372093,
+        "values": [
+          1.13953488372093
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.13953488372093,
+        "values": [
+          1.13953488372093
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.8775510204081634,
+        "values": [
+          0.8775510204081634
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0,
+        "values": [
+          1.0
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.8775510204081634,
+        "values": [
+          0.8775510204081634
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 1.0,
+        "values": [
+          1.0
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 441.0,
+        "median_ms": 441.0,
+        "minimum_ms": 441.0,
+        "sampled_peak_rss_gib": 1.8190155029296875
+      },
+      "inferencetss": {
+        "maximum_ms": 389.0,
+        "median_ms": 389.0,
+        "minimum_ms": 389.0,
+        "sampled_peak_rss_gib": 1.39312744140625
+      },
+      "parallelmembership": {
+        "maximum_ms": 385.0,
+        "median_ms": 385.0,
+        "minimum_ms": 385.0,
+        "sampled_peak_rss_gib": 1.3928985595703125
+      }
+    },
+    "case": "iid",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.1336760925449871,
+        "values": [
+          1.1336760925449871
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.1454545454545455,
+        "values": [
+          1.1454545454545455
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.8820861678004536,
+        "values": [
+          0.8820861678004536
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0103896103896104,
+        "values": [
+          1.0103896103896104
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.873015873015873,
+        "values": [
+          0.873015873015873
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.9897172236503856,
+        "values": [
+          0.9897172236503856
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 221.0,
+        "median_ms": 221.0,
+        "minimum_ms": 221.0,
+        "sampled_peak_rss_gib": 0.583160400390625
+      },
+      "inferencetss": {
+        "maximum_ms": 218.0,
+        "median_ms": 218.0,
+        "minimum_ms": 218.0,
+        "sampled_peak_rss_gib": 0.4857940673828125
+      },
+      "parallelmembership": {
+        "maximum_ms": 216.0,
+        "median_ms": 216.0,
+        "minimum_ms": 216.0,
+        "sampled_peak_rss_gib": 0.491180419921875
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.0137614678899083,
+        "values": [
+          1.0137614678899083
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.0231481481481481,
+        "values": [
+          1.0231481481481481
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.9864253393665158,
+        "values": [
+          0.9864253393665158
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0092592592592593,
+        "values": [
+          1.0092592592592593
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.9773755656108597,
+        "values": [
+          0.9773755656108597
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.9908256880733944,
+        "values": [
+          0.9908256880733944
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 529.0,
+        "median_ms": 529.0,
+        "minimum_ms": 529.0,
+        "sampled_peak_rss_gib": 1.8364410400390625
+      },
+      "inferencetss": {
+        "maximum_ms": 525.0,
+        "median_ms": 525.0,
+        "minimum_ms": 525.0,
+        "sampled_peak_rss_gib": 1.4194183349609375
+      },
+      "parallelmembership": {
+        "maximum_ms": 523.0,
+        "median_ms": 523.0,
+        "minimum_ms": 523.0,
+        "sampled_peak_rss_gib": 1.4193267822265625
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.0076190476190476,
+        "values": [
+          1.0076190476190476
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.0114722753346082,
+        "values": [
+          1.0114722753346082
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.9924385633270322,
+        "values": [
+          0.9924385633270322
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0038240917782026,
+        "values": [
+          1.0038240917782026
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.9886578449905482,
+        "values": [
+          0.9886578449905482
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.9961904761904762,
+        "values": [
+          0.9961904761904762
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 221.0,
+        "median_ms": 221.0,
+        "minimum_ms": 221.0,
+        "sampled_peak_rss_gib": 0.562835693359375
+      },
+      "inferencetss": {
+        "maximum_ms": 180.0,
+        "median_ms": 180.0,
+        "minimum_ms": 180.0,
+        "sampled_peak_rss_gib": 0.4011383056640625
+      },
+      "parallelmembership": {
+        "maximum_ms": 177.0,
+        "median_ms": 177.0,
+        "minimum_ms": 177.0,
+        "sampled_peak_rss_gib": 0.3978424072265625
+      }
+    },
+    "case": "iid_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.2277777777777779,
+        "values": [
+          1.2277777777777779
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.248587570621469,
+        "values": [
+          1.248587570621469
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.8144796380090498,
+        "values": [
+          0.8144796380090498
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0169491525423728,
+        "values": [
+          1.0169491525423728
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.8009049773755655,
+        "values": [
+          0.8009049773755655
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.9833333333333333,
+        "values": [
+          0.9833333333333333
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 511.0,
+        "median_ms": 511.0,
+        "minimum_ms": 511.0,
+        "sampled_peak_rss_gib": 1.8461761474609375
+      },
+      "inferencetss": {
+        "maximum_ms": 461.0,
+        "median_ms": 461.0,
+        "minimum_ms": 461.0,
+        "sampled_peak_rss_gib": 1.4215087890625
+      },
+      "parallelmembership": {
+        "maximum_ms": 451.0,
+        "median_ms": 451.0,
+        "minimum_ms": 451.0,
+        "sampled_peak_rss_gib": 1.4210052490234375
+      }
+    },
+    "case": "iid_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.1084598698481563,
+        "values": [
+          1.1084598698481563
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.1330376940133038,
+        "values": [
+          1.1330376940133038
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.9021526418786693,
+        "values": [
+          0.9021526418786693
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0221729490022173,
+        "values": [
+          1.0221729490022173
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.8825831702544031,
+        "values": [
+          0.8825831702544031
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.9783080260303687,
+        "values": [
+          0.9783080260303687
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 172.0,
+        "median_ms": 172.0,
+        "minimum_ms": 172.0,
+        "sampled_peak_rss_gib": 0.5234527587890625
+      },
+      "inferencetss": {
+        "maximum_ms": 152.0,
+        "median_ms": 152.0,
+        "minimum_ms": 152.0,
+        "sampled_peak_rss_gib": 0.3889617919921875
+      },
+      "parallelmembership": {
+        "maximum_ms": 154.0,
+        "median_ms": 154.0,
+        "minimum_ms": 154.0,
+        "sampled_peak_rss_gib": 0.3901214599609375
+      }
+    },
+    "case": "robust",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.131578947368421,
+        "values": [
+          1.131578947368421
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.1168831168831168,
+        "values": [
+          1.1168831168831168
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.8837209302325582,
+        "values": [
+          0.8837209302325582
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 0.987012987012987,
+        "values": [
+          0.987012987012987
+        ],
+        "wins": 1
+      },
+      "parallelmembership/fixest": {
+        "median": 0.8953488372093024,
+        "values": [
+          0.8953488372093024
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 1.013157894736842,
+        "values": [
+          1.013157894736842
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 870.0,
+        "median_ms": 870.0,
+        "minimum_ms": 870.0,
+        "sampled_peak_rss_gib": 2.18914794921875
+      },
+      "inferencetss": {
+        "maximum_ms": 519.0,
+        "median_ms": 519.0,
+        "minimum_ms": 519.0,
+        "sampled_peak_rss_gib": 1.39776611328125
+      },
+      "parallelmembership": {
+        "maximum_ms": 506.0,
+        "median_ms": 506.0,
+        "minimum_ms": 506.0,
+        "sampled_peak_rss_gib": 1.396728515625
+      }
+    },
+    "case": "robust",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferencetss": {
+        "median": 1.676300578034682,
+        "values": [
+          1.676300578034682
+        ],
+        "wins": 0
+      },
+      "fixest/parallelmembership": {
+        "median": 1.7193675889328064,
+        "values": [
+          1.7193675889328064
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.596551724137931,
+        "values": [
+          0.596551724137931
+        ],
+        "wins": 1
+      },
+      "inferencetss/parallelmembership": {
+        "median": 1.0256916996047432,
+        "values": [
+          1.0256916996047432
+        ],
+        "wins": 0
+      },
+      "parallelmembership/fixest": {
+        "median": 0.5816091954022988,
+        "values": [
+          0.5816091954022988
+        ],
+        "wins": 1
+      },
+      "parallelmembership/inferencetss": {
+        "median": 0.9749518304431599,
+        "values": [
+          0.9749518304431599
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 1,
+    "series": "membership-screen"
+  },
+  {
+    "arms": {
+      "membershipprofile": {
+        "maximum_ms": 219.0,
+        "median_ms": 219.0,
+        "minimum_ms": 219.0,
+        "sampled_peak_rss_gib": 0.495269775390625
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {},
+    "repetitions": 1,
+    "series": "membership-profile-check"
+  },
+  {
+    "arms": {
+      "sampleadoprofile": {
+        "maximum_ms": 136.0,
+        "median_ms": 136.0,
+        "minimum_ms": 136.0,
+        "sampled_peak_rss_gib": 0.3919830322265625
+      }
+    },
+    "case": "iid",
+    "k": 10,
+    "paired_ratios": {},
+    "repetitions": 1,
+    "series": "sample-ado-phases"
+  },
+  {
+    "arms": {
+      "sampleadoprofile": {
+        "maximum_ms": 397.0,
+        "median_ms": 397.0,
+        "minimum_ms": 397.0,
+        "sampled_peak_rss_gib": 1.3966827392578125
+      }
+    },
+    "case": "iid",
+    "k": 50,
+    "paired_ratios": {},
+    "repetitions": 1,
+    "series": "sample-ado-phases"
+  },
+  {
+    "arms": {
+      "sampleadoprofile": {
+        "maximum_ms": 219.0,
+        "median_ms": 219.0,
+        "minimum_ms": 219.0,
+        "sampled_peak_rss_gib": 0.4900665283203125
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {},
+    "repetitions": 1,
+    "series": "sample-ado-phases"
+  },
+  {
+    "arms": {
+      "sampleadoprofile": {
+        "maximum_ms": 513.0,
+        "median_ms": 513.0,
+        "minimum_ms": 513.0,
+        "sampled_peak_rss_gib": 1.4217529296875
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {},
+    "repetitions": 1,
+    "series": "sample-ado-phases"
+  },
+  {
+    "arms": {
+      "sampleadoprofile": {
+        "maximum_ms": 175.0,
+        "median_ms": 175.0,
+        "minimum_ms": 175.0,
+        "sampled_peak_rss_gib": 0.39599609375
+      }
+    },
+    "case": "iid_saved",
+    "k": 10,
+    "paired_ratios": {},
+    "repetitions": 1,
+    "series": "sample-ado-phases"
+  },
+  {
+    "arms": {
+      "sampleadoprofile": {
+        "maximum_ms": 448.0,
+        "median_ms": 448.0,
+        "minimum_ms": 448.0,
+        "sampled_peak_rss_gib": 1.421173095703125
+      }
+    },
+    "case": "iid_saved",
+    "k": 50,
+    "paired_ratios": {},
+    "repetitions": 1,
+    "series": "sample-ado-phases"
+  },
+  {
+    "arms": {
+      "categoricalteam": {
+        "maximum_ms": 221.0,
+        "median_ms": 217.0,
+        "minimum_ms": 215.0,
+        "sampled_peak_rss_gib": 0.5337982177734375
+      },
+      "fixest": {
+        "maximum_ms": 223.0,
+        "median_ms": 223.0,
+        "minimum_ms": 211.0,
+        "sampled_peak_rss_gib": 0.6147003173828125
+      },
+      "inferencetss": {
+        "maximum_ms": 227.0,
+        "median_ms": 220.0,
+        "minimum_ms": 219.0,
+        "sampled_peak_rss_gib": 0.48876953125
+      },
+      "outputbatch": {
+        "maximum_ms": 225.0,
+        "median_ms": 220.0,
+        "minimum_ms": 219.0,
+        "sampled_peak_rss_gib": 0.5091400146484375
+      },
+      "samplerows": {
+        "maximum_ms": 220.0,
+        "median_ms": 219.0,
+        "minimum_ms": 219.0,
+        "sampled_peak_rss_gib": 0.55401611328125
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "categoricalteam/fixest": {
+        "median": 0.9910313901345291,
+        "values": [
+          0.9910313901345291,
+          0.9730941704035874,
+          1.018957345971564
+        ],
+        "wins": 2
+      },
+      "categoricalteam/inferencetss": {
+        "median": 0.9817351598173516,
+        "values": [
+          1.0045454545454546,
+          0.9559471365638766,
+          0.9817351598173516
+        ],
+        "wins": 2
+      },
+      "categoricalteam/outputbatch": {
+        "median": 0.9908675799086758,
+        "values": [
+          1.0045454545454546,
+          0.9908675799086758,
+          0.9555555555555555
+        ],
+        "wins": 2
+      },
+      "categoricalteam/samplerows": {
+        "median": 0.9908675799086758,
+        "values": [
+          1.0045454545454546,
+          0.9908675799086758,
+          0.9817351598173516
+        ],
+        "wins": 2
+      },
+      "fixest/categoricalteam": {
+        "median": 1.009049773755656,
+        "values": [
+          1.009049773755656,
+          1.0276497695852536,
+          0.9813953488372092
+        ],
+        "wins": 1
+      },
+      "fixest/inferencetss": {
+        "median": 0.9823788546255506,
+        "values": [
+          1.0136363636363637,
+          0.9823788546255506,
+          0.9634703196347032
+        ],
+        "wins": 2
+      },
+      "fixest/outputbatch": {
+        "median": 1.0136363636363637,
+        "values": [
+          1.0136363636363637,
+          1.0182648401826484,
+          0.9377777777777777
+        ],
+        "wins": 1
+      },
+      "fixest/samplerows": {
+        "median": 1.0136363636363637,
+        "values": [
+          1.0136363636363637,
+          1.0182648401826484,
+          0.9634703196347032
+        ],
+        "wins": 1
+      },
+      "inferencetss/categoricalteam": {
+        "median": 1.0186046511627906,
+        "values": [
+          0.995475113122172,
+          1.0460829493087558,
+          1.0186046511627906
+        ],
+        "wins": 1
+      },
+      "inferencetss/fixest": {
+        "median": 1.0179372197309418,
+        "values": [
+          0.9865470852017937,
+          1.0179372197309418,
+          1.037914691943128
+        ],
+        "wins": 1
+      },
+      "inferencetss/outputbatch": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          1.0365296803652968,
+          0.9733333333333333
+        ],
+        "wins": 1
+      },
+      "inferencetss/samplerows": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          1.0365296803652968,
+          1.0
+        ],
+        "wins": 0
+      },
+      "outputbatch/categoricalteam": {
+        "median": 1.0092165898617511,
+        "values": [
+          0.995475113122172,
+          1.0092165898617511,
+          1.0465116279069768
+        ],
+        "wins": 1
+      },
+      "outputbatch/fixest": {
+        "median": 0.9865470852017937,
+        "values": [
+          0.9865470852017937,
+          0.9820627802690582,
+          1.066350710900474
+        ],
+        "wins": 2
+      },
+      "outputbatch/inferencetss": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          0.9647577092511013,
+          1.0273972602739727
+        ],
+        "wins": 1
+      },
+      "outputbatch/samplerows": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          1.0,
+          1.0273972602739727
+        ],
+        "wins": 0
+      },
+      "samplerows/categoricalteam": {
+        "median": 1.0092165898617511,
+        "values": [
+          0.995475113122172,
+          1.0092165898617511,
+          1.0186046511627906
+        ],
+        "wins": 1
+      },
+      "samplerows/fixest": {
+        "median": 0.9865470852017937,
+        "values": [
+          0.9865470852017937,
+          0.9820627802690582,
+          1.037914691943128
+        ],
+        "wins": 2
+      },
+      "samplerows/inferencetss": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          0.9647577092511013,
+          1.0
+        ],
+        "wins": 1
+      },
+      "samplerows/outputbatch": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          1.0,
+          0.9733333333333333
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "output-passes"
+  },
+  {
+    "arms": {
+      "categoricalteam": {
+        "maximum_ms": 509.0,
+        "median_ms": 503.0,
+        "minimum_ms": 492.0,
+        "sampled_peak_rss_gib": 1.5335540771484375
+      },
+      "fixest": {
+        "maximum_ms": 533.0,
+        "median_ms": 520.0,
+        "minimum_ms": 514.0,
+        "sampled_peak_rss_gib": 1.856109619140625
+      },
+      "inferencetss": {
+        "maximum_ms": 528.0,
+        "median_ms": 513.0,
+        "minimum_ms": 509.0,
+        "sampled_peak_rss_gib": 1.4756622314453125
+      },
+      "outputbatch": {
+        "maximum_ms": 503.0,
+        "median_ms": 500.0,
+        "minimum_ms": 491.0,
+        "sampled_peak_rss_gib": 1.5389251708984375
+      },
+      "samplerows": {
+        "maximum_ms": 527.0,
+        "median_ms": 523.0,
+        "minimum_ms": 513.0,
+        "sampled_peak_rss_gib": 1.4220428466796875
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {
+      "categoricalteam/fixest": {
+        "median": 0.9571984435797665,
+        "values": [
+          0.9549718574108818,
+          0.9571984435797665,
+          0.9673076923076923
+        ],
+        "wins": 3
+      },
+      "categoricalteam/inferencetss": {
+        "median": 0.9640151515151515,
+        "values": [
+          0.9640151515151515,
+          0.9590643274853801,
+          0.9882121807465619
+        ],
+        "wins": 3
+      },
+      "categoricalteam/outputbatch": {
+        "median": 1.0119284294234592,
+        "values": [
+          1.0119284294234592,
+          0.984,
+          1.0244399185336048
+        ],
+        "wins": 1
+      },
+      "categoricalteam/samplerows": {
+        "median": 0.9617590822179732,
+        "values": [
+          0.9658444022770398,
+          0.9590643274853801,
+          0.9617590822179732
+        ],
+        "wins": 3
+      },
+      "fixest/categoricalteam": {
+        "median": 1.0447154471544715,
+        "values": [
+          1.0471512770137525,
+          1.0447154471544715,
+          1.0337972166998013
+        ],
+        "wins": 0
+      },
+      "fixest/inferencetss": {
+        "median": 1.009469696969697,
+        "values": [
+          1.009469696969697,
+          1.0019493177387915,
+          1.0216110019646365
+        ],
+        "wins": 0
+      },
+      "fixest/outputbatch": {
+        "median": 1.059063136456212,
+        "values": [
+          1.0596421471172963,
+          1.028,
+          1.059063136456212
+        ],
+        "wins": 0
+      },
+      "fixest/samplerows": {
+        "median": 1.0019493177387915,
+        "values": [
+          1.0113851992409868,
+          1.0019493177387915,
+          0.9942638623326959
+        ],
+        "wins": 1
+      },
+      "inferencetss/categoricalteam": {
+        "median": 1.037328094302554,
+        "values": [
+          1.037328094302554,
+          1.0426829268292683,
+          1.0119284294234592
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.9906191369606003,
+        "values": [
+          0.9906191369606003,
+          0.9980544747081712,
+          0.9788461538461538
+        ],
+        "wins": 3
+      },
+      "inferencetss/outputbatch": {
+        "median": 1.0366598778004075,
+        "values": [
+          1.0497017892644136,
+          1.026,
+          1.0366598778004075
+        ],
+        "wins": 0
+      },
+      "inferencetss/samplerows": {
+        "median": 1.0,
+        "values": [
+          1.0018975332068312,
+          1.0,
+          0.9732313575525813
+        ],
+        "wins": 1
+      },
+      "outputbatch/categoricalteam": {
+        "median": 0.9882121807465619,
+        "values": [
+          0.9882121807465619,
+          1.016260162601626,
+          0.9761431411530815
+        ],
+        "wins": 2
+      },
+      "outputbatch/fixest": {
+        "median": 0.9442307692307692,
+        "values": [
+          0.9437148217636022,
+          0.9727626459143969,
+          0.9442307692307692
+        ],
+        "wins": 3
+      },
+      "outputbatch/inferencetss": {
+        "median": 0.9646365422396856,
+        "values": [
+          0.9526515151515151,
+          0.9746588693957114,
+          0.9646365422396856
+        ],
+        "wins": 3
+      },
+      "outputbatch/samplerows": {
+        "median": 0.9544592030360531,
+        "values": [
+          0.9544592030360531,
+          0.9746588693957114,
+          0.9388145315487572
+        ],
+        "wins": 3
+      },
+      "samplerows/categoricalteam": {
+        "median": 1.0397614314115309,
+        "values": [
+          1.0353634577603144,
+          1.0426829268292683,
+          1.0397614314115309
+        ],
+        "wins": 0
+      },
+      "samplerows/fixest": {
+        "median": 0.9980544747081712,
+        "values": [
+          0.9887429643527205,
+          0.9980544747081712,
+          1.0057692307692307
+        ],
+        "wins": 2
+      },
+      "samplerows/inferencetss": {
+        "median": 1.0,
+        "values": [
+          0.9981060606060606,
+          1.0,
+          1.0275049115913557
+        ],
+        "wins": 1
+      },
+      "samplerows/outputbatch": {
+        "median": 1.047713717693837,
+        "values": [
+          1.047713717693837,
+          1.026,
+          1.0651731160896132
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "output-passes"
+  },
+  {
+    "arms": {
+      "categoricalteam": {
+        "maximum_ms": 172.0,
+        "median_ms": 169.0,
+        "minimum_ms": 169.0,
+        "sampled_peak_rss_gib": 0.40240478515625
+      },
+      "fixest": {
+        "maximum_ms": 223.0,
+        "median_ms": 211.0,
+        "minimum_ms": 208.0,
+        "sampled_peak_rss_gib": 0.6131134033203125
+      },
+      "inferencetss": {
+        "maximum_ms": 174.0,
+        "median_ms": 174.0,
+        "minimum_ms": 173.0,
+        "sampled_peak_rss_gib": 0.3991546630859375
+      },
+      "outputbatch": {
+        "maximum_ms": 175.0,
+        "median_ms": 174.0,
+        "minimum_ms": 167.0,
+        "sampled_peak_rss_gib": 0.3997344970703125
+      },
+      "samplerows": {
+        "maximum_ms": 175.0,
+        "median_ms": 174.0,
+        "minimum_ms": 170.0,
+        "sampled_peak_rss_gib": 0.3999481201171875
+      }
+    },
+    "case": "iid_saved",
+    "k": 10,
+    "paired_ratios": {
+      "categoricalteam/fixest": {
+        "median": 0.8009478672985783,
+        "values": [
+          0.7578475336322871,
+          0.8009478672985783,
+          0.8269230769230769
+        ],
+        "wins": 3
+      },
+      "categoricalteam/inferencetss": {
+        "median": 0.971264367816092,
+        "values": [
+          0.971264367816092,
+          0.971264367816092,
+          0.9942196531791907
+        ],
+        "wins": 3
+      },
+      "categoricalteam/outputbatch": {
+        "median": 0.9885057471264368,
+        "values": [
+          0.9657142857142859,
+          1.0119760479041917,
+          0.9885057471264368
+        ],
+        "wins": 2
+      },
+      "categoricalteam/samplerows": {
+        "median": 0.971264367816092,
+        "values": [
+          0.971264367816092,
+          0.9657142857142859,
+          1.0117647058823527
+        ],
+        "wins": 2
+      },
+      "fixest/categoricalteam": {
+        "median": 1.2485207100591715,
+        "values": [
+          1.3195266272189348,
+          1.2485207100591715,
+          1.2093023255813955
+        ],
+        "wins": 0
+      },
+      "fixest/inferencetss": {
+        "median": 1.2126436781609196,
+        "values": [
+          1.281609195402299,
+          1.2126436781609196,
+          1.2023121387283238
+        ],
+        "wins": 0
+      },
+      "fixest/outputbatch": {
+        "median": 1.2634730538922154,
+        "values": [
+          1.2742857142857145,
+          1.2634730538922154,
+          1.1954022988505748
+        ],
+        "wins": 0
+      },
+      "fixest/samplerows": {
+        "median": 1.2235294117647058,
+        "values": [
+          1.281609195402299,
+          1.2057142857142857,
+          1.2235294117647058
+        ],
+        "wins": 0
+      },
+      "inferencetss/categoricalteam": {
+        "median": 1.029585798816568,
+        "values": [
+          1.029585798816568,
+          1.029585798816568,
+          1.005813953488372
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.8246445497630331,
+        "values": [
+          0.780269058295964,
+          0.8246445497630331,
+          0.8317307692307692
+        ],
+        "wins": 3
+      },
+      "inferencetss/outputbatch": {
+        "median": 0.9942857142857143,
+        "values": [
+          0.9942857142857143,
+          1.0419161676646704,
+          0.9942528735632183
+        ],
+        "wins": 2
+      },
+      "inferencetss/samplerows": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          0.9942857142857143,
+          1.0176470588235293
+        ],
+        "wins": 1
+      },
+      "outputbatch/categoricalteam": {
+        "median": 1.0116279069767442,
+        "values": [
+          1.0355029585798816,
+          0.9881656804733727,
+          1.0116279069767442
+        ],
+        "wins": 1
+      },
+      "outputbatch/fixest": {
+        "median": 0.7914691943127963,
+        "values": [
+          0.7847533632286995,
+          0.7914691943127963,
+          0.8365384615384616
+        ],
+        "wins": 3
+      },
+      "outputbatch/inferencetss": {
+        "median": 1.0057471264367817,
+        "values": [
+          1.0057471264367817,
+          0.9597701149425288,
+          1.0057803468208093
+        ],
+        "wins": 1
+      },
+      "outputbatch/samplerows": {
+        "median": 1.0057471264367817,
+        "values": [
+          1.0057471264367817,
+          0.9542857142857144,
+          1.0235294117647058
+        ],
+        "wins": 1
+      },
+      "samplerows/categoricalteam": {
+        "median": 1.029585798816568,
+        "values": [
+          1.029585798816568,
+          1.0355029585798816,
+          0.988372093023256
+        ],
+        "wins": 1
+      },
+      "samplerows/fixest": {
+        "median": 0.8173076923076924,
+        "values": [
+          0.780269058295964,
+          0.8293838862559242,
+          0.8173076923076924
+        ],
+        "wins": 3
+      },
+      "samplerows/inferencetss": {
+        "median": 1.0,
+        "values": [
+          1.0,
+          1.0057471264367817,
+          0.9826589595375724
+        ],
+        "wins": 1
+      },
+      "samplerows/outputbatch": {
+        "median": 0.9942857142857143,
+        "values": [
+          0.9942857142857143,
+          1.0479041916167664,
+          0.9770114942528737
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "output-passes"
+  },
+  {
+    "arms": {
+      "categoricalteam": {
+        "maximum_ms": 443.0,
+        "median_ms": 438.9999999999999,
+        "minimum_ms": 434.0,
+        "sampled_peak_rss_gib": 1.43505859375
+      },
+      "fixest": {
+        "maximum_ms": 554.0,
+        "median_ms": 554.0,
+        "minimum_ms": 515.0,
+        "sampled_peak_rss_gib": 1.843109130859375
+      },
+      "inferencetss": {
+        "maximum_ms": 465.0,
+        "median_ms": 458.0,
+        "minimum_ms": 454.0,
+        "sampled_peak_rss_gib": 1.42486572265625
+      },
+      "outputbatch": {
+        "maximum_ms": 439.0,
+        "median_ms": 437.0000000000001,
+        "minimum_ms": 437.0000000000001,
+        "sampled_peak_rss_gib": 1.4296875
+      },
+      "samplerows": {
+        "maximum_ms": 468.0,
+        "median_ms": 457.0,
+        "minimum_ms": 449.0,
+        "sampled_peak_rss_gib": 1.4221038818359375
+      }
+    },
+    "case": "iid_saved",
+    "k": 50,
+    "paired_ratios": {
+      "categoricalteam/fixest": {
+        "median": 0.799638989169675,
+        "values": [
+          0.8427184466019417,
+          0.7924187725631766,
+          0.799638989169675
+        ],
+        "wins": 3
+      },
+      "categoricalteam/inferencetss": {
+        "median": 0.9559471365638766,
+        "values": [
+          0.9559471365638766,
+          0.944086021505376,
+          0.9672489082969432
+        ],
+        "wins": 3
+      },
+      "categoricalteam/outputbatch": {
+        "median": 1.0045766590389011,
+        "values": [
+          0.9886104783599089,
+          1.0045766590389011,
+          1.0137299771167045
+        ],
+        "wins": 1
+      },
+      "categoricalteam/samplerows": {
+        "median": 0.949671772428884,
+        "values": [
+          0.949671772428884,
+          0.9777282850779507,
+          0.9465811965811965
+        ],
+        "wins": 3
+      },
+      "fixest/categoricalteam": {
+        "median": 1.2505643340857788,
+        "values": [
+          1.1866359447004609,
+          1.2619589977220962,
+          1.2505643340857788
+        ],
+        "wins": 0
+      },
+      "fixest/inferencetss": {
+        "median": 1.1913978494623656,
+        "values": [
+          1.1343612334801763,
+          1.1913978494623656,
+          1.2096069868995634
+        ],
+        "wins": 0
+      },
+      "fixest/outputbatch": {
+        "median": 1.2677345537757434,
+        "values": [
+          1.173120728929385,
+          1.2677345537757434,
+          1.2677345537757434
+        ],
+        "wins": 0
+      },
+      "fixest/samplerows": {
+        "median": 1.1837606837606838,
+        "values": [
+          1.12691466083151,
+          1.2338530066815145,
+          1.1837606837606838
+        ],
+        "wins": 0
+      },
+      "inferencetss/categoricalteam": {
+        "median": 1.0460829493087558,
+        "values": [
+          1.0460829493087558,
+          1.0592255125284742,
+          1.0338600451467268
+        ],
+        "wins": 0
+      },
+      "inferencetss/fixest": {
+        "median": 0.8393501805054151,
+        "values": [
+          0.8815533980582524,
+          0.8393501805054151,
+          0.8267148014440433
+        ],
+        "wins": 3
+      },
+      "inferencetss/outputbatch": {
+        "median": 1.0480549199084666,
+        "values": [
+          1.0341685649202734,
+          1.0640732265446222,
+          1.0480549199084666
+        ],
+        "wins": 0
+      },
+      "inferencetss/samplerows": {
+        "median": 0.9934354485776805,
+        "values": [
+          0.9934354485776805,
+          1.0356347438752784,
+          0.9786324786324786
+        ],
+        "wins": 2
+      },
+      "outputbatch/categoricalteam": {
+        "median": 0.995444191343964,
+        "values": [
+          1.011520737327189,
+          0.995444191343964,
+          0.9864559819413095
+        ],
+        "wins": 2
+      },
+      "outputbatch/fixest": {
+        "median": 0.7888086642599279,
+        "values": [
+          0.8524271844660194,
+          0.7888086642599279,
+          0.7888086642599279
+        ],
+        "wins": 3
+      },
+      "outputbatch/inferencetss": {
+        "median": 0.9541484716157207,
+        "values": [
+          0.9669603524229075,
+          0.9397849462365593,
+          0.9541484716157207
+        ],
+        "wins": 3
+      },
+      "outputbatch/samplerows": {
+        "median": 0.9606126914660831,
+        "values": [
+          0.9606126914660831,
+          0.9732739420935415,
+          0.933760683760684
+        ],
+        "wins": 3
+      },
+      "samplerows/categoricalteam": {
+        "median": 1.0529953917050692,
+        "values": [
+          1.0529953917050692,
+          1.0227790432801824,
+          1.0564334085778782
+        ],
+        "wins": 0
+      },
+      "samplerows/fixest": {
+        "median": 0.8447653429602888,
+        "values": [
+          0.887378640776699,
+          0.8104693140794224,
+          0.8447653429602888
+        ],
+        "wins": 3
+      },
+      "samplerows/inferencetss": {
+        "median": 1.0066079295154184,
+        "values": [
+          1.0066079295154184,
+          0.9655913978494624,
+          1.0218340611353711
+        ],
+        "wins": 1
+      },
+      "samplerows/outputbatch": {
+        "median": 1.041002277904328,
+        "values": [
+          1.041002277904328,
+          1.0274599542334093,
+          1.0709382151029747
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "output-passes"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 221.0,
+        "median_ms": 218.0,
+        "minimum_ms": 212.0,
+        "sampled_peak_rss_gib": 0.61456298828125
+      },
+      "fvdiagnostic": {
+        "maximum_ms": 217.0,
+        "median_ms": 215.0,
+        "minimum_ms": 214.0,
+        "sampled_peak_rss_gib": 0.489288330078125
+      },
+      "inferencetss": {
+        "maximum_ms": 226.0,
+        "median_ms": 224.0,
+        "minimum_ms": 218.0,
+        "sampled_peak_rss_gib": 0.50396728515625
+      },
+      "samplast": {
+        "maximum_ms": 235.0,
+        "median_ms": 232.0,
+        "minimum_ms": 230.0,
+        "sampled_peak_rss_gib": 0.4893798828125
+      },
+      "teamonly": {
+        "maximum_ms": 219.0,
+        "median_ms": 216.0,
+        "minimum_ms": 215.0,
+        "sampled_peak_rss_gib": 0.496246337890625
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/fvdiagnostic": {
+        "median": 1.013953488372093,
+        "values": [
+          1.0327102803738317,
+          1.013953488372093,
+          0.9769585253456221
+        ],
+        "wins": 1
+      },
+      "fixest/inferencetss": {
+        "median": 0.9778761061946902,
+        "values": [
+          0.9778761061946902,
+          1.0,
+          0.9464285714285714
+        ],
+        "wins": 2
+      },
+      "fixest/samplast": {
+        "median": 0.939655172413793,
+        "values": [
+          0.9404255319148936,
+          0.939655172413793,
+          0.9217391304347825
+        ],
+        "wins": 3
+      },
+      "fixest/teamonly": {
+        "median": 1.0091324200913243,
+        "values": [
+          1.0091324200913243,
+          1.0092592592592593,
+          0.986046511627907
+        ],
+        "wins": 1
+      },
+      "fvdiagnostic/fixest": {
+        "median": 0.9862385321100917,
+        "values": [
+          0.9683257918552036,
+          0.9862385321100917,
+          1.0235849056603774
+        ],
+        "wins": 2
+      },
+      "fvdiagnostic/inferencetss": {
+        "median": 0.96875,
+        "values": [
+          0.9469026548672566,
+          0.9862385321100917,
+          0.96875
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/samplast": {
+        "median": 0.9267241379310345,
+        "values": [
+          0.9106382978723404,
+          0.9267241379310345,
+          0.9434782608695652
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/teamonly": {
+        "median": 0.9953703703703703,
+        "values": [
+          0.9771689497716894,
+          0.9953703703703703,
+          1.0093023255813953
+        ],
+        "wins": 2
+      },
+      "inferencetss/fixest": {
+        "median": 1.0226244343891402,
+        "values": [
+          1.0226244343891402,
+          1.0,
+          1.0566037735849056
+        ],
+        "wins": 0
+      },
+      "inferencetss/fvdiagnostic": {
+        "median": 1.032258064516129,
+        "values": [
+          1.0560747663551402,
+          1.013953488372093,
+          1.032258064516129
+        ],
+        "wins": 0
+      },
+      "inferencetss/samplast": {
+        "median": 0.9617021276595745,
+        "values": [
+          0.9617021276595745,
+          0.939655172413793,
+          0.9739130434782608
+        ],
+        "wins": 3
+      },
+      "inferencetss/teamonly": {
+        "median": 1.0319634703196348,
+        "values": [
+          1.0319634703196348,
+          1.0092592592592593,
+          1.041860465116279
+        ],
+        "wins": 0
+      },
+      "samplast/fixest": {
+        "median": 1.0642201834862386,
+        "values": [
+          1.0633484162895928,
+          1.0642201834862386,
+          1.0849056603773586
+        ],
+        "wins": 0
+      },
+      "samplast/fvdiagnostic": {
+        "median": 1.0790697674418606,
+        "values": [
+          1.0981308411214954,
+          1.0790697674418606,
+          1.0599078341013826
+        ],
+        "wins": 0
+      },
+      "samplast/inferencetss": {
+        "median": 1.0398230088495575,
+        "values": [
+          1.0398230088495575,
+          1.0642201834862386,
+          1.0267857142857144
+        ],
+        "wins": 0
+      },
+      "samplast/teamonly": {
+        "median": 1.0730593607305936,
+        "values": [
+          1.0730593607305936,
+          1.0740740740740742,
+          1.0697674418604652
+        ],
+        "wins": 0
+      },
+      "teamonly/fixest": {
+        "median": 0.9909502262443439,
+        "values": [
+          0.9909502262443439,
+          0.9908256880733944,
+          1.0141509433962264
+        ],
+        "wins": 2
+      },
+      "teamonly/fvdiagnostic": {
+        "median": 1.0046511627906978,
+        "values": [
+          1.0233644859813085,
+          1.0046511627906978,
+          0.9907834101382489
+        ],
+        "wins": 1
+      },
+      "teamonly/inferencetss": {
+        "median": 0.9690265486725663,
+        "values": [
+          0.9690265486725663,
+          0.9908256880733944,
+          0.9598214285714285
+        ],
+        "wins": 3
+      },
+      "teamonly/samplast": {
+        "median": 0.9319148936170213,
+        "values": [
+          0.9319148936170213,
+          0.9310344827586207,
+          0.9347826086956521
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "team-and-post"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 546.0,
+        "median_ms": 536.0,
+        "minimum_ms": 519.0,
+        "sampled_peak_rss_gib": 1.8453216552734375
+      },
+      "fvdiagnostic": {
+        "maximum_ms": 504.0,
+        "median_ms": 500.0,
+        "minimum_ms": 498.0,
+        "sampled_peak_rss_gib": 1.5272369384765625
+      },
+      "inferencetss": {
+        "maximum_ms": 529.0,
+        "median_ms": 528.0,
+        "minimum_ms": 520.0,
+        "sampled_peak_rss_gib": 1.426788330078125
+      },
+      "samplast": {
+        "maximum_ms": 574.0000000000001,
+        "median_ms": 562.0,
+        "minimum_ms": 554.0,
+        "sampled_peak_rss_gib": 1.42138671875
+      },
+      "teamonly": {
+        "maximum_ms": 508.0,
+        "median_ms": 507.0,
+        "minimum_ms": 503.0,
+        "sampled_peak_rss_gib": 1.490478515625
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/fvdiagnostic": {
+        "median": 1.0634920634920635,
+        "values": [
+          1.0963855421686748,
+          1.038,
+          1.0634920634920635
+        ],
+        "wins": 0
+      },
+      "fixest/inferencetss": {
+        "median": 1.0151515151515151,
+        "values": [
+          1.05,
+          0.9810964083175803,
+          1.0151515151515151
+        ],
+        "wins": 1
+      },
+      "fixest/samplast": {
+        "median": 0.9512195121951219,
+        "values": [
+          0.9512195121951219,
+          0.9368231046931408,
+          0.9537366548042704
+        ],
+        "wins": 3
+      },
+      "fixest/teamonly": {
+        "median": 1.057199211045365,
+        "values": [
+          1.0854870775347913,
+          1.0216535433070866,
+          1.057199211045365
+        ],
+        "wins": 0
+      },
+      "fvdiagnostic/fixest": {
+        "median": 0.9402985074626865,
+        "values": [
+          0.9120879120879121,
+          0.9633911368015414,
+          0.9402985074626865
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/inferencetss": {
+        "median": 0.9545454545454545,
+        "values": [
+          0.9576923076923076,
+          0.9451795841209829,
+          0.9545454545454545
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/samplast": {
+        "median": 0.8967971530249109,
+        "values": [
+          0.8675958188153309,
+          0.9025270758122743,
+          0.8967971530249109
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/teamonly": {
+        "median": 0.9900596421471173,
+        "values": [
+          0.9900596421471173,
+          0.984251968503937,
+          0.9940828402366864
+        ],
+        "wins": 3
+      },
+      "inferencetss/fixest": {
+        "median": 0.9850746268656716,
+        "values": [
+          0.9523809523809523,
+          1.0192678227360308,
+          0.9850746268656716
+        ],
+        "wins": 2
+      },
+      "inferencetss/fvdiagnostic": {
+        "median": 1.0476190476190477,
+        "values": [
+          1.0441767068273093,
+          1.058,
+          1.0476190476190477
+        ],
+        "wins": 0
+      },
+      "inferencetss/samplast": {
+        "median": 0.9395017793594306,
+        "values": [
+          0.9059233449477351,
+          0.9548736462093862,
+          0.9395017793594306
+        ],
+        "wins": 3
+      },
+      "inferencetss/teamonly": {
+        "median": 1.0413385826771653,
+        "values": [
+          1.0337972166998013,
+          1.0413385826771653,
+          1.0414201183431953
+        ],
+        "wins": 0
+      },
+      "samplast/fixest": {
+        "median": 1.0512820512820513,
+        "values": [
+          1.0512820512820513,
+          1.0674373795761078,
+          1.0485074626865671
+        ],
+        "wins": 0
+      },
+      "samplast/fvdiagnostic": {
+        "median": 1.1150793650793651,
+        "values": [
+          1.1526104417670684,
+          1.108,
+          1.1150793650793651
+        ],
+        "wins": 0
+      },
+      "samplast/inferencetss": {
+        "median": 1.0643939393939394,
+        "values": [
+          1.103846153846154,
+          1.0472589792060492,
+          1.0643939393939394
+        ],
+        "wins": 0
+      },
+      "samplast/teamonly": {
+        "median": 1.1084812623274163,
+        "values": [
+          1.1411530815109345,
+          1.0905511811023623,
+          1.1084812623274163
+        ],
+        "wins": 0
+      },
+      "teamonly/fixest": {
+        "median": 0.9458955223880596,
+        "values": [
+          0.9212454212454212,
+          0.9788053949903661,
+          0.9458955223880596
+        ],
+        "wins": 3
+      },
+      "teamonly/fvdiagnostic": {
+        "median": 1.0100401606425702,
+        "values": [
+          1.0100401606425702,
+          1.016,
+          1.005952380952381
+        ],
+        "wins": 0
+      },
+      "teamonly/inferencetss": {
+        "median": 0.9603024574669187,
+        "values": [
+          0.9673076923076923,
+          0.9603024574669187,
+          0.9602272727272727
+        ],
+        "wins": 3
+      },
+      "teamonly/samplast": {
+        "median": 0.9021352313167259,
+        "values": [
+          0.8763066202090591,
+          0.9169675090252707,
+          0.9021352313167259
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "team-and-post"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 219.0,
+        "median_ms": 218.0,
+        "minimum_ms": 214.0,
+        "sampled_peak_rss_gib": 0.5980987548828125
+      },
+      "fvdiagnostic": {
+        "maximum_ms": 174.0,
+        "median_ms": 173.0,
+        "minimum_ms": 167.0,
+        "sampled_peak_rss_gib": 0.3971710205078125
+      },
+      "inferencetss": {
+        "maximum_ms": 180.0,
+        "median_ms": 175.0,
+        "minimum_ms": 175.0,
+        "sampled_peak_rss_gib": 0.4023895263671875
+      },
+      "samplast": {
+        "maximum_ms": 181.0,
+        "median_ms": 180.0,
+        "minimum_ms": 176.0,
+        "sampled_peak_rss_gib": 0.3945770263671875
+      },
+      "teamonly": {
+        "maximum_ms": 175.0,
+        "median_ms": 174.0,
+        "minimum_ms": 173.0,
+        "sampled_peak_rss_gib": 0.4014739990234375
+      }
+    },
+    "case": "iid_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/fvdiagnostic": {
+        "median": 1.2601156069364163,
+        "values": [
+          1.2601156069364163,
+          1.311377245508982,
+          1.2298850574712645
+        ],
+        "wins": 0
+      },
+      "fixest/inferencetss": {
+        "median": 1.2228571428571429,
+        "values": [
+          1.2457142857142858,
+          1.2166666666666668,
+          1.2228571428571429
+        ],
+        "wins": 0
+      },
+      "fixest/samplast": {
+        "median": 1.2044198895027625,
+        "values": [
+          1.2044198895027625,
+          1.2443181818181819,
+          1.1888888888888889
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.2457142857142858,
+        "values": [
+          1.2457142857142858,
+          1.2658959537572256,
+          1.2298850574712645
+        ],
+        "wins": 0
+      },
+      "fvdiagnostic/fixest": {
+        "median": 0.793577981651376,
+        "values": [
+          0.793577981651376,
+          0.7625570776255708,
+          0.8130841121495327
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/inferencetss": {
+        "median": 0.9885714285714285,
+        "values": [
+          0.9885714285714285,
+          0.9277777777777778,
+          0.9942857142857143
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/samplast": {
+        "median": 0.9558011049723757,
+        "values": [
+          0.9558011049723757,
+          0.9488636363636365,
+          0.9666666666666667
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/teamonly": {
+        "median": 0.9885714285714285,
+        "values": [
+          0.9885714285714285,
+          0.9653179190751446,
+          1.0
+        ],
+        "wins": 2
+      },
+      "inferencetss/fixest": {
+        "median": 0.8177570093457943,
+        "values": [
+          0.8027522935779816,
+          0.821917808219178,
+          0.8177570093457943
+        ],
+        "wins": 3
+      },
+      "inferencetss/fvdiagnostic": {
+        "median": 1.0115606936416186,
+        "values": [
+          1.0115606936416186,
+          1.0778443113772453,
+          1.0057471264367817
+        ],
+        "wins": 0
+      },
+      "inferencetss/samplast": {
+        "median": 0.9722222222222222,
+        "values": [
+          0.9668508287292817,
+          1.0227272727272727,
+          0.9722222222222222
+        ],
+        "wins": 2
+      },
+      "inferencetss/teamonly": {
+        "median": 1.0057471264367817,
+        "values": [
+          1.0,
+          1.0404624277456649,
+          1.0057471264367817
+        ],
+        "wins": 0
+      },
+      "samplast/fixest": {
+        "median": 0.8302752293577982,
+        "values": [
+          0.8302752293577982,
+          0.8036529680365296,
+          0.8411214953271028
+        ],
+        "wins": 3
+      },
+      "samplast/fvdiagnostic": {
+        "median": 1.046242774566474,
+        "values": [
+          1.046242774566474,
+          1.0538922155688621,
+          1.0344827586206897
+        ],
+        "wins": 0
+      },
+      "samplast/inferencetss": {
+        "median": 1.0285714285714287,
+        "values": [
+          1.0342857142857143,
+          0.9777777777777777,
+          1.0285714285714287
+        ],
+        "wins": 1
+      },
+      "samplast/teamonly": {
+        "median": 1.0342857142857143,
+        "values": [
+          1.0342857142857143,
+          1.0173410404624277,
+          1.0344827586206897
+        ],
+        "wins": 0
+      },
+      "teamonly/fixest": {
+        "median": 0.8027522935779816,
+        "values": [
+          0.8027522935779816,
+          0.7899543378995433,
+          0.8130841121495327
+        ],
+        "wins": 3
+      },
+      "teamonly/fvdiagnostic": {
+        "median": 1.0115606936416186,
+        "values": [
+          1.0115606936416186,
+          1.0359281437125747,
+          1.0
+        ],
+        "wins": 0
+      },
+      "teamonly/inferencetss": {
+        "median": 0.9942857142857143,
+        "values": [
+          1.0,
+          0.961111111111111,
+          0.9942857142857143
+        ],
+        "wins": 2
+      },
+      "teamonly/samplast": {
+        "median": 0.9668508287292817,
+        "values": [
+          0.9668508287292817,
+          0.9829545454545454,
+          0.9666666666666667
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "team-and-post"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 542.0,
+        "median_ms": 528.0,
+        "minimum_ms": 527.0,
+        "sampled_peak_rss_gib": 1.8334197998046875
+      },
+      "fvdiagnostic": {
+        "maximum_ms": 444.0,
+        "median_ms": 443.0,
+        "minimum_ms": 434.0000000000001,
+        "sampled_peak_rss_gib": 1.47161865234375
+      },
+      "inferencetss": {
+        "maximum_ms": 459.0,
+        "median_ms": 449.0,
+        "minimum_ms": 449.0,
+        "sampled_peak_rss_gib": 1.4253692626953125
+      },
+      "samplast": {
+        "maximum_ms": 467.0,
+        "median_ms": 465.0,
+        "minimum_ms": 464.0,
+        "sampled_peak_rss_gib": 1.422393798828125
+      },
+      "teamonly": {
+        "maximum_ms": 440.0,
+        "median_ms": 437.0,
+        "minimum_ms": 429.0,
+        "sampled_peak_rss_gib": 1.4225616455078125
+      }
+    },
+    "case": "iid_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/fvdiagnostic": {
+        "median": 1.1918735891647856,
+        "values": [
+          1.248847926267281,
+          1.186936936936937,
+          1.1918735891647856
+        ],
+        "wins": 0
+      },
+      "fixest/inferencetss": {
+        "median": 1.175946547884187,
+        "values": [
+          1.1808278867102397,
+          1.1737193763919822,
+          1.175946547884187
+        ],
+        "wins": 0
+      },
+      "fixest/samplast": {
+        "median": 1.135483870967742,
+        "values": [
+          1.168103448275862,
+          1.1284796573875804,
+          1.135483870967742
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.2284382284382285,
+        "values": [
+          1.231818181818182,
+          1.2284382284382285,
+          1.208237986270023
+        ],
+        "wins": 0
+      },
+      "fvdiagnostic/fixest": {
+        "median": 0.8390151515151515,
+        "values": [
+          0.800738007380074,
+          0.8425047438330171,
+          0.8390151515151515
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/inferencetss": {
+        "median": 0.9866369710467706,
+        "values": [
+          0.945533769063181,
+          0.9888641425389755,
+          0.9866369710467706
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/samplast": {
+        "median": 0.9507494646680942,
+        "values": [
+          0.9353448275862071,
+          0.9507494646680942,
+          0.9526881720430107
+        ],
+        "wins": 3
+      },
+      "fvdiagnostic/teamonly": {
+        "median": 1.0137299771167048,
+        "values": [
+          0.9863636363636366,
+          1.034965034965035,
+          1.0137299771167048
+        ],
+        "wins": 1
+      },
+      "inferencetss/fixest": {
+        "median": 0.8503787878787878,
+        "values": [
+          0.8468634686346863,
+          0.8519924098671726,
+          0.8503787878787878
+        ],
+        "wins": 3
+      },
+      "inferencetss/fvdiagnostic": {
+        "median": 1.0135440180586908,
+        "values": [
+          1.0576036866359444,
+          1.0112612612612613,
+          1.0135440180586908
+        ],
+        "wins": 0
+      },
+      "inferencetss/samplast": {
+        "median": 0.9655913978494624,
+        "values": [
+          0.9892241379310345,
+          0.9614561027837258,
+          0.9655913978494624
+        ],
+        "wins": 3
+      },
+      "inferencetss/teamonly": {
+        "median": 1.0431818181818182,
+        "values": [
+          1.0431818181818182,
+          1.0466200466200466,
+          1.0274599542334097
+        ],
+        "wins": 0
+      },
+      "samplast/fixest": {
+        "median": 0.8806818181818182,
+        "values": [
+          0.8560885608856088,
+          0.8861480075901328,
+          0.8806818181818182
+        ],
+        "wins": 3
+      },
+      "samplast/fvdiagnostic": {
+        "median": 1.0518018018018018,
+        "values": [
+          1.0691244239631335,
+          1.0518018018018018,
+          1.0496613995485329
+        ],
+        "wins": 0
+      },
+      "samplast/inferencetss": {
+        "median": 1.0356347438752784,
+        "values": [
+          1.0108932461873639,
+          1.0400890868596881,
+          1.0356347438752784
+        ],
+        "wins": 0
+      },
+      "samplast/teamonly": {
+        "median": 1.0640732265446224,
+        "values": [
+          1.0545454545454547,
+          1.0885780885780887,
+          1.0640732265446224
+        ],
+        "wins": 0
+      },
+      "teamonly/fixest": {
+        "median": 0.8140417457305502,
+        "values": [
+          0.8118081180811808,
+          0.8140417457305502,
+          0.8276515151515151
+        ],
+        "wins": 3
+      },
+      "teamonly/fvdiagnostic": {
+        "median": 0.9864559819413092,
+        "values": [
+          1.0138248847926266,
+          0.9662162162162162,
+          0.9864559819413092
+        ],
+        "wins": 2
+      },
+      "teamonly/inferencetss": {
+        "median": 0.9586056644880174,
+        "values": [
+          0.9586056644880174,
+          0.955456570155902,
+          0.9732739420935412
+        ],
+        "wins": 3
+      },
+      "teamonly/samplast": {
+        "median": 0.9397849462365591,
+        "values": [
+          0.9482758620689655,
+          0.9186295503211991,
+          0.9397849462365591
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "team-and-post"
+  }
+]

@@ -429,12 +429,14 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
     validate_config(config)?;
     let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(prepared, config.fit, ||
         super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows), true)?;
-    let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
-    let absorbed_summary =
-        prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
-    let components = ThreadTeam::new(config.fit.execution.threads).install(|| {
+    // Include DoF validation in the resolved team so existing source checks
+    // can use it too, without changing their order or adding live data buffers.
+    crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
+        let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
+        let absorbed_summary =
+            prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
         let mut reservation = SystemPreparedInferenceReservation;
-        compose_view_internal(
+        let components = compose_view_internal(
             prepared,
             fit,
             absorbed_summary,
@@ -443,17 +445,17 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
             RobustPerturbations::default(),
             score_scratch,
             outcome_tss,
-        )
-    })??;
-    Ok(CertifiedPreparedCategoricalOlsRobust {
-        fit: components.fit,
-        absorbed_dof,
-        weights: components.weights,
-        dof: components.dof,
-        statistics: components.statistics,
-        covariance: components.covariance,
-        certificate: components.certificate,
-    })
+        )?;
+        Ok(CertifiedPreparedCategoricalOlsRobust {
+            fit: components.fit,
+            absorbed_dof,
+            weights: components.weights,
+            dof: components.dof,
+            statistics: components.statistics,
+            covariance: components.covariance,
+            certificate: components.certificate,
+        })
+    })?
 }
 
 fn compose_internal<R: PreparedInferenceReservation>(

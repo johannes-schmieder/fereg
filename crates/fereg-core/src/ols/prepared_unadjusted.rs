@@ -499,27 +499,31 @@ fn fit_categorical_with_outcome_overlap(
         None => fit_prepared_categorical_ols_coefficients_map(prepared, config.fit),
     };
     let (fit, outcome_tss) = fit_with_independent_outcome(prepared, config.fit, fit, overlap)?;
-    let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
-    let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
-    let mut reservation = SystemInferenceReservation;
-    let components = crate::ThreadTeam::new(config.fit.execution.threads).install(|| compose_view_internal(
-        prepared,
-        fit,
-        summary,
-        config.certificate_tolerance,
-        &mut reservation,
-        InferencePerturbations::default(),
-        outcome_tss,
-    ))??;
-    Ok(CertifiedPreparedCategoricalOlsUnadjusted {
-        fit: components.fit,
-        absorbed_dof,
-        weights: components.weights,
-        dof: components.dof,
-        statistics: components.statistics,
-        covariance: components.covariance,
-        certificate: components.certificate,
-    })
+    // Include DoF validation in the resolved team so existing source checks
+    // can use it too, without changing their order or adding live data buffers.
+    crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
+        let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
+        let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
+        let mut reservation = SystemInferenceReservation;
+        let components = compose_view_internal(
+            prepared,
+            fit,
+            summary,
+            config.certificate_tolerance,
+            &mut reservation,
+            InferencePerturbations::default(),
+            outcome_tss,
+        )?;
+        Ok(CertifiedPreparedCategoricalOlsUnadjusted {
+            fit: components.fit,
+            absorbed_dof,
+            weights: components.weights,
+            dof: components.dof,
+            statistics: components.statistics,
+            covariance: components.covariance,
+            certificate: components.certificate,
+        })
+    })?
 }
 
 /// Overlap the unchanged independent outcome scan with a narrow one-FE fit.

@@ -34,6 +34,9 @@ immutable and no data buffer is added. Any scan error is deferred until the
 original fit, DoF and weight checks have succeeded. Inference can consume the
 same call's independently computed unit residual sum; it never substitutes a
 fitted moment or skips the independent residual calculation.
+Categorical IID and robust DoF validation runs inside the same resolved team
+as inference composition. Its existing finite-source checks can then share
+that team; check order and numerical algorithms are unchanged.
 Fresh ordinary one-FE unit fits with 8–16 generated columns, at least 16,384
 rows and eight installed workers can also overlap final residual projection
 with reported bread/intercept completion. This uses the same team and existing

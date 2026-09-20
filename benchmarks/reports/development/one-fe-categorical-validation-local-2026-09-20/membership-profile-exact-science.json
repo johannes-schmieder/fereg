@@ -1,0 +1,11 @@
+{
+  "science": {
+    "sample_exact": true,
+    "errors": {
+      "coefficients.csv:value": 0.0,
+      "coefficients.csv:se": 0.0,
+      "covariance.csv:value": 0.0
+    }
+  },
+  "output_bytes_exact": true
+}

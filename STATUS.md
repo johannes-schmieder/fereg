@@ -10,6 +10,28 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Categorical validation placement — 2026-09-20
+
+The [categorical-validation report](benchmarks/reports/development/one-fe-categorical-validation-local-2026-09-20/README.md)
+archives 187 calls, 99 exact native comparisons and 85 byte-identical saved
+output comparisons. Moving categorical IID/robust DoF validation into the
+existing team is retained as `teamonly`, plugin
+`fdc11d54843a7de44c9047c6ea9e7d7489d8281fd0eb2a4f482b5ed5304bf35c`.
+Three rotated repetitions show wide saved FE at 437 versus 449 ms previously
+and 528 ms for fixest; wide full outputs at 507/528/536 ms. Narrow full outputs
+remain close at 216/224/218 ms. Four final-artifact Stata fixtures pass.
+
+Parallel membership validation, the complete-sample row-map shortcut, batched
+missing-initialized output allocation, sample-marker reordering and omission
+of `buildfvinfo` were not adopted. Their source identities, measurements and
+relevant focused tests are preserved separately in the report. The older
+statistics/topology section's proposed membership experiment is now resolved.
+
+The goal remains active. Residual/bread overlap with a retained inference score
+cache and no-fill private output allocation are subsequent uncommitted work,
+not part of this milestone. No final acceptance blocks or full regression
+matrix have run; installed packages and remote state are unchanged.
+
 ## One-FE statistics and topology ownership — 2026-09-20
 
 The [statistics/topology development report](benchmarks/reports/development/one-fe-statistics-topology-local-2026-09-20/README.md)

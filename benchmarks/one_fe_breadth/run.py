@@ -249,6 +249,8 @@ def main(a):
                     source, native_identity = identities.get(variant, (None, None))
                     identity = dict(shared_identity, native=native_identity)
                     output = root / "runs" / f"{a.label}-{case}-n{n}-k{k}-r{rep}-{variant}"
+                    if a.trace:
+                        os.environ["ONE_FE_BREADTH_TRACE_DIR"] = str(output)
                     result = measure(root, cell, arm, "warm", data, warm, output, manifest,
                                      identity=identity, source=source, trace=a.trace)
                     print(output.name, result["status"], result["seconds"], flush=True)
