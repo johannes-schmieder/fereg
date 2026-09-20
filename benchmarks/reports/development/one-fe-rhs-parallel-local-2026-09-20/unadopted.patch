@@ -1,0 +1,153 @@
+diff --git a/crates/fereg-core/src/ols/prepared_rhs.rs b/crates/fereg-core/src/ols/prepared_rhs.rs
+index 6ed4d334..54457bfa 100644
+--- a/crates/fereg-core/src/ols/prepared_rhs.rs
++++ b/crates/fereg-core/src/ols/prepared_rhs.rs
+@@ -570,25 +570,27 @@ fn validate_prepared_rhs_inputs(prepared: &PreparedOlsData, response: &[f64]) ->
+ 
+ fn validate_row_map(prepared: &PreparedOlsData) -> Result<()> {
+     let sample = &prepared.sample;
+-    let mut previous = None;
+-    for original_row in sample.retained_rows().iter().copied() {
+-        if original_row >= sample.n_original
+-            || sample.drop_reasons[original_row] != crate::data::DropReason::Retained
+-            || previous.is_some_and(|prior| prior >= original_row)
+-        {
+-            return Err(invalid_argument(
+-                "prepared OLS retained-row map is inconsistent",
+-            ));
+-        }
+-        previous = Some(original_row);
++    let rows = sample.retained_rows();
++    let parallel = rows.len() >= 16_384 && rayon::current_thread_index().is_some()
++        && rayon::current_num_threads() >= 8;
++    let valid = |(row, &original_row): (usize, &usize)| {
++        original_row < sample.n_original
++            && sample.drop_reasons[original_row] == crate::data::DropReason::Retained
++            && (row == 0 || rows[row - 1] < original_row)
++    };
++    // Every row includes its predecessor, so partition boundaries retain the
++    // strict ordering check. The only reduction is an exact integer count.
++    let map_valid = if parallel { rows.par_iter().enumerate().all(valid) }
++        else { rows.iter().enumerate().all(valid) };
++    if !map_valid {
++        return Err(invalid_argument("prepared OLS retained-row map is inconsistent"));
+     }
+-    if sample
+-        .drop_reasons
+-        .iter()
+-        .filter(|reason| **reason == crate::data::DropReason::Retained)
+-        .count()
+-        != sample.n_active()
+-    {
++    let retained = if parallel {
++        sample.drop_reasons.par_iter().filter(|reason| **reason == crate::data::DropReason::Retained).count()
++    } else {
++        sample.drop_reasons.iter().filter(|reason| **reason == crate::data::DropReason::Retained).count()
++    };
++    if retained != sample.n_active() {
+         return Err(invalid_argument(
+             "prepared OLS retained-row count is inconsistent",
+         ));
+@@ -662,18 +664,22 @@ fn validate_categorical_sources(prepared: &PreparedOlsData) -> Result<()> {
+                 "prepared categorical levels are not finite, canonical, and strictly ordered",
+             ));
+         }
+-        for (row, code) in categorical.encoded.codes.iter().copied().enumerate() {
+-            let level = categorical
+-                .encoded
+-                .levels
+-                .get(code as usize)
+-                .ok_or_else(|| invalid_argument("prepared categorical code is out of range"))?;
++        let check = |(row, &code): (usize, &u32)| {
++            let Some(level) = categorical.encoded.levels.get(code as usize) else {
++                return Some("prepared categorical code is out of range");
++            };
+             if level.to_bits() != canonical_factor_value(raw[row]).to_bits() {
+-                return Err(invalid_argument(
+-                    "prepared categorical codes do not represent their numeric source",
+-                ));
++                return Some("prepared categorical codes do not represent their numeric source");
+             }
+-        }
++            None
++        };
++        // Preserve the first bad row and source, including which diagnostic
++        // wins when invalid codes and mismatched values occur together.
++        let failure = if nrows >= 16_384 && rayon::current_thread_index().is_some()
++            && rayon::current_num_threads() >= 8
++        { categorical.encoded.codes.par_iter().enumerate().find_map_first(check) }
++        else { categorical.encoded.codes.iter().enumerate().find_map(check) };
++        if let Some(message) = failure { return Err(invalid_argument(message)); }
+     }
+     Ok(())
+ }
+@@ -1140,6 +1146,69 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn parallel_rhs_metadata_checks_preserve_rejection_order() {
++        use crate::{ThreadConfig, ThreadTeam};
++        fn check_all(data: &PreparedOlsData, check: fn(&PreparedOlsData) -> Result<()>, expected: Result<()>) {
++            assert_eq!(check(data), expected);
++            for workers in [4, 8] {
++                assert_eq!(ThreadTeam::new(ThreadConfig::from_requested(workers, false).unwrap())
++                    .install(|| check(data)).unwrap(), expected);
++            }
++        }
++        for n in [16_383, 16_384, 32_771] {
++            let mut data = prepare_ols_data(&request(true, true), &LoadedOlsInput {
++                candidate: vec![true; n], outcome: loaded((0..n).map(|r| (r as f64).sin()).collect()),
++                numeric_sources: vec![
++                    (SourceId::new(1).unwrap(), loaded((0..n).map(|r| (r % 19) as f64).collect())),
++                    (SourceId::new(2).unwrap(), loaded((0..n).map(|r| (r / 3) as f64).collect())),
++                ],
++                analytic_weight: None, frequency_weight: None, probability_weight: None,
++            }).unwrap();
++            check_all(&data, validate_row_map, Ok(()));
++            check_all(&data, validate_categorical_sources, Ok(()));
++            let bad_map = || Err(invalid_argument("prepared OLS retained-row map is inconsistent"));
++            for row in [0, 4_095, 4_096, n - 1] {
++                data.sample.original_row_by_active[row] = n;
++                check_all(&data, validate_row_map, bad_map());
++                data.sample.original_row_by_active[row] = row;
++                if row > 0 {
++                    data.sample.original_row_by_active[row] = row - 1;
++                    check_all(&data, validate_row_map, bad_map());
++                    data.sample.original_row_by_active[row] = row;
++                }
++                data.sample.drop_reasons[row] = crate::data::DropReason::MissingOutcome;
++                check_all(&data, validate_row_map, bad_map());
++                data.sample.drop_reasons[row] = crate::data::DropReason::Retained;
++                let code = data.categorical_sources[0].encoded.codes[row];
++                data.categorical_sources[0].encoded.codes[row] = u32::MAX;
++                check_all(&data, validate_categorical_sources,
++                    Err(invalid_argument("prepared categorical code is out of range")));
++                data.categorical_sources[0].encoded.codes[row] = code;
++            }
++            data.sample.original_row_by_active.pop();
++            check_all(&data, validate_row_map,
++                Err(invalid_argument("prepared OLS retained-row count is inconsistent")));
++            data.sample.drop_reasons[n - 1] = crate::data::DropReason::MissingOutcome;
++            check_all(&data, validate_row_map, Ok(()));
++            data.sample.original_row_by_active.push(n - 1);
++            data.sample.drop_reasons[n - 1] = crate::data::DropReason::Retained;
++            let first = n / 2;
++            let first_code = data.categorical_sources[0].encoded.codes[first];
++            let last_code = data.categorical_sources[0].encoded.codes[n - 1];
++            for first_out_of_range in [false, true] {
++                data.categorical_sources[0].encoded.codes[first] = if first_out_of_range { u32::MAX } else { 0 };
++                data.categorical_sources[0].encoded.codes[n - 1] = if first_out_of_range { 0 } else { u32::MAX };
++                let message = if first_out_of_range { "prepared categorical code is out of range" }
++                    else { "prepared categorical codes do not represent their numeric source" };
++                check_all(&data, validate_categorical_sources, Err(invalid_argument(message)));
++            }
++            data.categorical_sources[0].encoded.codes[first] = first_code;
++            data.categorical_sources[0].encoded.codes[n - 1] = last_code;
++            check_all(&data, validate_categorical_sources, Ok(()));
++        }
++    }
++
+     #[test]
+     fn direct_rhs_preserves_y_generated_column_order_and_bits() {
+         let prepared = prepared(false, true);

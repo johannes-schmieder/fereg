@@ -94,6 +94,54 @@ def instrument(root):
         body = body.replace(marker, insertion + marker)
     path.write_text(text[:first] + body + text[last:])
 
+    text = path.read_text()
+    change("fn fit_with_controls_internal_mode_with_frame<", "\nfn ", [
+        ("    let mut trace = PhaseTrace::new();", "    let mut trace = PhaseTrace::new();\n    let profile_setup_start = std::time::Instant::now();"),
+        ("    let mut cmg = build_fit_fe_absorber_with_one_fe_reuse", "    let profile_frame_done = std::time::Instant::now();\n    let mut cmg = build_fit_fe_absorber_with_one_fe_reuse"),
+        ("    let projection_phase = LinearSessionPhaseAllocationGuard::new(", "    let profile_absorber_done = std::time::Instant::now();\n    let projection_phase = LinearSessionPhaseAllocationGuard::new("),
+        ("    let rhs_seconds = trace.lap();", '''    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+        eprintln!("FEREG_PHASE|rhs_setup|frame={:.9}|absorber={:.9}|materialize={:.9}",
+            profile_frame_done.duration_since(profile_setup_start).as_secs_f64(),
+            profile_absorber_done.duration_since(profile_frame_done).as_secs_f64(),
+            profile_absorber_done.elapsed().as_secs_f64());
+    }
+    let rhs_seconds = trace.lap();'''),
+    ])
+    path.write_text(text)
+
+    path = root / "crates/fereg-core/src/ols/prepared_rhs.rs"
+    text = path.read_text()
+    change("pub(crate) fn build_prepared_ols_rhs_with_loaded_rows_and_reuse(",
+           "\nfn build_prepared_ols_rhs_with_reservation", [
+        ("        validate_prepared_rhs_inputs(prepared, response)?;", "        let profile_rhs_start = std::time::Instant::now();\n        validate_prepared_rhs_inputs(prepared, response)?;\n        let profile_rhs_validated = std::time::Instant::now();"),
+        ("            if columns.matches_rhs(response, &rows) {", '''            if columns.matches_rhs(response, &rows) {
+                if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+                    eprintln!("FEREG_PHASE|rhs_reuse|validation={:.9}|match={:.9}",
+                        profile_rhs_validated.duration_since(profile_rhs_start).as_secs_f64(),
+                        profile_rhs_validated.elapsed().as_secs_f64());
+                }'''),
+    ])
+    change("fn validate_prepared_rhs_inputs(", "\nfn validate_row_map", [
+        ("    let sample = &prepared.sample;", "    let profile_start = std::time::Instant::now();\n    let sample = &prepared.sample;"),
+        ("    if response.iter().any", "    let profile_shape = std::time::Instant::now();\n    if response.iter().any"),
+        ("    validate_row_map(prepared)?;", "    let profile_finite = std::time::Instant::now();\n    validate_row_map(prepared)?;"),
+        ("    validate_weights(prepared)?;", "    let profile_rows = std::time::Instant::now();\n    validate_weights(prepared)?;"),
+        ("    validate_categorical_sources(prepared)?;", "    let profile_weights = std::time::Instant::now();\n    validate_categorical_sources(prepared)?;"),
+        ("    validate_coefficient_axis(prepared)?;", "    let profile_codes = std::time::Instant::now();\n    validate_coefficient_axis(prepared)?;"),
+        ("    Ok(())\n}", '''    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+        eprintln!("FEREG_PHASE|rhs_validation|shape={:.9}|finite={:.9}|rows={:.9}|weights={:.9}|codes={:.9}|recipes={:.9}",
+            profile_shape.duration_since(profile_start).as_secs_f64(),
+            profile_finite.duration_since(profile_shape).as_secs_f64(),
+            profile_rows.duration_since(profile_finite).as_secs_f64(),
+            profile_weights.duration_since(profile_rows).as_secs_f64(),
+            profile_codes.duration_since(profile_weights).as_secs_f64(),
+            profile_codes.elapsed().as_secs_f64());
+    }
+    Ok(())
+}'''),
+    ])
+    path.write_text(text)
+
     path = root / "crates/fereg-plugin/src/numeric_pipeline.rs"
     text = path.read_text()
     first = text.index("fn read_tiles(")

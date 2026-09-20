@@ -10,6 +10,34 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## RHS profiling checkpoint — 2026-09-20
+
+The [RHS diagnostic report](benchmarks/reports/development/one-fe-rhs-parallel-local-2026-09-20/README.md)
+preserves the rejected parallel row-map/code-validation prototype. Eleven RHS
+tests, three Stata fixtures and ABI checks pass, but five narrow IID pairs give
+125/126 ms before/after and only one candidate win. Median native time improves
+only 0.4 ms. The prototype was removed; its complete patch and all thirty
+screen calls remain. Late native/fixest output spikes were not discarded.
+
+Eight exact diagnostic calls on the accepted ordered-factor source split the
+remaining RHS setup cost. Narrow finite checks take 1.11–1.13 ms, row map/count
+0.94–1.12 ms, categorical code/value checks 0.82–0.90 ms, exact matrix matching
+1.24–1.49 ms and FE-descriptor construction 1.22–1.29 ms. Frame checks are
+negligible. Wide exact matching costs about 8 ms. The report contains 38 total
+application calls, fourteen exact nonself native comparisons and five exact
+saved-output bundles. Diagnostic instrumentation is isolated from production.
+
+The goal remains active. Production core is the committed ordered-factor
+checkpoint. A separate uncommitted C-only loading prototype asks Clang to
+unroll the inner numeric SPI row loop fourfold. Inspection of the parent
+assembly confirmed one loop-control sequence per value. All SDK calls, their
+order, prevalidation and first-error return remain. Expanded UBSan mock tests
+cover widths 1–64, both observation boundaries and failure at every value;
+input/output guards pass. Its isolated `inputunroll` artifact build and timing
+are pending. No gain is claimed. The full twenty-cell breadth refresh and both
+final acceptance blocks remain pending for the eventual candidate. No installed
+package, remote state or qualification changed.
+
 ## Ordered numeric factorization checkpoint — 2026-09-20
 
 The [ordered-factor report](benchmarks/reports/development/one-fe-ordered-factor-local-2026-09-20/README.md)

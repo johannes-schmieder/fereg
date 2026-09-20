@@ -1,0 +1,50 @@
+[
+  {
+    "reference": "ordered-rhs-detail-iid-n983040-k10-r1-orderedfactor",
+    "actual": "ordered-rhs-detail-iid-n983040-k10-r1-orderedrhsprofile",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    }
+  },
+  {
+    "reference": "ordered-rhs-detail-iid-n983040-k10-r2-orderedfactor",
+    "actual": "ordered-rhs-detail-iid-n983040-k10-r2-orderedrhsprofile",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    }
+  },
+  {
+    "reference": "ordered-rhs-detail-iid-n983040-k50-r1-orderedfactor",
+    "actual": "ordered-rhs-detail-iid-n983040-k50-r1-orderedrhsprofile",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    }
+  },
+  {
+    "reference": "ordered-rhs-detail-iid-n983040-k50-r2-orderedfactor",
+    "actual": "ordered-rhs-detail-iid-n983040-k50-r2-orderedrhsprofile",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    }
+  }
+]

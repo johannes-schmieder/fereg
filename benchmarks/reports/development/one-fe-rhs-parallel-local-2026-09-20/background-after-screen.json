@@ -1,0 +1,46 @@
+{
+  "captured_at": "2026-09-20T12:35:57.698441+00:00",
+  "timing": "after rhs-parallel-narrow completed; not a contemporaneous sample of every spike",
+  "processes": [
+    {
+      "process": "Library",
+      "cpu_percent": 151.4
+    },
+    {
+      "process": "Library",
+      "cpu_percent": 75.1
+    },
+    {
+      "process": "Library",
+      "cpu_percent": 24.4
+    },
+    {
+      "process": "Ch",
+      "cpu_percent": 20.4
+    },
+    {
+      "process": "Applicat",
+      "cpu_percent": 12.9
+    },
+    {
+      "process": "Ce",
+      "cpu_percent": 6.7
+    },
+    {
+      "process": "sys",
+      "cpu_percent": 4.7
+    },
+    {
+      "process": "Ch",
+      "cpu_percent": 3.6
+    },
+    {
+      "process": "Ch",
+      "cpu_percent": 3.6
+    },
+    {
+      "process": "Library",
+      "cpu_percent": 3.5
+    }
+  ]
+}
