@@ -1,0 +1,16 @@
+[
+  {
+    "finite_score_per_observation": 2.2593327671701266e-16,
+    "group_residual_mean_max": [
+      1.1768364061026659e-15,
+      1.0201605642117485e-13
+    ],
+    "output_reconstruction_max_errors": [
+      1.8041124150158794e-15,
+      8.881784197001252e-16,
+      1.7763568394002505e-15
+    ],
+    "run": "useful-pilot-control-constant-iid_outputs-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  }
+]

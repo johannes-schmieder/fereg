@@ -10,6 +10,39 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: useful narrow pilot — 2026-09-20
+
+The [useful-pilot report](benchmarks/reports/development/two-fe-useful-pilot-local-2026-09-20/README.md) records 232 successful application calls,
+92 native pairs without allocation peak increases, seventeen independent
+output audits and eighteen graph/weight oracle checks. Sixteen Schur tests,
+three final-artifact Stata fixtures and the actual-plugin ABI/panic check pass.
+[ADR 0086](docs/adr/0086-useful-narrow-ols-schur-pilot.md) retains full-width pilot
+state for already-admitted 3–8 RHS calls, preserving exact selected-column
+weighted admission, original-input rejection, guarded unsafe-column fallback,
+fresh certification and the existing eight-plus-64/shared iteration budget.
+
+All sixteen three-pair headline cells beat default fixest (worst median paired
+ratio 0.948). Weighted degree-six K=6 improves 77 -> 64 ms versus 74 ms;
+shuffled unit K=5 improves 255 -> 243 ms versus 250 ms. Three initially slower
+controls remain recorded; fresh three-pair dispersed/low-memory/sparse AW
+ratios are 1.02287/0.98571/1.03333. Dispersed-output variability remains material.
+Nine default-reference output discrepancies remain explicit. Fifty-three of
+92 native pairs and eight of seventeen output pairs are bitwise exact; the
+remaining pairs meet registered scientific comparisons and independent audits.
+Failed initial compile/tests and their numerical localization are retained.
+
+Plugin `79141637b5252f27d6f86a721fb04cf5648df6b8d0d82ee26ea7e39b9b94de14`
+uses base `558f4c46` plus three core overlays; all 516 captured source files
+match. Traces reduce charged initial steps 43 -> 35 on shuffled designs and
+18 -> 10 on degree-six designs. All checkpoint processes have finished.
+
+The full goal remains active. Next run the 111 native controls against the
+milestone baseline, then sixteen predeclared fresh holdouts and two final
+five-pair primary blocks. Use the `usefulpilot` artifact in
+`target/two-fe-broad-20260920`; preserve every cell, reference-accuracy
+adjudication and unrelated worktree change. No installed package, remote
+state or qualification changed.
+
 ## Broad two-way OLS milestone: useful pilot cost — 2026-09-20
 
 The [full-width pilot cost report](benchmarks/reports/development/two-fe-full-pilot-cost-local-2026-09-20/README.md)

@@ -127,6 +127,15 @@ Low-memory, out-of-envelope narrow, higher-dimensional and slope models retain
 their previous routing. One-FE OLS uses its direct initial projection and
 reuses the residual norms from its fresh certificate.
 
+At 3–8 RHS columns the same-call OLS owner may retain useful full-width pilot
+state under [ADR 0086](adr/0086-useful-narrow-ols-schur-pilot.md). The original
+selected three columns still determine weighted admission. Rejected pilots
+return untouched input; unsafe additional-column state keeps the prior solve.
+Accepted safe state uses the existing owner, independent norms and certificate,
+counting the eight retained steps once within the former eight-plus-64
+allowance and unchanged overall continuation budget. Wider and shared/PPML
+pilots retain their previous behavior.
+
 An accepted initial probe on at least eight workers may be reused
 for the same fit's final one-RHS Schur projection. The final solve retains its
 fresh strict tolerance and independent certificate, its 64-step cap and charged

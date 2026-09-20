@@ -1772,7 +1772,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
 fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
     prepared: &'a P,
     weights: BorrowedMapWeights<'a>,
-    values: DenseMatrix,
+    mut values: DenseMatrix,
     mut config: AbsorbConfig,
     cmg: &mut FitFeAbsorber<'a>,
     initial: bool,
@@ -1780,14 +1780,31 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
 ) -> Result<CertifiedBorrowedMap> {
     if initial {
         if let Some(mut fit_config) = cmg.schur_config.take() {
-            let started = std::time::Instant::now();
-            let design = prepared.fit_borrowed_cmg_design()?;
-            let (contraction, probe_peak) =
-                crate::fe::schur_ols_probe_with_workspace(&design, weights, &values)?;
-            let probe_seconds = started.elapsed().as_secs_f64();
-            if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
-                eprintln!("FEREG_PHASE|schur_route|contraction={contraction:.9}|probe={probe_seconds:.9}|selected={}", contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION);
-            }
+            let (contraction, probe_peak, probe_seconds, design) = if (3..=8).contains(&values.ncols()) {
+                match crate::fe::try_absorb_ols_schur_narrow(
+                    prepared.fit_borrowed_cmg_design()?, weights, values, config)? {
+                    crate::fe::NarrowOlsSchurAttempt::Certified(result) => {
+                        cmg.auto_direct_solver = Some(FeSolverKind::Cg);
+                        cmg.schur_probe = Some(result.report().pilot_contraction);
+                        return Ok(result);
+                    }
+                    crate::fe::NarrowOlsSchurAttempt::Rejected {
+                        values: original, contraction, probe_seconds, peak,
+                    } => {
+                        values = original;
+                        (contraction, peak, probe_seconds, None)
+                    }
+                }
+            } else {
+                let started = std::time::Instant::now();
+                let design = prepared.fit_borrowed_cmg_design()?;
+                let (contraction, peak) = crate::fe::schur_ols_probe_with_workspace(&design, weights, &values)?;
+                let seconds = started.elapsed().as_secs_f64();
+                if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+                    eprintln!("FEREG_PHASE|schur_route|contraction={contraction:.9}|probe={seconds:.9}|selected={}", contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION);
+                }
+                (contraction, peak, seconds, Some(design))
+            };
             if contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION {
                 // A rejected probe still uses the original retained-product
                 // policy. Only accepted Schur calls defer coefficient recovery.
@@ -1799,7 +1816,7 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
                     cmg.schur_probe = Some(contraction);
                 }
                 return crate::fe::absorb_ols_schur_certified(
-                    design,
+                    design.ok_or_else(|| invalid_argument("accepted Schur probe lost its design"))?,
                     weights,
                     values,
                     config,

@@ -1,0 +1,66 @@
+[
+  {
+    "initial": "FEREG_PHASE|schur|init=0.012290458|operator=0.040007875|recurrence=0.021933833|reconstruct=0.005188667|certificate=0.009625541|iterations=35|passed=true",
+    "initial_projection_seconds": 0.132465167,
+    "initial_report_iterations": 43,
+    "route": "FEREG_PHASE|schur_route|contraction=0.004189891|probe=0.032503834|selected=true",
+    "run": "useful-pilot-profile-shuffled-aw-iid-n983040-k6-s31415927-shuffle1-t16-r1-fusedreconstruction",
+    "warm_pilot": null
+  },
+  {
+    "initial": "FEREG_PHASE|schur|init=0.003588083|operator=0.031249752|recurrence=0.018016254|reconstruct=0.005792125|certificate=0.008648084|iterations=35|passed=true",
+    "initial_projection_seconds": 0.112988125,
+    "initial_report_iterations": 35,
+    "route": "FEREG_PHASE|schur_route|contraction=0.004189891|probe=0.045587625|selected=true",
+    "run": "useful-pilot-profile-shuffled-aw-iid-n983040-k6-s31415927-shuffle1-t16-r1-usefulpilot",
+    "warm_pilot": "FEREG_PHASE|schur_warm_pilot|width=8|retained=true"
+  },
+  {
+    "initial": "FEREG_PHASE|schur|init=0.009932000|operator=0.046171999|recurrence=0.022941627|reconstruct=0.006136333|certificate=0.009865041|iterations=35|passed=true",
+    "initial_projection_seconds": 0.124067541,
+    "initial_report_iterations": 43,
+    "route": "FEREG_PHASE|schur_route|contraction=0.003779644|probe=0.022206208|selected=true",
+    "run": "useful-pilot-profile-shuffled-unit-iid-n983040-k5-s31415927-shuffle1-t16-r1-fusedreconstruction",
+    "warm_pilot": null
+  },
+  {
+    "initial": "FEREG_PHASE|schur|init=0.001806667|operator=0.038065959|recurrence=0.017284042|reconstruct=0.006102750|certificate=0.009774791|iterations=35|passed=true",
+    "initial_projection_seconds": 0.11220925,
+    "initial_report_iterations": 35,
+    "route": "FEREG_PHASE|schur_route|contraction=0.003779644|probe=0.039065875|selected=true",
+    "run": "useful-pilot-profile-shuffled-unit-iid-n983040-k5-s31415927-shuffle1-t16-r1-usefulpilot",
+    "warm_pilot": "FEREG_PHASE|schur_warm_pilot|width=7|retained=true"
+  },
+  {
+    "initial": "FEREG_PHASE|schur|init=0.002663958|operator=0.006105793|recurrence=0.002616961|reconstruct=0.001284500|certificate=0.002118125|iterations=10|passed=true",
+    "initial_projection_seconds": 0.024983499,
+    "initial_report_iterations": 18,
+    "route": "FEREG_PHASE|schur_route|contraction=0.000000238|probe=0.007360333|selected=true",
+    "run": "useful-pilot-profile-strong6-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-fusedreconstruction",
+    "warm_pilot": null
+  },
+  {
+    "initial": "FEREG_PHASE|schur|init=0.000007333|operator=0.000906584|recurrence=0.000496167|reconstruct=0.001106083|certificate=0.001938625|iterations=10|passed=true",
+    "initial_projection_seconds": 0.013417834,
+    "initial_report_iterations": 10,
+    "route": "FEREG_PHASE|schur_route|contraction=0.000000238|probe=0.008878750|selected=true",
+    "run": "useful-pilot-profile-strong6-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "warm_pilot": "FEREG_PHASE|schur_warm_pilot|width=8|retained=true"
+  },
+  {
+    "initial": "FEREG_PHASE|schur|init=0.002694833|operator=0.006061498|recurrence=0.002480500|reconstruct=0.001828625|certificate=0.001985208|iterations=10|passed=true",
+    "initial_projection_seconds": 0.024838,
+    "initial_report_iterations": 18,
+    "route": "FEREG_PHASE|schur_route|contraction=0.000000213|probe=0.007762625|selected=true",
+    "run": "useful-pilot-profile-strong6-unit-iid-n245760-k6-s8675309-shuffle0-t16-r1-fusedreconstruction",
+    "warm_pilot": null
+  },
+  {
+    "initial": "FEREG_PHASE|schur|init=0.000007750|operator=0.000790583|recurrence=0.000468541|reconstruct=0.001335542|certificate=0.002127917|iterations=10|passed=true",
+    "initial_projection_seconds": 0.012977915999999999,
+    "initial_report_iterations": 10,
+    "route": "FEREG_PHASE|schur_route|contraction=0.000000213|probe=0.008004250|selected=true",
+    "run": "useful-pilot-profile-strong6-unit-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "warm_pilot": "FEREG_PHASE|schur_warm_pilot|width=8|retained=true"
+  }
+]

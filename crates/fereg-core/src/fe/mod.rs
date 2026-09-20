@@ -50,6 +50,7 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_map_retaining_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified, absorb_ols_schur_certified,
     absorb_ols_schur_reusing_probe_certified,
+    try_absorb_ols_schur_narrow, NarrowOlsSchurAttempt,
     borrowed_cg_recovery_workspace_bytes, recover_borrowed_intercept_sd_lsmr_coefficients,
     schur_ols_probe_with_workspace, schur_ols_workspace_bytes, BorrowedInterceptRecoveryMethod,
     BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS,

@@ -1,0 +1,34 @@
+    Finished `release` profile [optimized] target(s) in 2m 35s
+
+running 15 tests
+test fe::borrowed_map::tests::checkpoint_schur_copy_respects_exact_transient_admission ... ok
+test fe::borrowed_map::tests::ols_schur_readiness_includes_group_weight_certificate_scale ... ok
+test fe::borrowed_map::tests::large_two_fe_schur_operator_is_bit_stable_across_threads ... ok
+test fe::borrowed_map::tests::checkpoint_schur_weighted_cut_rejects_before_copying ... ok
+test fe::borrowed_map::tests::counted_unit_schur_edges_match_observation_operator_and_budget ... ok
+test fe::borrowed_map::tests::ols_schur_probe_uses_weighted_cuts_and_preserves_common_scale ... ok
+test ols::prepared_fit::tests::wide_ols_schur_guard_preserves_ineligible_routes_and_cycle_reports ... ok
+test fe::borrowed_map::tests::schur_restoration_during_reconstruction_is_bit_exact ... ok
+test ols::prepared_fit::tests::two_fe_schur_final_overlap_preserves_results_caches_and_error_order ... ok
+test ols::prepared_fit::tests::narrow_ols_schur_admission_preserves_operator_and_thread_controls ... ok
+test fe::borrowed_map::tests::checkpoint_schur_reuses_probe_and_falls_back_on_untouched_inputs ... ok
+test fe::borrowed_map::tests::ols_schur_probe_solve_budget_and_order_match_independent_map ... ok
+test fe::borrowed_map::tests::weighted_schur_edge_scratch_matches_operator_projection_and_continuation ... ok
+test fe::borrowed_map::tests::counted_unit_schur_projection_matches_independent_map ... ok
+test fe::borrowed_map::tests::narrow_schur_continuation_preserves_admission_projection_and_budget ... FAILED
+
+failures:
+
+---- fe::borrowed_map::tests::narrow_schur_continuation_preserves_admission_projection_and_budget stdout ----
+
+thread '<unnamed>' panicked at crates/fereg-core/src/fe/borrowed_map.rs:10217:33:
+0.000000002157756654875147 != 0.00000000008086449697614764
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    fe::borrowed_map::tests::narrow_schur_continuation_preserves_admission_projection_and_budget
+
+test result: FAILED. 14 passed; 1 failed; 0 ignored; 0 measured; 948 filtered out; finished in 14.44s
+
+error: test failed, to rerun pass `-p fereg-core --lib`

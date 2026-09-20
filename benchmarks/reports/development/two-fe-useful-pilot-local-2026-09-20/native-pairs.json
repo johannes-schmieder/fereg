@@ -1,0 +1,3831 @@
+[
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "bottleneck_ring",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      21",
+      "parent": "                      21"
+    },
+    "peak_candidate": 138939729,
+    "peak_parent": 138939729,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0156250000000007,
+    "run": "useful-pilot-control-bottleneck_ring-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-bottleneck_ring-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "bottleneck_ring",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                     277",
+      "parent": "                     277"
+    },
+    "peak_candidate": 95995963,
+    "peak_parent": 95995963,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8937823834196891,
+    "run": "useful-pilot-control-bottleneck_ring-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-bottleneck_ring-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "weighted_bridge",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "bridge_cut",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      27",
+      "parent": "                      27"
+    },
+    "peak_candidate": 116096956,
+    "peak_parent": 116096956,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0,
+    "run": "useful-pilot-control-bridge-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-bridge"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "constant",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      31",
+      "parent": "                      39"
+    },
+    "outputs_exact": false,
+    "peak_candidate": 56992625,
+    "peak_parent": 56992625,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9205298013245035,
+    "run": "useful-pilot-control-constant-iid_outputs-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-constant"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "cycle",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      17",
+      "parent": "                      17"
+    },
+    "peak_candidate": 137431109,
+    "peak_parent": 137431109,
+    "pilot_contraction_exact": true,
+    "ratio": 1.030612244897959,
+    "run": "useful-pilot-control-cycle-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-cycle-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "cycle",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      15",
+      "parent": "                      15"
+    },
+    "peak_candidate": 135375241,
+    "peak_parent": 135375241,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0486111111111112,
+    "run": "useful-pilot-control-cycle-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-cycle-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "disconnected_blocks",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": true,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                       8",
+      "parent": "                      15"
+    },
+    "peak_candidate": 62457671,
+    "peak_parent": 62457671,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8666666666666667,
+    "run": "useful-pilot-control-disconnected_blocks-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-disconnected_blocks-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "disconnected_blocks",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": true,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                       8",
+      "parent": "                      14"
+    },
+    "peak_candidate": 60491579,
+    "peak_parent": 60491579,
+    "pilot_contraction_exact": true,
+    "ratio": 0.859375,
+    "run": "useful-pilot-control-disconnected_blocks-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-disconnected_blocks-none"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "dispersed",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      31",
+      "parent": "                      31"
+    },
+    "outputs_exact": true,
+    "peak_candidate": 109666626,
+    "peak_parent": 109666626,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0634057971014492,
+    "run": "useful-pilot-control-dispersed-iid_outputs-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-dispersed"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[fw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "outputs_exact": false,
+    "peak_candidate": 251560753,
+    "peak_parent": 251560753,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9568345323741007,
+    "run": "useful-pilot-control-fw-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-fw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "cluster_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "~c1",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1",
+      "weight": "[fw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 232722801,
+    "peak_parent": 232722801,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9495268138801262,
+    "run": "useful-pilot-control-fw-cluster_cross-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-fw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[fw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 220917855,
+    "peak_parent": 220917855,
+    "pilot_contraction_exact": true,
+    "ratio": 0.971631205673759,
+    "run": "useful-pilot-control-fw-robust-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-fw"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "group_concentrated",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      20",
+      "parent": "                      20"
+    },
+    "outputs_exact": true,
+    "peak_candidate": 108070758,
+    "peak_parent": 108070758,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8286924939467313,
+    "run": "useful-pilot-control-group_concentrated-iid_outputs-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-group_concentrated"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(low)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      11",
+      "parent": "                      11"
+    },
+    "peak_candidate": 104846045,
+    "peak_parent": 104846045,
+    "pilot_contraction_exact": true,
+    "ratio": 1.056555269922879,
+    "run": "useful-pilot-control-low-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-low"
+  },
+  {
+    "cell": {
+      "absorb": "g1",
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 1,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                       1",
+      "parent": "                       1"
+    },
+    "peak_candidate": 97730755,
+    "peak_parent": 97730755,
+    "pilot_contraction_exact": true,
+    "ratio": 1.015267175572519,
+    "run": "useful-pilot-control-onefe-robust-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-onefe"
+  },
+  {
+    "cell": {
+      "absorb": "g1",
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                       1",
+      "parent": "                       1"
+    },
+    "peak_candidate": 933725003,
+    "peak_parent": 933725003,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9948006932409013,
+    "run": "useful-pilot-control-onefe-robust-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-onefe"
+  },
+  {
+    "cell": {
+      "absorb": "g1",
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                       1",
+      "parent": "                       1"
+    },
+    "peak_candidate": 176376568,
+    "peak_parent": 176376568,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9887640449438202,
+    "run": "useful-pilot-control-onefe-robust-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-onefe"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "outputs_exact": false,
+    "peak_candidate": 251560753,
+    "peak_parent": 251560753,
+    "pilot_contraction_exact": true,
+    "ratio": 0.965391621129326,
+    "run": "useful-pilot-control-pw-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-pw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "cluster_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "~c1",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1",
+      "weight": "[pw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 232722801,
+    "peak_parent": 232722801,
+    "pilot_contraction_exact": true,
+    "ratio": 0.949044585987261,
+    "run": "useful-pilot-control-pw-cluster_cross-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-pw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 220917855,
+    "peak_parent": 220917855,
+    "pilot_contraction_exact": true,
+    "ratio": 0.967741935483871,
+    "run": "useful-pilot-control-pw-robust-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-pw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d2",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      20",
+      "parent": "                      20"
+    },
+    "peak_candidate": 267316119,
+    "peak_parent": 269803935,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0324074074074074,
+    "run": "useful-pilot-control-strong_d2-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-strong_d2-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d2",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      20",
+      "parent": "                      20"
+    },
+    "peak_candidate": 250143123,
+    "peak_parent": 250143123,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0233644859813085,
+    "run": "useful-pilot-control-strong_d2-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-strong_d2-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 4,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      11",
+      "parent": "                      11"
+    },
+    "peak_candidate": 324701550,
+    "peak_parent": 324701550,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0091463414634145,
+    "run": "useful-pilot-control-t4-iid-n983040-k6-s8675309-shuffle0-t4-r1-usefulpilot",
+    "series": "useful-pilot-control-t4"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 8,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9849624060150376,
+    "run": "useful-pilot-control-t8-iid-n983040-k6-s8675309-shuffle0-t8-r1-usefulpilot",
+    "series": "useful-pilot-control-t8"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_sparse",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": true,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      21",
+      "parent": "                      21"
+    },
+    "peak_candidate": 102415828,
+    "peak_parent": 102415828,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0750000000000002,
+    "run": "useful-pilot-control-two_fe_sparse-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-two_fe_sparse-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_sparse",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": true,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      21",
+      "parent": "                      21"
+    },
+    "peak_candidate": 100376768,
+    "peak_parent": 100376768,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0380952380952382,
+    "run": "useful-pilot-control-two_fe_sparse-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-two_fe_sparse-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      43",
+      "parent": "                      43"
+    },
+    "peak_candidate": 1127268597,
+    "peak_parent": 1127268597,
+    "pilot_contraction_exact": true,
+    "ratio": 0.977645305514158,
+    "run": "useful-pilot-control-unitwide-iid-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-unitwide"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      43",
+      "parent": "                      43"
+    },
+    "peak_candidate": 1127268597,
+    "peak_parent": 1127268597,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9669172932330827,
+    "run": "useful-pilot-control-unitwide-iid-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-control-unitwide"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      43",
+      "parent": "                      43"
+    },
+    "peak_candidate": 1127268597,
+    "peak_parent": 1127268597,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0123076923076921,
+    "run": "useful-pilot-control-unitwide-iid-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-control-unitwide"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      41",
+      "parent": "                      49"
+    },
+    "peak_candidate": 66920031,
+    "peak_parent": 66920031,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9277777777777778,
+    "run": "useful-pilot-control-weak_d3-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-weak_d3-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      26",
+      "parent": "                      34"
+    },
+    "peak_candidate": 64953939,
+    "peak_parent": 64953939,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8809523809523809,
+    "run": "useful-pilot-control-weak_d3-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-control-weak_d3-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      43",
+      "parent": "                      43"
+    },
+    "peak_candidate": 1135132929,
+    "peak_parent": 1135132929,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9876712328767123,
+    "run": "useful-pilot-ordered-aw-iid-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      43",
+      "parent": "                      43"
+    },
+    "peak_candidate": 1135132929,
+    "peak_parent": 1135132929,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0109439124487005,
+    "run": "useful-pilot-ordered-aw-iid-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      43",
+      "parent": "                      43"
+    },
+    "peak_candidate": 1135132929,
+    "peak_parent": 1135132929,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0013717421124828,
+    "run": "useful-pilot-ordered-aw-iid-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9343065693430657,
+    "run": "useful-pilot-ordered-aw-iid-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9343065693430657,
+    "run": "useful-pilot-ordered-aw-iid-n983040-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9431818181818181,
+    "run": "useful-pilot-ordered-aw-iid-n983040-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      43",
+      "parent": "                      43"
+    },
+    "outputs_exact": true,
+    "peak_candidate": 1142172215,
+    "peak_parent": 1142172215,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0675381263616557,
+    "run": "useful-pilot-ordered-aw-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      43",
+      "parent": "                      43"
+    },
+    "outputs_exact": true,
+    "peak_candidate": 1142172215,
+    "peak_parent": 1142172215,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9882729211087421,
+    "run": "useful-pilot-ordered-aw-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      43",
+      "parent": "                      43"
+    },
+    "outputs_exact": true,
+    "peak_candidate": 1142172215,
+    "peak_parent": 1142172215,
+    "pilot_contraction_exact": true,
+    "ratio": 1.0021739130434784,
+    "run": "useful-pilot-ordered-aw-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "outputs_exact": false,
+    "peak_candidate": 227956853,
+    "peak_parent": 227956853,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9832134292565947,
+    "run": "useful-pilot-ordered-aw-iid_outputs-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "outputs_exact": false,
+    "peak_candidate": 227956853,
+    "peak_parent": 227956853,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9756690997566911,
+    "run": "useful-pilot-ordered-aw-iid_outputs-n983040-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "outputs_exact": false,
+    "peak_candidate": 227956853,
+    "peak_parent": 227956853,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9951338199513382,
+    "run": "useful-pilot-ordered-aw-iid_outputs-n983040-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-ordered-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 220917744,
+    "peak_parent": 220917744,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9477351916376308,
+    "run": "useful-pilot-profile-shuffled-aw-iid-n983040-k6-s31415927-shuffle1-t16-r1-usefulpilot",
+    "series": "useful-pilot-profile-shuffled-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 5,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 192275796,
+    "peak_parent": 192275796,
+    "pilot_contraction_exact": true,
+    "ratio": 0.97165991902834,
+    "run": "useful-pilot-profile-shuffled-unit-iid-n983040-k5-s31415927-shuffle1-t16-r1-usefulpilot",
+    "series": "useful-pilot-profile-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      10",
+      "parent": "                      18"
+    },
+    "peak_candidate": 52995912,
+    "peak_parent": 52995912,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8571428571428572,
+    "run": "useful-pilot-profile-strong6-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-profile-strong6-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      10",
+      "parent": "                      18"
+    },
+    "peak_candidate": 51029820,
+    "peak_parent": 51029820,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8382352941176471,
+    "run": "useful-pilot-profile-strong6-unit-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-profile-strong6-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9421768707482995,
+    "run": "useful-pilot-shuffled-aw-iid-n983040-k6-s31415927-shuffle1-t16-r1-usefulpilot",
+    "series": "useful-pilot-shuffled-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9484536082474229,
+    "run": "useful-pilot-shuffled-aw-iid-n983040-k6-s31415927-shuffle1-t16-r2-usefulpilot",
+    "series": "useful-pilot-shuffled-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 220917743,
+    "peak_parent": 220917743,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9405594405594407,
+    "run": "useful-pilot-shuffled-aw-iid-n983040-k6-s31415927-shuffle1-t16-r3-usefulpilot",
+    "series": "useful-pilot-shuffled-aw"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "outputs_exact": false,
+    "peak_candidate": 227956853,
+    "peak_parent": 227956853,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9865470852017937,
+    "run": "useful-pilot-shuffled-aw-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r1-usefulpilot",
+    "series": "useful-pilot-shuffled-aw"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "outputs_exact": false,
+    "peak_candidate": 227956853,
+    "peak_parent": 227956853,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9694323144104803,
+    "run": "useful-pilot-shuffled-aw-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r2-usefulpilot",
+    "series": "useful-pilot-shuffled-aw"
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "outputs_exact": false,
+    "peak_candidate": 227956853,
+    "peak_parent": 227956853,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9308855291576673,
+    "run": "useful-pilot-shuffled-aw-iid_outputs-n983040-k6-s31415927-shuffle1-t16-r3-usefulpilot",
+    "series": "useful-pilot-shuffled-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 1,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      33",
+      "parent": "                      41"
+    },
+    "peak_candidate": 114796837,
+    "peak_parent": 114796837,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9013452914798207,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k1-s31415927-shuffle1-t16-r1-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 1,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      33",
+      "parent": "                      41"
+    },
+    "peak_candidate": 114796837,
+    "peak_parent": 114796837,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8868778280542987,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k1-s31415927-shuffle1-t16-r2-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 1,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      33",
+      "parent": "                      41"
+    },
+    "peak_candidate": 114796837,
+    "peak_parent": 114796837,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8771929824561404,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k1-s31415927-shuffle1-t16-r3-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 3,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": true,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      34",
+      "parent": "                      42"
+    },
+    "peak_candidate": 150720563,
+    "peak_parent": 150720563,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9333333333333332,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k3-s31415927-shuffle1-t16-r1-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 3,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": true,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      34",
+      "parent": "                      42"
+    },
+    "peak_candidate": 150720563,
+    "peak_parent": 150720563,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9162995594713655,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k3-s31415927-shuffle1-t16-r2-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 3,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": true,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      34",
+      "parent": "                      42"
+    },
+    "peak_candidate": 150720563,
+    "peak_parent": 150720563,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9464285714285714,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k3-s31415927-shuffle1-t16-r3-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 5,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 192275795,
+    "peak_parent": 192275795,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9568627450980391,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k5-s31415927-shuffle1-t16-r1-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 5,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 192275795,
+    "peak_parent": 192275795,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9045801526717556,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k5-s31415927-shuffle1-t16-r2-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 5,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": false,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 192275795,
+    "peak_parent": 192275795,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9681274900398406,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k5-s31415927-shuffle1-t16-r3-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 213053411,
+    "peak_parent": 213053411,
+    "pilot_contraction_exact": true,
+    "ratio": 0.968,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k6-s31415927-shuffle1-t16-r1-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 213053411,
+    "peak_parent": 213053411,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9435483870967742,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k6-s31415927-shuffle1-t16-r2-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 31415927,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      35",
+      "parent": "                      43"
+    },
+    "peak_candidate": 213053411,
+    "peak_parent": 213053411,
+    "pilot_contraction_exact": true,
+    "ratio": 0.9236947791164659,
+    "run": "useful-pilot-shuffled-unit-iid-n983040-k6-s31415927-shuffle1-t16-r3-usefulpilot",
+    "series": "useful-pilot-shuffled-unit"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      13",
+      "parent": "                      21"
+    },
+    "peak_candidate": 62457671,
+    "peak_parent": 62457671,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8888888888888888,
+    "run": "useful-pilot-strong_d3-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-strong_d3-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      13",
+      "parent": "                      21"
+    },
+    "peak_candidate": 62457671,
+    "peak_parent": 62457671,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8554216867469878,
+    "run": "useful-pilot-strong_d3-aw-iid-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-strong_d3-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      13",
+      "parent": "                      21"
+    },
+    "peak_candidate": 62457671,
+    "peak_parent": 62457671,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8809523809523808,
+    "run": "useful-pilot-strong_d3-aw-iid-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-strong_d3-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": true,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      12",
+      "parent": "                      20"
+    },
+    "peak_candidate": 60491579,
+    "peak_parent": 60491579,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8356164383561644,
+    "run": "useful-pilot-strong_d3-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-strong_d3-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": true,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      12",
+      "parent": "                      20"
+    },
+    "peak_candidate": 60491579,
+    "peak_parent": 60491579,
+    "pilot_contraction_exact": true,
+    "ratio": 0.7733333333333334,
+    "run": "useful-pilot-strong_d3-none-iid-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-strong_d3-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": true,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      12",
+      "parent": "                      20"
+    },
+    "peak_candidate": 60491579,
+    "peak_parent": 60491579,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8333333333333334,
+    "run": "useful-pilot-strong_d3-none-iid-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-strong_d3-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      10",
+      "parent": "                      18"
+    },
+    "peak_candidate": 52995911,
+    "peak_parent": 52995911,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8589743589743578,
+    "run": "useful-pilot-strong_d6-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-strong_d6-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      10",
+      "parent": "                      18"
+    },
+    "peak_candidate": 52995911,
+    "peak_parent": 52995911,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8311688311688312,
+    "run": "useful-pilot-strong_d6-aw-iid-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-strong_d6-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      10",
+      "parent": "                      18"
+    },
+    "peak_candidate": 52995911,
+    "peak_parent": 52995911,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8421052631578948,
+    "run": "useful-pilot-strong_d6-aw-iid-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-strong_d6-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      10",
+      "parent": "                      18"
+    },
+    "peak_candidate": 51029819,
+    "peak_parent": 51029819,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8125,
+    "run": "useful-pilot-strong_d6-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-strong_d6-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      10",
+      "parent": "                      18"
+    },
+    "peak_candidate": 51029819,
+    "peak_parent": 51029819,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8461538461538461,
+    "run": "useful-pilot-strong_d6-none-iid-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-strong_d6-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      10",
+      "parent": "                      18"
+    },
+    "peak_candidate": 51029819,
+    "peak_parent": 51029819,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8412698412698413,
+    "run": "useful-pilot-strong_d6-none-iid-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-strong_d6-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      13",
+      "parent": "                      21"
+    },
+    "peak_candidate": 62170951,
+    "peak_parent": 62170951,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8588235294117645,
+    "run": "useful-pilot-unbalanced-aw-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-unbalanced-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      13",
+      "parent": "                      21"
+    },
+    "peak_candidate": 62170951,
+    "peak_parent": 62170951,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8658536585365852,
+    "run": "useful-pilot-unbalanced-aw-iid-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-unbalanced-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "exact": {
+      "V": true,
+      "b": true,
+      "fereg_certificate": true,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      13",
+      "parent": "                      21"
+    },
+    "peak_candidate": 62170951,
+    "peak_parent": 62170951,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8333333333333334,
+    "run": "useful-pilot-unbalanced-aw-iid-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-unbalanced-aw"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      13",
+      "parent": "                      21"
+    },
+    "peak_candidate": 60204859,
+    "peak_parent": 60204859,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8493150684931507,
+    "run": "useful-pilot-unbalanced-none-iid-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "series": "useful-pilot-unbalanced-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      13",
+      "parent": "                      21"
+    },
+    "peak_candidate": 60204859,
+    "peak_parent": 60204859,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8356164383561644,
+    "run": "useful-pilot-unbalanced-none-iid-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "series": "useful-pilot-unbalanced-none"
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "exact": {
+      "V": false,
+      "b": false,
+      "fereg_certificate": false,
+      "fereg_dof": true,
+      "fereg_fit": true,
+      "fereg_status": true
+    },
+    "initial_iterations": {
+      "candidate": "                      13",
+      "parent": "                      21"
+    },
+    "peak_candidate": 60204859,
+    "peak_parent": 60204859,
+    "pilot_contraction_exact": true,
+    "ratio": 0.8714285714285713,
+    "run": "useful-pilot-unbalanced-none-iid-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "series": "useful-pilot-unbalanced-none"
+  }
+]

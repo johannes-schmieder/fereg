@@ -1,0 +1,14 @@
+error[E0425]: cannot find value `contraction` in this scope
+    --> crates/fereg-core/src/fe/borrowed_map.rs:9510:47
+     |
+9510 |             result.report.pilot_contraction = contraction;
+     |                                               ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `contraction` in this scope
+    --> crates/fereg-core/src/fe/borrowed_map.rs:9574:47
+     |
+9574 |             result.report.pilot_contraction = contraction;
+     |                                               ^^^^^^^^^^^ not found in this scope
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `fereg-core` (lib) due to 2 previous errors

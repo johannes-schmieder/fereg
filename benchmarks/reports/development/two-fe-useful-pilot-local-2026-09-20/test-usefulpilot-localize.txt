@@ -1,0 +1,20 @@
+    Finished `release` profile [optimized] target(s) in 2m 32s
+
+running 1 test
+test fe::borrowed_map::tests::narrow_schur_continuation_preserves_admission_projection_and_budget ... FAILED
+
+failures:
+
+---- fe::borrowed_map::tests::narrow_schur_continuation_preserves_admission_projection_and_budget stdout ----
+
+thread '<unnamed>' panicked at crates/fereg-core/src/fe/borrowed_map.rs:10220:37:
+scale=Some(1e-100) rhs=5 threads=8 cap=1 index=15998: warm=0.000000002157756654875147 oracle=0.00000000008086449697614764 original=0.000000002157756654875147
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    fe::borrowed_map::tests::narrow_schur_continuation_preserves_admission_projection_and_budget
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 962 filtered out; finished in 9.21s
+
+error: test failed, to rerun pass `-p fereg-core --lib`
