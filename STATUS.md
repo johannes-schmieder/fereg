@@ -13,6 +13,27 @@ completed optimization/calibration investigation chronology formerly here.
 ## One-FE optimization implementation — 2026-09-19
 
 
+Starting final residual work before raw-residual construction now has adoption
+evidence in `benchmarks/reports/development/one-fe-residual-start-2026-09-19/`:
+124 development calls, 108 byte-identical native scientific exports, four
+focused native test executions (two on a rejected maximum-scan experiment),
+two ABI checks and six licensed fixtures. All eleven protected cells pass,
+with maximum paired ratio 1.010076 and geometric mean 0.991875. Five-pair
+predecessor/candidate/fixest medians are 137/134/151 ms and 395/391/454 ms.
+The new raw-residual owner occupies its existing allowance inside the bread
+job; allocation and scientific errors retain their original precedence.
+
+The two preselected final blocks add 40 accepted calls. Candidate/fixest medians
+are 132/146 and 134/140 ms (K=10), and 390/450 and 395/479 ms (K=50).
+The narrow median paired ratios are 0.897959 and 0.963504, with nine of ten
+wins. The repeated 5% target remains unmet; both blocks are preserved. Eight
+additional diagnostic calls isolate the narrow critical path: final projection
+6.90 ms followed by score checking 4.44 ms, with independent RSS 3.84 ms
+concurrent with score. Next target serial finite-value scans and the unit norm
+inside residual projection, preserving validation and reduction order.
+
+
+
 Reserved input initialization, ordered membership, parallel final preflight and
 narrow completion scheduling now have adoption evidence in
 `benchmarks/reports/development/one-fe-input-completion-2026-09-19/`: 313

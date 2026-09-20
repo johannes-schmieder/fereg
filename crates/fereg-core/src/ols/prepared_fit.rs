@@ -970,6 +970,7 @@ struct FitPerturbations {
     one_fe_borrow_reuse_disabled: bool,
     residual_sums_overlap_disabled: bool,
     early_score_disabled: bool,
+    raw_residual_overlap_disabled: bool,
 }
 
 /// Fit the currently supported prepared OLS/WLS finite coefficients through
@@ -2265,10 +2266,16 @@ fn fit_with_controls_internal_mode_with_frame<
         )?);
     }
     let score_cache_seconds = trace.lap();
-    let mut independent_raw_residuals = if prepared.fit_has_absorbed_intercept()
-        && raw_moments.is_some()
-        && qr.generated_coefficients.iter().any(Option::is_some)
-    {
+    let residual_overlap = !perturbations.residual_overlap_disabled
+        && phase_probe.is_none() && !retain_fast_score_cache && !config.absorb.retain_coefficients
+        && matches!(config.absorb.solver, FeSolverKind::Auto | FeSolverKind::Map)
+        && weights.values.is_none() && prepared.fit_has_one_ordinary_intercept_effect()
+        && prepared.fit_sample().n_active() >= 16_384 && (8..=16).contains(&generated_columns)
+        && rayon::current_thread_index().is_some() && rayon::current_num_threads() >= 8;
+    let needs_raw_residuals = prepared.fit_has_absorbed_intercept() && raw_moments.is_some()
+        && qr.generated_coefficients.iter().any(Option::is_some);
+    let defer_raw_residuals = residual_overlap && !perturbations.raw_residual_overlap_disabled;
+    let mut independent_raw_residuals = if needs_raw_residuals && !defer_raw_residuals {
         Some(build_independent_raw_residuals(
             prepared,
             frame.response(),
@@ -2290,12 +2297,6 @@ fn fit_with_controls_internal_mode_with_frame<
         absorb_fit_matrix(prepared, weights.borrowed(), matrix, config.final_absorb_config(),
             &mut cmg, false, true)
     });
-    let residual_overlap = !perturbations.residual_overlap_disabled
-        && phase_probe.is_none() && !retain_fast_score_cache && !config.absorb.retain_coefficients
-        && matches!(config.absorb.solver, FeSolverKind::Auto | FeSolverKind::Map)
-        && weights.values.is_none() && prepared.fit_has_one_ordinary_intercept_effect()
-        && prepared.fit_sample().n_active() >= 16_384 && (8..=16).contains(&generated_columns)
-        && rayon::current_thread_index().is_some() && rayon::current_num_threads() >= 8;
     let mut early_residual_projection = None;
     let mut early_score = None;
     let mut early_residual_sum = None;
@@ -2311,7 +2312,16 @@ fn fit_with_controls_internal_mode_with_frame<
         }
     }
     let finite_score = qr.finite_score;
-    let mut finish_bread = || finalize_reported_bread_and_intercept(
+    let mut finish_bread = || {
+        // The independent raw residual is needed by bread, not projection.
+        // Construct its already admitted owner beside projection, preserving
+        // raw-residual/bread errors ahead of deferred projection errors.
+        if needs_raw_residuals && defer_raw_residuals {
+            independent_raw_residuals = Some(build_independent_raw_residuals(
+                prepared, frame.response(), &qr, reservation,
+            )?);
+        }
+        finalize_reported_bread_and_intercept(
         prepared,
         frame.response(),
         &mut qr,
@@ -2322,7 +2332,8 @@ fn fit_with_controls_internal_mode_with_frame<
         perturbations,
         fast_score_cache.as_ref(),
         raw_moments.as_ref(),
-    );
+        )
+    };
     // Both jobs use existing owners. Projected residual errors remain deferred
     // until bread and initial within-TSS validation have passed. Scoped work
     // joins before either result is consumed; allocator phase probes retain
@@ -8894,15 +8905,16 @@ mod tests {
             for threads in [1, 4, 16] {
                 let mut config = PreparedOlsFitConfig::default();
                 config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
-                let run = |data: &PreparedOlsData, disabled| ThreadTeam::new(config.execution.threads).install(|| {
+                let run = |data: &PreparedOlsData, disabled, raw_disabled| ThreadTeam::new(config.execution.threads).install(|| {
                     fit_with_controls_internal(data, config, &mut SystemFitReservation,
-                        FitPerturbations { early_score_disabled: disabled, ..FitPerturbations::default() })
+                        FitPerturbations { early_score_disabled: disabled, raw_residual_overlap_disabled: raw_disabled, ..FitPerturbations::default() })
                 }).unwrap().map(|fit| {
                     assert_eq!(fit.independent_unit_residual_sum.is_some(), n >= 16_384 && threads >= 8);
                     without_solve_timings(fit)
                 });
-                let expected = run(&data, true);
-                let actual = run(&data, false);
+                let expected = run(&data, true, true);
+                let actual = run(&data, false, false);
+                assert_eq!(run(&data, false, true), actual, "raw residual schedule N={n}, threads={threads}");
                 assert!(expected == actual, "N={n}, threads={threads}");
             }
             data.categorical_sources[0].encoded.codes[0] = u32::MAX;
