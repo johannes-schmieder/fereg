@@ -1,0 +1,23 @@
+running 13 tests
+test fe::borrowed_map::tests::checkpoint_schur_copy_respects_exact_transient_admission ... ok
+test fe::borrowed_map::tests::ols_schur_readiness_includes_group_weight_certificate_scale ... ok
+test fe::borrowed_map::tests::large_two_fe_schur_operator_is_bit_stable_across_threads ... ok
+test fe::borrowed_map::tests::checkpoint_schur_weighted_cut_rejects_before_copying ... ok
+test fe::borrowed_map::tests::ols_schur_probe_uses_weighted_cuts_and_preserves_common_scale ... ok
+test fe::borrowed_map::tests::counted_unit_schur_edges_match_observation_operator_and_budget ... ok
+test ols::prepared_fit::tests::wide_ols_schur_guard_preserves_ineligible_routes_and_cycle_reports ... ok
+test ols::prepared_fit::tests::two_fe_schur_final_overlap_preserves_results_caches_and_error_order ... ok
+test ols::prepared_fit::tests::narrow_ols_schur_admission_preserves_operator_and_thread_controls ... ok
+test fe::borrowed_map::tests::checkpoint_schur_reuses_probe_and_falls_back_on_untouched_inputs ... ok
+test fe::borrowed_map::tests::ols_schur_probe_solve_budget_and_order_match_independent_map ... ok
+test fe::borrowed_map::tests::weighted_schur_edge_scratch_matches_operator_projection_and_continuation ... ok
+test fe::borrowed_map::tests::counted_unit_schur_projection_matches_independent_map ... ok
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 946 filtered out; finished in 9.37s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s

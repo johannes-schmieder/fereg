@@ -10,6 +10,33 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: compact weighted cache — 2026-09-20
+
+The [compact weighted-cache report](benchmarks/reports/development/two-fe-weighted-both-cache-local-2026-09-20/README.md)
+retains 100 successful application calls, 41 native pairs without a peak
+increase, sixteen independent output audits, thirteen Schur tests and three
+final-artifact Stata fixtures. [ADR 0083](docs/adr/0083-compact-weighted-ols-edge-scratch.md)
+admits both compact weighted gathers and offsets in existing idle banks;
+capacity rejection keeps the prior one-sided cache. Weight precision,
+certification and explicit OLS authority remain. PW/FW, concentrated weights,
+tiny bridges, low memory, threads and protected unit/one-FE controls pass.
+No native cell median paired regression exceeds 5%; nine default-reference
+output disagreements remain explicit.
+
+Three-pair shuffled AW K=6 IID improves 336 -> 316 ms, still above fixest's
+298 ms; full outputs improve 486 -> 466 ms versus 545 ms. Ordered K=50 IID
+improves 770 -> 747 ms versus 1957 ms. Plugin
+`e2325d207fa4a7a5afe23c9cecf0c4bcc73c383294586f7e31f3fca317b023f3`
+uses base `f44fabb9` plus the recorded core overlay; all 516 source entries
+match. All checkpoint processes have finished. The full goal remains active.
+Next profile the roughly 21 ms weighted IID statistics phase more finely,
+then overlap independent weight/outcome checks where ownership and exact
+scale checks permit. Reduce duplicate Schur probe/initialization and fuse
+left-mean restoration with reconstruction after that. The 111 controls,
+sixteen fresh holdouts and two final five-pair blocks remain. Raw work is
+`target/two-fe-broad-20260920`; preserve unrelated dirt. No installed package,
+remote state or qualification changed.
+
 ## Broad two-way OLS milestone: two-sided unit cache — 2026-09-20
 
 The [two-sided unit-cache report](benchmarks/reports/development/two-fe-unit-both-cache-local-2026-09-20/README.md)

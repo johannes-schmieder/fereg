@@ -1,0 +1,246 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index d79fe7f1..760c9982 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -2517,6 +2517,9 @@ fn absorb_two_fe_pcg_reusing(
+         && active_rhs > 0 && rayon::current_num_threads() >= 8
+         && cache_weighted_schur_right_edges(design, weights, graph,
+             &mut certificate_workspace.parallel_group_means)?;
++    let weighted_offsets = if weighted_neighbors {
++        compact_weighted_schur_edges(design, graph, &mut certificate_workspace.parallel_group_means)?
++    } else { None };
+     let initialization_seconds = phase_start.elapsed().as_secs_f64();
+     while !reconstruct && iterations < pcg_iteration_limit {
+         let op_start = Instant::now();
+@@ -2532,9 +2535,12 @@ fn absorb_two_fe_pcg_reusing(
+             };
+             graph.apply_schur_parallel(design, weights, rhs_count, stride, left, Some(SchurRightNeighbors::Counted(right)))?;
+         } else if weighted_neighbors {
+-            graph.apply_schur_parallel(design, weights, rhs_count, stride, None,
+-                Some(SchurRightNeighbors::WeightedRhsScratch(
+-                    &certificate_workspace.parallel_group_means[..design.nobs()])))?;
++            let scratch = &certificate_workspace.parallel_group_means;
++            let (left, right) = if let Some(offsets) = weighted_offsets {
++                (Some(SchurLeftNeighbors::WeightedRhsScratch { weights: scratch, offsets: offsets.left }),
++                    SchurRightNeighbors::WeightedCompactRhsScratch { weights: scratch, offsets: offsets.right })
++            } else { (None, SchurRightNeighbors::WeightedRhsScratch(&scratch[..design.nobs()])) };
++            graph.apply_schur_parallel(design, weights, rhs_count, stride, left, Some(right))?;
+         } else {
+             graph.apply_schur(design, weights, rhs_count, stride)?;
+         }
+@@ -2859,6 +2865,79 @@ fn cache_weighted_schur_right_edges(
+     Ok(true)
+ }
+ 
++#[derive(Clone, Copy, Debug)]
++struct WeightedSchurOffsets { left: usize, right: usize }
++
++fn compact_weighted_schur_edges(
++    design: &BorrowedInterceptFeDesign<'_>, graph: &mut TwoFePcgWorkspace, weights: &mut [f64],
++) -> Result<Option<WeightedSchurOffsets>> {
++    let n = design.nobs();
++    let left_levels = graph.left_weights.len();
++    let right = &design.effects()[graph.right_effect];
++    if weights.len() < n || graph.left_rhs.len() < n { return Ok(None); }
++    let mut edges = 0_usize;
++    for level in 0..right.n_levels() {
++        for &weight in &weights[right.level_index().checked_member_range(level)?] {
++            if weight == 0.0 { break; }
++            edges += 1;
++        }
++    }
++    let Some(both) = edges.checked_mul(2) else { return Ok(None); };
++    // Offsets start past both the old N-slot representation and the compact
++    // edges, so compaction cannot overwrite unread codes. Capacity rejection
++    // leaves the previously built one-sided cache valid.
++    let offset_start = n.max(both);
++    let Some(left_start) = offset_start.checked_add(right.n_levels()).and_then(|v| v.checked_add(1))
++        else { return Ok(None); };
++    let Some(end) = left_start.checked_add(left_levels).and_then(|v| v.checked_add(1))
++        else { return Ok(None); };
++    if graph.left_rhs.len() < end || weights.len() < offset_start { return Ok(None); }
++    let (codes, offsets) = graph.left_rhs[..end].split_at_mut(offset_start);
++    let (right_offsets, left_offsets) = offsets.split_at_mut(right.n_levels() + 1);
++    left_offsets.fill(f64::from_bits(0));
++    let mut written = 0;
++    for level in 0..right.n_levels() {
++        right_offsets[level] = f64::from_bits(written as u64);
++        for read in right.level_index().checked_member_range(level)? {
++            let weight = weights[read];
++            if weight == 0.0 { break; }
++            let code = codes[read].to_bits() as usize;
++            if code >= left_levels {
++                return Err(invalid_argument("weighted Schur compact code exceeds the left level axis"));
++            }
++            codes[written] = f64::from_bits(code as u64);
++            weights[written] = weight;
++            left_offsets[code] = f64::from_bits(left_offsets[code].to_bits() + 1);
++            written += 1;
++        }
++    }
++    right_offsets[right.n_levels()] = f64::from_bits(edges as u64);
++    debug_assert_eq!(written, edges);
++    let mut next = edges;
++    for offset in &mut left_offsets[..left_levels] {
++        let count = offset.to_bits() as usize;
++        *offset = f64::from_bits(next as u64);
++        next += count;
++    }
++    left_offsets[left_levels] = f64::from_bits(both as u64);
++    debug_assert_eq!(next, both);
++    // Transpose the compact right edges into the disjoint second half. Both
++    // gathers use the same f64 sum, with canonical neighboring-level order.
++    for level in 0..right.n_levels() {
++        let range = right_offsets[level].to_bits() as usize..right_offsets[level + 1].to_bits() as usize;
++        for read in range {
++            let code = codes[read].to_bits() as usize;
++            let destination = left_offsets[code].to_bits() as usize;
++            codes[destination] = f64::from_bits(level as u64);
++            weights[destination] = weights[read];
++            left_offsets[code] = f64::from_bits((destination + 1) as u64);
++        }
++    }
++    for level in (1..left_levels).rev() { left_offsets[level] = left_offsets[level - 1]; }
++    left_offsets[0] = f64::from_bits(edges as u64);
++    Ok(Some(WeightedSchurOffsets { left: left_start, right: offset_start }))
++}
++
+ #[allow(clippy::too_many_arguments)]
+ fn cache_weighted_schur_edge_groups(
+     effect: &crate::fe::BorrowedInterceptEffect<'_>, other_codes: &[u32],
+@@ -3018,6 +3097,7 @@ fn cache_unit_schur_edge_groups(
+ enum SchurLeftNeighbors<'a> {
+     Counted(&'a [f64]),
+     RhsScratch,
++    WeightedRhsScratch { weights: &'a [f64], offsets: usize },
+ }
+ 
+ #[derive(Clone, Copy)]
+@@ -3025,6 +3105,7 @@ enum SchurRightNeighbors<'a> {
+     Counted(&'a [f64]),
+     // Codes temporarily occupy left_rhs; this slice contains their weights.
+     WeightedRhsScratch(&'a [f64]),
++    WeightedCompactRhsScratch { weights: &'a [f64], offsets: usize },
+ }
+ 
+ impl TwoFePcgWorkspace {
+@@ -3097,10 +3178,12 @@ impl TwoFePcgWorkspace {
+         let right_codes = right.codes();
+         let direction = &self.direction;
+         let left_weights = &self.left_weights;
+-        let left_neighbors = left_neighbors.map(|neighbors| match neighbors {
+-            SchurLeftNeighbors::Counted(values) => values,
+-            SchurLeftNeighbors::RhsScratch => self.left_rhs.as_slice(),
+-        });
++        let counted_left_neighbors = match left_neighbors {
++            Some(SchurLeftNeighbors::Counted(values)) => Some(values),
++            Some(SchurLeftNeighbors::RhsScratch) => Some(self.left_rhs.as_slice()),
++            _ => None,
++        };
++        let weighted_neighbor_codes = &self.left_rhs;
+         let left_level_chunk = parallel_level_chunk_size(left.n_levels());
+         let left_cell_chunk = left_level_chunk
+             .checked_mul(stride)
+@@ -3114,7 +3197,7 @@ impl TwoFePcgWorkspace {
+                 for local_level in 0..work.len() / stride {
+                     let level = first_level + local_level;
+                     let level_work = &mut work[local_level * stride..(local_level + 1) * stride];
+-                    if let Some(left_neighbors) = left_neighbors {
++                    if let Some(left_neighbors) = counted_left_neighbors {
+                         for &neighbor in &left_neighbors[left.level_index().checked_member_range(level)?] {
+                             let packed = neighbor.to_bits();
+                             let count = (packed >> 32) as f64;
+@@ -3125,6 +3208,16 @@ impl TwoFePcgWorkspace {
+                                 *value += count * term;
+                             }
+                         }
++                    } else if let Some(SchurLeftNeighbors::WeightedRhsScratch { weights: edge_weights, offsets }) = left_neighbors {
++                        let range = weighted_neighbor_codes[offsets + level].to_bits() as usize
++                            ..weighted_neighbor_codes[offsets + level + 1].to_bits() as usize;
++                        for (&code, &weight) in weighted_neighbor_codes[range.clone()].iter().zip(&edge_weights[range]) {
++                            let right_level = code.to_bits() as usize;
++                            let source = &direction[right_level * stride..right_level * stride + rhs_count];
++                            for (value, &term) in level_work[..rhs_count].iter_mut().zip(source) {
++                                *value += weight * term;
++                            }
++                        }
+                     } else {
+                         let members = left.level_index().checked_members(level)?;
+                         for &row in members {
+@@ -3182,8 +3275,17 @@ impl TwoFePcgWorkspace {
+                                 *value -= count * term;
+                             }
+                         }
+-                    } else if let Some(SchurRightNeighbors::WeightedRhsScratch(edge_weights)) = right_neighbors {
+-                        let range = right.level_index().checked_member_range(level)?;
++                    } else if let Some(edge_weights) = match right_neighbors {
++                        Some(SchurRightNeighbors::WeightedRhsScratch(values))
++                        | Some(SchurRightNeighbors::WeightedCompactRhsScratch { weights: values, .. }) => Some(values),
++                        _ => None,
++                    } {
++                        let range = match right_neighbors {
++                            Some(SchurRightNeighbors::WeightedCompactRhsScratch { offsets, .. }) =>
++                                weighted_neighbor_codes[offsets + level].to_bits() as usize
++                                    ..weighted_neighbor_codes[offsets + level + 1].to_bits() as usize,
++                            _ => right.level_index().checked_member_range(level)?,
++                        };
+                         for (&code, &weight) in weighted_neighbor_codes[range.clone()].iter().zip(&edge_weights[range]) {
+                             if weight == 0.0 { break; }
+                             let left_level = code.to_bits() as usize;
+@@ -10904,6 +11006,56 @@ mod tests {
+                             }
+                         }
+                     }
++                    let mut expected_edges = std::collections::BTreeMap::new();
++                    for row in 0..rows {
++                        *expected_edges.entry((left_codes[row], right_codes[row])).or_insert(0.0) += weights.normalized(row);
++                    }
++                    let offset_start = rows.max(2 * expected_edges.len());
++                    let required_codes = offset_start + right_levels + 1 + 4000 + 1;
++                    for cells in [rows, offset_start - 1, offset_start] {
++                        let mut scratch = vec![0.0; cells];
++                        assert!(cache_weighted_schur_right_edges(&design(), weights, &mut graph, &mut scratch).unwrap());
++                        let old_codes = graph.left_rhs[..rows].iter().map(|v| v.to_bits()).collect::<Vec<_>>();
++                        let old_weights = scratch[..rows].to_vec();
++                        let offsets = compact_weighted_schur_edges(&design(), &mut graph, &mut scratch).unwrap();
++                        assert_eq!(offsets.is_some(), graph.left_rhs.len() >= required_codes && cells >= offset_start);
++                        if let Some(offsets) = offsets {
++                            for (start, levels, is_left) in [(offsets.left, 4000, true), (offsets.right, right_levels, false)] {
++                                let mut visited = 0;
++                                for level in 0..levels {
++                                    let range = graph.left_rhs[start + level].to_bits() as usize
++                                        ..graph.left_rhs[start + level + 1].to_bits() as usize;
++                                    let mut previous = None;
++                                    for edge in range {
++                                        let other = graph.left_rhs[edge].to_bits() as u32;
++                                        assert!(previous.map_or(true, |value| value < other));
++                                        previous = Some(other);
++                                        let pair = if is_left { (level as u32, other) } else { (other, level as u32) };
++                                        assert_eq!(scratch[edge].to_bits(), expected_edges[&pair].to_bits());
++                                        visited += 1;
++                                    }
++                                }
++                                assert_eq!(visited, expected_edges.len());
++                            }
++                        } else {
++                            assert_eq!(old_codes, graph.left_rhs[..rows].iter().map(|v| v.to_bits()).collect::<Vec<_>>());
++                            assert_eq!(old_weights, scratch[..rows]);
++                        }
++                        for threads in [8, 16] {
++                            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
++                                let (left, right) = if let Some(offsets) = offsets {
++                                    (Some(SchurLeftNeighbors::WeightedRhsScratch { weights: &scratch, offsets: offsets.left }),
++                                        SchurRightNeighbors::WeightedCompactRhsScratch { weights: &scratch, offsets: offsets.right })
++                                } else { (None, SchurRightNeighbors::WeightedRhsScratch(&scratch)) };
++                                graph.apply_schur_parallel(&design(), weights, rhs_count, stride, left, Some(right)).unwrap();
++                            });
++                            for (actual, expected) in [(&graph.left_work, &expected_left), (&graph.operator, &expected_operator)] {
++                                for (&actual, &expected) in actual.iter().zip(expected) {
++                                    assert!((actual-expected).abs() < 2e-12, "compact {actual} != {expected}");
++                                }
++                            }
++                        }
++                    }
+                     assert_eq!(graph.capacity_elements(), capacity);
+                 }
+             }

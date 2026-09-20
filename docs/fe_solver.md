@@ -149,8 +149,11 @@ iteration accounting and continuation eligibility are unchanged.
 
 Eligible capped unit-weight attempts combine repeated FE pairs into counted
 edges in idle group-statistics scratch. With 2N words both gathers are cached;
-with N words only the right gather may be cached after a bounded repeated-edge
-sample passes. N must fit u32. See
+with N words the right gather may be cached after a bounded repeated-edge
+sample passes. OLS may also borrow idle left-RHS storage for the other gather
+when it fits N, restoring original left means before reconstruction; shared
+reusable/PPML callers opt out. See [ADR 0082](adr/0082-two-sided-unit-ols-edge-scratch.md).
+N must fit u32. See
 [ADR 0079](adr/0079-narrow-one-sided-schur-edge-cache.md). Codes and multiplicities are stored as private bits; operator arithmetic
 uses the count as a weight. This changes summation order but preserves the
 mathematical operator and independent certification. Construction uses disjoint
@@ -165,6 +168,11 @@ The original left means are recomputed before reconstruction; independent
 certification then reuses group scratch. No new owner is allocated, and shared
 reusable/PPML calls explicitly opt out. See
 [ADR 0080](adr/0080-weighted-schur-edge-scratch.md).
+When both compact orientations and their offsets fit those existing banks,
+the weighted cache is compacted and transposed in place. Both gathers use the
+same f64 edge sums in canonical neighbor order. Capacity rejection preserves
+the one-sided cache; no owner or allowance is added. See
+[ADR 0083](adr/0083-compact-weighted-ols-edge-scratch.md).
 
 Wide one-FE/Schur OLS certificates use fixed 1,024-group partials in the
 existing norm scratch when that storage fits. One-/two-FE OLS also uses these
