@@ -1,0 +1,6 @@
+{
+  "raw_log_sha256": "d27d782603331d54fabb5f2cc18dfad417e2909d77c39107ee8de1e7629e7fc8",
+  "sanitization": "Repository absolute prefix removed; original raw log retained",
+  "error": "Expected two eligible initial Schur traces; actual warmup N=7680 is below the 16384-row route guard",
+  "resolution": "Require one measured initial trace; resume downstream audits without overwriting measurements"
+}

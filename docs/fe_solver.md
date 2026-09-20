@@ -173,6 +173,11 @@ the weighted cache is compacted and transposed in place. Both gathers use the
 same f64 edge sums in canonical neighbor order. Capacity rejection preserves
 the one-sided cache; no owner or allowance is added. See
 [ADR 0083](adr/0083-compact-weighted-ols-edge-scratch.md).
+When left means were used as edge scratch, OLS restores them during the left
+reconstruction traversal, retaining separate row-order sums and the original
+group weight totals. Both banks are overwritten before packed codes enter
+arithmetic. The uncached path and final certificate remain unchanged; see
+[ADR 0085](adr/0085-ols-schur-restoration-during-reconstruction.md).
 
 Wide one-FE/Schur OLS certificates use fixed 1,024-group partials in the
 existing norm scratch when that storage fits. One-/two-FE OLS also uses these

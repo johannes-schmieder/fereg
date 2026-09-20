@@ -1,0 +1,12 @@
+[
+  {
+    "finite_score_per_observation": 4.2234841156693773e-16,
+    "group_residual_mean_max": [
+      2.5600436803121256e-15,
+      1.2866731310366225e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "fused-reconstruction-control-fw-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r1-fusedreconstruction",
+    "status": "pass"
+  }
+]

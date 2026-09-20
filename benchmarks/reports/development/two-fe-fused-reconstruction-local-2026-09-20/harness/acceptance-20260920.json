@@ -1,0 +1,26 @@
+{
+  "scope": "Local Mac two-way dense OLS development; no release or cross-platform qualification",
+  "source_baseline": "637f240733a89332664d0d205c480c41316c5f9f",
+  "design": "Existing systematic two_fe_dense: five observations per worker, 20 percent mobility",
+  "observations": 983040,
+  "regressor_counts": [10, 50],
+  "native_threads": 16,
+  "reference_precision": "Headline comparisons retain stock fixest estimation/recovery tolerances. Separate --reference-precision diagnostics tighten the reference for independent scientific adjudication; these cannot substitute for headline timing. Disconnected graphs explicitly request K.exact so FE rank counting matches the graph.",
+  "primary_seed": 8675309,
+  "cases": ["iid", "robust", "cluster_fe", "cluster_cross", "cluster2_cross", "cluster2_nested", "iid_saved", "cluster_fe_saved", "cluster2_saved", "iid_outputs"],
+  "dense_iid_holdouts": [{"seed": 104729, "shuffled": false}, {"seed": 31415927, "shuffled": true}],
+  "final_blocks": 2,
+  "pairs_per_block": 5,
+  "maximum_median_paired_fereg_fixest_ratio_per_cell_per_block": 0.90,
+  "minimum_fereg_wins_across_both_blocks_per_cell": 9,
+  "regression": {
+    "reference": "Committed one-FE endpoint baseline",
+    "suite": "Original twenty one-FE breadth cells and eleven size/thread/layout controls; two-FE IID at N=245760/983040, K=10/50, threads=1/4; sparse two-FE IID at N=245760, K=10/50, threads=16",
+    "pairs": 3,
+    "maximum_cell_median_ratio": 1.05,
+    "maximum_geometric_mean_ratio": 1.02,
+    "confirmation": "One predeclared five-pair confirmation per initially failing regression cell; retain both blocks"
+  },
+  "science": "Preserve samples, rank/status, weights, DoF/VCE, certificates, precision, memory admission, failure atomicity and deterministic ordering. Independently grounded dummy checks and saved-effect component normalization supplement pinned fixest. Include focused missing/singleton/weighted/low-memory/rollback boundary fixtures for widened mechanisms.",
+  "timing": "Fresh processes and small warm-up, alternating paired order, identical audited inputs and actual requested outputs. No builds/tests/data preparation concurrent with timed commands. Instrumented profiles are separate from stock-comparator headline timing. Freeze implementation before both final blocks and retain failed experiments."
+}

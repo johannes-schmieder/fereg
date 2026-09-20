@@ -1,0 +1,143 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index 760c9982..df74f701 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -2733,18 +2733,9 @@ fn absorb_two_fe_pcg_reusing(
+     }
+     if reconstruct || iterations > completed_pilot_iterations {
+         let reconstruct_start = Instant::now();
+-        if weighted_neighbors || cached_unit == UnitSchurEdges::BothRhsScratch {
+-            // The original observation matrix and weights are immutable up to
+-            // this point. Restore the exact left means before reconstruction;
+-            // the code cache is no longer needed once iteration has finished.
+-            fill_two_fe_left_rhs(left, weights, &values, stride,
+-                &mut graph.left_rhs, &mut graph.left_weights)?;
+-            graph.left_rhs.par_chunks_mut(stride).zip(&graph.left_weights)
+-                .for_each(|(sum, &total)| {
+-                    for value in &mut sum[..rhs_count] { *value /= total; }
+-                });
+-        }
+-        reconstruct_two_fe_pcg_candidate(design, weights, graph, &mut values, rhs_count, stride)?;
++        let restore_left_means = weighted_neighbors || cached_unit == UnitSchurEdges::BothRhsScratch;
++        reconstruct_two_fe_pcg_candidate(design, weights, graph, &mut values,
++            rhs_count, stride, restore_left_means)?;
+         let reconstruct_seconds = reconstruct_start.elapsed().as_secs_f64();
+         let cert_start = Instant::now();
+         let certificate = certify(
+@@ -3360,15 +3351,47 @@ fn reconstruct_two_fe_pcg_candidate(
+     values: &mut DenseMatrix,
+     rhs_count: usize,
+     stride: usize,
++    restore_left_means: bool,
+ ) -> Result<()> {
+     let left = &design.effects()[graph.left_effect];
+     let right = &design.effects()[graph.right_effect];
+     let left_codes = left.codes();
+     let right_codes = right.codes();
+     let solution = &graph.solution;
+-    let left_rhs = &graph.left_rhs;
+     let left_weights = &graph.left_weights;
+-    graph
++    if restore_left_means {
++        // The edge cache is dead. Restore each original mean while traversing
++        // the same immutable members for reconstruction. Both sums retain
++        // their separate row-order arithmetic; original group totals remain
++        // valid throughout PCG, so no weight-only restoration pass is needed.
++        let data = values.as_slice();
++        graph.left_work.par_chunks_mut(stride)
++            .zip(graph.left_rhs.par_chunks_mut(stride))
++            .enumerate()
++            .try_for_each(|(level, (sum, mean))| -> Result<()> {
++                sum.fill(0.0);
++                mean.fill(0.0);
++                for &row in left.level_index().checked_members(level)? {
++                    let weight = weights.normalized(row);
++                    let right_level = right_codes[row] as usize;
++                    let original = &data[row * rhs_count..(row + 1) * rhs_count];
++                    let source = &solution[right_level * stride..right_level * stride + rhs_count];
++                    for (out, &value) in mean[..rhs_count].iter_mut().zip(original) {
++                        *out += weight * value;
++                    }
++                    for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
++                        *out += weight * value;
++                    }
++                }
++                for (out, value) in sum[..rhs_count].iter_mut().zip(&mut mean[..rhs_count]) {
++                    *value /= left_weights[level];
++                    *out = *value - *out / left_weights[level];
++                }
++                Ok(())
++            })?;
++    } else {
++        let left_rhs = &graph.left_rhs;
++        graph
+         .left_work
+         .par_chunks_mut(stride)
+         .enumerate()
+@@ -3388,6 +3411,7 @@ fn reconstruct_two_fe_pcg_candidate(
+             }
+             Ok(())
+         })?;
++    }
+     let left_work = &graph.left_work;
+     values
+         .as_mut_slice()
+@@ -10894,6 +10918,58 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn schur_restoration_during_reconstruction_is_bit_exact() {
++        let rows = 20_000;
++        let left_codes = (0..rows).map(|r| ((r * 8191 % rows) / 5) as u32).collect::<Vec<_>>();
++        let right_codes = (0..rows).map(|r| ((r * 37 + r / 5) % 997) as u32).collect::<Vec<_>>();
++        let left_index = LevelIndex::from_codes(&left_codes, 4000).unwrap();
++        let right_index = LevelIndex::from_codes(&right_codes, 997).unwrap();
++        let left = ValidatedBorrowedInterceptSource::new(&left_codes, 4000, &left_index).unwrap();
++        let right = ValidatedBorrowedInterceptSource::new(&right_codes, 997, &right_index).unwrap();
++        let design = BorrowedInterceptFeDesign::new(rows, vec![left.effect(), right.effect()]).unwrap();
++        for scale in [None, Some(1e-100), Some(1.0), Some(1e100)] {
++            let raw = scale.map(|s| (0..rows).map(|r| s * (0.125 + (r % 17) as f64 / 11.0)).collect::<Vec<_>>());
++            let weights = validate_weights(raw.as_deref().map_or(BorrowedMapWeights::Unit,
++                BorrowedMapWeights::Provided), rows).unwrap();
++            for rhs in [3, 5, 8, 52] {
++                let stride = rhs + 1;
++                let columns = (0..rhs).map(|c| (0..rows).map(|r| if c + 1 == rhs { 1.0 }
++                    else { ((r * (c + 7) % 103) as f64 - 51.0) / 13.0 }).collect::<Vec<_>>()).collect::<Vec<_>>();
++                for threads in [1, 8, 16] {
++                    rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
++                        let mut expected_values = DenseMatrix::from_columns(&columns).unwrap();
++                        let mut actual_values = expected_values.clone();
++                        let mut expected = TwoFePcgWorkspace::new(&design, stride, &mut SystemWorkspaceReservation).unwrap();
++                        let mut actual = TwoFePcgWorkspace::new(&design, stride, &mut SystemWorkspaceReservation).unwrap();
++                        for (i, v) in expected.solution.iter_mut().enumerate() {
++                            *v = ((i * 17 % 101) as f64 - 50.0) / 37.0;
++                        }
++                        actual.solution.copy_from_slice(&expected.solution);
++                        fill_two_fe_left_rhs(&design.effects()[expected.left_effect], weights,
++                            &expected_values, stride, &mut expected.left_rhs, &mut expected.left_weights).unwrap();
++                        actual.left_weights.copy_from_slice(&expected.left_weights);
++                        expected.left_rhs.par_chunks_mut(stride).zip(&expected.left_weights)
++                            .for_each(|(sum, &total)| { for value in &mut sum[..rhs] { *value /= total; } });
++                        // Private packed codes can look nonfinite as f64. None
++                        // may enter arithmetic after their cache lifetime ends.
++                        actual.left_rhs.fill(f64::NAN);
++                        reconstruct_two_fe_pcg_candidate(&design, weights, &mut expected,
++                            &mut expected_values, rhs, stride, false).unwrap();
++                        reconstruct_two_fe_pcg_candidate(&design, weights, &mut actual,
++                            &mut actual_values, rhs, stride, true).unwrap();
++                        for (a, b) in [(&actual.left_rhs, &expected.left_rhs),
++                            (&actual.left_work, &expected.left_work), (&actual.left_weights, &expected.left_weights)] {
++                            assert!(a.iter().zip(b).all(|(a,b)| a.to_bits() == b.to_bits()));
++                        }
++                        assert!(actual_values.as_slice().iter().zip(expected_values.as_slice())
++                            .all(|(a,b)| a.to_bits() == b.to_bits()));
++                    });
++                }
++            }
++        }
++    }
++
+     #[test]
+     fn counted_unit_schur_edges_match_observation_operator_and_budget() {
+         let rows = 20_000;

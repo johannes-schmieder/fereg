@@ -10,6 +10,34 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: fused reconstruction — 2026-09-20
+
+The [fused reconstruction report](benchmarks/reports/development/two-fe-fused-reconstruction-local-2026-09-20/README.md)
+retains 125 successful application calls, 49 bitwise-exact native scientific
+pairs (47 production, two diagnostic), thirteen exact and independently
+audited output pairs, fourteen Schur tests and three final-artifact Stata
+fixtures. All native allocation peaks are unchanged. [ADR 0085](docs/adr/0085-ols-schur-restoration-during-reconstruction.md)
+restores cached left means during the existing reconstruction traversal,
+preserving per-sum arithmetic and group totals. No cell median paired native
+regression exceeds 5%; nine default-reference output discrepancies remain.
+
+Diagnostic reconstruction falls 7.897 -> 5.684 ms for shuffled unit K=5 and
+5.679 -> 4.724 ms for AW K=6. Three-pair shuffled AW IID improves 295 -> 285 ms
+versus fixest's 303 ms, while shuffled AW full outputs are 1.1% slower; retain
+that result and do not attribute all application-time movement to fusion.
+Shuffled unit K=5 still trails fixest, 255 versus 248 ms. Plugin
+`ec0a780f7b2714dea64339b7f2e581f57e490625b43efec170f8541a7d3ac29e`
+uses base `830ca43c` plus one core overlay; all 516 source entries match.
+The ABI check passes. A trace-count archive assertion was corrected without
+replacing measurements; its failure log is retained. All processes finished.
+
+The full goal remains active. Next retain useful narrow Schur probe work,
+with unchanged weighted admission, original-input rejection, shared iteration
+charging and memory bounds. Then run the 111 native controls, sixteen fresh
+holdouts and two final five-pair primary blocks. Raw work remains
+`target/two-fe-broad-20260920`; preserve unrelated dirt. No installed package,
+remote state or qualification changed.
+
 ## Broad two-way OLS milestone: weighted statistics overlap — 2026-09-20
 
 The [weighted statistics overlap report](benchmarks/reports/development/two-fe-weighted-statistics-overlap-local-2026-09-20/README.md)

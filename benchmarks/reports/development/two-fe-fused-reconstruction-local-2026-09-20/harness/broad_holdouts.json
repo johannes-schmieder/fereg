@@ -1,0 +1,22 @@
+{
+  "schema": "two-fe-broad-development-v1",
+  "purpose": "Fresh-seed extension of broad_milestone.json, declared before any measurement of these cells; local development only",
+  "baseline_commit": "e9d593bdff116373fd09496d008be71d01b0a726",
+  "default": {"n": 983040, "threads": 16, "seed": 104729, "design": "two_fe_dense", "solver": "auto", "memory": "fast"},
+  "primary_sets": [
+    {"name": "fresh-shuffled-unit", "widths": [1, 5, 50], "weights": ["none"], "cases": ["iid"], "shuffled": true},
+    {"name": "fresh-shuffled-aw", "widths": [6, 50], "weights": ["aw"], "cases": ["iid", "iid_outputs"], "shuffled": true},
+    {"name": "fresh-well-connected", "designs": ["strong_d3", "strong_d6", "unbalanced"], "n": 245760, "widths": [6], "weights": ["none", "aw"], "cases": ["iid"]},
+    {"name": "fresh-weak", "designs": ["weak_d3", "bottleneck_ring", "cycle"], "n": 245760, "widths": [6], "weights": ["aw"], "cases": ["iid"]}
+  ],
+  "weight_design": {"primary": "moderate"},
+  "native_controls": [],
+  "acceptance": {
+    "independent_blocks": 2,
+    "paired_repetitions_per_block": 5,
+    "primary_max_median_paired_ratio": 1.0,
+    "primary_target_median_paired_ratio": 0.9,
+    "native_control_max_confirmed_regression": 1.05,
+    "required": "Add these sixteen holdouts to the original seventy-seven cells without replacing or dropping any original case; retain default-reference accuracy disagreements and independent native science"
+  }
+}
