@@ -243,6 +243,14 @@ pub struct PreparedOlsFeTopology {
 }
 
 impl PreparedOlsFeTopology {
+    pub(crate) fn into_single_source_index(mut self) -> Result<(usize, LevelIndex)> {
+        if self.sources.len() != 1 {
+            return Err(invalid("categorical topology transfer requires exactly one source"));
+        }
+        let source = self.sources.pop().ok_or_else(|| invalid("missing transferred topology source"))?;
+        Ok((source.categorical_source_index, source.level_index))
+    }
+
     #[must_use]
     pub const fn nobs(&self) -> usize {
         self.nobs

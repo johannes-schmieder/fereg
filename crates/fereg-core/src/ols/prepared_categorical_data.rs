@@ -1106,21 +1106,38 @@ fn finish_prepare_categorical_ols_data(
     let num_singletons = singleton.dropped_observations.len();
     let cascade_events = singleton.cascade_events;
     drop(singleton.dropped_observations);
-    let fe_topology =
-        finalize_categorical_topology(&candidate_views, &recipe_views, &singleton.active)?;
+    let rebuilt_topology = if fixed_point {
+        None
+    } else {
+        Some(finalize_categorical_topology(&candidate_views, &recipe_views, &singleton.active)?)
+    };
     drop(candidate_views);
     drop(recipe_views);
 
     let PreparedOlsData {
         model: availability_model,
         sample,
-        categorical_sources: candidate_sources,
+        categorical_sources: mut candidate_sources,
         fe_topology: availability_topology,
         ..
     } = availability;
-    // Finalized topology replaces the availability topology before numeric
-    // compaction allocates a second value bank.
-    drop(availability_topology);
+    // A fixed point preserves the availability row and level axes. Transfer
+    // their existing owners; rebuilding would copy codes and membership only
+    // to discard the originals. The new owner revalidates exact membership.
+    let fe_topology = if let Some(topology) = rebuilt_topology {
+        drop(availability_topology);
+        topology
+    } else {
+        let (source_index, level_index) = availability_topology.into_single_source_index()?;
+        let source_count = candidate_sources.len();
+        let source = candidate_sources.get_mut(source_index)
+            .ok_or_else(|| invalid("transferred categorical source is out of range"))?;
+        let n_levels = source.encoded.n_levels();
+        let codes = std::mem::take(&mut source.encoded.codes);
+        FinalizedCategoricalTopology::from_single_source_index(
+            source_count, source_index, codes, n_levels, level_index,
+        )?
+    };
     let final_sources = final_categorical_sources(&availability_model, cluster_sources)?;
     let model_source_plans = plan_model_sources(candidate_sources, &final_sources, &fe_topology)?;
     let sample = sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;

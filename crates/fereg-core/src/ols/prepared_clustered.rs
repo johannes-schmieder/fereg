@@ -26,7 +26,7 @@ use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{
     build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
     compensated_add, exact_integer_as_f64, relative_difference, validate_sum_of_squares,
-    weighted_mean, weighted_sum_of_squares, ReferenceWeightView,
+    fit_with_independent_outcome, independent_outcome_sum, independent_residual_sum, ReferenceWeightView,
 };
 use super::{
     CertifiedPreparedOlsFit, PreparedCategoricalOlsClusteredData, PreparedOlsAbsorbedDofPolicy,
@@ -630,8 +630,9 @@ fn fit_clustered_view_with_reservation<
 ) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
 {
     validate_config(prepared, config)?;
-    let (fit, score_scratch) =
-        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared.clustered_ols(), config.fit, rows)?;
+    let ols = prepared.clustered_ols();
+    let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(ols, config.fit, ||
+        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(ols, config.fit, rows), true)?;
     compose_clustered_view(
         prepared,
         fit,
@@ -639,6 +640,7 @@ fn fit_clustered_view_with_reservation<
         reservation,
         ClusteredPerturbations::default(),
         score_scratch,
+        outcome_tss,
     )
 }
 
@@ -651,7 +653,7 @@ fn compose<R: PreparedInferenceReservation>(
     perturbations: ClusteredPerturbations,
 ) -> Result<CertifiedPreparedOlsClustered> {
     let components =
-        compose_clustered_view(prepared, fit, config, reservation, perturbations, None)?;
+        compose_clustered_view(prepared, fit, config, reservation, perturbations, None, None)?;
     Ok(CertifiedPreparedOlsClustered {
         fit: components.fit,
         absorbed_dof: components.absorbed_dof,
@@ -672,6 +674,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
     score_scratch: Option<PreparedOlsScratch>,
+    outcome_tss: Option<Result<f64>>,
 ) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
 {
     let ols = prepared.clustered_ols();
@@ -703,19 +706,16 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
         ));
     }
 
-    let outcome_mean = weighted_mean(&ols.fit_sample().outcome, weight_view)?;
-    let center = if dof.has_structural_intercept {
-        outcome_mean
-    } else {
-        0.0
+    let tss = match outcome_tss {
+        Some(tss) => tss?,
+        None => independent_outcome_sum(&ols.fit_sample().outcome, weight_view, dof.has_structural_intercept)?,
     };
-    let tss = weighted_sum_of_squares(&ols.fit_sample().outcome, weight_view, center)?;
     let within_tss = if ols.inference_has_explicit_absorbed_effects() {
         fit.initial_absorbed_outcome_sum_of_squares()
     } else {
         tss
     };
-    let rss = weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?;
+    let rss = independent_residual_sum(&fit, weight_view)?;
     validate_sum_of_squares(rss, tss, within_tss)?;
     let fit_statistics_dof = PreparedOlsResidualDofReport {
         finite_rank: dof.finite_rank,
@@ -3500,6 +3500,40 @@ mod tests {
                 .try_reserve_exact(requested)
                 .map_err(|_| allocation("test prepared clustered reservation failed"))
         }
+    }
+
+    #[test]
+    fn outcome_overlap_preserves_clustered_statistics_and_covariance() {
+        let (mut request, mut loaded) = super::super::prepared_clusters::tests::fixture();
+        request.ols.include_intercept = true;
+        request.ols.absorbed_terms = vec![crate::metadata::AbsorbedTerm {
+            id: crate::metadata::AbsorbTermId::new(1).unwrap(), intercept: true,
+            categorical_sources: vec![request.ols.model.sources[1].id], slope_sources: Vec::new(),
+            label: "a".to_owned(), saved_name: String::new(),
+        }];
+        loaded.candidate = loaded.candidate.repeat(2049);
+        loaded.outcome.values = loaded.outcome.values.repeat(2049);
+        loaded.outcome.missing = loaded.outcome.missing.repeat(2049);
+        for (_, column) in &mut loaded.numeric_sources {
+            column.values = column.values.repeat(2049);
+            column.missing = column.missing.repeat(2049);
+        }
+        let prepared = prepare_ols_clustered_data(&request, &loaded).unwrap();
+        let mut config = PreparedOlsClusteredConfig::default();
+        config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
+        let actual = fit_prepared_ols_clustered_map(&prepared, config).unwrap();
+        let (fit, scratch) = super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference(
+            prepared.ols(), config.fit,
+        ).unwrap();
+        let expected = ThreadTeam::new(config.fit.execution.threads).install(|| compose_clustered_view(
+            &prepared, fit, config, &mut SystemPreparedInferenceReservation,
+            ClusteredPerturbations::default(), scratch, None,
+        )).unwrap().unwrap();
+        assert_eq!(actual.statistics, expected.statistics);
+        assert_eq!(actual.covariance, expected.covariance);
+        assert_eq!(actual.certificate, expected.certificate);
+        assert_eq!(actual.dof, expected.dof);
+        assert_eq!(actual.fit.coefficients(), expected.fit.coefficients());
     }
 
     #[test]

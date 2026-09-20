@@ -24,7 +24,8 @@ use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{
     build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
     compensated_add, exact_integer_as_f64, relative_difference, validate_fit_and_absorbed_dof_view,
-    validate_sum_of_squares, weighted_mean, weighted_sum_of_squares, ReferenceWeightView,
+    validate_sum_of_squares, fit_with_independent_outcome, independent_outcome_sum,
+    independent_residual_sum, ReferenceWeightView,
 };
 use super::{
     compute_prepared_ols_absorbed_dof, CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy,
@@ -392,8 +393,8 @@ pub fn fit_prepared_ols_robust_map_with_loaded_moments(
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsRobust> {
     validate_config(config)?;
-    let (fit, score_scratch) =
-        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)?;
+    let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(prepared, config.fit, ||
+        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows), true)?;
     let absorbed_dof = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
     ThreadTeam::new(config.fit.execution.threads).install(|| {
         let mut reservation = SystemPreparedInferenceReservation;
@@ -405,6 +406,7 @@ pub fn fit_prepared_ols_robust_map_with_loaded_moments(
             &mut reservation,
             RobustPerturbations::default(),
             score_scratch,
+            outcome_tss,
         )
     })?
 }
@@ -425,8 +427,8 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedCategoricalOlsRobust> {
     validate_config(config)?;
-    let (fit, score_scratch) =
-        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)?;
+    let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(prepared, config.fit, ||
+        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows), true)?;
     let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let absorbed_summary =
         prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
@@ -440,6 +442,7 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
             &mut reservation,
             RobustPerturbations::default(),
             score_scratch,
+            outcome_tss,
         )
     })??;
     Ok(CertifiedPreparedCategoricalOlsRobust {
@@ -461,6 +464,7 @@ fn compose_internal<R: PreparedInferenceReservation>(
     reservation: &mut R,
     perturbations: RobustPerturbations,
     score_scratch: Option<PreparedOlsScratch>,
+    outcome_tss: Option<Result<f64>>,
 ) -> Result<CertifiedPreparedOlsRobust> {
     let absorbed_summary =
         prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
@@ -472,6 +476,7 @@ fn compose_internal<R: PreparedInferenceReservation>(
         reservation,
         perturbations,
         score_scratch,
+        outcome_tss,
     )?;
     Ok(CertifiedPreparedOlsRobust {
         fit: components.fit,
@@ -492,6 +497,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     reservation: &mut R,
     perturbations: RobustPerturbations,
     score_scratch: Option<PreparedOlsScratch>,
+    outcome_tss: Option<Result<f64>>,
 ) -> Result<PreparedOlsRobustComponents> {
     let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
     let total_started = Instant::now();
@@ -508,19 +514,16 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     }
     certify_dof_identity(prepared, &fit, weights, dof)?;
 
-    let outcome_mean = weighted_mean(&prepared.fit_sample().outcome, weight_view)?;
-    let center = if dof.has_structural_intercept {
-        outcome_mean
-    } else {
-        0.0
+    let tss = match outcome_tss {
+        Some(tss) => tss?,
+        None => independent_outcome_sum(&prepared.fit_sample().outcome, weight_view, dof.has_structural_intercept)?,
     };
-    let tss = weighted_sum_of_squares(&prepared.fit_sample().outcome, weight_view, center)?;
     let within_tss = if !prepared.inference_has_explicit_absorbed_effects() {
         tss
     } else {
         fit.initial_absorbed_outcome_sum_of_squares()
     };
-    let rss = weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?;
+    let rss = independent_residual_sum(&fit, weight_view)?;
     validate_sum_of_squares(rss, tss, within_tss)?;
     let mut statistics = build_statistics(rss, tss, within_tss, weights, dof)?;
     if perturbations.rss {
@@ -1624,6 +1627,29 @@ mod tests {
     }
 
     #[test]
+    fn outcome_overlap_preserves_robust_statistics_and_covariance() {
+        let n = 16_385;
+        let group: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
+        let x: Vec<_> = (0..n).map(|r| (r as f64 * 0.7).sin()).collect();
+        let y: Vec<_> = (0..n).map(|r| 1.7 * x[r] + group[r] + 0.1 * (r as f64).cos()).collect();
+        let prepared = prepared(&y, &[x], Some(&group), true, TestWeights::Unit);
+        let mut config = PreparedOlsRobustConfig::default();
+        config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
+        let actual = fit_prepared_ols_robust_map(&prepared, config).unwrap();
+        let (fit, scratch) = fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit).unwrap();
+        let absorbed = compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
+        let expected = ThreadTeam::new(config.fit.execution.threads).install(|| compose_internal(
+            &prepared, fit, absorbed, config, &mut SystemPreparedInferenceReservation,
+            RobustPerturbations::default(), scratch, None,
+        )).unwrap().unwrap();
+        assert_eq!(actual.statistics, expected.statistics);
+        assert_eq!(actual.covariance, expected.covariance);
+        assert_eq!(actual.certificate, expected.certificate);
+        assert_eq!(actual.dof, expected.dof);
+        assert_eq!(actual.fit.coefficients(), expected.fit.coefficients());
+    }
+
+    #[test]
     fn retained_low_scores_preserve_rank_selection_and_reject_corrupt_columns() {
         let n = 96;
         let group = (0..n).map(|row| (row / 12) as f64).collect::<Vec<_>>();
@@ -1670,6 +1696,7 @@ mod tests {
                 &mut CountingReservation::default(),
                 RobustPerturbations::default(),
                 Some(scratch),
+                None,
             )
             .unwrap();
             let fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
@@ -1685,6 +1712,7 @@ mod tests {
                 config,
                 &mut CountingReservation::default(),
                 RobustPerturbations::default(),
+                None,
                 None,
             )
             .unwrap();
@@ -1713,6 +1741,7 @@ mod tests {
                 &mut CountingReservation::default(),
                 RobustPerturbations::default(),
                 Some(scratch),
+                None,
             )
             .unwrap_err();
             assert!(
@@ -1790,6 +1819,7 @@ mod tests {
             &mut CountingReservation::default(),
             RobustPerturbations::default(),
             None,
+            None,
         )
         .unwrap();
         let fit = build();
@@ -1807,6 +1837,7 @@ mod tests {
             tight,
             &mut CountingReservation::default(),
             RobustPerturbations::default(),
+            None,
             None,
         )
         .unwrap_err();
@@ -1829,6 +1860,7 @@ mod tests {
             tight,
             &mut CountingReservation::default(),
             RobustPerturbations::default(),
+            None,
             None,
         )
         .unwrap();
@@ -1888,6 +1920,7 @@ mod tests {
                     config,
                     &mut CountingReservation::default(),
                     RobustPerturbations::default(),
+                    None,
                     None,
                 )
                 .unwrap();
@@ -1953,6 +1986,7 @@ mod tests {
                 config,
                 &mut reservation,
                 RobustPerturbations::default(),
+                None,
                 None,
             )
             .expect("strided robust fit");
@@ -2440,6 +2474,7 @@ mod tests {
             config,
             reservation,
             perturbations,
+            None,
             None,
         )
     }

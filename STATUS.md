@@ -10,6 +10,34 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## One-FE statistics and topology ownership — 2026-09-20
+
+The [statistics/topology development report](benchmarks/reports/development/one-fe-statistics-topology-local-2026-09-20/README.md)
+archives 162 further calls and 54 exact native scientific comparisons. Saved
+output arrays are byte-identical in all 36 applicable comparisons. Three rotated
+triplets per cell show narrow saved IID at 175/216 ms versus fixest and full
+outputs at 221/220 ms (`topologytransfer`). The subsequent `inferencetss` artifact
+records narrow robust at 156/162 ms, FE clustering at 159/179 ms, two crossing
+clusters at 197/253 ms and two clusters with saved FE at 250/331 ms. Wide gains
+in these increments are small or absent; all original observations are retained.
+
+The changes transfer unchanged single-source categorical codes/membership and
+extend the independent outcome-statistics overlap to saved IID, robust and
+clustered one-FE fits under the narrow/unit/fast/team guard. Inference reuses
+only the existing independently computed unit residual sum. The final candidate
+is `inferencetss`, plugin `ded173ab46c8cdda8da33e02345f2498afa90143129d2f8d4f59e717d8cb29e1`,
+based on `84905c67` plus eight verified production overlays. Focused native
+checks and four final-artifact Stata scientific/prediction/transaction fixtures
+pass. The report records source and artifact identities and the resolved
+compile failure preceding the final build.
+
+The goal remains active. Full outputs are close rather than comfortably ahead;
+narrow robust and ordinary IID also need stronger margins. The next local
+experiment parallelizes exact FE-membership validation while preserving the
+first-error order. That uncommitted experiment and its diagnostic timers are
+outside the `inferencetss` milestone. No new final acceptance blocks or complete
+regression matrix have run, and no installed-package or remote state changed.
+
 ## One-FE breadth optimization — 2026-09-20
 
 The [development milestone](benchmarks/reports/development/one-fe-breadth-improvements-local-2026-09-20/README.md)

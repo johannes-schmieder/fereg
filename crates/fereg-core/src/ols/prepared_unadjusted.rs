@@ -483,12 +483,22 @@ pub fn fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
     config: PreparedOlsUnadjustedConfig,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedCategoricalOlsUnadjusted> {
+    fit_categorical_with_outcome_overlap(prepared, config, rows, true)
+}
+
+fn fit_categorical_with_outcome_overlap(
+    prepared: &PreparedCategoricalOlsData,
+    config: PreparedOlsUnadjustedConfig,
+    rows: Option<super::LoadedOlsRows>,
+    overlap: bool,
+) -> Result<CertifiedPreparedCategoricalOlsUnadjusted> {
     validate_config(config)?;
     reject_probability_iid(prepared)?;
-    let fit = match rows {
-        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(prepared, config.fit, rows)?,
-        None => fit_prepared_categorical_ols_coefficients_map(prepared, config.fit)?,
+    let fit = || match rows {
+        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(prepared, config.fit, rows),
+        None => fit_prepared_categorical_ols_coefficients_map(prepared, config.fit),
     };
+    let (fit, outcome_tss) = fit_with_independent_outcome(prepared, config.fit, fit, overlap)?;
     let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
     let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
     let mut reservation = SystemInferenceReservation;
@@ -499,7 +509,7 @@ pub fn fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
         config.certificate_tolerance,
         &mut reservation,
         InferencePerturbations::default(),
-        None,
+        outcome_tss,
     ))??;
     Ok(CertifiedPreparedCategoricalOlsUnadjusted {
         fit: components.fit,
@@ -510,6 +520,51 @@ pub fn fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
         covariance: components.covariance,
         certificate: components.certificate,
     })
+}
+
+/// Overlap the unchanged independent outcome scan with a narrow one-FE fit.
+/// The scan owns no heap buffers, and its error stays deferred until the caller
+/// reaches the original statistics boundary after fit, DoF and weight checks.
+pub(super) fn fit_with_independent_outcome<P, T, F>(
+    prepared: &P,
+    config: PreparedOlsFitConfig,
+    fit: F,
+    overlap: bool,
+) -> Result<(T, Option<Result<f64>>)>
+where
+    P: PreparedOlsInferenceView + ?Sized,
+    T: Send,
+    F: FnOnce() -> Result<T> + Send,
+{
+    if overlap
+        && matches!(prepared.fit_sample().weights, PreparedWeights::None)
+        && prepared.fit_has_one_ordinary_intercept_effect()
+        && prepared.fit_sample().n_active() >= 16_384
+        && prepared.fit_model().columns.len() <= 16
+        && config.execution.mode == super::PreparedOlsExecutionMode::Fast
+        && config.execution.threads.resolved() >= 8
+    {
+        let (fit, tss) = crate::ThreadTeam::new(config.execution.threads).install(|| {
+            rayon::join(fit, || independent_outcome_sum(
+                &prepared.fit_sample().outcome,
+                ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 },
+                prepared.fit_structural_intercept(),
+            ))
+        })?;
+        Ok((fit?, Some(tss)))
+    } else {
+        Ok((fit()?, None))
+    }
+}
+
+pub(super) fn independent_residual_sum(
+    fit: &CertifiedPreparedOlsFit,
+    weight_view: ReferenceWeightView<'_>,
+) -> Result<f64> {
+    if weight_view.kind.is_none() && weight_view.values.is_none() {
+        if let Some(rss) = fit.independent_unit_residual_sum() { return Ok(rss); }
+    }
+    weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)
 }
 
 fn reject_probability_iid<P: PreparedOlsInferenceView + ?Sized>(prepared: &P) -> Result<()> {
@@ -1699,7 +1754,7 @@ fn independent_fit_sums(
     Ok((tss_result?, rss_result?))
 }
 
-fn independent_outcome_sum(
+pub(super) fn independent_outcome_sum(
     outcome: &[f64],
     weights: ReferenceWeightView<'_>,
     has_intercept: bool,
@@ -2067,6 +2122,48 @@ mod tests {
             config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
             assert_eq!(fit_with_outcome_overlap(&prepared, config, None, false).unwrap_err(),
                 fit_with_outcome_overlap(&prepared, config, None, true).unwrap_err());
+        }
+    }
+
+    #[test]
+    fn categorical_outcome_overlap_preserves_inference_and_fit_errors() {
+        for n in [16_383, 16_385] {
+            let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
+            let x: Vec<_> = (0..n).map(|r| ((r % 131) as f64 - 60.0) / 7.0).collect();
+            let y: Vec<_> = (0..n).map(|r| 1.7 * x[r] + groups[r] + 0.03 * (r as f64).sin()).collect();
+            let weights: Vec<_> = (0..n).map(|r| 1.0 + (r % 5) as f64).collect();
+            for weight in [TestWeights::Unit, TestWeights::Analytic(&weights)] {
+                let (mut request, input) = prepared_input(&y, &[x.clone(), x.clone()], Some(&groups), true, weight);
+                request.absorbed_terms[0].saved_name = "saved_g".to_owned();
+                let prepared = crate::prepare_categorical_ols_data(&request, &input).unwrap();
+                for threads in [1, 8, 16] {
+                    let mut config = PreparedOlsUnadjustedConfig::default();
+                    config.fit.allow_final_fe_recovery = true;
+                    config.fit.absorb.retain_coefficients = true;
+                    config.fit.execution.threads = crate::ThreadConfig::from_requested(threads, true).unwrap();
+                    let expected = fit_categorical_with_outcome_overlap(&prepared, config, None, false).unwrap();
+                    let actual = fit_categorical_with_outcome_overlap(&prepared, config, None, true).unwrap();
+                    assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
+                    assert_eq!(expected.weights, actual.weights);
+                    assert_eq!(expected.dof, actual.dof);
+                    assert_eq!(expected.statistics, actual.statistics);
+                    assert_eq!(expected.covariance, actual.covariance);
+                    assert_eq!(expected.certificate, actual.certificate);
+                    let (a, b) = (expected.fit(), actual.fit());
+                    assert_eq!(a.coefficients(), b.coefficients());
+                    assert_eq!(a.rank_certificate(), b.rank_certificate());
+                    assert_eq!(a.score_certificate(), b.score_certificate());
+                    assert_eq!(a.bread(), b.bread());
+                    assert_eq!(a.execution(), b.execution());
+                    assert_eq!(a.residuals().len(), b.residuals().len());
+                    assert!(a.residuals().iter().zip(b.residuals()).all(|(a, b)| a.to_bits() == b.to_bits()));
+                    config.fit.score_tolerance = f64::NAN;
+                    assert_eq!(
+                        fit_categorical_with_outcome_overlap(&prepared, config, None, false).unwrap_err(),
+                        fit_categorical_with_outcome_overlap(&prepared, config, None, true).unwrap_err(),
+                    );
+                }
+            }
         }
     }
 
@@ -2876,6 +2973,17 @@ mod tests {
         include_intercept: bool,
         weights: TestWeights<'_>,
     ) -> PreparedOlsData {
+        let (request, input) = prepared_input(outcome, regressors, fixed_effect, include_intercept, weights);
+        prepare_ols_data(&request, &input).expect("prepared iid test case")
+    }
+
+    fn prepared_input(
+        outcome: &[f64],
+        regressors: &[Vec<f64>],
+        fixed_effect: Option<&[f64]>,
+        include_intercept: bool,
+        weights: TestWeights<'_>,
+    ) -> (OlsRequestV1, LoadedOlsInput) {
         assert!(regressors
             .iter()
             .all(|column| column.len() == outcome.len()));
@@ -2975,15 +3083,15 @@ mod tests {
                 (None, Some(loaded(&values)), None)
             }
         };
-        prepare_ols_data(
-            &OlsRequestV1 {
+        (
+            OlsRequestV1 {
                 model: CompiledTermGraph { sources, terms },
                 absorbed_terms,
                 bindings,
                 include_intercept,
                 keep_singletons: true,
             },
-            &LoadedOlsInput {
+            LoadedOlsInput {
                 candidate: vec![true; outcome.len()],
                 outcome: loaded(outcome),
                 numeric_sources,
@@ -2992,7 +3100,6 @@ mod tests {
                 probability_weight,
             },
         )
-        .expect("prepared iid test case")
     }
 
     fn loaded(values: &[f64]) -> LoadedNumericColumn {

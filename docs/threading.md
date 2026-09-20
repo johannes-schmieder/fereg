@@ -26,11 +26,14 @@ OLS preparation installs this team from eight numeric sources and 16,384 rows;
 classification still selects errors in observation order. IID composition also
 uses the resolved team: for large samples its independent residual scan can
 overlap outcome mean/TSS scans without changing their arithmetic or error order.
-Fresh one-effect, unit-weight IID fits with at least 16,384 rows, at most 16
-model columns and at least eight workers can run the independent outcome
-mean/TSS scan alongside fitting instead. The source remains immutable and no
-data buffer is added. Any scan error is deferred until the original fit, DoF
-and weight checks have succeeded; the final residual scan stays independent.
+Fast one-intercept-FE, unit-weight OLS fits with at least 16,384 rows, at most
+16 model columns and at least eight workers can run the independent outcome
+mean/TSS scan alongside fitting instead. This includes IID, robust and clustered
+inference through either ordinary or categorical preparation. The source remains
+immutable and no data buffer is added. Any scan error is deferred until the
+original fit, DoF and weight checks have succeeded. Inference can consume the
+same call's independently computed unit residual sum; it never substitutes a
+fitted moment or skips the independent residual calculation.
 Fresh ordinary one-FE unit fits with 8–16 generated columns, at least 16,384
 rows and eight installed workers can also overlap final residual projection
 with reported bread/intercept completion. This uses the same team and existing

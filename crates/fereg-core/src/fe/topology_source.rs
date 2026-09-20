@@ -22,6 +22,16 @@ pub struct CategoricalTopologySource {
 }
 
 impl CategoricalTopologySource {
+    pub(crate) fn single_with_index(
+        categorical_source_index: usize,
+        source: CategoricalCodeView<'_>,
+        level_index: LevelIndex,
+    ) -> Result<Self> {
+        let partition = CategoricalPartition::single(categorical_source_index, source)?;
+        ValidatedBorrowedInterceptSource::new(source.codes(), source.n_levels(), &level_index)?;
+        Ok(Self { partition, level_index })
+    }
+
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
         self.partition.owned_buffer_bytes() + self.level_index.owned_buffer_bytes()
     }

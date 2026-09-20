@@ -1,0 +1,58 @@
+[
+  {
+    "log": "breadth-categorical-outcome-overlap-20260920.log",
+    "sha256": "85c8ca3acb510d64197312d3a182eebbd814473386eb4fdfd0b37beff249c229",
+    "results": [
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 933 filtered out; finished in 1.38s"
+    ]
+  },
+  {
+    "log": "breadth-transferred-topology-20260920.log",
+    "sha256": "289c60955c09eb787d056f31d7f9b2277c64e078622bad237cfd6827c6173c39",
+    "results": [
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 935 filtered out; finished in 0.00s"
+    ]
+  },
+  {
+    "log": "breadth-transfer-construction-20260920.log",
+    "sha256": "e8fa6f625cf3cd969627436025b3f7146f17055cc204ef33c35d106261195f80",
+    "results": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 160 filtered out; finished in 0.71s"
+    ]
+  },
+  {
+    "log": "breadth-inference-outcome-20260920.log",
+    "sha256": "ea3757076bc1f657d5ac87a04b10de9ffd33a2a48bdced0b25c7793fc2ef2092",
+    "results": [
+      "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 935 filtered out; finished in 1.21s"
+    ]
+  },
+  {
+    "log": "breadth-ols-prepared_robust-tests-20260920.log",
+    "sha256": "77ee41d5a277723e626954c5ff1649ba95c45b56401a1b978300e852d94f95c0",
+    "results": [
+      "test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 926 filtered out; finished in 0.06s"
+    ]
+  },
+  {
+    "log": "breadth-ols-prepared_clustered-tests-20260920.log",
+    "sha256": "6c55273310373e022062acf1b523c1fabc48a097a3d7c0891baa7b5ca3a0032a",
+    "results": [
+      "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 929 filtered out; finished in 1.95s"
+    ]
+  },
+  {
+    "log": "breadth-inference-prepared_parent_exact_budget_reaches_solver_and_preserves_public_base-20260920.log",
+    "sha256": "1826417366afdc207c01beff009153050e84b0ccd6fd3ca45c9029d100752fee",
+    "results": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 160 filtered out; finished in 0.01s"
+    ]
+  },
+  {
+    "log": "breadth-inference-low_memory_execution_matches_fast_across_inference_modes-20260920.log",
+    "sha256": "52c4891b30ca58db2c24b2d1973a51f232966a34cc46bf29c8f7980844d05ff0",
+    "results": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 160 filtered out; finished in 0.01s"
+    ]
+  }
+]

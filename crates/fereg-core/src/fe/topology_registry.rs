@@ -16,6 +16,14 @@ pub struct CategoricalTopologyRegistry {
 }
 
 impl CategoricalTopologyRegistry {
+    pub(crate) fn from_single_source(source: CategoricalTopologySource) -> Result<Self> {
+        let mut sources = Vec::new();
+        sources.try_reserve_exact(1)
+            .map_err(|_| allocation("unable to reserve transferred categorical topology source"))?;
+        sources.push(source);
+        Ok(Self { sources })
+    }
+
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
         crate::memory::vec_capacity_bytes(&self.sources)
             + self.sources.iter().map(CategoricalTopologySource::owned_buffer_bytes).sum::<u128>()
