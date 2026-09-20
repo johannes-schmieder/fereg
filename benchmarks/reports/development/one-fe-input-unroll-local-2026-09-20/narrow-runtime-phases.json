@@ -1,0 +1,34 @@
+[
+  {
+    "case": "iid",
+    "arm": "orderedfactor",
+    "medians_ms": {
+      "input": 69.594083,
+      "native": 43.311708
+    }
+  },
+  {
+    "case": "iid",
+    "arm": "inputunroll4",
+    "medians_ms": {
+      "input": 48.634708,
+      "native": 43.83258300000001
+    }
+  },
+  {
+    "case": "iid_outputs",
+    "arm": "orderedfactor",
+    "medians_ms": {
+      "input": 69.367584,
+      "native": 56.582875
+    }
+  },
+  {
+    "case": "iid_outputs",
+    "arm": "inputunroll4",
+    "medians_ms": {
+      "input": 47.544584,
+      "native": 56.728167
+    }
+  }
+]

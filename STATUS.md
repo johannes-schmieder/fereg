@@ -10,6 +10,39 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Completed local one-FE optimization — 2026-09-20
+
+The [final input-loop report](benchmarks/reports/development/one-fe-input-unroll-local-2026-09-20/README.md)
+closes the frozen local comfortable-win target. Both independent five-pair
+blocks pass all twenty one-FE OLS cells (K=10/50, IID/robust/one- and two-way
+clustering, saved FE and full outputs). Median paired fereg/fixest ratios span
+0.413353–0.844278; all cells win at least nine of ten pairs, with 199/200 total
+wins. No outlier is removed. The earlier failed widecore block remains recorded.
+
+The retained C row loop handles four SDK reads per main-loop iteration and a
+scalar tail, preserving every call, immediate error check, coordinate/type/
+main-thread guard, ordering and destination. It adds no allocation or scientific
+arithmetic change. In the five-pair incremental narrow screen, input medians
+fall from about 69 ms to 48 ms; IID improves 126→103 ms and full outputs
+186→166 ms. The preliminary pragma-only variant is archived but was never
+timed. Shared-loader eligibility remains unchanged; this is not evidence for
+all paths, PPML or other platforms.
+
+Final plugin `4437ffac11ed4018ced4cadf934d82cbe9bc09eaaa44505d446d50de5e86abb7`
+uses base `6f3fd059` plus the C bridge and exhaustive mock-test overlays.
+All 512 source entries match the frozen artifact and working production files.
+The report contains 616 successful measured application calls, 303 exact
+nonself native comparisons and 109 byte-identical saved-output bundles.
+All 270 parent allocation peaks are identical; no control allocation peak
+increases. Actual ABI checks, UBSan input/output guards and three licensed
+Stata oracle/transaction fixtures pass. No scientific rule was weakened.
+
+All thirty-one original-baseline regression cells pass: breadth maximum/
+geomean 0.966234/0.616879; size/thread/group-layout 1.010582/0.947205.
+No confirmation run was needed. This completed target supersedes the pending
+prototype/final-block work described in the earlier checkpoints below.
+No installed package, remote state, release or qualification changed.
+
 ## RHS profiling checkpoint — 2026-09-20
 
 The [RHS diagnostic report](benchmarks/reports/development/one-fe-rhs-parallel-local-2026-09-20/README.md)

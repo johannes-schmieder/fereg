@@ -1,0 +1,802 @@
+[
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 259748085,
+      "parent": 259748085
+    },
+    "run": "inputunroll4-final-a-cluster2_cross-n983040-k10-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 259748085,
+      "parent": 259748085
+    },
+    "run": "inputunroll4-final-a-cluster2_cross-n983040-k10-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 259748085,
+      "parent": 259748085
+    },
+    "run": "inputunroll4-final-a-cluster2_cross-n983040-k10-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 259748085,
+      "parent": 259748085
+    },
+    "run": "inputunroll4-final-a-cluster2_cross-n983040-k10-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 259748085,
+      "parent": 259748085
+    },
+    "run": "inputunroll4-final-a-cluster2_cross-n983040-k10-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 949464427,
+      "parent": 949464427
+    },
+    "run": "inputunroll4-final-a-cluster2_cross-n983040-k50-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 949464427,
+      "parent": 949464427
+    },
+    "run": "inputunroll4-final-a-cluster2_cross-n983040-k50-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 949464427,
+      "parent": 949464427
+    },
+    "run": "inputunroll4-final-a-cluster2_cross-n983040-k50-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 949464427,
+      "parent": 949464427
+    },
+    "run": "inputunroll4-final-a-cluster2_cross-n983040-k50-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 949464427,
+      "parent": 949464427
+    },
+    "run": "inputunroll4-final-a-cluster2_cross-n983040-k50-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 249507951,
+      "parent": 249507951
+    },
+    "run": "inputunroll4-final-a-cluster2_nested-n983040-k10-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 249507951,
+      "parent": 249507951
+    },
+    "run": "inputunroll4-final-a-cluster2_nested-n983040-k10-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 249507951,
+      "parent": 249507951
+    },
+    "run": "inputunroll4-final-a-cluster2_nested-n983040-k10-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 249507951,
+      "parent": 249507951
+    },
+    "run": "inputunroll4-final-a-cluster2_nested-n983040-k10-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 249507951,
+      "parent": 249507951
+    },
+    "run": "inputunroll4-final-a-cluster2_nested-n983040-k10-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 937659621,
+      "parent": 937659621
+    },
+    "run": "inputunroll4-final-a-cluster2_nested-n983040-k50-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 937659621,
+      "parent": 937659621
+    },
+    "run": "inputunroll4-final-a-cluster2_nested-n983040-k50-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 937659621,
+      "parent": 937659621
+    },
+    "run": "inputunroll4-final-a-cluster2_nested-n983040-k50-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 937659621,
+      "parent": 937659621
+    },
+    "run": "inputunroll4-final-a-cluster2_nested-n983040-k50-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 937659621,
+      "parent": 937659621
+    },
+    "run": "inputunroll4-final-a-cluster2_nested-n983040-k50-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 266826223,
+      "parent": 266826223
+    },
+    "run": "inputunroll4-final-a-cluster2_saved-n983040-k10-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 266826223,
+      "parent": 266826223
+    },
+    "run": "inputunroll4-final-a-cluster2_saved-n983040-k10-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 266826223,
+      "parent": 266826223
+    },
+    "run": "inputunroll4-final-a-cluster2_saved-n983040-k10-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 266826223,
+      "parent": 266826223
+    },
+    "run": "inputunroll4-final-a-cluster2_saved-n983040-k10-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 266826223,
+      "parent": 266826223
+    },
+    "run": "inputunroll4-final-a-cluster2_saved-n983040-k10-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 956542689,
+      "parent": 956542689
+    },
+    "run": "inputunroll4-final-a-cluster2_saved-n983040-k50-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 956542689,
+      "parent": 956542689
+    },
+    "run": "inputunroll4-final-a-cluster2_saved-n983040-k50-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 956542689,
+      "parent": 956542689
+    },
+    "run": "inputunroll4-final-a-cluster2_saved-n983040-k50-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 956542689,
+      "parent": 956542689
+    },
+    "run": "inputunroll4-final-a-cluster2_saved-n983040-k50-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 956542689,
+      "parent": 956542689
+    },
+    "run": "inputunroll4-final-a-cluster2_saved-n983040-k50-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 247949163,
+      "parent": 247949163
+    },
+    "run": "inputunroll4-final-a-cluster_cross-n983040-k10-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 247949163,
+      "parent": 247949163
+    },
+    "run": "inputunroll4-final-a-cluster_cross-n983040-k10-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 247949163,
+      "parent": 247949163
+    },
+    "run": "inputunroll4-final-a-cluster_cross-n983040-k10-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 247949163,
+      "parent": 247949163
+    },
+    "run": "inputunroll4-final-a-cluster_cross-n983040-k10-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 247949163,
+      "parent": 247949163
+    },
+    "run": "inputunroll4-final-a-cluster_cross-n983040-k10-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 937665617,
+      "parent": 937665617
+    },
+    "run": "inputunroll4-final-a-cluster_cross-n983040-k50-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 937665617,
+      "parent": 937665617
+    },
+    "run": "inputunroll4-final-a-cluster_cross-n983040-k50-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 937665617,
+      "parent": 937665617
+    },
+    "run": "inputunroll4-final-a-cluster_cross-n983040-k50-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 937665617,
+      "parent": 937665617
+    },
+    "run": "inputunroll4-final-a-cluster_cross-n983040-k50-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 937665617,
+      "parent": 937665617
+    },
+    "run": "inputunroll4-final-a-cluster_cross-n983040-k50-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 237709029,
+      "parent": 237709029
+    },
+    "run": "inputunroll4-final-a-cluster_fe-n983040-k10-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 237709029,
+      "parent": 237709029
+    },
+    "run": "inputunroll4-final-a-cluster_fe-n983040-k10-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 237709029,
+      "parent": 237709029
+    },
+    "run": "inputunroll4-final-a-cluster_fe-n983040-k10-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 237709029,
+      "parent": 237709029
+    },
+    "run": "inputunroll4-final-a-cluster_fe-n983040-k10-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 237709029,
+      "parent": 237709029
+    },
+    "run": "inputunroll4-final-a-cluster_fe-n983040-k10-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925860811,
+      "parent": 925860811
+    },
+    "run": "inputunroll4-final-a-cluster_fe-n983040-k50-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925860811,
+      "parent": 925860811
+    },
+    "run": "inputunroll4-final-a-cluster_fe-n983040-k50-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925860811,
+      "parent": 925860811
+    },
+    "run": "inputunroll4-final-a-cluster_fe-n983040-k50-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925860811,
+      "parent": 925860811
+    },
+    "run": "inputunroll4-final-a-cluster_fe-n983040-k50-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925860811,
+      "parent": 925860811
+    },
+    "run": "inputunroll4-final-a-cluster_fe-n983040-k50-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 246360063,
+      "parent": 246360063
+    },
+    "run": "inputunroll4-final-a-cluster_fe_saved-n983040-k10-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 246360063,
+      "parent": 246360063
+    },
+    "run": "inputunroll4-final-a-cluster_fe_saved-n983040-k10-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 246360063,
+      "parent": 246360063
+    },
+    "run": "inputunroll4-final-a-cluster_fe_saved-n983040-k10-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 246360063,
+      "parent": 246360063
+    },
+    "run": "inputunroll4-final-a-cluster_fe_saved-n983040-k10-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 246360063,
+      "parent": 246360063
+    },
+    "run": "inputunroll4-final-a-cluster_fe_saved-n983040-k10-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 934511969,
+      "parent": 934511969
+    },
+    "run": "inputunroll4-final-a-cluster_fe_saved-n983040-k50-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 934511969,
+      "parent": 934511969
+    },
+    "run": "inputunroll4-final-a-cluster_fe_saved-n983040-k50-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 934511969,
+      "parent": 934511969
+    },
+    "run": "inputunroll4-final-a-cluster_fe_saved-n983040-k50-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 934511969,
+      "parent": 934511969
+    },
+    "run": "inputunroll4-final-a-cluster_fe_saved-n983040-k50-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 934511969,
+      "parent": 934511969
+    },
+    "run": "inputunroll4-final-a-cluster_fe_saved-n983040-k50-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 233169535,
+      "parent": 233169535
+    },
+    "run": "inputunroll4-final-a-iid-n983040-k10-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 233169535,
+      "parent": 233169535
+    },
+    "run": "inputunroll4-final-a-iid-n983040-k10-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 233169535,
+      "parent": 233169535
+    },
+    "run": "inputunroll4-final-a-iid-n983040-k10-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 233169535,
+      "parent": 233169535
+    },
+    "run": "inputunroll4-final-a-iid-n983040-k10-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 233169535,
+      "parent": 233169535
+    },
+    "run": "inputunroll4-final-a-iid-n983040-k10-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925859855,
+      "parent": 925859855
+    },
+    "run": "inputunroll4-final-a-iid-n983040-k50-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925859855,
+      "parent": 925859855
+    },
+    "run": "inputunroll4-final-a-iid-n983040-k50-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925859855,
+      "parent": 925859855
+    },
+    "run": "inputunroll4-final-a-iid-n983040-k50-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925859855,
+      "parent": 925859855
+    },
+    "run": "inputunroll4-final-a-iid-n983040-k50-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925859855,
+      "parent": 925859855
+    },
+    "run": "inputunroll4-final-a-iid-n983040-k50-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 240247605,
+      "parent": 240247605
+    },
+    "run": "inputunroll4-final-a-iid_outputs-n983040-k10-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 240247605,
+      "parent": 240247605
+    },
+    "run": "inputunroll4-final-a-iid_outputs-n983040-k10-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 240247605,
+      "parent": 240247605
+    },
+    "run": "inputunroll4-final-a-iid_outputs-n983040-k10-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 240247605,
+      "parent": 240247605
+    },
+    "run": "inputunroll4-final-a-iid_outputs-n983040-k10-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 240247605,
+      "parent": 240247605
+    },
+    "run": "inputunroll4-final-a-iid_outputs-n983040-k10-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 932938085,
+      "parent": 932938085
+    },
+    "run": "inputunroll4-final-a-iid_outputs-n983040-k50-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 932938085,
+      "parent": 932938085
+    },
+    "run": "inputunroll4-final-a-iid_outputs-n983040-k50-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 932938085,
+      "parent": 932938085
+    },
+    "run": "inputunroll4-final-a-iid_outputs-n983040-k50-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 932938085,
+      "parent": 932938085
+    },
+    "run": "inputunroll4-final-a-iid_outputs-n983040-k50-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 932938085,
+      "parent": 932938085
+    },
+    "run": "inputunroll4-final-a-iid_outputs-n983040-k50-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 240247605,
+      "parent": 240247605
+    },
+    "run": "inputunroll4-final-a-iid_saved-n983040-k10-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 240247605,
+      "parent": 240247605
+    },
+    "run": "inputunroll4-final-a-iid_saved-n983040-k10-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 240247605,
+      "parent": 240247605
+    },
+    "run": "inputunroll4-final-a-iid_saved-n983040-k10-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 240247605,
+      "parent": 240247605
+    },
+    "run": "inputunroll4-final-a-iid_saved-n983040-k10-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 240247605,
+      "parent": 240247605
+    },
+    "run": "inputunroll4-final-a-iid_saved-n983040-k10-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 932938085,
+      "parent": 932938085
+    },
+    "run": "inputunroll4-final-a-iid_saved-n983040-k50-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 932938085,
+      "parent": 932938085
+    },
+    "run": "inputunroll4-final-a-iid_saved-n983040-k50-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 932938085,
+      "parent": 932938085
+    },
+    "run": "inputunroll4-final-a-iid_saved-n983040-k50-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 932938085,
+      "parent": 932938085
+    },
+    "run": "inputunroll4-final-a-iid_saved-n983040-k50-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 932938085,
+      "parent": 932938085
+    },
+    "run": "inputunroll4-final-a-iid_saved-n983040-k50-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 233169711,
+      "parent": 233169711
+    },
+    "run": "inputunroll4-final-a-robust-n983040-k10-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 233169711,
+      "parent": 233169711
+    },
+    "run": "inputunroll4-final-a-robust-n983040-k10-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 233169711,
+      "parent": 233169711
+    },
+    "run": "inputunroll4-final-a-robust-n983040-k10-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 233169711,
+      "parent": 233169711
+    },
+    "run": "inputunroll4-final-a-robust-n983040-k10-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 233169711,
+      "parent": 233169711
+    },
+    "run": "inputunroll4-final-a-robust-n983040-k10-r5-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925860671,
+      "parent": 925860671
+    },
+    "run": "inputunroll4-final-a-robust-n983040-k50-r1-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925860671,
+      "parent": 925860671
+    },
+    "run": "inputunroll4-final-a-robust-n983040-k50-r2-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925860671,
+      "parent": 925860671
+    },
+    "run": "inputunroll4-final-a-robust-n983040-k50-r3-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925860671,
+      "parent": 925860671
+    },
+    "run": "inputunroll4-final-a-robust-n983040-k50-r4-inputunroll4"
+  },
+  {
+    "identical": true,
+    "peaks": {
+      "candidate": 925860671,
+      "parent": 925860671
+    },
+    "run": "inputunroll4-final-a-robust-n983040-k50-r5-inputunroll4"
+  }
+]

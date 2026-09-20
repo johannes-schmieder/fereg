@@ -272,7 +272,19 @@ ST_int fereg_spi_vdata_rows(
     if (reader == NULL) return FEREG_SPI_RC_UNAVAILABLE;
     *missing_value = SV_missval;
     for (observation = 0; observation < observation_count; ++observation) {
-        for (variable = 0; variable < variable_count; ++variable) {
+        /* The bounded main loop needs one width check per four SDK calls.
+           Each call still returns immediately on failure, in scalar order. */
+        for (variable = 0; variable + 3 < variable_count; variable += 4) {
+            rc = reader(variables[variable], first_observation + observation, values++);
+            if (rc != 0) return rc;
+            rc = reader(variables[variable + 1], first_observation + observation, values++);
+            if (rc != 0) return rc;
+            rc = reader(variables[variable + 2], first_observation + observation, values++);
+            if (rc != 0) return rc;
+            rc = reader(variables[variable + 3], first_observation + observation, values++);
+            if (rc != 0) return rc;
+        }
+        for (; variable < variable_count; ++variable) {
             rc = reader(variables[variable], first_observation + observation, values++);
             if (rc != 0) return rc;
         }

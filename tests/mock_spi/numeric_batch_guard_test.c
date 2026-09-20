@@ -127,6 +127,30 @@ int main(void)
     failure_at = 5;
     assert(fereg_spi_vdata_rows(vars, 3, 1, 4, rows, &missing) == 919);
     assert(calls == 5 && rows[0] == 400001 && rows[3] == 400002 && rows[12] == -77);
+    for (int width = 1; width <= 64; ++width) {
+        const int order[] = {4, 1, 2};
+        int positions[64];
+        double batch[3 * 64 + 1];
+        for (int j = 0; j < width; ++j) positions[j] = order[j % 3];
+        for (int edge = 0; edge < 2; ++edge) {
+            const int first = edge == 0 ? 1 : 65538;
+            calls = 0; failure_at = 0;
+            for (int j = 0; j <= 3 * width; ++j) batch[j] = -77;
+            assert(fereg_spi_vdata_rows(positions, width, first, 3, batch, &missing) == 0);
+            assert(calls == 3 * width && batch[3 * width] == -77);
+            for (int j = 0; j < 3 * width; ++j)
+                assert(batch[j] == positions[j % width] * 100000 + first + j / width);
+            for (int failure = 1; failure <= 3 * width; ++failure) {
+                calls = 0; failure_at = failure;
+                for (int j = 0; j <= 3 * width; ++j) batch[j] = -77;
+                assert(fereg_spi_vdata_rows(positions, width, first, 3, batch, &missing) == 919);
+                assert(calls == failure);
+                for (int j = 0; j < failure - 1; ++j)
+                    assert(batch[j] == positions[j % width] * 100000 + first + j / width);
+                for (int j = failure - 1; j <= 3 * width; ++j) assert(batch[j] == -77);
+            }
+        }
+    }
     puts("INPUT_GUARD_PASS");
     const double *outputs[] = {a, b, c};
     assert(store_calls == 0);

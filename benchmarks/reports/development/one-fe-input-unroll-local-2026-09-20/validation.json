@@ -1,0 +1,69 @@
+{
+  "abi": "pass",
+  "application_calls": 616,
+  "base_commit": "6f3fd059d6244acbfd7efb70b695a004254459f7",
+  "exact_nonself_native_comparisons": 303,
+  "exact_saved_output_bundles": 109,
+  "fixtures": [
+    {
+      "fixture": "development/ols_native_input.do",
+      "fixture_sentinel": "END_FIXTURE|ols_native_input|rc=0",
+      "process_returncode": 0,
+      "sha256": "06382ca0558cddcf42c75f1b63c866e90b92853a8bd4a2d29a292ff44e9212e1",
+      "status": "pass",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "development/candidate_input_oracle.do",
+      "fixture_sentinel": "END_FIXTURE|candidate_input_oracle|rc=0",
+      "process_returncode": 0,
+      "sha256": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+      "status": "pass",
+      "terminal_sentinel": true
+    },
+    {
+      "fixture": "installation/estimate_ols_eclass_transaction.do",
+      "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+      "process_returncode": 0,
+      "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+      "status": "pass",
+      "terminal_sentinel": true
+    }
+  ],
+  "guard_setup_failure": "Initial direct invocation exited 126 because the script was not executable; explicit bash invocation passed.",
+  "identical_parent_native_allocation_peaks": 270,
+  "implementation_unchanged_between_final_blocks": true,
+  "logs": {
+    "breadth-input-unroll-guard-20260920.log": "3a5630cdde2aa0a9169ee134ed1a79ead2075b5aa4405fa50bcc480dc92fa9b1",
+    "breadth-input-unroll-guard-bash-20260920.log": "21cc387ac57b6b8ad6ab9b7cbed774d22590a280ba5f05d0dd8b8b95348cf59d",
+    "breadth-input-unroll4-guard-20260920.log": "21cc387ac57b6b8ad6ab9b7cbed774d22590a280ba5f05d0dd8b8b95348cf59d",
+    "build-inputunroll.log": "42d655facda4ca250844231f5a41cac594105b335300b735eaf7cf0b9bbe9eb5",
+    "build-inputunroll.stdout.txt": "52e4b09dbc0248f6a6b7e0bc6e9b98bfa6f7d652a6d00aed0d3e4cc350050474",
+    "build-inputunroll4.log": "fca3a5fb5c46cef99e92c5315225def16a28c11094faf39eae757566b53fc00f",
+    "build-inputunroll4.stdout.txt": "59114a8b557a49f4965b663a50fc8f5321d3f753b7789e95a13608f1512eb1b8"
+  },
+  "maximum_control_native_allocation_ratio": 1.0,
+  "mock_spi": {
+    "errors": "Every read position injected; all subsequent destinations remain untouched",
+    "first_observations": [
+      1,
+      65538
+    ],
+    "rows": 3,
+    "sanitizer": "undefined",
+    "status": "pass",
+    "width_range": [
+      1,
+      64
+    ]
+  },
+  "overlays": {
+    "plugin/stata_bridge.c": "f822689a1e257a5731dadc4a6b143b1a11cd063bd9ed63f1298bd48cf59e78a7",
+    "tests/mock_spi/numeric_batch_guard_test.c": "d2778759069bb82ace9c479d1e35efd82b1e77e891404e08b08d52da359e8399"
+  },
+  "plugin": "4437ffac11ed4018ced4cadf934d82cbe9bc09eaaa44505d446d50de5e86abb7",
+  "scope": "Local Mac one-FE OLS development benchmark; no release or cross-platform qualification",
+  "source_date_note": "Build helper embeds September 19; execution and collection occurred September 20.",
+  "source_files_verified": 512,
+  "status": "pass: frozen local development acceptance"
+}

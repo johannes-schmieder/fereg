@@ -1,0 +1,1302 @@
+[
+  {
+    "actual": "inputunroll4-final-a-cluster2_cross-n983040-k10-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_cross-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_cross-n983040-k10-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_cross-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_cross-n983040-k10-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_cross-n983040-k10-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_cross-n983040-k10-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_cross-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_cross-n983040-k10-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_cross-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_cross-n983040-k50-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_cross-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_cross-n983040-k50-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_cross-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_cross-n983040-k50-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_cross-n983040-k50-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_cross-n983040-k50-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_cross-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_cross-n983040-k50-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_cross-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_nested-n983040-k10-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_nested-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_nested-n983040-k10-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_nested-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_nested-n983040-k10-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_nested-n983040-k10-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_nested-n983040-k10-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_nested-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_nested-n983040-k10-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_nested-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_nested-n983040-k50-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_nested-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_nested-n983040-k50-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_nested-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_nested-n983040-k50-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_nested-n983040-k50-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_nested-n983040-k50-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_nested-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_nested-n983040-k50-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster2_nested-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_saved-n983040-k10-r1-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster2_saved-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_saved-n983040-k10-r2-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster2_saved-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_saved-n983040-k10-r3-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster2_saved-n983040-k10-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_saved-n983040-k10-r4-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster2_saved-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_saved-n983040-k10-r5-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster2_saved-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_saved-n983040-k50-r1-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster2_saved-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_saved-n983040-k50-r2-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster2_saved-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_saved-n983040-k50-r3-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster2_saved-n983040-k50-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_saved-n983040-k50-r4-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster2_saved-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster2_saved-n983040-k50-r5-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster2_saved-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_cross-n983040-k10-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_cross-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_cross-n983040-k10-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_cross-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_cross-n983040-k10-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_cross-n983040-k10-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_cross-n983040-k10-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_cross-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_cross-n983040-k10-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_cross-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_cross-n983040-k50-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_cross-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_cross-n983040-k50-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_cross-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_cross-n983040-k50-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_cross-n983040-k50-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_cross-n983040-k50-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_cross-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_cross-n983040-k50-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_cross-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe-n983040-k10-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_fe-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe-n983040-k10-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_fe-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe-n983040-k10-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_fe-n983040-k10-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe-n983040-k10-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_fe-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe-n983040-k10-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_fe-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe-n983040-k50-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_fe-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe-n983040-k50-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_fe-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe-n983040-k50-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_fe-n983040-k50-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe-n983040-k50-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_fe-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe-n983040-k50-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-cluster_fe-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe_saved-n983040-k10-r1-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster_fe_saved-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe_saved-n983040-k10-r2-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster_fe_saved-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe_saved-n983040-k10-r3-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster_fe_saved-n983040-k10-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe_saved-n983040-k10-r4-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster_fe_saved-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe_saved-n983040-k10-r5-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster_fe_saved-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe_saved-n983040-k50-r1-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster_fe_saved-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe_saved-n983040-k50-r2-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster_fe_saved-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe_saved-n983040-k50-r3-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster_fe_saved-n983040-k50-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe_saved-n983040-k50-r4-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster_fe_saved-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-cluster_fe_saved-n983040-k50-r5-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-cluster_fe_saved-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid-n983040-k10-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-iid-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid-n983040-k10-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-iid-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid-n983040-k10-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-iid-n983040-k10-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid-n983040-k10-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-iid-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid-n983040-k10-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-iid-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid-n983040-k50-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-iid-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid-n983040-k50-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-iid-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid-n983040-k50-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-iid-n983040-k50-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid-n983040-k50-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-iid-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid-n983040-k50-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-iid-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_outputs-n983040-k10-r1-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_outputs-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_outputs-n983040-k10-r2-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_outputs-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_outputs-n983040-k10-r3-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_outputs-n983040-k10-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_outputs-n983040-k10-r4-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_outputs-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_outputs-n983040-k10-r5-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_outputs-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_outputs-n983040-k50-r1-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_outputs-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_outputs-n983040-k50-r2-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_outputs-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_outputs-n983040-k50-r3-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_outputs-n983040-k50-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_outputs-n983040-k50-r4-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_outputs-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_outputs-n983040-k50-r5-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_outputs-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_saved-n983040-k10-r1-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_saved-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_saved-n983040-k10-r2-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_saved-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_saved-n983040-k10-r3-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_saved-n983040-k10-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_saved-n983040-k10-r4-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_saved-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_saved-n983040-k10-r5-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_saved-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_saved-n983040-k50-r1-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_saved-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_saved-n983040-k50-r2-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_saved-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_saved-n983040-k50-r3-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_saved-n983040-k50-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_saved-n983040-k50-r4-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_saved-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-iid_saved-n983040-k50-r5-inputunroll4",
+    "outputs_byte_exact": true,
+    "reference": "batch-store-breadth-regression-iid_saved-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-robust-n983040-k10-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-robust-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-robust-n983040-k10-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-robust-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-robust-n983040-k10-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-robust-n983040-k10-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-robust-n983040-k10-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-robust-n983040-k10-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-robust-n983040-k10-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-robust-n983040-k10-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-robust-n983040-k50-r1-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-robust-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-robust-n983040-k50-r2-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-robust-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-robust-n983040-k50-r3-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-robust-n983040-k50-r3-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-robust-n983040-k50-r4-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-robust-n983040-k50-r1-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  },
+  {
+    "actual": "inputunroll4-final-a-robust-n983040-k50-r5-inputunroll4",
+    "outputs_byte_exact": null,
+    "reference": "batch-store-breadth-regression-robust-n983040-k50-r2-batchstorechecked",
+    "science": {
+      "errors": {
+        "coefficients.csv:se": 0.0,
+        "coefficients.csv:value": 0.0,
+        "covariance.csv:value": 0.0
+      },
+      "sample_exact": true
+    }
+  }
+]

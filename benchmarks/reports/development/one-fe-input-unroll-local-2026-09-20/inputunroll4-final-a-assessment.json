@@ -1,0 +1,188 @@
+{
+  "cells": [
+    {
+      "case": "cluster2_cross",
+      "fereg_median_ms": 160.0,
+      "fixest_median_ms": 258.0,
+      "k": 10,
+      "median_paired_ratio": 0.6254826254826255,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster2_cross",
+      "fereg_median_ms": 550.9999999999999,
+      "fixest_median_ms": 1333.0,
+      "k": 50,
+      "median_paired_ratio": 0.4133533383345837,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster2_nested",
+      "fereg_median_ms": 148.0,
+      "fixest_median_ms": 236.0,
+      "k": 10,
+      "median_paired_ratio": 0.6239316239316238,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster2_nested",
+      "fereg_median_ms": 568.0000000000001,
+      "fixest_median_ms": 1246.0,
+      "k": 50,
+      "median_paired_ratio": 0.45746388443017655,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster2_saved",
+      "fereg_median_ms": 194.0,
+      "fixest_median_ms": 325.0,
+      "k": 10,
+      "median_paired_ratio": 0.5907692307692307,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster2_saved",
+      "fereg_median_ms": 599.0,
+      "fixest_median_ms": 1363.0,
+      "k": 50,
+      "median_paired_ratio": 0.4402930402930403,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster_cross",
+      "fereg_median_ms": 129.0,
+      "fixest_median_ms": 180.0,
+      "k": 10,
+      "median_paired_ratio": 0.6944444444444444,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster_cross",
+      "fereg_median_ms": 488.0,
+      "fixest_median_ms": 821.0,
+      "k": 50,
+      "median_paired_ratio": 0.5931790499390986,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster_fe",
+      "fereg_median_ms": 118.0,
+      "fixest_median_ms": 180.0,
+      "k": 10,
+      "median_paired_ratio": 0.6611111111111111,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster_fe",
+      "fereg_median_ms": 473.0,
+      "fixest_median_ms": 927.0,
+      "k": 50,
+      "median_paired_ratio": 0.5016251354279523,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster_fe_saved",
+      "fereg_median_ms": 146.0,
+      "fixest_median_ms": 254.0,
+      "k": 10,
+      "median_paired_ratio": 0.5748031496062992,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "cluster_fe_saved",
+      "fereg_median_ms": 504.0,
+      "fixest_median_ms": 998.0,
+      "k": 50,
+      "median_paired_ratio": 0.5040080160320641,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "iid",
+      "fereg_median_ms": 104.0,
+      "fixest_median_ms": 141.0,
+      "k": 10,
+      "median_paired_ratio": 0.7304964539007093,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "iid",
+      "fereg_median_ms": 374.0,
+      "fixest_median_ms": 455.0,
+      "k": 50,
+      "median_paired_ratio": 0.8201754385964912,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "iid_outputs",
+      "fereg_median_ms": 166.0,
+      "fixest_median_ms": 223.0,
+      "k": 10,
+      "median_paired_ratio": 0.7443946188340808,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "iid_outputs",
+      "fereg_median_ms": 450.0,
+      "fixest_median_ms": 530.0,
+      "k": 50,
+      "median_paired_ratio": 0.8442776735459662,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "iid_saved",
+      "fereg_median_ms": 124.0,
+      "fixest_median_ms": 217.0,
+      "k": 10,
+      "median_paired_ratio": 0.5599999999999999,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "iid_saved",
+      "fereg_median_ms": 394.0,
+      "fixest_median_ms": 523.0,
+      "k": 50,
+      "median_paired_ratio": 0.7523629489603024,
+      "pass_margin": true,
+      "wins": 4
+    },
+    {
+      "case": "robust",
+      "fereg_median_ms": 119.0,
+      "fixest_median_ms": 170.0,
+      "k": 10,
+      "median_paired_ratio": 0.7017543859649122,
+      "pass_margin": true,
+      "wins": 5
+    },
+    {
+      "case": "robust",
+      "fereg_median_ms": 491.0,
+      "fixest_median_ms": 863.0,
+      "k": 50,
+      "median_paired_ratio": 0.5649651972157772,
+      "pass_margin": true,
+      "wins": 5
+    }
+  ],
+  "label": "inputunroll4-final-a",
+  "margin_pass": true,
+  "maximum_cell_ratio": 0.8442776735459662,
+  "wins": 99
+}
