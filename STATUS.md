@@ -10,6 +10,30 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: routing diagnostics — 2026-09-20
+
+The [forced-solver report](benchmarks/reports/development/two-fe-narrow-solvers-local-2026-09-20/README.md)
+records thirty successful K=6 degree-three, degree-six and unbalanced calls,
+unit/AW, at N=245,760. Auto is fastest in all six cells; every scientific
+comparison passes. A simple forced-family substitution cannot close these
+gaps. The next route work should target duplicate Schur probe/initialization.
+
+The narrow-input prototype remains unaccepted. Its 107-call first screen
+preserves all scientific files exactly but is mostly neutral: an inner core
+width guard discarded the newly loaded RHS. The corrected candidate now
+widens only loaded-RHS binding; predictor, residual and ordinary RHS guards
+stay unchanged. Its pointer-reuse and weighted tests plus artifact build are
+running in `target/two-fe-broad-20260920` (sessions 76727 and 44788).
+Retain the first screen under the uncommitted narrow-input report. The final
+candidate still needs measured gains and completed-artifact fixtures.
+
+`broad_holdouts.json` predeclares sixteen fresh-seed cells without replacing
+the original 77. `score.py` mechanically verifies timing/input/sample/artifact
+identities and retains every failure; it reproduces 69 wins, one tie and seven
+losses on the completed screen and does not adjudicate scientific acceptance.
+The full goal, 111 controls and two final five-pair blocks remain active.
+No installed package, remote state or qualification changed.
+
 ## Broad two-way OLS milestone: weighted cache checkpoint — 2026-09-20
 
 The [weighted-cache report](benchmarks/reports/development/two-fe-weighted-edge-cache-local-2026-09-20/README.md)
