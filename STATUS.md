@@ -10,6 +10,35 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: weighted statistics profile — 2026-09-20
+
+The [weighted statistics profile](benchmarks/reports/development/two-fe-weighted-statistics-profile-local-2026-09-20/README.md)
+records eight successful diagnostic calls and four bitwise-exact native
+scientific pairs. It instruments only an isolated copy of
+`prepared_unadjusted.rs`; production remains `3ea948de`. The reusable builder
+now supports `--profile-statistics`. Plugin
+`59c6a80b4c8eb460ffc93ed64cf539852dae335107cb86bb322f0c347f75e564`
+uses base `3ea948de`; 515 source files remain unchanged and the one-file
+instrumentation replays exactly. Actual ABI/panic checks pass. All processes
+have completed; no production algorithm or installed package changed.
+
+Large shuffled AW IID spends 10.309 ms in weight validation/scaling and
+10.248 ms in outcome statistics; RSS already overlaps the latter and costs
+4.404 ms. Degree-six AW at N=245760 has corresponding 2.668/2.668/1.140 ms
+phases. FW weight reporting alone costs 20.218 ms. Next test overlapping
+independent weight-report scans AND outcome statistics with fitting, with
+scalar same-call state and original deferred error order. Validate fitted
+scale bits before accepting speculative TSS. Its multiplier must use the
+same direct compensated normalized sum as the fit, not a raw-sum multiply/
+divide round trip. Preserve the original scan on a scale mismatch. Then
+reduce duplicate Schur probe/initialization and fuse left-mean restoration
+with reconstruction. These are proposals, not implemented optimizations.
+
+The full goal remains active: 111 native controls, sixteen fresh holdouts and
+two final five-pair blocks are outstanding. Raw work remains
+`target/two-fe-broad-20260920`; preserve unrelated dirt. No remote state or
+qualification changed.
+
 ## Broad two-way OLS milestone: compact weighted cache — 2026-09-20
 
 The [compact weighted-cache report](benchmarks/reports/development/two-fe-weighted-both-cache-local-2026-09-20/README.md)

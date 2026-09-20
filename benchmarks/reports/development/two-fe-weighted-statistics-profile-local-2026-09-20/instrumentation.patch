@@ -1,0 +1,72 @@
+--- a/crates/fereg-core/src/ols/prepared_unadjusted.rs
++++ b/crates/fereg-core/src/ols/prepared_unadjusted.rs
+@@ -658,8 +658,11 @@
+     let total_started = Instant::now();
+     let phase_started = Instant::now();
+     validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() { eprintln!("FEREG_PHASE|statistics_fit_dof_validation|seconds={:.9}", phase_started.elapsed().as_secs_f64()); }
++    let profile_weight_report = Instant::now();
+     let (weights, weight_view, weight_sum_relative_error) =
+         build_reference_weight_report_view(prepared, &fit, tolerance, false)?;
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() { eprintln!("FEREG_PHASE|statistics_weight_report|seconds={:.9}", profile_weight_report.elapsed().as_secs_f64()); }
+     let mut dof = build_residual_dof_view(prepared, &fit, absorbed_dof, weights)?;
+     if perturbations.residual_dof {
+         dof.residual_dof = dof
+@@ -939,6 +942,7 @@
+     f64,
+ )> {
+     let nobs = prepared.fit_sample().n_active();
++    let profile_weight_domain = Instant::now();
+     let bread_scale = fit.bread().weight_scale();
+     let nobs_f64 = exact_integer_as_f64(nobs as u128)?;
+     let (kind, values, effective, raw_weight_sum, expected_divisor, expected_multiplier) =
+@@ -961,7 +965,10 @@
+                 {
+                     return Err(invalid_data("prepared iid weight normalization is invalid"));
+                 }
++if std::env::var_os("FEREG_PHASE_TIMING").is_some() { eprintln!("FEREG_PHASE|statistics_weight_domain_scale|seconds={:.9}", profile_weight_domain.elapsed().as_secs_f64()); }
++                let profile_raw_sum = Instant::now();
+                 let raw_sum = positive_sum_scaled(values, divisor)?;
++                if std::env::var_os("FEREG_PHASE_TIMING").is_some() { eprintln!("FEREG_PHASE|statistics_weight_raw_sum|seconds={:.9}", profile_raw_sum.elapsed().as_secs_f64()); }
+                 match kind {
+                     WeightKind::Frequency => {
+                         let mut sum = 0_u128;
+@@ -1061,7 +1068,9 @@
+         divisor: bread_scale.solver_weight_divisor,
+         multiplier: bread_scale.reference_weight_multiplier,
+     };
++    let profile_reference_sum = Instant::now();
+     let computed_sum = reference_weight_sum(view, nobs)?;
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() { eprintln!("FEREG_PHASE|statistics_weight_reference_sum|seconds={:.9}", profile_reference_sum.elapsed().as_secs_f64()); }
+     let computed_error = relative_difference(computed_sum, effective_f64, effective_f64.max(1.0))?;
+     if computed_error > tolerance {
+         return Err(invalid_data(
+@@ -1774,7 +1783,12 @@
+     has_intercept: bool,
+ ) -> Result<(f64, f64)> {
+     let tss = || independent_outcome_sum(outcome, weight_view, has_intercept);
+-    let rss = || weighted_sum_of_squares(residuals, weight_view, 0.0);
++    let rss = || {
++        let profile_rss = Instant::now();
++        let result = weighted_sum_of_squares(residuals, weight_view, 0.0);
++        if std::env::var_os("FEREG_PHASE_TIMING").is_some() { eprintln!("FEREG_PHASE|statistics_rss|seconds={:.9}", profile_rss.elapsed().as_secs_f64()); }
++        result
++    };
+     // These certificates use separate source/residual scans. Overlap their
+     // work without changing either reduction or the established error order.
+     let (tss_result, rss_result) = if outcome.len() >= 16_384
+@@ -1792,8 +1806,13 @@
+     weights: ReferenceWeightView<'_>,
+     has_intercept: bool,
+ ) -> Result<f64> {
++    let profile_mean = Instant::now();
+     let mean = weighted_mean(outcome, weights)?;
+-    weighted_sum_of_squares(outcome, weights, if has_intercept { mean } else { 0.0 })
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() { eprintln!("FEREG_PHASE|statistics_outcome_mean|seconds={:.9}", profile_mean.elapsed().as_secs_f64()); }
++    let profile_outcome_sum = Instant::now();
++    let result = weighted_sum_of_squares(outcome, weights, if has_intercept { mean } else { 0.0 });
++    if std::env::var_os("FEREG_PHASE_TIMING").is_some() { eprintln!("FEREG_PHASE|statistics_outcome_squares|seconds={:.9}", profile_outcome_sum.elapsed().as_secs_f64()); }
++    result
+ }
+ 
+ pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) -> Result<f64> {

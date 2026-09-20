@@ -15,7 +15,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False):
+def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False):
     root = root.resolve()
     source = root / name
     source.mkdir(parents=True, exist_ok=False)
@@ -40,6 +40,9 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         probes = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probes)
         probes.instrument(source)
+    if profile_statistics:
+        from statistics_profile import instrument
+        instrument(source)
     hashes = {str(p.relative_to(source)): sha(p) for p in sorted(source.rglob("*")) if p.is_file()}
     target = root / ("cargo-" + name)
     env = dict(os.environ, DEVELOPER_DIR="/Library/Developer/CommandLineTools",
@@ -69,6 +72,8 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         identity.setdefault("diagnostics", []).append("completion_phases")
     if profile_breadth:
         identity.setdefault("diagnostics", []).append("breadth_phases")
+    if profile_statistics:
+        identity.setdefault("diagnostics", []).append("weighted_statistics_phases")
     (root / ("identity-" + name + ".json")).write_text(json.dumps(identity, indent=2) + "\n")
     print("BUILD_PASS", name, identity["plugin"], flush=True)
 
@@ -82,5 +87,6 @@ if __name__ == "__main__":
     p.add_argument("--profile-preparation", action="store_true")
     p.add_argument("--profile-completion", action="store_true")
     p.add_argument("--profile-breadth", action="store_true")
+    p.add_argument("--profile-statistics", action="store_true")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics)
