@@ -1,0 +1,1934 @@
+{
+  "broad-screen-c000": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 6.099721422403448e-16,
+              "coefficients.csv:value": 2.9370950116458516e-13,
+              "covariance.csv:value": 8.124104755352808e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c001": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.9006064083670893e-16,
+              "coefficients.csv:value": 1.5898393712632242e-13,
+              "covariance.csv:value": 1.590304358469949e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c002": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 3,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 7.100440027607569e-16,
+              "coefficients.csv:value": 2.7938762414692064e-13,
+              "covariance.csv:value": 8.370803101240623e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c003": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 3,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.8995222061946038e-16,
+              "coefficients.csv:value": 2.4300006451483114e-14,
+              "covariance.csv:value": 2.0005859422962506e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c004": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.209969624493823e-15,
+              "coefficients.csv:value": 4.3699766028026943e-13,
+              "covariance.csv:value": 1.4200507360718345e-18
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c005": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.999987411267391e-16,
+              "coefficients.csv:value": 3.702593787124897e-14,
+              "covariance.csv:value": 2.09058319294202e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c006": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.999596636833807e-16,
+              "coefficients.csv:value": 3.598996101139562e-13,
+              "covariance.csv:value": 1.1193540397965579e-18
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c007": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.8317087484374245e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c008": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 13,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 5.100087019371813e-16,
+              "coefficients.csv:value": 2.26929586233382e-13,
+              "covariance.csv:value": 6.18704628410063e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c009": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 13,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.9006064083670893e-16,
+              "coefficients.csv:value": 1.0189071808497374e-13,
+              "covariance.csv:value": 2.185874399508129e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c010": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.010042743887496e-15,
+              "coefficients.csv:value": 4.3579896635836946e-13,
+              "covariance.csv:value": 1.1835697251102745e-18
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c011": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.999987411267391e-16,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 2.967262293350221e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c012": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 8.915899702560681e-13,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.0710196928482674e-15
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c013": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster_fe",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 7.395900298440283e-13,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.448007044744085e-15
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c014": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster_cross",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3809599947942064e-11,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.7698356743526605e-14
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c015": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_cross",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.687489994342458e-11,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 4.5340448274545816e-14
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c016": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_nested",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.833380004143432e-11,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 3.4510618318417077e-14
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c017": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.97326154838251e-06,
+              1.973261530591186e-06
+            ],
+            "mismatched_values": [
+              951495,
+              966998
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.8475906161984426e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c018": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.97326154838251e-06,
+              1.973261530591186e-06,
+              1.6026017730652597e-06,
+              1.6475709685437323e-13,
+              1.6026017730652597e-06
+            ],
+            "mismatched_values": [
+              951495,
+              966998,
+              432182,
+              0,
+              256152
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.8475906161984426e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c019": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.5453900095371842e-12,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 2.09580417498872e-15
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c020": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster_fe",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.8773899495709854e-12,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 4.201187560866237e-15
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c021": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster_cross",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.846750999333959e-11,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 4.624540186412896e-14
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c022": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_cross",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 6.632589995888422e-11,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 1.0195944480637546e-13
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c023": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_nested",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 5.7455900063715926e-11,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 7.839853610721335e-14
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c024": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              2.2619998605033498e-06,
+              2.2619997056549934e-06
+            ],
+            "mismatched_values": [
+              954885,
+              969250
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.999987411267391e-16,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 3.052494983667685e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c025": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              2.2619998605033498e-06,
+              2.2619997056549934e-06,
+              1.7089190010866062e-06,
+              9.668932321460488e-13,
+              1.7089190010866062e-06
+            ],
+            "mismatched_values": [
+              954885,
+              969250,
+              446844,
+              0,
+              282536
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.999987411267391e-16,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 3.052494983667685e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c026": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 8.915899702560681e-13,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.0710196928482674e-15
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c027": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster_fe",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 7.395900298440283e-13,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.448007044744085e-15
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c028": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_cross",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.687489994342458e-11,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 4.5340448274545816e-14
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c029": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.97326154838251e-06,
+              1.973261530591186e-06
+            ],
+            "mismatched_values": [
+              951495,
+              966998
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.688591001648617e-11,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 4.5353974173103606e-14
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c030": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.5453900095371842e-12,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 2.09580417498872e-15
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c031": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster_fe",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.8773899495709854e-12,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 4.201187560866237e-15
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c032": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_cross",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 6.632589995888422e-11,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 1.0195944480637546e-13
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c033": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              2.2619998605033498e-06,
+              2.2619997056549934e-06
+            ],
+            "mismatched_values": [
+              954885,
+              969250
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 6.632939998033743e-11,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 1.0193632127013656e-13
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c034": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 4.6074255521943996e-14,
+              "covariance.csv:value": 4.50515648820881e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c035": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 8.998878031629687e-17,
+              "coefficients.csv:value": 8.57230952888699e-14,
+              "covariance.csv:value": 6.166931319554872e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c036": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.0379978127028622e-13,
+              "covariance.csv:value": 9.036152030802245e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c037": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.1650402864660236e-13,
+              "covariance.csv:value": 2.0106444585448954e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c038": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              3.984301693876757e-06,
+              3.984301471499085e-06,
+              3.684787123703348e-06,
+              1.0249578963339445e-12,
+              3.684787123647837e-06
+            ],
+            "mismatched_values": [
+              966185,
+              974701,
+              489766,
+              0,
+              356490
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.1650402864660236e-13,
+              "covariance.csv:value": 1.963528250853875e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c039": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.8995222061946038e-16,
+              "coefficients.csv:value": 2.2490342921344109e-13,
+              "covariance.csv:value": 1.7852033619299862e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c040": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              5.587084309366386e-06,
+              5.587083109076518e-06,
+              5.076470326048632e-06,
+              5.075273534771441e-12,
+              5.076470326104143e-06
+            ],
+            "mismatched_values": [
+              972160,
+              977161,
+              515733,
+              0,
+              412424
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.8995222061946038e-16,
+              "coefficients.csv:value": 2.2490342921344109e-13,
+              "covariance.csv:value": 1.7851674312721284e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c041": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 1 / 6 (16.7%)\nMismatch at index:\n [2]: 0.0993973208113896 (ACTUAL), 0.0993973353558206 (DESIRED)\nMax absolute difference among violations: 1.4544431e-08\nMax relative difference among violations: 1.46326166e-07\n ACTUAL: array([ 0.2995  , -0.102327,  0.099397, -0.048876,  0.060273, -0.031767])\n DESIRED: array([ 0.2995  , -0.102327,  0.099397, -0.048876,  0.060273, -0.031767])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c042": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.299787207233921 (ACTUAL), 0.299787172081566 (DESIRED)\n [1]: -0.1019711421023118 (ACTUAL), -0.101971084799084 (DESIRED)\n [2]: 0.0988425315285066 (ACTUAL), 0.0988426065269401 (DESIRED)\n [3]: -0.0482429484508644 (ACTUAL), -0.0482429586570002 (DESIRED)\n [4]: 0.05999758076083949 (ACTUAL), 0.0599975329127098 (DESIRED)\nMax absolute difference among violations: 1.46936549e-07\nMax relative difference among violations: 4.72927481e-06\n ACTUAL: array([ 0.299787, -0.101971,  0.098843, -0.048243,  0.059998, -0.031069])\n DESIRED: array([ 0.299787, -0.101971,  0.098843, -0.048243,  0.059998, -0.03107 ])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c043": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 43 / 50 (86%)\nFirst 5 mismatches are at indices:\n [1]: -0.01910752780284919 (ACTUAL), -0.0191075251147654 (DESIRED)\n [2]: 0.0283298908216284 (ACTUAL), 0.0283298773005846 (DESIRED)\n [3]: -0.0154214390069548 (ACTUAL), -0.0154214489191739 (DESIRED)\n [4]: 0.0245255022757162 (ACTUAL), 0.0245254966029469 (DESIRED)\n [5]: -0.0143138186919218 (ACTUAL), -0.0143138232024639 (DESIRED)\nMax absolute difference among violations: 1.77151527e-08\nMax relative difference among violations: 2.93793132e-06\n ACTUAL: array([ 0.299534, -0.019108,  0.02833 , -0.015421,  0.024526, -0.014314,\n        0.019629, -0.0131  ,  0.019375, -0.012596,  0.013369, -0.10231 ,\n       -0.009354,  0.015001, -0.011854,  0.012724, -0.007547,  0.010658,...\n DESIRED: array([ 0.299534, -0.019108,  0.02833 , -0.015421,  0.024525, -0.014314,\n        0.019629, -0.0131  ,  0.019375, -0.012596,  0.013369, -0.10231 ,\n       -0.009354,  0.015001, -0.011854,  0.012724, -0.007547,  0.010658,...",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c044": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 49 / 50 (98%)\nFirst 5 mismatches are at indices:\n [0]: 0.2998201451988797 (ACTUAL), 0.299820112883959 (DESIRED)\n [1]: -0.01879297017161599 (ACTUAL), -0.0187930422565982 (DESIRED)\n [2]: 0.02787041552508159 (ACTUAL), 0.0278703917811184 (DESIRED)\n [3]: -0.0153849846785274 (ACTUAL), -0.0153850063520556 (DESIRED)\n [4]: 0.02500635262907779 (ACTUAL), 0.0250063295876758 (DESIRED)\nMax absolute difference among violations: 4.63207957e-07\nMax relative difference among violations: 7.77197923e-05\n ACTUAL: array([ 0.29982 , -0.018793,  0.02787 , -0.015385,  0.025006, -0.014046,\n        0.018941, -0.011974,  0.019619, -0.013464,  0.014063, -0.101964,\n       -0.009794,  0.015442, -0.011217,  0.013413, -0.007685,  0.011207,...\n DESIRED: array([ 0.29982 , -0.018793,  0.02787 , -0.015385,  0.025006, -0.014046,\n        0.018941, -0.011973,  0.019619, -0.013464,  0.014063, -0.101964,\n       -0.009794,  0.015442, -0.011217,  0.013414, -0.007685,  0.011207,...",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c045": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.2999584048101198e-15,
+              "coefficients.csv:value": 3.9938885532109225e-13,
+              "covariance.csv:value": 3.332015856261604e-18
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c046": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.1011838102769076e-16,
+              "coefficients.csv:value": 1.2639889135357407e-13,
+              "covariance.csv:value": 5.48665591583973e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c047": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.21018646492832e-15,
+              "coefficients.csv:value": 4.021991073521747e-13,
+              "covariance.csv:value": 3.1170812458958252e-18
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c048": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.1011838102769076e-16,
+              "coefficients.csv:value": 1.506000185669265e-13,
+              "covariance.csv:value": 6.109225132071641e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c049": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 8.998878031629687e-17,
+              "coefficients.csv:value": 1.8318679906315083e-15,
+              "covariance.csv:value": 3.832824086325709e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c050": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 1.2490009027033011e-14,
+              "covariance.csv:value": 4.8492636230308694e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c051": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 3.101685575046531e-15,
+              "covariance.csv:value": 4.955142741437657e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c052": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 3.9968028886505635e-15,
+              "covariance.csv:value": 6.077461396549605e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c053": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002009204914771 (ACTUAL), 0.300200861752747 (DESIRED)\n [1]: -0.0999436979335804 (ACTUAL), -0.099943532417383 (DESIRED)\n [2]: 0.1008919937630139 (ACTUAL), 0.100892052676558 (DESIRED)\n [3]: -0.04987143988134529 (ACTUAL), -0.0498713673130152 (DESIRED)\n [4]: 0.05801980660843199 (ACTUAL), 0.0580198153790627 (DESIRED)\nMax absolute difference among violations: 1.73135074e-07\nMax relative difference among violations: 5.22280778e-06\n ACTUAL: array([ 0.300201, -0.099944,  0.100892, -0.049871,  0.05802 , -0.03315 ])\n DESIRED: array([ 0.300201, -0.099944,  0.100892, -0.049871,  0.05802 , -0.03315 ])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c054": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.2998475055209179 (ACTUAL), 0.299847968434586 (DESIRED)\n [1]: -0.0993339187527354 (ACTUAL), -0.0993333529708734 (DESIRED)\n [2]: 0.1015851583483346 (ACTUAL), 0.101585803285647 (DESIRED)\n [3]: -0.04972438062825469 (ACTUAL), -0.049723541445182 (DESIRED)\n [4]: 0.05873231718397269 (ACTUAL), 0.0587334254828105 (DESIRED)\nMax absolute difference among violations: 1.10829884e-06\nMax relative difference among violations: 1.88699847e-05\n ACTUAL: array([ 0.299848, -0.099334,  0.101585, -0.049724,  0.058732, -0.032739])\n DESIRED: array([ 0.299848, -0.099333,  0.101586, -0.049724,  0.058733, -0.032738])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c055": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 50 / 50 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3001846542790076 (ACTUAL), 0.300184613389025 (DESIRED)\n [1]: -0.0206093997482353 (ACTUAL), -0.0206094126893462 (DESIRED)\n [2]: 0.0263071342344189 (ACTUAL), 0.0263071747872608 (DESIRED)\n [3]: -0.01380103831229959 (ACTUAL), -0.013800978713352 (DESIRED)\n [4]: 0.0217761478938213 (ACTUAL), 0.0217760418172108 (DESIRED)\nMax absolute difference among violations: 2.866806e-07\nMax relative difference among violations: 7.50816239e-05\n ACTUAL: array([ 0.300185, -0.020609,  0.026307, -0.013801,  0.021776, -0.013899,\n        0.020346, -0.012829,  0.018242, -0.013066,  0.015469, -0.099934,\n       -0.011206,  0.015011, -0.011252,  0.013589, -0.010724,  0.012277,...\n DESIRED: array([ 0.300185, -0.020609,  0.026307, -0.013801,  0.021776, -0.013899,\n        0.020346, -0.012829,  0.018242, -0.013066,  0.015469, -0.099934,\n       -0.011206,  0.015011, -0.011252,  0.013589, -0.010724,  0.012277,...",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c056": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 50 / 50 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.2998485714859848 (ACTUAL), 0.299849115699816 (DESIRED)\n [1]: -0.02102013303258519 (ACTUAL), -0.0210201357893302 (DESIRED)\n [2]: 0.0263601615020482 (ACTUAL), 0.0263602373101185 (DESIRED)\n [3]: -0.0149044285058997 (ACTUAL), -0.014904357803782 (DESIRED)\n [4]: 0.02218183687505649 (ACTUAL), 0.022181667371085 (DESIRED)\nMax absolute difference among violations: 1.13707923e-06\nMax relative difference among violations: 0.00028178\n ACTUAL: array([ 0.299849, -0.02102 ,  0.02636 , -0.014904,  0.022182, -0.013324,\n        0.02015 , -0.012709,  0.018942, -0.012466,  0.015802, -0.099323,\n       -0.011334,  0.014854, -0.010558,  0.013854, -0.010736,  0.012563,...\n DESIRED: array([ 0.299849, -0.02102 ,  0.02636 , -0.014904,  0.022182, -0.013324,\n        0.02015 , -0.012709,  0.018942, -0.012467,  0.015802, -0.099322,\n       -0.011335,  0.014854, -0.010557,  0.013853, -0.010736,  0.012563,...",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c057": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.3099577806107163e-14,
+              "covariance.csv:value": 8.237395412048071e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c058": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.9992688060632702e-16,
+              "coefficients.csv:value": 7.360084763874397e-14,
+              "covariance.csv:value": 5.166900978251232e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c059": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.8900493109773606e-14,
+              "covariance.csv:value": 1.8253560013330172e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c060": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.1011838102769076e-16,
+              "coefficients.csv:value": 1.2280974848177806e-13,
+              "covariance.csv:value": 6.001228431296718e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c061": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 1.797173521111972e-15,
+              "covariance.csv:value": 6.268043809681823e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c062": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 1.4988010832439613e-15,
+              "covariance.csv:value": 6.670384459627615e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c063": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 5.828670879282072e-15,
+              "covariance.csv:value": 9.762054717105811e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c064": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 3.2127078775090467e-15,
+              "covariance.csv:value": 5.971582278142817e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c065": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.060002779995628e-14,
+              "coefficients.csv:value": 1.065390831112012e-12,
+              "covariance.csv:value": 2.766536660674633e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c066": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.099925674105336e-15,
+              "coefficients.csv:value": 4.407307852005715e-12,
+              "covariance.csv:value": 2.3935033507038392e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c067": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.7389952325364e-14,
+              "coefficients.csv:value": 1.1883098671727765e-12,
+              "covariance.csv:value": 4.566947541711011e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c068": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.5010128556758318e-14,
+              "coefficients.csv:value": 6.893999260348949e-12,
+              "covariance.csv:value": 3.9626954129634746e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-screen-c069": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3003091346051243 (ACTUAL), 0.30030681185678 (DESIRED)\n [1]: -0.1013286036825022 (ACTUAL), -0.101330157305067 (DESIRED)\n [2]: 0.09993767817062808 (ACTUAL), 0.0999369471631457 (DESIRED)\n [3]: -0.0481887022926342 (ACTUAL), -0.0481856327215647 (DESIRED)\n [4]: 0.0593279160980777 (ACTUAL), 0.0593302072076429 (DESIRED)\nMax absolute difference among violations: 5.59191689e-06\nMax relative difference among violations: 0.00017729\n ACTUAL: array([ 0.300309, -0.101329,  0.099938, -0.048189,  0.059328, -0.031547])\n DESIRED: array([ 0.300307, -0.10133 ,  0.099937, -0.048186,  0.05933 , -0.031542])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c070": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3005272485686377 (ACTUAL), 0.300526329863441 (DESIRED)\n [1]: -0.1009376128686954 (ACTUAL), -0.100939114284421 (DESIRED)\n [2]: 0.0998192831584602 (ACTUAL), 0.099817488017038 (DESIRED)\n [3]: -0.04751437892463129 (ACTUAL), -0.0475114195344804 (DESIRED)\n [4]: 0.05899264014083879 (ACTUAL), 0.0589949197567994 (DESIRED)\nMax absolute difference among violations: 2.95939015e-06\nMax relative difference among violations: 8.62940822e-05\n ACTUAL: array([ 0.300527, -0.100938,  0.099819, -0.047514,  0.058993, -0.030969])\n DESIRED: array([ 0.300526, -0.100939,  0.099817, -0.047511,  0.058995, -0.030966])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c071": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 50 / 50 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3003199961167645 (ACTUAL), 0.300317669678375 (DESIRED)\n [1]: -0.0201180924658924 (ACTUAL), -0.0201220320728029 (DESIRED)\n [2]: 0.0283459155537449 (ACTUAL), 0.0283483533182538 (DESIRED)\n [3]: -0.0143546206116107 (ACTUAL), -0.0143586993257795 (DESIRED)\n [4]: 0.02287704545541769 (ACTUAL), 0.0228777046573122 (DESIRED)\nMax absolute difference among violations: 5.61431871e-06\nMax relative difference among violations: 0.00072826\n ACTUAL: array([ 0.30032 , -0.020118,  0.028346, -0.014355,  0.022877, -0.0141  ,\n        0.018592, -0.01382 ,  0.019308, -0.012643,  0.014851, -0.101329,\n       -0.009873,  0.015051, -0.01114 ,  0.013111, -0.007277,  0.012466,...\n DESIRED: array([ 0.300318, -0.020122,  0.028348, -0.014359,  0.022878, -0.0141  ,\n        0.018596, -0.013821,  0.01931 , -0.012648,  0.014849, -0.10133 ,\n       -0.009872,  0.015048, -0.011136,  0.013108, -0.007276,  0.012465,...",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c072": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 50 / 50 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3005574587536415 (ACTUAL), 0.300556478297695 (DESIRED)\n [1]: -0.0195848650309361 (ACTUAL), -0.0195881126605043 (DESIRED)\n [2]: 0.0278998865534929 (ACTUAL), 0.0279025889004572 (DESIRED)\n [3]: -0.01442902892765269 (ACTUAL), -0.0144316448948561 (DESIRED)\n [4]: 0.02301971552139309 (ACTUAL), 0.0230203071373551 (DESIRED)\nMax absolute difference among violations: 3.67640585e-06\nMax relative difference among violations: 0.00058066\n ACTUAL: array([ 0.300557, -0.019585,  0.0279  , -0.014429,  0.02302 , -0.014088,\n        0.018219, -0.013873,  0.020179, -0.012968,  0.014774, -0.100932,\n       -0.010122,  0.015147, -0.010681,  0.01327 , -0.007444,  0.012449,...\n DESIRED: array([ 0.300556, -0.019588,  0.027903, -0.014432,  0.02302 , -0.014087,\n        0.018223, -0.013874,  0.02018 , -0.012971,  0.014772, -0.100934,\n       -0.010121,  0.015146, -0.010677,  0.013268, -0.007443,  0.012449,...",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c073": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004033482251678 (ACTUAL), 0.300396926173183 (DESIRED)\n [1]: -0.1015093824502605 (ACTUAL), -0.101500850091342 (DESIRED)\n [2]: 0.0997411466342656 (ACTUAL), 0.0997371783171352 (DESIRED)\n [3]: -0.0480982866113529 (ACTUAL), -0.048099051940647 (DESIRED)\n [4]: 0.0593684790720072 (ACTUAL), 0.059366466167916 (DESIRED)\nMax absolute difference among violations: 8.53235892e-06\nMax relative difference among violations: 8.40619454e-05\n ACTUAL: array([ 0.300403, -0.101509,  0.099741, -0.048098,  0.059368, -0.031431])\n DESIRED: array([ 0.300397, -0.101501,  0.099737, -0.048099,  0.059366, -0.031432])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c074": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3007408024069055 (ACTUAL), 0.300735022792967 (DESIRED)\n [1]: -0.1012368548644366 (ACTUAL), -0.101224117675624 (DESIRED)\n [2]: 0.0997382985805922 (ACTUAL), 0.0997342251492713 (DESIRED)\n [3]: -0.04750330494815949 (ACTUAL), -0.0475029439354505 (DESIRED)\n [4]: 0.05908230754306639 (ACTUAL), 0.0590838404185271 (DESIRED)\nMax absolute difference among violations: 1.27371888e-05\nMax relative difference among violations: 0.00021004\n ACTUAL: array([ 0.300741, -0.101237,  0.099738, -0.047503,  0.059082, -0.030781])\n DESIRED: array([ 0.300735, -0.101224,  0.099734, -0.047503,  0.059084, -0.030774])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c075": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 50 / 50 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004151765506003 (ACTUAL), 0.30040924353064 (DESIRED)\n [1]: -0.0201885792463426 (ACTUAL), -0.0201795834218055 (DESIRED)\n [2]: 0.02828415314896369 (ACTUAL), 0.0282848138165025 (DESIRED)\n [3]: -0.0141740175941581 (ACTUAL), -0.0141697013054 (DESIRED)\n [4]: 0.0230704021237488 (ACTUAL), 0.0230679984221726 (DESIRED)\nMax absolute difference among violations: 1.54705639e-05\nMax relative difference among violations: 0.00243214\n ACTUAL: array([ 0.300415, -0.020189,  0.028284, -0.014174,  0.02307 , -0.013899,\n        0.018876, -0.013828,  0.019249, -0.012789,  0.014852, -0.101508,\n       -0.009683,  0.015442, -0.011221,  0.013297, -0.007307,  0.01242 ,...\n DESIRED: array([ 0.300409, -0.02018 ,  0.028285, -0.01417 ,  0.023068, -0.013892,\n        0.01887 , -0.013822,  0.019255, -0.012791,  0.014852, -0.1015  ,\n       -0.009685,  0.015448, -0.011229,  0.013284, -0.007295,  0.012425,...",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "broad-screen-c076": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 50 / 50 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3007762595395111 (ACTUAL), 0.300771004094738 (DESIRED)\n [1]: -0.0196040724777384 (ACTUAL), -0.0195925020474058 (DESIRED)\n [2]: 0.0277493267040529 (ACTUAL), 0.0277534886042811 (DESIRED)\n [3]: -0.0141792170582728 (ACTUAL), -0.01417682188477 (DESIRED)\n [4]: 0.02328432463086169 (ACTUAL), 0.0232844680380031 (DESIRED)\nMax absolute difference among violations: 1.79174248e-05\nMax relative difference among violations: 0.00244572\n ACTUAL: array([ 0.300776, -0.019604,  0.027749, -0.014179,  0.023284, -0.013826,\n        0.018438, -0.013789,  0.020212, -0.013028,  0.014825, -0.101231,\n       -0.00999 ,  0.015479, -0.010674,  0.013487, -0.007245,  0.012585,...\n DESIRED: array([ 0.300771, -0.019593,  0.027753, -0.014177,  0.023284, -0.013814,\n        0.018434, -0.013779,  0.020219, -0.01303 ,  0.014828, -0.101218,\n       -0.009991,  0.015487, -0.010682,  0.01348 , -0.00723 ,  0.01259 ,...",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  }
+}

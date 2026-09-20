@@ -10,6 +10,27 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: complete first screen — 2026-09-20
+
+The [77-cell screen](benchmarks/reports/development/two-fe-broad-screen-local-2026-09-20/README.md)
+records 69 strict wins, one tie and seven losses against default fixest. All
+154 application calls succeed. Every ordered dense case and every K=50 case
+wins; remaining losses concentrate in narrow shuffled and well-connected
+K=6 designs. This single-pair screen does not close the two-block target.
+All 36 native other-graph cells pass the independent sparse-direct oracle;
+eight native output audits pass. Eight reference output and sixteen reference
+coefficient mismatches remain explicit, with separate prior adjudication.
+
+Source is `455150af`, plugin `8ec5df3a1686c9f476dcf2a83b63318ee252f789b1e49b75c624d5300d76efb2`;
+all 514 captured source entries match. A weighted right-edge scratch prototype
+is now under validation, improving shuffled AW K=6 IID 372 -> 340 ms versus
+299 ms fixest in three pairs. Its weighted operator/MAP/fallback tests and
+three Stata fixtures pass, but its broader weight/control screen is pending;
+do not yet treat it as accepted. Raw work is `target/two-fe-broad-20260920`.
+The full goal remains active: finish weighted-cache validation, narrow input
+and routing work, the 111 controls, fresh holdouts and two five-pair blocks.
+No installed package, remote state or qualification changed.
+
 ## Broad two-way OLS milestone: narrow cache checkpoint — 2026-09-20
 
 The [narrow-cache report](benchmarks/reports/development/two-fe-narrow-edge-cache-local-2026-09-20/README.md)
