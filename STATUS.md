@@ -13,6 +13,27 @@ completed optimization/calibration investigation chronology formerly here.
 ## One-FE optimization implementation — 2026-09-19
 
 
+Reserved input initialization, ordered membership, parallel final preflight and
+narrow completion scheduling now have adoption evidence in
+`benchmarks/reports/development/one-fe-input-completion-2026-09-19/`: 313
+development calls, 267 byte-identical native scientific exports, 16 focused
+native test executions (one rejected experiment), eight ABI checks and 24
+licensed fixture passes. Eleven protected cells have maximum median paired
+ratio 1.046802 and geometric mean 0.980149. The separate completion-profile
+report attributes the remaining preparation critical path before these changes.
+All 509 source-manifest entries match the final measured earlyscore candidate.
+
+Two preselected five-pair final blocks add 40 accepted calls. Fereg wins all
+20 pairs; candidate/fixest command medians are 142/151 and 135/146 ms (K=10),
+and 407/467 and 393/468 ms (K=50). The first narrow block's median paired ratio
+is 0.966443, so the stricter repeated 5% target remains unmet despite passing
+ratios of command medians. Both blocks and the original acceptance plan are
+preserved. Continue from this checkpoint by starting residual work before raw
+residual construction, with unchanged scientific boundaries and a new measured
+candidate; do not replace the unfavorable final block with another draw.
+
+
+
 Validated FE-descriptor reuse and IID completion now have adoption evidence in
 `benchmarks/reports/development/one-fe-borrow-reuse-2026-09-19/`: 157 accepted
 calls, bit-identical native science, three focused native tests, both ABI checks

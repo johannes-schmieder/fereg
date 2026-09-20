@@ -727,12 +727,33 @@ pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
     validate_loaded(request, &loaded)?;
     validate_candidate_categorical_domain(request, &loaded, cluster_sources)?;
     validate_candidate_weight_domain(&loaded)?;
-    let sample = if is_full_retained_unweighted_sample(&loaded) {
+    let early_source = if cluster_sources.is_empty() && loaded.candidate.len() >= 16_384
+        && (8..=16).contains(&loaded.numeric_sources.len()) && rayon::current_thread_index().is_some()
+        && rayon::current_num_threads() >= 8 && loaded.analytic_weight.is_none()
+        && loaded.frequency_weight.is_none() && loaded.probability_weight.is_none()
+        && request.absorbed_terms.len() == 1 && request.absorbed_terms[0].intercept
+        && request.absorbed_terms[0].categorical_sources.len() == 1
+        && request.absorbed_terms[0].slope_sources.is_empty()
+        && request.model.terms.iter().all(|term| term.components.iter()
+            .all(|component| component.kind == ComponentKind::Continuous))
+    { Some(request.absorbed_terms[0].categorical_sources[0]) } else { None };
+    let (full, mut early_factor) = if let Some(source) = early_source {
+        let index = source_index(source)?;
+        let (full, encoded) = rayon::join(|| is_full_retained_unweighted_sample(&loaded),
+            || factorize_f64(&loaded.numeric_sources[index].1.values));
+        (full, Some(encoded.map(|encoded| PreparedCategoricalSource { source, prepared_source_index: index, encoded })))
+    } else { (is_full_retained_unweighted_sample(&loaded), None) };
+    let sample = if full {
+        // Ownership transfer preserves every input value used by the optional
+        // factorization. Its errors remain behind sample allocation, as before.
         take_full_retained_unweighted_sample(loaded)?
     } else {
+        // Classification may remove rows. Release speculative storage before
+        // compaction; final codes must be rebuilt on the authoritative sample.
+        drop(early_factor.take());
         take_classified_sample(request, loaded, cluster_sources)?
     };
-    finish_prepare_ols_data(request, cluster_sources, model, sample)
+    finish_prepare_with_early_factor(request, cluster_sources, model, sample, true, early_factor)
 }
 
 pub(crate) fn prepare_ols_data_with_cluster_sources(
@@ -803,14 +824,27 @@ fn finish_prepare_ols_data(
 fn finish_prepare_ols_data_with_membership(
     request: &OlsRequestV1,
     cluster_sources: &[SourceId],
-    mut model: PreparedOlsModel,
+    model: PreparedOlsModel,
     sample: PreparedNumericSample,
     reuse_membership: bool,
+) -> Result<PreparedOlsData> {
+    finish_prepare_with_early_factor(request, cluster_sources, model, sample, reuse_membership, None)
+}
+
+fn finish_prepare_with_early_factor(
+    request: &OlsRequestV1, cluster_sources: &[SourceId], mut model: PreparedOlsModel,
+    sample: PreparedNumericSample, reuse_membership: bool,
+    early_factor: Option<Result<PreparedCategoricalSource>>,
 ) -> Result<PreparedOlsData> {
     // Cluster-only sources are deliberately absent from this pre-singleton
     // factorization. They affect availability (reason 6), never FE pruning;
     // cluster coding is created only on the final singleton fixed point below.
-    let pruning_categorical_sources = factorize_categorical_sources(request, &sample, &[])?;
+    let pruning_categorical_sources = if let Some(factor) = early_factor {
+        let mut sources = Vec::new();
+        sources.try_reserve_exact(1).map_err(|_| allocation("unable to reserve prepared categorical sources"))?;
+        sources.push(factor?);
+        sources
+    } else { factorize_categorical_sources(request, &sample, &[])? };
     let pruning_fixed_effects = prepare_fixed_effects(request, &pruning_categorical_sources, &[])?;
     let prebuilt_index = if reuse_membership && cluster_sources.is_empty() {
         one_fe_fixed_point_index(request, &sample, &pruning_categorical_sources, &pruning_fixed_effects)?
@@ -903,7 +937,10 @@ fn one_fe_fixed_point_index(
     if source.encoded.codes.len() != sample.n_active() {
         return Err(invalid("singleton fixed-effect source is not aligned with the numeric sample"));
     }
-    let index = LevelIndex::from_codes(&source.encoded.codes, source.encoded.n_levels())?;
+    let index = match LevelIndex::try_from_ordered_codes(&source.encoded.codes, source.encoded.n_levels())? {
+        Some(index) => index,
+        None => LevelIndex::from_codes(&source.encoded.codes, source.encoded.n_levels())?,
+    };
     for level in 0..index.n_levels() {
         if index.checked_members(level)?.len() == 1 {
             return Ok(None);
@@ -3715,6 +3752,42 @@ mod tests {
             probability.fe_topology.singleton_policy,
             PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
         );
+    }
+
+    #[test]
+    fn factor_overlap_preserves_owned_sample_codes_and_fallback() {
+        use crate::{ThreadConfig, ThreadTeam};
+        for n in [16383, 16384, 32769] {
+            let mut request = request(9, false);
+            request.absorbed_terms = vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(), intercept: true,
+                categorical_sources: vec![SourceId::new(9).unwrap()], slope_sources: Vec::new(),
+                label: "g".into(), saved_name: String::new(),
+            }];
+            let input = LoadedOlsInput {
+                candidate: vec![true; n], outcome: column(&vec![1.0; n], &vec![false; n]),
+                numeric_sources: (1..=9).map(|j| (SourceId::new(j).unwrap(),
+                    column(&(0..n).map(|r| if j == 9 { (r / 5) as f64 - 0.25 }
+                        else { ((r * j as usize) as f64).sin() }).collect::<Vec<_>>(), &vec![false; n]))).collect(),
+                analytic_weight: None, frequency_weight: None, probability_weight: None,
+            };
+            for case in 0..6 {
+                let mut input = input.clone();
+                match case {
+                    1 => input.candidate[0] = false,
+                    2 => input.outcome.missing[1] = true,
+                    3 => input.numeric_sources[8].1.values[1] = f64::NAN,
+                    4 => input.numeric_sources[8].1.values[n / 2] = 1e12,
+                    5 => input.numeric_sources[8].1.values.reverse(),
+                    _ => (),
+                }
+                let run = |threads| ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
+                    .install(|| prepare_ols_data_owned(&request, input.clone())).unwrap();
+                let expected = run(1).expect("serial prepared fixture");
+                assert_eq!(expected, run(8).expect("eight-worker prepared fixture"), "N={n}, case={case}");
+                assert_eq!(expected, run(16).expect("sixteen-worker prepared fixture"), "N={n}, case={case}");
+            }
+        }
     }
 
     #[test]

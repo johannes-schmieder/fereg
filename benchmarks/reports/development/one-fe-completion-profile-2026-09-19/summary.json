@@ -1,0 +1,60 @@
+[
+  {
+    "case": "currentprofile-primary-n983040-k10-gdefault-shuffle0-t16",
+    "variants": {
+      "currentprofile": {
+        "input": 0.070472042,
+        "n": 2,
+        "native": 0.057449396,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          1.0,
+          0.9859154929577466
+        ],
+        "remaining": 0.012907437500000007,
+        "seconds": 0.14100000000000001
+      },
+      "residualsum": {
+        "input": 0.0710344165,
+        "n": 2,
+        "native": 0.05774727099999999,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          1.0,
+          1.0
+        ],
+        "remaining": 0.013039687499999994,
+        "seconds": 0.142
+      }
+    }
+  },
+  {
+    "case": "currentprofile-primary-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "currentprofile": {
+        "input": 0.2174219795,
+        "n": 2,
+        "native": 0.139831854,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0024875621890548,
+          1.010230179028133
+        ],
+        "remaining": 0.04123847900000002,
+        "seconds": 0.399
+      },
+      "residualsum": {
+        "input": 0.21499075,
+        "n": 2,
+        "native": 0.141105396,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0
+        ],
+        "remaining": 0.03995758300000002,
+        "seconds": 0.3965
+      }
+    }
+  }
+]

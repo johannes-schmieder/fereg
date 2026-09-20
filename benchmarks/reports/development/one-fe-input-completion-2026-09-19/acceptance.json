@@ -1,0 +1,123 @@
+{
+  "all_pair_wins": 20,
+  "blocks": [
+    {
+      "block": "win-a",
+      "candidate_median": 0.142,
+      "case": "win-a-primary-n983040-k10-gdefault-shuffle0-t16",
+      "median_paired_ratio": 0.9664429530201342,
+      "paired_ratios": [
+        0.8554216867469878,
+        0.9664429530201342,
+        0.913907284768212,
+        0.9791666666666666,
+        0.9735099337748344
+      ],
+      "pass_strict": false,
+      "ratio_of_command_medians": 0.9403973509933774,
+      "reference_median": 0.151,
+      "wins": 5
+    },
+    {
+      "block": "win-a",
+      "candidate_median": 0.407,
+      "case": "win-a-primary-n983040-k50-gdefault-shuffle0-t16",
+      "median_paired_ratio": 0.8603696098562629,
+      "paired_ratios": [
+        0.8603696098562629,
+        0.8283898305084747,
+        0.8715203426124196,
+        0.8522483940042827,
+        0.8793103448275861
+      ],
+      "pass_strict": true,
+      "ratio_of_command_medians": 0.8715203426124196,
+      "reference_median": 0.467,
+      "wins": 5
+    },
+    {
+      "block": "win-b",
+      "candidate_median": 0.135,
+      "case": "win-b-primary-n983040-k10-gdefault-shuffle0-t16",
+      "median_paired_ratio": 0.925170068027211,
+      "paired_ratios": [
+        0.9310344827586208,
+        0.904109589041096,
+        0.9300699300699302,
+        0.925170068027211,
+        0.9183673469387756
+      ],
+      "pass_strict": true,
+      "ratio_of_command_medians": 0.9246575342465755,
+      "reference_median": 0.146,
+      "wins": 5
+    },
+    {
+      "block": "win-b",
+      "candidate_median": 0.393,
+      "case": "win-b-primary-n983040-k50-gdefault-shuffle0-t16",
+      "median_paired_ratio": 0.8397435897435898,
+      "paired_ratios": [
+        0.8397435897435898,
+        0.8204592901878915,
+        0.8501070663811563,
+        0.8283898305084747,
+        0.858974358974359
+      ],
+      "pass_strict": true,
+      "ratio_of_command_medians": 0.8397435897435898,
+      "reference_median": 0.468,
+      "wins": 5
+    }
+  ],
+  "control_geometric_mean": 0.9801491133018692,
+  "controls": [
+    {
+      "case": "reserved-controls-n245760-k10-gdefault-shuffle0-t1",
+      "median_paired_ratio": 0.9909090909090909
+    },
+    {
+      "case": "reserved-controls-n245760-k10-gdefault-shuffle0-t16",
+      "median_paired_ratio": 0.9387755102040816
+    },
+    {
+      "case": "reserved-controls-n245760-k10-gdefault-shuffle0-t4",
+      "median_paired_ratio": 0.9655172413793103
+    },
+    {
+      "case": "reserved-controls-n983040-k10-gdefault-shuffle0-t1",
+      "median_paired_ratio": 1.0
+    },
+    {
+      "case": "reserved-controls-n983040-k10-gdefault-shuffle0-t4",
+      "median_paired_ratio": 0.9702970297029703
+    },
+    {
+      "case": "reserved-controls-n983040-k50-g1000-shuffle0-t16",
+      "median_paired_ratio": 0.9164733178654293
+    },
+    {
+      "case": "reserved-controls-n983040-k50-g1000-shuffle0-t4",
+      "median_paired_ratio": 1.046801872074883
+    },
+    {
+      "case": "reserved-controls-n983040-k50-gdefault-shuffle0-t1",
+      "median_paired_ratio": 1.0121872995509944
+    },
+    {
+      "case": "reserved-controls-n983040-k50-gdefault-shuffle0-t4",
+      "median_paired_ratio": 0.9968553459119497
+    },
+    {
+      "case": "reserved-controls-n983040-k50-gdefault-shuffle1-t16",
+      "median_paired_ratio": 0.9336283185840707
+    },
+    {
+      "case": "reserved-controls-n983040-k50-gdefault-shuffle1-t4",
+      "median_paired_ratio": 1.018361581920904
+    }
+  ],
+  "interpretation": "Conservatively require median paired candidate/reference ratio <= 0.95 in every block and width. Ratios of command medians also reported.",
+  "maximum_control_ratio": 1.046801872074883,
+  "status": "not_met"
+}

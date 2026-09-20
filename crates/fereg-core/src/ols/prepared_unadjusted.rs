@@ -569,7 +569,11 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
     }
 
     let (certified_tss, certified_rss) = if let Some(tss) = outcome_tss {
-        (tss?, weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?)
+        let tss = tss?;
+        let rss = if weight_view.kind.is_none() && weight_view.values.is_none() {
+            fit.independent_unit_residual_sum()
+        } else { None };
+        (tss, match rss { Some(rss) => rss, None => weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)? })
     } else {
         independent_fit_sums(
             &prepared.fit_sample().outcome, fit.residuals(), weight_view, dof.has_structural_intercept,
@@ -1739,6 +1743,11 @@ pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) ->
     } else {
         Err(invalid_data("prepared iid weighted mean is not finite"))
     }
+}
+
+pub(super) fn independent_unit_residual_sum(values: &[f64]) -> Result<f64> {
+    weighted_sum_of_squares(values,
+        ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 }, 0.0)
 }
 
 pub(super) fn weighted_sum_of_squares(

@@ -1,0 +1,64 @@
+[
+  {
+    "case": "win-a-primary-n983040-k10-gdefault-shuffle0-t16",
+    "variants": {
+      "earlyscore": {
+        "input": 0.073781625,
+        "n": 5,
+        "native": 0.055029624999999985,
+        "native_allocation_peak_bytes": 233169535.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.012790915999999986,
+        "seconds": 0.142
+      },
+      "fixest": {
+        "n": 5,
+        "paired_ratios": [
+          1.1690140845070425,
+          1.0347222222222223,
+          1.0942028985507246,
+          1.0212765957446808,
+          1.0272108843537415
+        ],
+        "seconds": 0.151
+      }
+    }
+  },
+  {
+    "case": "win-a-primary-n983040-k50-gdefault-shuffle0-t16",
+    "variants": {
+      "earlyscore": {
+        "input": 0.220018958,
+        "n": 5,
+        "native": 0.146850209,
+        "native_allocation_peak_bytes": 925859855.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "remaining": 0.03637895799999996,
+        "seconds": 0.407
+      },
+      "fixest": {
+        "n": 5,
+        "paired_ratios": [
+          1.162291169451074,
+          1.207161125319693,
+          1.1474201474201475,
+          1.1733668341708543,
+          1.1372549019607845
+        ],
+        "seconds": 0.467
+      }
+    }
+  }
+]

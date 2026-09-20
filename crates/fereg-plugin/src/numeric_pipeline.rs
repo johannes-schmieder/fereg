@@ -89,6 +89,77 @@ pub(crate) fn try_read_with_rhs(
     if rhs.as_ref().is_some_and(|buffer| !buffer.is_empty() || rows.checked_mul(width).is_none_or(|n| buffer.capacity() < n)) {
         return Err(FeregError::new(ErrorCode::InvalidArgument, "numeric RHS reservation has an invalid shape"));
     }
+    read_tiles(spi, positions, rows, team, memory, |start, count, values, boundary| {
+                // Column-major destination writes stay contiguous. Missing
+                // classification uses the very same runtime SPI boundary.
+                for (column, (destination, missing_flags)) in columns.iter_mut().zip(missing.iter_mut()).enumerate() {
+                    for offset in 0..count {
+                        let value = values[offset * width + column];
+                        destination[start + offset] = value;
+                        missing_flags[start + offset] = value >= boundary;
+                    }
+                }
+                if let Some(rhs) = rhs.as_mut() {
+                    // This admitted recipe has outcome and continuous sources in
+                    // input order, followed by the one FE source. The original
+                    // FE values already reached their authoritative column.
+                    for row in values[..count * width].chunks_exact_mut(width) {
+                        row[width - 1] = 1.0;
+                    }
+                    rhs.extend_from_slice(&values[..count * width]);
+                }
+    })
+}
+
+/// Fill reserved empty columns directly from owned tiles. Each push initializes
+/// one element; the preflight guarantees capacity for the complete input.
+pub(crate) fn try_read_reserved(
+    spi: &mut dyn SpiApi,
+    positions: &[u32],
+    rows: usize,
+    columns: &mut [&mut Vec<f64>],
+    missing: &mut [&mut Vec<bool>],
+    team: ThreadTeam,
+    memory: &mut InputMemory,
+    mut rhs: Option<&mut Vec<f64>>,
+) -> Result<bool> {
+    let width = positions.len();
+    let min_width = if rhs.is_some() { 8 } else { 16 };
+    if !spi.supports_numeric_rows() || team.threads() <= 1
+        || !(min_width..=MAX_COLUMNS).contains(&width) || rows < 16_384
+    { return Ok(false); }
+    if columns.len() != width || missing.len() != width
+        || columns.iter().zip(missing.iter()).any(|(v, m)|
+            !v.is_empty() || !m.is_empty() || v.capacity() < rows || m.capacity() < rows)
+        || rhs.as_ref().is_some_and(|v| !v.is_empty()
+            || rows.checked_mul(width).is_none_or(|n| v.capacity() < n))
+    { return Err(FeregError::new(ErrorCode::InvalidArgument, "reserved numeric pipeline has an invalid shape")); }
+    read_tiles(spi, positions, rows, team, memory, |start, count, values, boundary| {
+        for (column, (destination, flags)) in columns.iter_mut().zip(missing.iter_mut()).enumerate() {
+            debug_assert_eq!(destination.len(), start);
+            debug_assert_eq!(flags.len(), start);
+            for offset in 0..count {
+                let value = values[offset * width + column];
+                destination.push(value);
+                flags.push(value >= boundary);
+            }
+        }
+        if let Some(rhs) = rhs.as_mut() {
+            for row in values[..count * width].chunks_exact_mut(width) { row[width - 1] = 1.0; }
+            rhs.extend_from_slice(&values[..count * width]);
+        }
+    })
+}
+
+fn read_tiles(
+    spi: &mut dyn SpiApi,
+    positions: &[u32],
+    rows: usize,
+    team: ThreadTeam,
+    memory: &mut InputMemory,
+    mut consume: impl FnMut(usize, usize, &mut [f64], f64) + Send,
+) -> Result<bool> {
+    let width = positions.len();
     let elements = TILE_ROWS * width;
     let bytes = 2 * elements * std::mem::size_of::<f64>() + std::mem::size_of::<Handoff>();
     if bytes > memory.remaining() {
@@ -127,24 +198,7 @@ pub(crate) fn try_read_with_rhs(
                         slots = handoff.wait(slots);
                     }
                 };
-                // Column-major destination writes stay contiguous. Missing
-                // classification uses the very same runtime SPI boundary.
-                for (column, (destination, missing_flags)) in columns.iter_mut().zip(missing.iter_mut()).enumerate() {
-                    for offset in 0..tile.rows {
-                        let value = tile.values[offset * width + column];
-                        destination[tile.start + offset] = value;
-                        missing_flags[tile.start + offset] = value >= tile.missing_boundary;
-                    }
-                }
-                if let Some(rhs) = rhs.as_mut() {
-                    // This admitted recipe has outcome and continuous sources in
-                    // input order, followed by the one FE source. The original
-                    // FE values already reached their authoritative column.
-                    for row in tile.values[..tile.rows * width].chunks_exact_mut(width) {
-                        row[width - 1] = 1.0;
-                    }
-                    rhs.extend_from_slice(&tile.values[..tile.rows * width]);
-                }
+                consume(tile.start, tile.rows, &mut tile.values, tile.missing_boundary);
                 handoff.lock().free[index] = Some(tile.values);
                 handoff.changed.notify_all();
                 index ^= 1;
@@ -280,6 +334,55 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn reserved_pipeline_preserves_values_capacities_and_failure_shutdown() {
+        for width in [9, 16, 52, 64] {
+            for failure in [usize::MAX, 1, 3, 5] {
+                let rows = 16387;
+                let positions: Vec<u32> = (1..=width as u32).rev().collect();
+                let mut values: Vec<Vec<f64>> = (0..width).map(|_| Vec::with_capacity(rows)).collect();
+                let mut flags: Vec<Vec<bool>> = (0..width).map(|_| Vec::with_capacity(rows)).collect();
+                let pointers: Vec<_> = values.iter().map(Vec::as_ptr).collect();
+                let mut rhs = Vec::with_capacity(rows * width);
+                let mut input = Input::new();
+                input.failure = failure;
+                let result = try_read_reserved(&mut input, &positions, rows,
+                    &mut values.iter_mut().collect::<Vec<_>>(), &mut flags.iter_mut().collect::<Vec<_>>(),
+                    ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
+                    &mut InputMemory::new(None, 0).unwrap(), Some(&mut rhs));
+                if failure == usize::MAX { assert_eq!(result, Ok(true)); }
+                else { assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted); }
+                let initialized = rows.min(failure.saturating_sub(1).saturating_mul(TILE_ROWS));
+                assert_eq!(rhs.len(), initialized * width);
+                for column in 0..width {
+                    assert_eq!(pointers[column], values[column].as_ptr());
+                    assert_eq!(values[column].len(), initialized);
+                    assert_eq!(flags[column].len(), initialized);
+                    for row in 0..initialized {
+                        let missing = (row + 1) % 197 == 0;
+                        let expected = if missing { input.boundary }
+                            else { (row + 1) as f64 + f64::from(positions[column]) * 100000.0 };
+                        assert_eq!(values[column][row], expected);
+                        assert_eq!(flags[column][row], missing);
+                        assert_eq!(rhs[row * width + column], if column == width - 1 { 1.0 } else { expected });
+                    }
+                }
+            }
+        }
+        let mut input = Input::new();
+        let mut values = vec![Vec::with_capacity(16384); 16];
+        let mut flags = vec![Vec::with_capacity(16384); 16];
+        // Clone of an empty Vec need not preserve capacity, so explicitly reserve.
+        for v in &mut values { v.reserve_exact(16384); }
+        for v in &mut flags { v.reserve_exact(16384); }
+        assert!(!try_read_reserved(&mut input, &(1..=16).collect::<Vec<_>>(), 16384,
+            &mut values.iter_mut().collect::<Vec<_>>(), &mut flags.iter_mut().collect::<Vec<_>>(),
+            ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
+            &mut InputMemory::new(Some(1000), 0).unwrap(), None).unwrap());
+        assert_eq!(input.calls, 0);
+        assert!(values.iter().all(Vec::is_empty));
     }
 
     #[test]

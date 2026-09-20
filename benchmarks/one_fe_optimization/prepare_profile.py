@@ -15,23 +15,39 @@ def instrument(root):
         text = text[:first] + body + text[last:]
 
     stamp = "std::time::Instant::now()"
-    change("pub(crate) fn prepare_ols_data_owned_with_cluster_sources(",
-           "\npub(crate) fn prepare_ols_data_with_cluster_sources(", [
-        ("    let model =", f"    let profile_start = {stamp};\n    let model ="),
-        ("    let sample = if is_full_retained_unweighted_sample(&loaded) {",
-         f"    let profile_validated = {stamp};\n"
-         "    let full = is_full_retained_unweighted_sample(&loaded);\n"
-         f"    let profile_classified = {stamp};\n    let sample = if full {{"),
-        ("    finish_prepare_ols_data(request, cluster_sources, model, sample)",
-         "    if std::env::var_os(\"FEREG_PHASE_TIMING\").is_some() {\n"
-         "        eprintln!(\"FEREG_PHASE|prepare_input|validate={:.9}|complete_check={:.9}|sample_owner={:.9}\",\n"
-         "            profile_validated.duration_since(profile_start).as_secs_f64(),\n"
-         "            profile_classified.duration_since(profile_validated).as_secs_f64(),\n"
-         "            profile_classified.elapsed().as_secs_f64());\n    }\n"
-         "    finish_prepare_ols_data(request, cluster_sources, model, sample)"),
-    ])
+    if "let early_source =" in text:
+        change("pub(crate) fn prepare_ols_data_owned_with_cluster_sources(",
+               "\npub(crate) fn prepare_ols_data_with_cluster_sources(", [
+            ("    let model =", f"    let profile_start = {stamp};\n    let model ="),
+            ("    let early_source =", f"    let profile_validated = {stamp};\n    let early_source ="),
+            ("    let sample = if full {", f"    let profile_classified = {stamp};\n    let sample = if full {{"),
+            ("    finish_prepare_with_early_factor(request, cluster_sources, model, sample, true, early_factor)",
+             "    if std::env::var_os(\"FEREG_PHASE_TIMING\").is_some() {\n"
+             "        eprintln!(\"FEREG_PHASE|prepare_input|validate={:.9}|classify_and_factor={:.9}|sample_owner={:.9}\",\n"
+             "            profile_validated.duration_since(profile_start).as_secs_f64(),\n"
+             "            profile_classified.duration_since(profile_validated).as_secs_f64(),\n"
+             "            profile_classified.elapsed().as_secs_f64());\n    }\n"
+             "    finish_prepare_with_early_factor(request, cluster_sources, model, sample, true, early_factor)"),
+        ])
+    else:
+        change("pub(crate) fn prepare_ols_data_owned_with_cluster_sources(",
+               "\npub(crate) fn prepare_ols_data_with_cluster_sources(", [
+            ("    let model =", f"    let profile_start = {stamp};\n    let model ="),
+            ("    let sample = if is_full_retained_unweighted_sample(&loaded) {",
+             f"    let profile_validated = {stamp};\n"
+             "    let full = is_full_retained_unweighted_sample(&loaded);\n"
+             f"    let profile_classified = {stamp};\n    let sample = if full {{"),
+            ("    finish_prepare_ols_data(request, cluster_sources, model, sample)",
+             "    if std::env::var_os(\"FEREG_PHASE_TIMING\").is_some() {\n"
+             "        eprintln!(\"FEREG_PHASE|prepare_input|validate={:.9}|complete_check={:.9}|sample_owner={:.9}\",\n"
+             "            profile_validated.duration_since(profile_start).as_secs_f64(),\n"
+             "            profile_classified.duration_since(profile_validated).as_secs_f64(),\n"
+             "            profile_classified.elapsed().as_secs_f64());\n    }\n"
+             "    finish_prepare_ols_data(request, cluster_sources, model, sample)"),
+        ])
     if "fn finish_prepare_ols_data_with_membership(" in text:
-        change("fn finish_prepare_ols_data_with_membership(", "\n// A one-effect", [
+        start = "fn finish_prepare_with_early_factor(" if "fn finish_prepare_with_early_factor(" in text else "fn finish_prepare_ols_data_with_membership("
+        change(start, "\n// A one-effect", [
             ("    let pruning_categorical_sources =", f"    let profile_start = {stamp};\n    let pruning_categorical_sources ="),
             ("    let prebuilt_index =", f"    let profile_factorized = {stamp};\n    let prebuilt_index ="),
             ("    let (sample, categorical_sources, fixed_effects, num_singletons, cascade_events) =",
@@ -58,3 +74,24 @@ def instrument(root):
          "            profile_compacted.elapsed().as_secs_f64());\n    }\n    Ok(PreparedOlsData {"),
         ])
     path.write_text(text)
+
+    # Distinguish the critical worker from work hidden by the admitted overlap.
+    path = root / "crates/fereg-plugin/src/estimate.rs"
+    text = path.read_text()
+    before = '''                        || prepare_ols_data_owned(&action.request, loaded),
+                        || loaded_rhs.map(|rows| LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)),'''
+    if "with_unit_moments" in text:
+        assert text.count(before) == 1
+        text = text.replace(before, '''                        || {
+                            let started = Instant::now();
+                            let result = prepare_ols_data_owned(&action.request, loaded);
+                            if trace_enabled { eprintln!("FEREG_PHASE|prepare_job|seconds={:.9}", started.elapsed().as_secs_f64()); }
+                            result
+                        },
+                        || {
+                            let started = Instant::now();
+                            let result = loaded_rhs.map(|rows| LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes));
+                            if trace_enabled { eprintln!("FEREG_PHASE|moment_job|seconds={:.9}", started.elapsed().as_secs_f64()); }
+                            result
+                        },''')
+        path.write_text(text)

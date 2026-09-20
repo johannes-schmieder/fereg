@@ -42,6 +42,29 @@ impl LevelIndex {
         Self::from_codes_with_reservation(codes, n_levels, &mut reservation)
     }
 
+    /// Ordered codes already have the final membership order. Reject the
+    /// optional route before allocation when that identity does not hold.
+    pub(crate) fn try_from_ordered_codes(codes: &[u32], n_levels: usize) -> Result<Option<Self>> {
+        if codes.last().is_some_and(|code| *code as usize >= n_levels)
+            || codes.windows(2).any(|pair| pair[0] > pair[1])
+        { return Ok(None); }
+        let offset_count = n_levels.checked_add(1)
+            .ok_or_else(|| allocation("fixed-effect level-index offset count overflows"))?;
+        let mut offsets = Vec::new();
+        offsets.try_reserve_exact(offset_count)
+            .map_err(|_| allocation("unable to reserve fixed-effect level offsets"))?;
+        offsets.push(0);
+        for (observation, &code) in codes.iter().enumerate() {
+            while offsets.len() <= code as usize { offsets.push(observation); }
+        }
+        offsets.resize(offset_count, codes.len());
+        let mut observations = Vec::new();
+        observations.try_reserve_exact(codes.len())
+            .map_err(|_| allocation("unable to reserve fixed-effect level observations"))?;
+        observations.extend(0..codes.len());
+        Ok(Some(Self { offsets, observations }))
+    }
+
     fn from_codes_with_reservation<R: LevelIndexReservation>(
         codes: &[u32],
         n_levels: usize,
@@ -700,5 +723,28 @@ mod tests {
                 .expect("role order"),
             vec![1, 3, 2, 0, 4]
         );
+    }
+}
+
+#[cfg(test)]
+mod ordered_index_tests {
+    use super::*;
+
+    #[test]
+    fn ordered_index_matches_general_membership_and_rejects_before_fallback() {
+        for codes in [vec![], vec![0], vec![0, 0, 1, 3, 3], vec![2, 2, 5],
+            (0..16387).map(|r| (r / 5) as u32).collect()] {
+            let levels = codes.last().map_or(0, |code| *code as usize + 1);
+            for padding in [0, 3] {
+                let count = levels + padding;
+                assert_eq!(LevelIndex::try_from_ordered_codes(&codes, count).unwrap().unwrap(),
+                    LevelIndex::from_codes(&codes, count).unwrap());
+            }
+        }
+        for (codes, levels) in [(vec![0, 1, 0], 2), (vec![0, 3], 3), (vec![u32::MAX, 0], 2)] {
+            assert_eq!(LevelIndex::try_from_ordered_codes(&codes, levels).unwrap(), None);
+        }
+        assert_eq!(LevelIndex::try_from_ordered_codes(&[], usize::MAX).unwrap_err(),
+            LevelIndex::from_codes(&[], usize::MAX).unwrap_err());
     }
 }

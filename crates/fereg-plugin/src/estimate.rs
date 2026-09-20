@@ -1648,7 +1648,12 @@ fn load_ols_input_with_team(
     } else {
         Some(role_position(request, InputRoleTag::Candidate)?)
     };
-    let mut outcome = empty_loaded_column(n, "OLS outcome")?;
+    let defer_columns = candidate_all && n >= 16_384
+        && (9..=64).contains(&(request.model.sources.len() + 1))
+        && team.is_some_and(|t| t.threads() >= 8) && spi.supports_numeric_rows()
+        && !request.bindings.iter().any(|binding| matches!(binding.role,
+            OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight));
+    let mut outcome = loaded_column_reservation(n, "OLS outcome", defer_columns)?;
     let mut source_loaders = reserved_empty(request.model.sources.len(), "OLS source table")?;
     for source in &request.model.sources {
         let position = source_position(request, source.id)?;
@@ -1670,7 +1675,7 @@ fn load_ols_input_with_team(
                 provisional_codes: StringDictionary::new(),
             }
         } else {
-            OlsSourceLoader::Numeric(empty_loaded_column(n, "OLS numeric source")?)
+            OlsSourceLoader::Numeric(loaded_column_reservation(n, "OLS numeric source", defer_columns)?)
         };
         push_reserved(
             &mut source_loaders,
@@ -1702,6 +1707,65 @@ fn load_ols_input_with_team(
     let all_sources_numeric = source_loaders
         .iter()
         .all(|(_, loader)| matches!(loader, OlsSourceLoader::Numeric(_)));
+    if candidate_all && all_sources_numeric {
+        if let Some(team) = team {
+                let width = request.model.sources.len() + 1;
+                if spi.supports_numeric_rows() && team.threads() > 1 && n >= 16_384
+                    && (9..=64).contains(&width)
+                    && request.absorbed_terms.len() == 1
+                    && request.absorbed_terms[0].categorical_sources.len() == 1
+                    && !request.bindings.iter().any(|binding| matches!(binding.role,
+                        OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight))
+                {
+                    let model = request.validate_and_compile()?;
+                    let shape_matches = model.columns.len() + 1 == width
+                        && matches!(model.columns.last().map(|c| &c.kind), Some(PreparedOlsColumnKind::Intercept))
+                        && model.columns[..model.columns.len() - 1].iter().enumerate().all(|(index, column)|
+                            matches!(column.kind, PreparedOlsColumnKind::Continuous { prepared_source_index, .. } if index == prepared_source_index));
+                    if shape_matches {
+                        if let Some(elements) = n.checked_mul(width) {
+                            if let Some(bytes) = elements.checked_mul(8).filter(|bytes| *bytes <= rhs_budget && *bytes <= memory.remaining().saturating_sub(2 * 4096 * width * 8 + 4096)) {
+                                memory.admit(bytes as u128)?;
+                                let mut rows = Vec::new();
+                                rows.try_reserve_exact(elements).map_err(|_| allocation("unable to reserve numeric loaded RHS"))?;
+                                if rows.capacity() == elements {
+                                    memory.retain(bytes as u128)?;
+                                    *rhs = Some(rows);
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+    }
+    let reserved_read = if defer_columns && all_sources_numeric {
+        let mut positions = reserved_empty(source_positions.len() + 1, "reserved numeric SPI positions")?;
+        let mut columns = reserved_empty(source_positions.len() + 1, "reserved numeric SPI columns")?;
+        let mut missing = reserved_empty(source_positions.len() + 1, "reserved numeric SPI missing columns")?;
+        positions.push(outcome_position);
+        columns.push(&mut outcome.values);
+        missing.push(&mut outcome.missing);
+        for ((_, loader), position) in source_loaders.iter_mut().zip(&source_positions) {
+            let OlsSourceLoader::Numeric(column) = loader else { unreachable!("numeric sources checked"); };
+            positions.push(*position);
+            columns.push(&mut column.values);
+            missing.push(&mut column.missing);
+        }
+        crate::numeric_pipeline::try_read_reserved(spi, &positions, n, &mut columns,
+            &mut missing, team.expect("deferred input has a team"), memory, rhs.as_mut())?
+    } else { false };
+    if defer_columns && !reserved_read {
+        // A rejected optional path has not read observations. Restore the
+        // initialized arrays required by the ordinary loader before fallback.
+        outcome.values.resize(n, 0.0);
+        outcome.missing.resize(n, false);
+        for (_, loader) in &mut source_loaders {
+            if let OlsSourceLoader::Numeric(column) = loader {
+                column.values.resize(n, 0.0);
+                column.missing.resize(n, false);
+            }
+        }
+    }
     if candidate_all && all_sources_numeric || n >= INPUT_CANDIDATE_BATCH_MIN_ROWS {
         if let Some(position) = candidate_position {
             for (row, retained) in candidate.iter_mut().enumerate() {
@@ -1746,35 +1810,8 @@ fn load_ols_input_with_team(
                 missing.push(destination.missing.as_mut_slice());
             }
         }
-        let pipelined = if candidate_all && all_sources_numeric {
+        let pipelined = if reserved_read { true } else if candidate_all && all_sources_numeric {
             if let Some(team) = team {
-                let width = positions.len();
-                if spi.supports_numeric_rows() && team.threads() > 1 && n >= 16_384
-                    && (9..=64).contains(&width)
-                    && request.absorbed_terms.len() == 1
-                    && request.absorbed_terms[0].categorical_sources.len() == 1
-                    && !request.bindings.iter().any(|binding| matches!(binding.role,
-                        OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight))
-                {
-                    let model = request.validate_and_compile()?;
-                    let shape_matches = model.columns.len() + 1 == width
-                        && matches!(model.columns.last().map(|c| &c.kind), Some(PreparedOlsColumnKind::Intercept))
-                        && model.columns[..model.columns.len() - 1].iter().enumerate().all(|(index, column)|
-                            matches!(column.kind, PreparedOlsColumnKind::Continuous { prepared_source_index, .. } if index == prepared_source_index));
-                    if shape_matches {
-                        if let Some(elements) = n.checked_mul(width) {
-                            if let Some(bytes) = elements.checked_mul(8).filter(|bytes| *bytes <= rhs_budget && *bytes <= memory.remaining().saturating_sub(2 * 4096 * width * 8 + 4096)) {
-                                memory.admit(bytes as u128)?;
-                                let mut rows = Vec::new();
-                                rows.try_reserve_exact(elements).map_err(|_| allocation("unable to reserve numeric loaded RHS"))?;
-                                if rows.capacity() == elements {
-                                    memory.retain(bytes as u128)?;
-                                    *rhs = Some(rows);
-                                }
-                            }
-                        }
-                    }
-                }
                 crate::numeric_pipeline::try_read_with_rhs(spi, &positions, &mut columns, &mut missing, team, memory, rhs.as_mut())?
             } else { false }
         } else { false };
@@ -2527,23 +2564,10 @@ fn validate_shadow_against_outputs(
             "OLS shadow result failed its final dimensional preflight",
         ));
     }
-    if shadow.residuals.iter().any(|value| !value.is_finite())
-        || shadow.retained_rows.iter().enumerate().any(|(index, row)| {
-            *row >= shadow.drop_reasons.len()
-                || (index > 0 && shadow.retained_rows[index - 1] >= *row)
-        })
-        || !shadow
-            .drop_reasons
-            .iter()
-            .enumerate()
-            .filter_map(|(row, reason)| {
-                (*reason == fereg_core::DropReason::Retained).then_some(row)
-            })
-            .eq(shadow.retained_rows.iter().copied())
+    if invalid_shadow_observations(shadow.residuals, shadow.retained_rows,
+        shadow.drop_reasons, action.fit.execution.threads)?
     {
-        return Err(invalid(
-            "OLS shadow observation outputs failed final preflight",
-        ));
+        return Err(invalid("OLS shadow observation outputs failed final preflight"));
     }
     if action.outputs.residual.is_some() != (shadow.receipt[13] == 1.0) || shadow.receipt[15] != 0.0
     {
@@ -2558,6 +2582,32 @@ fn validate_shadow_against_outputs(
     validate_defined_value_table(&shadow.certificates, "OLS certificate shadow")?;
     validate_shadow_diagnostics(action, shadow)?;
     Ok(())
+}
+
+fn invalid_shadow_observations(
+    residuals: &[f64], retained_rows: &[usize], drop_reasons: &[fereg_core::DropReason], threads: ThreadConfig,
+) -> Result<bool> {
+    if retained_rows.len() == drop_reasons.len() && residuals.len() == retained_rows.len()
+        && retained_rows.len() >= 16_384 && threads.resolved() >= 8
+    {
+        // A bounded, strictly increasing map of N rows into N positions must
+        // be the identity. The original count/mapping checks then require every
+        // reason to be Retained. Check all three invariants together, without
+        // weakening the final publication barrier or using SPI on workers.
+        use rayon::prelude::*;
+        return ThreadTeam::new(threads).install(|| {
+            residuals.par_iter().zip(retained_rows.par_iter()).zip(drop_reasons.par_iter())
+                .enumerate().any(|(row, ((value, original), reason))|
+                    !value.is_finite() || *original != row || *reason != fereg_core::DropReason::Retained)
+        });
+    }
+    Ok(residuals.iter().any(|value| !value.is_finite())
+        || retained_rows.iter().enumerate().any(|(index, row)| {
+            *row >= drop_reasons.len() || (index > 0 && retained_rows[index - 1] >= *row)
+        })
+        || !drop_reasons.iter().enumerate().filter_map(|(row, reason)| {
+            (*reason == fereg_core::DropReason::Retained).then_some(row)
+        }).eq(retained_rows.iter().copied()))
 }
 
 fn validate_shadow_receipt(action: &EstimateAction, shadow: &OlsShadowResult<'_>) -> Result<()> {
@@ -2838,8 +2888,17 @@ fn store_shadow(
     memory_report: &MemoryReport,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
+    // Final preflight already proved exact agreement between the retained map
+    // and drop reasons. A full sample keeps its initialized private marker;
+    // without requested observation products there is no row store to perform.
+    let observation_rows = if shadow.retained_rows.len() == shadow.drop_reasons.len()
+        && action.outputs.residual.is_none() && action.outputs.drop_reason.is_none()
+        && action.outputs.xb.is_none() && action.outputs.xbd.is_none()
+        && action.outputs.absorbed.is_none()
+        && action.outputs.saved_channels.iter().all(Option::is_none)
+    { 0 } else { shadow.drop_reasons.len() };
     let mut retained_cursor = 0_usize;
-    for (zero_based, reason) in shadow.drop_reasons.iter().copied().enumerate() {
+    for (zero_based, reason) in shadow.drop_reasons.iter().copied().enumerate().take(observation_rows) {
         let observation = zero_based + 1;
         let retained = reason == fereg_core::DropReason::Retained;
         if !retained && reason != fereg_core::DropReason::ExcludedByIfIn {
@@ -3341,6 +3400,12 @@ fn weight_position(request: &OlsRequestV1, role: OlsInputRole) -> Option<u32> {
         .bindings
         .iter()
         .find_map(|binding| (binding.role == role).then_some(binding.stata_var_position))
+}
+
+fn loaded_column_reservation(n: usize, label: &'static str, defer: bool) -> Result<LoadedNumericColumn> {
+    if defer {
+        Ok(LoadedNumericColumn { values: reserved_empty(n, label)?, missing: reserved_empty(n, label)? })
+    } else { empty_loaded_column(n, label) }
 }
 
 fn empty_loaded_column(n: usize, label: &'static str) -> Result<LoadedNumericColumn> {
@@ -5138,6 +5203,60 @@ mod tests {
     }
 
     #[test]
+    fn parallel_shadow_preflight_matches_serial_on_full_and_partial_samples() {
+        for n in [16383, 16384, 16387] {
+            let mut residuals = vec![0.5; n];
+            let mut retained: Vec<_> = (0..n).collect();
+            let mut reasons = vec![fereg_core::DropReason::Retained; n];
+            let compare = |residuals: &[f64], retained: &[usize], reasons: &[fereg_core::DropReason]| {
+                let serial = invalid_shadow_observations(residuals, retained, reasons, ThreadConfig::from_requested(1, false).unwrap());
+                for t in [8, 16] { assert_eq!(serial, invalid_shadow_observations(residuals, retained, reasons, ThreadConfig::from_requested(t, false).unwrap())); }
+            };
+            compare(&residuals, &retained, &reasons);
+            for row in [0, n / 2, n - 1] {
+                retained[row] = n;
+                compare(&residuals, &retained, &reasons);
+                retained[row] = row;
+                reasons[row] = fereg_core::DropReason::MissingOutcome;
+                compare(&residuals, &retained, &reasons);
+                reasons[row] = fereg_core::DropReason::Retained;
+                residuals[row] = f64::NAN;
+                compare(&residuals, &retained, &reasons);
+                residuals[row] = 0.5;
+            }
+            retained.swap(0, n - 1);
+            compare(&residuals, &retained, &reasons);
+            retained.swap(0, n - 1);
+            retained.remove(n / 2);residuals.remove(n / 2);
+            reasons[n / 2] = fereg_core::DropReason::MissingOutcome;
+            compare(&residuals, &retained, &reasons);
+        }
+    }
+
+    #[test]
+    fn omitted_observation_outputs_preserve_science_sample_drops_and_receipt() {
+        for missing in [false, true] {
+            let (mut args, mut reference) = fixture(OlsVceKind::Iid);
+            replace_argument(&mut args, "candidate_all", "candidate_all=1".to_owned());
+            if missing { reference.data.insert((2, 3), (0.0, true)); }
+            let mut no_outputs = reference.clone();
+            estimate_ols_test(&args, &mut reference).unwrap();
+            replace_argument(&mut args, "output_residual", "output_residual=0".to_owned());
+            replace_argument(&mut args, "output_drop_reason", "output_drop_reason=0".to_owned());
+            no_outputs.nvars -= 2;
+            estimate_ols_test(&args, &mut no_outputs).unwrap();
+            for name in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCERT"] {
+                assert_eq!(reference.matrices[name], no_outputs.matrices[name], "{name}");
+            }
+            let rows: Vec<_> = no_outputs.stores.iter().filter_map(|event| {
+                if let StoreEvent::Numeric(variable, row, value) = event { Some((*variable, *row, *value)) } else { None }
+            }).collect();
+            assert_eq!(rows, if missing { vec![(4, 3, 0.0)] } else { Vec::new() });
+            assert_eq!(no_outputs.receipt_complete(), 1.0);
+        }
+    }
+
+    #[test]
     fn complete_input_certificate_disagreement_fails_before_output() {
         let (mut args, mut spi) = fixture(OlsVceKind::Iid);
         replace_argument(&mut args, "candidate_all", "candidate_all=1".to_owned());
@@ -5301,7 +5420,9 @@ mod tests {
         let required = spi.nobs * 12 * 8;
         for (budget, threads, reorder, missing) in [(required, 4, false, false),
             (required - 1, 4, false, false), (required, 1, false, false),
-            (required, 4, true, false), (required, 4, false, true)] {
+            (required, 4, true, false), (required, 4, false, true),
+            (required, 8, false, false), (required - 1, 8, false, false),
+            (required, 16, true, false), (required, 16, false, true)] {
             let mut request = request.clone();
             let mut spi = spi.clone();
             if reorder { request.model.terms[0].components[0].source = SourceId::new(2).unwrap(); request.model.terms[1].components[0].source = SourceId::new(1).unwrap(); }
