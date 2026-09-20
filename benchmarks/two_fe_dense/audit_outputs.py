@@ -23,6 +23,9 @@ def audit(root, label, variant):
         assert result['sample_rows']==n
         matrix = np.memmap(data.with_suffix('.bin'),dtype='<f8',mode='r',shape=(len(info['columns']),n))
         columns = {name:matrix[j] for j,name in enumerate(info['columns'])}
+        weight_kind = cell.get('weight_kind','none')
+        weight = np.ones(n) if weight_kind=='none' else columns['w']
+        total_weight = float(weight.sum())
         b = pd.read_csv(run/'b.csv').sort_values(['row','column']).value.to_numpy()
         assert len(b)==k+1
         xb = np.full(n,b[-1])
@@ -33,20 +36,25 @@ def audit(root, label, variant):
         assert np.isfinite(outputs).all()
         prediction = xb + outputs[0] + outputs[1]
         residual = columns['y']-prediction
+        weighted_residual = weight*residual
         group_means = []
         for effect,values in zip(('g1','g2'),outputs[:2]):
             _, first, codes = np.unique(columns[effect],return_index=True,return_inverse=True)
             np.testing.assert_array_equal(values,values[first][codes])
-            counts = np.bincount(codes)
-            means = np.bincount(codes,weights=residual)/counts
+            counts = np.bincount(codes,weights=weight)
+            means = np.bincount(codes,weights=weighted_residual)/counts
             group_means.append(float(np.max(np.abs(means))))
-        finite_score = max(abs(float(columns[f'x{j+1}']@residual))/n for j in range(k))
+        finite_score = max(abs(float(columns[f'x{j+1}']@weighted_residual))/total_weight for j in range(k))
         assert max(group_means)<1e-9 and finite_score<1e-9
-        assert abs(float(residual.mean()))<1e-9
-        assert abs(float(outputs[0].mean()))<1e-9
+        assert abs(float(weighted_residual.sum()/total_weight))<1e-9
+        assert abs(float(np.average(outputs[0],weights=weight)))<1e-9
         _, components = np.unique(columns['component'],return_inverse=True)
-        centers = np.bincount(components,weights=outputs[1])/np.bincount(components)
+        centers = np.bincount(components,weights=weight*outputs[1])/np.bincount(components,weights=weight)
         assert np.max(np.abs(centers))<1e-9
+        rss = float(residual@weighted_residual)
+        if weight_kind in ('aw','pw'):
+            rss *= n/total_weight
+        np.testing.assert_allclose(result['metadata']['rss'],rss,rtol=1e-8)
         errors = None
         if mode=='all':
             expected = np.array([residual,xb,prediction])

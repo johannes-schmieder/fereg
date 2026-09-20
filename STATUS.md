@@ -10,6 +10,36 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Completed narrow/weighted two-FE development screen — 2026-09-20
+
+The [weighted/small-width report](benchmarks/reports/development/two-fe-weighted-small-local-2026-09-20/README.md)
+records measurement before guard changes and the resulting initial Schur
+admission extension. At least eight workers may now attempt 3–15 actual RHS
+columns with unit or supplied weights, retaining the actual-weight probe,
+memory admission, certificates and continuation. Wider/thread policy and
+weighted loading, final projection and output-recovery guards remain unchanged.
+[ADR 0076](docs/adr/0076-narrow-weighted-ols-schur-admission.md) describes the scope.
+
+All nine ordered unit/AW/PW fitting/inference cells beat stock fixest in all
+three pairs; median paired ratios span 0.634218–0.900552. Native fitting improves
+about 25–42%. The three shuffled holdouts improve over native baseline but still
+lose to fixest. Weighted full outputs improve only about 12% and remain about
+43% slower than default fixest. Default reference outputs miss the unchanged
+tolerance; separate tight-reference comparison and seven independent weighted
+output audits pass. Sparse/dispersed-weight rejection costs of 7/8 ms remain
+explicit, as does the one-FE unit control's 74→76 ms change.
+
+Candidate plugin `1e0bf355e5e9cd9b37494386ee6808c33122dffb4aac699122517beb12ecffdd`
+matches all 514 captured source entries on base `b84cea02` plus overlays. Twelve
+focused solver checks, the actual-plugin ABI check and three Stata fixtures
+pass. All 21 control result bundles/allocation peaks are exact; none of 70
+native pairs raises peak allocation. The archive preserves all 289 application
+attempts, including two harness worker failures and the failed oracle/reference
+comparisons. This is a local development checkpoint, not universal speed or
+release evidence. The timing work has finished; no installed package or remote
+state changed. Further work should address narrow weighted operator cost,
+weighted strict final projection/recovery and cheap rejected-probe handling.
+
 ## Completed local dense two-FE optimization — 2026-09-20
 
 The [final dense two-FE report](benchmarks/reports/development/two-fe-dense-final-local-2026-09-20/README.md)

@@ -1,0 +1,25 @@
+{
+  "corrected_guard_rerun": "pass",
+  "initial_run": {
+    "failed": 1,
+    "passed": 11,
+    "reason": "The old admission test expected width 15 to be excluded at the default high thread count; updated the expectation and moved the minimum-width exclusion to zero regressors."
+  },
+  "rerun_log_sha256": "50e4ec9cfa58b5a25377769b1db0a26b9bef638ab8171ab0cf35c9dbb6cf9812",
+  "status": "pass",
+  "tests": [
+    "fe::borrowed_map::tests::checkpoint_schur_copy_respects_exact_transient_admission",
+    "fe::borrowed_map::tests::checkpoint_schur_reuses_probe_and_falls_back_on_untouched_inputs",
+    "fe::borrowed_map::tests::checkpoint_schur_weighted_cut_rejects_before_copying",
+    "fe::borrowed_map::tests::counted_unit_schur_edges_match_observation_operator_and_budget",
+    "fe::borrowed_map::tests::counted_unit_schur_projection_matches_independent_map",
+    "fe::borrowed_map::tests::large_two_fe_schur_operator_is_bit_stable_across_threads",
+    "fe::borrowed_map::tests::ols_schur_probe_solve_budget_and_order_match_independent_map",
+    "fe::borrowed_map::tests::ols_schur_probe_uses_weighted_cuts_and_preserves_common_scale",
+    "fe::borrowed_map::tests::ols_schur_readiness_includes_group_weight_certificate_scale",
+    "ols::prepared_fit::tests::narrow_ols_schur_admission_preserves_operator_and_thread_controls",
+    "ols::prepared_fit::tests::two_fe_schur_final_overlap_preserves_results_caches_and_error_order",
+    "ols::prepared_fit::tests::wide_ols_schur_guard_preserves_ineligible_routes_and_cycle_reports"
+  ],
+  "unit_log_sha256": "5bcdcf1abfc46eab190e1e2bc021361b13e0379bfc94445d64cea6a4c1db72be"
+}

@@ -20,6 +20,21 @@ FE recovery, observation vectors and public predictions. Saved effects are
 normalized separately within each connected component. Small `--oracle` runs
 use explicit dummy matrices; all comparisons preserve the repository tolerances.
 
+Focused weighted screens can use `--weight-kind aw|pw|fw` and
+`--weight-design constant|moderate|dispersed`. Constant weights equal four;
+moderate weights are independently seeded integers from one to five; dispersed
+weights are independently seeded powers of ten from 1e-4 to 1e4. PW requires
+robust or clustered inference. AW/PW reference fitting uses fixest's supplied
+weights, and RSS and saved-effect normalization use the same reference scale.
+FW comparisons are native-only: fixest's ordinary weights do not implement
+literal frequency inference. The small oracle grounds one right-hand dummy per
+component, checks weighted coefficients, covariance, RSS and requested outputs,
+and separately checks FW coefficients against literal row expansion.
+
+Smaller-width and weighted development screens are separate from the frozen
+2026-09-20 acceptance matrix. Archive their labels and plans explicitly; do not
+apply the old matrix's acceptance statement to these additional cases.
+
 Default timings use stock reference tolerances. `--reference-precision` and
 `--reference-tolerance` run separate accuracy diagnostics, and
 `--reference-recovery-precision` changes only recovery. Their timings cannot

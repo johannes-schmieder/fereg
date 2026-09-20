@@ -47,6 +47,13 @@ def stage(root):
                                 'ssc(K.adj=TRUE, K.fixef="nonnested", K.exact=isTRUE(cell$exact_dof),')
     text = breadth.replace_once(text, 'nthreads=cell$threads, vcov=if',
                                 'nthreads=cell$threads, fixef.tol=cell$fixest_tolerance, vcov=if')
+    start = text.index('feols(formula,')
+    end = text.index('notes=FALSE)',start)+len('notes=FALSE)')
+    unweighted = text[start:end]
+    weighted = unweighted.replace('data=data,','data=data, weights=~w,')
+    text = text[:start] + 'if (cell$weight_kind == "none") {\n' + unweighted + '\n} else {\n' + weighted + '\n}' + text[end:]
+    text = breadth.replace_once(text, 'meta$rss <- sum(resid(fit)^2)',
+                                'meta$rss <- if (cell$weight_kind == "none") sum(resid(fit)^2) else sum(data$w[obs(fit)] * resid(fit)^2) * nobs(fit) / sum(data$w[obs(fit)])')
     start, end = text.index('recover_outputs <- function'), text.index('if (c$phase == "warm")')
     text = text[:start] + '''recover_outputs <- function(fit, data) {
     if (is.null(fit) || cell$outputs == "none") return(NULL)
@@ -54,10 +61,17 @@ def stage(root):
     left <- unname(effects$g1[fit$fixef_id$g1])
     right <- unname(effects$g2[fit$fixef_id$g2])
     contribution <- left + right
-    intercept <- mean(contribution)
     component <- as.integer(data$component[obs(fit)])
-    centers <- as.vector(rowsum(right, component, reorder=FALSE)) /
-               as.vector(rowsum(rep(1, length(right)), component, reorder=FALSE))
+    if (cell$weight_kind == "none") {
+        intercept <- mean(contribution)
+        centers <- as.vector(rowsum(right, component, reorder=FALSE)) /
+                   as.vector(rowsum(rep(1, length(right)), component, reorder=FALSE))
+    } else {
+        weight <- data$w[obs(fit)]
+        intercept <- weighted.mean(contribution, weight)
+        centers <- as.vector(rowsum(weight * right, component, reorder=FALSE)) /
+                   as.vector(rowsum(weight, component, reorder=FALSE))
+    }
     centers <- centers[match(component, unique(component))]
     saved_outputs <- list(left + centers - intercept, right - centers)
     if (cell$outputs == "all") {
@@ -75,8 +89,9 @@ def stage(root):
     return folder
 
 
-def dataset(root, n, k, seed, shuffled=False, design="two_fe_dense"):
-    path = root / "data" / f"{design}-n{n}-k{k}-s{seed}-shuffle{int(shuffled)}.dta"
+def dataset(root, n, k, seed, shuffled=False, design="two_fe_dense", weight_design="none"):
+    suffix = '' if weight_design == 'none' else '-w' + weight_design
+    path = root / "data" / f"{design}-n{n}-k{k}-s{seed}-shuffle{int(shuffled)}{suffix}.dta"
     if path.exists():
         assert breadth.sha(path) == json.loads(path.with_suffix('.json').read_text())["sha256"]
         if not path.with_suffix('.bin').exists():
@@ -100,12 +115,20 @@ def dataset(root, n, k, seed, shuffled=False, design="two_fe_dense"):
     ids = frame.obs_id.to_numpy().astype(np.int64) - 1
     frame['c1'] = (ids % (31 if n < 7680 else 1024) + 1).astype(float)
     frame['c2'] = ((ids // 7) % (17 if n < 7680 else 257) + 1).astype(float)
+    if weight_design == 'constant':
+        frame['w'] = 4.0
+    elif weight_design == 'moderate':
+        frame['w'] = (np.random.default_rng(seed + 524287).integers(1, 6, n)).astype(float)
+    elif weight_design == 'dispersed':
+        frame['w'] = 10.0 ** np.random.default_rng(seed + 524287).integers(-4, 5, n)
+    else:
+        assert weight_design == 'none'
     if shuffled:
         frame = frame.iloc[np.random.default_rng(seed + 1).permutation(n)].reset_index(drop=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_stata(path, write_index=False, version=118, time_stamp=datetime.datetime(2000,1,1))
     np.testing.assert_array_equal(frame.to_numpy(), pd.read_stata(path).to_numpy())
-    write(path.with_suffix('.json'), dict(n=n,k=k,seed=seed,design=design,shuffled=shuffled,
+    write(path.with_suffix('.json'), dict(n=n,k=k,seed=seed,design=design,shuffled=shuffled,weight_design=weight_design,
           components=int(components), columns=list(frame), parent_sha256=breadth.sha(parent), sha256=breadth.sha(path),
           generator_sha256=breadth.sha(REPO/'benchmarks/systematic/generate.py'),
           levels={c:int(frame[c].nunique()) for c in ['g1','g2','c1','c2']},
@@ -137,21 +160,39 @@ def oracle(data, output, cell):
     k,n = cell['k'],len(frame)
     X = frame[[f'x{j}' for j in range(1,k+1)]].to_numpy()
     y = frame.y.to_numpy()
+    kind = cell.get('weight_kind', 'none')
+    raw_weight = np.ones(n) if kind == 'none' else frame.w.to_numpy()
+    weight = raw_weight if kind in ('none', 'fw') else raw_weight * n / raw_weight.sum()
+    effective_n = int(raw_weight.sum()) if kind == 'fw' else n
+    sqrt_weight = np.sqrt(weight)
     blocks = [pd.get_dummies(frame[c],dtype=float).to_numpy() for c in ['g1','g2']]
-    D = np.column_stack(blocks)
-    fe_coefficients,_,fe_rank,_ = lstsq(D,np.column_stack([y,X]),lapack_driver='gelsd')
-    within = np.column_stack([y,X])-D@fe_coefficients
-    beta,_,rank,_ = lstsq(within[:,1:],within[:,0],lapack_driver='gelsd')
+    full_D = np.column_stack(blocks)
+    # Ground one right-side level per component. Keeping both complete dummy
+    # blocks makes the weighted SVD's default cutoff depend on roundoff in the
+    # exact null directions rather than the graph's known rank.
+    keep = np.ones(full_D.shape[1],dtype=bool)
+    anchors = frame.groupby('component').g2.min().to_numpy()
+    keep[blocks[0].shape[1]+np.searchsorted(np.unique(frame.g2),anchors)] = False
+    D = full_D[:,keep]
+    grounded_coefficients,_,fe_rank,_ = lstsq(D*sqrt_weight[:,None],
+        np.column_stack([y,X])*sqrt_weight[:,None],lapack_driver='gelsd')
+    assert fe_rank == D.shape[1]
+    fe_coefficients = np.zeros((full_D.shape[1],k+1))
+    fe_coefficients[keep] = grounded_coefficients
+    within = np.column_stack([y,X])-D@grounded_coefficients
+    beta,_,rank,_ = lstsq(within[:,1:]*sqrt_weight[:,None],within[:,0]*sqrt_weight,lapack_driver='gelsd')
     assert rank == k
     residual = within[:,0]-within[:,1:]@beta
-    bread = np.linalg.inv(within[:,1:].T@within[:,1:])
+    bread = np.linalg.inv(within[:,1:].T@(within[:,1:]*weight[:,None]))
     influence = (within[:,1:]@bread)*residual[:,None]
     full_rank = int(fe_rank)+k
     vce = cell['vce']
     if not vce:
-        V = bread*(residual@residual)/(n-full_rank)
+        V = bread*(residual@(weight*residual))/(effective_n-full_rank)
     elif vce == 'robust':
-        V = influence.T@influence*n/(n-full_rank)
+        score_weight = sqrt_weight if kind == 'fw' else weight
+        scores = influence*score_weight[:,None]
+        V = scores.T@scores*effective_n/(effective_n-full_rank)
     else:
         names = vce.split()[1:]
         V = np.zeros((k,k))
@@ -159,13 +200,13 @@ def oracle(data, output, cell):
             for subset in itertools.combinations(names,count):
                 _, codes = np.unique(frame[list(subset)].to_numpy(),axis=0,return_inverse=True)
                 sums = np.zeros((codes.max()+1,k))
-                np.add.at(sums,codes,influence)
+                np.add.at(sums,codes,influence*weight[:,None])
                 V += (-1)**(count+1)*(sums.T@sums)
         nonnested = [block for name,block in zip(['g1','g2'],blocks)
                      if not any(frame.groupby(name)[cluster].nunique().max()==1 for cluster in names)]
         df_model = k+(np.linalg.matrix_rank(np.column_stack(nonnested)) if nonnested else 1)
         g = min(frame[c].nunique() for c in names)
-        V *= (n-1)/(n-df_model)*g/(g-1)
+        V *= (effective_n-1)/(effective_n-df_model)*g/(g-1)
         eig,vectors = np.linalg.eigh(V)
         if eig.min()<0:
             V = (vectors*np.maximum(eig,0))@vectors.T
@@ -179,10 +220,10 @@ def oracle(data, output, cell):
         coefficients = fe_coefficients[:,0]-fe_coefficients[:,1:]@beta
         left = blocks[0]@coefficients[:blocks[0].shape[1]]
         right = blocks[1]@coefficients[blocks[0].shape[1]:]
-        intercept = (left+right).mean()
+        intercept = np.average(left+right,weights=weight)
         for component in frame.component.unique():
             active = frame.component.to_numpy()==component
-            center = right[active].mean()
+            center = np.average(right[active],weights=weight[active])
             right[active] -= center
             left[active] += center
         left -= intercept
@@ -193,7 +234,16 @@ def oracle(data, output, cell):
         np.testing.assert_allclose(actual,expected,rtol=1e-7,atol=1e-9)
         output_error = float(np.max(np.abs(actual-expected)))
     result = json.loads((output/'result.json').read_text())
-    assert result['metadata']['N']==n
+    assert result['metadata']['N']==effective_n
+    np.testing.assert_allclose(result['metadata']['rss'],residual@(weight*residual),rtol=1e-8)
+    if kind == 'fw':
+        # Literal expansion is a separate numerical witness for the FW contract.
+        Z = np.column_stack([X,D])
+        copies = raw_weight.astype(int)
+        expanded_Z,expanded_y = np.repeat(Z,copies,axis=0),np.repeat(y,copies)
+        expanded_beta,_,expanded_rank,_ = lstsq(expanded_Z,expanded_y,lapack_driver='gelsd')
+        np.testing.assert_allclose(beta,expanded_beta[:k],rtol=1e-7,atol=1e-10)
+        assert int(expanded_rank)==full_rank
     return dict(status='pass',rank=full_rank,covariance_max_error=float(np.max(np.abs(actual_v-V))),output_max_error=output_error)
 
 
@@ -223,7 +273,8 @@ def main(a):
         shared['fixest_library'] = {str(p.relative_to(library)):breadth.sha(p)
                                    for p in sorted(library.rglob('*')) if p.is_file()}
     # Build every requested input before any timed command in this series.
-    inputs={k:(dataset(root,a.n,k,a.seed,a.shuffled,a.design),dataset(root,7680,k,a.seed,False,a.design)) for k in a.widths}
+    inputs={k:(dataset(root,a.n,k,a.seed,a.shuffled,a.design,a.weight_design),
+               dataset(root,7680,k,a.seed,False,a.design,a.weight_design)) for k in a.widths}
     checks=[]
     for k in a.widths:
         data,warm=inputs[k]
@@ -232,6 +283,8 @@ def main(a):
             vce,r_vce,mode=CASES[case]
             cell=dict(model='ols',design=a.design,n=a.n,k=k,threads=a.threads,effects=['g1','g2'],
                       case=case,seed=a.seed,shuffled=a.shuffled,vce=vce,r_vce=r_vce,outputs=mode,
+                      weight_kind=a.weight_kind,weight_design=a.weight_design,
+                      weight='' if a.weight_kind=='none' else f'[{a.weight_kind}=w]',
                       exact_dof=data_info['components'] > 1,
                       fixest_tolerance=a.reference_tolerance if a.reference_precision else 1e-6,
                       fixest_recovery_tolerance=a.reference_tolerance if a.reference_precision or a.reference_recovery_precision else 1e-5,
@@ -283,6 +336,12 @@ if __name__=='__main__':
     p.add_argument('--record-reference-output-disagreement',action='store_true',
                    help='record observed reference output mismatches explicitly; never classify them as passing science')
     p.add_argument('--solver',choices=['auto','map','cg','lsmr','cmg'],default='auto')
+    p.add_argument('--weight-kind',choices=['none','aw','pw','fw'],default='none')
+    p.add_argument('--weight-design',choices=['none','constant','moderate','dispersed'],default='none')
     a=p.parse_args()
     if a.oracle and a.n>3840:p.error('explicit dummy oracle is bounded to small inputs')
+    if (a.weight_kind=='none') != (a.weight_design=='none'):p.error('weight kind and design must both be supplied')
+    if a.weight_kind=='fw' and ('fixest' in a.variants or a.weight_design=='dispersed'):
+        p.error('FW uses native comparisons and independent literal-expansion checks; fixest weights are not frequency semantics')
+    if a.weight_kind=='pw' and any(CASES[c][0]=='' for c in a.cases):p.error('pweights require robust or clustered inference')
     main(a)

@@ -60,9 +60,13 @@ def archive(root, output, labels):
             if result['arm'] == 'fereg':
                 plugins.add(variant)
                 record['plugin'] = fingerprint['native']['plugin']
-                with (run/'fereg_runtime.csv').open() as stream:
-                    runtime = {int(r['row']):float(r['value']) for r in csv.DictReader(stream)
-                               if int(r['column']) == 2}
+                runtime = {}
+                if (run/'fereg_runtime.csv').exists():
+                    with (run/'fereg_runtime.csv').open() as stream:
+                        runtime = {int(r['row']):float(r['value']) for r in csv.DictReader(stream)
+                                   if int(r['column']) == 2}
+                else:
+                    assert result['status']!='pass', 'successful native run lacks runtime receipt'
                 if 21 in runtime:
                     record.update(input_seconds=runtime[19], native_seconds=runtime[20],
                                   native_allocation_peak_bytes=int(runtime[13]),
@@ -127,7 +131,8 @@ def archive(root, output, labels):
         if any(path.name.startswith(f'fixtures-{variant}') for variant in plugins):
             shutil.copyfile(path,output/path.name)
     for name in ('acceptance-20260920.json','baseline-provenance.json'):
-        shutil.copyfile(root/name,output/name)
+        if (root/name).exists():
+            shutil.copyfile(root/name,output/name)
     write(output/'files.json',{str(p.relative_to(output)):sha(p) for p in sorted(output.rglob('*')) if p.is_file()})
     print('ARCHIVE_COMPLETE', len(records), 'calls', len(summary), 'cells')
 
