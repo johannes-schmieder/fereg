@@ -1,0 +1,158 @@
+[
+  {
+    "reference": "recovery-stream-iid_outputs-n983040-k10-r1-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_outputs-n983040-k10-r1-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_outputs-n983040-k10-r2-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_outputs-n983040-k10-r2-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_outputs-n983040-k10-r3-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_outputs-n983040-k10-r3-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_outputs-n983040-k50-r1-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_outputs-n983040-k50-r1-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_outputs-n983040-k50-r2-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_outputs-n983040-k50-r2-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_outputs-n983040-k50-r3-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_outputs-n983040-k50-r3-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_saved-n983040-k10-r1-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_saved-n983040-k10-r1-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_saved-n983040-k10-r2-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_saved-n983040-k10-r2-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_saved-n983040-k10-r3-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_saved-n983040-k10-r3-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_saved-n983040-k50-r1-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_saved-n983040-k50-r1-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_saved-n983040-k50-r2-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_saved-n983040-k50-r2-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "recovery-stream-iid_saved-n983040-k50-r3-recoverystream",
+    "candidate": "core-breadth-checkpoint-iid_saved-n983040-k50-r3-recoverycore",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  }
+]

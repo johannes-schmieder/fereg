@@ -1,0 +1,42 @@
+[
+  {
+    "arms": {
+      "nativefill": {
+        "maximum_ms": 163.0,
+        "median_ms": 159.0,
+        "minimum_ms": 157.0,
+        "sampled_peak_rss_gib": 0.4213714599609375
+      },
+      "nativeinit": {
+        "maximum_ms": 150.0,
+        "median_ms": 148.0,
+        "minimum_ms": 147.0,
+        "sampled_peak_rss_gib": 0.4220733642578125
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "nativefill/nativeinit": {
+        "median": 1.0816326530612246,
+        "values": [
+          1.060810810810811,
+          1.0866666666666667,
+          1.0816326530612246
+        ],
+        "wins": 0
+      },
+      "nativeinit/nativefill": {
+        "median": 0.9245283018867924,
+        "values": [
+          0.9426751592356687,
+          0.920245398773006,
+          0.9245283018867924
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "native-fill-sparse"
+  }
+]

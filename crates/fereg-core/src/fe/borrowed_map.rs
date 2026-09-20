@@ -3224,8 +3224,6 @@ pub(crate) fn recover_borrowed_intercept_sd_lsmr_coefficients(
     let mut residual =
         fallible_matrix_zeros(target.len(), 1, "unable to reserve SD recovery residual")?;
     residual.as_mut_slice().copy_from_slice(target);
-    let mut direction =
-        fallible_matrix_zeros(target.len(), 1, "unable to reserve SD recovery direction")?;
     let mut workspace = BorrowedMapWorkspace::new(design, target.len(), 1, &mut reservation)?;
     weighted_column_norms(
         &residual,
@@ -3242,10 +3240,6 @@ pub(crate) fn recover_borrowed_intercept_sd_lsmr_coefficients(
             method: BorrowedInterceptRecoveryMethod::Direct,
         });
     }
-    let mut increment = FeCoefficientBatch::intercept_zeros(design, 1)?;
-    let mut dot = [0.0_f64; 1];
-    let mut dot_correction = [0.0_f64; 1];
-
     if design.effects().len() == 1 {
         borrowed_residual_sweep_recording(
             design,
@@ -3262,6 +3256,12 @@ pub(crate) fn recover_borrowed_intercept_sd_lsmr_coefficients(
         });
     }
 
+    // A direct one-partition projection has no iterative direction or update.
+    let mut direction =
+        fallible_matrix_zeros(target.len(), 1, "unable to reserve SD recovery direction")?;
+    let mut increment = FeCoefficientBatch::intercept_zeros(design, 1)?;
+    let mut dot = [0.0_f64; 1];
+    let mut dot_correction = [0.0_f64; 1];
     let pilot_limit = map.max_iterations.min(SD_RECOVERY_PILOT_SWEEPS);
     let mut iterations = 0_usize;
     while iterations < pilot_limit {
@@ -7260,7 +7260,9 @@ fn certify_effects_parallel(
             &mut workspace.parallel_group_means[..mean_count],
         )?;
         if workspace.ols_norm_reduction
-            && (16..=64).contains(&columns)
+            && ((16..=64).contains(&columns)
+                || ((8..16).contains(&columns) && design.effects().len() == 1
+                    && mean_count >= 65_536))
             && workspace.parallel_dot_sums.len()
                 >= levels.div_ceil(OLS_CERTIFICATE_GROUP_CHUNK) * (columns + 2)
         {
@@ -9480,74 +9482,76 @@ mod tests {
 
     #[test]
     fn ols_parallel_certificate_matches_canonical_moments_and_errors() {
-        let rows = 16_384;
-        let codes = (0..rows).map(|r| (r % 2051) as u32).collect::<Vec<_>>();
-        let index = LevelIndex::from_codes(&codes, 2051).unwrap();
-        let source = ValidatedBorrowedInterceptSource::new(&codes, 2051, &index).unwrap();
+        let rows = 65_536;
+        let codes = (0..rows).map(|r| (r % 8193) as u32).collect::<Vec<_>>();
+        let index = LevelIndex::from_codes(&codes, 8193).unwrap();
+        let source = ValidatedBorrowedInterceptSource::new(&codes, 8193, &index).unwrap();
         let design = BorrowedInterceptFeDesign::new(rows, vec![source.effect()]).unwrap();
-        let columns = (0..17)
-            .map(|c| {
-                (0..rows)
-                    .map(|r| {
-                        if c == 0 {
-                            0.0
-                        } else {
-                            ((r * (c + 17) % 997) as f64 / 17.0).sin()
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-        let values = DenseMatrix::from_columns(&columns).unwrap();
-        let raw_weights = (0..rows)
-            .map(|r| 0.01 + (r % 19) as f64 / 7.0)
-            .collect::<Vec<_>>();
-        for threads in [4, 16] {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(threads)
-                .build()
-                .unwrap()
-                .install(|| {
-                    for weights in [
-                        BorrowedMapWeights::Unit,
-                        BorrowedMapWeights::Provided(&raw_weights),
-                    ] {
-                        let weights = validate_weights(weights, rows).unwrap();
-                        let mut reservation = SystemWorkspaceReservation;
-                        let mut work =
-                            BorrowedMapWorkspace::new(&design, rows, 17, &mut reservation).unwrap();
-                        for scale in [1000.0, 0.0, 1e-200] {
-                            work.reference_norms.fill(scale);
-                            work.residual_norms.fill(scale);
-                            work.ols_norm_reduction = false;
-                            let canonical = certify_with_current_norms(
-                                &design, weights, &values, 1e-8, &mut work,
-                            );
-                            let maxima = work.rhs_relative_infinity_norms.clone();
-                            work.ols_norm_reduction = true;
-                            let parallel = certify_with_current_norms(
-                                &design, weights, &values, 1e-8, &mut work,
-                            );
-                            match (canonical, parallel) {
-                                (Ok(a), Ok(b)) => {
-                                    assert_eq!(a.passed, b.passed);
-                                    assert_eq!(a.absolute_infinity_norm, b.absolute_infinity_norm);
-                                    assert_eq!(a.relative_infinity_norm, b.relative_infinity_norm);
-                                    assert!(
-                                        (a.relative_two_norm / b.relative_two_norm - 1.0).abs()
-                                            < 1e-12
-                                    );
-                                    assert_eq!(maxima, work.rhs_relative_infinity_norms);
+        for width in [8, 12, 17] {
+            let columns = (0..width)
+                .map(|c| {
+                    (0..rows)
+                        .map(|r| {
+                            if c == 0 {
+                                0.0
+                            } else {
+                                ((r * (c + 17) % 997) as f64 / 17.0).sin()
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>();
+            let values = DenseMatrix::from_columns(&columns).unwrap();
+            let raw_weights = (0..rows)
+                .map(|r| 0.01 + (r % 19) as f64 / 7.0)
+                .collect::<Vec<_>>();
+            for threads in [4, 16] {
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap()
+                    .install(|| {
+                        for weights in [
+                            BorrowedMapWeights::Unit,
+                            BorrowedMapWeights::Provided(&raw_weights),
+                        ] {
+                            let weights = validate_weights(weights, rows).unwrap();
+                            let mut reservation = SystemWorkspaceReservation;
+                            let mut work =
+                                BorrowedMapWorkspace::new(&design, rows, width, &mut reservation).unwrap();
+                            for scale in [1000.0, 0.0, 1e-200] {
+                                work.reference_norms.fill(scale);
+                                work.residual_norms.fill(scale);
+                                work.ols_norm_reduction = false;
+                                let canonical = certify_with_current_norms(
+                                    &design, weights, &values, 1e-8, &mut work,
+                                );
+                                let maxima = work.rhs_relative_infinity_norms.clone();
+                                work.ols_norm_reduction = true;
+                                let parallel = certify_with_current_norms(
+                                    &design, weights, &values, 1e-8, &mut work,
+                                );
+                                match (canonical, parallel) {
+                                    (Ok(a), Ok(b)) => {
+                                        assert_eq!(a.passed, b.passed);
+                                        assert_eq!(a.absolute_infinity_norm, b.absolute_infinity_norm);
+                                        assert_eq!(a.relative_infinity_norm, b.relative_infinity_norm);
+                                        assert!(
+                                            (a.relative_two_norm / b.relative_two_norm - 1.0).abs()
+                                                < 1e-12
+                                        );
+                                        assert_eq!(maxima, work.rhs_relative_infinity_norms);
+                                    }
+                                    (Err(a), Err(b)) => {
+                                        assert_eq!(a.code, b.code);
+                                        assert_eq!(a.message, b.message);
+                                    }
+                                    other => panic!("parallel certificate changed outcome: {other:?}"),
                                 }
-                                (Err(a), Err(b)) => {
-                                    assert_eq!(a.code, b.code);
-                                    assert_eq!(a.message, b.message);
-                                }
-                                other => panic!("parallel certificate changed outcome: {other:?}"),
                             }
                         }
-                    }
-                });
+                    });
+            }
         }
     }
 

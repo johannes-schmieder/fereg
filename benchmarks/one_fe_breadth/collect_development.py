@@ -32,6 +32,11 @@ def collect(root, output, labels):
         grouped = {}
         for path in sorted((root / "runs").glob(label + "-*/result.json")):
             result = read(path)
+            cell = result["cell"]
+            # A confirmation label may extend an earlier label. Match the
+            # complete label/cell boundary so its runs are never counted twice.
+            if not path.parent.name.startswith(f"{label}-{cell['case']}-n{cell['n']}-k{cell['k']}-"):
+                continue
             assert result["status"] == "pass" and result["process_returncode"] == 0
             assert result["sentinel"] and result["metadata"]["rc"] == 0
             identity = result.pop("measurement_fingerprint")
@@ -87,6 +92,7 @@ def collect(root, output, labels):
                     row["paired_ratios"][arm + "/" + reference] = dict(
                         values=ratios, median=statistics.median(ratios), wins=sum(r < 1 for r in ratios))
             timings.append(row)
+    assert len({receipt["run"] for receipt in receipts}) == len(receipts), "duplicate collected run"
     native_checks = {}
     for identity in identities.values():
         native = identity.get("native")

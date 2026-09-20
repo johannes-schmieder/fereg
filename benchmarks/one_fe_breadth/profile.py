@@ -37,10 +37,13 @@ def instrument(root):
         ("planning", "let effects ="),
         ("end", "let fits ="),
     ])
+    recovery_source = (root / "crates/fereg-core/src/fe/topology_slope_map.rs").read_text()
+    recovery_validation = ("let validated_single =" if "let validated_single =" in recovery_source
+                           else "validate_recovery_inputs(")
     phases("crates/fereg-core/src/fe/topology_slope_map.rs",
            "pub(crate) fn recover_finalized_categorical_effects_sd_lsmr_certified(",
            "\n/// Recover intercept-only effects with", "recovery_direct", [
-        ("validation_design", "validate_recovery_inputs("),
+        ("validation_design", recovery_validation),
         ("solve", "let recovered ="),
         ("normalization", "let validated_weights ="),
         ("end", "finish_channel_major_recovery("),

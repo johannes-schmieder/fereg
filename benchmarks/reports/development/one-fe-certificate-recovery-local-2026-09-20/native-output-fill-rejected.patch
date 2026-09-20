@@ -1,0 +1,367 @@
+diff --git a/crates/fereg-plugin/src/estimate.rs b/crates/fereg-plugin/src/estimate.rs
+index c6ef3327..3ea41d92 100644
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -126,6 +126,7 @@ struct EstimateAction {
+     request: OlsRequestV1,
+     candidate_all: bool,
+     input_complete: bool,
++    fill_excluded_outputs: bool,
+     clusters: Vec<OlsClusterTermV1>,
+     vce: OlsVceKind,
+     absorbed_dof: PreparedOlsAbsorbedDofPolicy,
+@@ -183,6 +184,7 @@ struct EstimateActionSpec {
+     include_intercept: bool,
+     candidate_all: bool,
+     input_complete: bool,
++    fill_excluded_outputs: bool,
+     keep_singletons: bool,
+     vce: OlsVceKind,
+     absorbed_dof: PreparedOlsAbsorbedDofPolicy,
+@@ -885,6 +887,9 @@ impl EstimateActionSpec {
+             include_intercept: parse_bool(&values, "include_intercept")?,
+             candidate_all: parse_bool(&values, "candidate_all")?,
+             input_complete: parse_bool(&values, "input_complete")?,
++            fill_excluded_outputs: if values.contains_key("output_fill_missing") {
++                parse_bool(&values, "output_fill_missing")?
++            } else { false },
+             keep_singletons: parse_bool(&values, "keep_singletons")?,
+             vce: parse_vce(required(&values, "vce")?)?,
+             absorbed_dof: parse_dof(required(&values, "dof")?)?,
+@@ -969,6 +974,7 @@ impl EstimateActionSpec {
+             "include_intercept",
+             "candidate_all",
+             "input_complete",
++            "output_fill_missing",
+             "keep_singletons",
+             "vce",
+             "dof",
+@@ -1282,6 +1288,7 @@ impl EstimateActionSpec {
+             request,
+             candidate_all: self.candidate_all,
+             input_complete: self.input_complete,
++            fill_excluded_outputs: self.fill_excluded_outputs,
+             clusters,
+             vce: self.vce,
+             absorbed_dof: self.absorbed_dof,
+@@ -2950,6 +2957,13 @@ fn store_shadow(
+                 }
+             }
+             retained_cursor += 1;
++        } else if action.fill_excluded_outputs {
++            for position in [action.outputs.residual, action.outputs.xb,
++                action.outputs.xbd, action.outputs.absorbed].into_iter().flatten()
++                .chain(action.outputs.saved_channels.iter().copied().flatten())
++            {
++                spi.store_numeric_missing(position, observation)?;
++            }
+         }
+         if let Some(position) = action.outputs.drop_reason {
+             spi.store_numeric(position, observation, f64::from(reason.code()))?;
+@@ -3687,6 +3701,7 @@ mod tests {
+     #[derive(Debug, Clone, PartialEq)]
+     enum StoreEvent {
+         Numeric(u32, usize, f64),
++        Missing(u32, usize),
+         Matrix(u8, usize, usize, f64),
+     }
+ 
+@@ -3816,6 +3831,13 @@ mod tests {
+             Ok(())
+         }
+ 
++        fn store_numeric_missing(&mut self, variable: u32, observation: usize) -> Result<()> {
++            self.before_store()?;
++            self.data.insert((variable, observation), (0.0, true));
++            self.stores.push(StoreEvent::Missing(variable, observation));
++            Ok(())
++        }
++
+         fn store_matrix(
+             &mut self,
+             name: &PreparedMatrixStoreName,
+@@ -5643,6 +5665,50 @@ mod tests {
+         assert_eq!(lean_spi.receipt_complete(), 1.0);
+     }
+ 
++    #[test]
++    fn output_fill_missing_initializes_excluded_rows_and_preserves_store_failure_receipt() {
++        let (mut args, mut source) = saved_output_fixture();
++        args.push("output_fill_missing=1".to_owned());
++        source.data.insert((2, 3), (0.0, true));
++        // Row 3 is incomplete, so row 4 is subsequently dropped as a singleton.
++        // Poison every private destination to detect unwritten excluded rows.
++        for variable in [6, 8, 9, 10, 11] {
++            for observation in 1..=source.nobs {
++                source.data.insert((variable, observation), (-12345.0, false));
++            }
++        }
++        let mut successful = source.clone();
++        estimate_ols_test(&args, &mut successful).expect("complete output initialization");
++        assert_eq!(successful.receipt_complete(), 1.0);
++        for observation in 1..=successful.nobs {
++            let excluded = matches!(observation, 3 | 4);
++            assert_eq!(successful.data[&(5, observation)], (f64::from(!excluded), false));
++            for variable in [6, 8, 9, 10, 11] {
++                let (value, missing) = successful.data[&(variable, observation)];
++                assert_eq!(missing, excluded, "variable {variable}, row {observation}");
++                if !excluded { assert_ne!(value, -12345.0); }
++            }
++        }
++        let missing_ordinals: Vec<_> = successful.stores.iter().enumerate()
++            .filter_map(|(index, event)| matches!(event, StoreEvent::Missing(..)).then_some(index + 1))
++            .collect();
++        assert_eq!(missing_ordinals.len(), 10);
++        for ordinal in missing_ordinals {
++            let mut spi = source.clone();
++            spi.fail_store_at = Some(ordinal);
++            let error = estimate_ols_test(&args, &mut spi).expect_err("missing store failure");
++            assert_eq!(error.code, ErrorCode::Internal);
++            assert_eq!(spi.store_calls, ordinal);
++            assert_eq!(spi.receipt_complete(), 0.0);
++        }
++
++        let mut invalid_args = args;
++        replace_argument(&mut invalid_args, "output_fill_missing", "output_fill_missing=2".to_owned());
++        let mut invalid_spi = source;
++        assert_eq!(estimate_ols_test(&invalid_args, &mut invalid_spi).unwrap_err().code, ErrorCode::Syntax);
++        assert_eq!((invalid_spi.numeric_reads, invalid_spi.store_calls), (0, 0));
++    }
++
+     #[test]
+     fn saved_output_store_failures_leave_receipt_incomplete() {
+         let (args, mut successful) = saved_output_fixture();
+diff --git a/crates/fereg-plugin/src/ffi.rs b/crates/fereg-plugin/src/ffi.rs
+index d5cac327..5a75462a 100644
+--- a/crates/fereg-plugin/src/ffi.rs
++++ b/crates/fereg-plugin/src/ffi.rs
+@@ -585,6 +585,7 @@ extern "C" {
+         missing_value: *mut f64,
+     ) -> c_int;
+     fn fereg_spi_vstore(variable: c_int, observation: c_int, value: f64) -> c_int;
++    fn fereg_spi_vstore_missing(variable: c_int, observation: c_int) -> c_int;
+     fn fereg_spi_vdata_rows(
+         variables: *const c_int,
+         variable_count: c_int,
+@@ -673,6 +674,10 @@ unsafe fn fereg_spi_vstore(_variable: c_int, _observation: c_int, _value: f64) -
+     498
+ }
+ #[cfg(test)]
++unsafe fn fereg_spi_vstore_missing(_variable: c_int, _observation: c_int) -> c_int {
++    498
++}
++#[cfg(test)]
+ unsafe fn fereg_spi_vdata_rows(
+     _variables: *const c_int,
+     _variable_count: c_int,
+@@ -1138,6 +1143,15 @@ impl SpiApi for SpiSession {
+         )
+     }
+ 
++    fn store_numeric_missing(&mut self, variable: u32, observation: usize) -> Result<(), FeregError> {
++        // SAFETY: output coordinates were preflighted and this non-Send session
++        // remains on Stata's thread. The adapter supplies Stata's runtime `.`.
++        Self::store_rc(
++            unsafe { fereg_spi_vstore_missing(variable as c_int, observation as c_int) },
++            &mut self.numeric_store_error,
++        )
++    }
++
+     fn store_matrix(
+         &mut self,
+         name: &PreparedMatrixStoreName,
+diff --git a/crates/fereg-plugin/src/input.rs b/crates/fereg-plugin/src/input.rs
+index 7d62b66b..d34a13be 100644
+--- a/crates/fereg-plugin/src/input.rs
++++ b/crates/fereg-plugin/src/input.rs
+@@ -188,6 +188,11 @@ pub trait SpiApi {
+     fn matrix_dimensions(&mut self, name: &str) -> Result<(usize, usize)>;
+     fn matrix_element(&mut self, name: &str, row: usize, column: usize) -> Result<f64>;
+     fn store_numeric(&mut self, variable: u32, observation: usize, value: f64) -> Result<()>;
++    /// Write the host's canonical numeric missing value during publication.
++    /// Hosts with initialized output columns need not implement this operation.
++    fn store_numeric_missing(&mut self, _variable: u32, _observation: usize) -> Result<()> {
++        Err(FeregError::new(ErrorCode::Unsupported, "numeric missing-value store is unavailable"))
++    }
+     fn store_matrix(
+         &mut self,
+         name: &PreparedMatrixStoreName,
+diff --git a/docs/plugin_protocol.md b/docs/plugin_protocol.md
+index 3683fb7c..d23be49d 100644
+--- a/docs/plugin_protocol.md
++++ b/docs/plugin_protocol.md
+@@ -72,6 +72,16 @@ instrumentation, `e(sample)`, optional residual/absorbed/saved-FE outputs, and
+ the receipt. Every N/K/K² value and output position is checked before stores.
+ SPI calls stay on the Stata thread.
+ 
++The optional OLS request field `output_fill_missing` accepts only `0` or `1`
++and defaults to `0`. At `1`, native publication writes canonical Stata missing
++values to every excluded row of each requested numeric observation output,
++including saved channels. The ado adapter requests this behavior before using
++`st_addvar(..., 1)` for private output tempvars. An older plugin rejects the
++unknown field before reading observations; older callers can keep their
++missing-initialized shadows with the default. The sample marker retains its
++existing initialization. Uninitialized tempvars are never read or publicly
++renamed before successful complete publication, and every failure discards them.
++
+ SPI has no physical rollback, so logical completion is receipt based. The
+ `COMPLETE` cell is the final native operation; no allocation, polling,
+ display, computation, or store follows it. The ado transaction validates the
+diff --git a/plugin/stata_bridge.c b/plugin/stata_bridge.c
+index 8c26ace1..0bcdbac8 100644
+--- a/plugin/stata_bridge.c
++++ b/plugin/stata_bridge.c
+@@ -293,6 +293,14 @@ ST_int fereg_spi_vstore(ST_int variable, ST_int observation, ST_double value)
+     return SF_vstore(variable, observation, value);
+ }
+ 
++ST_int fereg_spi_vstore_missing(ST_int variable, ST_int observation)
++{
++    if (fereg_bridge_require_main_thread() != 0) {
++        return FEREG_SPI_RC_UNAVAILABLE;
++    }
++    return SF_vstore(variable, observation, SV_missval);
++}
++
+ ST_int fereg_spi_sdata(ST_int variable, ST_int observation, char *buffer)
+ {
+     if (buffer == NULL) return FEREG_SPI_RC_SYNTAX;
+diff --git a/plugin/stata_bridge.h b/plugin/stata_bridge.h
+index eb52ceb4..877f5a45 100644
+--- a/plugin/stata_bridge.h
++++ b/plugin/stata_bridge.h
+@@ -78,6 +78,7 @@ FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vstore(
+     ST_int observation,
+     ST_double value
+ );
++FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vstore_missing(ST_int variable, ST_int observation);
+ FEREG_BRIDGE_INTERNAL ST_int fereg_spi_sdata(
+     ST_int variable,
+     ST_int observation,
+diff --git a/stata/_fereg_estimate_ols.ado b/stata/_fereg_estimate_ols.ado
+index 4ff0da57..5621ad2a 100644
+--- a/stata/_fereg_estimate_ols.ado
++++ b/stata/_fereg_estimate_ols.ado
+@@ -371,28 +371,20 @@ program define _fereg_estimate_ols, eclass
+     local output_absorbed 0
+     local output_variables `sample_shadow'
+     if `"`residual'"' != "" {
+-        generate double `residual_shadow' = .
+-        label variable `residual_shadow' "Residuals"
+         local output_residual = `n_bindings' + 2
+         local output_variables `output_variables' `residual_shadow'
+     }
+     if `"`xb'"' != "" {
+-        generate double `xb_shadow' = .
+-        label variable `xb_shadow' "Linear prediction"
+         local output_variables `output_variables' `xb_shadow'
+         local output_variable_count : word count `output_variables'
+         local output_xb = `n_bindings' + `output_variable_count'
+     }
+     if `"`xbd'"' != "" {
+-        generate double `xbd_shadow' = .
+-        label variable `xbd_shadow' "Linear prediction plus absorbed contribution"
+         local output_variables `output_variables' `xbd_shadow'
+         local output_variable_count : word count `output_variables'
+         local output_xbd = `n_bindings' + `output_variable_count'
+     }
+     if `"`d'"' != "" {
+-        generate double `d_shadow' = .
+-        label variable `d_shadow' "Absorbed contribution"
+         local output_variables `output_variables' `d_shadow'
+         local output_variable_count : word count `output_variables'
+         local output_absorbed = `n_bindings' + `output_variable_count'
+@@ -418,8 +410,6 @@ program define _fereg_estimate_ols, eclass
+                         local target `"`saved_base'_Slope`slope_index'"'
+                     }
+                     tempvar saved_shadow
+-                    generate double `saved_shadow' = .
+-                    label variable `saved_shadow' "[FE] `target'"
+                     local output_variables `output_variables' `saved_shadow'
+                     local output_variable_count : word count `output_variables'
+                     local saved_position = `n_bindings' + `output_variable_count'
+@@ -435,6 +425,26 @@ program define _fereg_estimate_ols, eclass
+     }
+     if `output_saved_count' == 0 local output_saved_registry "."
+ 
++    // These tempvars disappear on every failed transaction. The explicit
++    // output_fill_missing request requires the plugin to fill every row before
++    // validation and public renaming; older plugins reject the unknown field.
++    gettoken sample_slot double_output_variables : output_variables
++    if `"`double_output_variables'"' != "" {
++        mata: (void) st_addvar("double", tokens(st_local("double_output_variables")), 1)
++        if `"`residual'"' != "" label variable `residual_shadow' "Residuals"
++        if `"`xb'"' != "" label variable `xb_shadow' "Linear prediction"
++        if `"`xbd'"' != "" label variable `xbd_shadow' "Linear prediction plus absorbed contribution"
++        if `"`d'"' != "" label variable `d_shadow' "Absorbed contribution"
++        local n_saved_shadows : word count `saved_shadow_variables'
++        if `n_saved_shadows' > 0 {
++            forvalues saved_index = 1/`n_saved_shadows' {
++                local saved_shadow : word `saved_index' of `saved_shadow_variables'
++                local saved_target : word `saved_index' of `saved_target_variables'
++                label variable `saved_shadow' "[FE] `saved_target'"
++            }
++        }
++    }
++
+     local requested_output_names `residual' `xb' `xbd' `d' `saved_target_variables'
+     local requested_output_names = strtrim(`"`requested_output_names'"')
+     local unique_output_names : list uniq requested_output_names
+@@ -494,7 +504,7 @@ program define _fereg_estimate_ols, eclass
+     quietly _fereg_memory_baseline
+     local stata_used_before = strtrim(string(r(used), "%21.0f"))
+     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
+-    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=fereg-estimation;plugin=0.5.0;result_major=1;result_minor=5;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
++    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=fereg-estimation;plugin=0.5.0;result_major=1;result_minor=5;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_fill_missing=1;output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+     local request_bundle
+     local request_count 0
+     while `"`request_arguments'"' != "" {
+diff --git a/tests/mock_spi/numeric_batch_guard_test.c b/tests/mock_spi/numeric_batch_guard_test.c
+index f3d66bd6..828e1557 100644
+--- a/tests/mock_spi/numeric_batch_guard_test.c
++++ b/tests/mock_spi/numeric_batch_guard_test.c
+@@ -8,6 +8,13 @@
+ #include <string.h>
+ 
+ static int calls, failure_at;
++static int store_calls, store_failure;
++static ST_int store_missing(ST_int v, ST_int o, ST_double value)
++{
++    assert(v == 2 && o == 65540 && value == 0x1p+1023);
++    ++store_calls;
++    return store_failure;
++}
+ static ST_int nobs(void) { return 65540; }
+ static ST_int nvars(void) { return 4; }
+ static ST_boolean isstr(ST_int v) { assert(v >= 1 && v <= 4); return (ST_boolean)(v == 3); }
+@@ -39,6 +46,7 @@ static void *worker(void *unused)
+     (void)unused;
+     assert(fereg_spi_vdata_columns(vars, 1, 1, 1, cols, &missing) == 498);
+     assert(fereg_spi_vdata_rows(vars, 1, 1, 1, data, &missing) == 498);
++    assert(fereg_spi_vstore_missing(2, 65540) == 498);
+     return NULL;
+ }
+ 
+@@ -51,14 +59,22 @@ int main(void)
+     memset(&plugin, 0, sizeof(plugin));
+     plugin.nobs = nobs; plugin.nvars = nvars; plugin.isstr = isstr;
+     plugin.safevdata = checked_read; plugin.vdata = read_value;
++    plugin.safestore = store_missing;
+     plugin.missval = 0x1p+1023;
+     assert(fereg_spi_vdata_columns(vars, 3, 1, 4, cols, &missing) == 498);
++    assert(fereg_spi_vstore_missing(2, 65540) == 498);
+     assert(pginit(&plugin) == SD_PLUGINVER);
+     assert(fereg_spi_vdata_columns(vars, 3, 1, 4, cols, &missing) == 498);
+     assert(stata_call(0, NULL) == 0);
+     assert(pthread_create(&thread, NULL, worker, NULL) == 0);
+     assert(pthread_join(thread, NULL) == 0);
+     assert(calls == 0);
++    assert(store_calls == 0);
++    assert(fereg_spi_vstore_missing(2, 65540) == 0);
++    assert(store_calls == 1);
++    store_failure = 919;
++    assert(fereg_spi_vstore_missing(2, 65540) == 919);
++    assert(store_calls == 2);
+     assert(fereg_spi_vdata_columns(vars, 3, 65537, 4, cols, &missing) == 0);
+     assert(calls == 12 && a[0] == 465537 && b[3] == 165540 && c[3] == 265540);
+     assert(missing == plugin.missval);

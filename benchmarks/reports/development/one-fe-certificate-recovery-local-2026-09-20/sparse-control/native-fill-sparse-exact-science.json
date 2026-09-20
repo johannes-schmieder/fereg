@@ -1,0 +1,41 @@
+[
+  {
+    "reference": "native-fill-sparse-iid_outputs-n983040-k10-r1-nativeinit",
+    "candidate": "native-fill-sparse-iid_outputs-n983040-k10-r1-nativefill",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "native-fill-sparse-iid_outputs-n983040-k10-r2-nativeinit",
+    "candidate": "native-fill-sparse-iid_outputs-n983040-k10-r2-nativefill",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  },
+  {
+    "reference": "native-fill-sparse-iid_outputs-n983040-k10-r3-nativeinit",
+    "candidate": "native-fill-sparse-iid_outputs-n983040-k10-r3-nativefill",
+    "science": {
+      "sample_exact": true,
+      "errors": {
+        "coefficients.csv:value": 0.0,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 0.0
+      }
+    },
+    "outputs_byte_exact": true
+  }
+]

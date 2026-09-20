@@ -62,6 +62,33 @@ pub struct FinalizedCategoricalTopology {
     registry: CategoricalTopologyRegistry,
 }
 
+/// A same-borrow validation receipt, bound to the immutable finalized owner.
+/// Recovery can build its single-effect view without scanning membership again.
+pub(crate) struct ValidatedSingleTopology<'a> {
+    topology: &'a FinalizedCategoricalTopology,
+    source: super::design::ValidatedBorrowedInterceptSource<'a>,
+}
+
+impl<'a> ValidatedSingleTopology<'a> {
+    pub(crate) fn matches_owner(&self, topology: &FinalizedCategoricalTopology) -> bool {
+        std::ptr::eq(self.topology, topology)
+    }
+
+    pub(crate) fn into_design(self, nobs: usize) -> Result<super::BorrowedInterceptFeDesign<'a>> {
+        if self.source.effect().codes().len() != nobs {
+            return Err(invalid("categorical topology source observation count differs from design"));
+        }
+        if self.topology.effect_to_topology[0] != 0 {
+            return Err(invalid("categorical effect-to-topology index is out of range"));
+        }
+        let mut effects = Vec::new();
+        effects.try_reserve_exact(1)
+            .map_err(|_| allocation("unable to reserve categorical topology term views"))?;
+        effects.push(self.source.effect());
+        super::BorrowedInterceptFeDesign::new(nobs, effects)
+    }
+}
+
 impl FinalizedCategoricalTopology {
     /// Consume an unchanged single-source row axis and its membership owner.
     /// Exact membership validation proves that every declared level is present,
@@ -190,6 +217,17 @@ impl FinalizedCategoricalTopology {
     pub fn validate(&self) -> Result<()> {
         let views = self.source_views()?;
         self.registry.validate_all(&views)
+    }
+
+    pub(crate) fn validate_single_source(&self) -> Result<Option<ValidatedSingleTopology<'_>>> {
+        if self.compacted_sources.len() != 1 || self.registry.sources().len() != 1
+            || self.effect_to_topology.len() != 1
+        {
+            return Ok(None);
+        }
+        let views = [self.compacted_sources[0].view()];
+        let source = self.registry.sources()[0].validated_borrowed(&views)?;
+        Ok(Some(ValidatedSingleTopology { topology: self, source }))
     }
 
     /// Validation releases each re-factorized interaction before checking the
@@ -640,6 +678,51 @@ mod tests {
             target
                 .try_reserve_exact(additional)
                 .map_err(|_| allocation("test final categorical topology reservation failed"))
+        }
+    }
+
+    #[test]
+    fn single_source_validation_receipt_matches_adapter_and_rejects_corruption() {
+        for rows in [1, 257, 16_385] {
+            let levels = rows.min(31);
+            let codes: Vec<_> = (0..rows).map(|r| (r % levels) as u32).collect();
+            let make = || finalize_categorical_topology(
+                &[CategoricalCodeView::new(&codes, levels)], &[&[0]], &vec![true; rows],
+            ).unwrap();
+            let topology = make();
+            let views = topology.source_views().unwrap();
+            for nobs in [rows, rows + 1] {
+                let expected = super::super::borrow_categorical_topology_design(
+                    nobs, topology.registry(), &views, topology.effect_to_topology(),
+                );
+                let actual = topology.validate_single_source().unwrap().unwrap().into_design(nobs);
+                assert_eq!(actual, expected);
+            }
+            for fault in 0..3 {
+                let mut malformed = make();
+                match fault {
+                    0 => malformed.compacted_sources[0].codes[0] = u32::MAX,
+                    1 => malformed.compacted_sources[0].original_levels.clear(),
+                    _ => malformed.effect_to_topology[0] = 1,
+                }
+                let expected = malformed.validate();
+                let actual = malformed.validate_single_source();
+                match (expected, actual) {
+                    (Err(a), Err(b)) => assert_eq!(a, b),
+                    (Ok(()), Ok(Some(receipt))) => {
+                        let views = malformed.source_views().unwrap();
+                        let expected = super::super::borrow_categorical_topology_design(
+                            rows, malformed.registry(), &views, malformed.effect_to_topology(),
+                        );
+                        assert_eq!(receipt.into_design(rows), expected);
+                    }
+                    _ => panic!("single-source validation changed rejection"),
+                }
+            }
+            let repeated = finalize_categorical_topology(
+                &[CategoricalCodeView::new(&codes, levels)], &[&[0], &[0]], &vec![true; rows],
+            ).unwrap();
+            assert!(repeated.validate_single_source().unwrap().is_none());
         }
     }
 

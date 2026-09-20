@@ -712,8 +712,21 @@ pub(crate) fn recover_finalized_categorical_effects_sd_lsmr_certified(
     requested_channels: &[bool],
     lsmr: LsmrConfig,
     map: MapConfig,
+    validated_single: Option<super::ValidatedSingleTopology<'_>>,
 ) -> Result<RecoveredCategoricalEffects> {
-    validate_recovery_inputs(topology, effects, target, requested_channels)?;
+    let validated_single = match validated_single {
+        Some(validated) => {
+            if !validated.matches_owner(topology) {
+                return Err(invalid_argument("recovery validation receipt belongs to another topology"));
+            }
+            Some(validated)
+        }
+        None => topology.validate_single_source()?,
+    };
+    if validated_single.is_none() {
+        topology.validate()?;
+    }
+    validate_recovery_arguments(topology, effects, target, requested_channels)?;
     if effects
         .iter()
         .any(|effect| !effect.has_intercept() || !effect.slopes().is_empty())
@@ -722,13 +735,14 @@ pub(crate) fn recover_finalized_categorical_effects_sd_lsmr_certified(
             "SD-Kaczmarz fast recovery requires intercept-only effects",
         ));
     }
-    let source_table = topology_source_table(topology)?;
-    let design = borrow_categorical_topology_design(
-        target.len(),
-        topology.registry(),
-        &source_table,
-        topology.effect_to_topology(),
-    )?;
+    let design = if let Some(validated) = validated_single {
+        validated.into_design(target.len())?
+    } else {
+        let source_table = topology_source_table(topology)?;
+        borrow_categorical_topology_design(
+            target.len(), topology.registry(), &source_table, topology.effect_to_topology(),
+        )?
+    };
     let recovered = recover_borrowed_intercept_sd_lsmr_coefficients(
         &design,
         weights,
@@ -833,6 +847,15 @@ fn validate_recovery_inputs(
     requested_channels: &[bool],
 ) -> Result<()> {
     topology.validate()?;
+    validate_recovery_arguments(topology, effects, target, requested_channels)
+}
+
+fn validate_recovery_arguments(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    target: &[f64],
+    requested_channels: &[bool],
+) -> Result<()> {
     if target.len() != topology.retained_rows().len()
         || effects.len() != topology.effect_to_topology().len()
         || target.is_empty()
@@ -3658,6 +3681,7 @@ mod tests {
                 tolerance: 1e-12,
                 ..config()
             },
+            None,
         )
         .expect("SD recovery");
         let lsmr = recover_finalized_categorical_effects_lsmr_certified(
@@ -3753,6 +3777,39 @@ mod tests {
     }
 
     #[test]
+    fn sd_lsmr_recovery_reuses_only_the_same_topology_validation() {
+        let group = [0_u32, 0, 1, 1, 2, 2];
+        let topology = finalize_categorical_topology(
+            &[CategoricalCodeView::new(&group, 3)], &[&[0]], &[true; 6],
+        ).unwrap();
+        let effects = [CategoricalAbsorbedEffectView::new(true, Vec::new()).unwrap()];
+        let supplied_weights = [1.0, 3.0, 2.0, 5.0, 4.0, 7.0];
+        for weights in [BorrowedMapWeights::Unit, BorrowedMapWeights::Provided(&supplied_weights)] {
+            for perturbation in 0..4 {
+                let mut target = [-2.0, -2.0, 0.5, 0.5, 1.5, 1.5];
+                match perturbation {
+                    1 => target[0] += 1e-13,
+                    2 => target[0] += 1.0,
+                    3 => target[0] = f64::NAN,
+                    _ => {},
+                }
+                let run = |receipt| recover_finalized_categorical_effects_sd_lsmr_certified(
+                    &topology, &effects, weights, &target, &[true], LsmrConfig::default(),
+                    config(), receipt,
+                );
+                assert_eq!(run(None), run(topology.validate_single_source().unwrap()));
+            }
+        }
+        let other = topology.clone();
+        let error = recover_finalized_categorical_effects_sd_lsmr_certified(
+            &topology, &effects, BorrowedMapWeights::Unit, &[0.0; 6], &[true],
+            LsmrConfig::default(), config(), other.validate_single_source().unwrap(),
+        ).unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+        assert!(error.message.contains("another topology"));
+    }
+
+    #[test]
     fn sd_lsmr_recovery_uses_the_direct_one_effect_path_with_weights() {
         let group = [0_u32, 0, 1, 1, 2, 2];
         let topology = finalize_categorical_topology(
@@ -3779,6 +3836,7 @@ mod tests {
                 tolerance: 1e-12,
                 ..config()
             },
+            None,
         )
         .expect("direct recovery");
         assert_eq!(
@@ -4057,6 +4115,7 @@ mod tests {
                 check_every: 1,
                 symmetric: true,
             },
+            None,
         )
         .expect("hybrid weak-cycle recovery");
         assert_eq!(

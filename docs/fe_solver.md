@@ -135,11 +135,13 @@ seven-worker crossover still governs the shared PPML path. Probe thresholds,
 iteration accounting and continuation eligibility are unchanged.
 
 Wide one-FE/Schur OLS certificates use fixed 1,024-group partials in the
-existing norm scratch when that storage fits. Each moment, absolute maximum,
+existing norm scratch when that storage fits. One-FE OLS also uses these
+partials at 8–15 RHS columns when the group-by-RHS table has at least 65,536
+elements. Each moment, absolute maximum,
 relative maximum and pass/fail comparison retains its arithmetic. The
 reported two-norm merges partial sums in group order; its last bits may differ
 from the previous single accumulation. It does not determine acceptance on
-these routes. PPML, narrow fits and the existing weak-graph routes retain
+these routes. PPML, smaller tables and the existing weak-graph routes retain
 their certificate reductions. This scheduling adds no workspace allocation.
 
 Outside this envelope, `solver(auto)` implements the ADR-0021 categorical AKM
@@ -544,6 +546,15 @@ coefficients, then runs coefficient-producing LSMR only on the remaining
 target. One-effect intercept recovery is direct. Slope-bearing recovery uses
 strict coefficient-producing LSMR. Certified symmetric MAP remains the final
 fail-closed fallback if the bounded coefficient solvers fail.
+
+Single-source recovery can carry the prepared validation result through an
+immutable borrow of the same finalized topology into its borrowed design.
+The receipt cannot be reused with another topology; layouts outside its
+single-source, single-effect guard keep their full validation path. Numeric
+sample, recipe and recovery-argument validation retain their order, and the
+independent reconstruction and FE certificates still run. The direct route
+allocates no iterative direction or coefficient-increment buffer. Existing
+recovery memory admission remains a conservative bound.
 
 Every retained or recovered coefficient product is normalized by connected
 component, scattered only for requested channels, checked against the absorbed

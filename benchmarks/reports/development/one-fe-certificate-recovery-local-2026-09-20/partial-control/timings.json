@@ -1,0 +1,126 @@
+[
+  {
+    "arms": {
+      "nativefill": {
+        "maximum_ms": 206.0,
+        "median_ms": 205.0,
+        "minimum_ms": 202.0,
+        "sampled_peak_rss_gib": 0.590087890625
+      },
+      "nativeinit": {
+        "maximum_ms": 205.0,
+        "median_ms": 205.0,
+        "minimum_ms": 202.0,
+        "sampled_peak_rss_gib": 0.6124267578125
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "nativefill/nativeinit": {
+        "median": 1.0,
+        "values": [
+          1.0048780487804878,
+          1.0,
+          1.0
+        ],
+        "wins": 0
+      },
+      "nativeinit/nativefill": {
+        "median": 1.0,
+        "values": [
+          0.9951456310679612,
+          1.0,
+          1.0
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "native-fill-partial"
+  },
+  {
+    "arms": {
+      "nativefill": {
+        "maximum_ms": 463.0,
+        "median_ms": 458.0,
+        "minimum_ms": 455.0,
+        "sampled_peak_rss_gib": 1.5879058837890625
+      },
+      "nativeinit": {
+        "maximum_ms": 462.0,
+        "median_ms": 455.0,
+        "minimum_ms": 448.0,
+        "sampled_peak_rss_gib": 1.5844573974609375
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {
+      "nativefill/nativeinit": {
+        "median": 1.0175824175824175,
+        "values": [
+          1.0223214285714286,
+          0.9848484848484849,
+          1.0175824175824175
+        ],
+        "wins": 1
+      },
+      "nativeinit/nativefill": {
+        "median": 0.9827213822894169,
+        "values": [
+          0.9781659388646288,
+          1.0153846153846153,
+          0.9827213822894169
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "native-fill-partial"
+  },
+  {
+    "arms": {
+      "nativefill": {
+        "maximum_ms": 464.0,
+        "median_ms": 461.0,
+        "minimum_ms": 456.0,
+        "sampled_peak_rss_gib": 1.58831787109375
+      },
+      "nativeinit": {
+        "maximum_ms": 461.0,
+        "median_ms": 459.0,
+        "minimum_ms": 450.0,
+        "sampled_peak_rss_gib": 1.58905029296875
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {
+      "nativefill/nativeinit": {
+        "median": 1.0065075921908895,
+        "values": [
+          1.0176211453744493,
+          1.0065075921908895,
+          1.0043572984749456,
+          0.9891540130151844,
+          1.0244444444444445
+        ],
+        "wins": 1
+      },
+      "nativeinit/nativefill": {
+        "median": 0.9935344827586207,
+        "values": [
+          0.9826839826839827,
+          0.9935344827586207,
+          0.9956616052060737,
+          1.0109649122807018,
+          0.9761388286334056
+        ],
+        "wins": 4
+      }
+    },
+    "repetitions": 5,
+    "series": "native-fill-partial-confirm"
+  }
+]

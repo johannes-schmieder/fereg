@@ -10,6 +10,41 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## One-FE certificate and recovery checkpoint — 2026-09-20
+
+The [certificate/recovery report](benchmarks/reports/development/one-fe-certificate-recovery-local-2026-09-20/README.md)
+archives 338 calls, 74 exact native scientific comparisons and 62 byte-identical
+saved-output comparisons. The retained core extends the fixed-group certificate
+reduction to eligible narrow one-FE tables, reuses a same-owner immutable
+validation receipt through saved recovery, and omits unused iterative buffers
+on direct recovery. The final `recoverycore` plugin is
+`b2cbf8bd9b1ae9fdd130ee1300e3c9ee853e13366985df3f78c93c29d111fe6a`.
+Its 22 focused Rust tests, five Stata fixtures and real-plugin ABI checks pass.
+
+The complete twenty-cell three-pair breadth screen wins all 60 comparisons
+against fixest; eighteen cells reach the 0.90 median paired threshold. Full
+outputs remain at 0.946667/0.907579 for K=10/50 (command medians 209/225 and
+491/541 ms). Robust medians are 144/172 and 509/884 ms; two crossing clusters
+are 183/253 and 574/1337 ms. Against the original fereg baseline, the twenty
+breadth regression cells pass with maximum paired cell ratio 0.992288 and
+geometric mean 0.697002. These are cumulative campaign gains.
+
+Native missing-output initialization was rejected and removed. The 95%-missing
+control slows from 148 to 159 ms (median paired ratio 1.081633), despite passing
+its scientific, missing-store failure, transaction and old-plugin rejection
+checks. The earlier half-missing control's five-pair follow-up is only 0.65%
+slower, illustrating why the sparse boundary mattered. Original Stata output
+initialization remains in production. Rejected source and all runs are retained.
+A collector label-prefix collision was fixed before archiving controls; the
+archive contains 22 distinct half-missing runs, with the erroneous draft local.
+
+The goal remains active. Both final five-pair acceptance blocks and the current
+candidate's eleven size/thread/group controls are pending. The next concrete
+opportunity is reusing the same immutable topology proof in categorical DoF
+construction, which currently repeats validation after prepared validation;
+then assess overlap of remaining categorical DoF validation with fitting.
+No installed package, remote state or cross-platform qualification changed.
+
 ## Inference residual overlap — 2026-09-20
 
 The [inference/output report](benchmarks/reports/development/one-fe-inference-residual-output-local-2026-09-20/README.md)

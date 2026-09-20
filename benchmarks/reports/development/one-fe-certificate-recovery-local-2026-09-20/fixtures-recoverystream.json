@@ -1,0 +1,42 @@
+[
+  {
+    "fixture": "development/ols_one_fe_final_recovery.do",
+    "sha256": "a3a48d1bce0aac1816cbd538277feab9ea8299b58c5fe3373b93399b6974f543",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|ols_one_fe_final_recovery|rc=0",
+    "terminal_sentinel": true
+  },
+  {
+    "fixture": "development/ols_prediction_scoring.do",
+    "sha256": "e40859c5c9738643e70c34a0b9857c4a6472f86260f642195e215cc5919dd6b5",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|ols_prediction_scoring|rc=0",
+    "terminal_sentinel": true
+  },
+  {
+    "fixture": "development/candidate_input_oracle.do",
+    "sha256": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|candidate_input_oracle|rc=0",
+    "terminal_sentinel": true
+  },
+  {
+    "fixture": "installation/estimate_ols_eclass_transaction.do",
+    "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+    "terminal_sentinel": true
+  },
+  {
+    "fixture": "development/ols_private_output_initialization.do",
+    "sha256": "cf0653172d1b1cc1c80f1d431405446b7c056537ce41ea5161299c56e259500e",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|ols_private_output_initialization|rc=0",
+    "terminal_sentinel": true
+  }
+]

@@ -452,7 +452,7 @@ impl PreparedCategoricalOlsData {
         if memory_budget.is_some_and(|budget| !budget.fits(validation_bytes)) {
             return Err(allocation("saved-FE topology validation exceeds the joint memory budget"));
         }
-        self.validate()?;
+        let validated_single = self.validate_with_reusable_topology(true)?;
         let effects = self.effect_views()?;
         let recovery_memory = if !effects.is_empty()
             && effects
@@ -586,6 +586,7 @@ impl PreparedCategoricalOlsData {
                     requested_channels,
                     lsmr,
                     categorical_slope_map_config(map),
+                    validated_single,
                 ) {
                     Ok(recovered) => {
                         return Ok(recovered.with_solver_workspace_peak(attempted_peak))
@@ -663,8 +664,22 @@ impl PreparedCategoricalOlsData {
 
     /// Revalidate the complete prepared artifact before numerical use.
     pub fn validate(&self) -> Result<()> {
+        self.validate_with_reusable_topology(false).map(|_| ())
+    }
+
+    fn validate_with_reusable_topology(
+        &self,
+        reuse_single: bool,
+    ) -> Result<Option<crate::fe::ValidatedSingleTopology<'_>>> {
         validate_numeric_sample(&self.sample)?;
-        self.fe_topology.validate()?;
+        let validated_single = if reuse_single {
+            self.fe_topology.validate_single_source()?
+        } else {
+            None
+        };
+        if validated_single.is_none() {
+            self.fe_topology.validate()?;
+        }
         if self.fe_topology.retained_rows().len() != self.sample.n_active() {
             return Err(invalid(
                 "prepared categorical topology is not aligned with the final sample",
@@ -688,7 +703,7 @@ impl PreparedCategoricalOlsData {
         )?;
         validate_model_recipes(&self.model, &self.categorical_sources, &self.fe_topology)?;
         validate_report_plan(&self.model, &self.report_plan)?;
-        Ok(())
+        Ok(validated_single)
     }
 
     pub(crate) fn effect_views(&self) -> Result<Vec<CategoricalAbsorbedEffectView<'_>>> {
