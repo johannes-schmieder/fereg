@@ -1,0 +1,77 @@
+{
+  "tests": [
+    {
+      "log": "fe-borrow-reuse-tests.log",
+      "sha256": "43398bcd8cb7572124dc625851b37dc972b5c8bca7d4377d7fddd0ba764dce8d",
+      "status": "pass"
+    },
+    {
+      "log": "dof-overlap-tests.log",
+      "sha256": "ecdbb469e6dc730bd882ae37f23b61ac6f62445d65cbe4903afba457c43f6f5e",
+      "status": "pass"
+    },
+    {
+      "log": "unit-squares-tests.log",
+      "sha256": "4daf6c8c9f463f273a72933a62774799f7c1aa41c0ce8b543d26aa1749017c11",
+      "status": "pass"
+    }
+  ],
+  "licensed_fixtures": {
+    "feborrowclean": [
+      {
+        "fixture": "development/ols_native_input.do",
+        "sha256": "06382ca0558cddcf42c75f1b63c866e90b92853a8bd4a2d29a292ff44e9212e1",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|ols_native_input|rc=0",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "development/candidate_input_oracle.do",
+        "sha256": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|candidate_input_oracle|rc=0",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "installation/estimate_ols_eclass_transaction.do",
+        "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+        "terminal_sentinel": true
+      }
+    ],
+    "feborrowiid": [
+      {
+        "fixture": "development/ols_native_input.do",
+        "sha256": "06382ca0558cddcf42c75f1b63c866e90b92853a8bd4a2d29a292ff44e9212e1",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|ols_native_input|rc=0",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "development/candidate_input_oracle.do",
+        "sha256": "1e0da25ae22d5809aab3b294411c15774c25f61402c364a3566cc63a4f130028",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|candidate_input_oracle|rc=0",
+        "terminal_sentinel": true
+      },
+      {
+        "fixture": "installation/estimate_ols_eclass_transaction.do",
+        "sha256": "9839cb20875ecb7dbdd8f383cd4d42a88bec252e1e7f5106c9ec4d13fe636587",
+        "status": "pass",
+        "process_returncode": 0,
+        "fixture_sentinel": "END_FIXTURE|estimate_ols_eclass_transaction|rc=0",
+        "terminal_sentinel": true
+      }
+    ]
+  },
+  "abi": {
+    "feborrowclean": "pass",
+    "feborrowiid": "pass"
+  }
+}

@@ -960,6 +960,7 @@ struct FitPerturbations {
     reported_intercept: bool,
     reported_bread_extension: bool,
     residual_overlap_disabled: bool,
+    one_fe_borrow_reuse_disabled: bool,
 }
 
 /// Fit the currently supported prepared OLS/WLS finite coefficients through
@@ -1515,6 +1516,7 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
 }
 
 struct FitFeAbsorber<'a> {
+    one_fe: Option<crate::fe::BorrowedInterceptEffect<'a>>,
     session: Option<CmgAbsorber<'a>>,
     lsmr: Option<crate::fe::BorrowedLsmrAbsorber<'a>>,
     auto_direct_solver: Option<FeSolverKind>,
@@ -1530,12 +1532,34 @@ fn build_fit_fe_absorber<'a, P: PreparedOlsFitView + ?Sized>(
     weights: BorrowedMapWeights<'a>,
     config: PreparedOlsFitConfig,
 ) -> Result<FitFeAbsorber<'a>> {
-    let width = prepared
-        .fit_model()
-        .columns
-        .len()
-        .checked_add(1)
+    build_fit_fe_absorber_with_one_fe_reuse(prepared, weights, config, true)
+}
+
+fn build_fit_fe_absorber_with_one_fe_reuse<'a, P: PreparedOlsFitView + ?Sized>(
+    prepared: &'a P, weights: BorrowedMapWeights<'a>, config: PreparedOlsFitConfig, reuse: bool,
+) -> Result<FitFeAbsorber<'a>> {
+    let width = prepared.fit_model().columns.len().checked_add(1)
         .ok_or_else(|| invalid_argument("OLS Schur RHS width overflows"))?;
+    if reuse && config.absorb.solver == FeSolverKind::Auto
+        && config.execution.mode == PreparedOlsExecutionMode::Fast
+        && !config.absorb.retain_coefficients && matches!(weights, BorrowedMapWeights::Unit)
+        && prepared.fit_has_one_ordinary_intercept_effect()
+        && prepared.fit_sample().n_active() >= 16_384 && (8..=64).contains(&width)
+    {
+        // Validate at the original routing boundary, then retain only a small
+        // immutable borrowed descriptor. Its lifetime prevents sample changes;
+        // both projections keep their independent numerical certificates.
+        let design = prepared.fit_borrowed_cmg_design()?;
+        if design.effects().len() != 1 {
+            return Err(invalid_argument("one-FE routing metadata differs from its validated design"));
+        }
+        return Ok(FitFeAbsorber {
+            one_fe: Some(design.effects()[0]), session: None, lsmr: None,
+            auto_direct_solver: None, auto_discarded_setup_seconds: 0.0,
+            auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
+            auto_setup_warning: None, schur_config: None, schur_probe: None,
+        });
+    }
     if config.absorb.solver == FeSolverKind::Auto
         && config.execution.mode == PreparedOlsExecutionMode::Fast
         && (!config.absorb.retain_coefficients || config.allow_final_fe_recovery)
@@ -1567,6 +1591,7 @@ fn build_fit_fe_absorber<'a, P: PreparedOlsFitView + ?Sized>(
                 .map_or(true, |budget| budget.fits(planned))
             {
                 return Ok(FitFeAbsorber {
+                    one_fe: None,
                     session: None,
                     lsmr: None,
                     auto_direct_solver: None,
@@ -1591,6 +1616,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
         && (config.absorb.solver != FeSolverKind::Auto || !prepared.fit_supports_cmg_auto())
     {
         return Ok(FitFeAbsorber {
+            one_fe: None,
             schur_config: None,
             schur_probe: None,
             session: None,
@@ -1604,6 +1630,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
     let design = prepared.fit_borrowed_cmg_design()?;
     if config.absorb.solver == FeSolverKind::Auto && design.effects().len() <= 1 {
         return Ok(FitFeAbsorber {
+            one_fe: None,
             schur_config: None,
             schur_probe: None,
             session: None,
@@ -1617,6 +1644,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
     let profile = CmgTopologyProfile::analyze(&design)?;
     if config.absorb.solver == FeSolverKind::Auto && !profile.auto_favorable() {
         return Ok(FitFeAbsorber {
+            one_fe: None,
             schur_config: None,
             schur_probe: None,
             session: None,
@@ -1667,6 +1695,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
     };
     match built {
         Ok(CmgAutoBuildOutcome::Ready(session)) => Ok(FitFeAbsorber {
+            one_fe: None,
             schur_config: None,
             schur_probe: None,
             session: Some(session),
@@ -1677,6 +1706,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             auto_setup_warning: None,
         }),
         Ok(CmgAutoBuildOutcome::HierarchyRejected { setup_seconds }) => Ok(FitFeAbsorber {
+            one_fe: None,
             schur_config: None,
             schur_probe: None,
             session: None,
@@ -1687,6 +1717,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             auto_setup_warning: None,
         }),
         Ok(CmgAutoBuildOutcome::DirectCgPreferred { setup_seconds }) => Ok(FitFeAbsorber {
+            one_fe: None,
             schur_config: None,
             schur_probe: None,
             session: None,
@@ -1697,6 +1728,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             auto_setup_warning: None,
         }),
         Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitFeAbsorber {
+            one_fe: None,
             schur_config: None,
             schur_probe: None,
             session: None,
@@ -1757,7 +1789,19 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
     } else {
         None
     };
-    let mut absorbed = if let Some(session) = final_cmg {
+    let mut absorbed = if let Some(effect) = cmg.one_fe {
+        let mut effects = Vec::new();
+        effects.try_reserve_exact(1).map_err(|_| allocation("unable to reserve borrowed FE design effects"))?;
+        effects.push(effect);
+        let design = crate::fe::BorrowedInterceptFeDesign::new(prepared.fit_sample().n_active(), effects)?;
+        if initial {
+            crate::fe::absorb_borrowed_intercept_auto_initial_with_structural_constant_certified(
+                &design, weights, values, config.map, config.lsmr, config.solver_memory_budget)
+        } else {
+            crate::fe::absorb_borrowed_intercept_auto_with_structural_constant_certified(
+                &design, weights, values, config.map, config.lsmr, config.solver_memory_budget)
+        }
+    } else if let Some(session) = final_cmg {
         session.absorb_final_residual(values, config.map.tolerance)
     } else if let Some(session) = cmg.session.as_mut() {
         session.absorb(values)
@@ -2027,7 +2071,8 @@ fn fit_with_controls_internal_mode_with_frame<
             return Err(allocation("retained FE products exceed usable memory"));
         }
     }
-    let mut cmg = build_fit_fe_absorber(prepared, weights.borrowed(), config)?;
+    let mut cmg = build_fit_fe_absorber_with_one_fe_reuse(prepared, weights.borrowed(), config,
+        !perturbations.one_fe_borrow_reuse_disabled)?;
 
     let projection_phase = LinearSessionPhaseAllocationGuard::new(
         phase_probe,
@@ -7794,6 +7839,7 @@ mod tests {
                                         1 => view.fit_absorb_matrix(weights, values, config),
                                         _ => {
                                             let mut session = FitFeAbsorber {
+                                                one_fe: None,
                                                 session: None,
                                                 lsmr: None,
                                                 auto_direct_solver: Some(FeSolverKind::Cg),
@@ -8715,6 +8761,35 @@ mod tests {
         data.sample.outcome[0] = f64::NAN;
         assert_eq!(fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(false)).unwrap_err(),
             fit_prepared_ols_coefficients_map(&data, config).unwrap_err());
+    }
+
+    #[test]
+    fn one_fe_borrow_reuse_preserves_complete_fits_and_error_order() {
+        for n in [16_383, 16_384, 32_771] {
+            let columns: Vec<Vec<f64>> = (0..9).map(|c| (0..n)
+                .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
+            let groups: Vec<_> = (0..n).map(|r| (r % 79) as f64).collect();
+            let response: Vec<_> = (0..n).map(|r| groups[r] + columns[0][r] * 1.3
+                + columns[1][r] * 0.7 + (r as f64).cos() * 0.1).collect();
+            let mut data = prepared(&response, &columns, &[false; 9], Some(&groups), true, TestWeights::Unit);
+            for threads in [1, 4, 16] {
+                let mut config = PreparedOlsFitConfig::default();
+                config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
+                let run = |data: &PreparedOlsData, disabled| ThreadTeam::new(config.execution.threads).install(|| {
+                    fit_with_controls_internal(data, config, &mut SystemFitReservation,
+                        FitPerturbations { one_fe_borrow_reuse_disabled: disabled, ..FitPerturbations::default() })
+                }).unwrap().map(without_solve_timings);
+                let expected = run(&data, true);
+                let actual = run(&data, false);
+                assert!(expected == actual, "N={n}, threads={threads}");
+            }
+            data.categorical_sources[0].encoded.codes[0] = u32::MAX;
+            data.sample.outcome[0] = f64::NAN;
+            let run = |disabled| fit_with_controls_internal(&data, PreparedOlsFitConfig::default(),
+                &mut SystemFitReservation,
+                FitPerturbations { one_fe_borrow_reuse_disabled: disabled, ..FitPerturbations::default() });
+            assert_eq!(run(true).unwrap_err(), run(false).unwrap_err());
+        }
     }
 
     #[test]

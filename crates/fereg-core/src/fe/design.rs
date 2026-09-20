@@ -164,7 +164,7 @@ impl LevelIndex {
 /// This view never owns or copies observation-scale codes or level membership.
 /// Its deliberately narrow type prevents the current preparation boundary from
 /// silently representing slope-bearing effects as intercept-only effects.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BorrowedInterceptEffect<'a> {
     codes: &'a [u32],
     n_levels: usize,

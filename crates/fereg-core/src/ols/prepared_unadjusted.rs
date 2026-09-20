@@ -427,7 +427,7 @@ fn fit_with_outcome_overlap(
     // preceding fit, DoF and weight checks have passed. Restrict overlap to
     // narrow designs with spare workers; wider/smaller teams lose to contention.
     // The scan owns no heap buffer.
-    let (fit, outcome_tss) = if overlap
+    let (fit, outcome_tss, dof_topology) = if overlap
         && matches!(prepared.sample.weights, PreparedWeights::None)
         && prepared.fe_topology.effects().len() == 1
         && prepared.sample.n_active() >= 16_384
@@ -435,18 +435,27 @@ fn fit_with_outcome_overlap(
         && config.fit.execution.mode == super::PreparedOlsExecutionMode::Fast
         && config.fit.execution.threads.resolved() >= 8
     {
-        let (fit, tss) = crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
-            rayon::join(fit, || independent_outcome_sum(
-                &prepared.sample.outcome,
-                ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 },
-                prepared.structural_intercept,
-            ))
+        let (fit, (tss, topology)) = crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
+            rayon::join(fit, || {
+                let topology = super::prepared_dof::validate_dof_topology_for_overlap(prepared);
+                let tss = independent_outcome_sum(
+                    &prepared.sample.outcome,
+                    ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 },
+                    prepared.structural_intercept,
+                );
+                (tss, topology)
+            })
         })?;
-        (fit?, Some(tss))
+        (fit?, Some(tss), Some(topology))
     } else {
-        (fit()?, None)
+        (fit()?, None, None)
     };
-    let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
+    // Validation retains only an immutable borrow, with no allocation. Its
+    // error and all report allocation stay after the fit, in their old order.
+    let absorbed_dof = match dof_topology {
+        Some(topology) => topology?.compute(config.absorbed_dof)?,
+        None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
+    };
     let mut reservation = SystemInferenceReservation;
     crate::ThreadTeam::new(config.fit.execution.threads).install(|| compose_internal(
         prepared,
@@ -1744,14 +1753,21 @@ pub(super) fn weighted_sum_of_squares(
     }
     let mut scale = 0.0_f64;
     let mut scaled_square_sum = 1.0_f64;
-    for (row, value) in values.iter().copied().enumerate() {
-        if !value.is_finite() {
-            return Err(invalid_data(
-                "prepared iid sum-of-squares value is not finite",
-            ));
+    if weights.kind.is_none() && weights.values.is_none() {
+        for value in values.iter().copied() {
+            if !value.is_finite() {
+                return Err(invalid_data("prepared iid sum-of-squares value is not finite"));
+            }
+            update_scaled_sum_of_squares(value - center, &mut scale, &mut scaled_square_sum)?;
         }
-        let weighted = weights.value(row)?.sqrt() * (value - center);
-        update_scaled_sum_of_squares(weighted, &mut scale, &mut scaled_square_sum)?;
+    } else {
+        for (row, value) in values.iter().copied().enumerate() {
+            if !value.is_finite() {
+                return Err(invalid_data("prepared iid sum-of-squares value is not finite"));
+            }
+            let weighted = weights.value(row)?.sqrt() * (value - center);
+            update_scaled_sum_of_squares(weighted, &mut scale, &mut scaled_square_sum)?;
+        }
     }
     let norm = if scale == 0.0 {
         0.0
@@ -1947,6 +1963,28 @@ mod tests {
         Analytic(&'a [f64]),
         Probability(&'a [f64]),
         Frequency(&'a [u32]),
+    }
+
+    #[test]
+    fn unit_sum_of_squares_preserves_bits_and_errors() {
+        for n in [0, 1, 127, 16_387] {
+            let ones = vec![1.0; n];
+            let unit = ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 };
+            let explicit = ReferenceWeightView { values: Some(&ones), kind: Some(WeightKind::Frequency), ..unit };
+            for magnitude in [0.0, 1e-200, 1.0, 1e150, 1e300] {
+                let mut values: Vec<_> = (0..n).map(|r| (r as f64).sin() * magnitude).collect();
+                for center in [-0.0, 0.3 * magnitude, f64::NAN] {
+                    let a = weighted_sum_of_squares(&values, unit, center).map(f64::to_bits);
+                    let b = weighted_sum_of_squares(&values, explicit, center).map(f64::to_bits);
+                    assert_eq!(a, b);
+                }
+                if n > 0 {
+                    values[n / 2] = f64::INFINITY;
+                    assert_eq!(weighted_sum_of_squares(&values, unit, 0.0),
+                        weighted_sum_of_squares(&values, explicit, 0.0));
+                }
+            }
+        }
     }
 
     #[test]

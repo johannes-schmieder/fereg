@@ -12,6 +12,19 @@ completed optimization/calibration investigation chronology formerly here.
 
 ## One-FE optimization implementation — 2026-09-19
 
+
+Validated FE-descriptor reuse and IID completion now have adoption evidence in
+`benchmarks/reports/development/one-fe-borrow-reuse-2026-09-19/`: 157 accepted
+calls, bit-identical native science, three focused native tests, both ABI checks
+and six licensed fixtures. Five-pair baseline/descriptor/combined/fixest medians
+are 159/156/154/149 ms (K=10) and 432/429/431/471 ms (K=50). Combined protected
+ratios have maximum 1.04239 and geometric mean 0.99257. Immutable borrowed FE
+descriptors avoid repeated topology validation; the existing outcome worker
+also validates DoF topology with deferred errors. Unit sum-of-squares preserves
+its exact scaled row-order arithmetic. The overall two-width repeated 5% win
+target remains unmet. Empty output traversal and removal of zero initialization
+during numeric loading are the next separately measured prototypes.
+
 The unit-intercept score scan is validated in
 `benchmarks/reports/development/one-fe-unit-score-2026-09-19/`: 84 accepted
 calls, exact native science, the focused generic-weight comparison, ABI and
@@ -28,7 +41,7 @@ rows own their speculative statistics; preparation admits the small partial
 bank, and exact prepared matching and deferred errors gate consumption. Unit
 mass uses the independently validated physical count. The native primary peaks
 remain unchanged. The overall two-width 5% win target remains unmet. Reusing
-a validated immutable FE descriptor is the next separate prototype.
+a validated immutable FE descriptor is adopted with the evidence above.
 
 
 Narrow outcome-scan overlap and one-FE membership reuse have adoption evidence
