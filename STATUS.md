@@ -10,6 +10,31 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Inference residual overlap — 2026-09-20
+
+The [inference/output report](benchmarks/reports/development/one-fe-inference-residual-output-local-2026-09-20/README.md)
+records 108 primary calls plus twelve filtered-output controls. Retaining a
+sandwich score cache no longer excludes eligible narrow one-FE fits from the
+existing residual/bread overlap. Packed and strided owners remain immutable;
+error order and memory admission are preserved. Exact-fit/error tests, observed
+allocation bounds, 13 robust and 10 clustered tests, and four Stata fixtures pass.
+The `inferenceresidual` plugin is
+`eb29e5702a19c9e855375f3d56620a896eb2263d0adc4fc8f814e25de6bc641c`.
+Three-pair medians are robust 144/170 ms, FE cluster 145/180 ms, two crossing
+clusters 186/248 ms and two clusters with saved FE 241/330 ms versus fixest.
+Wide controls are outside this change's guard. Native science exports are exact.
+
+The no-fill temporary-output experiment saves 3–15 ms on complete full-output
+pairs but adds about 16 ms to the wide half-missing control (453/469 ms).
+It remains uncommitted experimental code, pending a way to initialize excluded
+rows in the existing native publication pass. Its five corrected Stata fixtures
+pass, including missing/weighted/restricted samples and all output rollback.
+Two fixture setup errors using inadmissible zero FW/PW values are preserved.
+
+The narrow certificate reduction and saved-recovery validation receipt are
+later experiments outside this checkpoint. The goal remains active; final
+acceptance blocks and the complete regression matrix are pending.
+
 ## Categorical validation placement — 2026-09-20
 
 The [categorical-validation report](benchmarks/reports/development/one-fe-categorical-validation-local-2026-09-20/README.md)

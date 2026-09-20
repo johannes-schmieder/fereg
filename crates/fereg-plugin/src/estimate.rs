@@ -4731,6 +4731,81 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ffi")]
+    fn inference_residual_overlap_stays_within_existing_frame() {
+        let _guard = instrumentation::lock_action_observation();
+        let threads = ThreadConfig::from_requested(16, true).unwrap();
+        let team = ThreadTeam::new(threads);
+        team.install(|| ()).unwrap();
+        // Exercise packed and strided score retention on an eligible narrow fit.
+        for rows in [16_385, 524_301] {
+            let mut request = OlsRequestV1 {
+                model: CompiledTermGraph { sources: Vec::new(), terms: Vec::new() },
+                bindings: vec![OlsInputBinding { stata_var_position: 1, role: OlsInputRole::Candidate },
+                    OlsInputBinding { stata_var_position: 2, role: OlsInputRole::Outcome }],
+                absorbed_terms: vec![AbsorbedTerm { id: AbsorbTermId::new(1).unwrap(), intercept: true,
+                    categorical_sources: vec![SourceId::new(11).unwrap()], slope_sources: Vec::new(),
+                    label: "g".to_owned(), saved_name: String::new() }],
+                include_intercept: true, keep_singletons: true,
+            };
+            let mut numeric_sources = Vec::new();
+            for id in 1..=11 {
+                let source = SourceId::new(id).unwrap();
+                request.model.sources.push(SourceEntry { id: source, canonical_name: format!("x{id}") });
+                request.bindings.push(OlsInputBinding { stata_var_position: id + 2, role: OlsInputRole::NumericSource(source) });
+                if id < 11 {
+                    let mut term = continuous_term(source);
+                    term.id = TermId::new(id).unwrap();
+                    term.order = TermOrder::new(id).unwrap();
+                    term.coefficient_slot = CoefficientSlot::new(id).unwrap();
+                    term.canonical_token = format!("c.x{id}");
+                    request.model.terms.push(term);
+                }
+                numeric_sources.push((source, LoadedNumericColumn {
+                    values: (0..rows).map(|r| if id == 11 { (r % 79) as f64 }
+                        else { ((r * (id as usize + 17) % 1009) as f64 / 11.0).sin() }).collect(),
+                    missing: vec![false; rows],
+                }));
+            }
+            let outcome = LoadedNumericColumn {
+                values: (0..rows).map(|r| 1.3 * numeric_sources[0].1.values[r]
+                    + 0.7 * numeric_sources[1].1.values[r] + (r % 79) as f64 + (r as f64).cos() * 0.1).collect(),
+                missing: vec![false; rows],
+            };
+            let loaded = LoadedOlsInput { candidate: vec![true; rows], outcome, numeric_sources,
+                analytic_weight: None, frequency_weight: None, probability_weight: None };
+            let request = OlsClusteredRequestV1 { ols: request,
+                clusters: vec![OlsClusterTermV1 { label: "g".to_owned(), sources: vec![SourceId::new(11).unwrap()] }] };
+            let prepared = prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
+            team.install(|| {
+                for clustered in [false, true] {
+                    let fit = PreparedOlsFitConfig { execution: fereg_core::ols::PreparedOlsExecutionConfig {
+                        threads, ..Default::default()
+                    }, ..Default::default() };
+                    let frame = crate::ols_frame_memory::OlsFrameMemory::estimate(rows,
+                        prepared.ols().model().columns.len(), prepared.ols().model().coefficients.len(),
+                        usize::from(clustered), fit.execution.poolsize, true).unwrap();
+                    let start = instrumentation::begin_observation();
+                    let solver_peak = if clustered {
+                        let result = fit_prepared_categorical_ols_clustered_map(&prepared,
+                            PreparedOlsClusteredConfig { fit, ..Default::default() }).unwrap();
+                        assert!(result.fit().score_certificate().passed);
+                        result.fit().solver_workspace_peak().bytes().unwrap()
+                    } else {
+                        let result = fit_prepared_categorical_ols_robust_map(prepared.ols(),
+                            PreparedOlsRobustConfig { fit, ..Default::default() }).unwrap();
+                        assert!(result.fit().score_certificate().passed);
+                        result.fit().solver_workspace_peak().bytes().unwrap()
+                    };
+                    let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
+                    let bound = frame.fast_bytes + u128::from(solver_peak);
+                    assert!(u128::from(peak) <= bound, "rows={rows}, clustered={clustered}, peak={peak}, bound={bound}");
+                }
+            }).unwrap();
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
     fn action_metadata_matches_independent_deallocation_and_counts_spare_capacity() {
         let _guard = instrumentation::lock_action_observation();
         for (args, mut spi) in [

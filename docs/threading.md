@@ -40,9 +40,10 @@ that team; check order and numerical algorithms are unchanged.
 Fresh ordinary one-FE unit fits with 8–16 generated columns, at least 16,384
 rows and eight installed workers can also overlap final residual projection
 with reported bread/intercept completion. This uses the same team and existing
-owners, without a score cache or saved coefficients. Projection errors remain
-deferred until bread and initial within-TSS checks pass. Phase-allocation probes
-retain sequential execution.
+owners, without saved coefficients. An immutable packed or strided inference
+score cache may remain live across both phases, as it does sequentially.
+Projection errors remain deferred until bread and initial within-TSS checks
+pass. Phase-allocation probes retain sequential execution.
 After SPI loading ends, eligible unit one-FE fits may compute raw moments
 from their already loaded matrix beside sample/FE preparation on the same
 team. This requires 16,384 rows, 8–64 RHS columns, eight workers and admitted

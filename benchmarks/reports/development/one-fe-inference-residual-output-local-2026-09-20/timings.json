@@ -1,0 +1,986 @@
+[
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 260.0,
+        "median_ms": 248.0,
+        "minimum_ms": 245.0,
+        "sampled_peak_rss_gib": 0.5771484375
+      },
+      "inferenceresidual": {
+        "maximum_ms": 188.0,
+        "median_ms": 186.0,
+        "minimum_ms": 185.0000000000001,
+        "sampled_peak_rss_gib": 0.4180755615234375
+      },
+      "teamonly": {
+        "maximum_ms": 200.0,
+        "median_ms": 197.0,
+        "minimum_ms": 194.0,
+        "sampled_peak_rss_gib": 0.415283203125
+      }
+    },
+    "case": "cluster2_cross",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferenceresidual": {
+        "median": 1.3191489361702127,
+        "values": [
+          1.3191489361702127,
+          1.3172043010752688,
+          1.4054054054054046
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.2783505154639174,
+        "values": [
+          1.2783505154639174,
+          1.2249999999999999,
+          1.3197969543147208
+        ],
+        "wins": 0
+      },
+      "inferenceresidual/fixest": {
+        "median": 0.7580645161290323,
+        "values": [
+          0.7580645161290323,
+          0.7591836734693878,
+          0.7115384615384619
+        ],
+        "wins": 3
+      },
+      "inferenceresidual/teamonly": {
+        "median": 0.9390862944162441,
+        "values": [
+          0.9690721649484536,
+          0.9299999999999999,
+          0.9390862944162441
+        ],
+        "wins": 3
+      },
+      "teamonly/fixest": {
+        "median": 0.7822580645161291,
+        "values": [
+          0.7822580645161291,
+          0.8163265306122449,
+          0.7576923076923077
+        ],
+        "wins": 3
+      },
+      "teamonly/inferenceresidual": {
+        "median": 1.0648648648648642,
+        "values": [
+          1.0319148936170213,
+          1.0752688172043012,
+          1.0648648648648642
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "inference-residual"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 1310.0,
+        "median_ms": 1306.0,
+        "minimum_ms": 1293.0,
+        "sampled_peak_rss_gib": 2.021453857421875
+      },
+      "inferenceresidual": {
+        "maximum_ms": 581.0,
+        "median_ms": 575.0,
+        "minimum_ms": 565.0,
+        "sampled_peak_rss_gib": 1.431549072265625
+      },
+      "teamonly": {
+        "maximum_ms": 588.0,
+        "median_ms": 575.0,
+        "minimum_ms": 565.0,
+        "sampled_peak_rss_gib": 1.4690399169921875
+      }
+    },
+    "case": "cluster2_cross",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferenceresidual": {
+        "median": 2.2782608695652176,
+        "values": [
+          2.3115044247787613,
+          2.225473321858864,
+          2.2782608695652176
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 2.2713043478260873,
+        "values": [
+          2.2713043478260873,
+          2.1989795918367347,
+          2.3185840707964607
+        ],
+        "wins": 0
+      },
+      "inferenceresidual/fixest": {
+        "median": 0.4389312977099236,
+        "values": [
+          0.43261868300153133,
+          0.44934261407579273,
+          0.4389312977099236
+        ],
+        "wins": 3
+      },
+      "inferenceresidual/teamonly": {
+        "median": 0.9880952380952381,
+        "values": [
+          0.9826086956521739,
+          0.9880952380952381,
+          1.0176991150442478
+        ],
+        "wins": 2
+      },
+      "teamonly/fixest": {
+        "median": 0.4402756508422664,
+        "values": [
+          0.4402756508422664,
+          0.4547563805104408,
+          0.43129770992366406
+        ],
+        "wins": 3
+      },
+      "teamonly/inferenceresidual": {
+        "median": 1.0120481927710843,
+        "values": [
+          1.0176991150442478,
+          1.0120481927710843,
+          0.9826086956521739
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "inference-residual"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 333.0,
+        "median_ms": 330.0,
+        "minimum_ms": 330.0,
+        "sampled_peak_rss_gib": 0.609893798828125
+      },
+      "inferenceresidual": {
+        "maximum_ms": 242.0,
+        "median_ms": 241.0,
+        "minimum_ms": 238.0,
+        "sampled_peak_rss_gib": 0.4393157958984375
+      },
+      "teamonly": {
+        "maximum_ms": 248.0,
+        "median_ms": 246.0,
+        "minimum_ms": 246.0,
+        "sampled_peak_rss_gib": 0.4308624267578125
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferenceresidual": {
+        "median": 1.3817427385892118,
+        "values": [
+          1.3865546218487397,
+          1.3817427385892118,
+          1.3636363636363638
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.3414634146341464,
+        "values": [
+          1.3414634146341464,
+          1.342741935483871,
+          1.3414634146341464
+        ],
+        "wins": 0
+      },
+      "inferenceresidual/fixest": {
+        "median": 0.7237237237237236,
+        "values": [
+          0.7212121212121212,
+          0.7237237237237236,
+          0.7333333333333333
+        ],
+        "wins": 3
+      },
+      "inferenceresidual/teamonly": {
+        "median": 0.9717741935483871,
+        "values": [
+          0.9674796747967479,
+          0.9717741935483871,
+          0.983739837398374
+        ],
+        "wins": 3
+      },
+      "teamonly/fixest": {
+        "median": 0.7454545454545454,
+        "values": [
+          0.7454545454545454,
+          0.7447447447447447,
+          0.7454545454545454
+        ],
+        "wins": 3
+      },
+      "teamonly/inferenceresidual": {
+        "median": 1.029045643153527,
+        "values": [
+          1.0336134453781514,
+          1.029045643153527,
+          1.0165289256198347
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "inference-residual"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 1397.0,
+        "median_ms": 1391.0,
+        "minimum_ms": 1387.0,
+        "sampled_peak_rss_gib": 2.0911712646484375
+      },
+      "inferenceresidual": {
+        "maximum_ms": 663.0,
+        "median_ms": 653.0,
+        "minimum_ms": 648.0,
+        "sampled_peak_rss_gib": 1.4424896240234375
+      },
+      "teamonly": {
+        "maximum_ms": 648.0,
+        "median_ms": 639.0,
+        "minimum_ms": 637.0,
+        "sampled_peak_rss_gib": 1.44744873046875
+      }
+    },
+    "case": "cluster2_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferenceresidual": {
+        "median": 2.124042879019908,
+        "values": [
+          2.124042879019908,
+          2.1070889894419307,
+          2.146604938271605
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 2.1768388106416277,
+        "values": [
+          2.1773940345368916,
+          2.1558641975308643,
+          2.1768388106416277
+        ],
+        "wins": 0
+      },
+      "inferenceresidual/fixest": {
+        "median": 0.47080028839221344,
+        "values": [
+          0.47080028839221344,
+          0.474588403722262,
+          0.46585190510424157
+        ],
+        "wins": 3
+      },
+      "inferenceresidual/teamonly": {
+        "median": 1.0231481481481481,
+        "values": [
+          1.0251177394034536,
+          1.0231481481481481,
+          1.0140845070422535
+        ],
+        "wins": 0
+      },
+      "teamonly/fixest": {
+        "median": 0.45938173975557156,
+        "values": [
+          0.4592645998558039,
+          0.4638511095204009,
+          0.45938173975557156
+        ],
+        "wins": 3
+      },
+      "teamonly/inferenceresidual": {
+        "median": 0.9773755656108597,
+        "values": [
+          0.9754977029096478,
+          0.9773755656108597,
+          0.986111111111111
+        ],
+        "wins": 3
+      }
+    },
+    "repetitions": 3,
+    "series": "inference-residual"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 182.0,
+        "median_ms": 180.0,
+        "minimum_ms": 176.0,
+        "sampled_peak_rss_gib": 0.5402069091796875
+      },
+      "inferenceresidual": {
+        "maximum_ms": 145.0,
+        "median_ms": 145.0,
+        "minimum_ms": 144.0,
+        "sampled_peak_rss_gib": 0.3995819091796875
+      },
+      "teamonly": {
+        "maximum_ms": 168.0,
+        "median_ms": 158.0,
+        "minimum_ms": 156.0,
+        "sampled_peak_rss_gib": 0.4011993408203125
+      }
+    },
+    "case": "cluster_fe",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferenceresidual": {
+        "median": 1.25,
+        "values": [
+          1.2551724137931035,
+          1.25,
+          1.2137931034482758
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.1282051282051282,
+        "values": [
+          1.1518987341772151,
+          1.0714285714285714,
+          1.1282051282051282
+        ],
+        "wins": 0
+      },
+      "inferenceresidual/fixest": {
+        "median": 0.7999999999999999,
+        "values": [
+          0.7967032967032966,
+          0.7999999999999999,
+          0.8238636363636364
+        ],
+        "wins": 3
+      },
+      "inferenceresidual/teamonly": {
+        "median": 0.9177215189873417,
+        "values": [
+          0.9177215189873417,
+          0.857142857142857,
+          0.9294871794871794
+        ],
+        "wins": 3
+      },
+      "teamonly/fixest": {
+        "median": 0.8863636363636365,
+        "values": [
+          0.8681318681318682,
+          0.9333333333333335,
+          0.8863636363636365
+        ],
+        "wins": 3
+      },
+      "teamonly/inferenceresidual": {
+        "median": 1.0896551724137933,
+        "values": [
+          1.0896551724137933,
+          1.1666666666666667,
+          1.0758620689655174
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "inference-residual"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 977.0,
+        "median_ms": 932.0,
+        "minimum_ms": 912.0,
+        "sampled_peak_rss_gib": 1.9722137451171875
+      },
+      "inferenceresidual": {
+        "maximum_ms": 497.0,
+        "median_ms": 486.0,
+        "minimum_ms": 485.0,
+        "sampled_peak_rss_gib": 1.516021728515625
+      },
+      "teamonly": {
+        "maximum_ms": 501.0,
+        "median_ms": 498.0,
+        "minimum_ms": 494.0,
+        "sampled_peak_rss_gib": 1.4056243896484375
+      }
+    },
+    "case": "cluster_fe",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferenceresidual": {
+        "median": 1.917695473251029,
+        "values": [
+          1.96579476861167,
+          1.917695473251029,
+          1.8804123711340208
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.8714859437751006,
+        "values": [
+          1.9500998003992016,
+          1.8714859437751006,
+          1.8461538461538463
+        ],
+        "wins": 0
+      },
+      "inferenceresidual/fixest": {
+        "median": 0.5214592274678111,
+        "values": [
+          0.5087001023541453,
+          0.5214592274678111,
+          0.5317982456140351
+        ],
+        "wins": 3
+      },
+      "inferenceresidual/teamonly": {
+        "median": 0.9817813765182186,
+        "values": [
+          0.9920159680638723,
+          0.9759036144578314,
+          0.9817813765182186
+        ],
+        "wins": 3
+      },
+      "teamonly/fixest": {
+        "median": 0.5343347639484978,
+        "values": [
+          0.5127942681678608,
+          0.5343347639484978,
+          0.5416666666666666
+        ],
+        "wins": 3
+      },
+      "teamonly/inferenceresidual": {
+        "median": 1.0185567010309278,
+        "values": [
+          1.0080482897384306,
+          1.0246913580246915,
+          1.0185567010309278
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "inference-residual"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 178.0,
+        "median_ms": 170.0,
+        "minimum_ms": 162.0,
+        "sampled_peak_rss_gib": 0.59735107421875
+      },
+      "inferenceresidual": {
+        "maximum_ms": 145.0,
+        "median_ms": 144.0,
+        "minimum_ms": 143.0,
+        "sampled_peak_rss_gib": 0.444580078125
+      },
+      "teamonly": {
+        "maximum_ms": 158.0,
+        "median_ms": 157.0,
+        "minimum_ms": 154.0,
+        "sampled_peak_rss_gib": 0.389862060546875
+      }
+    },
+    "case": "robust",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/inferenceresidual": {
+        "median": 1.1724137931034484,
+        "values": [
+          1.1724137931034484,
+          1.2361111111111112,
+          1.132867132867133
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.0828025477707006,
+        "values": [
+          1.0828025477707006,
+          1.155844155844156,
+          1.0253164556962024
+        ],
+        "wins": 0
+      },
+      "inferenceresidual/fixest": {
+        "median": 0.8529411764705881,
+        "values": [
+          0.8529411764705881,
+          0.8089887640449438,
+          0.882716049382716
+        ],
+        "wins": 3
+      },
+      "inferenceresidual/teamonly": {
+        "median": 0.9235668789808916,
+        "values": [
+          0.9235668789808916,
+          0.935064935064935,
+          0.9050632911392404
+        ],
+        "wins": 3
+      },
+      "teamonly/fixest": {
+        "median": 0.9235294117647058,
+        "values": [
+          0.9235294117647058,
+          0.8651685393258427,
+          0.9753086419753086
+        ],
+        "wins": 3
+      },
+      "teamonly/inferenceresidual": {
+        "median": 1.0827586206896553,
+        "values": [
+          1.0827586206896553,
+          1.0694444444444444,
+          1.104895104895105
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "inference-residual"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 902.0,
+        "median_ms": 868.0,
+        "minimum_ms": 862.0,
+        "sampled_peak_rss_gib": 2.193084716796875
+      },
+      "inferenceresidual": {
+        "maximum_ms": 521.0,
+        "median_ms": 509.0,
+        "minimum_ms": 501.0,
+        "sampled_peak_rss_gib": 1.424957275390625
+      },
+      "teamonly": {
+        "maximum_ms": 504.0,
+        "median_ms": 504.0,
+        "minimum_ms": 503.0,
+        "sampled_peak_rss_gib": 1.4355316162109375
+      }
+    },
+    "case": "robust",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/inferenceresidual": {
+        "median": 1.7205588822355289,
+        "values": [
+          1.6660268714011515,
+          1.7205588822355289,
+          1.7721021611001966
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.722222222222222,
+        "values": [
+          1.722222222222222,
+          1.713717693836978,
+          1.7896825396825398
+        ],
+        "wins": 0
+      },
+      "inferenceresidual/fixest": {
+        "median": 0.5812064965197216,
+        "values": [
+          0.6002304147465438,
+          0.5812064965197216,
+          0.5643015521064302
+        ],
+        "wins": 3
+      },
+      "inferenceresidual/teamonly": {
+        "median": 1.0099206349206349,
+        "values": [
+          1.0337301587301588,
+          0.9960238568588469,
+          1.0099206349206349
+        ],
+        "wins": 1
+      },
+      "teamonly/fixest": {
+        "median": 0.5806451612903226,
+        "values": [
+          0.5806451612903226,
+          0.5835266821345708,
+          0.5587583148558758
+        ],
+        "wins": 3
+      },
+      "teamonly/inferenceresidual": {
+        "median": 0.9901768172888016,
+        "values": [
+          0.9673704414587332,
+          1.003992015968064,
+          0.9901768172888016
+        ],
+        "wins": 2
+      }
+    },
+    "repetitions": 3,
+    "series": "inference-residual"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 216.0,
+        "median_ms": 213.0,
+        "minimum_ms": 208.0,
+        "sampled_peak_rss_gib": 0.6146392822265625
+      },
+      "outputnofill": {
+        "maximum_ms": 217.0,
+        "median_ms": 216.0,
+        "minimum_ms": 212.0,
+        "sampled_peak_rss_gib": 0.4931182861328125
+      },
+      "teamonly": {
+        "maximum_ms": 222.0,
+        "median_ms": 219.0,
+        "minimum_ms": 217.0,
+        "sampled_peak_rss_gib": 0.4963226318359375
+      }
+    },
+    "case": "iid_outputs",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/outputnofill": {
+        "median": 0.9815668202764977,
+        "values": [
+          0.9815668202764977,
+          0.9811320754716981,
+          1.0
+        ],
+        "wins": 2
+      },
+      "fixest/teamonly": {
+        "median": 0.9594594594594594,
+        "values": [
+          0.9594594594594594,
+          0.9585253456221198,
+          0.9863013698630136
+        ],
+        "wins": 3
+      },
+      "outputnofill/fixest": {
+        "median": 1.0187793427230047,
+        "values": [
+          1.0187793427230047,
+          1.0192307692307692,
+          1.0
+        ],
+        "wins": 0
+      },
+      "outputnofill/teamonly": {
+        "median": 0.9774774774774775,
+        "values": [
+          0.9774774774774775,
+          0.9769585253456221,
+          0.9863013698630136
+        ],
+        "wins": 3
+      },
+      "teamonly/fixest": {
+        "median": 1.0422535211267605,
+        "values": [
+          1.0422535211267605,
+          1.0432692307692308,
+          1.0138888888888888
+        ],
+        "wins": 0
+      },
+      "teamonly/outputnofill": {
+        "median": 1.023041474654378,
+        "values": [
+          1.023041474654378,
+          1.0235849056603774,
+          1.0138888888888888
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "output-nofill"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 556.0,
+        "median_ms": 530.0,
+        "minimum_ms": 528.0,
+        "sampled_peak_rss_gib": 1.8319854736328125
+      },
+      "outputnofill": {
+        "maximum_ms": 492.0,
+        "median_ms": 489.0,
+        "minimum_ms": 484.0,
+        "sampled_peak_rss_gib": 1.5218505859375
+      },
+      "teamonly": {
+        "maximum_ms": 504.0,
+        "median_ms": 498.0,
+        "minimum_ms": 494.0,
+        "sampled_peak_rss_gib": 1.521240234375
+      }
+    },
+    "case": "iid_outputs",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/outputnofill": {
+        "median": 1.0950413223140496,
+        "values": [
+          1.0950413223140496,
+          1.0797546012269938,
+          1.1300813008130082
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.06425702811245,
+        "values": [
+          1.06425702811245,
+          1.0476190476190477,
+          1.1255060728744941
+        ],
+        "wins": 0
+      },
+      "outputnofill/fixest": {
+        "median": 0.9132075471698112,
+        "values": [
+          0.9132075471698112,
+          0.9261363636363635,
+          0.8848920863309352
+        ],
+        "wins": 3
+      },
+      "outputnofill/teamonly": {
+        "median": 0.9718875502008032,
+        "values": [
+          0.9718875502008032,
+          0.9702380952380952,
+          0.9959514170040485
+        ],
+        "wins": 3
+      },
+      "teamonly/fixest": {
+        "median": 0.9396226415094339,
+        "values": [
+          0.9396226415094339,
+          0.9545454545454545,
+          0.8884892086330934
+        ],
+        "wins": 3
+      },
+      "teamonly/outputnofill": {
+        "median": 1.0289256198347108,
+        "values": [
+          1.0289256198347108,
+          1.030674846625767,
+          1.0040650406504066
+        ],
+        "wins": 0
+      }
+    },
+    "repetitions": 3,
+    "series": "output-nofill"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 221.0,
+        "median_ms": 219.0,
+        "minimum_ms": 212.0,
+        "sampled_peak_rss_gib": 0.6053924560546875
+      },
+      "outputnofill": {
+        "maximum_ms": 172.0,
+        "median_ms": 169.0,
+        "minimum_ms": 169.0,
+        "sampled_peak_rss_gib": 0.3994903564453125
+      },
+      "teamonly": {
+        "maximum_ms": 172.0,
+        "median_ms": 170.0,
+        "minimum_ms": 167.0,
+        "sampled_peak_rss_gib": 0.4005279541015625
+      }
+    },
+    "case": "iid_saved",
+    "k": 10,
+    "paired_ratios": {
+      "fixest/outputnofill": {
+        "median": 1.2848837209302326,
+        "values": [
+          1.2544378698224852,
+          1.2958579881656804,
+          1.2848837209302326
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.288235294117647,
+        "values": [
+          1.2325581395348837,
+          1.288235294117647,
+          1.3233532934131735
+        ],
+        "wins": 0
+      },
+      "outputnofill/fixest": {
+        "median": 0.7782805429864252,
+        "values": [
+          0.7971698113207548,
+          0.771689497716895,
+          0.7782805429864252
+        ],
+        "wins": 3
+      },
+      "outputnofill/teamonly": {
+        "median": 0.9941176470588236,
+        "values": [
+          0.9825581395348839,
+          0.9941176470588236,
+          1.029940119760479
+        ],
+        "wins": 2
+      },
+      "teamonly/fixest": {
+        "median": 0.7762557077625571,
+        "values": [
+          0.8113207547169811,
+          0.7762557077625571,
+          0.7556561085972852
+        ],
+        "wins": 3
+      },
+      "teamonly/outputnofill": {
+        "median": 1.0059171597633136,
+        "values": [
+          1.0177514792899407,
+          1.0059171597633136,
+          0.9709302325581397
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "output-nofill"
+  },
+  {
+    "arms": {
+      "fixest": {
+        "maximum_ms": 535.0,
+        "median_ms": 533.0,
+        "minimum_ms": 525.0,
+        "sampled_peak_rss_gib": 1.833740234375
+      },
+      "outputnofill": {
+        "maximum_ms": 444.0,
+        "median_ms": 433.0000000000001,
+        "minimum_ms": 425.0,
+        "sampled_peak_rss_gib": 1.5790863037109375
+      },
+      "teamonly": {
+        "maximum_ms": 439.0,
+        "median_ms": 437.0000000000001,
+        "minimum_ms": 435.0000000000001,
+        "sampled_peak_rss_gib": 1.53338623046875
+      }
+    },
+    "case": "iid_saved",
+    "k": 50,
+    "paired_ratios": {
+      "fixest/outputnofill": {
+        "median": 1.23094688221709,
+        "values": [
+          1.258823529411765,
+          1.23094688221709,
+          1.1824324324324325
+        ],
+        "wins": 0
+      },
+      "fixest/teamonly": {
+        "median": 1.2186788154897494,
+        "values": [
+          1.2186788154897494,
+          1.2196796338672766,
+          1.2068965517241377
+        ],
+        "wins": 0
+      },
+      "outputnofill/fixest": {
+        "median": 0.8123827392120077,
+        "values": [
+          0.794392523364486,
+          0.8123827392120077,
+          0.8457142857142856
+        ],
+        "wins": 3
+      },
+      "outputnofill/teamonly": {
+        "median": 0.9908466819221968,
+        "values": [
+          0.9681093394077448,
+          0.9908466819221968,
+          1.0206896551724136
+        ],
+        "wins": 2
+      },
+      "teamonly/fixest": {
+        "median": 0.8205607476635514,
+        "values": [
+          0.8205607476635514,
+          0.8198874296435273,
+          0.8285714285714287
+        ],
+        "wins": 3
+      },
+      "teamonly/outputnofill": {
+        "median": 1.0092378752886837,
+        "values": [
+          1.0329411764705883,
+          1.0092378752886837,
+          0.9797297297297299
+        ],
+        "wins": 1
+      }
+    },
+    "repetitions": 3,
+    "series": "output-nofill"
+  }
+]

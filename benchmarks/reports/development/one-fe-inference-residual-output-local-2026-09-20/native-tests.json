@@ -1,0 +1,30 @@
+[
+  {
+    "log": "breadth-retained-cache-overlap-20260920.log",
+    "sha256": "b7816190a6eea80f83993fa6169c8f67fd8f89df631f981bbcd227d7c7308f0c",
+    "results": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 939 filtered out; finished in 17.86s"
+    ]
+  },
+  {
+    "log": "breadth-inference-overlap-memory-20260920.log",
+    "sha256": "024dab321c12a24ed5a23c2f200d02f48e617b44a5b6aed2057388a93b6132db",
+    "results": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 161 filtered out; finished in 2.07s"
+    ]
+  },
+  {
+    "log": "breadth-residual-prepared_robust-20260920.log",
+    "sha256": "cad80f1d1434b6e448f11ffecef9d21126b10bfb5e635cd8636539a0dab6cf73",
+    "results": [
+      "test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 927 filtered out; finished in 0.06s"
+    ]
+  },
+  {
+    "log": "breadth-residual-prepared_clustered-20260920.log",
+    "sha256": "fe47b9b1963daf038658a0b0ca3f3cca43dac1e7d58bbbd3e7b079f6b3aa591b",
+    "results": [
+      "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 930 filtered out; finished in 1.88s"
+    ]
+  }
+]

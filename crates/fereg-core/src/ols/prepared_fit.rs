@@ -2293,7 +2293,7 @@ fn fit_with_controls_internal_mode_with_frame<
     }
     let score_cache_seconds = trace.lap();
     let residual_overlap = !perturbations.residual_overlap_disabled
-        && phase_probe.is_none() && !retain_fast_score_cache && !config.absorb.retain_coefficients
+        && phase_probe.is_none() && !config.absorb.retain_coefficients
         && matches!(config.absorb.solver, FeSolverKind::Auto | FeSolverKind::Map)
         && weights.values.is_none() && prepared.fit_has_one_ordinary_intercept_effect()
         && prepared.fit_sample().n_active() >= 16_384 && (8..=16).contains(&generated_columns)
@@ -2360,6 +2360,8 @@ fn fit_with_controls_internal_mode_with_frame<
         raw_moments.as_ref(),
         )
     };
+    // A retained sandwich score cache is already live across both phases and
+    // remains immutable; overlapping them adds no cache owner or workspace.
     // Both jobs use existing owners. Projected residual errors remain deferred
     // until bread and initial within-TSS validation have passed. Scoped work
     // joins before either result is consumed; allocator phase probes retain
@@ -9060,6 +9062,42 @@ mod tests {
                     let actual = run(false);
                     assert!(expected == actual, "N={n}, threads={threads}, perturbation={perturbation:?}, errors={:?}/{:?}",
                         expected.as_ref().err(), actual.as_ref().err());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn retained_score_cache_residual_overlap_preserves_fits_and_errors() {
+        for n in [16_383, 16_384, 32_771] {
+            let columns: Vec<Vec<f64>> = (0..9).map(|c| (0..n)
+                .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
+            let groups: Vec<_> = (0..n).map(|r| (r % 79) as f64).collect();
+            let response: Vec<_> = (0..n).map(|r| groups[r] + columns[0][r] * 1.3
+                + columns[1][r] * 0.7 + (r as f64).cos() * 0.1).collect();
+            let data = prepared(&response, &columns, &[false; 9], Some(&groups), true, TestWeights::Unit);
+            for threads in [1, 8, 16] {
+                let mut config = PreparedOlsFitConfig::default();
+                config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
+                for cache_limit in [0, MAX_FAST_SCORE_CACHE_BYTES] {
+                    for perturbation in [FitPerturbations::default(),
+                        FitPerturbations { reported_intercept: true, ..FitPerturbations::default() },
+                        FitPerturbations { reported_bread_extension: true, ..FitPerturbations::default() },
+                        FitPerturbations { reconstructed_within_residual_constant: true, ..FitPerturbations::default() },
+                        FitPerturbations { final_residual_constant: true, ..FitPerturbations::default() },
+                    ] {
+                        let run = |disabled| ThreadTeam::new(config.execution.threads).install(|| {
+                            fit_with_controls_internal_mode(&data, config, &mut SystemFitReservation,
+                                FitPerturbations { residual_overlap_disabled: disabled, ..perturbation }, true, cache_limit)
+                        }).unwrap().map(|fit| {
+                            assert!(fit.fast_score_cache.is_some());
+                            assert_eq!(fit.independent_unit_residual_sum.is_some(),
+                                !disabled && n >= 16_384 && threads >= 8);
+                            without_solve_timings(fit)
+                        });
+                        assert_eq!(run(false), run(true),
+                            "n={n} threads={threads} cache_limit={cache_limit} perturbation={perturbation:?}");
+                    }
                 }
             }
         }

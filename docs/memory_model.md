@@ -101,11 +101,13 @@ Insufficient headroom leaves moment construction at its original fit phase.
 No additional observation-scale matrix is allocated, and stale speculative
 statistics are dropped before ordinary fit-time reconstruction.
 
-Eligible narrow one-FE IID fits may overlap final residual projection with
+Eligible narrow one-FE OLS fits may overlap final residual projection with
 reported bread/intercept completion. The residual vector transfers from the
 existing QR owner into its existing one-column projection; the raw-residual
 reference and moment cache already coexist with both phases. No second data
-buffer or team is created. Allocation-phase probes keep the sequential route.
+buffer or team is created. Retained packed/strided inference scores are already
+charged as owners across both phases; overlapping them adds no cache or buffer.
+Allocation-phase probes keep the sequential route.
 
 Fast and low modes share the same rank policy, certificates, inference,
 omission status, result wire, and Stata transaction. Registered tests require
