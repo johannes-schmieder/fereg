@@ -155,8 +155,16 @@ sample passes. N must fit u32. See
 uses the count as a weight. This changes summation order but preserves the
 mathematical operator and independent certification. Construction uses disjoint
 membership ranges on the existing team. It adds no heap owner, and the final
-certificate overwrites the bank. Weighted and insufficient-scratch calls retain
-their observation-membership operator.
+certificate overwrites the bank. Insufficient-scratch calls retain their
+observation-membership operator.
+
+Supplied-weight capped OLS attempts may cache the right gather when the same
+repeat sample passes and both existing group scratch and idle left RHS means
+fit N words. Separate banks hold exact codes and f64 normalized edge weights.
+The original left means are recomputed before reconstruction; independent
+certification then reuses group scratch. No new owner is allocated, and shared
+reusable/PPML calls explicitly opt out. See
+[ADR 0080](adr/0080-weighted-schur-edge-scratch.md).
 
 Wide one-FE/Schur OLS certificates use fixed 1,024-group partials in the
 existing norm scratch when that storage fits. One-/two-FE OLS also uses these

@@ -10,6 +10,28 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: weighted cache checkpoint — 2026-09-20
+
+The [weighted-cache report](benchmarks/reports/development/two-fe-weighted-edge-cache-local-2026-09-20/README.md)
+records 121 successful calls, fifty native pairs without a peak increase,
+22 independent output audits, thirteen focused Schur tests and three Stata
+fixtures. Existing idle banks hold right-neighbor codes and f64 weighted
+edges; left means are restored before certified reconstruction. PPML/shared
+reusable calls opt out. [ADR 0080](docs/adr/0080-weighted-schur-edge-scratch.md)
+defines the admission and lifetime. Weighted shuffled K=6 IID improves
+372 -> 340 ms, still above fixest's 299 ms. Ordered K=50 IID improves
+858 -> 768 ms. Three initially slower controls pass repeated confirmation;
+the initial results and test-only tolerance localization are preserved.
+
+Plugin `337deed4ecdae50f490f84cd8731f1be68beb69b3151bdde7a0ce2a5be4edb9f`
+uses base `455150af` plus the recorded overlay; 514 source entries match and
+the added licensed fixture is separately hashed. All weighted-cache processes
+are complete. The full goal remains active. Next measure narrow input/RHS and
+moment overlap at K=1/3/5 before changing guards, then graph probe/routing costs.
+The 111 controls, broad weight/science holdouts and two five-pair blocks remain.
+Raw work: `target/two-fe-broad-20260920`. Preserve unrelated worktree changes;
+no installed package, remote state or qualification changed.
+
 ## Broad two-way OLS milestone: complete first screen — 2026-09-20
 
 The [77-cell screen](benchmarks/reports/development/two-fe-broad-screen-local-2026-09-20/README.md)

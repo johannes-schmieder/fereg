@@ -1,0 +1,161 @@
+[
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "dispersed",
+      "weight_kind": "aw"
+    },
+    "series": "weighted-edges2-confirm-dispersed",
+    "variants": {
+      "narrowedges2": {
+        "calls": 3,
+        "input_seconds": 0.010502667,
+        "maximum_seconds": 0.673,
+        "minimum_seconds": 0.659,
+        "native_allocation_peak_bytes": 109666626,
+        "native_seconds": 0.627391,
+        "outer_seconds": 0.023733958,
+        "peak_rss_gib": 0.2481536865234375,
+        "seconds": 0.6619999999999999
+      },
+      "weightededges2": {
+        "calls": 3,
+        "input_seconds": 0.010237417,
+        "maximum_seconds": 0.675,
+        "minimum_seconds": 0.549,
+        "native_allocation_peak_bytes": 109666626,
+        "native_seconds": 0.541365583,
+        "outer_seconds": 0.023822750000000004,
+        "peak_rss_gib": 0.2456512451171875,
+        "seconds": 0.5760000000000001
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "group_concentrated",
+      "weight_kind": "aw"
+    },
+    "series": "weighted-edges2-confirm-group",
+    "variants": {
+      "narrowedges2": {
+        "calls": 3,
+        "input_seconds": 0.010252708,
+        "maximum_seconds": 1.457,
+        "minimum_seconds": 1.358,
+        "native_allocation_peak_bytes": 108070758,
+        "native_seconds": 1.3875079590000001,
+        "outer_seconds": 0.02313591599999998,
+        "peak_rss_gib": 0.2392730712890625,
+        "seconds": 1.421
+      },
+      "weightededges2": {
+        "calls": 3,
+        "input_seconds": 0.01025125,
+        "maximum_seconds": 1.434,
+        "minimum_seconds": 1.427,
+        "native_allocation_peak_bytes": 108070758,
+        "native_seconds": 1.396430917,
+        "outer_seconds": 0.023103125000000002,
+        "peak_rss_gib": 0.2412109375,
+        "seconds": 1.43
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(low)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "weighted-edges2-confirm-low",
+    "variants": {
+      "narrowedges2": {
+        "calls": 3,
+        "input_seconds": 0.011972333,
+        "maximum_seconds": 0.401,
+        "minimum_seconds": 0.355,
+        "native_allocation_peak_bytes": 104846045,
+        "native_seconds": 0.33518558400000004,
+        "outer_seconds": 0.007861832999999985,
+        "peak_rss_gib": 0.1963348388671875,
+        "seconds": 0.356
+      },
+      "weightededges2": {
+        "calls": 3,
+        "input_seconds": 0.011939749999999999,
+        "maximum_seconds": 0.414,
+        "minimum_seconds": 0.348,
+        "native_allocation_peak_bytes": 104846045,
+        "native_seconds": 0.329022625,
+        "outer_seconds": 0.007968374999999972,
+        "peak_rss_gib": 0.1728668212890625,
+        "seconds": 0.349
+      }
+    }
+  }
+]

@@ -1,0 +1,1662 @@
+{
+  "weighted-edges2-bridge": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-dist-constant": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 245760,
+          "outputs": {
+            "max_abs_errors": [
+              2.4841240175987878e-15,
+              1.9567680809018384e-15,
+              8.881784197001252e-16,
+              8.881784197001252e-16,
+              8.881784197001252e-16
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5716431638507526e-23
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-dist-dispersed": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 245760,
+          "outputs": {
+            "max_abs_errors": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-dist-group_concentrated": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 245760,
+          "outputs": {
+            "max_abs_errors": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-fw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 6.72084247699335e-25
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "cluster_cross",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.942890293094024e-15,
+              1.6653345369377348e-15
+            ],
+            "mismatched_values": [
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.0587911840678754e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.942890293094024e-15,
+              1.6653345369377348e-15,
+              8.881784197001252e-16,
+              4.440892098500626e-16,
+              8.881784197001252e-16
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 3.970466940254533e-23
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-low": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-onefe-control": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-ordered": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.8317087484374245e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.8317087484374245e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.8317087484374245e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.942890293094024e-15,
+              1.6653345369377348e-15,
+              8.881784197001252e-16,
+              4.440892098500626e-16,
+              8.881784197001252e-16
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.97326154838251e-06,
+              1.973261530591186e-06,
+              1.6026017730652597e-06,
+              1.6475709685437323e-13,
+              1.6026017730652597e-06
+            ],
+            "mismatched_values": [
+              951495,
+              966998,
+              432182,
+              0,
+              256152
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.8475906161984426e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.942890293094024e-15,
+              1.6653345369377348e-15,
+              8.881784197001252e-16,
+              4.440892098500626e-16,
+              8.881784197001252e-16
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.97326154838251e-06,
+              1.973261530591186e-06,
+              1.6026017730652597e-06,
+              1.6475709685437323e-13,
+              1.6026017730652597e-06
+            ],
+            "mismatched_values": [
+              951495,
+              966998,
+              432182,
+              0,
+              256152
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.8475906161984426e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.942890293094024e-15,
+              1.6653345369377348e-15,
+              8.881784197001252e-16,
+              4.440892098500626e-16,
+              8.881784197001252e-16
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.97326154838251e-06,
+              1.973261530591186e-06,
+              1.6026017730652597e-06,
+              1.6475709685437323e-13,
+              1.6026017730652597e-06
+            ],
+            "mismatched_values": [
+              951495,
+              966998,
+              432182,
+              0,
+              256152
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 2.2093438190040615e-14,
+              "covariance.csv:value": 1.8475906161984426e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 1.1102230246251565e-16,
+              "covariance.csv:value": 1.0587911840678754e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.999987411267391e-16,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 2.967262293350221e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 1.1102230246251565e-16,
+              "covariance.csv:value": 1.0587911840678754e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.999987411267391e-16,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 2.967262293350221e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 1.1102230246251565e-16,
+              "covariance.csv:value": 1.0587911840678754e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.999987411267391e-16,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 2.967262293350221e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              3.774758283725532e-15,
+              3.6637359812630166e-15,
+              1.1102230246251565e-15,
+              8.881784197001252e-16,
+              1.3322676295501878e-15
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 1.1102230246251565e-16,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              2.2619998605033498e-06,
+              2.2619997056549934e-06,
+              1.7089190010866062e-06,
+              9.668932321460488e-13,
+              1.7089190010866062e-06
+            ],
+            "mismatched_values": [
+              954885,
+              969250,
+              446844,
+              0,
+              282536
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.999987411267391e-16,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 3.052494983667685e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              3.774758283725532e-15,
+              3.6637359812630166e-15,
+              1.1102230246251565e-15,
+              8.881784197001252e-16,
+              1.3322676295501878e-15
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 1.1102230246251565e-16,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              2.2619998605033498e-06,
+              2.2619997056549934e-06,
+              1.7089190010866062e-06,
+              9.668932321460488e-13,
+              1.7089190010866062e-06
+            ],
+            "mismatched_values": [
+              954885,
+              969250,
+              446844,
+              0,
+              282536
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.999987411267391e-16,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 3.052494983667685e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              3.774758283725532e-15,
+              3.6637359812630166e-15,
+              1.1102230246251565e-15,
+              8.881784197001252e-16,
+              1.3322676295501878e-15
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 1.1102230246251565e-16,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              2.2619998605033498e-06,
+              2.2619997056549934e-06,
+              1.7089190010866062e-06,
+              9.668932321460488e-13,
+              1.7089190010866062e-06
+            ],
+            "mismatched_values": [
+              954885,
+              969250,
+              446844,
+              0,
+              282536
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.999987411267391e-16,
+              "coefficients.csv:value": 6.910097494206013e-14,
+              "covariance.csv:value": 3.052494983667685e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "weighted-edges2-profile": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.2407709188295415e-24
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-pw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 5.293955920339377e-23
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "cluster_cross",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.942890293094024e-15,
+              1.6653345369377348e-15
+            ],
+            "mismatched_values": [
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "robust_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.942890293094024e-15,
+              1.6653345369377348e-15
+            ],
+            "mismatched_values": [
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.0587911840678754e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-shuffled": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.2407709188295415e-24
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.1650402864660236e-13,
+              "covariance.csv:value": 2.0106444585448954e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.2407709188295415e-24
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.1650402864660236e-13,
+              "covariance.csv:value": 2.0106444585448954e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.2407709188295415e-24
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.1650402864660236e-13,
+              "covariance.csv:value": 2.0106444585448954e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.4432899320127035e-15,
+              1.3877787807814457e-15,
+              1.1102230246251565e-15,
+              0.0,
+              1.1102230246251565e-15
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.137373342260413e-24
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              3.984301693876757e-06,
+              3.984301471499085e-06,
+              3.684787123703348e-06,
+              1.0249578963339445e-12,
+              3.684787123647837e-06
+            ],
+            "mismatched_values": [
+              966185,
+              974701,
+              489766,
+              0,
+              356490
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.1650402864660236e-13,
+              "covariance.csv:value": 1.963528250853875e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.4432899320127035e-15,
+              1.3877787807814457e-15,
+              1.1102230246251565e-15,
+              0.0,
+              1.1102230246251565e-15
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.137373342260413e-24
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              3.984301693876757e-06,
+              3.984301471499085e-06,
+              3.684787123703348e-06,
+              1.0249578963339445e-12,
+              3.684787123647837e-06
+            ],
+            "mismatched_values": [
+              966185,
+              974701,
+              489766,
+              0,
+              356490
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.1650402864660236e-13,
+              "covariance.csv:value": 1.963528250853875e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.4432899320127035e-15,
+              1.3877787807814457e-15,
+              1.1102230246251565e-15,
+              0.0,
+              1.1102230246251565e-15
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.137373342260413e-24
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              3.984301693876757e-06,
+              3.984301471499085e-06,
+              3.684787123703348e-06,
+              1.0249578963339445e-12,
+              3.684787123647837e-06
+            ],
+            "mismatched_values": [
+              966185,
+              974701,
+              489766,
+              0,
+              356490
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.1650402864660236e-13,
+              "covariance.csv:value": 1.963528250853875e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "weighted-edges2-strong6-aw": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 1.2490009027033011e-14,
+              "covariance.csv:value": 4.8492636230308694e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 1.2490009027033011e-14,
+              "covariance.csv:value": 4.8492636230308694e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 1.2490009027033011e-14,
+              "covariance.csv:value": 4.8492636230308694e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-threads-4": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-threads-8": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.5881867761018131e-22
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "weighted-edges2-unit-control": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        },
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "weightededges2"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  }
+}

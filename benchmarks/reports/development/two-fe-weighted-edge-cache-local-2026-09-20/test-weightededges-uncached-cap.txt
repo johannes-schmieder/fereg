@@ -1,0 +1,7 @@
+weighted edge projection: disconnected=false, threads=4, cap=64, distance=0.0000000005471514352706208
+weighted edge projection: disconnected=false, threads=8, cap=64, distance=0.0000000005471514352706208
+weighted edge projection: disconnected=false, threads=4, cap=1, distance=0.0000000026963494215159756
+thread 'fe::borrowed_map::tests::weighted_schur_edge_scratch_matches_operator_projection_and_continuation' panicked at crates/fereg-core/src/fe/borrowed_map.rs:10901:17:
+weighted edge projection distance 0.0000000026963494215159756
+test fe::borrowed_map::tests::weighted_schur_edge_scratch_matches_operator_projection_and_continuation ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 958 filtered out; finished in 6.56s
