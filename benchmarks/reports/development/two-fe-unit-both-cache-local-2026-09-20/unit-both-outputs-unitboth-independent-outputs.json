@@ -1,0 +1,50 @@
+[
+  {
+    "finite_score_per_observation": 1.8392405654044098e-16,
+    "group_residual_mean_max": [
+      1.4654943925052066e-15,
+      1.5319979717055554e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "unit-both-outputs-cluster2_saved-n983040-k3-s31415927-shuffle1-t16-r1-unitboth",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 6.797224820035789e-17,
+    "group_residual_mean_max": [
+      1.6209256159527285e-15,
+      2.388533815178562e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "unit-both-outputs-cluster2_saved-n983040-k5-s31415927-shuffle1-t16-r1-unitboth",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.8328799126591614e-16,
+    "group_residual_mean_max": [
+      1.2656542480726785e-15,
+      1.5333766002965733e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.0261570199409107e-15,
+      8.881784197001252e-16,
+      1.9984014443252818e-15
+    ],
+    "run": "unit-both-outputs-iid_outputs-n983040-k3-s31415927-shuffle1-t16-r1-unitboth",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 6.797224820035789e-17,
+    "group_residual_mean_max": [
+      1.6209256159527285e-15,
+      2.388533815178562e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.3037127760972e-15,
+      8.881784197001252e-16,
+      2.220446049250313e-15
+    ],
+    "run": "unit-both-outputs-iid_outputs-n983040-k5-s31415927-shuffle1-t16-r1-unitboth",
+    "status": "pass"
+  }
+]

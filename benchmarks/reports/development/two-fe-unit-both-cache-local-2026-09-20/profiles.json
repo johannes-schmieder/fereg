@@ -1,0 +1,38 @@
+{
+  "unit-both-profile-iid-n983040-k5-s31415927-shuffle1-t16-r1-narrowinput3": {
+    "warmup_then_measured": [
+      "FEREG_PHASE|ols_prepare|seconds=0.000249125",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.000274667",
+      "FEREG_PHASE|cmg_batch|rhs=0.000058125|solve=0.000692250|subtract=0.000069209|width=7|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg|norms=0.000455708|bulk=0.000888250|polish=0.000754500",
+      "FEREG_PHASE|fit|rhs=0.003073375|raw_moments=0.000271625|initial_absorb=0.002134000|within_norms=0.000241750|finite_solve=0.001297834|score_cache=0.000000042|bread_raw_residual=0.000075000|residual_absorb=0.000733583|residual_overlap=0|score=0.000056208|finalize=0.000000417|total=0.007884500",
+      "FEREG_PHASE|iid|setup_statistics=0.000099083|covariance=0.000001583|wald=0.000001208|certificate=0.000001875|total=0.000103917",
+      "FEREG_PHASE|iid_plugin|prepare=0.000291834|inference=0.008527041|outputs=0.000015292|shadow=0.000008917|prestore_total=0.008843209",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.028807917",
+      "FEREG_PHASE|schur_route|contraction=0.003779644|probe=0.023288084|selected=true",
+      "FEREG_PHASE|schur|init=0.009173709|operator=0.068438248|recurrence=0.020609876|reconstruct=0.002685708|certificate=0.008754333|iterations=35|passed=true",
+      "FEREG_PHASE|schur|init=0.002552833|operator=0.003915208|recurrence=0.001092251|reconstruct=0.000749209|certificate=0.003816416|iterations=3|passed=true",
+      "FEREG_PHASE|fit|rhs=0.009281167|raw_moments=0.000001083|initial_absorb=0.139404375|within_norms=0.000000458|finite_solve=0.003103458|score_cache=0.000000042|bread_raw_residual=0.008028375|residual_absorb=0.016241750|residual_overlap=0|score=0.004013792|finalize=0.000001000|total=0.180075917",
+      "FEREG_PHASE|iid|setup_statistics=0.003495042|covariance=0.000000833|wald=0.000001542|certificate=0.000000959|total=0.003498541",
+      "FEREG_PHASE|iid_plugin|prepare=0.028857167|inference=0.193750250|outputs=0.000015917|shadow=0.000008208|prestore_total=0.222631667"
+    ]
+  },
+  "unit-both-profile-iid-n983040-k5-s31415927-shuffle1-t16-r1-unitboth": {
+    "warmup_then_measured": [
+      "FEREG_PHASE|ols_prepare|seconds=0.000255542",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.000289750",
+      "FEREG_PHASE|cmg_batch|rhs=0.000058041|solve=0.000639667|subtract=0.000074541|width=7|route=AcrossRightHandSides",
+      "FEREG_PHASE|cmg|norms=0.000460083|bulk=0.000833375|polish=0.000760584",
+      "FEREG_PHASE|fit|rhs=0.002922083|raw_moments=0.000271708|initial_absorb=0.002087417|within_norms=0.000195125|finite_solve=0.000892916|score_cache=0.000000042|bread_raw_residual=0.000081292|residual_absorb=0.000722250|residual_overlap=0|score=0.000057167|finalize=0.000000541|total=0.007231000",
+      "FEREG_PHASE|iid|setup_statistics=0.000091708|covariance=0.000002250|wald=0.000001709|certificate=0.000002125|total=0.000097917",
+      "FEREG_PHASE|iid_plugin|prepare=0.000303125|inference=0.007925875|outputs=0.000014959|shadow=0.000008709|prestore_total=0.008252791",
+      "FEREG_PHASE|ols_prepare_moments|seconds=0.028858708",
+      "FEREG_PHASE|schur_route|contraction=0.003779644|probe=0.022612125|selected=true",
+      "FEREG_PHASE|schur|init=0.009986500|operator=0.049687042|recurrence=0.021847499|reconstruct=0.007157875|certificate=0.010177709|iterations=35|passed=true",
+      "FEREG_PHASE|schur|init=0.002539417|operator=0.003515750|recurrence=0.001031167|reconstruct=0.001093875|certificate=0.003686625|iterations=3|passed=true",
+      "FEREG_PHASE|fit|rhs=0.009383750|raw_moments=0.000000917|initial_absorb=0.128244916|within_norms=0.000000333|finite_solve=0.003385417|score_cache=0.000000041|bread_raw_residual=0.007783417|residual_absorb=0.016627041|residual_overlap=0|score=0.004075167|finalize=0.000001333|total=0.169502666",
+      "FEREG_PHASE|iid|setup_statistics=0.003626584|covariance=0.000001042|wald=0.000001833|certificate=0.000001125|total=0.003630709",
+      "FEREG_PHASE|iid_plugin|prepare=0.028900583|inference=0.184082750|outputs=0.000019625|shadow=0.000008375|prestore_total=0.213011500"
+    ]
+  }
+}

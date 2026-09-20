@@ -10,6 +10,28 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: two-sided unit cache — 2026-09-20
+
+The [two-sided unit-cache report](benchmarks/reports/development/two-fe-unit-both-cache-local-2026-09-20/README.md)
+retains 101 successful application calls, 34 native pairs without a peak
+increase, four independent output audits, thirteen Schur tests and three
+final-artifact Stata fixtures. [ADR 0082](docs/adr/0082-two-sided-unit-ols-edge-scratch.md)
+admits the other counted gather in existing idle left-RHS storage for narrow
+unit OLS. Scratch authority keeps shared/PPML behavior unchanged. All native
+numerical comparisons and exact status/DoF checks pass; four default-reference
+output discrepancies remain explicit. Three-pair shuffled K=3/5/6 improves
+233/268/259 -> 225/258/252 ms; K=5 still trails fixest's 248 ms. No native
+cell has a median paired regression above 5%.
+
+Plugin `c26b715a42a9c704e26b4d7caf46afee27e626776f4369fd2e6483ad0cc7ee3c`
+uses base `33b8b7ba` plus the recorded core overlay; all 515 source entries
+match. All checkpoint processes have finished. The full goal remains active.
+Next: compress/transcribe both weighted edge gathers into existing idle banks,
+then reduce restoration/finishing scans and duplicate probe initialization.
+The 111 controls, sixteen fresh holdouts and two final five-pair blocks remain.
+Raw work is `target/two-fe-broad-20260920`; preserve unrelated dirt. No installed
+package, remote state or qualification changed.
+
 ## Broad two-way OLS milestone: narrow input checkpoint — 2026-09-20
 
 The [narrow-input report](benchmarks/reports/development/two-fe-narrow-input-local-2026-09-20/README.md)

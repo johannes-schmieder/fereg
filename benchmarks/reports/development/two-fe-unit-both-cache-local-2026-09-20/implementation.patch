@@ -1,0 +1,249 @@
+diff --git a/crates/fereg-core/src/fe/borrowed_map.rs b/crates/fereg-core/src/fe/borrowed_map.rs
+index 1a080aca..d79fe7f1 100644
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -2345,7 +2345,7 @@ fn absorb_two_fe_pcg_reusing(
+     direction_projection: &mut Vec<f64>,
+     ratio: &mut Vec<f64>,
+     ols_cap: Option<usize>,
+-    allow_weighted_edge_cache: bool,
++    allow_ols_rhs_scratch: bool,
+ ) -> Result<SchurAttempt> {
+     let trace = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+     let phase_start = Instant::now();
+@@ -2509,23 +2509,27 @@ fn absorb_two_fe_pcg_reusing(
+     // unit-weight OLS solves, combine repeated pairs into counted graph edges.
+     // The private bank stores packed u32 codes/counts as bits; no floating-point
+     // arithmetic touches that representation before certification overwrites it.
+-    let cached_banks = if ols_cap.is_some() && weights.values.is_none()
++    let cached_unit = if ols_cap.is_some() && weights.values.is_none()
+         && rayon::current_num_threads() >= 8 {
+-        cache_unit_schur_edges(design, graph, &mut certificate_workspace.parallel_group_means)?
+-    } else { 0 };
+-    let weighted_neighbors = allow_weighted_edge_cache && ols_cap.is_some() && weights.values.is_some()
++        cache_unit_schur_edges(design, graph, &mut certificate_workspace.parallel_group_means, allow_ols_rhs_scratch)?
++    } else { UnitSchurEdges::None };
++    let weighted_neighbors = allow_ols_rhs_scratch && ols_cap.is_some() && weights.values.is_some()
+         && active_rhs > 0 && rayon::current_num_threads() >= 8
+         && cache_weighted_schur_right_edges(design, weights, graph,
+             &mut certificate_workspace.parallel_group_means)?;
+     let initialization_seconds = phase_start.elapsed().as_secs_f64();
+     while !reconstruct && iterations < pcg_iteration_limit {
+         let op_start = Instant::now();
+-        if cached_banks > 0 {
++        if cached_unit != UnitSchurEdges::None {
+             let scratch = &certificate_workspace.parallel_group_means;
+-            let (left, right) = if cached_banks == 2 {
+-                let (left, right) = scratch[..2 * design.nobs()].split_at(design.nobs());
+-                (Some(left), right)
+-            } else { (None, &scratch[..design.nobs()]) };
++            let (left, right) = match cached_unit {
++                UnitSchurEdges::BothScratch => {
++                    let (left, right) = scratch[..2 * design.nobs()].split_at(design.nobs());
++                    (Some(SchurLeftNeighbors::Counted(left)), right)
++                },
++                UnitSchurEdges::BothRhsScratch => (Some(SchurLeftNeighbors::RhsScratch), &scratch[..design.nobs()]),
++                _ => (None, &scratch[..design.nobs()]),
++            };
+             graph.apply_schur_parallel(design, weights, rhs_count, stride, left, Some(SchurRightNeighbors::Counted(right)))?;
+         } else if weighted_neighbors {
+             graph.apply_schur_parallel(design, weights, rhs_count, stride, None,
+@@ -2723,7 +2727,7 @@ fn absorb_two_fe_pcg_reusing(
+     }
+     if reconstruct || iterations > completed_pilot_iterations {
+         let reconstruct_start = Instant::now();
+-        if weighted_neighbors {
++        if weighted_neighbors || cached_unit == UnitSchurEdges::BothRhsScratch {
+             // The original observation matrix and weights are immutable up to
+             // this point. Restore the exact left means before reconstruction;
+             // the code cache is no longer needed once iteration has finished.
+@@ -2909,30 +2913,40 @@ fn cache_weighted_schur_edge_groups(
+     Ok(())
+ }
+ 
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++enum UnitSchurEdges { None, RightScratch, BothScratch, BothRhsScratch }
++
+ fn cache_unit_schur_edges(
+-    design: &BorrowedInterceptFeDesign<'_>, graph: &TwoFePcgWorkspace, scratch: &mut [f64],
+-) -> Result<usize> {
++    design: &BorrowedInterceptFeDesign<'_>, graph: &mut TwoFePcgWorkspace, scratch: &mut [f64],
++    allow_idle_rhs: bool,
++) -> Result<UnitSchurEdges> {
+     let n = design.nobs();
+     if n == 0 || n > u32::MAX as usize || scratch.len() < n {
+-        return Ok(0);
++        return Ok(UnitSchurEdges::None);
+     }
+     let banks = (scratch.len() / n).min(2);
+     let left = &design.effects()[graph.left_effect];
+     let right = &design.effects()[graph.right_effect];
+     if banks == 1 && !has_repeated_schur_edges(left, right.codes())? {
+-        return Ok(0);
++        return Ok(UnitSchurEdges::None);
+     }
+-    // Narrow designs may have only one observation-sized idle bank. Cache the
+-    // right gather: it reads the larger left-level state and has more members
+-    // per level. Missing left-cache capacity keeps that half's original loop.
++    // If group scratch fits only one gather, OLS can temporarily reuse idle
++    // left means for the other. Those means must be restored before the
++    // observation-space reconstruction; shared reusable callers opt out.
++    let mut cache = UnitSchurEdges::RightScratch;
+     if banks == 2 {
+         cache_unit_schur_edge_groups(left, right.codes(), 0..left.n_levels(), 0,
+             &mut scratch[..n], parallel_level_chunk_size(left.n_levels()).max(64))?;
++        cache = UnitSchurEdges::BothScratch;
++    } else if allow_idle_rhs && graph.left_rhs.len() >= n {
++        cache_unit_schur_edge_groups(left, right.codes(), 0..left.n_levels(), 0,
++            &mut graph.left_rhs[..n], parallel_level_chunk_size(left.n_levels()).max(64))?;
++        cache = UnitSchurEdges::BothRhsScratch;
+     }
+     cache_unit_schur_edge_groups(right, left.codes(), 0..right.n_levels(), 0,
+         &mut scratch[(banks - 1) * n..banks * n],
+         parallel_level_chunk_size(right.n_levels()).max(64))?;
+-    Ok(banks)
++    Ok(cache)
+ }
+ 
+ fn has_repeated_schur_edges(
+@@ -3000,6 +3014,12 @@ fn cache_unit_schur_edge_groups(
+     Ok(())
+ }
+ 
++#[derive(Clone, Copy)]
++enum SchurLeftNeighbors<'a> {
++    Counted(&'a [f64]),
++    RhsScratch,
++}
++
+ #[derive(Clone, Copy)]
+ enum SchurRightNeighbors<'a> {
+     Counted(&'a [f64]),
+@@ -3068,7 +3088,7 @@ impl TwoFePcgWorkspace {
+         weights: ValidatedWeights<'_>,
+         rhs_count: usize,
+         stride: usize,
+-        left_neighbors: Option<&[f64]>,
++        left_neighbors: Option<SchurLeftNeighbors<'_>>,
+         right_neighbors: Option<SchurRightNeighbors<'_>>,
+     ) -> Result<()> {
+         let left = &design.effects()[self.left_effect];
+@@ -3077,6 +3097,10 @@ impl TwoFePcgWorkspace {
+         let right_codes = right.codes();
+         let direction = &self.direction;
+         let left_weights = &self.left_weights;
++        let left_neighbors = left_neighbors.map(|neighbors| match neighbors {
++            SchurLeftNeighbors::Counted(values) => values,
++            SchurLeftNeighbors::RhsScratch => self.left_rhs.as_slice(),
++        });
+         let left_level_chunk = parallel_level_chunk_size(left.n_levels());
+         let left_cell_chunk = left_level_chunk
+             .checked_mul(stride)
+@@ -10783,7 +10807,7 @@ mod tests {
+         let right = ValidatedBorrowedInterceptSource::new(&right_codes, 997, &right_index).unwrap();
+         let design = BorrowedInterceptFeDesign::new(rows, vec![left.effect(), right.effect()]).unwrap();
+         let weights = validate_weights(BorrowedMapWeights::Unit, rows).unwrap();
+-        for rhs in [1, 3, 12, 52] {
++        for rhs in [1, 3, 4, 7, 12, 52] {
+             let stride = rhs + 1;
+             let mut reservation = SystemWorkspaceReservation;
+             let mut graph = TwoFePcgWorkspace::new(&design, stride, &mut reservation).unwrap();
+@@ -10803,15 +10827,19 @@ mod tests {
+             assert!(has_repeated_schur_edges(&design.effects()[graph.left_effect], right.codes()).unwrap());
+             let unique_neighbors = (0..rows as u32).collect::<Vec<_>>();
+             assert!(!has_repeated_schur_edges(&design.effects()[graph.left_effect], &unique_neighbors).unwrap());
+-            assert_eq!(cache_unit_schur_edges(&design, &graph, &mut scratch[..rows - 1]).unwrap(), 0);
+-            for cells in [rows, rows * 2 - 1, rows * 2] {
+-                let banks = cache_unit_schur_edges(&design, &graph, &mut scratch[..cells]).unwrap();
+-                assert_eq!(banks, if cells == rows * 2 { 2 } else { 1 });
++            assert_eq!(cache_unit_schur_edges(&design, &mut graph, &mut scratch[..rows - 1], true).unwrap(), UnitSchurEdges::None);
++            for (cells, allow_rhs) in [(rows,false), (rows,true), (rows * 2 - 1,true), (rows * 2,true)] {
++                let cache = cache_unit_schur_edges(&design, &mut graph, &mut scratch[..cells], allow_rhs).unwrap();
++                assert_eq!(cache, if cells == rows * 2 { UnitSchurEdges::BothScratch }
++                    else if allow_rhs && graph.left_rhs.len() >= rows { UnitSchurEdges::BothRhsScratch }
++                    else { UnitSchurEdges::RightScratch });
+                 for threads in [8, 16] {
+                     rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+-                        let (left, right) = if banks == 2 {
+-                            (Some(&scratch[..rows]), &scratch[rows..])
+-                        } else { (None, &scratch[..rows]) };
++                        let (left, right) = match cache {
++                            UnitSchurEdges::BothScratch => (Some(SchurLeftNeighbors::Counted(&scratch[..rows])), &scratch[rows..]),
++                            UnitSchurEdges::BothRhsScratch => (Some(SchurLeftNeighbors::RhsScratch), &scratch[..rows]),
++                            _ => (None, &scratch[..rows]),
++                        };
+                         graph.apply_schur_parallel(&design, weights, rhs, stride, left, Some(SchurRightNeighbors::Counted(right))).unwrap();
+                     });
+                     for (actual, expected) in [(&graph.left_work, &expected_left), (&graph.operator, &expected_operator)] {
+@@ -10909,35 +10937,38 @@ mod tests {
+     #[test]
+     fn counted_unit_schur_projection_matches_independent_map() {
+         let rows = 20_000;
++        for disconnected in [false, true] {
+         let left_codes = (0..rows).map(|r| ((r * 8191 % rows) / 5) as u32).collect::<Vec<_>>();
+         let right_codes = (0..rows).map(|r| {
+             let row = r * 8191 % rows;
+             let firm = if row % 5 < 3 { row / 5 * 17 } else { row / 5 * 389 + row % 5 * 97 };
+-            (firm % 997) as u32
++            if disconnected { (firm % 499 + usize::from(row / 5 >= 2000) * 499) as u32 }
++            else { (firm % 997) as u32 }
+         }).collect::<Vec<_>>();
+         let left_index = LevelIndex::from_codes(&left_codes, 4000).unwrap();
+-        let right_index = LevelIndex::from_codes(&right_codes, 997).unwrap();
++        let right_levels = if disconnected { 998 } else { 997 };
++        let right_index = LevelIndex::from_codes(&right_codes, right_levels).unwrap();
+         let left = ValidatedBorrowedInterceptSource::new(&left_codes, 4000, &left_index).unwrap();
+-        let right = ValidatedBorrowedInterceptSource::new(&right_codes, 997, &right_index).unwrap();
++        let right = ValidatedBorrowedInterceptSource::new(&right_codes, right_levels, &right_index).unwrap();
+         let design = || BorrowedInterceptFeDesign::new(rows, vec![left.effect(), right.effect()]).unwrap();
+-        for rhs_count in [7, 12] {
++        for rhs_count in [5, 7, 12] {
+         let columns = (0..rhs_count).map(|column| (0..rows).map(|row| {
+             ((row * (column + 13) % 1009) as f64).sin() + f64::from(left_codes[row]) * 0.01
+         }).collect::<Vec<_>>()).collect::<Vec<_>>();
+         let values = DenseMatrix::from_columns(&columns).unwrap();
+         let expected = absorb_borrowed_intercept_map_certified(&design(), BorrowedMapWeights::Unit,
+             values.clone(), MapConfig { tolerance: 1e-13, ..config() }).unwrap();
+-        let solve = |threads, tolerance| {
++        let solve = |threads, tolerance, cap| {
+             rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                 let probe = schur_ols_probe(&design(), BorrowedMapWeights::Unit, &values).unwrap();
+                 assert!(probe <= OLS_SCHUR_MAX_CONTRACTION);
+-                absorb_ols_schur_certified(design(), BorrowedMapWeights::Unit, values.clone(),
++                absorb_ols_schur_at_cap(design(), BorrowedMapWeights::Unit, values.clone(),
+                     crate::fe::AbsorbConfig { map: MapConfig { tolerance, ..config() },
+-                        ..crate::fe::AbsorbConfig::default() }, 0.0, probe).unwrap()
++                        ..crate::fe::AbsorbConfig::default() }, 0.0, probe, cap).unwrap()
+             })
+         };
+-        let uncached = solve(4, 1e-8);
+-        let cached = solve(8, 1e-8);
++        let uncached = solve(4, 1e-8, OLS_SCHUR_MAX_ITERATIONS);
++        let cached = solve(8, 1e-8, OLS_SCHUR_MAX_ITERATIONS);
+         let distance = |a: &CertifiedBorrowedMap, b: &CertifiedBorrowedMap| {
+             a.residualized().as_slice().iter().zip(b.residualized().as_slice())
+                 .map(|(a,b)| (a-b).abs()).fold(0.0_f64, f64::max)
+@@ -10947,9 +10978,14 @@ mod tests {
+             distance(&uncached, &expected), distance(&cached, &expected), distance(&cached, &uncached));
+         // The absolute oracle bound here is tighter than the default norm-scaled
+         // stopping rule on the deliberately large raw FE contribution.
++        for threads in [4, 8] {
++            let continued = solve(threads, 1e-14, 1);
++            assert!(continued.report().certified());
++            assert!(distance(&continued, &expected) < 2e-9);
++        }
+         let mut previous = None;
+         for threads in [8, 16] {
+-            let actual = solve(threads, 1e-12);
++            let actual = solve(threads, 1e-12, OLS_SCHUR_MAX_ITERATIONS);
+             assert!(actual.report().certified());
+             for (&actual, &expected) in actual.residualized().as_slice().iter().zip(expected.residualized().as_slice()) {
+                 assert!((actual - expected).abs() < 2e-9, "{actual} != {expected}");
+@@ -10958,6 +10994,7 @@ mod tests {
+             previous = Some(actual.residualized().clone());
+         }
+         }
++        }
+     }
+ 
+     #[test]
