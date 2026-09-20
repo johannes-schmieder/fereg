@@ -609,7 +609,7 @@ impl PreparedCategoricalOlsData {
             .iter()
             .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
         {
-            if allow_lsmr && effects.len() == 2 && matches!(weights, BorrowedMapWeights::Unit)
+            if allow_lsmr && effects.len() == 2
                 && target.len() >= 16_384 && rayon::current_num_threads() >= 8
                 && recovery_memory.is_some_and(|memory| fits(memory.retained_peak_bytes))
             {

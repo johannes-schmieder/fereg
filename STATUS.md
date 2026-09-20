@@ -10,6 +10,43 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: weighted finishing checkpoint — 2026-09-20
+
+The full user-approved plan remains active: weighted lifecycle and semantics,
+weighted loading/passes and narrow operators, other graph families, automatic
+routing boundaries, and the predefined two-block performance scoreboard.
+The local baseline is `e9d593bd`; no platform or release qualification is implied.
+
+The [weighted finishing report](benchmarks/reports/development/two-fe-weighted-finish-local-2026-09-20/README.md)
+records the first completed change: accepted weighted initial probes may be
+reused by the independently certified strict final projection, and weighted
+two-intercept outputs may use certified graph recovery. Existing thread,
+sample-size, memory and fallback guards remain. [ADR 0077](docs/adr/0077-weighted-final-projection-and-graph-recovery.md)
+describes this bounded extension.
+
+Three-pair ordered AW K=6 full-output medians improve 1013 to 493 ms versus
+706 ms default fixest; saved FE improve 980 to 447 ms versus 717 ms. Default
+reference output discrepancies remain explicit. Six separate tight-reference
+AW/PW comparisons at K=6/50 pass. Shuffled AW IID still loses (paired ratio
+1.199); shuffled full outputs approach parity (0.991). Profile calls localize
+strict final projection to 237 -> 45 ms and recovery to 369 -> 37 ms.
+
+Plugin `732ec4b95ed7a37aea70abfd65485b443a5788ba7e8218d28de43ead689cf90e`
+matches 514 captured source entries on `e9d593bd` plus the three recorded core
+overlays. Twelve Schur tests, three graph-recovery tests, the actual-plugin
+ABI check and three Stata fixtures pass. All 82 application calls succeed;
+22 independent output audits pass; no native allocation peak increases in
+25 paired comparisons. This evidence does not close the full milestone.
+
+The raw work directory is `target/two-fe-broad-20260920`. Its weighted finishing
+screen and validation process are complete. The next work is weighted/narrow
+operator and input profiling plus graph-family baseline measurements. A new
+`benchmarks/two_fe_dense/broad_milestone.json` fixes the intended performance,
+control and science inventory; its harness extensions and wider scoreboard
+remain under development. Preserve the unrelated STATUS/allocation-manifest
+changes and untracked historical artifacts. No installed package or remote
+state has changed.
+
 ## Completed narrow/weighted two-FE development screen — 2026-09-20
 
 The [weighted/small-width report](benchmarks/reports/development/two-fe-weighted-small-local-2026-09-20/README.md)

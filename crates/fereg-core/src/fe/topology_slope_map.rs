@@ -3695,6 +3695,67 @@ mod tests {
     }
 
     #[test]
+    fn weighted_graph_recovery_preserves_components_scale_and_pointwise_rejection() {
+        for disconnected in [false, true] {
+            for reverse in [false, true] {
+                let mut left = vec![0_u32, 0, 1, 1, 2, 2, 3, 3];
+                let mut right = if disconnected { vec![0_u32, 1, 0, 1, 2, 3, 2, 3] }
+                    else { vec![0_u32, 1, 1, 2, 2, 3, 3, 0] };
+                if reverse { left.reverse(); right.reverse(); }
+                let topology = finalize_categorical_topology(&[
+                    CategoricalCodeView::new(&left, 4), CategoricalCodeView::new(&right, 4),
+                ], &[&[0], &[1]], &[true; 8]).unwrap();
+                let effects = [CategoricalAbsorbedEffectView::new(true, Vec::new()).unwrap(),
+                    CategoricalAbsorbedEffectView::new(true, Vec::new()).unwrap()];
+                let a = [-0.3, 1.7, 0.4, -1.1];
+                let b = [0.2, -0.7, 0.9, 1.3];
+                let target = left.iter().zip(&right).map(|(&l, &r)| a[l as usize] + b[r as usize])
+                    .collect::<Vec<_>>();
+                for raw in [vec![4.0; 8], vec![1.0, 3.0, 5.0, 2.0, 7.0, 4.0, 2.0, 6.0],
+                    vec![1e-18, 1.0, 1e-12, 1.0, 1e-8, 1.0, 1e-4, 1.0]] {
+                    let component = |row: usize| if disconnected { (left[row] / 2) as usize } else { 0 };
+                    let mut mass = [0.0; 2];
+                    let mut centers = [0.0; 2];
+                    for row in 0..8 {
+                        mass[component(row)] += raw[row];
+                        centers[component(row)] += raw[row] * b[right[row] as usize];
+                    }
+                    for c in 0..=usize::from(disconnected) { centers[c] /= mass[c]; }
+                    for scale in [1e-100, 1.0, 1e100] {
+                        let weights = raw.iter().map(|w| w * scale).collect::<Vec<_>>();
+                        for requested in [[true, true], [true, false], [false, true]] {
+                            for materialize in [false, true] {
+                                let recovered = recover_finalized_two_effects_graph_certified(&topology,
+                                    &effects, BorrowedMapWeights::Provided(&weights), &target, &requested,
+                                    1e-12, !disconnected, materialize).unwrap();
+                                assert!(recovered.reconstruction_relative_infinity() < 1e-12);
+                                for row in 0..8 {
+                                    let expected = [a[left[row] as usize] + centers[component(row)],
+                                        b[right[row] as usize] - centers[component(row)]];
+                                    for channel in 0..2 {
+                                        assert_eq!(recovered.channels()[channel].is_some(), requested[channel]);
+                                        if let Some(values) = &recovered.channels()[channel] {
+                                            assert!((values[row] - expected[channel]).abs() < 1e-12);
+                                        }
+                                    }
+                                }
+                                assert_eq!(recovered.absorbed_sum.is_some(), materialize);
+                            }
+                        }
+                        // The first edge can have negligible weight. Its cycle inconsistency
+                        // must still fail the unweighted pointwise reconstruction certificate.
+                        let mut inconsistent = target.clone();
+                        inconsistent[0] += 0.001;
+                        assert_eq!(recover_finalized_two_effects_graph_certified(&topology, &effects,
+                            BorrowedMapWeights::Provided(&weights), &inconsistent, &[true, true],
+                            1e-12, !disconnected, true).unwrap_err().code, ErrorCode::InvalidData);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn coefficient_lsmr_recovery_matches_map_normalization() {
         let worker = [0_u32, 0, 1, 1, 2, 2];
         let firm = [0_u32, 1, 0, 1, 0, 1];

@@ -1792,9 +1792,7 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
                 // A rejected probe still uses the original retained-product
                 // policy. Only accepted Schur calls defer coefficient recovery.
                 config.retain_coefficients = false;
-                if matches!(weights, BorrowedMapWeights::Unit)
-                    && fit_config.execution.threads.resolved() >= 8
-                {
+                if fit_config.execution.threads.resolved() >= 8 {
                     // The immutable operator's accepted probe can be reused by
                     // the final one-RHS projection, with a fresh certificate.
                     cmg.auto_direct_solver = Some(FeSolverKind::Cg);
@@ -9593,8 +9591,7 @@ mod tests {
                                 prepared.fit_build_rhs().unwrap(), config.absorb,
                                 &mut session, true, false).unwrap();
                             assert!(result.report().certified());
-                            assert_eq!(session.auto_direct_solver,
-                                matches!(weights, BorrowedMapWeights::Unit).then_some(FeSolverKind::Cg));
+                            assert_eq!(session.auto_direct_solver, Some(FeSolverKind::Cg));
                             assert_eq!(result.report().pilot_iterations, 8);
                             assert!(result.report().pilot_contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION);
                             let expected = crate::fe::absorb_borrowed_intercept_map_certified(
@@ -9615,6 +9612,8 @@ mod tests {
                             assert!(final_result.report().certified());
                             assert_eq!(final_result.report().requested_solver, FeSolverKind::Auto);
                             assert_eq!(final_result.report().pilot_iterations, 0);
+                            assert!(session.schur_probe.is_none());
+                            assert!(final_result.into_full_parts().2.is_none());
                         }).unwrap();
                     }
                 }
@@ -9654,9 +9653,11 @@ mod tests {
         let planned = crate::memory::estimate_intercept_recovery_memory(n, &[17,13], 2, 8, Some(4))
             .unwrap().retained_peak_bytes;
         let threads = ThreadConfig::from_requested(8, false).unwrap();
+        let supplied = (0..n).map(|r| (1 + r % 7) as f64).collect::<Vec<_>>();
         crate::ThreadTeam::new(threads).install(|| {
+          for weights in [BorrowedMapWeights::Unit, BorrowedMapWeights::Provided(&supplied)] {
             for usable in [planned, planned-1] {
-                let recovered = prepared.recover_absorbed_effects_fast(&target, &[true,true],
+                let recovered = prepared.recover_absorbed_effects_fast_with_weights(weights, &target, &[true,true],
                     None, true, false, crate::fe::LsmrConfig::default(),
                     crate::fe::MapConfig { tolerance:1e-12, ..crate::fe::MapConfig::default() },
                     Some(crate::memory::FeSolverMemoryBudget { execution_bytes:1234,
@@ -9669,6 +9670,7 @@ mod tests {
                     assert_eq!(recovered.unwrap_err().code, ErrorCode::Allocation);
                 }
             }
+          }
         }).unwrap();
     }
 
