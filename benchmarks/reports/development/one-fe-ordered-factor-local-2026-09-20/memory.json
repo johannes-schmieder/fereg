@@ -1,0 +1,226 @@
+[
+  {
+    "run": "ordered-factor-narrow-iid-n983040-k10-r1-orderedfactor",
+    "peaks": {
+      "reference": 233169535,
+      "candidate": 233169535
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-narrow-iid-n983040-k10-r2-orderedfactor",
+    "peaks": {
+      "reference": 233169535,
+      "candidate": 233169535
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-narrow-iid-n983040-k10-r3-orderedfactor",
+    "peaks": {
+      "reference": 233169535,
+      "candidate": 233169535
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-narrow-iid-n983040-k10-r4-orderedfactor",
+    "peaks": {
+      "reference": 233169535,
+      "candidate": 233169535
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-narrow-iid-n983040-k10-r5-orderedfactor",
+    "peaks": {
+      "reference": 233169535,
+      "candidate": 233169535
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-narrow-iid_outputs-n983040-k10-r1-orderedfactor",
+    "peaks": {
+      "reference": 240247605,
+      "candidate": 240247605
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-narrow-iid_outputs-n983040-k10-r2-orderedfactor",
+    "peaks": {
+      "reference": 240247605,
+      "candidate": 240247605
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-narrow-iid_outputs-n983040-k10-r3-orderedfactor",
+    "peaks": {
+      "reference": 240247605,
+      "candidate": 240247605
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-narrow-iid_outputs-n983040-k10-r4-orderedfactor",
+    "peaks": {
+      "reference": 240247605,
+      "candidate": 240247605
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-narrow-iid_outputs-n983040-k10-r5-orderedfactor",
+    "peaks": {
+      "reference": 240247605,
+      "candidate": 240247605
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-cluster2_saved-n983040-k50-r1-orderedfactor",
+    "peaks": {
+      "reference": 956542689,
+      "candidate": 956542689
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-cluster2_saved-n983040-k50-r2-orderedfactor",
+    "peaks": {
+      "reference": 956542689,
+      "candidate": 956542689
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-cluster2_saved-n983040-k50-r3-orderedfactor",
+    "peaks": {
+      "reference": 956542689,
+      "candidate": 956542689
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-iid-n983040-k50-r1-orderedfactor",
+    "peaks": {
+      "reference": 925859855,
+      "candidate": 925859855
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-iid-n983040-k50-r2-orderedfactor",
+    "peaks": {
+      "reference": 925859855,
+      "candidate": 925859855
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-iid-n983040-k50-r3-orderedfactor",
+    "peaks": {
+      "reference": 925859855,
+      "candidate": 925859855
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-iid_outputs-n983040-k50-r1-orderedfactor",
+    "peaks": {
+      "reference": 932938085,
+      "candidate": 932938085
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-iid_outputs-n983040-k50-r2-orderedfactor",
+    "peaks": {
+      "reference": 932938085,
+      "candidate": 932938085
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-iid_outputs-n983040-k50-r3-orderedfactor",
+    "peaks": {
+      "reference": 932938085,
+      "candidate": 932938085
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-robust-n983040-k50-r1-orderedfactor",
+    "peaks": {
+      "reference": 925860671,
+      "candidate": 925860671
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-robust-n983040-k50-r2-orderedfactor",
+    "peaks": {
+      "reference": 925860671,
+      "candidate": 925860671
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-robust-n983040-k50-r3-orderedfactor",
+    "peaks": {
+      "reference": 925860671,
+      "candidate": 925860671
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-phases-cluster2_saved-n983040-k50-r1-orderedfactor",
+    "peaks": {
+      "reference": 956542689,
+      "candidate": 956542689
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-phases-cluster2_saved-n983040-k50-r2-orderedfactor",
+    "peaks": {
+      "reference": 956542689,
+      "candidate": 956542689
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-phases-cluster2_saved-n983040-k50-r3-orderedfactor",
+    "peaks": {
+      "reference": 956542689,
+      "candidate": 956542689
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-phases-robust-n983040-k50-r1-orderedfactor",
+    "peaks": {
+      "reference": 925860671,
+      "candidate": 925860671
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-phases-robust-n983040-k50-r2-orderedfactor",
+    "peaks": {
+      "reference": 925860671,
+      "candidate": 925860671
+    },
+    "identical": true
+  },
+  {
+    "run": "ordered-factor-wide-phases-robust-n983040-k50-r3-orderedfactor",
+    "peaks": {
+      "reference": 925860671,
+      "candidate": 925860671
+    },
+    "identical": true
+  }
+]

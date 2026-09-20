@@ -10,6 +10,40 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Ordered numeric factorization checkpoint — 2026-09-20
+
+The [ordered-factor report](benchmarks/reports/development/one-fe-ordered-factor-local-2026-09-20/README.md)
+archives 144 application calls. Numeric inputs with at least 16,384 rows can
+encode verified ordered runs directly, preserving canonical level bits and
+codes. The first inversion returns to the existing factorizer without
+allocation. This shared core applies to OLS and PPML; timing evidence here is
+one-FE OLS on Mac. Narrow IID medians improve 128→125 ms (four of five parent
+wins); wide IID improves 371→367 ms (three wins). Narrow full outputs show no
+incremental gain. Initial wide robust/clustered slowdowns remain recorded;
+a separate phase run gives robust 492/492 ms and clustered saved FE 602/599 ms,
+with preparation reduced by about 1.0/2.9 ms. This is not a universal speedup.
+
+Final plugin `2538f103891fea59cb3af258149390794e013e90b4e47b831e2b2b6c72f1d58b`
+passes eight focused factorization tests, three completed-artifact Stata
+oracles/transaction fixtures and actual ABI checks. Sixty-one nonself native
+comparisons and fourteen saved-output bundles are exact. All twenty-eight
+incremental/phase allocation peaks are identical. Eleven size/thread/layout
+controls pass: maximum/geomean 1.025825/0.992193. The current candidate's full
+twenty-cell breadth regression and both final acceptance blocks remain pending.
+
+A separate 264-call kernel diagnostic finds ordered dense groups at 2.195→1.175
+ms on sixteen workers. A last-row ordering violation adds about 0.5 ms before
+fallback (paired kernel ratio 1.233); this explicit tradeoff is preserved, with
+no corresponding command-level late-violation timing claim. The premature
+fixture attempt and standalone diagnostic build setup failure are disclosed.
+
+The goal remains active. A separate uncommitted prototype parallelizes legacy
+RHS row-map and categorical-code validation on existing teams of at least
+eight workers and 16,384 rows, preserving the first diagnostic. Its eleven
+focused RHS tests pass; artifact timing and adoption are pending. It does not
+revive the rejected finite/matching fusion. No installed package, remote state
+or qualification changed.
+
 ## Checked OLS output-store checkpoint — 2026-09-20
 
 The [output-store report](benchmarks/reports/development/one-fe-output-store-local-2026-09-20/README.md)

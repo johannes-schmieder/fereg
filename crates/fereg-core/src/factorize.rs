@@ -39,6 +39,11 @@ pub fn factorize_f64(values: &[f64]) -> Result<EncodedFactor<f64>> {
             "unable to reserve numeric categorical factorization storage",
         )
     };
+    if values.len() >= 16_384 {
+        if let Some(encoded) = factorize_ordered_f64(values, allocation)? {
+            return Ok(encoded);
+        }
+    }
     if let Some(encoded) = factorize_dense_integer_f64(values, allocation)? {
         return Ok(encoded);
     }
@@ -114,6 +119,41 @@ pub fn factorize_f64(values: &[f64]) -> Result<EncodedFactor<f64>> {
         *code = remap[*code as usize];
     }
     Ok(EncodedFactor { codes, levels })
+}
+
+// Ordered numeric levels already have the canonical factor order. Count runs
+// before allocating so neither a range lookup nor an observation-sized level
+// buffer is needed. The first inversion leaves unordered inputs on their
+// existing path without speculative allocation.
+fn factorize_ordered_f64<F>(values: &[f64], allocation: F) -> Result<Option<EncodedFactor<f64>>>
+where
+    F: Fn() -> FeregError + Copy,
+{
+    let mut previous = f64::NEG_INFINITY;
+    let mut n_levels = 0;
+    for &value in values {
+        if !value.is_finite() {
+            return Err(FeregError::new(ErrorCode::InvalidData,
+                "categorical numeric source contains a nonfinite value"));
+        }
+        if value < previous { return Ok(None); }
+        n_levels += usize::from(value != previous);
+        previous = value;
+    }
+    ensure_u32_levels(n_levels)?;
+    let mut levels = Vec::new();
+    levels.try_reserve_exact(n_levels).map_err(|_| allocation())?;
+    let mut codes = Vec::new();
+    codes.try_reserve_exact(values.len()).map_err(|_| allocation())?;
+    previous = f64::NEG_INFINITY;
+    for &value in values {
+        if value != previous {
+            levels.push(if value == 0.0 { 0.0 } else { value });
+            previous = value;
+        }
+        codes.push((levels.len() - 1) as u32);
+    }
+    Ok(Some(EncodedFactor { codes, levels }))
 }
 
 fn factorize_dense_integer_f64<F>(
@@ -300,6 +340,54 @@ mod tests {
         let encoded = factorize_f64(&[-0.0, 0.0, 2.5]).expect("factorize");
         assert_eq!(encoded.levels, vec![0.0, 2.5]);
         assert_eq!(encoded.codes, vec![0, 0, 1]);
+    }
+
+    #[test]
+    fn ordered_float_factorization_matches_independent_sorted_level_oracle() {
+        let allocation = || FeregError::new(ErrorCode::Allocation, "injected allocation");
+        for rows in [0, 1, 16_383, 16_384, 32_771] {
+            for levels in [vec![-0.0, 0.0], vec![-7.0, -1.0, 0.0, 9.0],
+                vec![-f64::MAX, -0.25, -0.0, 0.0, 1e-300, 0.5, f64::MAX]] {
+                let values: Vec<_> = (0..rows).map(|row| levels[row * levels.len() / rows]).collect();
+                let mut expected_levels: Vec<_> = values.iter().map(|&v| if v == 0.0 { 0.0 } else { v }).collect();
+                expected_levels.sort_unstable_by(f64::total_cmp);
+                expected_levels.dedup();
+                let expected_codes: Vec<_> = values.iter().map(|v| expected_levels
+                    .binary_search_by(|level| level.partial_cmp(v).unwrap()).unwrap() as u32).collect();
+                for actual in [factorize_ordered_f64(&values, allocation).unwrap().unwrap(),
+                    factorize_f64(&values).unwrap()] {
+                    assert_eq!(actual.codes, expected_codes);
+                    assert_eq!(actual.levels.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                        expected_levels.iter().map(|v| v.to_bits()).collect::<Vec<_>>());
+                }
+                if rows > 1 && levels[0] != *levels.last().unwrap() {
+                    let mut near_ordered = values.clone();
+                    near_ordered[rows - 1] = levels[0];
+                    assert!(factorize_ordered_f64(&near_ordered, allocation).unwrap().is_none());
+                    let actual = factorize_f64(&near_ordered).unwrap();
+                    for (&code, &value) in actual.codes.iter().zip(&near_ordered) {
+                        assert_eq!(actual.levels[code as usize], value);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn ordered_factor_probe_preserves_nonfinite_rejection_and_unordered_fallback() {
+        let allocation = || FeregError::new(ErrorCode::Allocation, "injected allocation");
+        for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            for row in [0, 4_095, 16_383, 16_384] {
+                let mut values: Vec<_> = (0..16_385).map(|r| r as f64 / 3.0).collect();
+                values[row] = invalid;
+                let error = factorize_f64(&values).unwrap_err();
+                assert_eq!(error, FeregError::new(ErrorCode::InvalidData,
+                    "categorical numeric source contains a nonfinite value"));
+                values[1] = -1.0;
+                assert!(factorize_f64(&values).is_err());
+            }
+        }
+        assert!(factorize_ordered_f64(&[2.0, 1.0, f64::NAN], allocation).unwrap().is_none());
     }
 
     #[test]
