@@ -12,192 +12,129 @@ completed optimization/calibration investigation chronology formerly here.
 
 ## Next OLS optimization milestone — active, 2026-09-21
 
-Johannes approved implementation: absorbed slopes first, graph/weight/inference/
-output breadth and narrow wins next, then measured one-/two-FE auto routing and
-focused Linux confirmation. Use full small-case science and staged large timing;
-do not expand this into release qualification. Local checkpoint commits are
-approved; no new push is requested. Fresh routing validation seeds 202609211 and
-202609212 remain untouched.
+Johannes approved implementation: absorbed slopes, complete two-FE graph/weight/
+inference/output coverage, narrow wins, measured one-/two-FE automatic routing,
+and focused Linux confirmation. Local checkpoint commits on main are approved;
+no new push, installation or release is authorized. The baseline is `0efa78bd`.
+Protect the prior 77 primary, 16 holdout and 111 native-control cells. Complete
+new large coverage and two independent five-pair blocks before declaring the
+milestone complete. Fresh routing seeds 202609211 and 202609212 remain untouched.
 
-The [current-source baseline](benchmarks/reports/development/slopes-baseline-local-2026-09-21/README.md)
-reproduces the slope gap at unchanged `0efa78bd`: threaded K10/K50 medians are
-336/854 ms versus fixest 54/193 ms. All 24 calls and numerical comparisons pass;
-the small explicit-dummy oracle passes, and four diagnostic calls preserve
-native scientific exports bitwise. Six serial certificate passes dominate.
-The new versioned allocation inventories pass the repository checker, preserving
-old findings and memory-proof gaps. Implementation and broader validation remain
-open. Raw local artifacts and baseline identities are in
-`target/ols-next-20260921`; no remote work has run.
+### Committed checkpoints
 
-The [single-partition slope checkpoint](benchmarks/reports/development/slopes-cache-local-2026-09-21/README.md)
-implements cached rank-aware group geometry, fresh residual certification,
-bounded loading/RHS reuse and removal of discarded slope category encodings
-after sample classification. [ADR 0087](docs/adr/0087-single-partition-ols-slope-geometry.md)
-defines the guarded OLS-only boundary. Final `slope-cache10` plugin
-`854222899e3a66f0c2535071dd64a2773dbcca324cabeb6ec8724d95c400807b`
-matches all eleven working production overlays. Three-pair K10/T1, K10/T16,
-K50/T1 and K50/T16 medians are 128/53/403/143 ms versus fixest 95/60/672/192 ms.
-The serial K10 loss remains. Four final-artifact Stata fixtures, focused
-core/SPI checks and final AW/PW/FW saved-output science pass. The report retains
-332 calls across 26 campaigns and all earlier failures, including the corrected
-raw/normalized-weight norm handoff bug. Native peak allocation increases to
-105.6/373.0 MB for K10/K50, within 1.014/0.891 of current fast estimates; complete
-allocation proof and constrained-memory confirmation remain separate.
+- The [baseline](benchmarks/reports/development/slopes-baseline-local-2026-09-21/README.md)
+  reproduced threaded K10/K50 slope times of 336/854 ms versus fixest 54/193 ms.
+  Cached rank-aware geometry and fresh certificates are committed at `d2ec66e3`
+  under ADR 0087. Direct recovery and fresh parallel certificates are committed
+  at `12de1adb` under ADR 0088. The [recovery report](benchmarks/reports/development/slopes-recovery-local-2026-09-21/README.md)
+  gives K10/T1, K10/T16, K50/T1, K50/T16 medians of 116/51/397/141 ms versus
+  fixest 102/58/684/184 ms. Serial K10 remains a loss.
+- `987e8336` commits the [slope-only loader](benchmarks/reports/development/slopes-loader-local-2026-09-21/README.md)
+  and [narrow ordered-cluster reduction](benchmarks/reports/development/narrow-cluster-local-2026-09-21/README.md)
+  under ADRs 0089/0090. The constrained slope check admits low/auto and rejects
+  fast at 90 MB usable, with matching numerical results. OLS v38/v39 and action
+  v23/v24 allocation inventories preserve their remaining proof gaps.
+- The [full small graph matrix](benchmarks/reports/development/two-fe-full-science-local-2026-09-21/README.md)
+  is committed at `ffa3bde1`: 1,518 cells, 4,158 completed calls and 3,036 passing
+  native explicit-dummy/literal-FW checks. All paired native samples and outputs
+  are exact. The 766 default-fixest discrepancies remain failures. Tighter
+  diagnostics leave six sparse reference discrepancies; below-floor rejections
+  and all failed generation/checker attempts remain recorded.
+- `fa71f94e` archives the [partial original large screen](benchmarks/reports/development/two-fe-large-screen-partial-local-2026-09-21/README.md):
+  943 records, 114 complete cells, one baseline unit-ring saved-output timeout
+  and a deliberately interrupted next call. This recovery2 screen counts 82
+  wins and four losses/ties, plus 28 FW controls. All 114 native inference and
+  168 candidate output audits pass. Remaining cells are open. Never resume the
+  old `target/g21l` root under a changed controller.
 
-The fit checkpoint is committed at `d2ec66e3`. The [allocation refresh](benchmarks/reports/development/slopes-allocation-local-2026-09-21/README.md)
-binds new OLS v38/action v23 inventories to that source; repository checks and
-the exact-source pin check pass, preserving old versions and proof gaps.
+### Current graph and slope drafts
 
-The following recovery work was motivated by a PW three-slope-only diagnostic
-attributing 78.3 ms to
-saved-effect recovery. The graph/weight/inference/output matrix, narrow two-FE
-margins, revised auto routing, final repeated blocks and focused Linux runs
-remain open. Fresh validation seeds remain untouched. No push is authorized.
+The [finishing-experiment archive](benchmarks/reports/development/two-fe-finishing-experiments-local-2026-09-21/README.md)
+preserves 663 calls, twelve native artifact identities, source overlays,
+independent audits and failed experiments. It is development evidence, not
+acceptance of the uncommitted kernels or completion of this milestone.
 
-The [direct slope recovery checkpoint](benchmarks/reports/development/slopes-recovery-local-2026-09-21/README.md)
-adds independent group recovery, fresh parallel certificates with exact ordered
-reduction, and certificate-only acceptance of already-orthogonal final residuals.
-[ADR 0088](docs/adr/0088-direct-single-partition-slope-recovery.md) records the guards.
-Final `slope-recovery2` plugin `bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41`
-matches five source overlays. IID K10/T1, K10/T16, K50/T1 and K50/T16 medians
-are 116/51/397/141 ms versus fixest 102/58/684/184 ms. PW three-slope-only K6/T16
-robust/all outputs is 106 versus 113 ms; two-way clustered/all outputs is 138
-versus 131 ms. These three-pair screens retain the remaining losses.
-The archive records 112 successful calls, one failed diagnostic warmup, a
-pre-application environment failure, focused core/SPI checks, AW/PW/FW output
-audits and four final-artifact licensed fixtures. The [allocation refresh](benchmarks/reports/development/slopes-recovery-allocation-local-2026-09-21/README.md)
-binds OLS v39/action v24 to `12de1adb`; repository and source-pin checks pass.
-Constrained whole-fit memory, final blocks and Linux confirmation remain open.
+`m5` plugin `a07732eea15a47a185903bf7403cd74f111a5eebbd5e558fbb371f02728bef56`
+contains retained Schur-fallback products, actual-solver follow-through, fewer
+raw-residual passes, guarded weighted overlap, stable CMG correction products
+and final same-weight graph reuse. Shared callers remain excluded. All focused
+known-solution, weight/thread/output, underflow and budget tests pass. Earlier
+failures remain recorded. The exposed explicit/insufficient-budget nonretaining
+CG span instability is unresolved; this is not a general CG repair.
 
-The [archived graph pilots](benchmarks/reports/development/two-fe-science-pilots-local-2026-09-21/README.md)
-retain 231 application calls, both controller versions and all failed attempts.
-Archive integrity, source-hash reconstruction and portable-path checks pass.
-The corrected 44-cell pilot passes all native checks after preserving four
-original weak-input generation failures and the original degree-six small-size
-warning. The [full small matrix](benchmarks/reports/development/two-fe-full-science-local-2026-09-21/README.md)
-now completes all 1,518 cells and 4,158 calls without process failure. All 3,036
-native explicit-dummy checks pass, including literal FW expansion; every paired
-coefficient/covariance/sample/output comparison is exact. The 766 default
-fixest oracle discrepancies remain failures. Separate tighter diagnostics
-resolve sixty of sixty-six full-output representatives; six sparse-graph
-cases remain discrepant. Eighteen rejected below-floor reference calls are
-preserved alongside the supported repeats. All 102 repeated native scientific
-and output bundles are byte-identical to the original matrix. Portable archive
-reconstruction checks all 104,370 entries; raw licensed logs remain local.
+The 32-cell ring/cycle K6/K50 unit/AW/PW/FW three-pair screen at `target/g21c5`
+completes all calls. All 24 comparable cells beat default fixest, with eight FW
+controls; 64 native inference checks, 192 exact repeats and 48 output audits
+pass. All 24 default-reference oracle discrepancies remain. The unit-ring
+robust m5/m4 paired regression of 8.8% still requires a direct repeat. The
+preceding narrow screen gives degree-six unit/AW/PW full-output medians of
+107/116/124 ms versus fixest 132/157/162; shuffled AW K6 is 262 versus 295 ms.
+These are screens, not final-block acceptance.
 
-The updated recovery2 diagnostic puts PW three-slope-only recovery at about
-14 ms. A first slope-only loader guard experiment (`slope-rhs1`) passes its
-focused SPI test and three-pair science, but does not improve timing: the
-public no-intercept recipe remains excluded by a separate compiled-model
-check. It is experimental and uncommitted; preserve its failed performance
-hypothesis and investigate the actual recipe before retaining any guard change.
-Artifacts and receipts remain under `target/ols-next-20260921`.
-The [loader checkpoint](benchmarks/reports/development/slopes-loader-local-2026-09-21/README.md)
-now accepts the actual no-constant RHS layout under [ADR 0089](docs/adr/0089-slope-only-loaded-rhs.md).
-Its portable archives retain the first ineffective guard experiment, all 48
-science/screen calls, four constrained-memory attempts and failed generation/
-fixture/archive attempts. Exact production-prefix and later-test bindings are
-recorded separately; nothing is installed or pushed.
+The compact slope Gram draft stores only actual channel-square matrices and
+preserves FMA/elimination/QR checks. Its focused tests and 54 application calls
+pass. `sg1` medians are 115/51/400/141 ms for K10/T1, K10/T16, K50/T1, K50/T16
+versus m5 122/52/411/144 and fixest 93/56/692/197. PW three-slope-only robust/all
+is 97 versus 95/119; clustered/all is 113 versus 113/133. Source-formatting
+scope is recorded separately. The earlier `ss1` indexing experiment was
+rejected and reverted; retain its patch and evidence.
 
-The sequential 168-cell large graph screen at `target/g21l` is paused after
-114 complete three-pair cells and a baseline timeout on bottleneck-ring K6
-unit-weight clustered/all outputs (cell 113). The next call was interrupted
-deliberately; preserve `large-screen-pause.json` under the local artifact root.
-`graph-screen-partial-score1.json` records 82 comparable timing wins and four
-losses, plus 28 FW native controls. The near-tie degree-six robust fits and
-5% clustered/full-output loss remain targets. Unfinished cells remain open.
-A bounded recovery diagnostic reproduces the ring timeout after fit/inference,
-and samples recovery fallback work. Its earlier trace-directory warmup failure
-is retained. New fallback instrumentation is being built; no fix is yet accepted.
-The [portable partial screen](benchmarks/reports/development/two-fe-large-screen-partial-local-2026-09-21/README.md)
-now preserves all 943 application records, the interrupted request, original
-runner reconstruction, independent audits and missing-cell inventory. It remains
-evidence for recovery2, not for the subsequent candidate changes.
+### Routing and memory findings
 
-The draft large-inference oracle passes 92 full-dummy SVD/literal-expansion
-cross-checks (`graph-inference-oracle-check2`). The first checker failure exposed
-LAPACK's default cutoff retaining a redundant dummy direction; the checker now
-uses its pseudoinverse's explicit cutoff and asserts the known graph rank.
-No estimator tolerance changed. Native large-case audits remain open.
-The slope-only loading layout is still uncommitted. `slope-rhs2` plugin
-`87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202`
-passes the expanded SPI test, six pipeline tests, and AW/FW output checks.
-Its PW three-slope-only K6 screen improves robust/all outputs from 103 to 95 ms
-and clustered/all outputs from 136 to 129 ms; fixest medians are 113/135 ms.
-Both native peak values are unchanged. Preserve two earlier expanded SPI
-fixture failures (exactly absorbed finite regressors, then unused sources) and
-their corrections. The first failure remains an explicit rejection test.
+`target/g21rd1` completes 72 whole-command attempts across six solver families:
+52 pass science, 20 fail at the application boundary, and all twelve automatic
+calls pass science. The first dense-unit automatic call has a possible overlap
+and cannot rank routes. Weighted-dense explicit CG returns r(459) on baseline
+and m5. Unit ring, unit cycle and AW cycle auto/fastest-valid ratios are
+1.209/1.241/1.449 in the one-repeat exploration. Full solver reports distinguish
+Schur-CG from explicit symmetric CG.
 
-The constrained whole-fit slope check at `target/g21m{f,l,a,0}` passes:
-90,000,000 usable bytes exclude the 111,692,448-byte fast plan, while low and auto
-select the 47,730,304-byte plan and agree with the unconstrained fit. The receipt
-is `rhs2-whole-fit-memory-check.json`; this is diagnostic, not complete allocation
-proof. Four earlier 65,536-row attempts failed input generation before calling
-Stata; the valid repeat uses 65,535 rows and preserves those failures.
+`cap40` changes only the captured narrow Schur continuation allowance from 64
+to 40. Sixteen focused Schur tests pass. The fourteen-cell three-pair screen at
+`target/g21cap1` passes all 28 native inference checks, 84 exact repeats and 21
+output audits. Three weak cells have possible external-process overlaps. Clean
+unit-ring robust/full-output paired ratios versus m5 are 0.937/0.976; dense
+changes little. The production cap remains 64. Broader routing and holdout
+validation remain open.
 
-All 114 completed large cells pass the independent graph inference audit; all
-168 candidate output bundles pass reconstruction/normal-equation checks.
-`graph-screen-partial-oracle1.json` and the output audit retain the incomplete
-cells and 26 reference mismatches. No default reference failure is reclassified.
+Memory roots `target/g21mc1`, `g21mc2` and `g21mc3` preserve the initial reserve/
+CLI mistake, baseline-and-m5 preparation rejection at 300 MB usable, and fast
+rejection plus low/auto 120-second timeouts at 400 MB usable. Traces show that
+the limited budget excludes LSMR and selects expensive CG; explicit LSMR
+rejects with r(909). Do not weaken the admission model. The unconstrained
+20-second diagnostic was too short: later m5/m6 runs complete around 38/39 s.
+Those concurrent-build diagnostic times are not a performance comparison.
 
-The saved-effect timeout is traced to reconstruction misses: direct graph
-recovery reaches 1.45e-9 and SD/ordinary LSMR recovery 5.63e-10, above the existing
-1e-10 threshold; the subsequent MAP fallback stalls. Explicit fit `solver(lsmr)`
-passes with retained coefficients. Experimental `sl1` plugin
-`09918b81095bb01637716a59758d275e04ca5f78134ce655ac0e761ab3828ca6`
-uses the existing memory-admitted direct LSMR route after an unreconstructed
-capped Schur attempt. Sixteen focused Schur tests pass. On bottleneck unit K6,
-three-pair robust/all-clustered medians are 304/478 ms versus fixest 2,598/2,661 ms.
-All six native direct-oracle checks and three output audits pass; fixest's six
-direct-oracle discrepancies remain. A stopped build with a shared Cargo target
-is retained but never used; `sl1` was built in its own target. The extra route
-assertion, broader calibration, memory and Linux confirmation remain open.
+The first low-final-product draft, `m6` plugin
+`53a0a60edb839a637b896e295ab24064cf3bbc8046a3b5383cc64195b6802ab7`, passes a
+32-case weight/component/thread/pool reconstruction fixture and the K50/AW
+public output audit. Its three-cell narrow low-mode screen at `target/g21low6`
+finishes; one ring cell has a possible overlap. It has no effective public
+retention change because the adapter still disables products in low mode.
+The corrected `m7` draft requests products only for the final public ordinary
+two-FE automatic projection. Earlier low-memory batches retain their original
+nonretaining behavior. New storage is admitted before enabling CMG retention;
+insufficient budgets preserve recovery. Its isolated build and 32-case fixture
+pass. The public cycle/K6/AW/full-output run at `target/g21mc7` passes and takes
+24.966 s, with only 6 ms spent recovering effects. Live sampling
+(`target/ols-next-20260921/m7-low-sample1`) localizes the remaining cost to
+cluster-ordered scratch-score reads repeatedly decoding large cache blocks.
+The low-final-product drafts do not establish a speed benefit and are rejected;
+their source snapshots and diagnostics remain preserved. A bounded read-ahead
+change is the next low-memory experiment.
 
-Degree-six profiling identifies about 28 ms in clustered covariance and 9 ms
-in bread/raw-residual construction. The [narrow clustered checkpoint](benchmarks/reports/development/narrow-cluster-local-2026-09-21/README.md)
-accepts `ord6` under [ADR 0090](docs/adr/0090-narrow-ols-ordered-cluster-reduction.md).
-Three-pair unit/AW/PW/FW two-way clustered full-output medians improve from
-141/151/156/156 to 123/132/135/133 ms; comparable fixest medians are 134/153/157 ms.
-All 81 applications and independent inference checks pass, along with 21
-candidate output audits and an exact group-meat oracle at 1/8/16 workers.
-Default reference output discrepancies remain. Unit native peak falls from
-77,750,133 to 65,362,880 bytes. This isolated artifact includes neither loader
-nor Schur changes. Protected controls/final blocks remain open.
+SCC read-only preflight failed authentication before any remote inspection or
+mutation. A renewal question is pending with Johannes; no SCC job was submitted.
+The cluster skill was read. Linux confirmation remains blocked on access.
 
-Local checkpoint `987e8336` commits the loader and ordered-cluster changes;
-nothing is pushed. Uncommitted `sl2` follows the actually successful solver after capped Schur
-fallback, avoiding a redundant Schur retry on the final residual. `nr1` also
-binds numeric raw-residual columns once; its focused bitwise test passes but
-the initial screen gains only 2–7 ms and weighted robust ties/losses remain.
-The first `sl2` screen was rejected before application dispatch because its
-chosen root already held a small-science controller; that refusal is preserved.
-The fresh-root repeat passes: full-output median is 449 versus sl1's 500 ms,
-with passing native direct inference/output audits and retained reference
-discrepancies. Serial K10 slope profiling still places
-roughly 12 ms in absorber preparation, 13 ms in raw moments and 25 ms in initial
-cached absorption. `nr2a` additionally uses an already available raw-column
-maximum bound to avoid a residual pass, with full rescaling fallback for extreme
-cancellation, and extends existing unit-weight final overlap to dimensions 6/7.
-The bound test and 21 overlap tests pass; all native large direct-oracle checks
-pass. Unit degree-six robust and shuffled K5 medians are 58/228 versus fixest
-67/250 ms. Weighted margins are smaller. Preserve the nr2 compile failure from
-an argument inserted at the wrong call site; nr2a is the corrected isolated build.
-Combined `m1` includes the committed loader/cluster changes, sl2 and residual
-work, plus a guarded weighted narrow overlap that excludes shared callers and
-does not reuse unit-weight RSS. Its 108-case weighted/error-order test passes;
-the paired combined screen is running. `m1-profile` adds isolated slope-pass,
-inference, recovery and per-step Schur pilot diagnostics. No new route threshold
-has been chosen; fresh validation seeds are untouched.
-
-SCC read-only preflight failed authentication before remote inspection or any
-mutation (`target/ols-next-20260921/scc-readonly-preflight.txt`). A renewal
-question is pending with Johannes; Mac work continues. No SCC job was submitted.
-
-Current resume point: collect the large screen, validate the drafted slope-only
-input recipe and independent large-inference oracle, then narrow two-FE margins
-and measured auto calibration. Protected controls, final
-repeated blocks, constrained whole-fit memory and Linux confirmation remain
-open. Fresh validation seeds remain untouched. No push is authorized.
+Current resume point: measure scratch-score read-ahead without changing
+arithmetic or allocations. Continue cycle/ring
+LSMR versus auto comparisons across widths, outputs and threads; repeat
+contaminated timings and the m5/m4 control. Complete the expanded large screen,
+protected controls, current-candidate science, final independent blocks,
+constrained whole-fit checks and focused Linux runs. Raw artifacts and immutable
+snapshot identities remain under `target/ols-next-20260921`; do not overwrite
+failed attempts or use fresh validation seeds before freezing routing rules.
 
 ## Repository cleanup and development push — 2026-09-21
 

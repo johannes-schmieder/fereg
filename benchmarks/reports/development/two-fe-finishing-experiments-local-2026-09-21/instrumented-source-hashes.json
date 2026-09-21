@@ -1,0 +1,110 @@
+{
+  "m1-profile/crates/fereg-core/src/fe/auto.rs": {
+    "original_sha256": "3873a540220943f023160ca584fc23f5684a71ddd2b54af09b66bb51f3a50b7c",
+    "portable_sha256": "3873a540220943f023160ca584fc23f5684a71ddd2b54af09b66bb51f3a50b7c"
+  },
+  "m1-profile/crates/fereg-core/src/fe/certificate.rs": {
+    "original_sha256": "0d89747ee579fe07caff543b31bdd80dafaa6003f6dcf5f8984f07e3cba66e0b",
+    "portable_sha256": "0d89747ee579fe07caff543b31bdd80dafaa6003f6dcf5f8984f07e3cba66e0b"
+  },
+  "m1-profile/crates/fereg-core/src/fe/map.rs": {
+    "original_sha256": "4cd34e281e611f5a8cc053a5c5b05fa93f063130b3b2273be20593efe3317dd7",
+    "portable_sha256": "4cd34e281e611f5a8cc053a5c5b05fa93f063130b3b2273be20593efe3317dd7"
+  },
+  "m1-profile/crates/fereg-core/src/fe/projection.rs": {
+    "original_sha256": "e2cf0ba88fabc58048154a483c1dd461f6ca36243deafadf9b02e2a9e39fd11e",
+    "portable_sha256": "e2cf0ba88fabc58048154a483c1dd461f6ca36243deafadf9b02e2a9e39fd11e"
+  },
+  "m1-profile/crates/fereg-core/src/fe/single_slope.rs": {
+    "original_sha256": "3ecf19e7a970150c7d9ed3576e033af40bbeba3a190bf1418dfa5a18c42f4c00",
+    "portable_sha256": "3ecf19e7a970150c7d9ed3576e033af40bbeba3a190bf1418dfa5a18c42f4c00"
+  },
+  "m1-profile/crates/fereg-core/src/fe/topology_slope_map.rs": {
+    "original_sha256": "6a6c34db55594a64bf36bd6b1de7bef8fcd8a444c1a2aff2deab1130203ca945",
+    "portable_sha256": "6a6c34db55594a64bf36bd6b1de7bef8fcd8a444c1a2aff2deab1130203ca945"
+  },
+  "m1-profile/crates/fereg-core/src/ols/prepared.rs": {
+    "original_sha256": "276234002ed52f25174dbb7b0a6cf53e08318d846f96d118182877b6bf2ffcc9",
+    "portable_sha256": "276234002ed52f25174dbb7b0a6cf53e08318d846f96d118182877b6bf2ffcc9"
+  },
+  "m1-profile/crates/fereg-core/src/ols/prepared_categorical_data.rs": {
+    "original_sha256": "f2848da479fb85307b9e88b42044c0f300ae885720f11fa6d64b0622265bd48b",
+    "portable_sha256": "f2848da479fb85307b9e88b42044c0f300ae885720f11fa6d64b0622265bd48b"
+  },
+  "m1-profile/crates/fereg-core/src/ols/prepared_clustered.rs": {
+    "original_sha256": "44a696d70b7c0f751eb37923e8c6e80e58f2c329c46498473db4d4a0cc76cfd9",
+    "portable_sha256": "44a696d70b7c0f751eb37923e8c6e80e58f2c329c46498473db4d4a0cc76cfd9"
+  },
+  "m1-profile/crates/fereg-core/src/ols/prepared_fit_view.rs": {
+    "original_sha256": "fbe13734a1420d0b4dd74b02ab91b5e8b33dbdaca6cc11653d05375f42d5f226",
+    "portable_sha256": "fbe13734a1420d0b4dd74b02ab91b5e8b33dbdaca6cc11653d05375f42d5f226"
+  },
+  "m1-profile/crates/fereg-plugin/src/estimate.rs": {
+    "original_sha256": "a53c3fdf03d348cd0f5397274d64807dd0f3fe5bcad89d8fe8aeea375a71cf81",
+    "portable_sha256": "a53c3fdf03d348cd0f5397274d64807dd0f3fe5bcad89d8fe8aeea375a71cf81"
+  },
+  "m1-profile/crates/fereg-plugin/src/numeric_pipeline.rs": {
+    "original_sha256": "a6907042830f2b81eca1204696bba0f314199f665c8c8112b193a7fde3c20eb6",
+    "portable_sha256": "a6907042830f2b81eca1204696bba0f314199f665c8c8112b193a7fde3c20eb6"
+  },
+  "m1-profile/stata/_fereg_estimate_ols.ado": {
+    "original_sha256": "740f384104eccee1f15f1813b8e0deae9bf76b5cd8df33a0088a125ab4e87246",
+    "portable_sha256": "740f384104eccee1f15f1813b8e0deae9bf76b5cd8df33a0088a125ab4e87246"
+  },
+  "m3a-profile/crates/fereg-core/src/fe/topology_slope_map.rs": {
+    "original_sha256": "63d21d568749430945b971880b7e117481fed72fa72cbf507b8ce2befaa1c123",
+    "portable_sha256": "63d21d568749430945b971880b7e117481fed72fa72cbf507b8ce2befaa1c123"
+  },
+  "m3a-profile/crates/fereg-core/src/ols/prepared.rs": {
+    "original_sha256": "276234002ed52f25174dbb7b0a6cf53e08318d846f96d118182877b6bf2ffcc9",
+    "portable_sha256": "276234002ed52f25174dbb7b0a6cf53e08318d846f96d118182877b6bf2ffcc9"
+  },
+  "m3a-profile/crates/fereg-core/src/ols/prepared_categorical_data.rs": {
+    "original_sha256": "f2848da479fb85307b9e88b42044c0f300ae885720f11fa6d64b0622265bd48b",
+    "portable_sha256": "f2848da479fb85307b9e88b42044c0f300ae885720f11fa6d64b0622265bd48b"
+  },
+  "m3a-profile/crates/fereg-core/src/ols/prepared_clustered.rs": {
+    "original_sha256": "44a696d70b7c0f751eb37923e8c6e80e58f2c329c46498473db4d4a0cc76cfd9",
+    "portable_sha256": "44a696d70b7c0f751eb37923e8c6e80e58f2c329c46498473db4d4a0cc76cfd9"
+  },
+  "m3a-profile/crates/fereg-plugin/src/estimate.rs": {
+    "original_sha256": "a53c3fdf03d348cd0f5397274d64807dd0f3fe5bcad89d8fe8aeea375a71cf81",
+    "portable_sha256": "a53c3fdf03d348cd0f5397274d64807dd0f3fe5bcad89d8fe8aeea375a71cf81"
+  },
+  "m3a-profile/crates/fereg-plugin/src/numeric_pipeline.rs": {
+    "original_sha256": "a6907042830f2b81eca1204696bba0f314199f665c8c8112b193a7fde3c20eb6",
+    "portable_sha256": "a6907042830f2b81eca1204696bba0f314199f665c8c8112b193a7fde3c20eb6"
+  },
+  "m3a-profile/stata/_fereg_estimate_ols.ado": {
+    "original_sha256": "740f384104eccee1f15f1813b8e0deae9bf76b5cd8df33a0088a125ab4e87246",
+    "portable_sha256": "740f384104eccee1f15f1813b8e0deae9bf76b5cd8df33a0088a125ab4e87246"
+  },
+  "m4-profile/crates/fereg-core/src/fe/topology_slope_map.rs": {
+    "original_sha256": "63d21d568749430945b971880b7e117481fed72fa72cbf507b8ce2befaa1c123",
+    "portable_sha256": "63d21d568749430945b971880b7e117481fed72fa72cbf507b8ce2befaa1c123"
+  },
+  "m4-profile/crates/fereg-core/src/ols/prepared.rs": {
+    "original_sha256": "276234002ed52f25174dbb7b0a6cf53e08318d846f96d118182877b6bf2ffcc9",
+    "portable_sha256": "276234002ed52f25174dbb7b0a6cf53e08318d846f96d118182877b6bf2ffcc9"
+  },
+  "m4-profile/crates/fereg-core/src/ols/prepared_categorical_data.rs": {
+    "original_sha256": "f2848da479fb85307b9e88b42044c0f300ae885720f11fa6d64b0622265bd48b",
+    "portable_sha256": "f2848da479fb85307b9e88b42044c0f300ae885720f11fa6d64b0622265bd48b"
+  },
+  "m4-profile/crates/fereg-core/src/ols/prepared_clustered.rs": {
+    "original_sha256": "44a696d70b7c0f751eb37923e8c6e80e58f2c329c46498473db4d4a0cc76cfd9",
+    "portable_sha256": "44a696d70b7c0f751eb37923e8c6e80e58f2c329c46498473db4d4a0cc76cfd9"
+  },
+  "m4-profile/crates/fereg-plugin/src/estimate.rs": {
+    "original_sha256": "a53c3fdf03d348cd0f5397274d64807dd0f3fe5bcad89d8fe8aeea375a71cf81",
+    "portable_sha256": "a53c3fdf03d348cd0f5397274d64807dd0f3fe5bcad89d8fe8aeea375a71cf81"
+  },
+  "m4-profile/crates/fereg-plugin/src/numeric_pipeline.rs": {
+    "original_sha256": "a6907042830f2b81eca1204696bba0f314199f665c8c8112b193a7fde3c20eb6",
+    "portable_sha256": "a6907042830f2b81eca1204696bba0f314199f665c8c8112b193a7fde3c20eb6"
+  },
+  "m4-profile/stata/_fereg_estimate_ols.ado": {
+    "original_sha256": "740f384104eccee1f15f1813b8e0deae9bf76b5cd8df33a0088a125ab4e87246",
+    "portable_sha256": "740f384104eccee1f15f1813b8e0deae9bf76b5cd8df33a0088a125ab4e87246"
+  }
+}

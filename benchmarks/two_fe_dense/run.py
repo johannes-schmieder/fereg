@@ -486,7 +486,7 @@ if __name__=='__main__':
     p.add_argument('--threads',type=int,default=16);p.add_argument('--repeats',type=int,default=3)
     p.add_argument('--design',choices=GRAPH_DESIGNS,default='two_fe_dense')
     p.add_argument('--effects',choices=['g1','g2'],nargs='+',default=['g1','g2'])
-    p.add_argument('--memory',choices=['fast','low'],default='fast')
+    p.add_argument('--memory',choices=['auto','fast','low'],default='fast')
     p.add_argument('--timeout',type=int,default=240)
     p.add_argument('--trace',action='store_true');p.add_argument('--oracle',action='store_true')
     p.add_argument('--keep-going',action='store_true',

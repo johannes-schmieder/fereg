@@ -16,7 +16,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False):
+def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None):
     root = root.resolve()
     source = root / name
     source.mkdir(parents=True, exist_ok=False)
@@ -29,6 +29,14 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         path = source / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes((REPO / relative).read_bytes())
+    if schur_narrow_cap is not None:
+        assert 0 < schur_narrow_cap <= 64
+        path = source / 'crates/fereg-core/src/fe/borrowed_map.rs'
+        original = 'try_absorb_ols_schur_narrow_at_cap(design, weights, values, config, OLS_SCHUR_MAX_ITERATIONS)'
+        text = path.read_text()
+        assert text.count(original) == 1, 'Narrow OLS entry point changed; inspect before instrumenting.'
+        path.write_text(text.replace(original,
+            f'try_absorb_ols_schur_narrow_at_cap(design, weights, values, config, {schur_narrow_cap})'))
     if profile_preparation:
         from prepare_profile import instrument
         instrument(source)
@@ -91,6 +99,9 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         run(["bash", "tests/mock_spi/run_actual_unix_plugin_test.sh", "dist/fereg_macos.plugin"])
     identity = dict(base_commit=commit, overlays=overlays, source=hashes, plugin=sha(source / "dist/fereg_macos.plugin"),
                     rust_archive=sha(library), abi="pass", target="aarch64-apple-darwin")
+    if schur_narrow_cap is not None:
+        identity['experiment'] = dict(schur_narrow_continuation_cap=schur_narrow_cap,
+            scope='Narrow OLS entry point only; shared and wide Schur caps are unchanged.')
     if profile_preparation:
         identity.setdefault("diagnostics", []).append("preparation_phases")
     if profile_completion:
@@ -125,5 +136,7 @@ if __name__ == "__main__":
     p.add_argument("--profile-inference", action="store_true")
     p.add_argument("--profile-recovery", action="store_true")
     p.add_argument("--profile-schur", action="store_true")
+    p.add_argument("--schur-narrow-cap", type=int, choices=range(1, 65),
+                   help="isolated narrow OLS cap experiment; never modifies the checkout")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap)
