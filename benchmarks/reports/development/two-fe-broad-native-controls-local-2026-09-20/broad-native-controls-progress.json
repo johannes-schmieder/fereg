@@ -1,0 +1,2753 @@
+[
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 0,
+    "label": "broad-native-controls-c000",
+    "process_returncode": 0,
+    "stdout_sha256": "86267e77880b88c82acede5e092cf2c50d292163fe6d180cd9104c629f493a8e"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 1,
+    "label": "broad-native-controls-c001",
+    "process_returncode": 0,
+    "stdout_sha256": "18459e3b65008a075100174e107c6f44e783c35c40883c98f8033d94ffd145fe"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 2,
+    "label": "broad-native-controls-c002",
+    "process_returncode": 0,
+    "stdout_sha256": "9fac0c526a11eb990a1eafaa0bdafb28cb36deaf8c29a1b907864aa0eb309374"
+  },
+  {
+    "cell": {
+      "case": "cluster2_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 3,
+    "label": "broad-native-controls-c003",
+    "process_returncode": 0,
+    "stdout_sha256": "8894c6c8fddb67832eb9132a64de6bdf21dd3a5c31a95b7db049075b682723ec"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 4,
+    "label": "broad-native-controls-c004",
+    "process_returncode": 0,
+    "stdout_sha256": "f9fb7c98882ab4910f220b2bb34dd7e1852800d58eca1bd613e91bafc48176e3"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 5,
+    "label": "broad-native-controls-c005",
+    "process_returncode": 0,
+    "stdout_sha256": "95a574b42f5bb64499270f24d03cdb46e3938a6ecd3a25b761f677940d25952a"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 6,
+    "label": "broad-native-controls-c006",
+    "process_returncode": 0,
+    "stdout_sha256": "6f9b04845b3a24ac707cbbe48b09236c52960f96e0c19f10d6e10f5cabd0f319"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 7,
+    "label": "broad-native-controls-c007",
+    "process_returncode": 0,
+    "stdout_sha256": "a3e4dc8bfa1fb574fc49f2f2410556a62bcbc0eb85f4cdcb2ee0d1935600db90"
+  },
+  {
+    "cell": {
+      "case": "cluster2_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 8,
+    "label": "broad-native-controls-c008",
+    "process_returncode": 0,
+    "stdout_sha256": "fabc280b7511f9440f144979761e1236b5f5bc0d4535765f919716d38c03d288"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 9,
+    "label": "broad-native-controls-c009",
+    "process_returncode": 0,
+    "stdout_sha256": "0f3f0a598af1af0e2845753af2114ef4ab0a9e30c35a40979f0b5eb5722a1825"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 10,
+    "label": "broad-native-controls-c010",
+    "process_returncode": 0,
+    "stdout_sha256": "080cc138d21ec1d28ecedd1e945977fc866be333cedd43c05f45f637aa612c97"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 11,
+    "label": "broad-native-controls-c011",
+    "process_returncode": 0,
+    "stdout_sha256": "7589412e2d61f262a91ac36bd7e41b5065eb3496a337dcbc42a11fdcf3498047"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 12,
+    "label": "broad-native-controls-c012",
+    "process_returncode": 0,
+    "stdout_sha256": "5a43381dad8c4a8f7af564268ffa8c2d91daf520f7d7eb57b85fd34f451ab9f4"
+  },
+  {
+    "cell": {
+      "case": "cluster2_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 13,
+    "label": "broad-native-controls-c013",
+    "process_returncode": 0,
+    "stdout_sha256": "426dd8e643fd0b378157bdf8c8657cfed228d633a41d478385eb0aded0032549"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 14,
+    "label": "broad-native-controls-c014",
+    "process_returncode": 0,
+    "stdout_sha256": "0366fda8c609abfac55f936d131c8ffc2a50eff3afbbedd4b94d2d6b8ab40216"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "constant",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 15,
+    "label": "broad-native-controls-c015",
+    "process_returncode": 0,
+    "stdout_sha256": "2e3e83455f96224641661e4a6bd014872d4b2dcaf91d5bec29dd0811d5bcb674"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "dispersed",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 16,
+    "label": "broad-native-controls-c016",
+    "process_returncode": 0,
+    "stdout_sha256": "caeed584d1fbe3a282cfa6bb31701863da5c988c9a34d9d558a38f6624787a4e"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "group_concentrated",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 17,
+    "label": "broad-native-controls-c017",
+    "process_returncode": 0,
+    "stdout_sha256": "19cd4e54a5bbb83a43b6ed2ad21c60a97df8a04e79aee081fc2afd79965917c6"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "constant",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 18,
+    "label": "broad-native-controls-c018",
+    "process_returncode": 0,
+    "stdout_sha256": "6d16c61468a86924317564de8860121f8275f966b3e6d3073e361adfd17bd496"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "dispersed",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 19,
+    "label": "broad-native-controls-c019",
+    "process_returncode": 0,
+    "stdout_sha256": "89cf05b97d919dbf08ba23b40ecca7f2de7a4c6d52dbd75fe84934b681321aa3"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "group_concentrated",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 20,
+    "label": "broad-native-controls-c020",
+    "process_returncode": 0,
+    "stdout_sha256": "f06eaad8e1da11b37cc56e215c312b6978df5ed3f262995212936d831f5cd57a"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "constant",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 21,
+    "label": "broad-native-controls-c021",
+    "process_returncode": 0,
+    "stdout_sha256": "4181e314f1769b4af97a246d9a3112a426d3f3dca6b73b5fdbdc5047a7203fab"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "dispersed",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 22,
+    "label": "broad-native-controls-c022",
+    "process_returncode": 0,
+    "stdout_sha256": "cca96a2c43c163c020ef69347e7a300e4c3692b9f0ab22848a64f18d6b49d763"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "group_concentrated",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 23,
+    "label": "broad-native-controls-c023",
+    "process_returncode": 0,
+    "stdout_sha256": "ff2b90414970fa6a7022b170b936246715dd295450752653ec15ce2f21b7f4c0"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "constant",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 24,
+    "label": "broad-native-controls-c024",
+    "process_returncode": 0,
+    "stdout_sha256": "2995e18d1f5927d05d9abdcc0648fed03783dc3fe0443708d3b3ad3a6b23dc03"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "dispersed",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 25,
+    "label": "broad-native-controls-c025",
+    "process_returncode": 0,
+    "stdout_sha256": "f21c604da334bb13075a914ae82d4f839025e85c4e8940e3b222e770535bbdac"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "group_concentrated",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 26,
+    "label": "broad-native-controls-c026",
+    "process_returncode": 0,
+    "stdout_sha256": "66e125f05016eef94216d865bb984bbe34607587166ac4f0df01d038db71e496"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "weighted_bridge",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weighted-bridges",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "bridge_cut",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 27,
+    "label": "broad-native-controls-c027",
+    "process_returncode": 0,
+    "stdout_sha256": "6b9988e696dfd757f8b90153710ce1b67b97bba330fd9db4daa1fed01da3bdda"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "weighted_bridge",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weighted-bridges",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "bridge_cut",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 28,
+    "label": "broad-native-controls-c028",
+    "process_returncode": 0,
+    "stdout_sha256": "0149b41e0e6fcba6162163698e397d73857dfa551609789ef46e96eea40f37c6"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "weighted_bridge",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weighted-bridges",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "bridge_cut",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 29,
+    "label": "broad-native-controls-c029",
+    "process_returncode": 0,
+    "stdout_sha256": "4e3ec2c675463c3ab032115bdcfa534d905cb51f3daf3faf157674427761bcf4"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "weighted_bridge",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weighted-bridges",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "bridge_cut",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 30,
+    "label": "broad-native-controls-c030",
+    "process_returncode": 0,
+    "stdout_sha256": "0862d5afa5eda50b42d903e7f4c4dbd13deb377632776950cc60c34044b20150"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 1,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 31,
+    "label": "broad-native-controls-c031",
+    "process_returncode": 0,
+    "stdout_sha256": "6a88087c4a80a47af015194ee1b0e5d435b1e186ba6bef8a2eb0829d7221ae7e"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 4,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 32,
+    "label": "broad-native-controls-c032",
+    "process_returncode": 0,
+    "stdout_sha256": "7126f6015bcbea07f84dd23fdb4f05b3e159f5a78bb5c95ec2b0dfbe623fecaf"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 8,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 33,
+    "label": "broad-native-controls-c033",
+    "process_returncode": 0,
+    "stdout_sha256": "d8bfa20ed580b1db7a37d5abf13782e101f53fca472f2303764a34bc720c37e1"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 1,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 34,
+    "label": "broad-native-controls-c034",
+    "process_returncode": 0,
+    "stdout_sha256": "d3a088f55d743391fe6350704e079958600af6d1ed05194ea25f7c97a15f496b"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 4,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 35,
+    "label": "broad-native-controls-c035",
+    "process_returncode": 0,
+    "stdout_sha256": "8ab39569f92c53b1eec2af543b458539cee278d904ddc51e06b1eca216a27c5a"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 8,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 36,
+    "label": "broad-native-controls-c036",
+    "process_returncode": 0,
+    "stdout_sha256": "c0ade0e381cadb8366733d29a80d4359fa1f76aea19a627f9a51fd135aee4186"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 1,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 37,
+    "label": "broad-native-controls-c037",
+    "process_returncode": 0,
+    "stdout_sha256": "6da93203d5c8dd6d458abea0b6dab86b382fcadffca9b3b631853952f7568397"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 4,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 38,
+    "label": "broad-native-controls-c038",
+    "process_returncode": 0,
+    "stdout_sha256": "e56de1f675c63ce50491215682c2fbf6f753487c9a07f1945237d5ec01278fa6"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 8,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 39,
+    "label": "broad-native-controls-c039",
+    "process_returncode": 0,
+    "stdout_sha256": "cf37408751f7c34a0e1f66b8c1cb810d4f54144060ace5f454443982f7537e2e"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 1,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 40,
+    "label": "broad-native-controls-c040",
+    "process_returncode": 0,
+    "stdout_sha256": "8f4ed1d1d461ac0205dc08f58bafede0af1cd7cd957111f8b82d16e272cdfae5"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 4,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 41,
+    "label": "broad-native-controls-c041",
+    "process_returncode": 0,
+    "stdout_sha256": "37dd557dfd8187199ac47800d42ebe3efb2cc25db2882db8c1ee8a798200dda5"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "threads",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 8,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 42,
+    "label": "broad-native-controls-c042",
+    "process_returncode": 0,
+    "stdout_sha256": "3cc3dde576277a3c79aac4baa0d0b986666f3f594b4c6ef692659917821e9600"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 0,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 43,
+    "label": "broad-native-controls-c043",
+    "process_returncode": 0,
+    "stdout_sha256": "5d2f98a0d4c36d85d86a59f4b0d6bb12e649c69a2b85109959ef3a141c8706ea"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 0,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 44,
+    "label": "broad-native-controls-c044",
+    "process_returncode": 0,
+    "stdout_sha256": "9fed3220faf9b4c886b17940d599439bc6d4be66a63d94aa929416d5cd965dd9"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 1,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 45,
+    "label": "broad-native-controls-c045",
+    "process_returncode": 0,
+    "stdout_sha256": "268aa34d7de6ba99fce4e9e2c5b0d0749f3fb6ea12b383eeae50cf5d1b410ea9"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 1,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 46,
+    "label": "broad-native-controls-c046",
+    "process_returncode": 0,
+    "stdout_sha256": "7e04a855bc48ceee0454c8697e454893386fb2d5d8d8b61183b50e9a1dd8d7a0"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 13,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 47,
+    "label": "broad-native-controls-c047",
+    "process_returncode": 0,
+    "stdout_sha256": "addb4b23e268caeeb6b2aefed79494fd92217e47641bd0f7ae24ea90f30ea816"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 13,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 48,
+    "label": "broad-native-controls-c048",
+    "process_returncode": 0,
+    "stdout_sha256": "812d5217620550c6ce2c20c3434599b2f179ccf34c3fa1e8f676926ebcb0e60e"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 14,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 49,
+    "label": "broad-native-controls-c049",
+    "process_returncode": 0,
+    "stdout_sha256": "8719c0927076dfd934652a6ef16db39292442db059fc55a835e44f040c83b9e0"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 14,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 50,
+    "label": "broad-native-controls-c050",
+    "process_returncode": 0,
+    "stdout_sha256": "5817481d548bb1386fc27afe6a1e90985da4aa560d63b7aa98eb61370de87b7a"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 62,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 51,
+    "label": "broad-native-controls-c051",
+    "process_returncode": 0,
+    "stdout_sha256": "fa479ea3fd135a679ac80107affba597621785adbb089877e0b5479beb25df04"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 62,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 52,
+    "label": "broad-native-controls-c052",
+    "process_returncode": 0,
+    "stdout_sha256": "c38afc82375933b84162bc178c954d01da7eac0494005904f8d5a89a59f25260"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 63,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 53,
+    "label": "broad-native-controls-c053",
+    "process_returncode": 0,
+    "stdout_sha256": "16c81c26d0b6b4cd58a3690bbefabb888e4389dff02cd2b04dabe0b42c56a6e0"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 63,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 54,
+    "label": "broad-native-controls-c054",
+    "process_returncode": 0,
+    "stdout_sha256": "4385062cb29ec10183c5c62616f2fccc098ebd77999fe0fbe1fcf66b3e4009cc"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 7680,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 55,
+    "label": "broad-native-controls-c055",
+    "process_returncode": 0,
+    "stdout_sha256": "5585082685e2a3d5effa0c32d61a5373fc42eadc399a686931ce4652e10885ef"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 7680,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 56,
+    "label": "broad-native-controls-c056",
+    "process_returncode": 0,
+    "stdout_sha256": "1d70f54195a67763a7dc9af76664c6dfec5936cdcb9c18d21a56fdf2406b0cb2"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 16383,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 57,
+    "label": "broad-native-controls-c057",
+    "process_returncode": 0,
+    "stdout_sha256": "18718565efa714278da884c7db526a43f308d63a42a1224ce12c21626e3abb2e"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 16383,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 58,
+    "label": "broad-native-controls-c058",
+    "process_returncode": 0,
+    "stdout_sha256": "3c7f7cf4bd042f0bc9622216317106a36071bc6cb09fd3b1eb56c544e5b50257"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 16384,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 59,
+    "label": "broad-native-controls-c059",
+    "process_returncode": 0,
+    "stdout_sha256": "c8f7342191ec1e27ece17a436bc647dd48618ba22e4a56b89814fd944f299cef"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 16384,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 60,
+    "label": "broad-native-controls-c060",
+    "process_returncode": 0,
+    "stdout_sha256": "483a5a4163d70579e159ea7fd5f1bf194dddbcd25a0fe613640c98f80dd9e98d"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 1966080,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 61,
+    "label": "broad-native-controls-c061",
+    "process_returncode": 0,
+    "stdout_sha256": "1abc6618557cda0c0ab92d52d32852be427db1edc4170b862e89fc9db36871f0"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 1966080,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 62,
+    "label": "broad-native-controls-c062",
+    "process_returncode": 0,
+    "stdout_sha256": "8da26f0ac11fda9e550fa14bad663a3e505e16e3387b259d39e7fd20de0bc146"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "low-memory",
+      "k": 6,
+      "memory": "low",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 63,
+    "label": "broad-native-controls-c063",
+    "process_returncode": 0,
+    "stdout_sha256": "b17a221142e92b9b3d9b86e897fbe397dfc7d192259232877b17a31ff3cf5ed5"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "low-memory",
+      "k": 6,
+      "memory": "low",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 64,
+    "label": "broad-native-controls-c064",
+    "process_returncode": 0,
+    "stdout_sha256": "eddb7607548f75064b0196bce97ad07c7bbfcc46981575848bf4451a80a293b0"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "low-memory",
+      "k": 50,
+      "memory": "low",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 65,
+    "label": "broad-native-controls-c065",
+    "process_returncode": 0,
+    "stdout_sha256": "896b379ce1db68ae93be26e13a51f062ee6d85786a4097036e927911ef33d4f6"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "low-memory",
+      "k": 50,
+      "memory": "low",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 66,
+    "label": "broad-native-controls-c066",
+    "process_returncode": 0,
+    "stdout_sha256": "f22991181a0e0e53ce50abc0bb850fa5401a7c8f5ad7ed7664f8bf4059840517"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 67,
+    "label": "broad-native-controls-c067",
+    "process_returncode": 0,
+    "stdout_sha256": "781ca10725acaa0fe51e166767c3aae1ea343918d7f5cc4fa1c44bfcfe9eac81"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "incomplete",
+    "index": 68,
+    "label": "broad-native-controls-c068",
+    "process_returncode": 1,
+    "stdout_sha256": "2e6d681748f241c6ccf6c233ff60df12c7625ee0dab1b52ebe77c42dd012ee11"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 69,
+    "label": "broad-native-controls-c069",
+    "process_returncode": 0,
+    "stdout_sha256": "95d637d77bd1fdbc935a41337ff51b641fbe150d107a18ae7b6b0547952dfb20"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "incomplete",
+    "index": 70,
+    "label": "broad-native-controls-c070",
+    "process_returncode": 1,
+    "stdout_sha256": "913024b2fecbf1a55de4437b75601d9359df0df1064a72eef224cc45c1387603"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 71,
+    "label": "broad-native-controls-c071",
+    "process_returncode": 0,
+    "stdout_sha256": "b2a6336d39a7578e656c2db4ff3d7623c7cda306cc448d8567e83563f99e4975"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "incomplete",
+    "index": 72,
+    "label": "broad-native-controls-c072",
+    "process_returncode": 1,
+    "stdout_sha256": "8320602cc6cf987b1417091457ea9a33ee318187c24fb924cf1b04191cc92b4f"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 73,
+    "label": "broad-native-controls-c073",
+    "process_returncode": 0,
+    "stdout_sha256": "bfbe03d1982a6b5264689c1bbe52cc6d537259d31f25b6083fd084adcec3d71b"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "incomplete",
+    "index": 74,
+    "label": "broad-native-controls-c074",
+    "process_returncode": 1,
+    "stdout_sha256": "ec843749431c6d30ec14b891be801bcd39e1842a504adfb8b3d0c9422e968012"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 75,
+    "label": "broad-native-controls-c075",
+    "process_returncode": 0,
+    "stdout_sha256": "531bce09846cb7baa0f73563f752a05e6c3ec384ed2276e2606c1a87f2e992d0"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "incomplete",
+    "index": 76,
+    "label": "broad-native-controls-c076",
+    "process_returncode": 1,
+    "stdout_sha256": "2e72f8589b81b5ae607973d5c423aceda21caac4986d3848399de70af5211528"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 77,
+    "label": "broad-native-controls-c077",
+    "process_returncode": 0,
+    "stdout_sha256": "f2a1985ed972edb2c47a03cd57bfb534efad3c89a81c966fba0ab20fd9da7d8e"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "incomplete",
+    "index": 78,
+    "label": "broad-native-controls-c078",
+    "process_returncode": 1,
+    "stdout_sha256": "3728d9cdb09a8f865bff98851a1774cabdb450b9d3eb868f965c280c2800854d"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 79,
+    "label": "broad-native-controls-c079",
+    "process_returncode": 0,
+    "stdout_sha256": "03089834d7d3d2b8c2ca2450aa5ec95375f5168c7d375bc2903e002770e325f9"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "incomplete",
+    "index": 80,
+    "label": "broad-native-controls-c080",
+    "process_returncode": 1,
+    "stdout_sha256": "781b366cd3d30ed2bab69dc80a918833c8841bccabfc65a226c8ad9634309b88"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 81,
+    "label": "broad-native-controls-c081",
+    "process_returncode": 0,
+    "stdout_sha256": "d9e7e0b4ad4bfbc605ce6f616e9ff5461eb8b82ffd8896b8410247229e2519dd"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "incomplete",
+    "index": 82,
+    "label": "broad-native-controls-c082",
+    "process_returncode": 1,
+    "stdout_sha256": "22e3b7cd651d7b1d66dc0cba9e9da7d97ff1b82f48bc06c961842498753dd053"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 83,
+    "label": "broad-native-controls-c083",
+    "process_returncode": 0,
+    "stdout_sha256": "0a2f22105cf993c529c8aba783ae18774c08e6fce5348b24d72ec72d92cdf46f"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "incomplete",
+    "index": 84,
+    "label": "broad-native-controls-c084",
+    "process_returncode": 1,
+    "stdout_sha256": "067d334c692f1f605fd1412cb26dddc858e7a294503a9107a60dd42329f2e927"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 85,
+    "label": "broad-native-controls-c085",
+    "process_returncode": 0,
+    "stdout_sha256": "48389379ba96de5eb42d5debfa8caaf8ec7ab5b325464f00c0d802fe3547649c"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "incomplete",
+    "index": 86,
+    "label": "broad-native-controls-c086",
+    "process_returncode": 1,
+    "stdout_sha256": "61dcab4f3312956284385d8d59d5026669255ab937636afd823546f229717ebe"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 87,
+    "label": "broad-native-controls-c087",
+    "process_returncode": 0,
+    "stdout_sha256": "1f26f9b15210984ce780d61cb5c792d26022d0ff7999527e10551ba1e26c6e52"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "incomplete",
+    "index": 88,
+    "label": "broad-native-controls-c088",
+    "process_returncode": 1,
+    "stdout_sha256": "3f15842c1318e45cdbd4494460631d15549b0b1401ebef6284327ac74b72517f"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "pass",
+    "index": 89,
+    "label": "broad-native-controls-c089",
+    "process_returncode": 0,
+    "stdout_sha256": "b0c802bf57844fb0ab43afe761684536afdd005ff68efd510f2f05ae47aa65ff"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "comparison_status": "incomplete",
+    "index": 90,
+    "label": "broad-native-controls-c090",
+    "process_returncode": 1,
+    "stdout_sha256": "2267b538b71cbf6e2b2aa99ffe0db918b43ffeee213930cea13921d3fb9a22c3"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 10,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 91,
+    "label": "broad-native-controls-c091",
+    "process_returncode": 0,
+    "stdout_sha256": "ef5493f8cb2bafed0a649b5334f1256a61320d45b0eea8492efebe09f4a3cb46"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 10,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 92,
+    "label": "broad-native-controls-c092",
+    "process_returncode": 0,
+    "stdout_sha256": "54100f9af48e3ea219cd7fa834af0f53b7e2c23129cc105de39867fb9c73df1a"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 10,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 93,
+    "label": "broad-native-controls-c093",
+    "process_returncode": 0,
+    "stdout_sha256": "a9bb6950f07a640a2a924f553401781c5d2c5ce22b35457ab5f918ac9dac937b"
+  },
+  {
+    "cell": {
+      "case": "cluster_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 10,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 94,
+    "label": "broad-native-controls-c094",
+    "process_returncode": 0,
+    "stdout_sha256": "f3224eca0413836f5683162a0ffd9539b310679d27b2cabc6b3b6b9b30f0b648"
+  },
+  {
+    "cell": {
+      "case": "cluster2_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 10,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 95,
+    "label": "broad-native-controls-c095",
+    "process_returncode": 0,
+    "stdout_sha256": "6b71f5c37e2722183e5429a68d406ea495c7b9d26382661fd089539a8aff33eb"
+  },
+  {
+    "cell": {
+      "case": "cluster2_nested",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 10,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 96,
+    "label": "broad-native-controls-c096",
+    "process_returncode": 0,
+    "stdout_sha256": "d7aa222bea7664d4e158d8df0ba189bdeacb8eee2f3dabac079f1e6148ea7ead"
+  },
+  {
+    "cell": {
+      "case": "iid_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 10,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 97,
+    "label": "broad-native-controls-c097",
+    "process_returncode": 0,
+    "stdout_sha256": "711c852c0df111159e91fc409eeb834b0711d82dbe5982c76528fcebe6698e06"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 10,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 98,
+    "label": "broad-native-controls-c098",
+    "process_returncode": 0,
+    "stdout_sha256": "8f152349f2458df0780cc0e1d9c412fed73421e2951bb6d48e31683c2f6910e6"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 10,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 99,
+    "label": "broad-native-controls-c099",
+    "process_returncode": 0,
+    "stdout_sha256": "54b4701beb21f3103c3a75a7333ec5c030b91f7296b382713da2fcaf6deba3a9"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 10,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 100,
+    "label": "broad-native-controls-c100",
+    "process_returncode": 0,
+    "stdout_sha256": "289f1cebbddb444078340f6ca6c69b1058fece04490b8c2b3a7a160b315d3475"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 101,
+    "label": "broad-native-controls-c101",
+    "process_returncode": 0,
+    "stdout_sha256": "ddde330ee02428d2040034804703ac5bab11bc6fa7132f1aa461aa7f2205efb3"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 102,
+    "label": "broad-native-controls-c102",
+    "process_returncode": 0,
+    "stdout_sha256": "ebc5189c7c58d40f3baa134faf27ba775426620693f1a7e737a03229fa1a58b9"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 103,
+    "label": "broad-native-controls-c103",
+    "process_returncode": 0,
+    "stdout_sha256": "d85ecac45a40f89053d4d19847cf10d90da863f82f9cc473bf8b3b8edb6e28c0"
+  },
+  {
+    "cell": {
+      "case": "cluster_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 104,
+    "label": "broad-native-controls-c104",
+    "process_returncode": 0,
+    "stdout_sha256": "1ca690a7844c2135000447c8e52d933e035771aca4cafbd9391f3dde64bfe62b"
+  },
+  {
+    "cell": {
+      "case": "cluster2_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 105,
+    "label": "broad-native-controls-c105",
+    "process_returncode": 0,
+    "stdout_sha256": "b859364df92425ca182d4532c01fcb43423dede4111a89225928a4bdd3b93121"
+  },
+  {
+    "cell": {
+      "case": "cluster2_nested",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 106,
+    "label": "broad-native-controls-c106",
+    "process_returncode": 0,
+    "stdout_sha256": "3646d38689b4736533668d210198c9bd506d478dda1dc3684eff805660150af7"
+  },
+  {
+    "cell": {
+      "case": "iid_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 107,
+    "label": "broad-native-controls-c107",
+    "process_returncode": 0,
+    "stdout_sha256": "9b062305a2d0e590a130374066db7e3def1a74baa0bf441b102a1e759f9b9df3"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 108,
+    "label": "broad-native-controls-c108",
+    "process_returncode": 0,
+    "stdout_sha256": "1bd32c25f95865c7fa78933182ae114df4427b0058ff00a818d769ebb9e14b9e"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 109,
+    "label": "broad-native-controls-c109",
+    "process_returncode": 0,
+    "stdout_sha256": "fc4e264678627761e582488fc6f9af3bc216fa20ac16ccc2f8f05e9e46ce5722"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "protected-dense-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 110,
+    "label": "broad-native-controls-c110",
+    "process_returncode": 0,
+    "stdout_sha256": "801fce43bf71d882aa1e0124c2460c20994933a5a907cfb344dc1effe7cdb44f"
+  }
+]

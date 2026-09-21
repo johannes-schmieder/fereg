@@ -14,6 +14,13 @@ python benchmarks/two_fe_dense/run.py ROOT --label screen \
   --variants baseline candidate fixest --cases iid --widths 10 50 --repeats 3
 ```
 
+Use a fresh benchmark directory after worker-generation changes. Staging binds
+the generator sources and all four generated workers in
+`controller/source-manifest.json`. Missing, stale or modified controller
+identities fail before application dispatch; preserve the old directory and
+use `--artifacts ARTIFACT_ROOT` to reuse the same estimator binaries in a new
+directory. `check_controller.py` exercises this boundary without running Stata.
+
 Generation and hashing precede timing. Arms rotate within each repetition and
 each starts in a fresh process with a small warm-up. The timer includes requested
 FE recovery, observation vectors and public predictions. Saved effects are
@@ -48,7 +55,11 @@ comparison results, phase traces and artifact identities, including failed calls
 It excludes licensed logs and machine-specific paths. Run it after timing ends.
 
 `audit_outputs.py ROOT LABEL VARIANT` independently checks native FE constancy,
-component normalization, reconstruction and normal equations. `accept.py ROOT
+normalization, reconstruction and normal equations for one or two effects.
+Only two-effect calls use the input's two-effect component labels.
+`check_output_audit.py` checks the one-effect boundary against independently
+constructed weighted and unweighted solutions and rejects corrupted outputs.
+`accept.py ROOT
 --candidate VARIANT` verifies both frozen final blocks, all regression cells,
 the tight-reference and independent output receipts, fixtures, source identity
 and reference fingerprints. A predeclared regression confirmation must retain

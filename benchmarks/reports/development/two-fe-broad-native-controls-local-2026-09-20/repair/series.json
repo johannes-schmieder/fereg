@@ -1,0 +1,1246 @@
+{
+  "broad-onefe-repair-c000": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c001": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c002": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c003": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c004": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c005": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c006": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c007": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c008": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c009": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c010": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "broad-onefe-repair-c011": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "cluster2_saved",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "small-aw-batch-diagnostic": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "small-aw-confirm": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  }
+}

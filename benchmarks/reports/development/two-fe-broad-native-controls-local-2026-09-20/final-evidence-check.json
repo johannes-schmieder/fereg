@@ -1,0 +1,13 @@
+{
+  "baseline_commit_source_files_verified": 514,
+  "candidate_source_files_verified": 516,
+  "diagnostic_workers": 10,
+  "independent_output_pairs": 129,
+  "native_pairs_including_confirmation_and_batch": 343,
+  "open_timing_control": 56,
+  "preserved_export_failures": 12,
+  "scientific_inventory_cells": 111,
+  "standard_workers": 688,
+  "status": "pass",
+  "timing_accepted": false
+}

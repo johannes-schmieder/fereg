@@ -1,0 +1,659 @@
+[
+  {
+    "estimated_selected_baseline": 133693472.0,
+    "estimated_selected_candidate": 133693472.0,
+    "modeled_ratio_baseline": 0.8792449716617428,
+    "modeled_ratio_candidate": 0.9174806156578834,
+    "peak_baseline": 117549313.0,
+    "peak_candidate": 122661169.0,
+    "run": "broad-native-controls-c000-iid-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 133693472.0,
+    "estimated_selected_candidate": 133693472.0,
+    "modeled_ratio_baseline": 0.8792449716617428,
+    "modeled_ratio_candidate": 0.9174806156578834,
+    "peak_baseline": 117549313.0,
+    "peak_candidate": 122661169.0,
+    "run": "broad-native-controls-c000-iid-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 133693472.0,
+    "estimated_selected_candidate": 133693472.0,
+    "modeled_ratio_baseline": 0.8792449716617428,
+    "modeled_ratio_candidate": 0.9174806156578834,
+    "peak_baseline": 117549313.0,
+    "peak_candidate": 122661169.0,
+    "run": "broad-native-controls-c000-iid-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 133693472.0,
+    "estimated_selected_candidate": 133693472.0,
+    "modeled_ratio_baseline": 0.8792447323082462,
+    "modeled_ratio_candidate": 0.9174803763043868,
+    "peak_baseline": 117549281.0,
+    "peak_candidate": 122661137.0,
+    "run": "broad-native-controls-c001-robust-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 133693472.0,
+    "estimated_selected_candidate": 133693472.0,
+    "modeled_ratio_baseline": 0.8792447323082462,
+    "modeled_ratio_candidate": 0.9174803763043868,
+    "peak_baseline": 117549281.0,
+    "peak_candidate": 122661137.0,
+    "run": "broad-native-controls-c001-robust-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 133693472.0,
+    "estimated_selected_candidate": 133693472.0,
+    "modeled_ratio_baseline": 0.8792447323082462,
+    "modeled_ratio_candidate": 0.9174803763043868,
+    "peak_baseline": 117549281.0,
+    "peak_candidate": 122661137.0,
+    "run": "broad-native-controls-c001-robust-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 137625632.0,
+    "estimated_selected_candidate": 137625632.0,
+    "modeled_ratio_baseline": 0.8541244773357335,
+    "modeled_ratio_candidate": 0.891267674614566,
+    "peak_baseline": 117549421.0,
+    "peak_candidate": 122661277.0,
+    "run": "broad-native-controls-c002-cluster_fe-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 137625632.0,
+    "estimated_selected_candidate": 137625632.0,
+    "modeled_ratio_baseline": 0.8541244773357335,
+    "modeled_ratio_candidate": 0.891267674614566,
+    "peak_baseline": 117549421.0,
+    "peak_candidate": 122661277.0,
+    "run": "broad-native-controls-c002-cluster_fe-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 137625632.0,
+    "estimated_selected_candidate": 137625632.0,
+    "modeled_ratio_baseline": 0.8541244773357335,
+    "modeled_ratio_candidate": 0.891267674614566,
+    "peak_baseline": 117549421.0,
+    "peak_candidate": 122661277.0,
+    "run": "broad-native-controls-c002-cluster_fe-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 157286432.0,
+    "estimated_selected_candidate": 157286432.0,
+    "modeled_ratio_baseline": 0.8974266578823531,
+    "modeled_ratio_candidate": 0.9299269564459317,
+    "peak_baseline": 141153037.0,
+    "peak_candidate": 146264893.0,
+    "run": "broad-native-controls-c003-cluster2_cross-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 157286432.0,
+    "estimated_selected_candidate": 157286432.0,
+    "modeled_ratio_baseline": 0.8974266578823531,
+    "modeled_ratio_candidate": 0.9299269564459317,
+    "peak_baseline": 141153037.0,
+    "peak_candidate": 146264893.0,
+    "run": "broad-native-controls-c003-cluster2_cross-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 157286432.0,
+    "estimated_selected_candidate": 157286432.0,
+    "modeled_ratio_baseline": 0.8974266578823531,
+    "modeled_ratio_candidate": 0.9299269564459317,
+    "peak_baseline": 141153037.0,
+    "peak_candidate": 146264893.0,
+    "run": "broad-native-controls-c003-cluster2_cross-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.642675314843483,
+    "modeled_ratio_candidate": 1.642675314843483,
+    "peak_baseline": 119496994.0,
+    "peak_candidate": 119496994.0,
+    "run": "broad-native-controls-c016-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.642675314843483,
+    "modeled_ratio_candidate": 1.642675314843483,
+    "peak_baseline": 119496994.0,
+    "peak_candidate": 119496994.0,
+    "run": "broad-native-controls-c016-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.642675314843483,
+    "modeled_ratio_candidate": 1.642675314843483,
+    "peak_baseline": 119496994.0,
+    "peak_candidate": 119496994.0,
+    "run": "broad-native-controls-c016-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.6207375833441564,
+    "modeled_ratio_candidate": 1.6207375833441564,
+    "peak_baseline": 117901126.0,
+    "peak_candidate": 117901126.0,
+    "run": "broad-native-controls-c017-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.6207375833441564,
+    "modeled_ratio_candidate": 1.6207375833441564,
+    "peak_baseline": 117901126.0,
+    "peak_candidate": 117901126.0,
+    "run": "broad-native-controls-c017-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.6207375833441564,
+    "modeled_ratio_candidate": 1.6207375833441564,
+    "peak_baseline": 117901126.0,
+    "peak_candidate": 117901126.0,
+    "run": "broad-native-controls-c017-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.642675314843483,
+    "modeled_ratio_candidate": 1.642675314843483,
+    "peak_baseline": 119496994.0,
+    "peak_candidate": 119496994.0,
+    "run": "broad-native-controls-c019-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.642675314843483,
+    "modeled_ratio_candidate": 1.642675314843483,
+    "peak_baseline": 119496994.0,
+    "peak_candidate": 119496994.0,
+    "run": "broad-native-controls-c019-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.642675314843483,
+    "modeled_ratio_candidate": 1.642675314843483,
+    "peak_baseline": 119496994.0,
+    "peak_candidate": 119496994.0,
+    "run": "broad-native-controls-c019-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.6207375833441564,
+    "modeled_ratio_candidate": 1.6207375833441564,
+    "peak_baseline": 117901126.0,
+    "peak_candidate": 117901126.0,
+    "run": "broad-native-controls-c020-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.6207375833441564,
+    "modeled_ratio_candidate": 1.6207375833441564,
+    "peak_baseline": 117901126.0,
+    "peak_candidate": 117901126.0,
+    "run": "broad-native-controls-c020-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.6207375833441564,
+    "modeled_ratio_candidate": 1.6207375833441564,
+    "peak_baseline": 117901126.0,
+    "peak_candidate": 117901126.0,
+    "run": "broad-native-controls-c020-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.809203232668391,
+    "modeled_ratio_candidate": 1.809203232668391,
+    "peak_baseline": 131611126.0,
+    "peak_candidate": 131611126.0,
+    "run": "broad-native-controls-c027-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.809203232668391,
+    "modeled_ratio_candidate": 1.809203232668391,
+    "peak_baseline": 131611126.0,
+    "peak_candidate": 131611126.0,
+    "run": "broad-native-controls-c027-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.809203232668391,
+    "modeled_ratio_candidate": 1.809203232668391,
+    "peak_baseline": 131611126.0,
+    "peak_candidate": 131611126.0,
+    "run": "broad-native-controls-c027-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.809203232668391,
+    "modeled_ratio_candidate": 1.809203232668391,
+    "peak_baseline": 131611126.0,
+    "peak_candidate": 131611126.0,
+    "run": "broad-native-controls-c028-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.809203232668391,
+    "modeled_ratio_candidate": 1.809203232668391,
+    "peak_baseline": 131611126.0,
+    "peak_candidate": 131611126.0,
+    "run": "broad-native-controls-c028-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 72745352.0,
+    "estimated_selected_candidate": 72745352.0,
+    "modeled_ratio_baseline": 1.809203232668391,
+    "modeled_ratio_candidate": 1.809203232668391,
+    "peak_baseline": 131611126.0,
+    "peak_candidate": 131611126.0,
+    "run": "broad-native-controls-c028-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 6389768.0,
+    "estimated_selected_candidate": 6389768.0,
+    "modeled_ratio_baseline": 3.204546706547092,
+    "modeled_ratio_candidate": 3.204546706547092,
+    "peak_baseline": 20476310.0,
+    "peak_candidate": 20476310.0,
+    "run": "broad-native-controls-c043-iid-n61440-k0-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 6389768.0,
+    "estimated_selected_candidate": 6389768.0,
+    "modeled_ratio_baseline": 3.204546706547092,
+    "modeled_ratio_candidate": 3.204546706547092,
+    "peak_baseline": 20476310.0,
+    "peak_candidate": 20476310.0,
+    "run": "broad-native-controls-c043-iid-n61440-k0-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 6389768.0,
+    "estimated_selected_candidate": 6389768.0,
+    "modeled_ratio_baseline": 3.204546706547092,
+    "modeled_ratio_candidate": 3.204546706547092,
+    "peak_baseline": 20476310.0,
+    "peak_candidate": 20476310.0,
+    "run": "broad-native-controls-c043-iid-n61440-k0-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 6389768.0,
+    "estimated_selected_candidate": 6389768.0,
+    "modeled_ratio_baseline": 3.281436509118954,
+    "modeled_ratio_candidate": 3.281436509118954,
+    "peak_baseline": 20967618.0,
+    "peak_candidate": 20967618.0,
+    "run": "broad-native-controls-c044-iid-n61440-k0-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 6389768.0,
+    "estimated_selected_candidate": 6389768.0,
+    "modeled_ratio_baseline": 3.281436509118954,
+    "modeled_ratio_candidate": 3.281436509118954,
+    "peak_baseline": 20967618.0,
+    "peak_candidate": 20967618.0,
+    "run": "broad-native-controls-c044-iid-n61440-k0-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 6389768.0,
+    "estimated_selected_candidate": 6389768.0,
+    "modeled_ratio_baseline": 3.281436509118954,
+    "modeled_ratio_candidate": 3.281436509118954,
+    "peak_baseline": 20967618.0,
+    "peak_candidate": 20967618.0,
+    "run": "broad-native-controls-c044-iid-n61440-k0-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 8355872.0,
+    "estimated_selected_candidate": 8355872.0,
+    "modeled_ratio_baseline": 0.879431494402978,
+    "modeled_ratio_candidate": 0.917672386556424,
+    "peak_baseline": 7348417.0,
+    "peak_candidate": 7667953.0,
+    "run": "broad-native-controls-c046-iid-n61440-k1-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 8355872.0,
+    "estimated_selected_candidate": 8355872.0,
+    "modeled_ratio_baseline": 0.879431494402978,
+    "modeled_ratio_candidate": 0.917672386556424,
+    "peak_baseline": 7348417.0,
+    "peak_candidate": 7667953.0,
+    "run": "broad-native-controls-c046-iid-n61440-k1-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 8355872.0,
+    "estimated_selected_candidate": 8355872.0,
+    "modeled_ratio_baseline": 0.879431494402978,
+    "modeled_ratio_candidate": 0.917672386556424,
+    "peak_baseline": 7348417.0,
+    "peak_candidate": 7667953.0,
+    "run": "broad-native-controls-c046-iid-n61440-k1-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4575277348711688,
+    "modeled_ratio_candidate": 1.4575277348711688,
+    "peak_baseline": 3313940.0,
+    "peak_candidate": 3313940.0,
+    "run": "broad-native-controls-c055-iid-n7680-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4575277348711688,
+    "modeled_ratio_candidate": 1.4575277348711688,
+    "peak_baseline": 3313940.0,
+    "peak_candidate": 3313940.0,
+    "run": "broad-native-controls-c055-iid-n7680-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4575277348711688,
+    "modeled_ratio_candidate": 1.4575277348711688,
+    "peak_baseline": 3313940.0,
+    "peak_candidate": 3313940.0,
+    "run": "broad-native-controls-c055-iid-n7680-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "broad-native-controls-c056-iid-n7680-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "broad-native-controls-c056-iid-n7680-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "broad-native-controls-c056-iid-n7680-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 4849760.0,
+    "estimated_selected_candidate": 4849760.0,
+    "modeled_ratio_baseline": 1.4304928491306785,
+    "modeled_ratio_candidate": 1.4304928491306785,
+    "peak_baseline": 6937547.0,
+    "peak_candidate": 6937547.0,
+    "run": "broad-native-controls-c057-iid-n16383-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 4849760.0,
+    "estimated_selected_candidate": 4849760.0,
+    "modeled_ratio_baseline": 1.4304928491306785,
+    "modeled_ratio_candidate": 1.4304928491306785,
+    "peak_baseline": 6937547.0,
+    "peak_candidate": 6937547.0,
+    "run": "broad-native-controls-c057-iid-n16383-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 4849760.0,
+    "estimated_selected_candidate": 4849760.0,
+    "modeled_ratio_baseline": 1.4304928491306785,
+    "modeled_ratio_candidate": 1.4304928491306785,
+    "peak_baseline": 6937547.0,
+    "peak_candidate": 6937547.0,
+    "run": "broad-native-controls-c057-iid-n16383-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 4849760.0,
+    "estimated_selected_candidate": 4849760.0,
+    "modeled_ratio_baseline": 1.457536661607997,
+    "modeled_ratio_candidate": 1.457536661607997,
+    "peak_baseline": 7068703.0,
+    "peak_candidate": 7068703.0,
+    "run": "broad-native-controls-c058-iid-n16383-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 4849760.0,
+    "estimated_selected_candidate": 4849760.0,
+    "modeled_ratio_baseline": 1.457536661607997,
+    "modeled_ratio_candidate": 1.457536661607997,
+    "peak_baseline": 7068703.0,
+    "peak_candidate": 7068703.0,
+    "run": "broad-native-controls-c058-iid-n16383-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 4849760.0,
+    "estimated_selected_candidate": 4849760.0,
+    "modeled_ratio_baseline": 1.457536661607997,
+    "modeled_ratio_candidate": 1.457536661607997,
+    "peak_baseline": 7068703.0,
+    "peak_candidate": 7068703.0,
+    "run": "broad-native-controls-c058-iid-n16383-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 18743688.0,
+    "estimated_selected_candidate": 18743688.0,
+    "modeled_ratio_baseline": 1.5184825419629264,
+    "modeled_ratio_candidate": 1.5184825419629264,
+    "peak_baseline": 28461963.0,
+    "peak_candidate": 28461963.0,
+    "run": "broad-native-controls-c063-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 18743688.0,
+    "estimated_selected_candidate": 18743688.0,
+    "modeled_ratio_baseline": 1.5184825419629264,
+    "modeled_ratio_candidate": 1.5184825419629264,
+    "peak_baseline": 28461963.0,
+    "peak_candidate": 28461963.0,
+    "run": "broad-native-controls-c063-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 18743688.0,
+    "estimated_selected_candidate": 18743688.0,
+    "modeled_ratio_baseline": 1.5184825419629264,
+    "modeled_ratio_candidate": 1.5184825419629264,
+    "peak_baseline": 28461963.0,
+    "peak_candidate": 28461963.0,
+    "run": "broad-native-controls-c063-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 18743688.0,
+    "estimated_selected_candidate": 18743688.0,
+    "modeled_ratio_baseline": 1.544694459276104,
+    "modeled_ratio_candidate": 1.544694459276104,
+    "peak_baseline": 28953271.0,
+    "peak_candidate": 28953271.0,
+    "run": "broad-native-controls-c064-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 18743688.0,
+    "estimated_selected_candidate": 18743688.0,
+    "modeled_ratio_baseline": 1.544694459276104,
+    "modeled_ratio_candidate": 1.544694459276104,
+    "peak_baseline": 28953271.0,
+    "peak_candidate": 28953271.0,
+    "run": "broad-native-controls-c064-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 18743688.0,
+    "estimated_selected_candidate": 18743688.0,
+    "modeled_ratio_baseline": 1.544694459276104,
+    "modeled_ratio_candidate": 1.544694459276104,
+    "peak_baseline": 28953271.0,
+    "peak_candidate": 28953271.0,
+    "run": "broad-native-controls-c064-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 121896992.0,
+    "estimated_selected_candidate": 121896992.0,
+    "modeled_ratio_baseline": 0.73723249052774,
+    "modeled_ratio_candidate": 0.7372330811903873,
+    "peak_baseline": 89866423.0,
+    "peak_candidate": 89866495.0,
+    "run": "broad-native-controls-c067-robust-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 121896992.0,
+    "estimated_selected_candidate": 121896992.0,
+    "modeled_ratio_baseline": 0.73723249052774,
+    "modeled_ratio_candidate": 0.7372330811903873,
+    "peak_baseline": 89866423.0,
+    "peak_candidate": 89866495.0,
+    "run": "broad-native-controls-c067-robust-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 121896992.0,
+    "estimated_selected_candidate": 121896992.0,
+    "modeled_ratio_baseline": 0.73723249052774,
+    "modeled_ratio_candidate": 0.7372330811903873,
+    "peak_baseline": 89866423.0,
+    "peak_candidate": 89866495.0,
+    "run": "broad-native-controls-c067-robust-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 145489952.0,
+    "estimated_selected_candidate": 145489952.0,
+    "modeled_ratio_baseline": 0.8285676663086672,
+    "modeled_ratio_candidate": 0.8285681611882035,
+    "peak_baseline": 120548270.0,
+    "peak_candidate": 120548342.0,
+    "run": "broad-onefe-repair-c000-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 145489952.0,
+    "estimated_selected_candidate": 145489952.0,
+    "modeled_ratio_baseline": 0.8285676663086672,
+    "modeled_ratio_candidate": 0.8285681611882035,
+    "peak_baseline": 120548270.0,
+    "peak_candidate": 120548342.0,
+    "run": "broad-onefe-repair-c000-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 145489952.0,
+    "estimated_selected_candidate": 145489952.0,
+    "modeled_ratio_baseline": 0.8285676663086672,
+    "modeled_ratio_candidate": 0.8285681611882035,
+    "peak_baseline": 120548270.0,
+    "peak_candidate": 120548342.0,
+    "run": "broad-onefe-repair-c000-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "small-aw-confirm-iid-n7680-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "small-aw-confirm-iid-n7680-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "small-aw-confirm-iid-n7680-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "small-aw-confirm-iid-n7680-k6-s8675309-shuffle0-t16-r4-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "small-aw-confirm-iid-n7680-k6-s8675309-shuffle0-t16-r5-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "small-aw-batch-diagnostic-iid-n7680-k6-s8675309-shuffle0-t16-r1-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "small-aw-batch-diagnostic-iid-n7680-k6-s8675309-shuffle0-t16-r2-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "small-aw-batch-diagnostic-iid-n7680-k6-s8675309-shuffle0-t16-r3-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "small-aw-batch-diagnostic-iid-n7680-k6-s8675309-shuffle0-t16-r4-usefulpilot"
+  },
+  {
+    "estimated_selected_baseline": 2273672.0,
+    "estimated_selected_candidate": 2273672.0,
+    "modeled_ratio_baseline": 1.4845835283189484,
+    "modeled_ratio_candidate": 1.4845835283189484,
+    "peak_baseline": 3375456.0,
+    "peak_candidate": 3375456.0,
+    "run": "small-aw-batch-diagnostic-iid-n7680-k6-s8675309-shuffle0-t16-r5-usefulpilot"
+  }
+]

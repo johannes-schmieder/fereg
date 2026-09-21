@@ -37,6 +37,30 @@ def write(path, value):
     path.write_text(json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n")
 
 
+CONTROLLER_FILES = ("common.py", "measure.py", "r_worker.R", "stata_worker.do")
+
+
+def controller_manifest(folder):
+    sources = [Path(__file__).resolve(), REPO / "benchmarks/one_fe_breadth/run.py",
+               REPO / "benchmarks/one_fe_profile/run.py"]
+    sources.extend(REPO / "benchmarks/local_fixest_gap" / name for name in CONTROLLER_FILES)
+    return dict(schema="two-fe-controller-v1",
+                sources={str(p.relative_to(REPO)): breadth.sha(p) for p in sources},
+                generated={name: breadth.sha(folder / name) for name in CONTROLLER_FILES})
+
+
+def validate_controller(folder):
+    message = ("Cached benchmark controller is missing, stale or modified. "
+               "Use a fresh benchmark directory and retain the previous evidence.")
+    try:
+        saved = json.loads((folder / "source-manifest.json").read_text())
+        current = controller_manifest(folder)
+    except (OSError, ValueError) as error:
+        raise RuntimeError(message) from error
+    if saved != current:
+        raise RuntimeError(message)
+
+
 def stage(root):
     folder = breadth.stage(root, profile)
     p = folder / "stata_worker.do"
@@ -109,6 +133,7 @@ def stage(root):
     text = breadth.replace_once(text, 'recover_outputs(fit_model(warm))', 'recover_outputs(fit_model(warm), warm)')
     text = breadth.replace_once(text, 'saved_outputs <- recover_outputs(fit)', 'saved_outputs <- recover_outputs(fit, data)')
     p.write_text(text)
+    write(folder / "source-manifest.json", controller_manifest(folder))
     return folder
 
 
@@ -337,6 +362,7 @@ def main(a):
     folder=root/'controller'
     if not folder.exists():
         folder=stage(root)
+    validate_controller(folder)
     sys.path.insert(0,str(folder))
     measure=load('dense_measure',folder/'measure.py').measure
     manifest=json.loads((REPO/'benchmarks/systematic/manifest.json').read_text())

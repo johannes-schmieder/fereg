@@ -10,6 +10,49 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: full native controls — 2026-09-20
+
+The [full-control report](benchmarks/reports/development/two-fe-broad-native-controls-local-2026-09-20/README.md)
+accounts for all 111 declared controls and 129 independently audited output
+pairs. All scientific comparisons pass. Production remains `cdfbcf58` and the
+`usefulpilot` plugin `79141637b5252f27d6f86a721fb04cf5648df6b8d0d82ee26ea7e39b9b94de14`;
+all 516 candidate source files match. A fresh audit also matches all 514
+baseline source files to `e9d593bd`. Two additional final-artifact Stata
+fixtures pass weighted explicit-dummy/frequency/rescaling and input boundaries.
+
+The initial inventory completed 99 cells and preserved twelve one-FE saved-
+output exporter failures. Estimation returned zero; a stale cached worker
+requested a nonexistent second FE. The same twelve cells, inputs, binaries
+and three pairs pass in a fresh controller directory. Original failures and
+both worker versions remain archived. Controller source/generated-file
+manifests now reject stale caches before dispatch. The independent output
+checker now covers one FE; focused cache and six valid/six corrupted output
+checks pass. No estimator code changed in this checkpoint.
+
+One timing gate is still open: control index 56, AW IID at N=7,680/K=6 and
+sixteen workers. Its original ratio is 1.05882; a fresh five-pair single-call
+confirmation is 1.0625 (17 versus 16 ms). Five separate sixteen-command batch
+pairs give 0.992, but do not replace the failed single-call gate. The report
+retains 688 standard worker invocations (twelve export failures), ten batch
+workers, 343 successful pairs and every failed attempt. All processes finished.
+
+Seven cells have small measured peak increases, all below unchanged early
+estimates; the largest is 5.112 MB in FW K=1. Fourteen distinct cells exceed
+1.25 times the early estimate in BOTH artifacts, with identical peaks and
+estimates. Those preexisting coverage gaps remain explicit; there is no new
+complete-memory or release qualification claim.
+
+Next use a separately documented high-resolution clock around the exact
+public command to resolve the one-millisecond single-call timing question;
+retain the ordinary timer and original failure, and do not substitute batch
+timing. Then measure the sixteen predeclared fresh holdouts and both five-pair
+77-cell primary blocks. The goal remains active. Artifacts/raw evidence are
+in `target/two-fe-broad-20260920`. The legacy root controller is intentionally
+unversioned and will now fail preflight; use a fresh measurement directory
+with `--artifacts` pointing to that root. The repaired, manifest-checked root
+is `target/two-fe-broad-20260920/onefe-controller-repair`. Preserve unrelated
+dirt. No installed package, remote state or qualification changed.
+
 ## Broad two-way OLS milestone: useful narrow pilot — 2026-09-20
 
 The [useful-pilot report](benchmarks/reports/development/two-fe-useful-pilot-local-2026-09-20/README.md) records 232 successful application calls,

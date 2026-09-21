@@ -1,0 +1,1040 @@
+[
+  {
+    "finite_score_per_observation": 1.7016557475074374e-16,
+    "group_residual_mean_max": [
+      1.7763568394002505e-15,
+      1.8214639865843374e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.1649348980190553e-15,
+      4.440892098500626e-16,
+      2.220446049250313e-15
+    ],
+    "run": "broad-native-controls-c004-iid_outputs-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7016557475074374e-16,
+    "group_residual_mean_max": [
+      1.7763568394002505e-15,
+      1.8214639865843374e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.1649348980190553e-15,
+      4.440892098500626e-16,
+      2.220446049250313e-15
+    ],
+    "run": "broad-native-controls-c004-iid_outputs-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7016557475074374e-16,
+    "group_residual_mean_max": [
+      1.7763568394002505e-15,
+      1.8214639865843374e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.1649348980190553e-15,
+      4.440892098500626e-16,
+      2.220446049250313e-15
+    ],
+    "run": "broad-native-controls-c004-iid_outputs-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.2234841156693773e-16,
+    "group_residual_mean_max": [
+      1.7486012637846216e-15,
+      1.2818002064489014e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.3314683517128287e-15,
+      1.3322676295501878e-15,
+      2.220446049250313e-15
+    ],
+    "run": "broad-native-controls-c009-iid_outputs-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.2234841156693773e-16,
+    "group_residual_mean_max": [
+      1.7486012637846216e-15,
+      1.2818002064489014e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.3314683517128287e-15,
+      1.3322676295501878e-15,
+      2.220446049250313e-15
+    ],
+    "run": "broad-native-controls-c009-iid_outputs-n983040-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.2234841156693773e-16,
+    "group_residual_mean_max": [
+      1.7486012637846216e-15,
+      1.2818002064489014e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.3314683517128287e-15,
+      1.3322676295501878e-15,
+      2.220446049250313e-15
+    ],
+    "run": "broad-native-controls-c009-iid_outputs-n983040-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.4205528605976431e-16,
+    "group_residual_mean_max": [
+      3.5185529703504962e-15,
+      2.10698212349536e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.884981308350689e-15,
+      4.440892098500626e-15,
+      4.9960036108132044e-15
+    ],
+    "run": "broad-native-controls-c014-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.4205528605976431e-16,
+    "group_residual_mean_max": [
+      3.5185529703504962e-15,
+      2.10698212349536e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.884981308350689e-15,
+      4.440892098500626e-15,
+      4.9960036108132044e-15
+    ],
+    "run": "broad-native-controls-c014-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.4205528605976431e-16,
+    "group_residual_mean_max": [
+      3.5185529703504962e-15,
+      2.10698212349536e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.884981308350689e-15,
+      4.440892098500626e-15,
+      4.9960036108132044e-15
+    ],
+    "run": "broad-native-controls-c014-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.9154238380577246e-16,
+    "group_residual_mean_max": [
+      1.2878587085651815e-15,
+      1.0264011862659572e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c015-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.9154238380577246e-16,
+    "group_residual_mean_max": [
+      1.2878587085651815e-15,
+      1.0264011862659572e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c015-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.9154238380577246e-16,
+    "group_residual_mean_max": [
+      1.2878587085651815e-15,
+      1.0264011862659572e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c015-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.299572852798861e-15,
+    "group_residual_mean_max": [
+      2.1138139226262676e-12,
+      1.2826026634228152e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c016-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.299572852798861e-15,
+    "group_residual_mean_max": [
+      2.1138139226262676e-12,
+      1.2826026634228152e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c016-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.299572852798861e-15,
+    "group_residual_mean_max": [
+      2.1138139226262676e-12,
+      1.2826026634228152e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c016-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.3106564349730565e-14,
+    "group_residual_mean_max": [
+      1.4102839214435784e-11,
+      2.0252851406938707e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c017-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.3106564349730565e-14,
+    "group_residual_mean_max": [
+      1.4102839214435784e-11,
+      2.0252851406938707e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c017-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.3106564349730565e-14,
+    "group_residual_mean_max": [
+      1.4102839214435784e-11,
+      2.0252851406938707e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c017-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.9154238380577246e-16,
+    "group_residual_mean_max": [
+      1.2878587085651815e-15,
+      1.0264011862659572e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c018-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.9154238380577246e-16,
+    "group_residual_mean_max": [
+      1.2878587085651815e-15,
+      1.0264011862659572e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c018-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.9154238380577246e-16,
+    "group_residual_mean_max": [
+      1.2878587085651815e-15,
+      1.0264011862659572e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c018-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.299572852798861e-15,
+    "group_residual_mean_max": [
+      2.1138139226262676e-12,
+      1.2826026634228152e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c019-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.299572852798861e-15,
+    "group_residual_mean_max": [
+      2.1138139226262676e-12,
+      1.2826026634228152e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c019-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.299572852798861e-15,
+    "group_residual_mean_max": [
+      2.1138139226262676e-12,
+      1.2826026634228152e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c019-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.3106564349730565e-14,
+    "group_residual_mean_max": [
+      1.4102839214435784e-11,
+      2.0252851406938707e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c020-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.3106564349730565e-14,
+    "group_residual_mean_max": [
+      1.4102839214435784e-11,
+      2.0252851406938707e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c020-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.3106564349730565e-14,
+    "group_residual_mean_max": [
+      1.4102839214435784e-11,
+      2.0252851406938707e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c020-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.441844329116056e-16,
+    "group_residual_mean_max": [
+      3.1530333899354444e-15,
+      1.0024203689340538e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c021-robust_saved-n245760-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.441844329116056e-16,
+    "group_residual_mean_max": [
+      3.1530333899354444e-15,
+      1.0024203689340538e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c021-robust_saved-n245760-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.441844329116056e-16,
+    "group_residual_mean_max": [
+      3.1530333899354444e-15,
+      1.0024203689340538e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c021-robust_saved-n245760-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.266654729989376e-15,
+    "group_residual_mean_max": [
+      2.47202546571623e-12,
+      7.988321037009309e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c022-robust_saved-n245760-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.266654729989376e-15,
+    "group_residual_mean_max": [
+      2.47202546571623e-12,
+      7.988321037009309e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c022-robust_saved-n245760-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.266654729989376e-15,
+    "group_residual_mean_max": [
+      2.47202546571623e-12,
+      7.988321037009309e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c022-robust_saved-n245760-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.6314347921149572e-14,
+    "group_residual_mean_max": [
+      1.60388761713895e-11,
+      8.427652716804126e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c023-robust_saved-n245760-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.6314347921149572e-14,
+    "group_residual_mean_max": [
+      1.60388761713895e-11,
+      8.427652716804126e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c023-robust_saved-n245760-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.6314347921149572e-14,
+    "group_residual_mean_max": [
+      1.60388761713895e-11,
+      8.427652716804126e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c023-robust_saved-n245760-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.441844329116056e-16,
+    "group_residual_mean_max": [
+      3.1530333899354444e-15,
+      1.0024203689340538e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c024-robust_saved-n245760-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.441844329116056e-16,
+    "group_residual_mean_max": [
+      3.1530333899354444e-15,
+      1.0024203689340538e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c024-robust_saved-n245760-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.441844329116056e-16,
+    "group_residual_mean_max": [
+      3.1530333899354444e-15,
+      1.0024203689340538e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c024-robust_saved-n245760-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.266654729989376e-15,
+    "group_residual_mean_max": [
+      2.47202546571623e-12,
+      7.988321037009309e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c025-robust_saved-n245760-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.266654729989376e-15,
+    "group_residual_mean_max": [
+      2.47202546571623e-12,
+      7.988321037009309e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c025-robust_saved-n245760-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.266654729989376e-15,
+    "group_residual_mean_max": [
+      2.47202546571623e-12,
+      7.988321037009309e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c025-robust_saved-n245760-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.6314347921149572e-14,
+    "group_residual_mean_max": [
+      1.60388761713895e-11,
+      8.427652716804126e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c026-robust_saved-n245760-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.6314347921149572e-14,
+    "group_residual_mean_max": [
+      1.60388761713895e-11,
+      8.427652716804126e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c026-robust_saved-n245760-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.6314347921149572e-14,
+    "group_residual_mean_max": [
+      1.60388761713895e-11,
+      8.427652716804126e-12
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c026-robust_saved-n245760-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.0183970233898682e-14,
+    "group_residual_mean_max": [
+      4.3962370242571e-11,
+      1.24850102466162e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c027-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.0183970233898682e-14,
+    "group_residual_mean_max": [
+      4.3962370242571e-11,
+      1.24850102466162e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c027-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.0183970233898682e-14,
+    "group_residual_mean_max": [
+      4.3962370242571e-11,
+      1.24850102466162e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c027-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.0183970233898682e-14,
+    "group_residual_mean_max": [
+      4.3962370242571e-11,
+      1.24850102466162e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c028-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.0183970233898682e-14,
+    "group_residual_mean_max": [
+      4.3962370242571e-11,
+      1.24850102466162e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c028-robust_saved-n245760-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.0183970233898682e-14,
+    "group_residual_mean_max": [
+      4.3962370242571e-11,
+      1.24850102466162e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c028-robust_saved-n245760-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.183424439777806e-14,
+    "group_residual_mean_max": [
+      3.3050870318298515e-11,
+      1.3356759215836411e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c029-robust_saved-n245760-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.183424439777806e-14,
+    "group_residual_mean_max": [
+      3.3050870318298515e-11,
+      1.3356759215836411e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c029-robust_saved-n245760-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.183424439777806e-14,
+    "group_residual_mean_max": [
+      3.3050870318298515e-11,
+      1.3356759215836411e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c029-robust_saved-n245760-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.183424439777806e-14,
+    "group_residual_mean_max": [
+      3.3050870318298515e-11,
+      1.3356759215836411e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c030-robust_saved-n245760-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.183424439777806e-14,
+    "group_residual_mean_max": [
+      3.3050870318298515e-11,
+      1.3356759215836411e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c030-robust_saved-n245760-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.183424439777806e-14,
+    "group_residual_mean_max": [
+      3.3050870318298515e-11,
+      1.3356759215836411e-11
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c030-robust_saved-n245760-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0024966967669968e-15,
+    "group_residual_mean_max": [
+      7.385203559806542e-14,
+      8.7134207053548e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.0488832025146166e-13,
+      8.881784197001252e-16,
+      1.0480505352461478e-13
+    ],
+    "run": "broad-native-controls-c063-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0024966967669968e-15,
+    "group_residual_mean_max": [
+      7.385203559806542e-14,
+      8.7134207053548e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.0488832025146166e-13,
+      8.881784197001252e-16,
+      1.0480505352461478e-13
+    ],
+    "run": "broad-native-controls-c063-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0024966967669968e-15,
+    "group_residual_mean_max": [
+      7.385203559806542e-14,
+      8.7134207053548e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.0488832025146166e-13,
+      8.881784197001252e-16,
+      1.0480505352461478e-13
+    ],
+    "run": "broad-native-controls-c063-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 9.992936480530655e-16,
+    "group_residual_mean_max": [
+      9.758860386455126e-14,
+      7.298252179733e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.4654943925052066e-13,
+      8.881784197001252e-16,
+      1.4654943925052066e-13
+    ],
+    "run": "broad-native-controls-c064-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 9.992936480530655e-16,
+    "group_residual_mean_max": [
+      9.758860386455126e-14,
+      7.298252179733e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.4654943925052066e-13,
+      8.881784197001252e-16,
+      1.4654943925052066e-13
+    ],
+    "run": "broad-native-controls-c064-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 9.992936480530655e-16,
+    "group_residual_mean_max": [
+      9.758860386455126e-14,
+      7.298252179733e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.4654943925052066e-13,
+      8.881784197001252e-16,
+      1.4654943925052066e-13
+    ],
+    "run": "broad-native-controls-c064-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.8536201179818477e-15,
+    "group_residual_mean_max": [
+      1.1032286195700181e-13,
+      9.001163672781001e-14
+    ],
+    "output_reconstruction_max_errors": [
+      2.0017321133991572e-13,
+      2.6645352591003757e-15,
+      2.0028423364237824e-13
+    ],
+    "run": "broad-native-controls-c065-iid_outputs-n61440-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.8536201179818477e-15,
+    "group_residual_mean_max": [
+      1.1032286195700181e-13,
+      9.001163672781001e-14
+    ],
+    "output_reconstruction_max_errors": [
+      2.0017321133991572e-13,
+      2.6645352591003757e-15,
+      2.0028423364237824e-13
+    ],
+    "run": "broad-native-controls-c065-iid_outputs-n61440-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.8536201179818477e-15,
+    "group_residual_mean_max": [
+      1.1032286195700181e-13,
+      9.001163672781001e-14
+    ],
+    "output_reconstruction_max_errors": [
+      2.0017321133991572e-13,
+      2.6645352591003757e-15,
+      2.0028423364237824e-13
+    ],
+    "run": "broad-native-controls-c065-iid_outputs-n61440-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.273021943670631e-15,
+    "group_residual_mean_max": [
+      1.0159774256458654e-13,
+      5.706125807548826e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.372790769949006e-13,
+      3.552713678800501e-15,
+      1.3733458814613186e-13
+    ],
+    "run": "broad-native-controls-c066-iid_outputs-n61440-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.273021943670631e-15,
+    "group_residual_mean_max": [
+      1.0159774256458654e-13,
+      5.706125807548826e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.372790769949006e-13,
+      3.552713678800501e-15,
+      1.3733458814613186e-13
+    ],
+    "run": "broad-native-controls-c066-iid_outputs-n61440-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.273021943670631e-15,
+    "group_residual_mean_max": [
+      1.0159774256458654e-13,
+      5.706125807548826e-14
+    ],
+    "output_reconstruction_max_errors": [
+      1.372790769949006e-13,
+      3.552713678800501e-15,
+      1.3733458814613186e-13
+    ],
+    "run": "broad-native-controls-c066-iid_outputs-n61440-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c097-iid_saved-n983040-k10-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c097-iid_saved-n983040-k10-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c097-iid_saved-n983040-k10-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c098-cluster_fe_saved-n983040-k10-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c098-cluster_fe_saved-n983040-k10-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c098-cluster_fe_saved-n983040-k10-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c099-cluster2_saved-n983040-k10-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c099-cluster2_saved-n983040-k10-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c099-cluster2_saved-n983040-k10-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.886579864025407e-15,
+      1.3322676295501878e-15,
+      2.886579864025407e-15
+    ],
+    "run": "broad-native-controls-c100-iid_outputs-n983040-k10-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.886579864025407e-15,
+      1.3322676295501878e-15,
+      2.886579864025407e-15
+    ],
+    "run": "broad-native-controls-c100-iid_outputs-n983040-k10-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.8449381081135576e-17,
+    "group_residual_mean_max": [
+      1.7985612998927535e-15,
+      1.8841110205649258e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.886579864025407e-15,
+      1.3322676295501878e-15,
+      2.886579864025407e-15
+    ],
+    "run": "broad-native-controls-c100-iid_outputs-n983040-k10-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c107-iid_saved-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c107-iid_saved-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c107-iid_saved-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c108-cluster_fe_saved-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c108-cluster_fe_saved-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c108-cluster_fe_saved-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c109-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c109-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-native-controls-c109-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": [
+      5.551115123125783e-15,
+      3.9968028886505635e-15,
+      5.551115123125783e-15
+    ],
+    "run": "broad-native-controls-c110-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": [
+      5.551115123125783e-15,
+      3.9968028886505635e-15,
+      5.551115123125783e-15
+    ],
+    "run": "broad-native-controls-c110-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.7063896592025191e-16,
+    "group_residual_mean_max": [
+      3.508304757815495e-15,
+      2.60121345433672e-13
+    ],
+    "output_reconstruction_max_errors": [
+      5.551115123125783e-15,
+      3.9968028886505635e-15,
+      5.551115123125783e-15
+    ],
+    "run": "broad-native-controls-c110-iid_outputs-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  }
+]

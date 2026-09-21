@@ -14,6 +14,9 @@ def audit(root, label, variant):
         cell = result['cell']
         if cell.get('outputs','none') == 'none':
             continue
+        effects = cell['effects']
+        assert effects in (['g1'], ['g1', 'g2']), effects
+        effect_count = len(effects)
         assert result['status']=='pass' and result['arm']=='fereg'
         run = result_path.parent
         request = json.loads((run/'request.json').read_text())
@@ -32,13 +35,15 @@ def audit(root, label, variant):
         for j in range(k):
             xb += columns[f'x{j+1}']*b[j]
         mode = cell['outputs']
-        outputs = np.fromfile(run/'outputs.bin',dtype='<f8').reshape(5 if mode=='all' else 2,n)
+        outputs = np.fromfile(run/'outputs.bin',dtype='<f8').reshape(effect_count + (3 if mode=='all' else 0),n)
         assert np.isfinite(outputs).all()
-        prediction = xb + outputs[0] + outputs[1]
+        prediction = xb.copy()
+        for values in outputs[:effect_count]:
+            prediction += values
         residual = columns['y']-prediction
         weighted_residual = weight*residual
         group_means = []
-        for effect,values in zip(('g1','g2'),outputs[:2]):
+        for effect,values in zip(effects,outputs[:effect_count]):
             _, first, codes = np.unique(columns[effect],return_index=True,return_inverse=True)
             np.testing.assert_array_equal(values,values[first][codes])
             counts = np.bincount(codes,weights=weight)
@@ -48,9 +53,10 @@ def audit(root, label, variant):
         assert max(group_means)<1e-9 and finite_score<1e-9
         assert abs(float(weighted_residual.sum()/total_weight))<1e-9
         assert abs(float(np.average(outputs[0],weights=weight)))<1e-9
-        _, components = np.unique(columns['component'],return_inverse=True)
-        centers = np.bincount(components,weights=weight*outputs[1])/np.bincount(components,weights=weight)
-        assert np.max(np.abs(centers))<1e-9
+        if effect_count == 2:
+            _, components = np.unique(columns['component'],return_inverse=True)
+            centers = np.bincount(components,weights=weight*outputs[1])/np.bincount(components,weights=weight)
+            assert np.max(np.abs(centers))<1e-9
         rss = float(residual@weighted_residual)
         if weight_kind in ('aw','pw'):
             rss *= n/total_weight
@@ -58,8 +64,8 @@ def audit(root, label, variant):
         errors = None
         if mode=='all':
             expected = np.array([residual,xb,prediction])
-            np.testing.assert_allclose(outputs[2:],expected,rtol=1e-7,atol=1e-9)
-            errors = np.max(np.abs(outputs[2:]-expected),axis=1).tolist()
+            np.testing.assert_allclose(outputs[effect_count:],expected,rtol=1e-7,atol=1e-9)
+            errors = np.max(np.abs(outputs[effect_count:]-expected),axis=1).tolist()
         records.append(dict(run=run.name,status='pass',group_residual_mean_max=group_means,
                             finite_score_per_observation=finite_score,
                             output_reconstruction_max_errors=errors))

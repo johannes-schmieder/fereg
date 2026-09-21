@@ -1,0 +1,39 @@
+--- original-controller/stata_worker.do
++++ repaired-controller/stata_worker.do
+@@ -15,7 +15,7 @@
+ adopath ++ `"`source'/dist"'
+ global GTOOLS_BETA "I KNOW WHAT I AM DOING"
+ local xvars
+-forvalues j = 1/`k' {
++forvalues j = 1(1)`k' {
+     local xvars `xvars' x`j'
+ }
+ local effects
+@@ -173,14 +173,15 @@
+         restore
+     }
+     if "`breadth_outputs'" != "none" {
+-        local outputvars out_fe1 out_fe2
+-        if "`breadth_outputs'" == "all" local outputvars out_fe1 out_fe2 out_resid out_xb out_xbd
++        local outputvars out_fe1
++        if `dimensions' == 2 local outputvars `outputvars' out_fe2
++        if "`breadth_outputs'" == "all" local outputvars `outputvars' out_resid out_xb out_xbd
+         mata: __sb_export_input(st_local("output") + "/outputs.bin", tokens(st_local("outputvars")))
+     }
+     tempname values
+     file open `values' using `"`output'/coefficients.csv"', write text replace
+     file write `values' "name,value,se" _n
+-    forvalues j = 1/`k' {
++    forvalues j = 1(1)`k' {
+         local b = __sb_b[1,`j']
+         if `vcov_available' local se = sqrt(__sb_V[`j',`j'])
+         else local se = __sb_se[1,`j']
+@@ -190,7 +191,7 @@
+     if `vcov_available' {
+         file open `values' using `"`output'/covariance.csv"', write text replace
+         file write `values' "row,column,value" _n
+-        forvalues j = 1/`k' {
++        forvalues j = 1(1)`k' {
+             forvalues h = 1/`k' {
+                 file write `values' "x`j',x`h'," %24.17g (__sb_V[`j',`h']) _n
+             }

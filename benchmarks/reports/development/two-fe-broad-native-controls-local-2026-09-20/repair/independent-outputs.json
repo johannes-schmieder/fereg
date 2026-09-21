@@ -1,0 +1,326 @@
+[
+  {
+    "finite_score_per_observation": 4.17779237131081e-17,
+    "group_residual_mean_max": [
+      5.329070518200751e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c000-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.17779237131081e-17,
+    "group_residual_mean_max": [
+      5.329070518200751e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c000-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 4.17779237131081e-17,
+    "group_residual_mean_max": [
+      5.329070518200751e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c000-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.1695268257851934e-16,
+    "group_residual_mean_max": [
+      7.956598343146956e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c001-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.1695268257851934e-16,
+    "group_residual_mean_max": [
+      7.956598343146956e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c001-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.1695268257851934e-16,
+    "group_residual_mean_max": [
+      7.956598343146956e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c001-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.1695268257851934e-16,
+    "group_residual_mean_max": [
+      7.956598343146956e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c002-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.1695268257851934e-16,
+    "group_residual_mean_max": [
+      7.956598343146956e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c002-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.1695268257851934e-16,
+    "group_residual_mean_max": [
+      7.956598343146956e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c002-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.1695268257851934e-16,
+    "group_residual_mean_max": [
+      7.956598343146956e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c003-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.1695268257851934e-16,
+    "group_residual_mean_max": [
+      7.956598343146956e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c003-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.1695268257851934e-16,
+    "group_residual_mean_max": [
+      7.956598343146956e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c003-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 7.742649114443149e-17,
+    "group_residual_mean_max": [
+      7.549516567451064e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c004-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 7.742649114443149e-17,
+    "group_residual_mean_max": [
+      7.549516567451064e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c004-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 7.742649114443149e-17,
+    "group_residual_mean_max": [
+      7.549516567451064e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c004-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.6418876439806635e-16,
+    "group_residual_mean_max": [
+      7.670631806501082e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c005-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.6418876439806635e-16,
+    "group_residual_mean_max": [
+      7.670631806501082e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c005-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.6418876439806635e-16,
+    "group_residual_mean_max": [
+      7.670631806501082e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c005-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.6418876439806635e-16,
+    "group_residual_mean_max": [
+      7.670631806501082e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c006-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.6418876439806635e-16,
+    "group_residual_mean_max": [
+      7.670631806501082e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c006-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.6418876439806635e-16,
+    "group_residual_mean_max": [
+      7.670631806501082e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c006-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.6418876439806635e-16,
+    "group_residual_mean_max": [
+      7.670631806501082e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c007-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.6418876439806635e-16,
+    "group_residual_mean_max": [
+      7.670631806501082e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c007-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.6418876439806635e-16,
+    "group_residual_mean_max": [
+      7.670631806501082e-16
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c007-cluster2_saved-n983040-k6-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.8185684439823527e-16,
+    "group_residual_mean_max": [
+      1.1546319456101628e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c008-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.8185684439823527e-16,
+    "group_residual_mean_max": [
+      1.1546319456101628e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c008-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.8185684439823527e-16,
+    "group_residual_mean_max": [
+      1.1546319456101628e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c008-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0546178267466217e-16,
+    "group_residual_mean_max": [
+      1.4176694006752e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c009-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0546178267466217e-16,
+    "group_residual_mean_max": [
+      1.4176694006752e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c009-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0546178267466217e-16,
+    "group_residual_mean_max": [
+      1.4176694006752e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c009-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0546178267466217e-16,
+    "group_residual_mean_max": [
+      1.4176694006752e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c010-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0546178267466217e-16,
+    "group_residual_mean_max": [
+      1.4176694006752e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c010-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0546178267466217e-16,
+    "group_residual_mean_max": [
+      1.4176694006752e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c010-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0546178267466217e-16,
+    "group_residual_mean_max": [
+      1.4176694006752e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c011-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0546178267466217e-16,
+    "group_residual_mean_max": [
+      1.4176694006752e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c011-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.0546178267466217e-16,
+    "group_residual_mean_max": [
+      1.4176694006752e-15
+    ],
+    "output_reconstruction_max_errors": null,
+    "run": "broad-onefe-repair-c011-cluster2_saved-n983040-k50-s8675309-shuffle0-t16-r3-usefulpilot",
+    "status": "pass"
+  }
+]

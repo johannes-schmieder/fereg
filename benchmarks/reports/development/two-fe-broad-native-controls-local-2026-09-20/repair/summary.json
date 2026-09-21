@@ -1,0 +1,732 @@
+[
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 1,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "broad-onefe-repair-c000",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.023465833,
+        "maximum_seconds": 0.205,
+        "minimum_seconds": 0.201,
+        "native_allocation_peak_bytes": 120548270,
+        "native_seconds": 0.15173579199999998,
+        "outer_seconds": 0.02809758299999998,
+        "peak_rss_gib": 0.2901153564453125,
+        "seconds": 0.204
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.020524124999999997,
+        "maximum_seconds": 0.189,
+        "minimum_seconds": 0.184,
+        "native_allocation_peak_bytes": 120548342,
+        "native_seconds": 0.141768833,
+        "outer_seconds": 0.025718958000000014,
+        "peak_rss_gib": 0.24468994140625,
+        "seconds": 0.189
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 1,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "broad-onefe-repair-c001",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.027400583,
+        "maximum_seconds": 0.291,
+        "minimum_seconds": 0.287,
+        "native_allocation_peak_bytes": 128412962,
+        "native_seconds": 0.23214983400000003,
+        "outer_seconds": 0.028178999999999954,
+        "peak_rss_gib": 0.297943115234375,
+        "seconds": 0.288
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.024453875,
+        "maximum_seconds": 0.256,
+        "minimum_seconds": 0.254,
+        "native_allocation_peak_bytes": 128412962,
+        "native_seconds": 0.203131542,
+        "outer_seconds": 0.027733667000000017,
+        "peak_rss_gib": 0.28350830078125,
+        "seconds": 0.256
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 1,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "series": "broad-onefe-repair-c002",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.027473583,
+        "maximum_seconds": 0.29,
+        "minimum_seconds": 0.285,
+        "native_allocation_peak_bytes": 128412962,
+        "native_seconds": 0.230158292,
+        "outer_seconds": 0.02792462499999998,
+        "peak_rss_gib": 0.308258056640625,
+        "seconds": 0.286
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.024416584,
+        "maximum_seconds": 0.261,
+        "minimum_seconds": 0.256,
+        "native_allocation_peak_bytes": 128412962,
+        "native_seconds": 0.20556349999999998,
+        "outer_seconds": 0.027767708000000002,
+        "peak_rss_gib": 0.2876739501953125,
+        "seconds": 0.257
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 1,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[fw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "series": "broad-onefe-repair-c003",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.027487459,
+        "maximum_seconds": 0.297,
+        "minimum_seconds": 0.292,
+        "native_allocation_peak_bytes": 128412962,
+        "native_seconds": 0.240339292,
+        "outer_seconds": 0.028135542000000013,
+        "peak_rss_gib": 0.3003082275390625,
+        "seconds": 0.295
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.024648333,
+        "maximum_seconds": 0.262,
+        "minimum_seconds": 0.261,
+        "native_allocation_peak_bytes": 128412962,
+        "native_seconds": 0.20828866599999998,
+        "outer_seconds": 0.028170709000000016,
+        "peak_rss_gib": 0.290313720703125,
+        "seconds": 0.261
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "broad-onefe-repair-c004",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.040235958,
+        "maximum_seconds": 0.321,
+        "minimum_seconds": 0.314,
+        "native_allocation_peak_bytes": 217967734,
+        "native_seconds": 0.2501995,
+        "outer_seconds": 0.026115041999999977,
+        "peak_rss_gib": 0.42840576171875,
+        "seconds": 0.318
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.040540792,
+        "maximum_seconds": 0.298,
+        "minimum_seconds": 0.292,
+        "native_allocation_peak_bytes": 217967734,
+        "native_seconds": 0.22428991599999998,
+        "outer_seconds": 0.026954166,
+        "peak_rss_gib": 0.4312591552734375,
+        "seconds": 0.294
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "broad-onefe-repair-c005",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.051273833,
+        "maximum_seconds": 0.413,
+        "minimum_seconds": 0.407,
+        "native_allocation_peak_bytes": 225832426,
+        "native_seconds": 0.33821625,
+        "outer_seconds": 0.017329249999999963,
+        "peak_rss_gib": 0.396392822265625,
+        "seconds": 0.407
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.044798125,
+        "maximum_seconds": 0.361,
+        "minimum_seconds": 0.354,
+        "native_allocation_peak_bytes": 225832426,
+        "native_seconds": 0.29803195800000004,
+        "outer_seconds": 0.016861041999999993,
+        "peak_rss_gib": 0.396331787109375,
+        "seconds": 0.36
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "series": "broad-onefe-repair-c006",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.051103458000000004,
+        "maximum_seconds": 0.42,
+        "minimum_seconds": 0.404,
+        "native_allocation_peak_bytes": 225832426,
+        "native_seconds": 0.34978349999999997,
+        "outer_seconds": 0.017206,
+        "peak_rss_gib": 0.3922882080078125,
+        "seconds": 0.418
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.045540167,
+        "maximum_seconds": 0.361,
+        "minimum_seconds": 0.358,
+        "native_allocation_peak_bytes": 225832426,
+        "native_seconds": 0.29558895900000004,
+        "outer_seconds": 0.016904874999999986,
+        "peak_rss_gib": 0.3935394287109375,
+        "seconds": 0.359
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[fw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "series": "broad-onefe-repair-c007",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.051214667,
+        "maximum_seconds": 0.458,
+        "minimum_seconds": 0.411,
+        "native_allocation_peak_bytes": 225832426,
+        "native_seconds": 0.348397083,
+        "outer_seconds": 0.01791262499999996,
+        "peak_rss_gib": 0.3949127197265625,
+        "seconds": 0.417
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.044337958,
+        "maximum_seconds": 0.363,
+        "minimum_seconds": 0.357,
+        "native_allocation_peak_bytes": 225832426,
+        "native_seconds": 0.300800542,
+        "outer_seconds": 0.017540749999999994,
+        "peak_rss_gib": 0.3981781005859375,
+        "seconds": 0.363
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "broad-onefe-repair-c008",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.222789667,
+        "maximum_seconds": 0.607,
+        "minimum_seconds": 0.597,
+        "native_allocation_peak_bytes": 956542690,
+        "native_seconds": 0.316705875,
+        "outer_seconds": 0.05925349999999996,
+        "peak_rss_gib": 1.460723876953125,
+        "seconds": 0.598
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.222578209,
+        "maximum_seconds": 0.6,
+        "minimum_seconds": 0.593,
+        "native_allocation_peak_bytes": 956542690,
+        "native_seconds": 0.31999812499999997,
+        "outer_seconds": 0.05194779199999999,
+        "peak_rss_gib": 1.4621429443359375,
+        "seconds": 0.595
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "broad-onefe-repair-c009",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.286067875,
+        "maximum_seconds": 0.7969999999999999,
+        "minimum_seconds": 0.775,
+        "native_allocation_peak_bytes": 964407382,
+        "native_seconds": 0.442716042,
+        "outer_seconds": 0.05900987499999988,
+        "peak_rss_gib": 1.475982666015625,
+        "seconds": 0.787
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.225899875,
+        "maximum_seconds": 0.706,
+        "minimum_seconds": 0.6890000000000001,
+        "native_allocation_peak_bytes": 964407382,
+        "native_seconds": 0.4151221250000001,
+        "outer_seconds": 0.055752041000000085,
+        "peak_rss_gib": 1.48565673828125,
+        "seconds": 0.694
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "series": "broad-onefe-repair-c010",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.284941667,
+        "maximum_seconds": 0.789,
+        "minimum_seconds": 0.783,
+        "native_allocation_peak_bytes": 964407382,
+        "native_seconds": 0.4460191249999999,
+        "outer_seconds": 0.051301709000000084,
+        "peak_rss_gib": 1.479034423828125,
+        "seconds": 0.786
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.22663191600000002,
+        "maximum_seconds": 0.7010000000000001,
+        "minimum_seconds": 0.6859999999999999,
+        "native_allocation_peak_bytes": 964407382,
+        "native_seconds": 0.410063042,
+        "outer_seconds": 0.05777333299999998,
+        "peak_rss_gib": 1.485137939453125,
+        "seconds": 0.69
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1",
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "~c1+c2",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[fw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "series": "broad-onefe-repair-c011",
+    "variants": {
+      "baseline": {
+        "calls": 3,
+        "input_seconds": 0.2843425,
+        "maximum_seconds": 0.796,
+        "minimum_seconds": 0.779,
+        "native_allocation_peak_bytes": 964407382,
+        "native_seconds": 0.4500999170000001,
+        "outer_seconds": 0.05138516599999998,
+        "peak_rss_gib": 1.4775543212890625,
+        "seconds": 0.787
+      },
+      "usefulpilot": {
+        "calls": 3,
+        "input_seconds": 0.226894667,
+        "maximum_seconds": 0.702,
+        "minimum_seconds": 0.6930000000000001,
+        "native_allocation_peak_bytes": 964407382,
+        "native_seconds": 0.4099542909999999,
+        "outer_seconds": 0.06051866699999997,
+        "peak_rss_gib": 1.48187255859375,
+        "seconds": 0.6990000000000001
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 7680,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "small-aw-confirm",
+    "variants": {
+      "baseline": {
+        "calls": 5,
+        "input_seconds": 0.00107275,
+        "maximum_seconds": 0.017,
+        "minimum_seconds": 0.016,
+        "native_allocation_peak_bytes": 3375456,
+        "native_seconds": 0.008691625,
+        "outer_seconds": 0.006261042,
+        "peak_rss_gib": 0.0610504150390625,
+        "seconds": 0.016
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "input_seconds": 0.001018167,
+        "maximum_seconds": 0.017,
+        "minimum_seconds": 0.016,
+        "native_allocation_peak_bytes": 3375456,
+        "native_seconds": 0.009002125,
+        "outer_seconds": 0.006767041000000001,
+        "peak_rss_gib": 0.0609588623046875,
+        "seconds": 0.017
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 7680,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "small-aw-batch-diagnostic",
+    "variants": {
+      "baseline": {
+        "calls": 5,
+        "input_seconds": 0.000628584,
+        "maximum_seconds": 0.253,
+        "minimum_seconds": 0.248,
+        "native_allocation_peak_bytes": 3375456,
+        "native_seconds": 0.008919625,
+        "outer_seconds": 0.241125958,
+        "peak_rss_gib": 0.06524658203125,
+        "seconds": 0.25
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "input_seconds": 0.000587917,
+        "maximum_seconds": 0.254,
+        "minimum_seconds": 0.247,
+        "native_allocation_peak_bytes": 3375456,
+        "native_seconds": 0.008077625000000001,
+        "outer_seconds": 0.239776042,
+        "peak_rss_gib": 0.0653839111328125,
+        "seconds": 0.249
+      }
+    }
+  }
+]

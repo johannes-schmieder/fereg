@@ -1,0 +1,18 @@
+[
+  {
+    "fixture": "development/ols_narrow_weighted_schur.do",
+    "sha256": "255ebb7da58a0d21fb4c18ecd09e3e640d055634951489989b57741b3e03ff76",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|ols_narrow_weighted_schur|rc=0",
+    "terminal_sentinel": true
+  },
+  {
+    "fixture": "development/ols_native_input.do",
+    "sha256": "06382ca0558cddcf42c75f1b63c866e90b92853a8bd4a2d29a292ff44e9212e1",
+    "status": "pass",
+    "process_returncode": 0,
+    "fixture_sentinel": "END_FIXTURE|ols_native_input|rc=0",
+    "terminal_sentinel": true
+  }
+]

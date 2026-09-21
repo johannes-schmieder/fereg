@@ -1,0 +1,12 @@
+{
+  "attempted": 111,
+  "comparisons": {
+    "incomplete": 12,
+    "pass": 99
+  },
+  "plan_sha256": "5e9a5828bf0c0f9b8b0b02135c1a5ad3c9d22aeb76fb4da43d2355d38b11cade",
+  "planned": 111,
+  "process_failures": 12,
+  "progress_sha256": "3e1d95a1ce8da23618a5731b56e2c70f0e33ab644aa32e1ab75714bed055d4fc",
+  "status": "attempts_complete"
+}
