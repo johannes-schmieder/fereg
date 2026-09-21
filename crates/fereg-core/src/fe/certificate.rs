@@ -314,7 +314,7 @@ fn subtract_projection(values: &mut [f64], direction: &[f64]) {
     }
 }
 
-fn euclidean_norm(values: &[f64]) -> f64 {
+pub(super) fn euclidean_norm(values: &[f64]) -> f64 {
     let mut scale = 0.0_f64;
     let mut scaled_square_sum = 1.0_f64;
     for &value in values {
@@ -327,7 +327,7 @@ fn euclidean_norm(values: &[f64]) -> f64 {
     }
 }
 
-fn update_scaled_sum_of_squares(value: f64, scale: &mut f64, scaled_square_sum: &mut f64) {
+pub(super) fn update_scaled_sum_of_squares(value: f64, scale: &mut f64, scaled_square_sum: &mut f64) {
     let absolute = value.abs();
     if absolute == 0.0 {
         return;

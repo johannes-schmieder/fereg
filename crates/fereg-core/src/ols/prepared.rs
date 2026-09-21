@@ -731,6 +731,18 @@ pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedOlsData> {
+    let (model, sample, early_factor) = prepare_ols_numeric_sample_owned(request, loaded, cluster_sources)?;
+    finish_prepare_with_early_factor(request, cluster_sources, model, sample, true, early_factor)
+}
+
+/// Authoritative metadata and numeric-sample stage, before FE factorization.
+/// Categorical slope preparation may discard synthetic availability categories
+/// only after this stage has classified every continuous slope source.
+pub(crate) fn prepare_ols_numeric_sample_owned(
+    request: &OlsRequestV1,
+    loaded: LoadedOlsInput,
+    cluster_sources: &[SourceId],
+) -> Result<(PreparedOlsModel, PreparedNumericSample, Option<Result<PreparedCategoricalSource>>)> {
     let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
     validate_loaded(request, &loaded)?;
     validate_candidate_categorical_domain(request, &loaded, cluster_sources)?;
@@ -761,7 +773,7 @@ pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
         drop(early_factor.take());
         take_classified_sample(request, loaded, cluster_sources)?
     };
-    finish_prepare_with_early_factor(request, cluster_sources, model, sample, true, early_factor)
+    Ok((model, sample, early_factor))
 }
 
 pub(crate) fn prepare_ols_data_with_cluster_sources(
@@ -839,7 +851,7 @@ fn finish_prepare_ols_data_with_membership(
     finish_prepare_with_early_factor(request, cluster_sources, model, sample, reuse_membership, None)
 }
 
-fn finish_prepare_with_early_factor(
+pub(crate) fn finish_prepare_with_early_factor(
     request: &OlsRequestV1, cluster_sources: &[SourceId], mut model: PreparedOlsModel,
     sample: PreparedNumericSample, reuse_membership: bool,
     early_factor: Option<Result<PreparedCategoricalSource>>,

@@ -21,6 +21,8 @@ mod partition_validation;
 mod projection;
 mod report;
 mod singleton;
+mod single_slope;
+pub(crate) use single_slope::{SingleSlopeAbsorber, SingleSlopeAttempt};
 mod topology_adapter;
 mod topology_finalize;
 mod topology_map;

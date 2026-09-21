@@ -1062,10 +1062,24 @@ pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedCategoricalOlsData> {
-    let plan = plan_categorical_absorbed_request(request)?;
-    let availability = prepare_ols_data_owned_with_cluster_sources(
-        plan.availability_request(), loaded, cluster_sources,
-    )?;
+    let mut plan = plan_categorical_absorbed_request(request)?;
+    let compact_slope_availability = loaded.candidate.len() >= 16_384
+        && request.absorbed_terms.len() == 1 && !request.absorbed_terms[0].slope_sources.is_empty()
+        && request.model.terms.iter().all(|term| term.components.iter().all(|c|
+            c.kind == crate::metadata::ComponentKind::Continuous));
+    let availability = if compact_slope_availability {
+        let (model, sample, early_factor) = crate::ols::prepare_ols_numeric_sample_owned(
+            plan.availability_request(), loaded, cluster_sources)?;
+        // The unchanged sample stage has already validated all sources and
+        // assigned their original drop reasons. With continuous finite terms,
+        // removing temporary categories cannot alter a finite column recipe.
+        drop(early_factor);
+        plan.discard_classified_slope_categories()?;
+        crate::ols::finish_prepare_with_early_factor(
+            plan.availability_request(), cluster_sources, model, sample, true, None)?
+    } else {
+        prepare_ols_data_owned_with_cluster_sources(plan.availability_request(), loaded, cluster_sources)?
+    };
     finish_prepare_categorical_ols_data(request, cluster_sources, false, plan, availability)
 }
 

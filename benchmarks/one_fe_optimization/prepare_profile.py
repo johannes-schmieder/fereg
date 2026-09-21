@@ -16,18 +16,20 @@ def instrument(root):
 
     stamp = "std::time::Instant::now()"
     if "let early_source =" in text:
-        change("pub(crate) fn prepare_ols_data_owned_with_cluster_sources(",
+        extracted = "pub(crate) fn prepare_ols_numeric_sample_owned(" in text
+        marker = "    Ok((model, sample, early_factor))" if extracted else "    finish_prepare_with_early_factor(request, cluster_sources, model, sample, true, early_factor)"
+        change("pub(crate) fn prepare_ols_numeric_sample_owned(" if extracted else "pub(crate) fn prepare_ols_data_owned_with_cluster_sources(",
                "\npub(crate) fn prepare_ols_data_with_cluster_sources(", [
             ("    let model =", f"    let profile_start = {stamp};\n    let model ="),
             ("    let early_source =", f"    let profile_validated = {stamp};\n    let early_source ="),
             ("    let sample = if full {", f"    let profile_classified = {stamp};\n    let sample = if full {{"),
-            ("    finish_prepare_with_early_factor(request, cluster_sources, model, sample, true, early_factor)",
+            (marker,
              "    if std::env::var_os(\"FEREG_PHASE_TIMING\").is_some() {\n"
              "        eprintln!(\"FEREG_PHASE|prepare_input|validate={:.9}|classify_and_factor={:.9}|sample_owner={:.9}\",\n"
              "            profile_validated.duration_since(profile_start).as_secs_f64(),\n"
              "            profile_classified.duration_since(profile_validated).as_secs_f64(),\n"
              "            profile_classified.elapsed().as_secs_f64());\n    }\n"
-             "    finish_prepare_with_early_factor(request, cluster_sources, model, sample, true, early_factor)"),
+             + marker),
         ])
     else:
         change("pub(crate) fn prepare_ols_data_owned_with_cluster_sources(",

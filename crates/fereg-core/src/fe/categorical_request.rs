@@ -66,6 +66,25 @@ impl CategoricalAbsorbRequestPlan {
         &self.availability_request
     }
 
+    /// After complete numeric-sample classification, a continuous-only model
+    /// needs categorical storage only for actual partition sources. Slopes keep
+    /// their fixed-effect missing-value classification from the original plan.
+    pub(crate) fn discard_classified_slope_categories(&mut self) -> Result<()> {
+        if self.availability_request.model.terms.iter().any(|term|
+            term.components.iter().any(|c| c.kind != crate::metadata::ComponentKind::Continuous)) {
+            return Err(invalid("slope availability compaction requires continuous finite terms"));
+        }
+        let requested = &self.requested_effects;
+        let needed = |source: SourceId| requested.iter().any(|effect| effect.sources.contains(&source));
+        self.required_sources.retain(|source| needed(*source));
+        self.availability_request.absorbed_terms.retain(|term| needed(term.categorical_sources[0]));
+        for (index, term) in self.availability_request.absorbed_terms.iter_mut().enumerate() {
+            term.id = AbsorbTermId::new(u32::try_from(index + 1)
+                .map_err(|_| invalid("availability term count exceeds u32"))?)?;
+        }
+        Ok(())
+    }
+
     #[must_use]
     pub fn requested_effects(&self) -> &[CategoricalAbsorbEffectIdentity] {
         &self.requested_effects

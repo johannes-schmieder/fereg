@@ -29,6 +29,28 @@ old findings and memory-proof gaps. Implementation and broader validation remain
 open. Raw local artifacts and baseline identities are in
 `target/ols-next-20260921`; no remote work has run.
 
+The [single-partition slope checkpoint](benchmarks/reports/development/slopes-cache-local-2026-09-21/README.md)
+implements cached rank-aware group geometry, fresh residual certification,
+bounded loading/RHS reuse and removal of discarded slope category encodings
+after sample classification. [ADR 0087](docs/adr/0087-single-partition-ols-slope-geometry.md)
+defines the guarded OLS-only boundary. Final `slope-cache10` plugin
+`854222899e3a66f0c2535071dd64a2773dbcca324cabeb6ec8724d95c400807b`
+matches all eleven working production overlays. Three-pair K10/T1, K10/T16,
+K50/T1 and K50/T16 medians are 128/53/403/143 ms versus fixest 95/60/672/192 ms.
+The serial K10 loss remains. Four final-artifact Stata fixtures, focused
+core/SPI checks and final AW/PW/FW saved-output science pass. The report retains
+332 calls across 26 campaigns and all earlier failures, including the corrected
+raw/normalized-weight norm handoff bug. Native peak allocation increases to
+105.6/373.0 MB for K10/K50, within 1.014/0.891 of current fast estimates; complete
+allocation proof and constrained-memory confirmation remain separate.
+
+Current resume point: checkpoint this fit improvement, refresh the reviewed
+allocation inventories without rewriting old versions, then reduce final
+residual/recovery work. A PW three-slope-only diagnostic attributes 78.3 ms to
+saved-effect recovery. The graph/weight/inference/output matrix, narrow two-FE
+margins, revised auto routing, final repeated blocks and focused Linux runs
+remain open. Fresh validation seeds remain untouched. No push is authorized.
+
 ## Repository cleanup and development push — 2026-09-21
 
 Johannes requested committing and pushing all outstanding work, with cleanup

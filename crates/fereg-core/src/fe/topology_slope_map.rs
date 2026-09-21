@@ -151,6 +151,10 @@ impl<'a> CategoricalAbsorbedEffectView<'a> {
         usize::from(self.intercept) + self.slopes.len()
     }
 
+    pub(crate) fn slope_storage_bytes(&self) -> u128 {
+        self.slopes.capacity() as u128 * std::mem::size_of::<&[f64]>() as u128
+    }
+
     fn basis_value(&self, channel: usize, row: usize, scales: &[f64]) -> f64 {
         if self.intercept {
             if channel == 0 {

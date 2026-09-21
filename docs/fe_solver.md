@@ -124,8 +124,19 @@ identify the route;
 explicit `solver(cg)` keeps its symmetric-MAP/Hestenes contract. Saved-FE OLS
 may use final-target recovery under [ADR 0064](adr/0064-saved-ols-final-target-recovery.md).
 Low-memory, out-of-envelope narrow, higher-dimensional and slope models retain
-their previous routing. One-FE OLS uses its direct initial projection and
+their previous Schur eligibility. One-FE OLS uses its direct initial projection and
 reuses the residual norms from its fresh certificate.
+
+Eligible fast automatic OLS fits with one ordinary slope partition reuse
+fixed-weight group Grams and rank-aware QR certificate bases across the initial
+batch and final residual. The envelope is at least 16,384 rows, at most four
+absorbed channels and 64 RHSs, with admitted construction/projection storage and
+an available certified fallback. Every returned residual gets fresh checks;
+rejection releases the cache and resumes from untouched input, charging attempted
+work. Norm handoff to OLS is limited to unit weights because the generic slope
+projector and OLS use different supplied-weight divisors. Explicit solvers,
+low-memory and shared/PPML projection paths remain separate. See
+[ADR 0087](adr/0087-single-partition-ols-slope-geometry.md).
 
 At 3–8 RHS columns the same-call OLS owner may retain useful full-width pilot
 state under [ADR 0086](adr/0086-useful-narrow-ols-schur-pilot.md). The original

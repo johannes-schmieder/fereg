@@ -239,7 +239,8 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let input_team = (action.candidate_all
         && !action.request.absorbed_terms.is_empty()
         && action.request.absorbed_terms.iter().all(|term| term.intercept
-            && term.categorical_sources.len() == 1 && term.slope_sources.is_empty()))
+            && term.categorical_sources.len() == 1
+            && (term.slope_sources.is_empty() || action.request.absorbed_terms.len() == 1)))
         .then(|| ThreadTeam::new(action.fit.execution.threads));
     let mut loaded_rhs = None;
     let rhs_budget = if action.fit.execution.mode != PreparedOlsExecutionMode::Fast { 0 } else { action.memory_plan.usable_bytes.map_or(usize::MAX, |usable| {
@@ -1749,7 +1750,8 @@ fn load_ols_input_with_team(
                     && (min_numeric_width..=64).contains(&width)
                     && !request.absorbed_terms.is_empty()
                     && request.absorbed_terms.iter().all(|term| term.intercept
-                        && term.categorical_sources.len() == 1 && term.slope_sources.is_empty())
+                        && term.categorical_sources.len() == 1
+                        && (term.slope_sources.is_empty() || request.absorbed_terms.len() == 1))
                 {
                     if let Some(compiled_width) = compiled_rhs_width.filter(|w| (min_rhs_width..=width).contains(w)) {
                         rhs_width = compiled_width;
@@ -5663,6 +5665,65 @@ mod tests {
                 assert_eq!(reference.covariance(), actual.covariance());
             }
         }
+    }
+
+    #[test]
+    fn slope_loaded_rhs_preserves_classification_and_inference() {
+        let (_, mut base) = fixture(OlsVceKind::Iid);
+        base.nobs = 16_387;
+        base.nvars = 11;
+        base.numeric_rows_enabled = true;
+        base.data.clear();
+        for row in 1..=base.nobs { for variable in 1..=11 {
+            let value = match variable { 1 => 1.0, 9 => ((row-1)/7) as f64,
+                11 => (1+row%7) as f64, _ => ((row*variable as usize) as f64).sin() };
+            base.data.insert((variable,row),(value,false));
+        }}
+        let mut template = OlsRequestV1 {
+            model: CompiledTermGraph { sources: Vec::new(), terms: Vec::new() },
+            bindings: vec![OlsInputBinding { stata_var_position:1, role:OlsInputRole::Candidate },
+                OlsInputBinding { stata_var_position:2, role:OlsInputRole::Outcome }],
+            absorbed_terms: vec![AbsorbedTerm { id:AbsorbTermId::new(1).unwrap(), intercept:true,
+                categorical_sources:vec![SourceId::new(7).unwrap()], slope_sources:vec![SourceId::new(8).unwrap()],
+                label:"g##c.z".into(),saved_name:String::new() }],
+            include_intercept:true,keep_singletons:false,
+        };
+        for id in 1..=8 {
+            let source=SourceId::new(id).unwrap();
+            template.model.sources.push(SourceEntry {id:source,canonical_name:format!("x{id}")});
+            template.bindings.push(OlsInputBinding {stata_var_position:id+2,role:OlsInputRole::NumericSource(source)});
+            if id<=6 {
+                let mut term=continuous_term(source);
+                term.id=TermId::new(id).unwrap();term.order=TermOrder::new(id).unwrap();
+                term.coefficient_slot=CoefficientSlot::new(id).unwrap();term.canonical_token=format!("c.x{id}");
+                template.model.terms.push(term);
+            }
+        }
+        for weighted in [false,true] { for case in 0..4 {
+            let mut request=template.clone();let mut spi=base.clone();
+            if weighted { request.bindings.push(OlsInputBinding {stata_var_position:11,role:OlsInputRole::AnalyticWeight}); }
+            match case { 1=> {spi.data.insert((10,3),(1e100,true));},
+                2=> {spi.data.insert((9,3),(1e100,true));},
+                3=> {request.absorbed_terms[0].intercept=false;}, _=>{} }
+            let plan=plan_categorical_absorbed_request(&request).unwrap();
+            let compiled=numeric_loaded_rhs_width(&plan.availability_request().validate_and_compile().unwrap());
+            let reference=load_ols_input(&request,true,false,&mut spi.clone()).unwrap();
+            let mut rhs=None;let mut memory=loading_memory(&request,spi.nobs,0,0,None).unwrap();
+            let required=spi.nobs*8*8;
+            let loaded=load_ols_input_with_team(&request,true,false,&mut memory,&mut spi,
+                Some(ThreadTeam::new(ThreadConfig::from_requested(8,false).unwrap())),&mut rhs,required,compiled).unwrap();
+            assert_eq!(loaded,reference);
+            assert_eq!(rhs.is_some(),case!=3);
+            let prepared=prepare_categorical_ols_data_owned(&request,loaded).unwrap();
+            let mut config=PreparedOlsRobustConfig::default();
+            config.fit.execution.threads=ThreadConfig::from_requested(8,false).unwrap();
+            let expected=fereg_core::ols::fit_prepared_categorical_ols_robust_map(&prepared,config).unwrap_or_else(|error| panic!("weighted={weighted} case={case}: {error:?}"));
+            let actual=fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
+                &prepared,config,rhs.map(LoadedOlsRows::from)).unwrap();
+            assert_eq!(expected.fit().coefficients(),actual.fit().coefficients());
+            assert_eq!(expected.covariance(),actual.covariance());
+            assert_eq!(expected.statistics(),actual.statistics());
+        }}
     }
 
     #[test]

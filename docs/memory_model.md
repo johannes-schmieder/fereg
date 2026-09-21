@@ -54,6 +54,16 @@ also admits topology validation and numeric workspace before allocation, then
 checks their actual capacities. Recovery and public whole-action reporting
 remain separate accounting boundaries.
 
+The action-local single-partition OLS slope cache separately admits retained
+square-root weights, group Grams/scales and QR bases, plus construction scratch
+or concurrent projection output, group coefficients, norms and certificate
+partials. The input matrix stays untouched until acceptance. Both planned and
+actual capacities are checked against the existing joint solver budget; a
+declined cache uses the established separately admitted solver. The cache is
+released after final residual projection. This fast-mode tradeoff increases
+peak storage relative to in-place generic MAP; low memory retains its previous
+route. See [ADR 0087](adr/0087-single-partition-ols-slope-geometry.md).
+
 Topology-selected CMG uses the same joint budget and the explicitly estimated
 runtime policy described in [CMG integration](cmg_integration.md): 32 MiB pool
 heap, 2 MiB heap per worker and an explicitly requested 8 MiB stack per worker.

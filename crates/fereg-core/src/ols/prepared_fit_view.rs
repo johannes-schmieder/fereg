@@ -179,6 +179,12 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_has_absorbed_intercept(&self) -> bool;
 
+    fn fit_single_slope_view(&self) -> Result<Option<(crate::fe::BorrowedInterceptEffect<'_>, crate::fe::CategoricalAbsorbedEffectView<'_>)>> {
+        Ok(None)
+    }
+
+    fn fit_has_one_slope_effect(&self) -> bool { false }
+
     fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
         false
     }
@@ -932,6 +938,22 @@ impl PreparedOlsFitView for PreparedOlsData {
 }
 
 impl PreparedOlsFitView for PreparedCategoricalOlsData {
+    fn fit_has_one_slope_effect(&self) -> bool {
+        self.effect_specs().len() == 1 && !self.effect_specs()[0].slopes.is_empty()
+    }
+
+    fn fit_single_slope_view(&self) -> Result<Option<(crate::fe::BorrowedInterceptEffect<'_>, crate::fe::CategoricalAbsorbedEffectView<'_>)>> {
+        if self.effect_specs().len() != 1 || self.effect_specs()[0].slopes.is_empty() {
+            return Ok(None);
+        }
+        let Some(validated) = self.validated_single_topology()? else { return Ok(None); };
+        // This descriptor supplies only partition membership; the separate
+        // slope view defines the scientific basis used by the absorber.
+        let partition = validated.into_design(self.fit_sample().n_active())?;
+        let effect = self.effect_views()?.pop().ok_or_else(|| allocation("single slope effect is missing"))?;
+        Ok(Some((partition.effects()[0], effect)))
+    }
+
     fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
         let effects = self.effect_specs();
         effects.len() == 1 && effects[0].intercept && effects[0].slopes.is_empty()

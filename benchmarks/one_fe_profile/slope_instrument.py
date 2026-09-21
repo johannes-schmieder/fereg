@@ -29,3 +29,26 @@ def instrument(source):
     text = text.replace(start, "        let owned_started = std::time::Instant::now();\n" + start)
     text = text.replace(end, '        eprintln!("SLOPE_PROFILE|owned_design|n={}|rhs={}|seconds={:.9}", residualized.nrows(), residualized.ncols(), owned_started.elapsed().as_secs_f64());\n' + end)
     path.write_text(text)
+    path = source / "crates/fereg-core/src/fe/single_slope.rs"
+    if path.exists():
+        text = path.read_text()
+        probes = [
+            ("        let mut coefficients = filled(", "        let profile_reference = Instant::now();\n"),
+            ("        result\n            .as_mut_slice()", "        let profile_projection = Instant::now();\n"),
+            ("        let certificate_started = Instant::now();", "        let profile_reconstruction = Instant::now();\n"),
+            ("        checks\n            .par_iter_mut()", "        let profile_norms = Instant::now();\n"),
+            ("        let mut certificate = FeCertificate", "        let profile_checks = Instant::now();\n"),
+        ]
+        for marker, insertion in probes:
+            assert text.count(marker) == 1, marker
+            text = text.replace(marker, insertion + marker)
+        marker = "        let certification_seconds = certificate_started.elapsed().as_secs_f64();"
+        assert text.count(marker) == 1
+        text = text.replace(marker, '''        eprintln!("SLOPE_PROFILE|cached|rhs={}|reference={:.9}|projection={:.9}|reconstruction={:.9}|norms={:.9}|checks={:.9}|reduce={:.9}",
+            rhs, profile_reference.duration_since(started).as_secs_f64(),
+            profile_projection.duration_since(profile_reference).as_secs_f64(),
+            profile_reconstruction.duration_since(profile_projection).as_secs_f64(),
+            profile_norms.duration_since(profile_reconstruction).as_secs_f64(),
+            profile_checks.duration_since(profile_norms).as_secs_f64(), profile_checks.elapsed().as_secs_f64());
+''' + marker)
+        path.write_text(text)
