@@ -7,9 +7,9 @@ import argparse
 import itertools
 import json
 from pathlib import Path
-import subprocess
 import sys
 import broad
+import route_development
 
 HERE = Path(__file__).resolve().parent
 MANIFEST = HERE.parent / 'manifests/ols_optimization_20260921_v1.json'
@@ -58,7 +58,8 @@ def main(a):
     plan = dict(schema='ols-graph-coverage-execution-v1', phase=a.phase, label=a.label,
         manifest=spec, manifest_sha256=broad.sha(MANIFEST), cells=cells, selected_indices=a.indices, repeats=repeats,
         baseline=a.baseline, candidate=a.candidate, controller_sha256=broad.sha(Path(__file__)),
-        runner_sha256=broad.sha(HERE / 'run.py'), keep_going=a.keep_going)
+        runner_sha256=broad.sha(HERE / 'run.py'), keep_going=a.keep_going,
+        isolation_source_sha256=broad.sha(Path(route_development.__file__)))
     if a.dry_run:
         print(json.dumps(plan, indent=2)); return
     a.root.mkdir(parents=True, exist_ok=True)
@@ -81,12 +82,11 @@ def main(a):
         if a.keep_going: command.append('--keep-going')
         output = a.root / (label + '.stdout.txt')
         assert not output.exists(), 'unrecorded prior dispatch requires inspection: ' + label
-        with output.open('w') as stream:
-            code = subprocess.call(command, stdout=stream, stderr=subprocess.STDOUT)
+        code, isolation = route_development.invoke(command, output)
         complete = a.root / (label + '-complete.json')
         status = json.loads(complete.read_text())['status'] if complete.exists() else 'incomplete'
         progress.append(dict(index=index, cell=cell, label=label, process_returncode=code,
-            comparison_status=status, stdout_sha256=broad.sha(output)))
+            comparison_status=status, stdout_sha256=broad.sha(output), timing_isolation=isolation))
         broad.write(progress_path, progress)
         print(index + 1, '/', len(cells), label, code, status, flush=True)
     broad.write(a.root / (a.label + '-complete.json'), dict(status='attempts_complete',

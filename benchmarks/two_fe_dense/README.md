@@ -108,3 +108,17 @@ the fitted objective and native correction are unchanged. Keep its source
 adjudication with the relevant receipt. Zero-regressor CSVs retain their empty
 schemas. FW small-oracle runs separately check literal replicated-row IID,
 robust and clustered covariance, coefficients, RSS, rank and effective N.
+
+`milestone.py` expands the separate September 21 graph/weight/output manifest
+and records process isolation for each cell. The monitor verifies live ancestry
+before classifying a newly started worker as a competing process; unreadable
+ancestry remains an exclusion. Use a new root after controller changes and
+preserve earlier overlap records. No isolation record means unverified timing.
+
+`score_milestone.py` version 2 keeps complete baseline/candidate/reference
+triplets and independent candidate/comparator pairs separately. A baseline
+failure remains an incomplete native control even when the candidate and
+reference both finish. Only complete comparator pairs with recorded clean
+isolation enter reference win/tie/loss counts. Timings, failures and identity
+checks remain visible for excluded cells. Scoring does not establish scientific
+acceptance or close the native-control gates.

@@ -20,7 +20,8 @@ def score(root, label):
     for index, cell in enumerate(plan['cells']):
         attempt = progress[index] if index < len(progress) else None
         comparator = baseline if cell['weight_kind'] == 'fw' else 'fixest'
-        item = dict(index=index, cell=cell, comparator=comparator, issues=[], pairs=[],
+        item = dict(index=index, cell=cell, comparator=comparator, issues=[], pairs=[], comparator_pairs=[],
+            timing_isolation=attempt.get('timing_isolation', {}).get('status', 'unrecorded') if attempt else 'not_attempted',
             scientific_comparison=attempt['comparison_status'] if attempt else 'not_attempted')
         if not attempt:
             item['issues'].append('not_attempted'); cells.append(item); continue
@@ -49,11 +50,22 @@ def score(root, label):
                     identity = fingerprint['native']; assert identity['abi'] == 'pass'
                     assert identities.setdefault(variant, identity) == identity
                 rows[variant] = (path, result)
-            if set(rows) != set(variants): continue
+            if not rows: continue
             assert len({r['input_sha256'] for _, r in rows.values()}) == 1
             assert len({r['sample_sha256'] for _, r in rows.values()}) == 1
             assert all(r['sample_rows'] == cell['n'] for _, r in rows.values())
-            assert all(r['cell'] == rows[candidate][1]['cell'] for _, r in rows.values())
+            first = next(iter(rows.values()))[1]
+            assert all(r['cell'] == first['cell'] for _, r in rows.values())
+            # A failed baseline remains a failed native control. It must not
+            # erase an independently complete candidate/reference timing pair.
+            if candidate in rows and comparator in rows:
+                compared = {v: rows[v] for v in [candidate, comparator]}
+                seconds = {v: r['seconds'] for v, (_, r) in compared.items()}
+                item['comparator_pairs'].append(dict(rep=rep, seconds=seconds,
+                    ratio=seconds[candidate] / seconds[comparator],
+                    input_sha256=rows[candidate][1]['input_sha256'],
+                    result_hashes={v: sha(p) for v, (p, _) in compared.items()}))
+            if set(rows) != set(variants): continue
             seconds = {v: r['seconds'] for v, (_, r) in rows.items()}
             item['pairs'].append(dict(rep=rep, seconds=seconds, ratio=seconds[candidate] / seconds[comparator],
                 native_ratio=seconds[candidate] / seconds[baseline],
@@ -65,16 +77,22 @@ def score(root, label):
             item['median_paired_ratio'] = statistics.median(r['ratio'] for r in item['pairs'])
             item['median_native_ratio'] = statistics.median(r['native_ratio'] for r in item['pairs'])
             item['median_seconds'] = {v: statistics.median(r['seconds'][v] for r in item['pairs']) for v in variants}
+        if len(item['comparator_pairs']) == plan['repeats']:
+            assert len({r['input_sha256'] for r in item['comparator_pairs']}) == 1
+            item['median_comparator_ratio'] = statistics.median(r['ratio'] for r in item['comparator_pairs'])
         cells.append(item)
     measured = [c for c in cells if 'median_paired_ratio' in c]
-    comparable = [c for c in measured if c['comparator'] == 'fixest']
+    comparator_complete = [c for c in cells if 'median_comparator_ratio' in c]
+    comparable = [c for c in comparator_complete if c['comparator'] == 'fixest'
+                  and c['timing_isolation'] == 'no_detected_overlap']
     assert len(references) <= 1, 'reference identity changed within the block'
-    return dict(schema='expanded-graph-score-v1', label=label, phase=plan['phase'],
+    return dict(schema='expanded-graph-score-v2', label=label, phase=plan['phase'],
         planned=len(cells), completely_measured=len(measured),
+        comparator_complete=len(comparator_complete), comparable_timing_eligible=len(comparable),
         plan_sha256=sha(plan_path), progress_sha256=sha(progress_path) if progress_path.exists() else None,
         identity_audit_complete=len(measured) == len(cells) and len(references) == 1,
         native_plugins={v: i['plugin'] for v, i in identities.items()}, reference_identities=sorted(references),
-        comparable_outcomes=dict(Counter('win' if c['median_paired_ratio'] < 1 else 'tie' if c['median_paired_ratio'] == 1 else 'loss' for c in comparable)),
+        comparable_outcomes=dict(Counter('win' if c['median_comparator_ratio'] < 1 else 'tie' if c['median_comparator_ratio'] == 1 else 'loss' for c in comparable)),
         fw_native_controls=sum(c['comparator'] == baseline for c in measured),
         scientific_acceptance='Requires separate independent checks and reference adjudication.', cells=cells)
 
