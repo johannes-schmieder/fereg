@@ -1,0 +1,50 @@
+{
+  "direct-route-score1.json": {
+    "original_sha256": "df9d27882b770b28dfd11972b52b66523fc6db7566079863a85e61b1559d8829",
+    "portable_sha256": "df9d27882b770b28dfd11972b52b66523fc6db7566079863a85e61b1559d8829"
+  },
+  "direct-route-score1.txt": {
+    "original_sha256": "c73c57f560174029eac2937bcf294c31c7a7050eb2f773761611e63e75bc1e3a",
+    "portable_sha256": "c73c57f560174029eac2937bcf294c31c7a7050eb2f773761611e63e75bc1e3a"
+  },
+  "direct-route-inference1.json": {
+    "original_sha256": "66a3dbd2b0b23b8a531f977698df4aea438677d78eeaeec5bee2d011d7502c8e",
+    "portable_sha256": "66a3dbd2b0b23b8a531f977698df4aea438677d78eeaeec5bee2d011d7502c8e"
+  },
+  "direct-route-inference1.txt": {
+    "original_sha256": "48e844e94212d59e5a70e3571e18b8eb67247955cae9c5c60aae4e5accfed01d",
+    "portable_sha256": "48e844e94212d59e5a70e3571e18b8eb67247955cae9c5c60aae4e5accfed01d"
+  },
+  "direct-route-outputs1.txt": {
+    "original_sha256": "cedb2a521bdf60e9656e803ccf9690c8b426e670f64cb3485b965f484d496f65",
+    "portable_sha256": "cedb2a521bdf60e9656e803ccf9690c8b426e670f64cb3485b965f484d496f65"
+  },
+  "direct-route-screen1.txt": {
+    "original_sha256": "c96e7db266c7c07463a661039f7abcded5fd36998e2193d3f6d5119e0a30a520",
+    "portable_sha256": "c96e7db266c7c07463a661039f7abcded5fd36998e2193d3f6d5119e0a30a520"
+  },
+  "direct-route-score2.json": {
+    "original_sha256": "567e39e3be805ebd9489d09091c839d591ecc0b021689a717ded45da9ab64a1b",
+    "portable_sha256": "567e39e3be805ebd9489d09091c839d591ecc0b021689a717ded45da9ab64a1b"
+  },
+  "direct-route-score2.txt": {
+    "original_sha256": "ad0049208e0bbd637a517ab5976fdf04e14717716330b07cb06ffa50e6fcd4bc",
+    "portable_sha256": "ad0049208e0bbd637a517ab5976fdf04e14717716330b07cb06ffa50e6fcd4bc"
+  },
+  "direct-route-inference2.json": {
+    "original_sha256": "e21485951dd0cf1f294ecc5c17cefbbe1745d90f089c747570c84d4cb060485d",
+    "portable_sha256": "e21485951dd0cf1f294ecc5c17cefbbe1745d90f089c747570c84d4cb060485d"
+  },
+  "direct-route-inference2.txt": {
+    "original_sha256": "48e844e94212d59e5a70e3571e18b8eb67247955cae9c5c60aae4e5accfed01d",
+    "portable_sha256": "48e844e94212d59e5a70e3571e18b8eb67247955cae9c5c60aae4e5accfed01d"
+  },
+  "direct-route-outputs2.txt": {
+    "original_sha256": "cedb2a521bdf60e9656e803ccf9690c8b426e670f64cb3485b965f484d496f65",
+    "portable_sha256": "cedb2a521bdf60e9656e803ccf9690c8b426e670f64cb3485b965f484d496f65"
+  },
+  "direct-route-screen2.txt": {
+    "original_sha256": "c96e7db266c7c07463a661039f7abcded5fd36998e2193d3f6d5119e0a30a520",
+    "portable_sha256": "c96e7db266c7c07463a661039f7abcded5fd36998e2193d3f6d5119e0a30a520"
+  }
+}

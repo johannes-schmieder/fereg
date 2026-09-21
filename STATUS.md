@@ -317,14 +317,33 @@ the corrected results are `graph-locality2.json`. Both fresh routing seeds are
 untouched. A third read-only SCC authentication check still fails; no jobs
 have been submitted and the renewal question remains unanswered.
 
-Current resume point: run the direct-route diagnostic after all audits/builds
-finish, then compare its whole-command costs and fresh independent scientific
-checks. Revisit routing from those measurements. Complete current-candidate
-science, primary/holdout final blocks, constrained whole-fit checks and focused
-Linux runs before closing the milestone. The four modified core graph/fit files
-remain unaccepted drafts, captured in prior reports. Keep old routes where
-cross-platform confirmation is missing; do not inspect fresh routing seeds
-while choosing thresholds. Serial weighted slope/reference losses remain open.
+The [direct automatic LSMR screen](benchmarks/reports/development/direct-ols-lsmr-local-2026-09-21/README.md)
+completes 32 cells and 192 successful calls at `target/g21dl1` and `g21dl2`,
+with clean isolation. All 64 native inference checks, 192 exact within-arm
+repeat checks and 48 candidate output audits pass. Cycles favor direct LSMR
+across unit/AW, K6/K50, T1/T16 and both output requests: paired ratios range
+from 0.5291 to 0.7673. Rings are mixed. AW threaded K6 regresses 14.6–16.7%,
+and AW threaded K50 robust regresses 7.4%; the blanket switch is rejected.
+Unit wide serial and threaded rings improve, but narrow serial unit differences
+are within 5%. No production routing guard is selected. The complete portable
+archive verifies both source reconstructions and auditor bindings.
+
+The initial-norm draft uses the existing `certify_initial` helper immediately
+after automatic absorption computes reference norms on the unchanged input.
+Every FE moment remains freshly checked; only the duplicate norm pass is
+removed. `in1` plugin
+`11ba0ccff2155287bae6493302a76c57a5a8d6962fdda58179e8a345d4c2e3a3`
+builds and passes the ABI fixture. Its focused exact certificate/workspace
+fixture is still running; no runtime benefit or acceptance is claimed yet.
+
+Current resume point: finish the initial-norm fixture, then measure the isolated
+pass reduction against sf1. Revisit a cycle-specific structural routing guard
+without changing weighted ring routes. Complete current-candidate science,
+primary/holdout final blocks, constrained whole-fit checks and focused Linux
+runs before closing the milestone. Four core graph/fit files remain modified,
+including the new norm draft; earlier graph kernels remain unaccepted. Keep old
+routes where cross-platform confirmation is missing; do not inspect fresh
+routing seeds while choosing thresholds. Serial weighted slope losses remain.
 
 ## Repository cleanup and development push — 2026-09-21
 
