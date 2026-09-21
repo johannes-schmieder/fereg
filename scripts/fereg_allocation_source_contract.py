@@ -21,8 +21,8 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v37.json"
-CONTRACT_ID = "fereg-allocation-source-contract-v37"
+DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v38.json"
+CONTRACT_ID = "fereg-allocation-source-contract-v38"
 SCHEMA_VERSION = 21
 
 # Keep the watched surface narrow enough to describe the actual OLS seam, but
@@ -171,10 +171,10 @@ F0_PREEXISTING_BOUNDARY_HASHES = {
 # Reviewed OLS changes since the extraction checkpoint. These are exact body
 # replacements, never an allow-list of functions whose bodies may drift.
 # See docs/allocation_inventory.md for decisions and source-bound evidence.
-REVIEWED_BOUNDARY_SOURCE_SHA = '0efa78bd5edaf96e5dcce5704b1ab198e2d2f8df'
+REVIEWED_BOUNDARY_SOURCE_SHA = 'd2ec66e3a69f92628e4b2a109ae6b2a2ad85984c'
 REVIEWED_BOUNDARY_HASHES = {
     ('crates/fereg-plugin/src/estimate.rs', 'estimate_ols_test'):
-        '282899fe84c6e44647d3d59f86ae2f9e5c7084f6a64fdd7b3b9ec87f6c2697c4',
+        'a054a147e23573fb51b0af77dcb29010976bb1009cfae02f2968ee829985fcf7',
     ('crates/fereg-core/src/ols/prepared_unadjusted.rs', 'fit_prepared_ols_unadjusted_map'):
         '49575b74c982d556412654e30b0907abb16f60906811d9846e7fd8d94383ff30',
     ('crates/fereg-core/src/ols/prepared_unadjusted.rs', 'fit_prepared_categorical_ols_unadjusted_map'):

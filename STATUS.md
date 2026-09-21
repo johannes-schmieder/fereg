@@ -44,9 +44,11 @@ raw/normalized-weight norm handoff bug. Native peak allocation increases to
 105.6/373.0 MB for K10/K50, within 1.014/0.891 of current fast estimates; complete
 allocation proof and constrained-memory confirmation remain separate.
 
-Current resume point: checkpoint this fit improvement, refresh the reviewed
-allocation inventories without rewriting old versions, then reduce final
-residual/recovery work. A PW three-slope-only diagnostic attributes 78.3 ms to
+The fit checkpoint is committed at `d2ec66e3`. The [allocation refresh](benchmarks/reports/development/slopes-allocation-local-2026-09-21/README.md)
+binds new OLS v38/action v23 inventories to that source; repository checks and
+the exact-source pin check pass, preserving old versions and proof gaps.
+
+Current resume point: reduce final residual/recovery work. A PW three-slope-only diagnostic attributes 78.3 ms to
 saved-effect recovery. The graph/weight/inference/output matrix, narrow two-FE
 margins, revised auto routing, final repeated blocks and focused Linux runs
 remain open. Fresh validation seeds remain untouched. No push is authorized.

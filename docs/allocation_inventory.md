@@ -4,16 +4,21 @@ Two separate checks protect the current native source:
 
 - `scripts/fereg_allocation_source_contract.py audit` enforces the OLS route,
   allocation syntax, literal payloads, Cargo/native wiring and exact one-shot
-  boundaries against `fereg_allocation_source_contract_v37.json`.
+  boundaries against `fereg_allocation_source_contract_v38.json`.
 - `scripts/action_allocation_inventory.py audit` covers every Rust source under
   both core and plugin, including PPML, separation and retained sessions, against
-  `action_allocation_inventory_v22.json`. It also binds `Cargo.lock`. It does not
+  `action_allocation_inventory_v23.json`. It also binds `Cargo.lock`. It does not
   exclude a file because the OLS-only route cannot reach it.
 
 The [September 21 baseline review](../benchmarks/reports/development/slopes-baseline-local-2026-09-21/README.md)
 binds v37/v22 to the unchanged estimator at `0efa78bd`, records the allocation-site
 delta from the earlier inventory, and preserves its 102 historical findings.
 No complete action-memory proof is implied.
+
+The [single-slope review](../benchmarks/reports/development/slopes-allocation-local-2026-09-21/README.md)
+binds v38/v23 to `d2ec66e3`. It covers action-local fixed-weight geometry,
+separate candidate residual storage, bounded group reductions and unchanged-input
+fallback. Previous manifests and whole-action proof gaps remain intact.
 
 Both are structural guards. Their allocation counts are syntax counts, not
 numbers of live buffers, bytes, or a complete call graph. A `.clone()` may copy
