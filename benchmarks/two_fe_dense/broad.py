@@ -9,7 +9,6 @@ import hashlib
 import itertools
 import json
 from pathlib import Path
-import subprocess
 import sys
 
 HERE = Path(__file__).resolve().parent
@@ -53,6 +52,10 @@ def arguments(cell):
 
 
 def main(a):
+    # The route controller imports our cell helpers; delay this import until
+    # those helpers exist so both entry points use the same isolation monitor.
+    import route_development
+
     spec = json.loads(a.manifest.read_text())
     kind = 'controls' if a.phase == 'controls' else 'primary'
     cells = expand(spec, kind)
@@ -64,7 +67,8 @@ def main(a):
     plan = dict(schema='two-fe-broad-execution-v1', label=a.label, phase=a.phase,
                 inventory_kind=kind, repetitions=repetitions, variants=variants,
                 manifest=spec, manifest_sha256=sha(a.manifest), controller_sha256=sha(Path(__file__)),
-                cell_runner_sha256=sha(HERE / 'run.py'), cells=cells)
+                cell_runner_sha256=sha(HERE / 'run.py'), cells=cells,
+                isolation_source_sha256=sha(Path(route_development.__file__)))
     if a.dry_run:
         print(json.dumps(plan, indent=2, sort_keys=True))
         return
@@ -88,12 +92,12 @@ def main(a):
         # A crash between dispatch and progress must be inspected, never rerun
         # over existing measurement artifacts under the same identity.
         assert not output.exists(), f'unrecorded prior attempt requires inspection: {label}'
-        with output.open('w') as stream:
-            code = subprocess.call(command, stdout=stream, stderr=subprocess.STDOUT)
+        code, isolation = route_development.invoke(command, output)
         complete = a.root / (label + '-complete.json')
         status = json.loads(complete.read_text())['status'] if complete.exists() else 'incomplete'
         progress.append(dict(index=index, label=label, cell=cell, process_returncode=code,
-                             comparison_status=status, stdout_sha256=sha(output)))
+                             comparison_status=status, stdout_sha256=sha(output),
+                             timing_isolation=isolation))
         write(progress_path, progress)
         print(index + 1, '/', len(cells), label, code, status, flush=True)
     write(a.root / (a.label + '-complete.json'), dict(

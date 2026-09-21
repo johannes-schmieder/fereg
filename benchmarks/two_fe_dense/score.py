@@ -40,6 +40,8 @@ def score(root, label):
         attempt = by_index.get(index)
         item = dict(index=index, cell=cell, issues=[], pairs=[],
                     scientific_comparison=attempt['comparison_status'] if attempt else 'not_attempted')
+        item['timing_isolation'] = attempt.get('timing_isolation', {}).get('status', 'unrecorded') if attempt else 'not_attempted'
+        item['timing_eligible'] = item['timing_isolation'] == 'no_detected_overlap'
         if not attempt:
             item['issues'].append('not_attempted')
         else:
@@ -102,19 +104,22 @@ def score(root, label):
     assert len(references) <= 1, 'reference identity changed within the block'
     complete = all(not c['issues'] and len(c['pairs']) == plan['repetitions'] for c in cells)
     measured = [c for c in cells if 'median_paired_ratio' in c]
+    eligible = [c for c in measured if c['timing_eligible']]
     threshold = plan['manifest']['acceptance'][
         'native_control_max_confirmed_regression' if controls else 'primary_max_median_paired_ratio']
-    return dict(schema='two-fe-broad-score-v1', phase=plan['phase'], label=label,
+    return dict(schema='two-fe-broad-score-v2', phase=plan['phase'], label=label,
                 plan_sha256=sha(plan_path), progress_sha256=sha(progress_path) if progress_path.exists() else None,
                 planned=len(cells), completely_measured=len(measured), identity_audit_complete=complete,
+                timing_eligible=len(eligible),
                 repetitions=plan['repetitions'], candidate=numerator, comparator=denominator,
                 candidate_plugin=identities.get(numerator, {}).get('plugin'),
                 reference_identity=next(iter(references), None), threshold=threshold,
-                timing_threshold_met=complete and all(c['median_paired_ratio'] <= threshold for c in cells),
-                wins=sum(c['median_paired_ratio'] < 1 for c in measured),
-                ties=sum(c['median_paired_ratio'] == 1 for c in measured),
-                losses=sum(c['median_paired_ratio'] > 1 for c in measured),
-                worst_ratio=max((c['median_paired_ratio'] for c in measured), default=None),
+                timing_threshold_met=complete and len(eligible) == len(cells)
+                    and all(c['median_paired_ratio'] <= threshold for c in eligible),
+                wins=sum(c['median_paired_ratio'] < 1 for c in eligible),
+                ties=sum(c['median_paired_ratio'] == 1 for c in eligible),
+                losses=sum(c['median_paired_ratio'] > 1 for c in eligible),
+                worst_ratio=max((c['median_paired_ratio'] for c in eligible), default=None),
                 scientific_acceptance='requires_independent_adjudication', cells=cells)
 
 

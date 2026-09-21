@@ -74,6 +74,10 @@ one pair; each primary acceptance block uses five; controls use three.
 A resumed label skips every recorded attempt, including failures. Rechecks
 require a new label. Completing attempts does not establish acceptance.
 `--dry-run` prints the exact plan without running applications.
+Each new broad cell records live process isolation with the same monitor as
+route exploration. The v2 broad score retains every measured ratio, but only
+cells with recorded `no_detected_overlap` can enter timing rankings or pass
+the timing threshold. Historical receipts are not reclassified.
 
 For a separately declared small-command precision diagnostic, `highres.py`
 prepares a fresh Mac arm64 controller with a benchmark-only monotonic clock.
