@@ -20,10 +20,15 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def prepare(root, artifacts):
+def prepare(root, artifacts, variants=('baseline', 'usefulpilot'), data_root=None):
     assert not root.exists(), "use a fresh diagnostic directory"
+    assert variants and len(variants) == len(set(variants))
+    for variant in variants:
+        assert (artifacts / f'identity-{variant}.json').is_file()
+    data = (artifacts if data_root is None else data_root) / 'data'
+    assert data.is_dir()
     root.mkdir(parents=True)
-    (root / "data").symlink_to(artifacts / "data", target_is_directory=True)
+    (root / "data").symlink_to(data, target_is_directory=True)
     folder = run.stage(root)
     tooling = root / "clock"
     tooling.mkdir()
@@ -92,8 +97,11 @@ file write `meta' "clock_empty_mean" _tab %24.17g (`clock_empty_mean') _n
         original_manifest_sha256=sha(tooling / "uninstrumented-manifest.json"),
         empty_brackets_per_worker=128, elapsed_field="highres_seconds",
         subtract_overhead=False, ordinary_timer_unchanged=True, command_repetitions=1))
-    for name in ["identity-baseline.json", "identity-usefulpilot.json", "baseline-provenance.json"]:
+    for name in [f'identity-{variant}.json' for variant in variants]:
         shutil.copy(artifacts / name, root / name)
+    provenance = artifacts / 'baseline-provenance.json'
+    if provenance.is_file():
+        shutil.copy(provenance, root / provenance.name)
     run.validate_controller(folder)
     print("HIGHRES_PREPARED", root, flush=True)
 
@@ -102,5 +110,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("--artifacts", type=Path, required=True)
+    parser.add_argument('--variants', nargs='+', default=['baseline', 'usefulpilot'])
+    parser.add_argument('--data-root', type=Path,
+                        help='root containing the captured data directory, when separate from artifacts')
     args = parser.parse_args()
-    prepare(args.root.resolve(), args.artifacts.resolve())
+    prepare(args.root.resolve(), args.artifacts.resolve(), args.variants,
+            args.data_root.resolve() if args.data_root else None)

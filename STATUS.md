@@ -276,20 +276,55 @@ finishing/certification. These phases overlap their subtotals; the fit's
 `within_norms` also includes score-cache construction. Retaining single-slope
 products for outputs remains an unimplemented memory/ownership question.
 
-`target/g21tail` completes the remaining twenty-four expanded coverage cells
-with 198 successful calls and clean isolation. All eighteen ordinary-fixest
-comparisons win by more than ten percent; six FW cells use the native baseline.
-All 48 native inference checks, 144 exact within-arm repeats and 36 candidate
-output audits pass. Default-reference discrepancies are preserved. Reports
-are under `target/ols-next-20260921/coverage-tail-*`; portable archival is next.
+The [remaining graph coverage](benchmarks/reports/development/two-fe-coverage-tail-local-2026-09-21/README.md)
+completes twenty-four cells with 198 successful calls and clean isolation.
+All eighteen ordinary-fixest comparisons win by more than ten percent; six FW
+cells use the native baseline. All 48 native inference checks, 144 exact repeats
+and 36 candidate output audits pass. Nine reference inference audits pass and
+nine disagree; all discrepancies remain. Integrity verifies 4,708 entries,
+99 omitted local arrays and both complete source reconstructions.
 
-Current resume point: seal the slope checkpoint and tail coverage, then run the
-111 protected native controls on sf1 before further routing development.
-Complete current-candidate science, final independent blocks, constrained
-whole-fit checks and focused Linux runs before closing the milestone. Routing
-changes still require a separate decision and cross-platform evidence; fresh
-seeds 202609211 and 202609212 remain untouched. The four other modified core
-files remain unaccepted graph/fit drafts, captured in prior reports.
+`67d88596` commits the accepted compact/ordered slope kernel and its profiler.
+The [protected-control report](benchmarks/reports/development/ols-protected-controls-local-2026-09-21/README.md)
+completes all 111 unchanged cells against baseline `0efa78bd`, using sf1.
+All 666 applications, 333 native numerical/sample/status/DoF comparisons and
+129 independent candidate output audits pass with clean isolation. There are
+252 exact six-bundle pairs and 78 exact output pairs. Two auditor fixtures
+exercise a valid pair and nine corrupt/missing/failing cases.
+
+One original control timing exceeds 1.05: N=16,384, K6, unit IID gives 1.06897
+with 31/30 ms marginal medians. Its fresh five-pair single-command confirmation
+passes at 1.04412 using the calibrated monotonic clock and 1.03571 using the
+unchanged ordinary timer. All ten calls/five numerical comparisons pass. The
+original failure and individual 0.895–1.189 ratios remain; no kernel adjustment
+is justified. All control limits are met using that explicit confirmation.
+Tracked peaks rise in eighteen cells, by at most 25,772,088 bytes; this is not
+memory-neutral or complete allocation-proof evidence. The 676-call archive
+preserves both clocks, all source identities and independent output audits.
+
+An isolated direct-auto-LSMR diagnostic, `dl1` plugin
+`2e18fcbba16f80eedb0b72dce4c8dfa0c2b4228442d2794477f7f737b16bb9ba`,
+builds and passes the ABI fixture. It bypasses preceding Schur/CMG attempts only
+inside captured public fast two-intercept OLS, preserving automatic LSMR
+accuracy/admission/fallback. The production route is unchanged. The prepared
+sixteen-cell controller is `target/ols-next-20260921/direct-route-screen1.py`.
+
+Sixty descriptive locality measurements on twenty captured training inputs
+show that pair collisions alone cannot select LSMR: they also flag weak graphs
+where the current route wins. No threshold/rule is chosen. The first locality
+invocation failed on an unmatched dense-size glob; its error is preserved and
+the corrected results are `graph-locality2.json`. Both fresh routing seeds are
+untouched. A third read-only SCC authentication check still fails; no jobs
+have been submitted and the renewal question remains unanswered.
+
+Current resume point: run the direct-route diagnostic after all audits/builds
+finish, then compare its whole-command costs and fresh independent scientific
+checks. Revisit routing from those measurements. Complete current-candidate
+science, primary/holdout final blocks, constrained whole-fit checks and focused
+Linux runs before closing the milestone. The four modified core graph/fit files
+remain unaccepted drafts, captured in prior reports. Keep old routes where
+cross-platform confirmation is missing; do not inspect fresh routing seeds
+while choosing thresholds. Serial weighted slope/reference losses remain open.
 
 ## Repository cleanup and development push — 2026-09-21
 

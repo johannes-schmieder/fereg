@@ -16,7 +16,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None, serial_lsmr_window=False):
+def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None, serial_lsmr_window=False, direct_ols_lsmr=False):
     root = root.resolve()
     source = root / name
     source.mkdir(parents=True, exist_ok=False)
@@ -31,6 +31,9 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         path.write_bytes((REPO / relative).read_bytes())
     if serial_lsmr_window:
         from serial_lsmr_window import instrument
+        instrument(source)
+    if direct_ols_lsmr:
+        from direct_ols_lsmr import instrument
         instrument(source)
     if schur_narrow_cap is not None:
         assert 0 < schur_narrow_cap <= 64
@@ -109,6 +112,10 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         identity.setdefault('experiment', {})['serial_lsmr_window'] = dict(
             active_rhs=1, scope='Captured-source generic serial transport/admission experiment; no production or shared-routing acceptance.',
             instrument_sha256=sha(REPO / 'benchmarks/one_fe_optimization/serial_lsmr_window.py'))
+    if direct_ols_lsmr:
+        identity.setdefault('experiment', {})['direct_ols_lsmr'] = dict(
+            scope='Captured-source public fast two-intercept OLS diagnostic; automatic LSMR tolerances and admission unchanged.',
+            instrument_sha256=sha(REPO / 'benchmarks/one_fe_optimization/direct_ols_lsmr.py'))
     if profile_preparation:
         identity.setdefault("diagnostics", []).append("preparation_phases")
     if profile_completion:
@@ -147,5 +154,7 @@ if __name__ == "__main__":
                    help="isolated narrow OLS cap experiment; never modifies the checkout")
     p.add_argument("--serial-lsmr-window", action="store_true",
                    help="isolated serial RHS-window experiment; never modifies production source")
+    p.add_argument("--direct-ols-lsmr", action="store_true",
+                   help="isolated automatic-LSMR route diagnostic; never modifies production source")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap, a.serial_lsmr_window)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap, a.serial_lsmr_window, a.direct_ols_lsmr)

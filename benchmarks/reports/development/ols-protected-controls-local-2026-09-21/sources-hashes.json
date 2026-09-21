@@ -1,0 +1,114 @@
+{
+  "identity-baseline.json": {
+    "original_sha256": "ba86f09ee4838e2ad9af9f65f7d00636082bda5a06a75c132b7663d212970981",
+    "portable_sha256": "ba86f09ee4838e2ad9af9f65f7d00636082bda5a06a75c132b7663d212970981"
+  },
+  "identity-sf1.json": {
+    "original_sha256": "7d6f37ec7003715a430e5c4eaf979b051d815cd4d3b2a2d6a895190437f99c6b",
+    "portable_sha256": "7d6f37ec7003715a430e5c4eaf979b051d815cd4d3b2a2d6a895190437f99c6b"
+  },
+  "sf1/crates/fereg-core/src/fe/borrowed_map.rs": {
+    "original_sha256": "6558048c2417e56086f4a129cafada9c7a006eaeb72e29302df877acbd38557c",
+    "portable_sha256": "6558048c2417e56086f4a129cafada9c7a006eaeb72e29302df877acbd38557c"
+  },
+  "sf1/crates/fereg-core/src/fe/cmg.rs": {
+    "original_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461",
+    "portable_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461"
+  },
+  "sf1/crates/fereg-core/src/fe/single_slope.rs": {
+    "original_sha256": "9d1f7b716d9479122a2d08e14f3fafb1af1cc2eef49469e309d6bedca12cbb2a",
+    "portable_sha256": "9d1f7b716d9479122a2d08e14f3fafb1af1cc2eef49469e309d6bedca12cbb2a"
+  },
+  "sf1/crates/fereg-core/src/ols/prepared_fit.rs": {
+    "original_sha256": "68c90054b0544e563833ef41bc0ebd5107de754c44da70199e213fd39ea395ef",
+    "portable_sha256": "68c90054b0544e563833ef41bc0ebd5107de754c44da70199e213fd39ea395ef"
+  },
+  "sf1/crates/fereg-core/src/ols/prepared_rhs.rs": {
+    "original_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7",
+    "portable_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7"
+  },
+  "broad.py": {
+    "original_sha256": "c7720dcf7ab787743bc156cf04c28031227b006d30b5fcd4b31610d13aa98574",
+    "portable_sha256": "c7720dcf7ab787743bc156cf04c28031227b006d30b5fcd4b31610d13aa98574"
+  },
+  "score.py": {
+    "original_sha256": "f232d5bba25ab85239cef3ea5c007639567538423c9a52e14178f3a72759e436",
+    "portable_sha256": "f232d5bba25ab85239cef3ea5c007639567538423c9a52e14178f3a72759e436"
+  },
+  "audit_protection.py": {
+    "original_sha256": "60d84a43531d11b0c0483948570829e3eec5f88f37271b763c60cd212ab0fa8e",
+    "portable_sha256": "60d84a43531d11b0c0483948570829e3eec5f88f37271b763c60cd212ab0fa8e"
+  },
+  "audit_outputs.py": {
+    "original_sha256": "e972d1ca67d4a4eabbc1a1de0cb993a46a17d9582bc3b67572fdd04156ef5698",
+    "portable_sha256": "e972d1ca67d4a4eabbc1a1de0cb993a46a17d9582bc3b67572fdd04156ef5698"
+  },
+  "run.py": {
+    "original_sha256": "58e7896d916af6b66e45b641b934a2109be2dc3cd43cce5e94f4eeace502c7a2",
+    "portable_sha256": "58e7896d916af6b66e45b641b934a2109be2dc3cd43cce5e94f4eeace502c7a2"
+  },
+  "route_development.py": {
+    "original_sha256": "ec169fde36122d4b11a2ba62dc24f765469e55a9c43b5e7b85d15da5e20407f8",
+    "portable_sha256": "ec169fde36122d4b11a2ba62dc24f765469e55a9c43b5e7b85d15da5e20407f8"
+  },
+  "highres.py": {
+    "original_sha256": "9f4325071c3330a6f39610ca2902feb30e2b0a65886e6deefea127a016016325",
+    "portable_sha256": "9f4325071c3330a6f39610ca2902feb30e2b0a65886e6deefea127a016016325"
+  },
+  "highres_clock.c": {
+    "original_sha256": "4057f3d658d173820a972bf2d221f8e283b1597c1644f72cf8995cd3c95dc394",
+    "portable_sha256": "4057f3d658d173820a972bf2d221f8e283b1597c1644f72cf8995cd3c95dc394"
+  },
+  "archive_science.py": {
+    "original_sha256": "8f2083ca7c55106c91af755b21b8988ffa6ecad61f78c5e88aa210a8ba3ffbcd",
+    "portable_sha256": "51f180c3ac323b76872e5ef309d6dd458c275d18a2f811c59ca6b14234ee067b"
+  },
+  "benchmarks/one_fe_profile/run.py": {
+    "original_sha256": "fd589742caead5a43765d39becf220cd5e80c3660fe1757c25c51e93e280af7b",
+    "portable_sha256": "fd589742caead5a43765d39becf220cd5e80c3660fe1757c25c51e93e280af7b"
+  },
+  "plugin/stplugin.c": {
+    "original_sha256": "7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a",
+    "portable_sha256": "7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a"
+  },
+  "plugin/stplugin.h": {
+    "original_sha256": "2ff392f78fdef0a41602994f6cf540ead3e1bfe4f1ef8336a5f2055fd2f2b3f1",
+    "portable_sha256": "2ff392f78fdef0a41602994f6cf540ead3e1bfe4f1ef8336a5f2055fd2f2b3f1"
+  },
+  "plugin/exports_macos.txt": {
+    "original_sha256": "b3d3f7e98b7896eb948879a07eab68fe5d6cb69b3c0fbe3abf53e43277903c1f",
+    "portable_sha256": "b3d3f7e98b7896eb948879a07eab68fe5d6cb69b3c0fbe3abf53e43277903c1f"
+  },
+  "tests/python/test_native_protection_audit.py": {
+    "original_sha256": "a7fc44f2c3f458c4f4645bd11af0f65a0e53592beba21fa697d7121dc49ad38f",
+    "portable_sha256": "a7fc44f2c3f458c4f4645bd11af0f65a0e53592beba21fa697d7121dc49ad38f"
+  },
+  "protection-fine-clock1.py": {
+    "original_sha256": "e12cb5ac7c747fb850a355d19c65708ef8a1e1a9fc751a8a6510314955f03fd0",
+    "portable_sha256": "e12cb5ac7c747fb850a355d19c65708ef8a1e1a9fc751a8a6510314955f03fd0"
+  },
+  "score-protection-fine1.py": {
+    "original_sha256": "0e79621b48d7904f3ec8df1cf2aaa3aee9548314979ab6c52d1c3d3cced23c1f",
+    "portable_sha256": "0e79621b48d7904f3ec8df1cf2aaa3aee9548314979ab6c52d1c3d3cced23c1f"
+  },
+  "archive-protection1.py": {
+    "original_sha256": "399167cfd1d5b9a0ed827250822d82b1537acd2df97d97f546a3f946c1e33e4a",
+    "portable_sha256": "49572e718468e49a23ad80e676dae8809182e28459eb3f781e1d5427de5d71f9"
+  },
+  "clock/build.txt": {
+    "original_sha256": "11e700287b5665b3ff00b17470a11c60cfb73fecb11ebd25c2438b1669e1e1a0",
+    "portable_sha256": "861d428453bdadd42a41b25f9b08887fb1cda70cf46b122eb1f16f3fbecade12"
+  },
+  "clock/uninstrumented-stata-worker.do": {
+    "original_sha256": "58ee63f2af697fe56360b53714a8c244abec087c9ad52fe6a6ddf37605b9e7a0",
+    "portable_sha256": "58ee63f2af697fe56360b53714a8c244abec087c9ad52fe6a6ddf37605b9e7a0"
+  },
+  "clock/worker.patch": {
+    "original_sha256": "a9579c2cb73e6a93389a845d223892f79927c860e55bfc125d42e20ce4c70795",
+    "portable_sha256": "a9579c2cb73e6a93389a845d223892f79927c860e55bfc125d42e20ce4c70795"
+  },
+  "clock/uninstrumented-manifest.json": {
+    "original_sha256": "09fbd755fc3ccf98c84087aabaf7e8ff76c7d733b347329c50c01253bdaa2247",
+    "portable_sha256": "09fbd755fc3ccf98c84087aabaf7e8ff76c7d733b347329c50c01253bdaa2247"
+  }
+}

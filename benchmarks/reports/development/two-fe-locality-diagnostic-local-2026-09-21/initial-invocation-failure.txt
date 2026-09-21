@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "<repository>/benchmarks/two_fe_dense/graph_locality.py", line 94, in <module>
+    results = [inspect(path, a.sample_groups, seed) for path in a.inputs for seed in a.sample_seeds]
+               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repository>/benchmarks/two_fe_dense/graph_locality.py", line 19, in inspect
+    metadata = json.loads(path.read_text())
+                          ~~~~~~~~~~~~~~^^
+  File "<python-runtime>/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<python-runtime>/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'target/g21pr1/data/*-n983040-k6-s8675309-shuffle0*.json'

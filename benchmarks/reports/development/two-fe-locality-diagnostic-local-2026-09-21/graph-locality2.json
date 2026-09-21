@@ -1,0 +1,2587 @@
+{
+  "schema": "two-fe-training-locality-diagnostic-v1",
+  "source_sha256": "f69c5312a541752ac736ee4da14f83fd4ff2e039ae8b315a07a23d78bfc63d76",
+  "acceptance": "No routing rule selected or accepted.",
+  "results": [
+    {
+      "input": "bottleneck_ring-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "cc4ebb0ad232f1b555186a9c690179f2e5747b809c28273d26616a8942e7aac2",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "4b382d2be3d28aab912d0c9e6ca303c3ed9f143ab7de965fbb7c3aee3bad91df",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "bottleneck_ring",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1406,
+      "distinct_pairs": 1332,
+      "collision_pairs": 76,
+      "effective_pairs_from_collisions": 12996.25,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.006200122320774304,
+      "weighted_effective_observed_pairs": 1060.45037709714,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "bottleneck_ring-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "cc4ebb0ad232f1b555186a9c690179f2e5747b809c28273d26616a8942e7aac2",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "4b382d2be3d28aab912d0c9e6ca303c3ed9f143ab7de965fbb7c3aee3bad91df",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "bottleneck_ring",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1406,
+      "distinct_pairs": 1357,
+      "collision_pairs": 49,
+      "effective_pairs_from_collisions": 20157.448979591838,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.009616516252629534,
+      "weighted_effective_observed_pairs": 1092.1299673830738,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "bottleneck_ring-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "cc4ebb0ad232f1b555186a9c690179f2e5747b809c28273d26616a8942e7aac2",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "4b382d2be3d28aab912d0c9e6ca303c3ed9f143ab7de965fbb7c3aee3bad91df",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "bottleneck_ring",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1416,
+      "distinct_pairs": 1358,
+      "collision_pairs": 60,
+      "effective_pairs_from_collisions": 16697.0,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.007965639502931119,
+      "weighted_effective_observed_pairs": 1086.0687022882057,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "bottleneck_ring-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "59b36b1d5cc5773778d1f01b8ba15af8d60cc13eec1088201f4882165648cc54",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "4b382d2be3d28aab912d0c9e6ca303c3ed9f143ab7de965fbb7c3aee3bad91df",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "bottleneck_ring",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1406,
+      "distinct_pairs": 1332,
+      "collision_pairs": 76,
+      "effective_pairs_from_collisions": 12996.25,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.006200122320774304,
+      "weighted_effective_observed_pairs": 1224.5846066779852,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "bottleneck_ring-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "59b36b1d5cc5773778d1f01b8ba15af8d60cc13eec1088201f4882165648cc54",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "4b382d2be3d28aab912d0c9e6ca303c3ed9f143ab7de965fbb7c3aee3bad91df",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "bottleneck_ring",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1406,
+      "distinct_pairs": 1357,
+      "collision_pairs": 49,
+      "effective_pairs_from_collisions": 20157.448979591838,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.009616516252629534,
+      "weighted_effective_observed_pairs": 1263.187974314069,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "bottleneck_ring-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "59b36b1d5cc5773778d1f01b8ba15af8d60cc13eec1088201f4882165648cc54",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "4b382d2be3d28aab912d0c9e6ca303c3ed9f143ab7de965fbb7c3aee3bad91df",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "bottleneck_ring",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1416,
+      "distinct_pairs": 1358,
+      "collision_pairs": 60,
+      "effective_pairs_from_collisions": 16697.0,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.007965639502931119,
+      "weighted_effective_observed_pairs": 1263.6751740139212,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "cycle-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "09b81ec488014c5d56a2e77295fcada309160eff74496b7369cca6e76fa94086",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "1fb5ac3b4989a7209317e302e5cad2a6b64d5f6b132f0cdc7a04f7b9d5334a77",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "cycle",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 451,
+      "collision_pairs": 69,
+      "effective_pairs_from_collisions": 1895.8840579710145,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.0009044696020333751,
+      "weighted_effective_observed_pairs": 387.22596314001305,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "cycle-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "09b81ec488014c5d56a2e77295fcada309160eff74496b7369cca6e76fa94086",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "1fb5ac3b4989a7209317e302e5cad2a6b64d5f6b132f0cdc7a04f7b9d5334a77",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "cycle",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 455,
+      "collision_pairs": 61,
+      "effective_pairs_from_collisions": 2144.5245901639346,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.0010230885662344735,
+      "weighted_effective_observed_pairs": 401.062569488118,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "cycle-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "09b81ec488014c5d56a2e77295fcada309160eff74496b7369cca6e76fa94086",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "1fb5ac3b4989a7209317e302e5cad2a6b64d5f6b132f0cdc7a04f7b9d5334a77",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "cycle",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 456,
+      "collision_pairs": 58,
+      "effective_pairs_from_collisions": 2255.448275862069,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.0010760069403500496,
+      "weighted_effective_observed_pairs": 396.47038874927443,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "cycle-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "1f9f5ad791c55ee602d8133c11bdf8dc2fb6bc5d3d2e4ab688637e5d85329e51",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "1fb5ac3b4989a7209317e302e5cad2a6b64d5f6b132f0cdc7a04f7b9d5334a77",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "cycle",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 451,
+      "collision_pairs": 69,
+      "effective_pairs_from_collisions": 1895.8840579710145,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.0009044696020333751,
+      "weighted_effective_observed_pairs": 403.29846153846154,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "cycle-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "1f9f5ad791c55ee602d8133c11bdf8dc2fb6bc5d3d2e4ab688637e5d85329e51",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "1fb5ac3b4989a7209317e302e5cad2a6b64d5f6b132f0cdc7a04f7b9d5334a77",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "cycle",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 455,
+      "collision_pairs": 61,
+      "effective_pairs_from_collisions": 2144.5245901639346,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.0010230885662344735,
+      "weighted_effective_observed_pairs": 413.47634069400635,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "cycle-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "1f9f5ad791c55ee602d8133c11bdf8dc2fb6bc5d3d2e4ab688637e5d85329e51",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "1fb5ac3b4989a7209317e302e5cad2a6b64d5f6b132f0cdc7a04f7b9d5334a77",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "cycle",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 456,
+      "collision_pairs": 58,
+      "effective_pairs_from_collisions": 2255.448275862069,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.0010760069403500496,
+      "weighted_effective_observed_pairs": 417.42675159235665,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "disconnected_blocks-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "b8d04a9ffb3b4335d67e891acdfeff63c213da2431d460caa44ebe377aaedf3e",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "499b778f276280c1483545ba1bd0d4fbeb7d498751271bb60c5ac692eef88e96",
+        "component": "06daa4639e75d093b7db94f8f18a6a27f535112cfb393c0ba5f7d73d7dfbf7d4"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "disconnected_blocks",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 128,
+      "component_right_sizes": [
+        [
+          16,
+          128
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1406,
+      "distinct_pairs": 1332,
+      "collision_pairs": 76,
+      "effective_pairs_from_collisions": 12996.25,
+      "possible_within_component_pairs": 15360,
+      "effective_pair_fraction": 0.8461100260416666,
+      "weighted_effective_observed_pairs": 1060.45037709714,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "disconnected_blocks-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "b8d04a9ffb3b4335d67e891acdfeff63c213da2431d460caa44ebe377aaedf3e",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "499b778f276280c1483545ba1bd0d4fbeb7d498751271bb60c5ac692eef88e96",
+        "component": "06daa4639e75d093b7db94f8f18a6a27f535112cfb393c0ba5f7d73d7dfbf7d4"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "disconnected_blocks",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 128,
+      "component_right_sizes": [
+        [
+          16,
+          128
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1406,
+      "distinct_pairs": 1355,
+      "collision_pairs": 51,
+      "effective_pairs_from_collisions": 19366.960784313724,
+      "possible_within_component_pairs": 15360,
+      "effective_pair_fraction": 1.2608698427287581,
+      "weighted_effective_observed_pairs": 1090.1454132665074,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "disconnected_blocks-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "b8d04a9ffb3b4335d67e891acdfeff63c213da2431d460caa44ebe377aaedf3e",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "499b778f276280c1483545ba1bd0d4fbeb7d498751271bb60c5ac692eef88e96",
+        "component": "06daa4639e75d093b7db94f8f18a6a27f535112cfb393c0ba5f7d73d7dfbf7d4"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "disconnected_blocks",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 128,
+      "component_right_sizes": [
+        [
+          16,
+          128
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1416,
+      "distinct_pairs": 1358,
+      "collision_pairs": 60,
+      "effective_pairs_from_collisions": 16697.0,
+      "possible_within_component_pairs": 15360,
+      "effective_pair_fraction": 1.0870442708333334,
+      "weighted_effective_observed_pairs": 1086.0687022882057,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "disconnected_blocks-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "1760bc66ba7867551809cd4d92f68a170e0a52d7eb8c2d5e8af189d8cb1203fa",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "499b778f276280c1483545ba1bd0d4fbeb7d498751271bb60c5ac692eef88e96",
+        "component": "06daa4639e75d093b7db94f8f18a6a27f535112cfb393c0ba5f7d73d7dfbf7d4"
+      },
+      "weight_sha256": null,
+      "design": "disconnected_blocks",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 128,
+      "component_right_sizes": [
+        [
+          16,
+          128
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1406,
+      "distinct_pairs": 1332,
+      "collision_pairs": 76,
+      "effective_pairs_from_collisions": 12996.25,
+      "possible_within_component_pairs": 15360,
+      "effective_pair_fraction": 0.8461100260416666,
+      "weighted_effective_observed_pairs": 1224.5846066779852,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "disconnected_blocks-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "1760bc66ba7867551809cd4d92f68a170e0a52d7eb8c2d5e8af189d8cb1203fa",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "499b778f276280c1483545ba1bd0d4fbeb7d498751271bb60c5ac692eef88e96",
+        "component": "06daa4639e75d093b7db94f8f18a6a27f535112cfb393c0ba5f7d73d7dfbf7d4"
+      },
+      "weight_sha256": null,
+      "design": "disconnected_blocks",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 128,
+      "component_right_sizes": [
+        [
+          16,
+          128
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1406,
+      "distinct_pairs": 1355,
+      "collision_pairs": 51,
+      "effective_pairs_from_collisions": 19366.960784313724,
+      "possible_within_component_pairs": 15360,
+      "effective_pair_fraction": 1.2608698427287581,
+      "weighted_effective_observed_pairs": 1260.245195107746,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "disconnected_blocks-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "1760bc66ba7867551809cd4d92f68a170e0a52d7eb8c2d5e8af189d8cb1203fa",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "499b778f276280c1483545ba1bd0d4fbeb7d498751271bb60c5ac692eef88e96",
+        "component": "06daa4639e75d093b7db94f8f18a6a27f535112cfb393c0ba5f7d73d7dfbf7d4"
+      },
+      "weight_sha256": null,
+      "design": "disconnected_blocks",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 128,
+      "component_right_sizes": [
+        [
+          16,
+          128
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1416,
+      "distinct_pairs": 1358,
+      "collision_pairs": 60,
+      "effective_pairs_from_collisions": 16697.0,
+      "possible_within_component_pairs": 15360,
+      "effective_pair_fraction": 1.0870442708333334,
+      "weighted_effective_observed_pairs": 1263.6751740139212,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d2-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "af6a391b05c48d4ce2b0b6b00eb479ff3fac627012fe30beb5cab2c47e9f2490",
+      "membership_sha256": {
+        "g1": "815dd7c7730d185a74ccd473809c5995c2efb8ce9ea4ae90712a3a5b599aa6ac",
+        "g2": "85f6586fce49c34c5b66bccfb3ef11888ce4f090e16a5d4fd14fa57b5db8932b",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "strong_d2",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 122880,
+      "right_levels": 3072,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          3072,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 512,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 4717056,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 499.30610325066993,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d2-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "af6a391b05c48d4ce2b0b6b00eb479ff3fac627012fe30beb5cab2c47e9f2490",
+      "membership_sha256": {
+        "g1": "815dd7c7730d185a74ccd473809c5995c2efb8ce9ea4ae90712a3a5b599aa6ac",
+        "g2": "85f6586fce49c34c5b66bccfb3ef11888ce4f090e16a5d4fd14fa57b5db8932b",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "strong_d2",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 122880,
+      "right_levels": 3072,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          3072,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 512,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 4717056,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 498.48876464856363,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d2-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "af6a391b05c48d4ce2b0b6b00eb479ff3fac627012fe30beb5cab2c47e9f2490",
+      "membership_sha256": {
+        "g1": "815dd7c7730d185a74ccd473809c5995c2efb8ce9ea4ae90712a3a5b599aa6ac",
+        "g2": "85f6586fce49c34c5b66bccfb3ef11888ce4f090e16a5d4fd14fa57b5db8932b",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "strong_d2",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 122880,
+      "right_levels": 3072,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          3072,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 512,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 4717056,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 499.27128734590593,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d2-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "c9c46037b9dbfca8055d15645109da8cd7625a17b15c54d515f68db537b02d50",
+      "membership_sha256": {
+        "g1": "815dd7c7730d185a74ccd473809c5995c2efb8ce9ea4ae90712a3a5b599aa6ac",
+        "g2": "85f6586fce49c34c5b66bccfb3ef11888ce4f090e16a5d4fd14fa57b5db8932b",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "strong_d2",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 122880,
+      "right_levels": 3072,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          3072,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 512,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 4717056,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 512.0,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d2-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "c9c46037b9dbfca8055d15645109da8cd7625a17b15c54d515f68db537b02d50",
+      "membership_sha256": {
+        "g1": "815dd7c7730d185a74ccd473809c5995c2efb8ce9ea4ae90712a3a5b599aa6ac",
+        "g2": "85f6586fce49c34c5b66bccfb3ef11888ce4f090e16a5d4fd14fa57b5db8932b",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "strong_d2",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 122880,
+      "right_levels": 3072,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          3072,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 512,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 4717056,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 512.0,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d2-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "c9c46037b9dbfca8055d15645109da8cd7625a17b15c54d515f68db537b02d50",
+      "membership_sha256": {
+        "g1": "815dd7c7730d185a74ccd473809c5995c2efb8ce9ea4ae90712a3a5b599aa6ac",
+        "g2": "85f6586fce49c34c5b66bccfb3ef11888ce4f090e16a5d4fd14fa57b5db8932b",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "strong_d2",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 122880,
+      "right_levels": 3072,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          3072,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 512,
+      "distinct_pairs": 512,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 4717056,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 512.0,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d3-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "6b5539695ce2522cc7c0d5e60ab80855a3621bad5d506e421692c5b7d886e1fd",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "bb59821bf592b62df88e6cdd28e67ec03bb5bb8827b4fbd29b3ddb5cccca236e",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "strong_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1534,
+      "collision_pairs": 2,
+      "effective_pairs_from_collisions": 589440.0,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.28120420127015144,
+      "weighted_effective_observed_pairs": 1289.1179030013943,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d3-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "6b5539695ce2522cc7c0d5e60ab80855a3621bad5d506e421692c5b7d886e1fd",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "bb59821bf592b62df88e6cdd28e67ec03bb5bb8827b4fbd29b3ddb5cccca236e",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "strong_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1533,
+      "collision_pairs": 3,
+      "effective_pairs_from_collisions": 392960.0,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.1874694675134343,
+      "weighted_effective_observed_pairs": 1287.8587537182032,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d3-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "6b5539695ce2522cc7c0d5e60ab80855a3621bad5d506e421692c5b7d886e1fd",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "bb59821bf592b62df88e6cdd28e67ec03bb5bb8827b4fbd29b3ddb5cccca236e",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "strong_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1531,
+      "collision_pairs": 5,
+      "effective_pairs_from_collisions": 235776.0,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.11248168050806058,
+      "weighted_effective_observed_pairs": 1273.183985322636,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d3-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "7bd467a3fffb8965799c5a45ad4e2103998f24a11b9d6dc7b95d0b211056c687",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "bb59821bf592b62df88e6cdd28e67ec03bb5bb8827b4fbd29b3ddb5cccca236e",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "strong_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1534,
+      "collision_pairs": 2,
+      "effective_pairs_from_collisions": 589440.0,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.28120420127015144,
+      "weighted_effective_observed_pairs": 1532.0103896103897,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d3-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "7bd467a3fffb8965799c5a45ad4e2103998f24a11b9d6dc7b95d0b211056c687",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "bb59821bf592b62df88e6cdd28e67ec03bb5bb8827b4fbd29b3ddb5cccca236e",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "strong_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1533,
+      "collision_pairs": 3,
+      "effective_pairs_from_collisions": 392960.0,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.1874694675134343,
+      "weighted_effective_observed_pairs": 1530.023346303502,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d3-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "7bd467a3fffb8965799c5a45ad4e2103998f24a11b9d6dc7b95d0b211056c687",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "bb59821bf592b62df88e6cdd28e67ec03bb5bb8827b4fbd29b3ddb5cccca236e",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "strong_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 2048,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2048,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1531,
+      "collision_pairs": 5,
+      "effective_pairs_from_collisions": 235776.0,
+      "possible_within_component_pairs": 2096128,
+      "effective_pair_fraction": 0.11248168050806058,
+      "weighted_effective_observed_pairs": 1526.0646830530402,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d6-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "47643c0c21bc10369c3046e5994c0472a4a5d7b2b3c69d1b2975b1fb2d8c07b2",
+      "membership_sha256": {
+        "g1": "bc326bb5f356aab71715f04fd1f6a1a231f5a265baa05f0fc6ec252d9f4e1fd6",
+        "g2": "25f623b3dd5488d20412ffcd08ca74063167f231b6d9b922da550d300eef2936",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "strong_d6",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 40960,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        6.0,
+        6.0,
+        6.0,
+        6.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 7680,
+      "distinct_pairs": 7129,
+      "collision_pairs": 672,
+      "effective_pairs_from_collisions": 43880.0,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.08377627077223851,
+      "weighted_effective_observed_pairs": 4946.214232100327,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d6-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "47643c0c21bc10369c3046e5994c0472a4a5d7b2b3c69d1b2975b1fb2d8c07b2",
+      "membership_sha256": {
+        "g1": "bc326bb5f356aab71715f04fd1f6a1a231f5a265baa05f0fc6ec252d9f4e1fd6",
+        "g2": "25f623b3dd5488d20412ffcd08ca74063167f231b6d9b922da550d300eef2936",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "strong_d6",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 40960,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        6.0,
+        6.0,
+        6.0,
+        6.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 7680,
+      "distinct_pairs": 7153,
+      "collision_pairs": 602,
+      "effective_pairs_from_collisions": 48982.32558139535,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.09351769760621974,
+      "weighted_effective_observed_pairs": 4997.1064775018585,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d6-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "47643c0c21bc10369c3046e5994c0472a4a5d7b2b3c69d1b2975b1fb2d8c07b2",
+      "membership_sha256": {
+        "g1": "bc326bb5f356aab71715f04fd1f6a1a231f5a265baa05f0fc6ec252d9f4e1fd6",
+        "g2": "25f623b3dd5488d20412ffcd08ca74063167f231b6d9b922da550d300eef2936",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "strong_d6",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 40960,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        6.0,
+        6.0,
+        6.0,
+        6.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 7680,
+      "distinct_pairs": 7174,
+      "collision_pairs": 573,
+      "effective_pairs_from_collisions": 51461.3612565445,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.09825070498943154,
+      "weighted_effective_observed_pairs": 5002.6667448848675,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d6-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "c8e89daf30ca97c675ca05ab397181ee805e08c238c15518da5c37d41359dc6a",
+      "membership_sha256": {
+        "g1": "bc326bb5f356aab71715f04fd1f6a1a231f5a265baa05f0fc6ec252d9f4e1fd6",
+        "g2": "25f623b3dd5488d20412ffcd08ca74063167f231b6d9b922da550d300eef2936",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "strong_d6",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 40960,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        6.0,
+        6.0,
+        6.0,
+        6.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 7680,
+      "distinct_pairs": 7129,
+      "collision_pairs": 672,
+      "effective_pairs_from_collisions": 43880.0,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.08377627077223851,
+      "weighted_effective_observed_pairs": 6536.170212765956,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d6-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "c8e89daf30ca97c675ca05ab397181ee805e08c238c15518da5c37d41359dc6a",
+      "membership_sha256": {
+        "g1": "bc326bb5f356aab71715f04fd1f6a1a231f5a265baa05f0fc6ec252d9f4e1fd6",
+        "g2": "25f623b3dd5488d20412ffcd08ca74063167f231b6d9b922da550d300eef2936",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "strong_d6",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 40960,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        6.0,
+        6.0,
+        6.0,
+        6.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 7680,
+      "distinct_pairs": 7153,
+      "collision_pairs": 602,
+      "effective_pairs_from_collisions": 48982.32558139535,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.09351769760621974,
+      "weighted_effective_observed_pairs": 6639.171544349391,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "strong_d6-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "c8e89daf30ca97c675ca05ab397181ee805e08c238c15518da5c37d41359dc6a",
+      "membership_sha256": {
+        "g1": "bc326bb5f356aab71715f04fd1f6a1a231f5a265baa05f0fc6ec252d9f4e1fd6",
+        "g2": "25f623b3dd5488d20412ffcd08ca74063167f231b6d9b922da550d300eef2936",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "strong_d6",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 40960,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        6.0,
+        6.0,
+        6.0,
+        6.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 7680,
+      "distinct_pairs": 7174,
+      "collision_pairs": 573,
+      "effective_pairs_from_collisions": 51461.3612565445,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.09825070498943154,
+      "weighted_effective_observed_pairs": 6682.800815771583,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_dense-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "a49f422098b50a76ff349e1270fdab094f568fe1ba280c15602a9903eff5d7a1",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "1edf478dca9b47c1db45b79e99ffa6733708a8dd0563c04bd5212b0f6766c2b3",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "two_fe_dense",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2458,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        2.0,
+        3.0,
+        5.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 561,
+      "distinct_pairs": 556,
+      "collision_pairs": 5,
+      "effective_pairs_from_collisions": 31416.0,
+      "possible_within_component_pairs": 3019653,
+      "effective_pair_fraction": 0.01040384441523579,
+      "weighted_effective_observed_pairs": 397.0287518542088,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_dense-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "a49f422098b50a76ff349e1270fdab094f568fe1ba280c15602a9903eff5d7a1",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "1edf478dca9b47c1db45b79e99ffa6733708a8dd0563c04bd5212b0f6766c2b3",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "two_fe_dense",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2458,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        2.0,
+        3.0,
+        4.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 518,
+      "distinct_pairs": 500,
+      "collision_pairs": 19,
+      "effective_pairs_from_collisions": 7047.526315789473,
+      "possible_within_component_pairs": 3019653,
+      "effective_pair_fraction": 0.0023338861504250564,
+      "weighted_effective_observed_pairs": 372.9551549638428,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_dense-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "a49f422098b50a76ff349e1270fdab094f568fe1ba280c15602a9903eff5d7a1",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "1edf478dca9b47c1db45b79e99ffa6733708a8dd0563c04bd5212b0f6766c2b3",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "two_fe_dense",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2458,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        2.0,
+        3.0,
+        5.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 538,
+      "distinct_pairs": 531,
+      "collision_pairs": 7,
+      "effective_pairs_from_collisions": 20636.14285714286,
+      "possible_within_component_pairs": 3019653,
+      "effective_pair_fraction": 0.006833945111290224,
+      "weighted_effective_observed_pairs": 399.9691563287133,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_dense-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "f13fae3b94e808024bf716bb1e1a103e3ce43b62b86a437264748220656523f8",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "1edf478dca9b47c1db45b79e99ffa6733708a8dd0563c04bd5212b0f6766c2b3",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "two_fe_dense",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2458,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        2.0,
+        3.0,
+        5.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 561,
+      "distinct_pairs": 556,
+      "collision_pairs": 5,
+      "effective_pairs_from_collisions": 31416.0,
+      "possible_within_component_pairs": 3019653,
+      "effective_pair_fraction": 0.01040384441523579,
+      "weighted_effective_observed_pairs": 431.97241821680564,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_dense-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "f13fae3b94e808024bf716bb1e1a103e3ce43b62b86a437264748220656523f8",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "1edf478dca9b47c1db45b79e99ffa6733708a8dd0563c04bd5212b0f6766c2b3",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "two_fe_dense",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2458,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        2.0,
+        3.0,
+        4.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 518,
+      "distinct_pairs": 500,
+      "collision_pairs": 19,
+      "effective_pairs_from_collisions": 7047.526315789473,
+      "possible_within_component_pairs": 3019653,
+      "effective_pair_fraction": 0.0023338861504250564,
+      "weighted_effective_observed_pairs": 394.27263321262285,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_dense-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "f13fae3b94e808024bf716bb1e1a103e3ce43b62b86a437264748220656523f8",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "1edf478dca9b47c1db45b79e99ffa6733708a8dd0563c04bd5212b0f6766c2b3",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "two_fe_dense",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          2458,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        2.0,
+        3.0,
+        5.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 538,
+      "distinct_pairs": 531,
+      "collision_pairs": 7,
+      "effective_pairs_from_collisions": 20636.14285714286,
+      "possible_within_component_pairs": 3019653,
+      "effective_pair_fraction": 0.006833945111290224,
+      "weighted_effective_observed_pairs": 421.70334495673507,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_sparse-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "db39fcded603950da1c3c2cb89cd959b5ed9913fc68144adab1b22c99377e1d6",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "dab016e9a67ef287565992b4fcbeaeec0840caa28396dea3e8e8d093cc146ce3",
+        "component": "3960bf57fde2ba22dca44a5f29ab954b81105f0546ec6ea6de5aed3639719251"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "two_fe_sparse",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 114,
+      "component_right_sizes": [
+        [
+          1,
+          99
+        ],
+        [
+          2,
+          10
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          5,
+          1
+        ],
+        [
+          2324,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        1.0,
+        1.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 48,
+      "distinct_pairs": 48,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 2699358,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 41.894097798477794,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_sparse-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "db39fcded603950da1c3c2cb89cd959b5ed9913fc68144adab1b22c99377e1d6",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "dab016e9a67ef287565992b4fcbeaeec0840caa28396dea3e8e8d093cc146ce3",
+        "component": "3960bf57fde2ba22dca44a5f29ab954b81105f0546ec6ea6de5aed3639719251"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "two_fe_sparse",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 114,
+      "component_right_sizes": [
+        [
+          1,
+          99
+        ],
+        [
+          2,
+          10
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          5,
+          1
+        ],
+        [
+          2324,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        1.0,
+        1.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 42,
+      "distinct_pairs": 42,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 2699358,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 40.3380796700018,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_sparse-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "db39fcded603950da1c3c2cb89cd959b5ed9913fc68144adab1b22c99377e1d6",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "dab016e9a67ef287565992b4fcbeaeec0840caa28396dea3e8e8d093cc146ce3",
+        "component": "3960bf57fde2ba22dca44a5f29ab954b81105f0546ec6ea6de5aed3639719251"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "two_fe_sparse",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 114,
+      "component_right_sizes": [
+        [
+          1,
+          99
+        ],
+        [
+          2,
+          10
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          5,
+          1
+        ],
+        [
+          2324,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        1.0,
+        1.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 52,
+      "distinct_pairs": 52,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 2699358,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 44.94969302331387,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_sparse-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "e820874167c79aeb001ea25267125b5aada95fa21f03235d8d0aa38c1550b29e",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "dab016e9a67ef287565992b4fcbeaeec0840caa28396dea3e8e8d093cc146ce3",
+        "component": "3960bf57fde2ba22dca44a5f29ab954b81105f0546ec6ea6de5aed3639719251"
+      },
+      "weight_sha256": null,
+      "design": "two_fe_sparse",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 114,
+      "component_right_sizes": [
+        [
+          1,
+          99
+        ],
+        [
+          2,
+          10
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          5,
+          1
+        ],
+        [
+          2324,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        1.0,
+        1.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 48,
+      "distinct_pairs": 48,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 2699358,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 43.9673202614379,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_sparse-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "e820874167c79aeb001ea25267125b5aada95fa21f03235d8d0aa38c1550b29e",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "dab016e9a67ef287565992b4fcbeaeec0840caa28396dea3e8e8d093cc146ce3",
+        "component": "3960bf57fde2ba22dca44a5f29ab954b81105f0546ec6ea6de5aed3639719251"
+      },
+      "weight_sha256": null,
+      "design": "two_fe_sparse",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 114,
+      "component_right_sizes": [
+        [
+          1,
+          99
+        ],
+        [
+          2,
+          10
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          5,
+          1
+        ],
+        [
+          2324,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        1.0,
+        1.0,
+        2.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 42,
+      "distinct_pairs": 42,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 2699358,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 40.604026845637584,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "two_fe_sparse-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "e820874167c79aeb001ea25267125b5aada95fa21f03235d8d0aa38c1550b29e",
+      "membership_sha256": {
+        "g1": "4dcdcc5ad6a4f4bc7e50aafa1745ca8fc5297961e667efacab9f7deb5caec8c0",
+        "g2": "dab016e9a67ef287565992b4fcbeaeec0840caa28396dea3e8e8d093cc146ce3",
+        "component": "3960bf57fde2ba22dca44a5f29ab954b81105f0546ec6ea6de5aed3639719251"
+      },
+      "weight_sha256": null,
+      "design": "two_fe_sparse",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 49152,
+      "right_levels": 2458,
+      "components": 114,
+      "component_right_sizes": [
+        [
+          1,
+          99
+        ],
+        [
+          2,
+          10
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          5,
+          1
+        ],
+        [
+          2324,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        1.0,
+        1.0,
+        1.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 52,
+      "distinct_pairs": 52,
+      "collision_pairs": 0,
+      "effective_pairs_from_collisions": null,
+      "possible_within_component_pairs": 2699358,
+      "effective_pair_fraction": null,
+      "weighted_effective_observed_pairs": 47.69174311926606,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "unbalanced-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "fa7398db00accae56805c4e7a572b8bb9d0502f5762a6168c01a97c2e8b05479",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f1033840626942086365c989701a05739e9fec89313f7ce7a3cd41ec36c65e95",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "unbalanced",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1512,
+      "distinct_pairs": 1496,
+      "collision_pairs": 16,
+      "effective_pairs_from_collisions": 71394.75,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.13630779188049855,
+      "weighted_effective_observed_pairs": 1250.037361522762,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "unbalanced-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "fa7398db00accae56805c4e7a572b8bb9d0502f5762a6168c01a97c2e8b05479",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f1033840626942086365c989701a05739e9fec89313f7ce7a3cd41ec36c65e95",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "unbalanced",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1506,
+      "distinct_pairs": 1488,
+      "collision_pairs": 18,
+      "effective_pairs_from_collisions": 62959.166666666664,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.12020246568507657,
+      "weighted_effective_observed_pairs": 1236.9259322082512,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "unbalanced-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "fa7398db00accae56805c4e7a572b8bb9d0502f5762a6168c01a97c2e8b05479",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f1033840626942086365c989701a05739e9fec89313f7ce7a3cd41ec36c65e95",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "unbalanced",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1514,
+      "distinct_pairs": 1491,
+      "collision_pairs": 23,
+      "effective_pairs_from_collisions": 49797.434782608696,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.09507391477007097,
+      "weighted_effective_observed_pairs": 1224.2955549552805,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "unbalanced-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "fe7d53ef729b88b47ef7870a91ef088eb4cf5f1901553921c0b4faa2cdc4e873",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f1033840626942086365c989701a05739e9fec89313f7ce7a3cd41ec36c65e95",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "unbalanced",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1512,
+      "distinct_pairs": 1496,
+      "collision_pairs": 16,
+      "effective_pairs_from_collisions": 71394.75,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.13630779188049855,
+      "weighted_effective_observed_pairs": 1469.984810126582,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "unbalanced-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "fe7d53ef729b88b47ef7870a91ef088eb4cf5f1901553921c0b4faa2cdc4e873",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f1033840626942086365c989701a05739e9fec89313f7ce7a3cd41ec36c65e95",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "unbalanced",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1506,
+      "distinct_pairs": 1488,
+      "collision_pairs": 18,
+      "effective_pairs_from_collisions": 62959.166666666664,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.12020246568507657,
+      "weighted_effective_observed_pairs": 1457.7448015122875,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "unbalanced-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "fe7d53ef729b88b47ef7870a91ef088eb4cf5f1901553921c0b4faa2cdc4e873",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f1033840626942086365c989701a05739e9fec89313f7ce7a3cd41ec36c65e95",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "unbalanced",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 1024,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          1024,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        2.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1514,
+      "distinct_pairs": 1491,
+      "collision_pairs": 23,
+      "effective_pairs_from_collisions": 49797.434782608696,
+      "possible_within_component_pairs": 523776,
+      "effective_pair_fraction": 0.09507391477007097,
+      "weighted_effective_observed_pairs": 1459.902699309479,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "weak_d3-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "7eba3f79ad22e1a810ec4ae1cf518bf5358ab301976109f59a91ec06376c65fa",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f9589f573c10425ac4ce8d6472e0f2a7daaa8bc87753922166f3f80d4bd6419f",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "weak_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 17985,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          17985,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1449,
+      "collision_pairs": 94,
+      "effective_pairs_from_collisions": 12541.27659574468,
+      "possible_within_component_pairs": 161721120,
+      "effective_pair_fraction": 7.75487864278004e-05,
+      "weighted_effective_observed_pairs": 1168.6415012916514,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "weak_d3-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "7eba3f79ad22e1a810ec4ae1cf518bf5358ab301976109f59a91ec06376c65fa",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f9589f573c10425ac4ce8d6472e0f2a7daaa8bc87753922166f3f80d4bd6419f",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "weak_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 17985,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          17985,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1458,
+      "collision_pairs": 83,
+      "effective_pairs_from_collisions": 14203.373493975903,
+      "possible_within_component_pairs": 161721120,
+      "effective_pair_fraction": 8.782633643630408e-05,
+      "weighted_effective_observed_pairs": 1184.8542892208122,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "weak_d3-n245760-k6-s8675309-shuffle0-wmoderate.json",
+      "input_sha256": "7eba3f79ad22e1a810ec4ae1cf518bf5358ab301976109f59a91ec06376c65fa",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f9589f573c10425ac4ce8d6472e0f2a7daaa8bc87753922166f3f80d4bd6419f",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": "a4d35e6696fca4527bc4592c0cecec584a44bd14e20cabd677a2a56c3dcf93b0",
+      "design": "weak_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "moderate",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 17985,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          17985,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1450,
+      "collision_pairs": 93,
+      "effective_pairs_from_collisions": 12676.129032258064,
+      "possible_within_component_pairs": 161721120,
+      "effective_pair_fraction": 7.83826443463789e-05,
+      "weighted_effective_observed_pairs": 1169.704029672623,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "weak_d3-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "a81a5028438cc1f6a3192a7ce3675a39f17d7e77ac01012e6490d57ec979faa9",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f9589f573c10425ac4ce8d6472e0f2a7daaa8bc87753922166f3f80d4bd6419f",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "weak_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 1729,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 17985,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          17985,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1449,
+      "collision_pairs": 94,
+      "effective_pairs_from_collisions": 12541.27659574468,
+      "possible_within_component_pairs": 161721120,
+      "effective_pair_fraction": 7.75487864278004e-05,
+      "weighted_effective_observed_pairs": 1368.5011600928074,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "weak_d3-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "a81a5028438cc1f6a3192a7ce3675a39f17d7e77ac01012e6490d57ec979faa9",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f9589f573c10425ac4ce8d6472e0f2a7daaa8bc87753922166f3f80d4bd6419f",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "weak_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 65537,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 17985,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          17985,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1458,
+      "collision_pairs": 83,
+      "effective_pairs_from_collisions": 14203.373493975903,
+      "possible_within_component_pairs": 161721120,
+      "effective_pair_fraction": 8.782633643630408e-05,
+      "weighted_effective_observed_pairs": 1386.1903642773207,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    },
+    {
+      "input": "weak_d3-n245760-k6-s8675309-shuffle0.json",
+      "input_sha256": "a81a5028438cc1f6a3192a7ce3675a39f17d7e77ac01012e6490d57ec979faa9",
+      "membership_sha256": {
+        "g1": "9fa9d925788793f8ec5255f8ea0ee82fa3bfc8dc020b02e8a6cf6079aebcdc36",
+        "g2": "f9589f573c10425ac4ce8d6472e0f2a7daaa8bc87753922166f3f80d4bd6419f",
+        "component": "0e5a88d7d1f5ee0513923b685b08da2f087d45775a78af4655e5f62f94f46c50"
+      },
+      "weight_sha256": null,
+      "design": "weak_d3",
+      "n": 245760,
+      "data_seed": 8675309,
+      "weight_design": "none",
+      "shuffled": false,
+      "sample_seed": 99991,
+      "sampled_groups": 512,
+      "total_groups": 81920,
+      "right_levels": 17985,
+      "components": 1,
+      "component_right_sizes": [
+        [
+          17985,
+          1
+        ]
+      ],
+      "sampled_distinct_degree_quantiles": [
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "skipped_degree_above_64": 0,
+      "pair_occurrences": 1536,
+      "distinct_pairs": 1450,
+      "collision_pairs": 93,
+      "effective_pairs_from_collisions": 12676.129032258064,
+      "possible_within_component_pairs": 161721120,
+      "effective_pair_fraction": 7.83826443463789e-05,
+      "weighted_effective_observed_pairs": 1370.0905923344947,
+      "weighted_statistic_scope": "Observed-sample concentration; not extrapolated to the full graph."
+    }
+  ]
+}
