@@ -457,6 +457,146 @@ pub fn recover_finalized_categorical_effects_map_certified(
     )
 }
 
+/// Additional storage over the existing recovery finishing envelope. Construction
+/// owns a target copy, group/column coefficient banks and one workspace per
+/// bounded worker; these owners are released before publication certification.
+pub(crate) fn single_slope_recovery_extra_bytes(
+    observations: usize,
+    levels: usize,
+    channels: usize,
+    threads: usize,
+) -> Result<u128> {
+    if levels == 0 || levels > observations || !(1..=4).contains(&channels) || threads == 0 {
+        return Err(invalid_argument(
+            "single slope recovery memory dimensions are inconsistent",
+        ));
+    }
+    let workers = threads.min(levels);
+    let workspace =
+        SlopeWorkspace::modeled_bytes(channels, 1)? + std::mem::size_of::<SlopeWorkspace>() as u128;
+    (observations as u128 * 8)
+        .checked_add(levels as u128 * (channels as u128 * 16 + 16))
+        .and_then(|bytes| bytes.checked_add(workers as u128 * workspace))
+        .ok_or_else(|| allocation("single slope recovery storage overflows"))
+}
+
+/// One partition has independent level systems. Keep the established scaled,
+/// compensated MAP rank policy, then independently certify the reconstructed
+/// target through the ordinary channel-major finishing boundary.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn recover_finalized_single_slope_direct_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    tolerance: f64,
+    materialize_absorbed_sum: bool,
+) -> Result<RecoveredCategoricalEffects> {
+    validate_recovery_inputs(topology, effects, target, requested_channels)?;
+    if effects.len() != 1
+        || effects[0].slopes().is_empty()
+        || effects[0].channels() > 4
+        || !tolerance.is_finite()
+        || tolerance <= 0.0
+    {
+        return Err(invalid_argument(
+            "direct slope recovery requires one bounded slope partition",
+        ));
+    }
+    let weights = validate_weights(weights, target.len())?;
+    let effect = &effects[0];
+    let source = topology
+        .registry()
+        .source(topology.effect_to_topology()[0])?;
+    let levels = source.n_levels();
+    let channels = effect.channels();
+    let width = levels
+        .checked_mul(channels)
+        .ok_or_else(|| allocation("single slope recovery coefficient count overflows"))?;
+    let workers = rayon::current_num_threads().min(levels).max(1);
+    let block = levels.div_ceil(workers);
+    let blocks = levels.div_ceil(block);
+    let planned = single_slope_recovery_extra_bytes(target.len(), levels, channels, workers)?;
+    let values = DenseMatrix::from_row_major(
+        target.len(),
+        1,
+        fallible_copy(target, "unable to reserve direct recovery target")?,
+    )?;
+    let mut group_coefficients =
+        fallible_filled(width, 0.0, "unable to reserve direct group coefficients")?;
+    let mut coefficients =
+        fallible_filled(width, 0.0, "unable to reserve direct channel coefficients")?;
+    let mut workspaces = Vec::new();
+    workspaces
+        .try_reserve_exact(blocks)
+        .map_err(|_| allocation("unable to reserve direct recovery workers"))?;
+    for _ in 0..blocks {
+        workspaces.push(SlopeWorkspace::new(
+            channels,
+            1,
+            &mut SystemSlopeWorkspaceReservation,
+        )?);
+    }
+    let actual = 8
+        * (values.storage_capacity() as u128
+            + group_coefficients.capacity() as u128
+            + coefficients.capacity() as u128)
+        + workspaces.capacity() as u128 * std::mem::size_of::<SlopeWorkspace>() as u128;
+    let actual = workspaces.iter().try_fold(actual, |bytes, workspace| {
+        workspace.payload_bytes().map(|payload| bytes + payload)
+    })?;
+    if actual > planned {
+        return Err(allocation(
+            "direct recovery capacities exceed their admission",
+        ));
+    }
+    group_coefficients
+        .par_chunks_mut(block * channels)
+        .zip(workspaces.par_iter_mut())
+        .enumerate()
+        .try_for_each(|(batch, (bank, workspace))| -> Result<()> {
+            for (local, destination) in bank.chunks_mut(channels).enumerate() {
+                group_moments(
+                    source.members(batch * block + local)?,
+                    effect,
+                    weights,
+                    &values,
+                    workspace,
+                )?;
+                solve_group(channels, 1, workspace)?;
+                for (channel, value) in destination.iter_mut().enumerate() {
+                    *value = workspace.coefficients[channel] / workspace.channel_scales[channel];
+                    if !value.is_finite() {
+                        return Err(invalid_data("direct recovery coefficient is not finite"));
+                    }
+                }
+            }
+            Ok(())
+        })?;
+    for channel in 0..channels {
+        for level in 0..levels {
+            coefficients[channel * levels + level] = group_coefficients[level * channels + channel];
+        }
+    }
+    drop(workspaces);
+    drop(group_coefficients);
+    drop(values);
+    // A single intercept-bearing effect has no cross-effect normalization.
+    finish_channel_major_recovery(
+        topology,
+        effects,
+        weights,
+        target,
+        requested_channels,
+        &coefficients,
+        1,
+        tolerance,
+        CategoricalRecoveryMethod::Direct,
+        materialize_absorbed_sum,
+    )
+}
+
 /// Recover normalized categorical effects from a coefficient product retained
 /// by the estimator. This path performs no iterative solve: it normalizes the
 /// solver's null-space representative, scatters requested channels, and
@@ -1323,14 +1463,13 @@ fn finish_channel_major_recovery(
             "categorical recovery coefficient product failed reconstruction: relative infinity residual {reconstruction_relative_infinity:.6e}"
         )));
     }
-    let certificate = certify(
-        topology,
-        effects,
-        weights,
-        &residual,
-        tolerance,
-        &mut workspace,
-    )?;
+    let certificate = if recovery_method == CategoricalRecoveryMethod::Direct
+        && effects.len() == 1 && rayon::current_num_threads() > 1
+    {
+        certify_single_slope_parallel(topology, &effects[0], weights, &residual, tolerance, &mut workspace)?
+    } else {
+        certify(topology, effects, weights, &residual, tolerance, &mut workspace)?
+    };
     if !certificate.passed {
         return Err(invalid_data(
             "categorical recovery coefficient product failed its FE certificate",
@@ -2985,6 +3124,98 @@ fn swap_rhs_rows(values: &mut [f64], rhs_count: usize, left: usize, right: usize
     }
 }
 
+
+/// Group computations match the serial certificate. Ordered scalar reduction
+/// preserves even its diagnostic RMS arithmetic across worker counts.
+fn certify_single_slope_parallel(
+    topology: &FinalizedCategoricalTopology,
+    effect: &CategoricalAbsorbedEffectView<'_>,
+    weights: ValidatedWeights<'_>,
+    residual: &DenseMatrix,
+    tolerance: f64,
+    workspace: &mut SlopeWorkspace,
+) -> Result<FeCertificate> {
+    weighted_norms(
+        residual,
+        weights,
+        &mut workspace.residual_norms,
+        &mut workspace.value_scales,
+        &mut workspace.coefficients[..1],
+    )?;
+    let scale = workspace.reference_norms[0].max(workspace.residual_norms[0]);
+    let source = topology
+        .registry()
+        .source(topology.effect_to_topology()[0])?;
+    let levels = source.n_levels();
+    let block = levels.div_ceil(rayon::current_num_threads().min(levels));
+    let blocks = levels.div_ceil(block);
+    let channels = effect.channels();
+    let mut partials = fallible_filled(
+        levels,
+        (0.0_f64, 0.0_f64),
+        "unable to reserve direct recovery certificates",
+    )?;
+    let mut workspaces = Vec::new();
+    workspaces
+        .try_reserve_exact(blocks)
+        .map_err(|_| allocation("unable to reserve direct certificate workers"))?;
+    for _ in 0..blocks {
+        let mut worker = SlopeWorkspace::new(channels, 1, &mut SystemSlopeWorkspaceReservation)?;
+        worker.rhs_scales[0] = scale;
+        workspaces.push(worker);
+    }
+    let actual = partials.capacity() as u128 * 16
+        + workspaces.capacity() as u128 * std::mem::size_of::<SlopeWorkspace>() as u128;
+    let actual = workspaces.iter().try_fold(actual, |bytes, worker| {
+        worker.payload_bytes().map(|payload| bytes + payload)
+    })?;
+    if actual
+        > single_slope_recovery_extra_bytes(
+            residual.nrows(),
+            levels,
+            channels,
+            rayon::current_num_threads(),
+        )?
+    {
+        return Err(allocation(
+            "direct certificate capacities exceed their admission",
+        ));
+    }
+    partials
+        .par_chunks_mut(block)
+        .zip(workspaces.par_iter_mut())
+        .enumerate()
+        .try_for_each(|(batch, (bank, worker))| -> Result<()> {
+            for (local, partial) in bank.iter_mut().enumerate() {
+                group_moments(
+                    source.members(batch * block + local)?,
+                    effect,
+                    weights,
+                    residual,
+                    worker,
+                )?;
+                solve_group(channels, 1, worker)?;
+                *partial = group_rhs_certificate(worker, channels, 1, 0, weights.raw_scale)?;
+            }
+            Ok(())
+        })?;
+    let mut absolute = 0.0_f64;
+    let mut relative_infinity = 0.0_f64;
+    let mut squares = 0.0_f64;
+    for (raw, relative) in partials {
+        absolute = absolute.max(raw);
+        relative_infinity = relative_infinity.max(relative);
+        squares = relative.mul_add(relative, squares);
+    }
+    Ok(FeCertificate {
+        absolute_infinity_norm: absolute,
+        relative_infinity_norm: relative_infinity,
+        relative_two_norm: (squares / levels as f64).sqrt(),
+        passed: relative_infinity <= tolerance,
+    })
+}
+
+
 fn certify(
     topology: &FinalizedCategoricalTopology,
     effects: &[CategoricalAbsorbedEffectView<'_>],
@@ -3023,45 +3254,13 @@ fn certify(
             solve_group(effect.channels(), residuals.ncols(), workspace)?;
             let channels = effect.channels();
             for rhs in 0..residuals.ncols() {
-                let mut projected_square = 0.0_f64;
-                for left in 0..channels {
-                    for right in 0..channels {
-                        projected_square = workspace.coefficients[left * residuals.ncols() + rhs]
-                            .mul_add(
-                                workspace.gram[left * channels + right]
-                                    * workspace.coefficients[right * residuals.ncols() + rhs],
-                                projected_square,
-                            );
-                    }
-                }
-                let projected = projected_square.max(0.0).sqrt();
-                let denominator = workspace.rhs_scales[rhs];
-                let relative = if denominator == 0.0 {
-                    if projected == 0.0 {
-                        0.0
-                    } else {
-                        f64::INFINITY
-                    }
-                } else {
-                    projected / denominator
-                };
-                if !relative.is_finite() {
-                    return Err(invalid_data(
-                        "intercept-slope MAP certificate ratio is not finite",
-                    ));
-                }
+                let (raw, relative) = group_rhs_certificate(workspace, channels, residuals.ncols(), rhs, weights.raw_scale)?;
+                absolute = absolute.max(raw);
                 relative_infinity = relative_infinity.max(relative);
                 relative_squares = relative.mul_add(relative, relative_squares);
                 count = count
                     .checked_add(1)
                     .ok_or_else(|| allocation("intercept-slope MAP certificate count overflows"))?;
-                for channel in 0..channels {
-                    let raw = workspace.cross[channel * residuals.ncols() + rhs].abs()
-                        * workspace.value_scales[rhs]
-                        * workspace.channel_scales[channel]
-                        * weights.raw_scale;
-                    absolute = absolute.max(if raw.is_finite() { raw } else { f64::INFINITY });
-                }
             }
         }
     }
@@ -3077,6 +3276,51 @@ fn certify(
         passed: relative_infinity <= tolerance,
     })
 }
+
+fn group_rhs_certificate(
+    workspace: &SlopeWorkspace,
+    channels: usize,
+    rhs_count: usize,
+    rhs: usize,
+    raw_scale: f64,
+) -> Result<(f64, f64)> {
+    let mut absolute = 0.0_f64;
+    let mut projected_square = 0.0_f64;
+    for left in 0..channels {
+        for right in 0..channels {
+            projected_square = workspace.coefficients[left * rhs_count + rhs].mul_add(
+                workspace.gram[left * channels + right]
+                    * workspace.coefficients[right * rhs_count + rhs],
+                projected_square,
+            );
+        }
+    }
+    let projected = projected_square.max(0.0).sqrt();
+    let denominator = workspace.rhs_scales[rhs];
+    let relative = if denominator == 0.0 {
+        if projected == 0.0 {
+            0.0
+        } else {
+            f64::INFINITY
+        }
+    } else {
+        projected / denominator
+    };
+    if !relative.is_finite() {
+        return Err(invalid_data(
+            "intercept-slope MAP certificate ratio is not finite",
+        ));
+    }
+    for channel in 0..channels {
+        let raw = workspace.cross[channel * rhs_count + rhs].abs()
+            * workspace.value_scales[rhs]
+            * workspace.channel_scales[channel]
+            * raw_scale;
+        absolute = absolute.max(if raw.is_finite() { raw } else { f64::INFINITY });
+    }
+    Ok((absolute, relative))
+}
+
 
 fn weighted_norms(
     values: &DenseMatrix,
@@ -3654,6 +3898,63 @@ mod tests {
             assert!((actual - expected).abs() < 1e-10);
         }
         assert!(recovered.channels()[1].is_none());
+    }
+
+    #[test]
+    fn direct_single_slope_recovery_preserves_rank_weights_and_rejection() {
+        let n = 4099;
+        let codes: Vec<_> = (0..n).map(|r| (r % 257) as u32).collect();
+        let topology = finalize_categorical_topology(&[CategoricalCodeView::new(&codes, 257)],
+            &[&[0]], &vec![true; n]).unwrap();
+        for intercept in [false, true] { for rank_case in 0..4 { for scale in [1e-8, 1.0, 1e8] {
+            let z: Vec<_> = (0..n).map(|r| ((r * 7) as f64).sin() * scale).collect();
+            let z2: Vec<_> = (0..n).map(|r| match rank_case {
+                1 => 0.0, 2 => z[r], 3 => z[r] + scale * 1e-15 * (r as f64).cos(),
+                _ => ((r * 11) as f64).cos() * scale,
+            }).collect();
+            let effects = [CategoricalAbsorbedEffectView::new(intercept, vec![&z, &z2]).unwrap()];
+            let target: Vec<_> = (0..n).map(|r| {
+                let g = codes[r] as f64;
+                (if intercept { g.cos() } else { 0.0 })
+                    + g.sin() * z[r] / scale + (g * 0.7).cos() * z2[r] / scale
+            }).collect();
+            for weight_scale in [0.0, 1e-100, 1.0, 1e100] {
+                let raw: Vec<_> = (0..n).map(|r| weight_scale * (1 + r % 7) as f64).collect();
+                let weights = if weight_scale == 0.0 { BorrowedMapWeights::Unit }
+                    else { BorrowedMapWeights::Provided(&raw) };
+                for threads in [1, 4] { crate::ThreadTeam::new(crate::ThreadConfig::from_requested(threads, false).unwrap()).install(|| {
+                    let requested = vec![true; effects[0].channels()];
+                    let actual = recover_finalized_single_slope_direct_certified(&topology, &effects,
+                        weights, &target, &requested, 1e-12, true).unwrap();
+                    let expected = recover_finalized_categorical_effects_map_certified(&topology, &effects,
+                        weights, &target, &requested, config()).unwrap();
+                    assert_eq!(actual.recovery_method(), CategoricalRecoveryMethod::Direct);
+                    let residual = DenseMatrix::from_row_major(n, 1, (0..n)
+                        .map(|r| target[r] * 0.123 + 0.1 * (r as f64).sin()).collect()).unwrap();
+                    let validated = validate_weights(weights, n).unwrap();
+                    let mut workspace = SlopeWorkspace::new(effects[0].channels(), 1, &mut SystemSlopeWorkspaceReservation).unwrap();
+                    workspace.reference_norms[0] = 100.0;
+                    let serial = certify(&topology, &effects, validated, &residual, 1e-12, &mut workspace).unwrap();
+                    let parallel = certify_single_slope_parallel(&topology, &effects[0], validated, &residual, 1e-12, &mut workspace).unwrap();
+                    assert_eq!(serial, parallel);
+                    for (a,b) in actual.absorbed_sum().iter().zip(&target) { assert!((a-b).abs() < 1e-10); }
+                    for (a,b) in actual.channels().iter().zip(expected.channels()) {
+                        for (a,b) in a.as_ref().unwrap().iter().zip(b.as_ref().unwrap()) {
+                            assert!((a-b).abs() < 1e-9, "{intercept} {rank_case} {scale}: {a} {b}");
+                        }
+                    }
+                    let partial: Vec<_> = (0..effects[0].channels()).map(|c| c == 1).collect();
+                    let selected = recover_finalized_single_slope_direct_certified(&topology, &effects,
+                        weights, &target, &partial, 1e-12, false).unwrap();
+                    for (c, values) in selected.channels().iter().enumerate() {
+                        assert_eq!(values.is_some(), c == 1);
+                    }
+                    let mut inconsistent = target.clone(); inconsistent[0] += 0.001;
+                    assert_eq!(recover_finalized_single_slope_direct_certified(&topology, &effects,
+                        weights, &inconsistent, &requested, 1e-12, true).unwrap_err().code, ErrorCode::InvalidData);
+                }).unwrap(); }
+            }
+        }}}
     }
 
     #[test]

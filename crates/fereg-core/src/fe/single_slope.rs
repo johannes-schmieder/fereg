@@ -190,6 +190,7 @@ impl<'a> SingleSlopeAbsorber<'a> {
         tolerance: f64,
         budget: Option<FeSolverMemoryBudget>,
         original_norms: Option<&[f64]>,
+        check_input: bool,
     ) -> Result<SingleSlopeAttempt> {
         let started = Instant::now();
         let rhs = original.ncols();
@@ -229,9 +230,38 @@ impl<'a> SingleSlopeAbsorber<'a> {
         } else {
             self.norms(&original)?
         };
+        let mut checks = filled(self.groups.len(), Check::default())?;
+        let mut initial_check_seconds = 0.0;
+        if check_input {
+            // Final finite-solve residuals are often already orthogonal. This
+            // check uses this input's freshly scanned raw-weight norms and QR
+            // moments; no earlier residual certificate is reused.
+            let check_started = Instant::now();
+            let certificate = self.check_matrix(&original, &references, tolerance, &mut checks)?;
+            initial_check_seconds = check_started.elapsed().as_secs_f64();
+            if certificate.passed {
+                let bytes = bytes(&self.roots)
+                    + bytes(&self.groups)
+                    + bytes(&self.basis)
+                    + self.effect.slope_storage_bytes()
+                    + bytes(&references)
+                    + bytes(&checks);
+                let peak = self.peak.max(SolverWorkspacePeak::from_bytes(bytes)?);
+                if budget.is_none_or(|b| b.fits(bytes)) {
+                    return self.certified(
+                        original,
+                        references,
+                        certificate,
+                        0,
+                        peak,
+                        started,
+                        initial_check_seconds,
+                    );
+                }
+            }
+        }
         let mut coefficients = filled(self.groups.len() * channels * rhs, 0.0)?;
         let mut result = DenseMatrix::zeros(n, rhs)?;
-        let mut checks = filled(self.groups.len(), Check::default())?;
         let resident = bytes(&self.roots)
             + bytes(&self.groups)
             + bytes(&self.basis)
@@ -308,37 +338,7 @@ impl<'a> SingleSlopeAbsorber<'a> {
         for (scale, norm) in scales.iter_mut().zip(&residual_norms) {
             *scale = scale.max(*norm);
         }
-        checks
-            .par_iter_mut()
-            .enumerate()
-            .try_for_each(|(level, check)| -> Result<()> {
-                *check = if rhs == 1 {
-                    self.check_group::<1, 4>(level, &result, &scales)?
-                } else if rhs <= 16 {
-                    self.check_group::<16, 64>(level, &result, &scales)?
-                } else {
-                    self.check_group::<MAX_RHS, { MAX_CHANNELS * MAX_RHS }>(
-                        level, &result, &scales,
-                    )?
-                };
-                Ok(())
-            })?;
-        let mut certificate = FeCertificate {
-            absolute_infinity_norm: 0.0,
-            relative_infinity_norm: 0.0,
-            relative_two_norm: 0.0,
-            passed: false,
-        };
-        for check in checks {
-            certificate.absolute_infinity_norm =
-                certificate.absolute_infinity_norm.max(check.absolute);
-            certificate.relative_infinity_norm =
-                certificate.relative_infinity_norm.max(check.relative);
-            certificate.relative_two_norm += check.squares;
-        }
-        certificate.relative_two_norm =
-            (certificate.relative_two_norm / (self.groups.len() * rhs) as f64).sqrt();
-        certificate.passed = certificate.relative_infinity_norm <= tolerance;
+        let certificate = self.check_matrix(&result, &scales, tolerance, &mut checks)?;
         let certification_seconds = certificate_started.elapsed().as_secs_f64();
         if !certificate.passed {
             return Ok(SingleSlopeAttempt::Rejected {
@@ -348,12 +348,34 @@ impl<'a> SingleSlopeAbsorber<'a> {
                 iterations: 1,
             });
         }
+        self.certified(
+            result,
+            residual_norms,
+            certificate,
+            1,
+            peak,
+            started,
+            certification_seconds + initial_check_seconds,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn certified(
+        &mut self,
+        result: DenseMatrix,
+        residual_norms: Vec<f64>,
+        certificate: FeCertificate,
+        iterations: usize,
+        peak: SolverWorkspacePeak,
+        started: Instant,
+        certification_seconds: f64,
+    ) -> Result<SingleSlopeAttempt> {
         let report = SolveReport {
             checkpoint_retries: 0,
             solver_workspace_peak: peak,
             requested_solver: FeSolverKind::Auto,
             used_solver: FeSolverKind::Map,
-            iterations: 1,
+            iterations,
             stop_reason: SolveStopReason::Certified,
             normal_equation_residual: certificate.relative_two_norm,
             certificate,
@@ -374,6 +396,46 @@ impl<'a> SingleSlopeAbsorber<'a> {
             certified
         };
         Ok(SingleSlopeAttempt::Certified(certified))
+    }
+
+    fn check_matrix(
+        &self,
+        result: &DenseMatrix,
+        scales: &[f64],
+        tolerance: f64,
+        checks: &mut [Check],
+    ) -> Result<FeCertificate> {
+        let rhs = result.ncols();
+        checks
+            .par_iter_mut()
+            .enumerate()
+            .try_for_each(|(level, check)| -> Result<()> {
+                *check = if rhs == 1 {
+                    self.check_group::<1, 4>(level, result, scales)?
+                } else if rhs <= 16 {
+                    self.check_group::<16, 64>(level, result, scales)?
+                } else {
+                    self.check_group::<MAX_RHS, { MAX_CHANNELS * MAX_RHS }>(level, result, scales)?
+                };
+                Ok(())
+            })?;
+        let mut certificate = FeCertificate {
+            absolute_infinity_norm: 0.0,
+            relative_infinity_norm: 0.0,
+            relative_two_norm: 0.0,
+            passed: false,
+        };
+        for check in checks.iter() {
+            certificate.absolute_infinity_norm =
+                certificate.absolute_infinity_norm.max(check.absolute);
+            certificate.relative_infinity_norm =
+                certificate.relative_infinity_norm.max(check.relative);
+            certificate.relative_two_norm += check.squares;
+        }
+        certificate.relative_two_norm =
+            (certificate.relative_two_norm / (self.groups.len() * rhs) as f64).sqrt();
+        certificate.passed = certificate.relative_infinity_norm <= tolerance;
+        Ok(certificate)
     }
 
     fn check_group<const WIDTH: usize, const CELLS: usize>(
@@ -761,6 +823,7 @@ mod tests {
                                             1e-8,
                                             None,
                                             if pass == 0 { None } else { Some(&refs) },
+                                            false,
                                         )
                                         .unwrap()
                                     {
@@ -774,6 +837,11 @@ mod tests {
                                             }
                                             let (actual, report) = result.into_parts();
                                             assert_eq!(actual, expected);
+                                            let SingleSlopeAttempt::Certified(unchanged) = absorber.absorb(
+                                                actual.clone(), 1e-8, None, None, true).unwrap()
+                                            else { panic!("fresh residual certificate should pass"); };
+                                            assert_eq!(unchanged.report().iterations, 0);
+                                            assert_eq!(unchanged.residualized(), &actual);
                                             assert_eq!(
                                                 report.certificate.relative_infinity_norm,
                                                 certificate.relative_infinity_norm
@@ -848,7 +916,7 @@ mod tests {
             let SingleSlopeAttempt::Rejected {
                 original: returned, ..
             } = absorber
-                .absorb(original.clone(), tolerance, budget, None)
+                .absorb(original.clone(), tolerance, budget, None, true)
                 .unwrap()
             else {
                 panic!("must reject")

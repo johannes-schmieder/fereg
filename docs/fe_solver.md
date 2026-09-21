@@ -649,3 +649,8 @@ measurable one-thread regression. Small batched RHS projections use a fused
 per-group kernel, CG reuses its projection matrix, and large weighted dot
 products use deterministic 32,768-row partial reductions. Final publication
 still requires the complete independent certificate.
+
+Eligible single-partition OLS slope recovery uses independent scaled group solves
+and fresh parallel group certificates with ordered reduction. Final cached fit
+residuals can avoid projection only after a fresh input certificate passes.
+Admission, fallback and the protected PPML boundary are in [ADR 0088](adr/0088-direct-single-partition-slope-recovery.md).

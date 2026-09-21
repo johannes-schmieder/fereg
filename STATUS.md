@@ -48,10 +48,38 @@ The fit checkpoint is committed at `d2ec66e3`. The [allocation refresh](benchmar
 binds new OLS v38/action v23 inventories to that source; repository checks and
 the exact-source pin check pass, preserving old versions and proof gaps.
 
-Current resume point: reduce final residual/recovery work. A PW three-slope-only diagnostic attributes 78.3 ms to
+The following recovery work was motivated by a PW three-slope-only diagnostic
+attributing 78.3 ms to
 saved-effect recovery. The graph/weight/inference/output matrix, narrow two-FE
 margins, revised auto routing, final repeated blocks and focused Linux runs
 remain open. Fresh validation seeds remain untouched. No push is authorized.
+
+The [direct slope recovery checkpoint](benchmarks/reports/development/slopes-recovery-local-2026-09-21/README.md)
+adds independent group recovery, fresh parallel certificates with exact ordered
+reduction, and certificate-only acceptance of already-orthogonal final residuals.
+[ADR 0088](docs/adr/0088-direct-single-partition-slope-recovery.md) records the guards.
+Final `slope-recovery2` plugin `bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41`
+matches five source overlays. IID K10/T1, K10/T16, K50/T1 and K50/T16 medians
+are 116/51/397/141 ms versus fixest 102/58/684/184 ms. PW three-slope-only K6/T16
+robust/all outputs is 106 versus 113 ms; two-way clustered/all outputs is 138
+versus 131 ms. These three-pair screens retain the remaining losses.
+The archive records 112 successful calls, one failed diagnostic warmup, a
+pre-application environment failure, focused core/SPI checks, AW/PW/FW output
+audits and four final-artifact licensed fixtures. Allocation refresh follows
+this source checkpoint; constrained whole-fit memory, final blocks and Linux
+confirmation remain open.
+
+The expanded graph pilot has attempted 44 small clustered/full-output cells at
+`target/g21`, using candidate recovery2 and the unchanged milestone baseline.
+Forty cells complete native oracle/comparison checks; four weak_d3 inputs fail
+generation because N=960 is outside its registered branch envelope. Preserve
+all attempts. The next runner must use the minimum valid weak graph (N=7,680)
+with an independently checked sparse explicit-dummy oracle; also use N=1,920
+for other small graphs so degree-six offsets have nonzero moduli. Reference
+variance-correction/default-accuracy discrepancies require separate adjudication.
+No full small matrix, new large graph matrix or routing calibration has run yet.
+Fresh seeds remain untouched. Next finish the recovery source checkpoint and
+extend the graph oracle/controller before launching the full matrix.
 
 ## Repository cleanup and development push — 2026-09-21
 

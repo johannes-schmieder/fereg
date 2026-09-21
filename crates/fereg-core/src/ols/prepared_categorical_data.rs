@@ -403,6 +403,7 @@ impl PreparedCategoricalOlsData {
     /// Eligible unit-weight two-effect targets next try certified graph
     /// propagation. Iterative recovery uses reconstruction-aware CG, then a
     /// deterministic four-sweep SD-Kaczmarz pilot plus LSMR remainder solve;
+    /// one slope partition first tries independent group solves, and other
     /// slopes use strict LSMR. Strict MAP remains the final certified fallback.
     #[allow(clippy::too_many_arguments)]
     pub fn recover_absorbed_effects_fast(
@@ -603,6 +604,26 @@ impl PreparedCategoricalOlsData {
                     return Err(error);
                 }
                 Err(_) => {}
+            }
+        }
+        // OLS may solve independent slope groups directly. The common finishing
+        // certificate remains authoritative; failed attempts leave target intact.
+        if allow_lsmr && effects.len() == 1 && !effects[0].slopes().is_empty()
+            && effects[0].channels() <= 4 && target.len() >= 16_384 && map.max_iterations > 0
+        {
+            let levels = self.fe_topology.registry().source(self.fe_topology.effect_to_topology()[0])?.n_levels();
+            let extra = crate::fe::single_slope_recovery_extra_bytes(target.len(), levels,
+                effects[0].channels(), rayon::current_num_threads())?;
+            let direct_bytes = recovery_memory.and_then(|memory| memory.retained_peak_bytes.checked_add(extra)).ok_or_else(|| allocation("single slope recovery envelope overflows"))?;
+            if fits(direct_bytes) {
+                record_attempt(&mut attempted_peak, Some(direct_bytes))?;
+                match crate::fe::recover_finalized_single_slope_direct_certified(&self.fe_topology,
+                    &effects, weights, target, requested_channels, map.tolerance, materialize_absorbed_sum)
+                {
+                    Ok(recovered) => return Ok(recovered.with_solver_workspace_peak(attempted_peak)),
+                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => return Err(error),
+                    Err(_) => {}
+                }
             }
         }
         if effects

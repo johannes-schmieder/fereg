@@ -32,23 +32,52 @@ def instrument(source):
     path = source / "crates/fereg-core/src/fe/single_slope.rs"
     if path.exists():
         text = path.read_text()
-        probes = [
-            ("        let mut coefficients = filled(", "        let profile_reference = Instant::now();\n"),
-            ("        result\n            .as_mut_slice()", "        let profile_projection = Instant::now();\n"),
-            ("        let certificate_started = Instant::now();", "        let profile_reconstruction = Instant::now();\n"),
-            ("        checks\n            .par_iter_mut()", "        let profile_norms = Instant::now();\n"),
-            ("        let mut certificate = FeCertificate", "        let profile_checks = Instant::now();\n"),
+        if "check_input: bool" in text:
+            marker = "        let started = Instant::now();"
+            first = text.index("    pub(crate) fn absorb(")
+            position = text.index(marker, first) + len(marker)
+            timer = '\n        struct CachedTimer(Instant, usize);\n        impl Drop for CachedTimer { fn drop(&mut self) {\n            eprintln!("SLOPE_PROFILE|cached_total|rhs={}|seconds={:.9}", self.1, self.0.elapsed().as_secs_f64());\n        } }\n        let _cached_timer = CachedTimer(Instant::now(), original.ncols());\n'
+            text = text[:position] + timer + text[position:]
+        else:
+            probes = [
+                ("        let mut coefficients = filled(", "        let profile_reference = Instant::now();\n"),
+                ("        result\n            .as_mut_slice()", "        let profile_projection = Instant::now();\n"),
+                ("        let certificate_started = Instant::now();", "        let profile_reconstruction = Instant::now();\n"),
+                ("        checks\n            .par_iter_mut()", "        let profile_norms = Instant::now();\n"),
+                ("        let mut certificate = FeCertificate", "        let profile_checks = Instant::now();\n"),
+            ]
+            for marker, insertion in probes:
+                assert text.count(marker) == 1, marker
+                text = text.replace(marker, insertion + marker)
+            marker = "        let certification_seconds = certificate_started.elapsed().as_secs_f64();"
+            assert text.count(marker) == 1
+            text = text.replace(marker, '''        eprintln!("SLOPE_PROFILE|cached|rhs={}|reference={:.9}|projection={:.9}|reconstruction={:.9}|norms={:.9}|checks={:.9}|reduce={:.9}",
+                rhs, profile_reference.duration_since(started).as_secs_f64(),
+                profile_projection.duration_since(profile_reference).as_secs_f64(),
+                profile_reconstruction.duration_since(profile_projection).as_secs_f64(),
+                profile_norms.duration_since(profile_reconstruction).as_secs_f64(),
+                profile_checks.duration_since(profile_norms).as_secs_f64(), profile_checks.elapsed().as_secs_f64());
+    ''' + marker)
+        path.write_text(text)
+
+    path = source / "crates/fereg-core/src/fe/topology_slope_map.rs"
+    text = path.read_text()
+    marker = "pub(crate) fn recover_finalized_single_slope_direct_certified("
+    if marker in text:
+        first = text.index(marker)
+        last = text.index("/// Recover normalized categorical effects", first)
+        section = text[first:last]
+        markers = [
+            ("    validate_recovery_inputs(", "let recovery_started = Instant::now();"),
+            ("    group_coefficients.par_chunks_mut(", "let recovery_groups = Instant::now();"),
+            ("    for channel in 0..channels {", "let recovery_scatter = Instant::now();"),
+            ("    finish_channel_major_recovery(", "let recovery_finish = Instant::now();"),
         ]
-        for marker, insertion in probes:
-            assert text.count(marker) == 1, marker
-            text = text.replace(marker, insertion + marker)
-        marker = "        let certification_seconds = certificate_started.elapsed().as_secs_f64();"
-        assert text.count(marker) == 1
-        text = text.replace(marker, '''        eprintln!("SLOPE_PROFILE|cached|rhs={}|reference={:.9}|projection={:.9}|reconstruction={:.9}|norms={:.9}|checks={:.9}|reduce={:.9}",
-            rhs, profile_reference.duration_since(started).as_secs_f64(),
-            profile_projection.duration_since(profile_reference).as_secs_f64(),
-            profile_reconstruction.duration_since(profile_projection).as_secs_f64(),
-            profile_norms.duration_since(profile_reconstruction).as_secs_f64(),
-            profile_checks.duration_since(profile_norms).as_secs_f64(), profile_checks.elapsed().as_secs_f64());
-''' + marker)
+        for needle, code in markers:
+            assert section.count(needle) == 1, needle
+            section = section.replace(needle, "    " + code + "\n" + needle)
+        section = section.replace("    finish_channel_major_recovery(", "    let recovered = finish_channel_major_recovery(")
+        needle = "CategoricalRecoveryMethod::Direct, materialize_absorbed_sum)"
+        section = section.replace(needle, needle + ";\n    eprintln!(\"SLOPE_PROFILE|direct_recovery|setup={:.9}|groups={:.9}|transpose={:.9}|finish={:.9}\", recovery_groups.duration_since(recovery_started).as_secs_f64(), recovery_scatter.duration_since(recovery_groups).as_secs_f64(), recovery_finish.duration_since(recovery_scatter).as_secs_f64(), recovery_finish.elapsed().as_secs_f64());\n    recovered")
+        text = text[:first] + section + text[last:]
         path.write_text(text)

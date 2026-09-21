@@ -1823,7 +1823,7 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
 ) -> Result<CertifiedBorrowedMap> {
     let mut slope_rejected_iterations = 0;
     if let Some(session) = cmg.single_slope.as_mut() {
-        match session.absorb(values, config.map.tolerance, config.solver_memory_budget, original_norms)? {
+        match session.absorb(values, config.map.tolerance, config.solver_memory_budget, original_norms, final_residual)? {
             crate::fe::SingleSlopeAttempt::Certified(result) => {
                 if final_residual { cmg.single_slope = None; }
                 return Ok(result);
@@ -8448,8 +8448,8 @@ mod tests {
     fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
         let group = source(1, "group");
         let slope = source(2, "slope");
-        let n = 12;
-        let groups = (0..n).map(|row| (row / 6) as f64).collect::<Vec<_>>();
+        for n in [12, 16_386] {
+        let groups = (0..n).map(|row| (row / (n / 2)) as f64).collect::<Vec<_>>();
         let slopes = (0..n).map(|row| (row % 6) as f64 - 2.0).collect::<Vec<_>>();
         let noise = (0..n)
             .map(|row| [1.0, -2.0, 1.0][row % 3])
@@ -8559,11 +8559,16 @@ mod tests {
                             tight.solver_workspace_peak().bytes(),
                             Some(memory.map_peak_bytes as u64)
                         );
-                        let ample = run(memory.lsmr_peak_bytes).unwrap();
-                        assert_eq!(
-                            ample.solver_workspace_peak().bytes(),
-                            Some(memory.lsmr_peak_bytes as u64)
-                        );
+                        let direct_bytes = memory.retained_peak_bytes + crate::fe::single_slope_recovery_extra_bytes(n, 2, 2, workers).unwrap();
+                        let ample = run(memory.lsmr_peak_bytes.max(direct_bytes)).unwrap();
+                        if n >= 16_384 {
+                            assert_eq!(ample.recovery_method(), crate::fe::CategoricalRecoveryMethod::Direct);
+                            assert_eq!(ample.solver_workspace_peak().bytes(), Some(direct_bytes as u64));
+                            assert_eq!(run(direct_bytes).unwrap().recovery_method(), crate::fe::CategoricalRecoveryMethod::Direct);
+                            assert_eq!(run(direct_bytes - 1).unwrap().recovery_method(), crate::fe::CategoricalRecoveryMethod::Map);
+                        } else {
+                            assert_eq!(ample.solver_workspace_peak().bytes(), Some(memory.lsmr_peak_bytes as u64));
+                        }
                         let coefficients = crate::fe::FeCoefficientBatch::from_values(
                             vec![2],
                             vec![2],
@@ -8611,6 +8616,7 @@ mod tests {
                 });
         }
     }
+        }
 
     #[test]
     fn saved_intercept_recovery_enforces_joint_budget_before_materialization() {

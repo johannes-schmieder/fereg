@@ -255,6 +255,7 @@ def main(a):
             rotation=rep%len(a.variants);order=a.variants[rotation:]+a.variants[:rotation];outputs={}
             for variant in order:
                 out=root/'runs'/f'c{i:03d}-r{rep}-{variant}'
+                os.environ['ONE_FE_BREADTH_TRACE_DIR']=str(out)
                 result=measure(root,cell,'fixest' if variant=='fixest' else 'fereg','warm',data,warm,out,manifest,
                     source=None if variant=='fixest' else artifacts/variant,identity=dict(native=identities.get(variant),reference=reference,
                         plan_sha256=base.sha(root/'plan.json')),trace=a.trace,solver=a.solver)

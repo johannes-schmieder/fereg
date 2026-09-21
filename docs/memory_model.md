@@ -653,3 +653,10 @@ qualification claims. Requested stacks, runtime heap and allocator retention
 retain explicit uncertainty and separate safety headroom. Strict gap bits,
 strict action-peak ratios, scientific routing and conservative admission are
 unchanged by practical calibration.
+
+Direct single-partition slope recovery adds a target copy, two coefficient
+layouts, an ordered group-certificate bank and bounded worker workspace
+capacities to its established finishing envelope. Construction owners are
+released before certification; actual capacities and rejected-attempt peaks
+remain checked. A tighter budget can retain the existing MAP fallback. See
+[ADR 0088](adr/0088-direct-single-partition-slope-recovery.md).
