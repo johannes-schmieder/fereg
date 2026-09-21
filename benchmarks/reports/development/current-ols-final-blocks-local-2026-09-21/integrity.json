@@ -1,0 +1,21 @@
+{
+  "schema": "current-ols-final-blocks-archive-integrity-v1",
+  "status": "pass",
+  "stored_entries_verified": 33461,
+  "local_output_arrays_omitted": 200,
+  "content_addressed_objects_verified": 2,
+  "sources": [
+    {
+      "variant": "owf1",
+      "base_commit": "d764894f93cfdc07b0e8f2e07d5897fa909a5140",
+      "plugin": "a2d0e6bd836c3f9af8992b9d49adcfaf669e3bac326e36ecc2f9deb12479ccb0",
+      "source_files": 522,
+      "source_reconstruction": "all_captured_hashes_match"
+    }
+  ],
+  "supplement_hash_scans": [
+    "sources",
+    "checks"
+  ],
+  "verifier_sha256": "6213a97195e933f71b1dcadc89285c0ebd2dfc83ab5a3d8a39f7ed40f82621e4"
+}
