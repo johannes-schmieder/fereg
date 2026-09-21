@@ -1,0 +1,24 @@
+HOLDOUT_SCORE 16 16 0 0 0.9473684210526316
+INDEPENDENT_OUTPUT_AUDIT_PASS 5
+OUTPUT_AUDIT fresh-holdout-b-c004 pass
+INDEPENDENT_OUTPUT_AUDIT_PASS 5
+OUTPUT_AUDIT fresh-holdout-b-c006 pass
+fresh-holdout-b-c007-iid-n245760-k6-s104729-shuffle0-t16-r1-usefulpilot pass 6.661338147750939e-16
+fresh-holdout-b-c007-iid-n245760-k6-s104729-shuffle0-t16-r1-fixest pass 2.1085910795193286e-13
+fresh-holdout-b-c008-iid-n245760-k6-s104729-shuffle0-t16-r1-usefulpilot pass 7.216449660063518e-16
+fresh-holdout-b-c008-iid-n245760-k6-s104729-shuffle0-t16-r1-fixest pass 8.398837181289309e-14
+fresh-holdout-b-c009-iid-n245760-k6-s104729-shuffle0-t16-r1-usefulpilot pass 4.163336342344337e-16
+fresh-holdout-b-c009-iid-n245760-k6-s104729-shuffle0-t16-r1-fixest pass 2.0261570199409107e-15
+fresh-holdout-b-c010-iid-n245760-k6-s104729-shuffle0-t16-r1-usefulpilot pass 5.551115123125783e-16
+fresh-holdout-b-c010-iid-n245760-k6-s104729-shuffle0-t16-r1-fixest pass 3.608224830031759e-15
+fresh-holdout-b-c011-iid-n245760-k6-s104729-shuffle0-t16-r1-usefulpilot pass 4.85722573273506e-16
+fresh-holdout-b-c011-iid-n245760-k6-s104729-shuffle0-t16-r1-fixest pass 3.1231961461486435e-14
+fresh-holdout-b-c012-iid-n245760-k6-s104729-shuffle0-t16-r1-usefulpilot pass 6.522560269672795e-16
+fresh-holdout-b-c012-iid-n245760-k6-s104729-shuffle0-t16-r1-fixest pass 4.1772141301521515e-14
+fresh-holdout-b-c013-iid-n245760-k6-s104729-shuffle0-t16-r1-usefulpilot pass 9.298117831235686e-16
+fresh-holdout-b-c013-iid-n245760-k6-s104729-shuffle0-t16-r1-fixest pass 3.963274153306884e-12
+fresh-holdout-b-c014-iid-n245760-k6-s104729-shuffle0-t16-r1-usefulpilot pass 2.886579864025407e-15
+fresh-holdout-b-c014-iid-n245760-k6-s104729-shuffle0-t16-r1-fixest mismatch 2.825506096704178e-06
+fresh-holdout-b-c015-iid-n245760-k6-s104729-shuffle0-t16-r1-usefulpilot pass 1.1657341758564144e-15
+fresh-holdout-b-c015-iid-n245760-k6-s104729-shuffle0-t16-r1-fixest mismatch 1.5805652786263225e-05
+FRESH_HOLDOUT_NATIVE_SCIENCE_PASS

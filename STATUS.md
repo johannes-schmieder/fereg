@@ -10,6 +10,41 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broad two-way OLS milestone: fresh holdouts and precision control — 2026-09-20
+
+The [fresh-holdout report](benchmarks/reports/development/two-fe-fresh-holdouts-local-2026-09-20/README.md)
+records both predeclared five-pair blocks across all sixteen fresh-seed cells.
+All sixteen cell medians beat default fixest in both blocks; worst ratios are
+0.952191 and 0.947368, with 158/160 individual strict wins. Four cells remain
+short of the aspirational 0.90 margin. All 320 application calls succeed.
+Eighteen independent graph oracle checks and twenty saved-output audits pass.
+Each native cell preserves six scientific bundles, samples and requested
+outputs bitwise across all ten calls. Default-reference output discrepancies
+and bottleneck/cycle coefficient errors remain explicit, not parity passes.
+
+The [precision report](benchmarks/reports/development/two-fe-single-command-clock-local-2026-09-20/README.md)
+resolves native control 56 with two predeclared five-pair monotonic-clock
+blocks around the same single command. Ratios are 0.995731 and 1.038921;
+clock calibration averages under one microsecond per worker. Ordinary Stata
+timers and their earlier failed checks remain. Twenty calls pass, all ten
+scientific pairs are bitwise exact, and allocation peaks are unchanged. The
+clock is benchmark-only; failed initial builds and the passing Stata fixture
+are retained. This does not claim a small-case speedup or replace failures.
+
+Production remains `cdfbcf58`, plugin
+`79141637b5252f27d6f86a721fb04cf5648df6b8d0d82ee26ea7e39b9b94de14`;
+all 516 source files match. The measurement fixes change no estimator code.
+Both holdout blocks use the same pinned reference identity and source-checked
+uninstrumented controller. All checkpoint processes have finished. Raw work:
+`target/two-fe-broad-20260920/final-usefulpilot` and `small-clock-v3`.
+
+Next run both five-pair blocks of the unchanged 77-cell primary manifest in
+`final-usefulpilot`, using `--artifacts target/two-fe-broad-20260920` and
+candidate `usefulpilot`. The full goal remains active. Preserve all original
+controls, accuracy adjudications and earlier memory-estimate coverage gaps.
+No installed package, remote state or qualification changed. Preserve unrelated
+dirt, including lower STATUS.md changes and the six allocation manifests.
+
 ## Broad two-way OLS milestone: full native controls — 2026-09-20
 
 The [full-control report](benchmarks/reports/development/two-fe-broad-native-controls-local-2026-09-20/README.md)

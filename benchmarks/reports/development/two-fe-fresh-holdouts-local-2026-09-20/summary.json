@@ -1,0 +1,1698 @@
+[
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 1,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-a-c000",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.227,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.219,
+        "peak_rss_gib": 0.29156494140625,
+        "seconds": 0.224
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.0179275,
+        "maximum_seconds": 0.207,
+        "median_paired_fixest_ratio": 0.9118942731277532,
+        "minimum_seconds": 0.2,
+        "native_allocation_peak_bytes": 114796837,
+        "native_seconds": 0.174565625,
+        "outer_seconds": 0.009207665999999975,
+        "peak_rss_gib": 0.2497100830078125,
+        "seconds": 0.204
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 5,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-a-c001",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.253,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.249,
+        "peak_rss_gib": 0.4647064208984375,
+        "seconds": 0.251
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.0331255,
+        "maximum_seconds": 0.247,
+        "median_paired_fixest_ratio": 0.9521912350597609,
+        "minimum_seconds": 0.238,
+        "native_allocation_peak_bytes": 192275795,
+        "native_seconds": 0.19597829200000003,
+        "outer_seconds": 0.009852040999999978,
+        "peak_rss_gib": 0.30645751953125,
+        "seconds": 0.239
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-a-c002",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 1.127,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 1.089,
+        "peak_rss_gib": 2.072174072265625,
+        "seconds": 1.107
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.22211562499999998,
+        "maximum_seconds": 0.707,
+        "median_paired_fixest_ratio": 0.6228926353149955,
+        "minimum_seconds": 0.6779999999999999,
+        "native_allocation_peak_bytes": 1127268597,
+        "native_seconds": 0.423156333,
+        "outer_seconds": 0.04389145800000005,
+        "peak_rss_gib": 1.611968994140625,
+        "seconds": 0.6930000000000001
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-a-c003",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.331,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.295,
+        "peak_rss_gib": 0.53106689453125,
+        "seconds": 0.3
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.040764917,
+        "maximum_seconds": 0.275,
+        "median_paired_fixest_ratio": 0.9096989966555185,
+        "minimum_seconds": 0.267,
+        "native_allocation_peak_bytes": 220917743,
+        "native_seconds": 0.21801504100000002,
+        "outer_seconds": 0.011057417000000014,
+        "peak_rss_gib": 0.358123779296875,
+        "seconds": 0.27
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-a-c004",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.568,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.545,
+        "peak_rss_gib": 0.614471435546875,
+        "seconds": 0.55
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.040383542,
+        "maximum_seconds": 0.431,
+        "median_paired_fixest_ratio": 0.769090909090909,
+        "minimum_seconds": 0.42,
+        "native_allocation_peak_bytes": 227956853,
+        "native_seconds": 0.324163125,
+        "outer_seconds": 0.06281783400000002,
+        "peak_rss_gib": 0.47784423828125,
+        "seconds": 0.426
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-a-c005",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 1.333,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 1.268,
+        "peak_rss_gib": 2.3096160888671875,
+        "seconds": 1.311
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.223251208,
+        "maximum_seconds": 0.8,
+        "median_paired_fixest_ratio": 0.6001500375093773,
+        "minimum_seconds": 0.773,
+        "native_allocation_peak_bytes": 1135132929,
+        "native_seconds": 0.518141,
+        "outer_seconds": 0.04301624999999998,
+        "peak_rss_gib": 1.620880126953125,
+        "seconds": 0.78
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-a-c006",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 1.569,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 1.506,
+        "peak_rss_gib": 2.60369873046875,
+        "seconds": 1.535
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.22322187500000001,
+        "maximum_seconds": 0.979,
+        "median_paired_fixest_ratio": 0.6310231023102311,
+        "minimum_seconds": 0.956,
+        "native_allocation_peak_bytes": 1142172215,
+        "native_seconds": 0.6173319159999999,
+        "outer_seconds": 0.11916570799999993,
+        "peak_rss_gib": 1.6503448486328125,
+        "seconds": 0.966
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-a-c007",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.082,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.071,
+        "peak_rss_gib": 0.211090087890625,
+        "seconds": 0.073
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.009443583,
+        "maximum_seconds": 0.063,
+        "median_paired_fixest_ratio": 0.8219178082191781,
+        "minimum_seconds": 0.06,
+        "native_allocation_peak_bytes": 60491579,
+        "native_seconds": 0.043291291999999995,
+        "outer_seconds": 0.007963291999999997,
+        "peak_rss_gib": 0.1533050537109375,
+        "seconds": 0.061
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-a-c008",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.084,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.075,
+        "peak_rss_gib": 0.2203826904296875,
+        "seconds": 0.0810000000000001
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.01025325,
+        "maximum_seconds": 0.074,
+        "median_paired_fixest_ratio": 0.8875,
+        "minimum_seconds": 0.069,
+        "native_allocation_peak_bytes": 62457671,
+        "native_seconds": 0.051943041999999995,
+        "outer_seconds": 0.007942375000000008,
+        "peak_rss_gib": 0.1274261474609375,
+        "seconds": 0.071
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-a-c009",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.069,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.0619999999999999,
+        "peak_rss_gib": 0.1992034912109375,
+        "seconds": 0.0659999999999999
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.009431667000000001,
+        "maximum_seconds": 0.057,
+        "median_paired_fixest_ratio": 0.8181818181818193,
+        "minimum_seconds": 0.053,
+        "native_allocation_peak_bytes": 51029819,
+        "native_seconds": 0.03758625,
+        "outer_seconds": 0.007844083000000002,
+        "peak_rss_gib": 0.0652313232421875,
+        "seconds": 0.055
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-a-c010",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.08,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.071,
+        "peak_rss_gib": 0.2013397216796875,
+        "seconds": 0.073
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.010436542,
+        "maximum_seconds": 0.07,
+        "median_paired_fixest_ratio": 0.915492957746479,
+        "minimum_seconds": 0.065,
+        "native_allocation_peak_bytes": 52995911,
+        "native_seconds": 0.047636082999999996,
+        "outer_seconds": 0.007751584000000006,
+        "peak_rss_gib": 0.1397552490234375,
+        "seconds": 0.066
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-a-c011",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.0770000000000001,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.075,
+        "peak_rss_gib": 0.204986572265625,
+        "seconds": 0.075
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.009387791999999999,
+        "maximum_seconds": 0.063,
+        "median_paired_fixest_ratio": 0.8051948051948041,
+        "minimum_seconds": 0.059,
+        "native_allocation_peak_bytes": 60204859,
+        "native_seconds": 0.042719625,
+        "outer_seconds": 0.008460041000000001,
+        "peak_rss_gib": 0.1524658203125,
+        "seconds": 0.061
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-a-c012",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.084,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.073,
+        "peak_rss_gib": 0.22418212890625,
+        "seconds": 0.08
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.010663708,
+        "maximum_seconds": 0.071,
+        "median_paired_fixest_ratio": 0.8625,
+        "minimum_seconds": 0.068,
+        "native_allocation_peak_bytes": 62170951,
+        "native_seconds": 0.050303083,
+        "outer_seconds": 0.008216916000000005,
+        "peak_rss_gib": 0.1275482177734375,
+        "seconds": 0.069
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-a-c013",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.209,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.199,
+        "peak_rss_gib": 0.2219085693359375,
+        "seconds": 0.202
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.010282166,
+        "maximum_seconds": 0.176,
+        "median_paired_fixest_ratio": 0.8309178743961353,
+        "minimum_seconds": 0.164,
+        "native_allocation_peak_bytes": 66920031,
+        "native_seconds": 0.15349825,
+        "outer_seconds": 0.008463582999999997,
+        "peak_rss_gib": 0.1651763916015625,
+        "seconds": 0.172
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "bottleneck_ring",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-a-c014",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 3.497,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 3.41,
+        "peak_rss_gib": 0.2248382568359375,
+        "seconds": 3.485
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.010250582999999999,
+        "maximum_seconds": 0.2,
+        "median_paired_fixest_ratio": 0.057191878753217046,
+        "minimum_seconds": 0.197,
+        "native_allocation_peak_bytes": 138939641,
+        "native_seconds": 0.18021316700000004,
+        "outer_seconds": 0.008084250000000015,
+        "peak_rss_gib": 0.2052459716796875,
+        "seconds": 0.199
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "cycle",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-a-c015",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 3.427,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 3.373,
+        "peak_rss_gib": 0.2289886474609375,
+        "seconds": 3.377
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.010239375,
+        "maximum_seconds": 0.202,
+        "median_paired_fixest_ratio": 0.05863192182410424,
+        "minimum_seconds": 0.196,
+        "native_allocation_peak_bytes": 137421189,
+        "native_seconds": 0.17885750000000003,
+        "outer_seconds": 0.008552416000000007,
+        "peak_rss_gib": 0.207855224609375,
+        "seconds": 0.198
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 1,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-b-c000",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.227,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.22,
+        "peak_rss_gib": 0.291015625,
+        "seconds": 0.225
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.017297792,
+        "maximum_seconds": 0.207,
+        "median_paired_fixest_ratio": 0.9090909090909092,
+        "minimum_seconds": 0.2,
+        "native_allocation_peak_bytes": 114796837,
+        "native_seconds": 0.176233041,
+        "outer_seconds": 0.008658291999999984,
+        "peak_rss_gib": 0.240081787109375,
+        "seconds": 0.204
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 5,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-b-c001",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.26,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.247,
+        "peak_rss_gib": 0.4648590087890625,
+        "seconds": 0.25
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.032602333,
+        "maximum_seconds": 0.24,
+        "median_paired_fixest_ratio": 0.9473684210526316,
+        "minimum_seconds": 0.234,
+        "native_allocation_peak_bytes": 192275795,
+        "native_seconds": 0.19413625,
+        "outer_seconds": 0.010157832999999977,
+        "peak_rss_gib": 0.305633544921875,
+        "seconds": 0.236
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-b-c002",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 1.114,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 1.069,
+        "peak_rss_gib": 2.07452392578125,
+        "seconds": 1.096
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.218643542,
+        "maximum_seconds": 0.708,
+        "median_paired_fixest_ratio": 0.6314312441534145,
+        "minimum_seconds": 0.675,
+        "native_allocation_peak_bytes": 1127268597,
+        "native_seconds": 0.43598662499999996,
+        "outer_seconds": 0.04249354099999991,
+        "peak_rss_gib": 1.6110992431640625,
+        "seconds": 0.692
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-b-c003",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.299,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.285,
+        "peak_rss_gib": 0.5303955078125,
+        "seconds": 0.295
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 4,
+        "input_seconds": 0.041213041,
+        "maximum_seconds": 0.29,
+        "median_paired_fixest_ratio": 0.9189189189189191,
+        "minimum_seconds": 0.27,
+        "native_allocation_peak_bytes": 220917743,
+        "native_seconds": 0.22047599999999995,
+        "outer_seconds": 0.010712791,
+        "peak_rss_gib": 0.35821533203125,
+        "seconds": 0.272
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-b-c004",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.555,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.544,
+        "peak_rss_gib": 0.6192779541015625,
+        "seconds": 0.554
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.040397959,
+        "maximum_seconds": 0.43,
+        "median_paired_fixest_ratio": 0.7711711711711711,
+        "minimum_seconds": 0.422,
+        "native_allocation_peak_bytes": 227956853,
+        "native_seconds": 0.32207162500000003,
+        "outer_seconds": 0.063374333,
+        "peak_rss_gib": 0.5486602783203125,
+        "seconds": 0.427
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-b-c005",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 1.324,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 1.292,
+        "peak_rss_gib": 2.430389404296875,
+        "seconds": 1.313
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.22279074999999998,
+        "maximum_seconds": 0.776,
+        "median_paired_fixest_ratio": 0.5878787878787879,
+        "minimum_seconds": 0.759,
+        "native_allocation_peak_bytes": 1135132929,
+        "native_seconds": 0.5023001249999999,
+        "outer_seconds": 0.03719962499999996,
+        "peak_rss_gib": 1.6241607666015625,
+        "seconds": 0.765
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 50,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": true,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-b-c006",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 1.545,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 1.523,
+        "peak_rss_gib": 2.57806396484375,
+        "seconds": 1.534
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.22183775,
+        "maximum_seconds": 0.987,
+        "median_paired_fixest_ratio": 0.6343526350032531,
+        "minimum_seconds": 0.971,
+        "native_allocation_peak_bytes": 1142172215,
+        "native_seconds": 0.630612583,
+        "outer_seconds": 0.126824375,
+        "peak_rss_gib": 1.6512603759765625,
+        "seconds": 0.975
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-b-c007",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.079,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.072,
+        "peak_rss_gib": 0.209259033203125,
+        "seconds": 0.0730000000000001
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.009432375,
+        "maximum_seconds": 0.062,
+        "median_paired_fixest_ratio": 0.8333333333333334,
+        "minimum_seconds": 0.058,
+        "native_allocation_peak_bytes": 60491579,
+        "native_seconds": 0.041986249999999996,
+        "outer_seconds": 0.008000708000000002,
+        "peak_rss_gib": 0.15155029296875,
+        "seconds": 0.06
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-b-c008",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.086,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.076,
+        "peak_rss_gib": 0.22027587890625,
+        "seconds": 0.084
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.01031975,
+        "maximum_seconds": 0.074,
+        "median_paired_fixest_ratio": 0.8452380952380951,
+        "minimum_seconds": 0.071,
+        "native_allocation_peak_bytes": 62457671,
+        "native_seconds": 0.053014000000000006,
+        "outer_seconds": 0.008222832999999999,
+        "peak_rss_gib": 0.1284027099609375,
+        "seconds": 0.071
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-b-c009",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.072,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.0639999999999999,
+        "peak_rss_gib": 0.1978912353515625,
+        "seconds": 0.069
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.009323833,
+        "maximum_seconds": 0.06,
+        "median_paired_fixest_ratio": 0.7971014492753623,
+        "minimum_seconds": 0.054,
+        "native_allocation_peak_bytes": 51029819,
+        "native_seconds": 0.037466125,
+        "outer_seconds": 0.008535458000000003,
+        "peak_rss_gib": 0.141204833984375,
+        "seconds": 0.055
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-b-c010",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.075,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.0659999999999999,
+        "peak_rss_gib": 0.2037353515625,
+        "seconds": 0.073
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 4,
+        "input_seconds": 0.010359291999999999,
+        "maximum_seconds": 0.067,
+        "median_paired_fixest_ratio": 0.915492957746479,
+        "minimum_seconds": 0.065,
+        "native_allocation_peak_bytes": 52995911,
+        "native_seconds": 0.047197958,
+        "outer_seconds": 0.008150125000000001,
+        "peak_rss_gib": 0.125152587890625,
+        "seconds": 0.066
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "series": "fresh-holdout-b-c011",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.079,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.072,
+        "peak_rss_gib": 0.209075927734375,
+        "seconds": 0.076
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.009367542,
+        "maximum_seconds": 0.0629999999999999,
+        "median_paired_fixest_ratio": 0.8026315789473685,
+        "minimum_seconds": 0.059,
+        "native_allocation_peak_bytes": 60204859,
+        "native_seconds": 0.042890167,
+        "outer_seconds": 0.008011832999999996,
+        "peak_rss_gib": 0.152862548828125,
+        "seconds": 0.06
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-b-c012",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.085,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.073,
+        "peak_rss_gib": 0.2236785888671875,
+        "seconds": 0.08
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.010417375,
+        "maximum_seconds": 0.072,
+        "median_paired_fixest_ratio": 0.8888888888888888,
+        "minimum_seconds": 0.068,
+        "native_allocation_peak_bytes": 62170951,
+        "native_seconds": 0.052225334000000005,
+        "outer_seconds": 0.00813370799999999,
+        "peak_rss_gib": 0.129486083984375,
+        "seconds": 0.071
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-b-c013",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 0.205,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 0.199,
+        "peak_rss_gib": 0.2034454345703125,
+        "seconds": 0.202
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.010180208000000001,
+        "maximum_seconds": 0.17,
+        "median_paired_fixest_ratio": 0.8267326732673267,
+        "minimum_seconds": 0.163,
+        "native_allocation_peak_bytes": 66920031,
+        "native_seconds": 0.148736042,
+        "outer_seconds": 0.007916541,
+        "peak_rss_gib": 0.1677398681640625,
+        "seconds": 0.167
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "bottleneck_ring",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-b-c014",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 3.494,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 3.464,
+        "peak_rss_gib": 0.226593017578125,
+        "seconds": 3.485
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.010447792,
+        "maximum_seconds": 0.202,
+        "median_paired_fixest_ratio": 0.0571593533487298,
+        "minimum_seconds": 0.197,
+        "native_allocation_peak_bytes": 138939641,
+        "native_seconds": 0.17989120900000002,
+        "outer_seconds": 0.008594125000000008,
+        "peak_rss_gib": 0.2095947265625,
+        "seconds": 0.198
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "g1 g2",
+      "case": "iid",
+      "design": "cycle",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-05,
+      "fixest_tolerance": 1e-06,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 104729,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "fresh-holdout-b-c015",
+    "variants": {
+      "fixest": {
+        "calls": 5,
+        "fixest_wins": 0,
+        "maximum_seconds": 3.414,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 3.37,
+        "peak_rss_gib": 0.22821044921875,
+        "seconds": 3.38
+      },
+      "usefulpilot": {
+        "calls": 5,
+        "fixest_wins": 5,
+        "input_seconds": 0.010524458,
+        "maximum_seconds": 0.201,
+        "median_paired_fixest_ratio": 0.058160237388724036,
+        "minimum_seconds": 0.196,
+        "native_allocation_peak_bytes": 137421189,
+        "native_seconds": 0.17814349999999998,
+        "outer_seconds": 0.008342417000000019,
+        "peak_rss_gib": 0.2093658447265625,
+        "seconds": 0.197
+      }
+    }
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "attempt": "small-clock",
+    "diagnostic": "<repo>/benchmarks/two_fe_dense/highres_clock.c:3:10: fatal error: 'math.h' file not found\n    3 | #include <math.h>\n      |          ^~~~~~~~\n1 error generated.\n",
+    "raw_log_sha256": "c64934bf3609476021c3dc3defe7700376d3ffdde81d2f9caa59e0b8763ad609"
+  },
+  {
+    "attempt": "small-clock-v2",
+    "diagnostic": "<repo>/benchmarks/two_fe_dense/highres_clock.c:29:16: error: passing 'double' to parameter of incompatible type 'ST_double *' (aka 'double *'); take the address with &\n   29 |         return SF_scal_save(argv[1], seconds);\n      |                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n<repo>/plugin/stplugin.h:194:56: note: expanded from macro 'SF_scal_save'\n  194 | #define SF_scal_save(s,d)   ((_stata_)->scalarsave((s),(d)))\n      |                                                        ^~~\n1 error generated.\n",
+    "raw_log_sha256": "ef9ad1e4655a155569d98f0311b31295116b3340671c314d35eaa517ceab8c8b"
+  }
+]

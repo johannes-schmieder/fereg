@@ -1,0 +1,402 @@
+[
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-shuffled-unit",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 104729,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 0,
+    "label": "fresh-holdout-b-c000",
+    "process_returncode": 0,
+    "stdout_sha256": "7ccec69653ecbd645019d938c20942611fad30060e324a5274062ccae085641d"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-shuffled-unit",
+      "k": 5,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 104729,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 1,
+    "label": "fresh-holdout-b-c001",
+    "process_returncode": 0,
+    "stdout_sha256": "214c46aa3a274f9849d544929c704dc840559001614f3cc8337db2d8294663aa"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-shuffled-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 104729,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 2,
+    "label": "fresh-holdout-b-c002",
+    "process_returncode": 0,
+    "stdout_sha256": "1242bd6f3cc3c9087bfb4834f3b33f2b28911584d93d3c65546dc9829f9aa071"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-shuffled-aw",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 104729,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 3,
+    "label": "fresh-holdout-b-c003",
+    "process_returncode": 0,
+    "stdout_sha256": "4ec65e58179f0fec12a99d86bbb12c1b4c5f0b2d5e22d41f350b192a7d0ddf9a"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-shuffled-aw",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 104729,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_output_mismatch",
+    "index": 4,
+    "label": "fresh-holdout-b-c004",
+    "process_returncode": 0,
+    "stdout_sha256": "cf688c207e2932c4fc22566bae118ad7c22ff31767ce2ea845bdd598502e37e6"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-shuffled-aw",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 104729,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 5,
+    "label": "fresh-holdout-b-c005",
+    "process_returncode": 0,
+    "stdout_sha256": "af6d715a93b8ac9648a2ac5c954fce411bbd21b81f29ea24aa4bf20c4fa7a9a8"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-shuffled-aw",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 104729,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_output_mismatch",
+    "index": 6,
+    "label": "fresh-holdout-b-c006",
+    "process_returncode": 0,
+    "stdout_sha256": "3c72ab0c73dedeb0bf5d4bf0e13b5dc3008aad8dfdf0577e7fc9782d0c8775d4"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-well-connected",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 104729,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 7,
+    "label": "fresh-holdout-b-c007",
+    "process_returncode": 0,
+    "stdout_sha256": "eb4a894590c17a1b572b922a1b8c550aef4f383a82f4499ed1787e03d1a1fe3d"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-well-connected",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 104729,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 8,
+    "label": "fresh-holdout-b-c008",
+    "process_returncode": 0,
+    "stdout_sha256": "55f86d2e47de91cd7b7b820e6e89a3600330b99c3a2c20edf2ab50cc0e41ea4d"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-well-connected",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 104729,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 9,
+    "label": "fresh-holdout-b-c009",
+    "process_returncode": 0,
+    "stdout_sha256": "88c9e409dedc741d7b584246db455bcee5acc48a2e4b911baf1f4144c06ce897"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-well-connected",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 104729,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 10,
+    "label": "fresh-holdout-b-c010",
+    "process_returncode": 0,
+    "stdout_sha256": "0c858bcd429605593adbadd576b5ab86bbe5d07b592dce84ecbaa942673b71b3"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-well-connected",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 104729,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 11,
+    "label": "fresh-holdout-b-c011",
+    "process_returncode": 0,
+    "stdout_sha256": "a58d86aadaeb23ee5f54145571d0d34a06a4b6590e0418c07958578cc6e12aeb"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-well-connected",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 104729,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 12,
+    "label": "fresh-holdout-b-c012",
+    "process_returncode": 0,
+    "stdout_sha256": "a31feb9a34705669cebe618f1b875c11188b74762cd98edf91fe52ed310fd588"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-weak",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 104729,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 13,
+    "label": "fresh-holdout-b-c013",
+    "process_returncode": 0,
+    "stdout_sha256": "55a815b5fcfb585ce1c38361ba6a95a5b7dd61f7ad75be7521dc9534ff888cd4"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "bottleneck_ring",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-weak",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 104729,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 14,
+    "label": "fresh-holdout-b-c014",
+    "process_returncode": 0,
+    "stdout_sha256": "ab3f8e6abfc42894ad4d9f86977b065def6ff046d5314146c71b00aed50b7d2f"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "cycle",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "fresh-weak",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 104729,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 15,
+    "label": "fresh-holdout-b-c015",
+    "process_returncode": 0,
+    "stdout_sha256": "e5453b76bfb554b96dc0c10ee8d45b2ea385b72fed607098c7098cd5a8d7d986"
+  }
+]

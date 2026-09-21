@@ -1,0 +1,282 @@
+[
+  {
+    "finite_score_per_observation": 2.471027073333747e-16,
+    "group_residual_mean_max": [
+      1.6849267079605316e-15,
+      1.77951111790012e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.400857290751901e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "fresh-holdout-a-c004-iid_outputs-n983040-k6-s104729-shuffle1-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.471027073333747e-16,
+    "group_residual_mean_max": [
+      1.6849267079605316e-15,
+      1.77951111790012e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.400857290751901e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "fresh-holdout-a-c004-iid_outputs-n983040-k6-s104729-shuffle1-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.471027073333747e-16,
+    "group_residual_mean_max": [
+      1.6849267079605316e-15,
+      1.77951111790012e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.400857290751901e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "fresh-holdout-a-c004-iid_outputs-n983040-k6-s104729-shuffle1-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.471027073333747e-16,
+    "group_residual_mean_max": [
+      1.6849267079605316e-15,
+      1.77951111790012e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.400857290751901e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "fresh-holdout-a-c004-iid_outputs-n983040-k6-s104729-shuffle1-t16-r4-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.471027073333747e-16,
+    "group_residual_mean_max": [
+      1.6849267079605316e-15,
+      1.77951111790012e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.400857290751901e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "fresh-holdout-a-c004-iid_outputs-n983040-k6-s104729-shuffle1-t16-r5-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.5880215349542223e-16,
+    "group_residual_mean_max": [
+      3.655195804150515e-15,
+      1.642713194281835e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.930084118726086e-15,
+      4.440892098500626e-15,
+      4.884981308350689e-15
+    ],
+    "run": "fresh-holdout-a-c006-iid_outputs-n983040-k50-s104729-shuffle1-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.5880215349542223e-16,
+    "group_residual_mean_max": [
+      3.655195804150515e-15,
+      1.642713194281835e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.930084118726086e-15,
+      4.440892098500626e-15,
+      4.884981308350689e-15
+    ],
+    "run": "fresh-holdout-a-c006-iid_outputs-n983040-k50-s104729-shuffle1-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.5880215349542223e-16,
+    "group_residual_mean_max": [
+      3.655195804150515e-15,
+      1.642713194281835e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.930084118726086e-15,
+      4.440892098500626e-15,
+      4.884981308350689e-15
+    ],
+    "run": "fresh-holdout-a-c006-iid_outputs-n983040-k50-s104729-shuffle1-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.5880215349542223e-16,
+    "group_residual_mean_max": [
+      3.655195804150515e-15,
+      1.642713194281835e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.930084118726086e-15,
+      4.440892098500626e-15,
+      4.884981308350689e-15
+    ],
+    "run": "fresh-holdout-a-c006-iid_outputs-n983040-k50-s104729-shuffle1-t16-r4-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.5880215349542223e-16,
+    "group_residual_mean_max": [
+      3.655195804150515e-15,
+      1.642713194281835e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.930084118726086e-15,
+      4.440892098500626e-15,
+      4.884981308350689e-15
+    ],
+    "run": "fresh-holdout-a-c006-iid_outputs-n983040-k50-s104729-shuffle1-t16-r5-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.471027073333747e-16,
+    "group_residual_mean_max": [
+      1.6849267079605316e-15,
+      1.77951111790012e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.400857290751901e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "fresh-holdout-b-c004-iid_outputs-n983040-k6-s104729-shuffle1-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.471027073333747e-16,
+    "group_residual_mean_max": [
+      1.6849267079605316e-15,
+      1.77951111790012e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.400857290751901e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "fresh-holdout-b-c004-iid_outputs-n983040-k6-s104729-shuffle1-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.471027073333747e-16,
+    "group_residual_mean_max": [
+      1.6849267079605316e-15,
+      1.77951111790012e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.400857290751901e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "fresh-holdout-b-c004-iid_outputs-n983040-k6-s104729-shuffle1-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.471027073333747e-16,
+    "group_residual_mean_max": [
+      1.6849267079605316e-15,
+      1.77951111790012e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.400857290751901e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "fresh-holdout-b-c004-iid_outputs-n983040-k6-s104729-shuffle1-t16-r4-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 2.471027073333747e-16,
+    "group_residual_mean_max": [
+      1.6849267079605316e-15,
+      1.77951111790012e-13
+    ],
+    "output_reconstruction_max_errors": [
+      2.400857290751901e-15,
+      1.3322676295501878e-15,
+      2.4424906541753444e-15
+    ],
+    "run": "fresh-holdout-b-c004-iid_outputs-n983040-k6-s104729-shuffle1-t16-r5-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.5880215349542223e-16,
+    "group_residual_mean_max": [
+      3.655195804150515e-15,
+      1.642713194281835e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.930084118726086e-15,
+      4.440892098500626e-15,
+      4.884981308350689e-15
+    ],
+    "run": "fresh-holdout-b-c006-iid_outputs-n983040-k50-s104729-shuffle1-t16-r1-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.5880215349542223e-16,
+    "group_residual_mean_max": [
+      3.655195804150515e-15,
+      1.642713194281835e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.930084118726086e-15,
+      4.440892098500626e-15,
+      4.884981308350689e-15
+    ],
+    "run": "fresh-holdout-b-c006-iid_outputs-n983040-k50-s104729-shuffle1-t16-r2-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.5880215349542223e-16,
+    "group_residual_mean_max": [
+      3.655195804150515e-15,
+      1.642713194281835e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.930084118726086e-15,
+      4.440892098500626e-15,
+      4.884981308350689e-15
+    ],
+    "run": "fresh-holdout-b-c006-iid_outputs-n983040-k50-s104729-shuffle1-t16-r3-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.5880215349542223e-16,
+    "group_residual_mean_max": [
+      3.655195804150515e-15,
+      1.642713194281835e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.930084118726086e-15,
+      4.440892098500626e-15,
+      4.884981308350689e-15
+    ],
+    "run": "fresh-holdout-b-c006-iid_outputs-n983040-k50-s104729-shuffle1-t16-r4-usefulpilot",
+    "status": "pass"
+  },
+  {
+    "finite_score_per_observation": 1.5880215349542223e-16,
+    "group_residual_mean_max": [
+      3.655195804150515e-15,
+      1.642713194281835e-13
+    ],
+    "output_reconstruction_max_errors": [
+      4.930084118726086e-15,
+      4.440892098500626e-15,
+      4.884981308350689e-15
+    ],
+    "run": "fresh-holdout-b-c006-iid_outputs-n983040-k50-s104729-shuffle1-t16-r5-usefulpilot",
+    "status": "pass"
+  }
+]

@@ -75,6 +75,15 @@ A resumed label skips every recorded attempt, including failures. Rechecks
 require a new label. Completing attempts does not establish acceptance.
 `--dry-run` prints the exact plan without running applications.
 
+For a separately declared small-command precision diagnostic, `highres.py`
+prepares a fresh Mac arm64 controller with a benchmark-only monotonic clock.
+Set `TWO_FE_HIGHRES_CLOCK` to its `clock/clock.plugin` and
+`ONE_FE_PROFILE_REPEAT=1` when invoking `run.py`. The ordinary command timer
+remains authoritative in ordinary scores; extra `highres_seconds` and empty-
+bracket calibrations are separately adjudicated. Keep the original worker,
+instrumentation patch, clock identity, failed ordinary checks and predeclared
+precision plan. `check_highres_clock.do` exercises its timing/state boundary.
+
 Graph inputs include the systematic strong/weak designs plus disconnected
 blocks, a bottleneck ring, a cycle, an unbalanced graph and a weighted bridge
 control. Additional `group_concentrated` and `bridge_cut` weights are determined

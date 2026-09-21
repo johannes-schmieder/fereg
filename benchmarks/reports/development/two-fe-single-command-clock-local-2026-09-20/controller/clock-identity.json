@@ -1,0 +1,20 @@
+{
+  "clock": "CLOCK_MONOTONIC_RAW",
+  "command_repetitions": 1,
+  "elapsed_field": "highres_seconds",
+  "empty_brackets_per_worker": 128,
+  "ordinary_timer_unchanged": true,
+  "original_manifest_sha256": "9de071c3233a690348279015be05c7602502e2c6db0cb38ee1a73b2c75c6ad32",
+  "original_worker_sha256": "58ee63f2af697fe56360b53714a8c244abec087c9ad52fe6a6ddf37605b9e7a0",
+  "plugin_sha256": "b91a01793356b15f120ab010b43466cc7471a8635db555859e46dab139669f20",
+  "schema": "two-fe-single-command-clock-v1",
+  "sources": {
+    "benchmarks/two_fe_dense/highres.py": "f1dec306ede78fcfb02f7e6f313e1e969cb9afabb60bbd9758a823541ce49d5c",
+    "benchmarks/two_fe_dense/highres_clock.c": "4057f3d658d173820a972bf2d221f8e283b1597c1644f72cf8995cd3c95dc394",
+    "plugin/exports_macos.txt": "b3d3f7e98b7896eb948879a07eab68fe5d6cb69b3c0fbe3abf53e43277903c1f",
+    "plugin/stplugin.c": "7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a",
+    "plugin/stplugin.h": "2ff392f78fdef0a41602994f6cf540ead3e1bfe4f1ef8336a5f2055fd2f2b3f1"
+  },
+  "subtract_overhead": false,
+  "worker_patch_sha256": "a9579c2cb73e6a93389a845d223892f79927c860e55bfc125d42e20ce4c70795"
+}

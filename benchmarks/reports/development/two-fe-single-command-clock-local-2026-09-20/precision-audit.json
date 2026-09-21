@@ -1,0 +1,396 @@
+{
+  "bitwise_exact_pairs": 10,
+  "blocks": [
+    {
+      "highres_median_ratio": 0.9957309869796335,
+      "label": "small-aw-clock-a",
+      "ordinary_median_ratio": 1.0,
+      "pairs": 5
+    },
+    {
+      "highres_median_ratio": 1.0389207277503694,
+      "label": "small-aw-clock-b",
+      "ordinary_median_ratio": 1.0,
+      "pairs": 5
+    }
+  ],
+  "criterion": "both predeclared high-resolution block medians <=1.05",
+  "earlier_failures_preserved": true,
+  "gate_disposition": "resolved by same-command precision measurement; earlier rounded checks remain failed",
+  "native_control_threshold": 1.05,
+  "pairs": [
+    {
+      "baseline_seconds": 0.016641083,
+      "baseline_timer_seconds": 0.017,
+      "calibration": {
+        "baseline": {
+          "clock_empty_max": 1.375e-06,
+          "clock_empty_mean": 8.586875e-07,
+          "clock_empty_min": 7.91e-07
+        },
+        "usefulpilot": {
+          "clock_empty_max": 1.542e-06,
+          "clock_empty_mean": 8.756328125e-07,
+          "clock_empty_min": 8.33e-07
+        }
+      },
+      "candidate_seconds": 0.016570042,
+      "candidate_timer_seconds": 0.016,
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "highres_ratio": 0.9957309869796335,
+      "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+      "label": "small-aw-clock-a",
+      "ordinary_ratio": 0.9411764705882353,
+      "peak_baseline": 3375456,
+      "peak_candidate": 3375456,
+      "rep": 1,
+      "result_hashes": [
+        "9495d9b13d37fbb784e185f667252f06dc96d5e4f6809726db672bb8297e0d6a",
+        "0e27d629953e0ec253dda86e2809178941de6e96de38396fd46bd13394c2ed29"
+      ]
+    },
+    {
+      "baseline_seconds": 0.016905709,
+      "baseline_timer_seconds": 0.016,
+      "calibration": {
+        "baseline": {
+          "clock_empty_max": 1.458e-06,
+          "clock_empty_mean": 8.71140625e-07,
+          "clock_empty_min": 8.33e-07
+        },
+        "usefulpilot": {
+          "clock_empty_max": 1.5e-06,
+          "clock_empty_mean": 8.85078125e-07,
+          "clock_empty_min": 8.33e-07
+        }
+      },
+      "candidate_seconds": 0.016852292,
+      "candidate_timer_seconds": 0.017,
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "highres_ratio": 0.9968402981501693,
+      "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+      "label": "small-aw-clock-a",
+      "ordinary_ratio": 1.0625,
+      "peak_baseline": 3375456,
+      "peak_candidate": 3375456,
+      "rep": 2,
+      "result_hashes": [
+        "1a1a6a84ea7166fc2df6a7f90571e922496523b36b22a369d12182951456ffae",
+        "a00e90d97a7f6ba2c34b17f6dc8749b8f202cf004bb94d5b9d83fd4f87a128d3"
+      ]
+    },
+    {
+      "baseline_seconds": 0.017029084,
+      "baseline_timer_seconds": 0.017,
+      "calibration": {
+        "baseline": {
+          "clock_empty_max": 1.5e-06,
+          "clock_empty_mean": 8.727109375e-07,
+          "clock_empty_min": 8.33e-07
+        },
+        "usefulpilot": {
+          "clock_empty_max": 1.416e-06,
+          "clock_empty_mean": 8.63625e-07,
+          "clock_empty_min": 8.33e-07
+        }
+      },
+      "candidate_seconds": 0.016622500000000002,
+      "candidate_timer_seconds": 0.017,
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "highres_ratio": 0.9761241414981571,
+      "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+      "label": "small-aw-clock-a",
+      "ordinary_ratio": 1.0,
+      "peak_baseline": 3375456,
+      "peak_candidate": 3375456,
+      "rep": 3,
+      "result_hashes": [
+        "8540a50e9fe613427fe05c5c25b59ac21f3ecc721dca4c755160ba4ce03868cf",
+        "8e7902ca7b8af16d18dd18d30b8796a00d3ba6a82034427206a477d2f4ee0631"
+      ]
+    },
+    {
+      "baseline_seconds": 0.01690225,
+      "baseline_timer_seconds": 0.017,
+      "calibration": {
+        "baseline": {
+          "clock_empty_max": 1.667e-06,
+          "clock_empty_mean": 8.880234375e-07,
+          "clock_empty_min": 8.33e-07
+        },
+        "usefulpilot": {
+          "clock_empty_max": 1.458e-06,
+          "clock_empty_mean": 8.681328125e-07,
+          "clock_empty_min": 7.91e-07
+        }
+      },
+      "candidate_seconds": 0.016427167,
+      "candidate_timer_seconds": 0.017,
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "highres_ratio": 0.9718923220281322,
+      "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+      "label": "small-aw-clock-a",
+      "ordinary_ratio": 1.0,
+      "peak_baseline": 3375456,
+      "peak_candidate": 3375456,
+      "rep": 4,
+      "result_hashes": [
+        "3185bcbbc875fa86fc176e4b61080cd9ac2576753e16e6f4f3a06ae18d11a773",
+        "a9a97d4b914c9250ad5854bd9559b0553a072eaf87a206140fb867a1f5d01964"
+      ]
+    },
+    {
+      "baseline_seconds": 0.016512167,
+      "baseline_timer_seconds": 0.016,
+      "calibration": {
+        "baseline": {
+          "clock_empty_max": 1.333e-06,
+          "clock_empty_mean": 8.658984375e-07,
+          "clock_empty_min": 7.92e-07
+        },
+        "usefulpilot": {
+          "clock_empty_max": 1.459e-06,
+          "clock_empty_mean": 8.671875e-07,
+          "clock_empty_min": 7.92e-07
+        }
+      },
+      "candidate_seconds": 0.016609084,
+      "candidate_timer_seconds": 0.016,
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "highres_ratio": 1.005869429494021,
+      "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+      "label": "small-aw-clock-a",
+      "ordinary_ratio": 1.0,
+      "peak_baseline": 3375456,
+      "peak_candidate": 3375456,
+      "rep": 5,
+      "result_hashes": [
+        "2ad9a0ae82a316c4611831b1e03b02c6a5cb62bc123168537fb095d8dd5f62bb",
+        "66368b8821c92d5fc67b14349da4b41b14992a1680888b8f6358e054af36a89b"
+      ]
+    },
+    {
+      "baseline_seconds": 0.015987625000000002,
+      "baseline_timer_seconds": 0.016,
+      "calibration": {
+        "baseline": {
+          "clock_empty_max": 1.708e-06,
+          "clock_empty_mean": 8.895859375e-07,
+          "clock_empty_min": 8.33e-07
+        },
+        "usefulpilot": {
+          "clock_empty_max": 1.417e-06,
+          "clock_empty_mean": 8.5875e-07,
+          "clock_empty_min": 8.33e-07
+        }
+      },
+      "candidate_seconds": 0.016609875,
+      "candidate_timer_seconds": 0.016,
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "highres_ratio": 1.0389207277503694,
+      "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+      "label": "small-aw-clock-b",
+      "ordinary_ratio": 1.0,
+      "peak_baseline": 3375456,
+      "peak_candidate": 3375456,
+      "rep": 1,
+      "result_hashes": [
+        "7e3651fa51d78caf30bb059c33340464f4030127c4da975cf04906b0879dbdad",
+        "19ff93c019af00888e938c14f79d206889ba809f3ad11b2c5ba3c74889dcc36b"
+      ]
+    },
+    {
+      "baseline_seconds": 0.016898,
+      "baseline_timer_seconds": 0.017,
+      "calibration": {
+        "baseline": {
+          "clock_empty_max": 1.416e-06,
+          "clock_empty_mean": 8.75625e-07,
+          "clock_empty_min": 8.33e-07
+        },
+        "usefulpilot": {
+          "clock_empty_max": 1.417e-06,
+          "clock_empty_mean": 8.711328125e-07,
+          "clock_empty_min": 8.33e-07
+        }
+      },
+      "candidate_seconds": 0.016733708,
+      "candidate_timer_seconds": 0.017,
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "highres_ratio": 0.9902774292815718,
+      "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+      "label": "small-aw-clock-b",
+      "ordinary_ratio": 1.0,
+      "peak_baseline": 3375456,
+      "peak_candidate": 3375456,
+      "rep": 2,
+      "result_hashes": [
+        "fbf6e8ec1bf8c8e70f91e26cfef9f60cf469d834da10a6b116d677a216934e4d",
+        "6df031c7d820ff785f770495915f77d7b87f423475d2a67c8897ef7437ade217"
+      ]
+    },
+    {
+      "baseline_seconds": 0.016435375000000002,
+      "baseline_timer_seconds": 0.016,
+      "calibration": {
+        "baseline": {
+          "clock_empty_max": 1.5e-06,
+          "clock_empty_mean": 8.54203125e-07,
+          "clock_empty_min": 7.91e-07
+        },
+        "usefulpilot": {
+          "clock_empty_max": 1.375e-06,
+          "clock_empty_mean": 8.04703125e-07,
+          "clock_empty_min": 7.08e-07
+        }
+      },
+      "candidate_seconds": 0.017219667,
+      "candidate_timer_seconds": 0.018,
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "highres_ratio": 1.0477197508423142,
+      "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+      "label": "small-aw-clock-b",
+      "ordinary_ratio": 1.125,
+      "peak_baseline": 3375456,
+      "peak_candidate": 3375456,
+      "rep": 3,
+      "result_hashes": [
+        "f074d76a673a15d4f37dd7632bc52e9d8749323d375d79736c6ec62035421789",
+        "cd5c99c24a1768af78ef59d1628d36c84ae4d176cb2b651336b82b364e42295c"
+      ]
+    },
+    {
+      "baseline_seconds": 0.016008292,
+      "baseline_timer_seconds": 0.016,
+      "calibration": {
+        "baseline": {
+          "clock_empty_max": 1.417e-06,
+          "clock_empty_mean": 8.655859375e-07,
+          "clock_empty_min": 7.91e-07
+        },
+        "usefulpilot": {
+          "clock_empty_max": 1.292e-06,
+          "clock_empty_mean": 8.583984375e-07,
+          "clock_empty_min": 7.91e-07
+        }
+      },
+      "candidate_seconds": 0.016216375,
+      "candidate_timer_seconds": 0.016,
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "highres_ratio": 1.0129984510527419,
+      "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+      "label": "small-aw-clock-b",
+      "ordinary_ratio": 1.0,
+      "peak_baseline": 3375456,
+      "peak_candidate": 3375456,
+      "rep": 4,
+      "result_hashes": [
+        "e72e8217a43806370f42d0322b0eaf90c108a23cb1d4af4d92a6fa74bc73af72",
+        "c63e49ce95a58fd66a842bcaa63303f1129f998b1c80dd222499313fa0a11f7d"
+      ]
+    },
+    {
+      "baseline_seconds": 0.015667875,
+      "baseline_timer_seconds": 0.016,
+      "calibration": {
+        "baseline": {
+          "clock_empty_max": 1.375e-06,
+          "clock_empty_mean": 8.753046875e-07,
+          "clock_empty_min": 7.92e-07
+        },
+        "usefulpilot": {
+          "clock_empty_max": 2.458e-06,
+          "clock_empty_mean": 9.006796875e-07,
+          "clock_empty_min": 7.92e-07
+        }
+      },
+      "candidate_seconds": 0.017210292000000002,
+      "candidate_timer_seconds": 0.018,
+      "exact": {
+        "V": true,
+        "b": true,
+        "fereg_certificate": true,
+        "fereg_dof": true,
+        "fereg_fit": true,
+        "fereg_status": true
+      },
+      "highres_ratio": 1.0984445561379574,
+      "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+      "label": "small-aw-clock-b",
+      "ordinary_ratio": 1.125,
+      "peak_baseline": 3375456,
+      "peak_candidate": 3375456,
+      "rep": 5,
+      "result_hashes": [
+        "a548af57fb18fc641bbe36fedd6652d028522801fdc6f1c3d3feb6b1343b573b",
+        "ff96f32b477925d56128cec578383852351b00a5a393d99c2592488c4e299906"
+      ]
+    }
+  ],
+  "source_files_verified": 516,
+  "status": "pass",
+  "total_successful_calls": 20
+}

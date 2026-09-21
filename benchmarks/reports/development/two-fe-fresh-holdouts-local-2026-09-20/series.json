@@ -1,0 +1,3198 @@
+{
+  "fresh-holdout-a-c000": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.100465205072787e-16,
+              "coefficients.csv:value": 1.5720758028692217e-13,
+              "covariance.csv:value": 1.2001398071409368e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.100465205072787e-16,
+              "coefficients.csv:value": 1.5720758028692217e-13,
+              "covariance.csv:value": 1.2001398071409368e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.100465205072787e-16,
+              "coefficients.csv:value": 1.5720758028692217e-13,
+              "covariance.csv:value": 1.2001398071409368e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.100465205072787e-16,
+              "coefficients.csv:value": 1.5720758028692217e-13,
+              "covariance.csv:value": 1.2001398071409368e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.100465205072787e-16,
+              "coefficients.csv:value": 1.5720758028692217e-13,
+              "covariance.csv:value": 1.2001398071409368e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c001": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.2051470932306074e-13,
+              "covariance.csv:value": 2.074701325181002e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.2051470932306074e-13,
+              "covariance.csv:value": 2.074701325181002e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.2051470932306074e-13,
+              "covariance.csv:value": 2.074701325181002e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.2051470932306074e-13,
+              "covariance.csv:value": 2.074701325181002e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.2051470932306074e-13,
+              "covariance.csv:value": 2.074701325181002e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c002": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.4838998085853206e-13,
+              "covariance.csv:value": 2.3933974715854324e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.4838998085853206e-13,
+              "covariance.csv:value": 2.3933974715854324e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.4838998085853206e-13,
+              "covariance.csv:value": 2.3933974715854324e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.4838998085853206e-13,
+              "covariance.csv:value": 2.3933974715854324e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.4838998085853206e-13,
+              "covariance.csv:value": 2.3933974715854324e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c003": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.618475418256181e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.618475418256181e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.618475418256181e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.618475418256181e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.618475418256181e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c004": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.0610191502224975e-05,
+              1.0610190928975194e-05,
+              8.658798527627631e-06,
+              3.587796726378656e-12,
+              8.658798527516609e-06
+            ],
+            "mismatched_values": [
+              977210,
+              980489,
+              541560,
+              0,
+              475911
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.580358935629737e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.0610191502224975e-05,
+              1.0610190928975194e-05,
+              8.658798527627631e-06,
+              3.587796726378656e-12,
+              8.658798527516609e-06
+            ],
+            "mismatched_values": [
+              977210,
+              980489,
+              541560,
+              0,
+              475911
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.580358935629737e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.0610191502224975e-05,
+              1.0610190928975194e-05,
+              8.658798527627631e-06,
+              3.587796726378656e-12,
+              8.658798527516609e-06
+            ],
+            "mismatched_values": [
+              977210,
+              980489,
+              541560,
+              0,
+              475911
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.580358935629737e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.0610191502224975e-05,
+              1.0610190928975194e-05,
+              8.658798527627631e-06,
+              3.587796726378656e-12,
+              8.658798527516609e-06
+            ],
+            "mismatched_values": [
+              977210,
+              980489,
+              541560,
+              0,
+              475911
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.580358935629737e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.0610191502224975e-05,
+              1.0610190928975194e-05,
+              8.658798527627631e-06,
+              3.587796726378656e-12,
+              8.658798527516609e-06
+            ],
+            "mismatched_values": [
+              977210,
+              980489,
+              541560,
+              0,
+              475911
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.580358935629737e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c005": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.766148515081541e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.766148515081541e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.766148515081541e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.766148515081541e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.766148515081541e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c006": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              9.225746169516658e-06,
+              9.225744398766444e-06,
+              7.787673762083003e-06,
+              8.62088178621434e-12,
+              7.787673761860958e-06
+            ],
+            "mismatched_values": [
+              976490,
+              979605,
+              536141,
+              0,
+              463948
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.769324888633745e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              9.225746169516658e-06,
+              9.225744398766444e-06,
+              7.787673762083003e-06,
+              8.62088178621434e-12,
+              7.787673761860958e-06
+            ],
+            "mismatched_values": [
+              976490,
+              979605,
+              536141,
+              0,
+              463948
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.769324888633745e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              9.225746169516658e-06,
+              9.225744398766444e-06,
+              7.787673762083003e-06,
+              8.62088178621434e-12,
+              7.787673761860958e-06
+            ],
+            "mismatched_values": [
+              976490,
+              979605,
+              536141,
+              0,
+              463948
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.769324888633745e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              9.225746169516658e-06,
+              9.225744398766444e-06,
+              7.787673762083003e-06,
+              8.62088178621434e-12,
+              7.787673761860958e-06
+            ],
+            "mismatched_values": [
+              976490,
+              979605,
+              536141,
+              0,
+              463948
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.769324888633745e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              9.225746169516658e-06,
+              9.225744398766444e-06,
+              7.787673762083003e-06,
+              8.62088178621434e-12,
+              7.787673761860958e-06
+            ],
+            "mismatched_values": [
+              976490,
+              979605,
+              536141,
+              0,
+              463948
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.769324888633745e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c007": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.1008182133085427e-16,
+              "coefficients.csv:value": 2.106231855592e-13,
+              "covariance.csv:value": 8.294570135987736e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.1008182133085427e-16,
+              "coefficients.csv:value": 2.106231855592e-13,
+              "covariance.csv:value": 8.294570135987736e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.1008182133085427e-16,
+              "coefficients.csv:value": 2.106231855592e-13,
+              "covariance.csv:value": 8.294570135987736e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.1008182133085427e-16,
+              "coefficients.csv:value": 2.106231855592e-13,
+              "covariance.csv:value": 8.294570135987736e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.1008182133085427e-16,
+              "coefficients.csv:value": 2.106231855592e-13,
+              "covariance.csv:value": 8.294570135987736e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c008": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 8.471001677889944e-14,
+              "covariance.csv:value": 3.3496844341457366e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 8.471001677889944e-14,
+              "covariance.csv:value": 3.3496844341457366e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 8.471001677889944e-14,
+              "covariance.csv:value": 3.3496844341457366e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 8.471001677889944e-14,
+              "covariance.csv:value": 3.3496844341457366e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 8.471001677889944e-14,
+              "covariance.csv:value": 3.3496844341457366e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c009": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.400857290751901e-15,
+              "covariance.csv:value": 5.44218668610888e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.400857290751901e-15,
+              "covariance.csv:value": 5.44218668610888e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.400857290751901e-15,
+              "covariance.csv:value": 5.44218668610888e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.400857290751901e-15,
+              "covariance.csv:value": 5.44218668610888e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.400857290751901e-15,
+              "covariance.csv:value": 5.44218668610888e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c010": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.2751579226442118e-15,
+              "covariance.csv:value": 4.743384504624082e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.2751579226442118e-15,
+              "covariance.csv:value": 4.743384504624082e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.2751579226442118e-15,
+              "covariance.csv:value": 4.743384504624082e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.2751579226442118e-15,
+              "covariance.csv:value": 4.743384504624082e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.2751579226442118e-15,
+              "covariance.csv:value": 4.743384504624082e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c011": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.141237270298802e-14,
+              "covariance.csv:value": 1.9566461081574338e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.141237270298802e-14,
+              "covariance.csv:value": 1.9566461081574338e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.141237270298802e-14,
+              "covariance.csv:value": 1.9566461081574338e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.141237270298802e-14,
+              "covariance.csv:value": 1.9566461081574338e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.141237270298802e-14,
+              "covariance.csv:value": 1.9566461081574338e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c012": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 4.1300296516055823e-14,
+              "covariance.csv:value": 1.3327534029454382e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 4.1300296516055823e-14,
+              "covariance.csv:value": 1.3327534029454382e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 4.1300296516055823e-14,
+              "covariance.csv:value": 1.3327534029454382e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 4.1300296516055823e-14,
+              "covariance.csv:value": 1.3327534029454382e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 4.1300296516055823e-14,
+              "covariance.csv:value": 1.3327534029454382e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c013": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3989894312449458e-14,
+              "coefficients.csv:value": 3.96310761985319e-12,
+              "covariance.csv:value": 3.6520249037342786e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3989894312449458e-14,
+              "coefficients.csv:value": 3.96310761985319e-12,
+              "covariance.csv:value": 3.6520249037342786e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3989894312449458e-14,
+              "coefficients.csv:value": 3.96310761985319e-12,
+              "covariance.csv:value": 3.6520249037342786e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3989894312449458e-14,
+              "coefficients.csv:value": 3.96310761985319e-12,
+              "covariance.csv:value": 3.6520249037342786e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3989894312449458e-14,
+              "coefficients.csv:value": 3.96310761985319e-12,
+              "covariance.csv:value": 3.6520249037342786e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c014": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004452477910104 (ACTUAL), 0.30044807329711 (DESIRED)\n [1]: -0.0992720633973939 (ACTUAL), -0.0992709934885174 (DESIRED)\n [2]: 0.09883177242875128 (ACTUAL), 0.0988326216183865 (DESIRED)\n [3]: -0.0515019913368958 (ACTUAL), -0.0515010547321779 (DESIRED)\n [4]: 0.0604447747959799 (ACTUAL), 0.0604426598668089 (DESIRED)\nMax absolute difference among violations: 2.8255061e-06\nMax relative difference among violations: 7.99975705e-05\n ACTUAL: array([ 0.300445, -0.099272,  0.098832, -0.051502,  0.060445, -0.034555])\n DESIRED: array([ 0.300448, -0.099271,  0.098833, -0.051501,  0.060443, -0.034552])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004452477910104 (ACTUAL), 0.30044807329711 (DESIRED)\n [1]: -0.0992720633973939 (ACTUAL), -0.0992709934885174 (DESIRED)\n [2]: 0.09883177242875128 (ACTUAL), 0.0988326216183865 (DESIRED)\n [3]: -0.0515019913368958 (ACTUAL), -0.0515010547321779 (DESIRED)\n [4]: 0.0604447747959799 (ACTUAL), 0.0604426598668089 (DESIRED)\nMax absolute difference among violations: 2.8255061e-06\nMax relative difference among violations: 7.99975705e-05\n ACTUAL: array([ 0.300445, -0.099272,  0.098832, -0.051502,  0.060445, -0.034555])\n DESIRED: array([ 0.300448, -0.099271,  0.098833, -0.051501,  0.060443, -0.034552])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004452477910104 (ACTUAL), 0.30044807329711 (DESIRED)\n [1]: -0.0992720633973939 (ACTUAL), -0.0992709934885174 (DESIRED)\n [2]: 0.09883177242875128 (ACTUAL), 0.0988326216183865 (DESIRED)\n [3]: -0.0515019913368958 (ACTUAL), -0.0515010547321779 (DESIRED)\n [4]: 0.0604447747959799 (ACTUAL), 0.0604426598668089 (DESIRED)\nMax absolute difference among violations: 2.8255061e-06\nMax relative difference among violations: 7.99975705e-05\n ACTUAL: array([ 0.300445, -0.099272,  0.098832, -0.051502,  0.060445, -0.034555])\n DESIRED: array([ 0.300448, -0.099271,  0.098833, -0.051501,  0.060443, -0.034552])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004452477910104 (ACTUAL), 0.30044807329711 (DESIRED)\n [1]: -0.0992720633973939 (ACTUAL), -0.0992709934885174 (DESIRED)\n [2]: 0.09883177242875128 (ACTUAL), 0.0988326216183865 (DESIRED)\n [3]: -0.0515019913368958 (ACTUAL), -0.0515010547321779 (DESIRED)\n [4]: 0.0604447747959799 (ACTUAL), 0.0604426598668089 (DESIRED)\nMax absolute difference among violations: 2.8255061e-06\nMax relative difference among violations: 7.99975705e-05\n ACTUAL: array([ 0.300445, -0.099272,  0.098832, -0.051502,  0.060445, -0.034555])\n DESIRED: array([ 0.300448, -0.099271,  0.098833, -0.051501,  0.060443, -0.034552])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004452477910104 (ACTUAL), 0.30044807329711 (DESIRED)\n [1]: -0.0992720633973939 (ACTUAL), -0.0992709934885174 (DESIRED)\n [2]: 0.09883177242875128 (ACTUAL), 0.0988326216183865 (DESIRED)\n [3]: -0.0515019913368958 (ACTUAL), -0.0515010547321779 (DESIRED)\n [4]: 0.0604447747959799 (ACTUAL), 0.0604426598668089 (DESIRED)\nMax absolute difference among violations: 2.8255061e-06\nMax relative difference among violations: 7.99975705e-05\n ACTUAL: array([ 0.300445, -0.099272,  0.098832, -0.051502,  0.060445, -0.034555])\n DESIRED: array([ 0.300448, -0.099271,  0.098833, -0.051501,  0.060443, -0.034552])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "fresh-holdout-a-c015": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002486019552398 (ACTUAL), 0.300243820914701 (DESIRED)\n [1]: -0.0996231009187116 (ACTUAL), -0.0996129632255256 (DESIRED)\n [2]: 0.0985120193940935 (ACTUAL), 0.0984962137413069 (DESIRED)\n [3]: -0.0512542499774917 (ACTUAL), -0.0512398798170396 (DESIRED)\n [4]: 0.06090047247138209 (ACTUAL), 0.0609124758758202 (DESIRED)\nMax absolute difference among violations: 1.58056528e-05\nMax relative difference among violations: 0.00028045\n ACTUAL: array([ 0.300249, -0.099623,  0.098512, -0.051254,  0.0609  , -0.034584])\n DESIRED: array([ 0.300244, -0.099613,  0.098496, -0.05124 ,  0.060912, -0.034581])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002486019552398 (ACTUAL), 0.300243820914701 (DESIRED)\n [1]: -0.0996231009187116 (ACTUAL), -0.0996129632255256 (DESIRED)\n [2]: 0.0985120193940935 (ACTUAL), 0.0984962137413069 (DESIRED)\n [3]: -0.0512542499774917 (ACTUAL), -0.0512398798170396 (DESIRED)\n [4]: 0.06090047247138209 (ACTUAL), 0.0609124758758202 (DESIRED)\nMax absolute difference among violations: 1.58056528e-05\nMax relative difference among violations: 0.00028045\n ACTUAL: array([ 0.300249, -0.099623,  0.098512, -0.051254,  0.0609  , -0.034584])\n DESIRED: array([ 0.300244, -0.099613,  0.098496, -0.05124 ,  0.060912, -0.034581])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002486019552398 (ACTUAL), 0.300243820914701 (DESIRED)\n [1]: -0.0996231009187116 (ACTUAL), -0.0996129632255256 (DESIRED)\n [2]: 0.0985120193940935 (ACTUAL), 0.0984962137413069 (DESIRED)\n [3]: -0.0512542499774917 (ACTUAL), -0.0512398798170396 (DESIRED)\n [4]: 0.06090047247138209 (ACTUAL), 0.0609124758758202 (DESIRED)\nMax absolute difference among violations: 1.58056528e-05\nMax relative difference among violations: 0.00028045\n ACTUAL: array([ 0.300249, -0.099623,  0.098512, -0.051254,  0.0609  , -0.034584])\n DESIRED: array([ 0.300244, -0.099613,  0.098496, -0.05124 ,  0.060912, -0.034581])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002486019552398 (ACTUAL), 0.300243820914701 (DESIRED)\n [1]: -0.0996231009187116 (ACTUAL), -0.0996129632255256 (DESIRED)\n [2]: 0.0985120193940935 (ACTUAL), 0.0984962137413069 (DESIRED)\n [3]: -0.0512542499774917 (ACTUAL), -0.0512398798170396 (DESIRED)\n [4]: 0.06090047247138209 (ACTUAL), 0.0609124758758202 (DESIRED)\nMax absolute difference among violations: 1.58056528e-05\nMax relative difference among violations: 0.00028045\n ACTUAL: array([ 0.300249, -0.099623,  0.098512, -0.051254,  0.0609  , -0.034584])\n DESIRED: array([ 0.300244, -0.099613,  0.098496, -0.05124 ,  0.060912, -0.034581])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002486019552398 (ACTUAL), 0.300243820914701 (DESIRED)\n [1]: -0.0996231009187116 (ACTUAL), -0.0996129632255256 (DESIRED)\n [2]: 0.0985120193940935 (ACTUAL), 0.0984962137413069 (DESIRED)\n [3]: -0.0512542499774917 (ACTUAL), -0.0512398798170396 (DESIRED)\n [4]: 0.06090047247138209 (ACTUAL), 0.0609124758758202 (DESIRED)\nMax absolute difference among violations: 1.58056528e-05\nMax relative difference among violations: 0.00028045\n ACTUAL: array([ 0.300249, -0.099623,  0.098512, -0.051254,  0.0609  , -0.034584])\n DESIRED: array([ 0.300244, -0.099613,  0.098496, -0.05124 ,  0.060912, -0.034581])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c000": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.100465205072787e-16,
+              "coefficients.csv:value": 1.5720758028692217e-13,
+              "covariance.csv:value": 1.2001398071409368e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.100465205072787e-16,
+              "coefficients.csv:value": 1.5720758028692217e-13,
+              "covariance.csv:value": 1.2001398071409368e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.100465205072787e-16,
+              "coefficients.csv:value": 1.5720758028692217e-13,
+              "covariance.csv:value": 1.2001398071409368e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.100465205072787e-16,
+              "coefficients.csv:value": 1.5720758028692217e-13,
+              "covariance.csv:value": 1.2001398071409368e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.100465205072787e-16,
+              "coefficients.csv:value": 1.5720758028692217e-13,
+              "covariance.csv:value": 1.2001398071409368e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c001": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.2051470932306074e-13,
+              "covariance.csv:value": 2.074701325181002e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.2051470932306074e-13,
+              "covariance.csv:value": 2.074701325181002e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.2051470932306074e-13,
+              "covariance.csv:value": 2.074701325181002e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.2051470932306074e-13,
+              "covariance.csv:value": 2.074701325181002e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 5,
+          "n": 983040,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.2051470932306074e-13,
+              "covariance.csv:value": 2.074701325181002e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c002": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.4838998085853206e-13,
+              "covariance.csv:value": 2.3933974715854324e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.4838998085853206e-13,
+              "covariance.csv:value": 2.3933974715854324e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.4838998085853206e-13,
+              "covariance.csv:value": 2.3933974715854324e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.4838998085853206e-13,
+              "covariance.csv:value": 2.3933974715854324e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.0003530082357557e-16,
+              "coefficients.csv:value": 1.4838998085853206e-13,
+              "covariance.csv:value": 2.3933974715854324e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c003": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.618475418256181e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.618475418256181e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.618475418256181e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.618475418256181e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 983040,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.618475418256181e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c004": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.0610191502224975e-05,
+              1.0610190928975194e-05,
+              8.658798527627631e-06,
+              3.587796726378656e-12,
+              8.658798527516609e-06
+            ],
+            "mismatched_values": [
+              977210,
+              980489,
+              541560,
+              0,
+              475911
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.580358935629737e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.0610191502224975e-05,
+              1.0610190928975194e-05,
+              8.658798527627631e-06,
+              3.587796726378656e-12,
+              8.658798527516609e-06
+            ],
+            "mismatched_values": [
+              977210,
+              980489,
+              541560,
+              0,
+              475911
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.580358935629737e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.0610191502224975e-05,
+              1.0610190928975194e-05,
+              8.658798527627631e-06,
+              3.587796726378656e-12,
+              8.658798527516609e-06
+            ],
+            "mismatched_values": [
+              977210,
+              980489,
+              541560,
+              0,
+              475911
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.580358935629737e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.0610191502224975e-05,
+              1.0610190928975194e-05,
+              8.658798527627631e-06,
+              3.587796726378656e-12,
+              8.658798527516609e-06
+            ],
+            "mismatched_values": [
+              977210,
+              980489,
+              541560,
+              0,
+              475911
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.580358935629737e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.0610191502224975e-05,
+              1.0610190928975194e-05,
+              8.658798527627631e-06,
+              3.587796726378656e-12,
+              8.658798527516609e-06
+            ],
+            "mismatched_values": [
+              977210,
+              980489,
+              541560,
+              0,
+              475911
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.2743586448068527e-13,
+              "covariance.csv:value": 5.580358935629737e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c005": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.766148515081541e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.766148515081541e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.766148515081541e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.766148515081541e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 50,
+          "n": 983040,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.766148515081541e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c006": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              9.225746169516658e-06,
+              9.225744398766444e-06,
+              7.787673762083003e-06,
+              8.62088178621434e-12,
+              7.787673761860958e-06
+            ],
+            "mismatched_values": [
+              976490,
+              979605,
+              536141,
+              0,
+              463948
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.769324888633745e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              9.225746169516658e-06,
+              9.225744398766444e-06,
+              7.787673762083003e-06,
+              8.62088178621434e-12,
+              7.787673761860958e-06
+            ],
+            "mismatched_values": [
+              976490,
+              979605,
+              536141,
+              0,
+              463948
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.769324888633745e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              9.225746169516658e-06,
+              9.225744398766444e-06,
+              7.787673762083003e-06,
+              8.62088178621434e-12,
+              7.787673761860958e-06
+            ],
+            "mismatched_values": [
+              976490,
+              979605,
+              536141,
+              0,
+              463948
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.769324888633745e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              9.225746169516658e-06,
+              9.225744398766444e-06,
+              7.787673762083003e-06,
+              8.62088178621434e-12,
+              7.787673761860958e-06
+            ],
+            "mismatched_values": [
+              976490,
+              979605,
+              536141,
+              0,
+              463948
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.769324888633745e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid_outputs",
+          "k": 50,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              9.225746169516658e-06,
+              9.225744398766444e-06,
+              7.787673762083003e-06,
+              8.62088178621434e-12,
+              7.787673761860958e-06
+            ],
+            "mismatched_values": [
+              976490,
+              979605,
+              536141,
+              0,
+              463948
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "mismatch"
+          },
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 4.100452616340178e-16,
+              "coefficients.csv:value": 4.3339984379109353e-13,
+              "covariance.csv:value": 4.769324888633745e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_output_mismatch"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c007": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.1008182133085427e-16,
+              "coefficients.csv:value": 2.106231855592e-13,
+              "covariance.csv:value": 8.294570135987736e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.1008182133085427e-16,
+              "coefficients.csv:value": 2.106231855592e-13,
+              "covariance.csv:value": 8.294570135987736e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.1008182133085427e-16,
+              "coefficients.csv:value": 2.106231855592e-13,
+              "covariance.csv:value": 8.294570135987736e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.1008182133085427e-16,
+              "coefficients.csv:value": 2.106231855592e-13,
+              "covariance.csv:value": 8.294570135987736e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 3.1008182133085427e-16,
+              "coefficients.csv:value": 2.106231855592e-13,
+              "covariance.csv:value": 8.294570135987736e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c008": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 8.471001677889944e-14,
+              "covariance.csv:value": 3.3496844341457366e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 8.471001677889944e-14,
+              "covariance.csv:value": 3.3496844341457366e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 8.471001677889944e-14,
+              "covariance.csv:value": 3.3496844341457366e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 8.471001677889944e-14,
+              "covariance.csv:value": 3.3496844341457366e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 8.471001677889944e-14,
+              "covariance.csv:value": 3.3496844341457366e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c009": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.400857290751901e-15,
+              "covariance.csv:value": 5.44218668610888e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.400857290751901e-15,
+              "covariance.csv:value": 5.44218668610888e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.400857290751901e-15,
+              "covariance.csv:value": 5.44218668610888e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.400857290751901e-15,
+              "covariance.csv:value": 5.44218668610888e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 2.400857290751901e-15,
+              "covariance.csv:value": 5.44218668610888e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c010": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.2751579226442118e-15,
+              "covariance.csv:value": 4.743384504624082e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.2751579226442118e-15,
+              "covariance.csv:value": 4.743384504624082e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.2751579226442118e-15,
+              "covariance.csv:value": 4.743384504624082e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.2751579226442118e-15,
+              "covariance.csv:value": 4.743384504624082e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.2751579226442118e-15,
+              "covariance.csv:value": 4.743384504624082e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c011": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.141237270298802e-14,
+              "covariance.csv:value": 1.9566461081574338e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.141237270298802e-14,
+              "covariance.csv:value": 1.9566461081574338e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.141237270298802e-14,
+              "covariance.csv:value": 1.9566461081574338e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.141237270298802e-14,
+              "covariance.csv:value": 1.9566461081574338e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 9.996344030316351e-17,
+              "coefficients.csv:value": 3.141237270298802e-14,
+              "covariance.csv:value": 1.9566461081574338e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c012": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 4.1300296516055823e-14,
+              "covariance.csv:value": 1.3327534029454382e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 4.1300296516055823e-14,
+              "covariance.csv:value": 1.3327534029454382e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 4.1300296516055823e-14,
+              "covariance.csv:value": 1.3327534029454382e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 4.1300296516055823e-14,
+              "covariance.csv:value": 1.3327534029454382e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0018028073766061e-16,
+              "coefficients.csv:value": 4.1300296516055823e-14,
+              "covariance.csv:value": 1.3327534029454382e-19
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c013": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3989894312449458e-14,
+              "coefficients.csv:value": 3.96310761985319e-12,
+              "covariance.csv:value": 3.6520249037342786e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3989894312449458e-14,
+              "coefficients.csv:value": 3.96310761985319e-12,
+              "covariance.csv:value": 3.6520249037342786e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3989894312449458e-14,
+              "coefficients.csv:value": 3.96310761985319e-12,
+              "covariance.csv:value": 3.6520249037342786e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3989894312449458e-14,
+              "coefficients.csv:value": 3.96310761985319e-12,
+              "covariance.csv:value": 3.6520249037342786e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.3989894312449458e-14,
+              "coefficients.csv:value": 3.96310761985319e-12,
+              "covariance.csv:value": 3.6520249037342786e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c014": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004452477910104 (ACTUAL), 0.30044807329711 (DESIRED)\n [1]: -0.0992720633973939 (ACTUAL), -0.0992709934885174 (DESIRED)\n [2]: 0.09883177242875128 (ACTUAL), 0.0988326216183865 (DESIRED)\n [3]: -0.0515019913368958 (ACTUAL), -0.0515010547321779 (DESIRED)\n [4]: 0.0604447747959799 (ACTUAL), 0.0604426598668089 (DESIRED)\nMax absolute difference among violations: 2.8255061e-06\nMax relative difference among violations: 7.99975705e-05\n ACTUAL: array([ 0.300445, -0.099272,  0.098832, -0.051502,  0.060445, -0.034555])\n DESIRED: array([ 0.300448, -0.099271,  0.098833, -0.051501,  0.060443, -0.034552])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004452477910104 (ACTUAL), 0.30044807329711 (DESIRED)\n [1]: -0.0992720633973939 (ACTUAL), -0.0992709934885174 (DESIRED)\n [2]: 0.09883177242875128 (ACTUAL), 0.0988326216183865 (DESIRED)\n [3]: -0.0515019913368958 (ACTUAL), -0.0515010547321779 (DESIRED)\n [4]: 0.0604447747959799 (ACTUAL), 0.0604426598668089 (DESIRED)\nMax absolute difference among violations: 2.8255061e-06\nMax relative difference among violations: 7.99975705e-05\n ACTUAL: array([ 0.300445, -0.099272,  0.098832, -0.051502,  0.060445, -0.034555])\n DESIRED: array([ 0.300448, -0.099271,  0.098833, -0.051501,  0.060443, -0.034552])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004452477910104 (ACTUAL), 0.30044807329711 (DESIRED)\n [1]: -0.0992720633973939 (ACTUAL), -0.0992709934885174 (DESIRED)\n [2]: 0.09883177242875128 (ACTUAL), 0.0988326216183865 (DESIRED)\n [3]: -0.0515019913368958 (ACTUAL), -0.0515010547321779 (DESIRED)\n [4]: 0.0604447747959799 (ACTUAL), 0.0604426598668089 (DESIRED)\nMax absolute difference among violations: 2.8255061e-06\nMax relative difference among violations: 7.99975705e-05\n ACTUAL: array([ 0.300445, -0.099272,  0.098832, -0.051502,  0.060445, -0.034555])\n DESIRED: array([ 0.300448, -0.099271,  0.098833, -0.051501,  0.060443, -0.034552])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004452477910104 (ACTUAL), 0.30044807329711 (DESIRED)\n [1]: -0.0992720633973939 (ACTUAL), -0.0992709934885174 (DESIRED)\n [2]: 0.09883177242875128 (ACTUAL), 0.0988326216183865 (DESIRED)\n [3]: -0.0515019913368958 (ACTUAL), -0.0515010547321779 (DESIRED)\n [4]: 0.0604447747959799 (ACTUAL), 0.0604426598668089 (DESIRED)\nMax absolute difference among violations: 2.8255061e-06\nMax relative difference among violations: 7.99975705e-05\n ACTUAL: array([ 0.300445, -0.099272,  0.098832, -0.051502,  0.060445, -0.034555])\n DESIRED: array([ 0.300448, -0.099271,  0.098833, -0.051501,  0.060443, -0.034552])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3004452477910104 (ACTUAL), 0.30044807329711 (DESIRED)\n [1]: -0.0992720633973939 (ACTUAL), -0.0992709934885174 (DESIRED)\n [2]: 0.09883177242875128 (ACTUAL), 0.0988326216183865 (DESIRED)\n [3]: -0.0515019913368958 (ACTUAL), -0.0515010547321779 (DESIRED)\n [4]: 0.0604447747959799 (ACTUAL), 0.0604426598668089 (DESIRED)\nMax absolute difference among violations: 2.8255061e-06\nMax relative difference among violations: 7.99975705e-05\n ACTUAL: array([ 0.300445, -0.099272,  0.098832, -0.051502,  0.060445, -0.034555])\n DESIRED: array([ 0.300448, -0.099271,  0.098833, -0.051501,  0.060443, -0.034552])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  },
+  "fresh-holdout-b-c015": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002486019552398 (ACTUAL), 0.300243820914701 (DESIRED)\n [1]: -0.0996231009187116 (ACTUAL), -0.0996129632255256 (DESIRED)\n [2]: 0.0985120193940935 (ACTUAL), 0.0984962137413069 (DESIRED)\n [3]: -0.0512542499774917 (ACTUAL), -0.0512398798170396 (DESIRED)\n [4]: 0.06090047247138209 (ACTUAL), 0.0609124758758202 (DESIRED)\nMax absolute difference among violations: 1.58056528e-05\nMax relative difference among violations: 0.00028045\n ACTUAL: array([ 0.300249, -0.099623,  0.098512, -0.051254,  0.0609  , -0.034584])\n DESIRED: array([ 0.300244, -0.099613,  0.098496, -0.05124 ,  0.060912, -0.034581])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 2,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002486019552398 (ACTUAL), 0.300243820914701 (DESIRED)\n [1]: -0.0996231009187116 (ACTUAL), -0.0996129632255256 (DESIRED)\n [2]: 0.0985120193940935 (ACTUAL), 0.0984962137413069 (DESIRED)\n [3]: -0.0512542499774917 (ACTUAL), -0.0512398798170396 (DESIRED)\n [4]: 0.06090047247138209 (ACTUAL), 0.0609124758758202 (DESIRED)\nMax absolute difference among violations: 1.58056528e-05\nMax relative difference among violations: 0.00028045\n ACTUAL: array([ 0.300249, -0.099623,  0.098512, -0.051254,  0.0609  , -0.034584])\n DESIRED: array([ 0.300244, -0.099613,  0.098496, -0.05124 ,  0.060912, -0.034581])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 3,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002486019552398 (ACTUAL), 0.300243820914701 (DESIRED)\n [1]: -0.0996231009187116 (ACTUAL), -0.0996129632255256 (DESIRED)\n [2]: 0.0985120193940935 (ACTUAL), 0.0984962137413069 (DESIRED)\n [3]: -0.0512542499774917 (ACTUAL), -0.0512398798170396 (DESIRED)\n [4]: 0.06090047247138209 (ACTUAL), 0.0609124758758202 (DESIRED)\nMax absolute difference among violations: 1.58056528e-05\nMax relative difference among violations: 0.00028045\n ACTUAL: array([ 0.300249, -0.099623,  0.098512, -0.051254,  0.0609  , -0.034584])\n DESIRED: array([ 0.300244, -0.099613,  0.098496, -0.05124 ,  0.060912, -0.034581])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 4,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002486019552398 (ACTUAL), 0.300243820914701 (DESIRED)\n [1]: -0.0996231009187116 (ACTUAL), -0.0996129632255256 (DESIRED)\n [2]: 0.0985120193940935 (ACTUAL), 0.0984962137413069 (DESIRED)\n [3]: -0.0512542499774917 (ACTUAL), -0.0512398798170396 (DESIRED)\n [4]: 0.06090047247138209 (ACTUAL), 0.0609124758758202 (DESIRED)\nMax absolute difference among violations: 1.58056528e-05\nMax relative difference among violations: 0.00028045\n ACTUAL: array([ 0.300249, -0.099623,  0.098512, -0.051254,  0.0609  , -0.034584])\n DESIRED: array([ 0.300244, -0.099613,  0.098496, -0.05124 ,  0.060912, -0.034581])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        },
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 245760,
+          "outputs": {},
+          "rep": 5,
+          "science": {
+            "detail": "\nNot equal to tolerance rtol=1e-07, atol=1e-10\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.3002486019552398 (ACTUAL), 0.300243820914701 (DESIRED)\n [1]: -0.0996231009187116 (ACTUAL), -0.0996129632255256 (DESIRED)\n [2]: 0.0985120193940935 (ACTUAL), 0.0984962137413069 (DESIRED)\n [3]: -0.0512542499774917 (ACTUAL), -0.0512398798170396 (DESIRED)\n [4]: 0.06090047247138209 (ACTUAL), 0.0609124758758202 (DESIRED)\nMax absolute difference among violations: 1.58056528e-05\nMax relative difference among violations: 0.00028045\n ACTUAL: array([ 0.300249, -0.099623,  0.098512, -0.051254,  0.0609  , -0.034584])\n DESIRED: array([ 0.300244, -0.099613,  0.098496, -0.05124 ,  0.060912, -0.034581])",
+            "status": "mismatch"
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "reference_science_mismatch"
+    },
+    "complete": true
+  }
+}
