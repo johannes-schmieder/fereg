@@ -29,6 +29,16 @@ def foreign_processes():
     for process in psutil.process_iter(['pid', 'name', 'create_time']):
         info = process.info
         if info['pid'] not in ours and info['name'] in ('stata-mp', 'R', 'Rscript', 'rustc', 'cargo'):
+            # A worker may start after the descendants snapshot. Resolve its
+            # live ancestry before treating our own new child as interference.
+            try:
+                parents = process.parents()
+                if any(parent.pid == owner.pid for parent in parents):
+                    continue
+                info = dict(info, parent_pids=[parent.pid for parent in parents],
+                            ancestry_status='resolved')
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                info = dict(info, ancestry_status='unavailable')
             records.append(info)
     return records
 
