@@ -1,0 +1,28 @@
+{
+  "schema": "initial-ols-norm-archive-integrity-v1",
+  "status": "pass",
+  "stored_entries_verified": 2994,
+  "local_output_arrays_omitted": 96,
+  "content_addressed_objects_verified": 2,
+  "sources": [
+    {
+      "variant": "sf1",
+      "base_commit": "be5079f7a0a5447c4da1c05506f9bfb1b839518d",
+      "plugin": "90d4d382e9f7030e7db2b152b5b1cfe097d4dca147f49c1843a2ef4bdd550b62",
+      "source_files": 520,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "in1",
+      "base_commit": "701562e09abd4e641cdfd1acf4a52d9c17083e50",
+      "plugin": "11ba0ccff2155287bae6493302a76c57a5a8d6962fdda58179e8a345d4c2e3a3",
+      "source_files": 521,
+      "source_reconstruction": "all_captured_hashes_match"
+    }
+  ],
+  "machine_home_path_scans": [
+    "sources",
+    "checks"
+  ],
+  "verifier_sha256": "a754705509c8f2284014d341e36d1fbb92269e88c7429d90938bdab4afb05018"
+}

@@ -4617,7 +4617,10 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
         &mut workspace.value_scales,
         &mut workspace.group_sums,
     )?;
-    let initial_certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
+    // The input is unchanged since its reference norms were computed above.
+    // Copy those norms while freshly checking every FE moment; do not scan the
+    // same matrix again solely to produce identical initial residual norms.
+    let initial_certificate = certify_initial(design, weights, &values, config.tolerance, &mut workspace)?;
     let pilot_setup_seconds = setup_started.elapsed().as_secs_f64();
     if initial_certificate.passed {
         let result = certified_solver_result(
@@ -9692,6 +9695,58 @@ fn update_ols_workspace_norms(
 mod tests {
     use super::*;
     use crate::fe::{LevelIndex, ValidatedBorrowedInterceptSource};
+
+    #[test]
+    fn automatic_initial_norm_handoff_preserves_fresh_certificate_and_workspace() {
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                for rows in [257, 16_385] {
+                    let left: Vec<_> = (0..rows).map(|r| (r % 17) as u32).collect();
+                    let right: Vec<_> = (0..rows).map(|r| ((r / 7) % 13) as u32).collect();
+                    let li = LevelIndex::from_codes(&left, 17).unwrap();
+                    let ri = LevelIndex::from_codes(&right, 13).unwrap();
+                    let l = ValidatedBorrowedInterceptSource::new(&left, 17, &li).unwrap();
+                    let r = ValidatedBorrowedInterceptSource::new(&right, 13, &ri).unwrap();
+                    let design = BorrowedInterceptFeDesign::new(rows, vec![l.effect(), r.effect()]).unwrap();
+                    for width in [1, 7, 52] {
+                        let values = DenseMatrix::from_row_major(rows, width, (0..rows * width)
+                            .map(|i| match (i % width) % 5 {
+                                0 => if i % 2 == 0 { -0.0 } else { 0.0 },
+                                1 => 0.25,
+                                2 => (i as f64 * 0.17).sin() * 1e-200,
+                                3 => (i as f64 * 0.17).sin() * 1e200,
+                                _ => (i as f64 * 0.17).sin(),
+                            }).collect()).unwrap();
+                        for weight_scale in [None, Some(1e-100), Some(1.0), Some(1e100)] {
+                            let raw = weight_scale.map(|scale| (0..rows)
+                                .map(|r| scale * 10.0_f64.powi((r % 9) as i32 - 4)).collect::<Vec<_>>());
+                            let weights = validate_weights(raw.as_deref().map_or(
+                                BorrowedMapWeights::Unit, BorrowedMapWeights::Provided), rows).unwrap();
+                            let mut full = BorrowedMapWorkspace::new(&design, rows, width, &mut SystemWorkspaceReservation).unwrap();
+                            let mut reused = BorrowedMapWorkspace::new(&design, rows, width, &mut SystemWorkspaceReservation).unwrap();
+                            for workspace in [&mut full, &mut reused] {
+                                assert!(!workspace.ols_norm_reduction);
+                                weighted_column_norms(&values, weights, &mut workspace.reference_norms,
+                                    &mut workspace.value_scales, &mut workspace.group_sums).unwrap();
+                            }
+                            let expected = certify(&design, weights, &values, 1e-10, &mut full).unwrap();
+                            let actual = certify_initial(&design, weights, &values, 1e-10, &mut reused).unwrap();
+                            assert_eq!(actual, expected);
+                            assert_eq!(reused.residual_norms, full.residual_norms);
+                            assert_eq!(reused.value_scales, full.value_scales);
+                            assert_eq!(reused.rhs_scales, full.rhs_scales);
+                            assert_eq!(reused.rhs_relative_infinity_norms, full.rhs_relative_infinity_norms);
+                            assert_eq!(reused.group_sums, full.group_sums);
+                            assert_eq!(reused.group_corrections, full.group_corrections);
+                            // A fresh moment check still rejects a non-orthogonal
+                            // input; the norm handoff cannot grant a certificate.
+                            assert_eq!(actual.passed, width == 1);
+                        }
+                    }
+                }
+            });
+        }
+    }
 
     #[derive(Default)]
     struct InjectedReservation {

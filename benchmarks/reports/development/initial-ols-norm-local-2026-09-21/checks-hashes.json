@@ -1,0 +1,42 @@
+{
+  "initial-norm-score1.json": {
+    "original_sha256": "23476224bcadf2863f0475aacf9e62c45d4f9a550a47b64d8899408ef5544d73",
+    "portable_sha256": "23476224bcadf2863f0475aacf9e62c45d4f9a550a47b64d8899408ef5544d73"
+  },
+  "initial-norm-score1.txt": {
+    "original_sha256": "936d76ece8141b8056b5cff5024cdb4c17f24b63c1e6fdcf17a8105aa3ebaab2",
+    "portable_sha256": "936d76ece8141b8056b5cff5024cdb4c17f24b63c1e6fdcf17a8105aa3ebaab2"
+  },
+  "initial-norm-inference1.json": {
+    "original_sha256": "cba8f89d400c57dcaa4f1255b30c069a710a272898691cf28669917ae2500fcd",
+    "portable_sha256": "cba8f89d400c57dcaa4f1255b30c069a710a272898691cf28669917ae2500fcd"
+  },
+  "initial-norm-inference1.txt": {
+    "original_sha256": "48e844e94212d59e5a70e3571e18b8eb67247955cae9c5c60aae4e5accfed01d",
+    "portable_sha256": "48e844e94212d59e5a70e3571e18b8eb67247955cae9c5c60aae4e5accfed01d"
+  },
+  "initial-norm-outputs1.txt": {
+    "original_sha256": "d4104f77ad7c722d429311bd003a300626d0c258c11e6d8df38d649b828fb87f",
+    "portable_sha256": "d4104f77ad7c722d429311bd003a300626d0c258c11e6d8df38d649b828fb87f"
+  },
+  "initial-norm-screen1.txt": {
+    "original_sha256": "3b61768891f4c9cbd7557cf7627d70ce95800b5ae0ff9d6f934797d690d45b28",
+    "portable_sha256": "3b61768891f4c9cbd7557cf7627d70ce95800b5ae0ff9d6f934797d690d45b28"
+  },
+  "initial-norm-equivalence1.json": {
+    "original_sha256": "25151d5670b02fc7c1e39b408a10ec0e87efe6bce3a0e8dd41685f49351b1c87",
+    "portable_sha256": "25151d5670b02fc7c1e39b408a10ec0e87efe6bce3a0e8dd41685f49351b1c87"
+  },
+  "initial-norm-equivalence1.txt": {
+    "original_sha256": "8ecb6dc2ee9be740f6dccb618ff17e9e37d23c95ee7f3a0b1493f5e7bc3045ee",
+    "portable_sha256": "8ecb6dc2ee9be740f6dccb618ff17e9e37d23c95ee7f3a0b1493f5e7bc3045ee"
+  },
+  "initial-norm-tests1.txt": {
+    "original_sha256": "a24274e6c628908332b8abaf6d97b67578e98e005a58fdc464855d88e7640dfe",
+    "portable_sha256": "85b14cd0d3d33623a17e4ca333bde37c17241f54db22e31b275fc66f3595f3a6"
+  },
+  "initial-norm-archive1.txt": {
+    "original_sha256": "ff014a4f6e7592b64d179181f178b5a07564f33bbcc81f231a3c8fc1952e65aa",
+    "portable_sha256": "c7dd099edb828e2c7d00f932a1e5069b1f746efca4d7a51944dcefeb379c1275"
+  }
+}

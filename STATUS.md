@@ -334,14 +334,35 @@ Every FE moment remains freshly checked; only the duplicate norm pass is
 removed. `in1` plugin
 `11ba0ccff2155287bae6493302a76c57a5a8d6962fdda58179e8a345d4c2e3a3`
 builds and passes the ABI fixture. Its focused exact certificate/workspace
-fixture is still running; no runtime benefit or acceptance is claimed yet.
+fixture passes. The [sixteen-cell screen](benchmarks/reports/development/initial-ols-norm-local-2026-09-21/README.md)
+completes 96 clean calls, 32 independent native inference checks, 96 within-arm
+repeat checks and 48 candidate output audits. All 48 native pairs have exact
+finite exports, samples, status, FE metadata, fresh certificates, saved vectors
+and solver-report fields other than times. Paired ratios are 0.9653–1.0189:
+this is a small pass reduction, not a broad speed breakthrough. Forty paired
+peaks match and eight differ by -2,536,968 to +51,081,104 bytes in threaded
+fits; the unchanged allocation model is not evidence of observed memory
+neutrality. ADR 0094 accepts this norm handoff for local development. The first
+archive attempt's missing-controller error and original script are preserved;
+the corrected archive verifies both complete sources and auditor bindings.
 
-Current resume point: finish the initial-norm fixture, then measure the isolated
-pass reduction against sf1. Revisit a cycle-specific structural routing guard
-without changing weighted ring routes. Complete current-candidate science,
+ADR 0093 proposes an isolated exact-cycle guard. It recognizes one connected
+degree-two smaller-axis Schur graph, three physical rows per larger-axis group,
+moderate weights, and a narrow measured size/width/thread envelope. Its
+label/row/effect-order, disconnected/path/chord, weight and budget fixture
+passes. `cy1` plugin
+`d160fc043d1def1728a17021a76c75d3b7d3586b6f96664be03f87e19cbc2eec`
+builds and passes ABI checks. Both accepted and rejected probe costs are charged
+outside early Schur returns. The detector exists only in a captured-source
+transform; production routing remains unchanged. The 46-cell training screen
+at `target/g21cy1` is running after all builds and audits finished.
+
+Current resume point: finish and independently audit the cycle screen, including
+its excluded graph/explicit-route controls. Complete current-candidate science,
 primary/holdout final blocks, constrained whole-fit checks and focused Linux
 runs before closing the milestone. Four core graph/fit files remain modified,
-including the new norm draft; earlier graph kernels remain unaccepted. Keep old
+with the norm handoff ready for its separate checkpoint; earlier graph kernels
+remain unaccepted. Keep old
 routes where cross-platform confirmation is missing; do not inspect fresh
 routing seeds while choosing thresholds. Serial weighted slope losses remain.
 

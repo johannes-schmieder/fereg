@@ -110,6 +110,12 @@ used only for saved-effect recovery and do not change ordinary CG estimation.
 
 ## Current automatic policy
 
+Borrowed automatic absorption reuses its freshly computed initial reference
+norms for the identical initial residual-norm request. All FE moments are
+still freshly checked, and each new input gets its own norm scan. This changes
+no solver selection, tolerance or workspace allowance; see
+[ADR 0094](adr/0094-borrowed-auto-initial-norm-handoff.md).
+
 For fast OLS, [ADR 0035](adr/0035-guarded-wide-ols-schur.md), extended to supplied
 weights by [ADR 0037](adr/0037-weighted-ols-schur-admission.md), adds a guarded
 two-FE Schur route at 16–64 actual RHS columns and at least 16,384 rows.
