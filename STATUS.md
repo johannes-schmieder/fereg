@@ -355,14 +355,24 @@ passes. `cy1` plugin
 builds and passes ABI checks. Both accepted and rejected probe costs are charged
 outside early Schur returns. The detector exists only in a captured-source
 transform; production routing remains unchanged. The 46-cell training screen
-at `target/g21cy1` is running after all builds and audits finished.
+at `target/g21cy1` completes all 276 calls with clean timing isolation.
+The [cycle screen archive](benchmarks/reports/development/cycle-ols-lsmr-local-2026-09-21/README.md)
+preserves 92 passing independent native inference checks, 276 exact within-arm
+repeat checks, 96 output audits and 138 routing comparisons. All 28 selected
+cells improve, with paired ratios 0.5067–0.7500. All eighteen excluded/explicit
+controls remain within 1.05 (worst 1.0465), and their numerical exports,
+samples, saved vectors and solver fields other than times remain exact.
+Selected tracked peaks increase by 18,571,188–482,354,402 bytes; this is a
+material memory tradeoff. Joint descriptor accounting, constrained fits,
+fresh validation and Linux evidence remain required before adoption.
+The archive verifies 8,505 stored entries, 192 omitted local output arrays
+and both complete source reconstructions, including the added detector module.
 
-Current resume point: finish and independently audit the cycle screen, including
-its excluded graph/explicit-route controls. Complete current-candidate science,
+Current resume point: measure the unchanged 77 primary cells against fixest on
+the current in1 kernel before final candidate freeze. Complete current-candidate science,
 primary/holdout final blocks, constrained whole-fit checks and focused Linux
-runs before closing the milestone. Four core graph/fit files remain modified,
-with the norm handoff ready for its separate checkpoint; earlier graph kernels
-remain unaccepted. Keep old
+runs before closing the milestone. The initial norm handoff is committed at
+`4708834b`; four earlier core graph/fit drafts remain modified and unaccepted. Keep old
 routes where cross-platform confirmation is missing; do not inspect fresh
 routing seeds while choosing thresholds. Serial weighted slope losses remain.
 
