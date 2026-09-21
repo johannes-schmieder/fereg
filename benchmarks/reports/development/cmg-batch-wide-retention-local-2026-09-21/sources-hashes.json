@@ -1,0 +1,222 @@
+{
+  "identity-m4.json": {
+    "original_sha256": "c9a631d83f0f9e6084f73775842b542ab42849ae315372c9955eb1f1d769821e",
+    "portable_sha256": "c9a631d83f0f9e6084f73775842b542ab42849ae315372c9955eb1f1d769821e"
+  },
+  "m4/crates/fereg-core/src/fe/borrowed_map.rs": {
+    "original_sha256": "53748ca164cd53ae8b7e9453db8989d9cb22d94f9d6a957a7f1c9be8d6d8099b",
+    "portable_sha256": "53748ca164cd53ae8b7e9453db8989d9cb22d94f9d6a957a7f1c9be8d6d8099b"
+  },
+  "m4/crates/fereg-core/src/fe/cmg.rs": {
+    "original_sha256": "c38ed2f8e83e44faaf824cc5ff33558c22391200dad5b6de8f3ccfdaad95a993",
+    "portable_sha256": "c38ed2f8e83e44faaf824cc5ff33558c22391200dad5b6de8f3ccfdaad95a993"
+  },
+  "m4/crates/fereg-core/src/ols/prepared_fit.rs": {
+    "original_sha256": "c509c10fcfc08e1147db7d3b808fd084162753f3ad801ec518b18a051ec8ca49",
+    "portable_sha256": "c509c10fcfc08e1147db7d3b808fd084162753f3ad801ec518b18a051ec8ca49"
+  },
+  "m4/crates/fereg-core/src/ols/prepared_rhs.rs": {
+    "original_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7",
+    "portable_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7"
+  },
+  "identity-m5.json": {
+    "original_sha256": "13f777b015fba91d728f5b27fe4390875fb056a04b0a8ce532f639de3c1a1a11",
+    "portable_sha256": "13f777b015fba91d728f5b27fe4390875fb056a04b0a8ce532f639de3c1a1a11"
+  },
+  "m5/crates/fereg-core/src/fe/borrowed_map.rs": {
+    "original_sha256": "53748ca164cd53ae8b7e9453db8989d9cb22d94f9d6a957a7f1c9be8d6d8099b",
+    "portable_sha256": "53748ca164cd53ae8b7e9453db8989d9cb22d94f9d6a957a7f1c9be8d6d8099b"
+  },
+  "m5/crates/fereg-core/src/fe/cmg.rs": {
+    "original_sha256": "2ef155d511f9f62bd3a68eddc41912b2da64e15aef01cf8575ad0ddb63be2994",
+    "portable_sha256": "2ef155d511f9f62bd3a68eddc41912b2da64e15aef01cf8575ad0ddb63be2994"
+  },
+  "m5/crates/fereg-core/src/ols/prepared_fit.rs": {
+    "original_sha256": "fc0a5897b0bbd2272695a8a108ea38a30bf089caf5ccfaffa25793b072edb43f",
+    "portable_sha256": "fc0a5897b0bbd2272695a8a108ea38a30bf089caf5ccfaffa25793b072edb43f"
+  },
+  "m5/crates/fereg-core/src/ols/prepared_rhs.rs": {
+    "original_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7",
+    "portable_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7"
+  },
+  "identity-cb1.json": {
+    "original_sha256": "feac5bd331cae17aecfb51c0b5d4bf1f45c59896e501c5e86c499cddb119b8e9",
+    "portable_sha256": "feac5bd331cae17aecfb51c0b5d4bf1f45c59896e501c5e86c499cddb119b8e9"
+  },
+  "cb1/crates/fereg-core/src/fe/borrowed_map.rs": {
+    "original_sha256": "53748ca164cd53ae8b7e9453db8989d9cb22d94f9d6a957a7f1c9be8d6d8099b",
+    "portable_sha256": "53748ca164cd53ae8b7e9453db8989d9cb22d94f9d6a957a7f1c9be8d6d8099b"
+  },
+  "cb1/crates/fereg-core/src/fe/cmg.rs": {
+    "original_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461",
+    "portable_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461"
+  },
+  "cb1/crates/fereg-core/src/fe/single_slope.rs": {
+    "original_sha256": "d24d16db98f728c5fafeadeb257b68644c65f7c5521df9e4357533ce5fb88749",
+    "portable_sha256": "d24d16db98f728c5fafeadeb257b68644c65f7c5521df9e4357533ce5fb88749"
+  },
+  "cb1/crates/fereg-core/src/ols/prepared_fit.rs": {
+    "original_sha256": "96f87c8fa7920cd5b51fbb3c11c599a2f0dc9c39e4143c9f77981931929efbfa",
+    "portable_sha256": "96f87c8fa7920cd5b51fbb3c11c599a2f0dc9c39e4143c9f77981931929efbfa"
+  },
+  "cb1/crates/fereg-core/src/ols/prepared_rhs.rs": {
+    "original_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7",
+    "portable_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7"
+  },
+  "identity-wr1.json": {
+    "original_sha256": "886cd44c2c598d44ba17ede7006f53ca3702ca9b9eae5bde186e40a7768a8b04",
+    "portable_sha256": "886cd44c2c598d44ba17ede7006f53ca3702ca9b9eae5bde186e40a7768a8b04"
+  },
+  "wr1/crates/fereg-core/src/fe/borrowed_map.rs": {
+    "original_sha256": "6558048c2417e56086f4a129cafada9c7a006eaeb72e29302df877acbd38557c",
+    "portable_sha256": "6558048c2417e56086f4a129cafada9c7a006eaeb72e29302df877acbd38557c"
+  },
+  "wr1/crates/fereg-core/src/fe/cmg.rs": {
+    "original_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461",
+    "portable_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461"
+  },
+  "wr1/crates/fereg-core/src/fe/single_slope.rs": {
+    "original_sha256": "d24d16db98f728c5fafeadeb257b68644c65f7c5521df9e4357533ce5fb88749",
+    "portable_sha256": "d24d16db98f728c5fafeadeb257b68644c65f7c5521df9e4357533ce5fb88749"
+  },
+  "wr1/crates/fereg-core/src/ols/prepared_fit.rs": {
+    "original_sha256": "2c93f941e1bf36f8b318a329b01cd02657fb85d90d8538af761515d351e48125",
+    "portable_sha256": "2c93f941e1bf36f8b318a329b01cd02657fb85d90d8538af761515d351e48125"
+  },
+  "wr1/crates/fereg-core/src/ols/prepared_rhs.rs": {
+    "original_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7",
+    "portable_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7"
+  },
+  "identity-wr2.json": {
+    "original_sha256": "9e01ef16bc3374450940bd3920c1fef5de959e38c84c042ce179fd9aaff85483",
+    "portable_sha256": "9e01ef16bc3374450940bd3920c1fef5de959e38c84c042ce179fd9aaff85483"
+  },
+  "wr2/crates/fereg-core/src/fe/borrowed_map.rs": {
+    "original_sha256": "6558048c2417e56086f4a129cafada9c7a006eaeb72e29302df877acbd38557c",
+    "portable_sha256": "6558048c2417e56086f4a129cafada9c7a006eaeb72e29302df877acbd38557c"
+  },
+  "wr2/crates/fereg-core/src/fe/cmg.rs": {
+    "original_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461",
+    "portable_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461"
+  },
+  "wr2/crates/fereg-core/src/fe/single_slope.rs": {
+    "original_sha256": "d24d16db98f728c5fafeadeb257b68644c65f7c5521df9e4357533ce5fb88749",
+    "portable_sha256": "d24d16db98f728c5fafeadeb257b68644c65f7c5521df9e4357533ce5fb88749"
+  },
+  "wr2/crates/fereg-core/src/ols/prepared_fit.rs": {
+    "original_sha256": "68c90054b0544e563833ef41bc0ebd5107de754c44da70199e213fd39ea395ef",
+    "portable_sha256": "68c90054b0544e563833ef41bc0ebd5107de754c44da70199e213fd39ea395ef"
+  },
+  "wr2/crates/fereg-core/src/ols/prepared_rhs.rs": {
+    "original_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7",
+    "portable_sha256": "4252edeabebcad73e547395f24bc22ab3b10185fff4de50f1dffb40c577b40d7"
+  },
+  "g21cb1/execution-source.py": {
+    "original_sha256": "30f51fc8880aac968b68e24f4636fe5467c5357eab3a058fc3352b92866d6f4a",
+    "portable_sha256": "30f51fc8880aac968b68e24f4636fe5467c5357eab3a058fc3352b92866d6f4a"
+  },
+  "g21cb1/route_development.py": {
+    "original_sha256": "5c04a0755ad1d822eafbc7be5ee296480daa903c9329b6bcffd52799b0df0ab3",
+    "portable_sha256": "5c04a0755ad1d822eafbc7be5ee296480daa903c9329b6bcffd52799b0df0ab3"
+  },
+  "g21cb2/execution-source.py": {
+    "original_sha256": "64ae161555e13abfa87d0e64a23053405712f6a57ffb5b01a36659489d3388da",
+    "portable_sha256": "64ae161555e13abfa87d0e64a23053405712f6a57ffb5b01a36659489d3388da"
+  },
+  "g21cb2/route_development.py": {
+    "original_sha256": "5c04a0755ad1d822eafbc7be5ee296480daa903c9329b6bcffd52799b0df0ab3",
+    "portable_sha256": "5c04a0755ad1d822eafbc7be5ee296480daa903c9329b6bcffd52799b0df0ab3"
+  },
+  "g21cb3/execution-source.py": {
+    "original_sha256": "b4e59b9be13684836a0b75d279af09520776d8183ed5b2a4fc5e010ba568e5fe",
+    "portable_sha256": "b4e59b9be13684836a0b75d279af09520776d8183ed5b2a4fc5e010ba568e5fe"
+  },
+  "g21cb3/route_development.py": {
+    "original_sha256": "ec169fde36122d4b11a2ba62dc24f765469e55a9c43b5e7b85d15da5e20407f8",
+    "portable_sha256": "ec169fde36122d4b11a2ba62dc24f765469e55a9c43b5e7b85d15da5e20407f8"
+  },
+  "g21wr1/execution-source.py": {
+    "original_sha256": "dacfe1fdf06ba0a9b9e6601bebee6aebf6f6dbaf912a3c1beba6c53ac38a37bc",
+    "portable_sha256": "dacfe1fdf06ba0a9b9e6601bebee6aebf6f6dbaf912a3c1beba6c53ac38a37bc"
+  },
+  "g21wr1/route_development.py": {
+    "original_sha256": "ec169fde36122d4b11a2ba62dc24f765469e55a9c43b5e7b85d15da5e20407f8",
+    "portable_sha256": "ec169fde36122d4b11a2ba62dc24f765469e55a9c43b5e7b85d15da5e20407f8"
+  },
+  "g21wr2/execution-source.py": {
+    "original_sha256": "b80e35a81f283078e876d0b96f4d0f7fd4ffa0613301fd9284fd04e077c4755e",
+    "portable_sha256": "b80e35a81f283078e876d0b96f4d0f7fd4ffa0613301fd9284fd04e077c4755e"
+  },
+  "g21wr2/route_development.py": {
+    "original_sha256": "ec169fde36122d4b11a2ba62dc24f765469e55a9c43b5e7b85d15da5e20407f8",
+    "portable_sha256": "ec169fde36122d4b11a2ba62dc24f765469e55a9c43b5e7b85d15da5e20407f8"
+  },
+  "g21wm1/execution-source.py": {
+    "original_sha256": "8005a8e06b3f2ed6595a26ae2dff8b0064cf851ece06bafdb8380364c9a12e29",
+    "portable_sha256": "8005a8e06b3f2ed6595a26ae2dff8b0064cf851ece06bafdb8380364c9a12e29"
+  },
+  "g21wm2/execution-source.py": {
+    "original_sha256": "8005a8e06b3f2ed6595a26ae2dff8b0064cf851ece06bafdb8380364c9a12e29",
+    "portable_sha256": "8005a8e06b3f2ed6595a26ae2dff8b0064cf851ece06bafdb8380364c9a12e29"
+  },
+  "g21wm3/execution-source.py": {
+    "original_sha256": "4750cd121d77dd8361126e112c013ad336911627ba2e82aedab64b5244307ceb",
+    "portable_sha256": "4750cd121d77dd8361126e112c013ad336911627ba2e82aedab64b5244307ceb"
+  },
+  "g21wm4/execution-source.py": {
+    "original_sha256": "962ee36db5eeedf44c072b8c09ff36ddfc8f20e3808d41c19c0aed9000599096",
+    "portable_sha256": "962ee36db5eeedf44c072b8c09ff36ddfc8f20e3808d41c19c0aed9000599096"
+  },
+  "audit_milestone.py": {
+    "original_sha256": "dfdb4fbf01785b1e20291cc977b95f65247a6f533fdfb4467fcc296a34c3f840",
+    "portable_sha256": "dfdb4fbf01785b1e20291cc977b95f65247a6f533fdfb4467fcc296a34c3f840"
+  },
+  "audit_outputs.py": {
+    "original_sha256": "e972d1ca67d4a4eabbc1a1de0cb993a46a17d9582bc3b67572fdd04156ef5698",
+    "portable_sha256": "e972d1ca67d4a4eabbc1a1de0cb993a46a17d9582bc3b67572fdd04156ef5698"
+  },
+  "graph_oracle.py": {
+    "original_sha256": "86dfb8de676a112773aa3177075cf39b8189b923702a37758f1c293c4240d370",
+    "portable_sha256": "86dfb8de676a112773aa3177075cf39b8189b923702a37758f1c293c4240d370"
+  },
+  "run.py": {
+    "original_sha256": "58e7896d916af6b66e45b641b934a2109be2dc3cd43cce5e94f4eeace502c7a2",
+    "portable_sha256": "58e7896d916af6b66e45b641b934a2109be2dc3cd43cce5e94f4eeace502c7a2"
+  },
+  "score-kernel-screen1.py": {
+    "original_sha256": "6f71605e567a60f8fc16ebadb70d9ddabf6d33c499283b0eb059edffb06eda05",
+    "portable_sha256": "6f71605e567a60f8fc16ebadb70d9ddabf6d33c499283b0eb059edffb06eda05"
+  },
+  "score-kernel-screen2.py": {
+    "original_sha256": "be7292a08782a56d0a3358babedce336068a32da428136dd504fdf20cf2a801c",
+    "portable_sha256": "be7292a08782a56d0a3358babedce336068a32da428136dd504fdf20cf2a801c"
+  },
+  "audit-milestone-pre-native-only1.py": {
+    "original_sha256": "cb193e6a5428676df12015212eb429eb881452ab819488c7dce0c58e0e1e5871",
+    "portable_sha256": "cb193e6a5428676df12015212eb429eb881452ab819488c7dce0c58e0e1e5871"
+  },
+  "wide-schur-retention-profile1.py": {
+    "original_sha256": "a3a79fb867095881c08c6c4277dc2b404adfc0da0661a92a7128f4a00b128216",
+    "portable_sha256": "12a070db0a6f5ac8e6b25bfb37ba90baff292d897b4dd98b14864fc6af68737e"
+  },
+  "wide-schur-retention-profile2.py": {
+    "original_sha256": "5eb3b25d5e86bb28db8800f22c0479401742f6bfbc43b2299544e0019a5566f3",
+    "portable_sha256": "220bd6fd88d1e5b0dbb957dff0bb0f07e51eef5c77e7f9080c220d4697d114d3"
+  },
+  "audit-wr2-memory1.py": {
+    "original_sha256": "8bdcb671a2048e542640057a22bee6b4778620ca69d27025f331cd26e537fd9b",
+    "portable_sha256": "8bdcb671a2048e542640057a22bee6b4778620ca69d27025f331cd26e537fd9b"
+  },
+  "archive-cmg-wide1.py": {
+    "original_sha256": "c67236bb8650ff45486e3de7e9550867f2f70a501a7222c179f26d6efe33c236",
+    "portable_sha256": "493b56502a7c1a932834db9666c3cee502f5be80b53e313a34d310326514ba18"
+  },
+  "test_route_timing_isolation.py": {
+    "original_sha256": "2b60926901896d1f45103fb78fb083dbafbc38436f5f9cb4dd2b3842f895bf92",
+    "portable_sha256": "2b60926901896d1f45103fb78fb083dbafbc38436f5f9cb4dd2b3842f895bf92"
+  },
+  "wide-memory-estimate1.rs": {
+    "original_sha256": "ce962df742f6e3670e9b1337814b54bb0cc97140878732649d677b41c58f92db",
+    "portable_sha256": "ce962df742f6e3670e9b1337814b54bb0cc97140878732649d677b41c58f92db"
+  }
+}

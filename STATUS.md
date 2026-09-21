@@ -114,9 +114,55 @@ rows for N>=16384, at least three RHS columns and at least eight workers.
 It checks all residuals before mutation and adds no data bank. Explicit/shared,
 higher-dimensional and smaller/serial calls retain the old subtraction.
 Plugin `206fa4d9769dff2e31a57f3e4d1b453e0a68cc94c4b5039747cccfeef4c3d76f`
-built and passed the ABI fixture; its bitwise/finite-rejection test passes. The prepared
-ten-cell screen includes the unresolved direct m5/m4 unit-ring robust control.
-No performance or scientific acceptance of cb1 is claimed yet.
+built and passed the ABI fixture; its bitwise/finite-rejection test passes.
+The ten-cell screen at `target/g21cb1` completes 93 calls, twenty native inference
+checks, sixty exact within-arm repeats and twenty-four output audits. All thirty
+native pairs have bit-identical numerical exports. Two unit-ring robust peaks
+are lower in cb1; the remaining twenty-eight pairs have equal peaks. The extra
+m4 independent oracle also passes. Clean wide AW ring T16/T8 and cycle
+T8 paired cb1/m5 ratios are 0.9383/0.9493/0.9459. Four possible-overlap cells
+remain excluded. Their first repeat at `target/g21cb2` completes 39 calls, eight
+native inference checks and six output audits. The clean unit-ring robust
+m5/m4 paired ratio is 0.9900, resolving the earlier 8.8% regression on this
+repeat. The remaining sparse and wide-cycle timing exclusions need another run.
+
+The timing watcher could mistake a newly started own worker for a competitor
+between its descendant snapshot and process scan. A live-ancestry check now
+excludes verified own workers while preserving exclusions when ancestry cannot
+be read. Four focused monitor tests pass. Earlier warning records are unchanged;
+fresh measurements, not retrospective reclassification, will resolve them.
+The monitor repair and its four tests are committed locally at `18b4cd83`.
+The two remaining cb1 cells at `target/g21cb3` finish all eighteen calls
+without detected overlap. Four native inference checks, twelve exact repeats,
+three output audits and six exact cross-artifact numerical pairs pass. The
+wide AW cycle paired ratio is 0.9389. All ten cb1 cells now have clean timing
+evidence from the original screen or explicit repeats; no old record changed.
+
+A single m5 T1/unit/ring/K50/full-output phase trace passes application and
+terminal checks and localizes 2.826 seconds to saved-effect recovery after a
+4.867-second initial projection. The `wr1` draft preserves requested wide Schur
+original-input fallback products, using the existing LSMR admission and retained
+parent budget. Successful Schur and final one-RHS reuse still omit products;
+no new graph selection rule is introduced. Plugin
+`00aa53f474c961e9f2438bfd7b41a5ddd76f9b05f4353999d51c48d61ce9a12d`
+built and passed the ABI fixture. Its expanded weight/thread/oracle fixture
+passes twelve retaining forced-cap combinations plus the existing successful-
+Schur, order, iteration and budget checks. Both narrow Schur fixtures pass.
+The eight-cell screen at `target/g21wr1` finishes 72 calls with clean isolation,
+sixteen native inference checks, forty-eight exact repeats and twenty-four
+output audits. T1/unit/ring/K50 full-output medians are 8.555 versus 5.701 seconds
+(paired ratio 0.6651), with default fixest 88.344 seconds. T8 is neutral and
+T16 regresses 6.1%; unrestricted wide retention is rejected. A separate wr1
+trace reduces recovery from m5's 2.826 seconds to 0.00555 seconds. The serial
+allocation peak rises by 34,930,744 bytes; threaded peaks vary substantially.
+
+The `wr2` draft restricts new wide fallback retention to serial public OLS.
+Plugin `2b956b420b141b2d5c1ddb119451f48e69fa50510ab77f7ff7ee52c202f23b03`
+builds and passes ABI checks. Its native-only T1/T8/T16 confirmation at
+`target/g21wr2` finishes eighteen clean calls, six independent inference checks,
+eighteen exact repeats and nine output audits. Paired wr2/cb1 ratios are
+0.6637/1.0022/0.9598. All finite numerical exports are exact; serial saved
+vectors differ within independent tolerances. Threaded outputs are bit-identical.
 
 Memory roots `target/g21mc1`, `g21mc2` and `g21mc3` preserve the initial reserve/
 CLI mistake, baseline-and-m5 preparation rejection at 300 MB usable, and fast
@@ -157,13 +203,47 @@ No cell has detected overlap. Both cycle reference oracle failures remain.
 The 57-call follow-on archive preserves m6/m7/sc1 and all four source identities;
 1,380 stored entries, 48 omitted local arrays and source reconstruction verify.
 
-SCC read-only preflight failed authentication before any remote inspection or
-mutation. A renewal question is pending with Johannes; no SCC job was submitted.
+The new serial retention memory diagnostic at `target/g21wm1` gives matching
+cb1/wr2 r(909) preparation rejections at 300 MB usable. Both calls at 1.5 GB
+usable (`target/g21wm2`) time out after sixty seconds. These failures remain
+open. A tiny diagnostic linked to the tested wr1 core prints exact modeled
+workspace costs: for T1/K50/ring, default Schwarz LSMR is 3,489,835,280 bytes,
+diagonal is 1,143,472,656 and off is 967,475,728, before the execution parent.
+At `target/g21wm3`, both default fits pass with 4 GB usable; explicit diagonal/
+off LSMR fail warm-up certificates with r(459) before target invocation.
+`target/g21wm4` tests those options through auto's stricter recurrence target:
+both pass at 2/1.5 GB usable, with diagnostic elapsed times 46.337/54.019 seconds.
+All four successful memory fits pass independent inference and output audits,
+with tracked peaks below their caps. The ten-attempt memory receipt preserves
+two allocation rejections, two timeouts and two warm-up failures. No model or
+preconditioner policy changed; the traced times are not paired benchmarks.
+
+The [CMG and wide-retention archive](benchmarks/reports/development/cmg-batch-wide-retention-local-2026-09-21/README.md)
+preserves all 250 attempts, including six application failures, both rejected
+guards and every original overlap exclusion. Integrity verification covers
+5,845 stored entries, 193 omitted local output arrays and all five complete
+source reconstructions. Forty-eight cb1 native pairs have exact numerical
+exports; forty-three peaks match and five unit-ring peaks are lower. This
+corrects the earlier overly broad statement that every peak matched.
+
+SCC read-only preflight and a subsequent batch-mode recheck fail authentication
+before any remote inspection or mutation. A renewal question is pending with
+Johannes; no SCC job was submitted.
 The cluster skill was read. Linux confirmation remains blocked on access.
 
-Current resume point: finish cb1's focused test and run its prepared screen,
-then assess CMG kernels before freezing routing. Repeat
-contaminated timings and the m5/m4 control. Complete the expanded large screen,
+The expanded-matrix isolation and failure-preserving score changes are committed
+at `991081b7`: six fixtures and the 168-cell dry plan pass. A separate historical
+partial-screen recheck keeps 114 complete cells and does not retroactively claim
+clean isolation. The native-only audit option has been exercised by wr2's three
+cells; its earlier auditor source is preserved before that small extension.
+
+Current resume point: test an isolated serial LSMR transport-window experiment.
+The existing <=64-RHS envelope remains unwindowed even at T1, making its memory
+model charge many potentially live recurrences. An enforced outer window could
+reduce that model without relaxing admission. Measure exact numerical behavior,
+whole-command cost and bounded-memory outcomes before considering an OLS-scoped
+implementation; do not silently widen shared/PPML or explicit routing policy.
+Then freeze routing and complete the expanded large screen,
 protected controls, current-candidate science, final independent blocks,
 constrained whole-fit checks and focused Linux runs. Raw artifacts and immutable
 snapshot identities remain under `target/ols-next-20260921`; do not overwrite

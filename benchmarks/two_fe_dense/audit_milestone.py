@@ -21,7 +21,8 @@ def audit(root, label, output):
         if not attempt:
             records.append(record); continue
         assert attempt['cell'] == cell and attempt['index'] == index
-        variants = [plan['baseline'], plan['candidate']] + ([] if cell['weight_kind'] == 'fw' else ['fixest'])
+        reference_planned = cell['weight_kind'] != 'fw' and ('variants' not in plan or 'fixest' in plan['variants'])
+        variants = [plan['baseline'], plan['candidate']] + (['fixest'] if reference_planned else [])
         for variant in variants:
             runs = sorted((root / 'runs').glob(f"{attempt['label']}-*-{variant}/result.json"))
             passing = [p for p in runs if read(p)['status'] == 'pass']
