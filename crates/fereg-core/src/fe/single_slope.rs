@@ -22,7 +22,6 @@ const MAX_RHS: usize = 64;
 struct Group {
     start: usize,
     rank: usize,
-    gram: [f64; MAX_CHANNELS * MAX_CHANNELS],
     raw_scales: [f64; MAX_CHANNELS],
 }
 
@@ -39,8 +38,10 @@ pub(crate) struct SingleSlopeAbsorber<'a> {
     weights: BorrowedMapWeights<'a>,
     roots: Vec<f64>,
     groups: Vec<Group>,
+    grams: Vec<f64>,
     basis: Vec<f64>,
     max_rhs: usize,
+    serial_ordered: bool,
     setup_seconds: f64,
     peak: SolverWorkspacePeak,
     absorption_bytes: u128,
@@ -120,12 +121,15 @@ impl<'a> SingleSlopeAbsorber<'a> {
             return Err(invalid());
         }
         let basis_len = n.checked_mul(channels).ok_or_else(allocation)?;
+        let gram_len = levels
+            .checked_mul(channels * channels)
+            .ok_or_else(allocation)?;
         let coefs = levels
             .checked_mul(channels)
             .and_then(|n| n.checked_mul(max_rhs))
             .ok_or_else(allocation)?;
         let output = n.checked_mul(max_rhs).ok_or_else(allocation)?;
-        let retained = 8 * (basis_len as u128 + n as u128)
+        let retained = 8 * (basis_len as u128 + n as u128 + gram_len as u128)
             + levels as u128 * std::mem::size_of::<Group>() as u128
             + effect.slope_storage_bytes();
         let construction = retained + 8 * basis_len as u128;
@@ -142,6 +146,7 @@ impl<'a> SingleSlopeAbsorber<'a> {
             .enumerate()
             .for_each(|(i, v)| *v = weight(weights, i).sqrt());
         let mut groups = filled(levels, Group::default())?;
+        let mut grams = filled(gram_len, 0.0)?;
         let mut start = 0;
         for (level, group) in groups.iter_mut().enumerate() {
             group.start = start;
@@ -149,8 +154,11 @@ impl<'a> SingleSlopeAbsorber<'a> {
         }
         let mut basis = filled(basis_len, 0.0)?;
         let mut scratch = filled(basis_len, 0.0)?;
-        let retained =
-            bytes(&roots) + bytes(&groups) + bytes(&basis) + effect.slope_storage_bytes();
+        let retained = bytes(&roots)
+            + bytes(&groups)
+            + bytes(&grams)
+            + bytes(&basis)
+            + effect.slope_storage_bytes();
         let actual = retained + bytes(&scratch);
         let absorption_bytes = retained
             + 8 * (coefs as u128 + output as u128 + 6 * max_rhs as u128)
@@ -166,6 +174,7 @@ impl<'a> SingleSlopeAbsorber<'a> {
             &roots,
             0,
             &mut groups,
+            &mut grams,
             &mut basis,
             &mut scratch,
         )?;
@@ -176,8 +185,11 @@ impl<'a> SingleSlopeAbsorber<'a> {
             weights,
             roots,
             groups,
+            grams,
             basis,
             max_rhs,
+            serial_ordered: rayon::current_num_threads() == 1
+                && partition.codes().windows(2).all(|pair| pair[0] <= pair[1]),
             setup_seconds: started.elapsed().as_secs_f64(),
             peak: *attempted_peak,
             absorption_bytes,
@@ -237,11 +249,12 @@ impl<'a> SingleSlopeAbsorber<'a> {
             // check uses this input's freshly scanned raw-weight norms and QR
             // moments; no earlier residual certificate is reused.
             let check_started = Instant::now();
-            let certificate = self.check_matrix(&original, &references, tolerance, &mut checks)?;
+            let certificate = self.check_matrix(&original, &references, tolerance, &mut checks, None)?;
             initial_check_seconds = check_started.elapsed().as_secs_f64();
             if certificate.passed {
                 let bytes = bytes(&self.roots)
                     + bytes(&self.groups)
+                    + bytes(&self.grams)
                     + bytes(&self.basis)
                     + self.effect.slope_storage_bytes()
                     + bytes(&references)
@@ -264,6 +277,7 @@ impl<'a> SingleSlopeAbsorber<'a> {
         let mut result = DenseMatrix::zeros(n, rhs)?;
         let resident = bytes(&self.roots)
             + bytes(&self.groups)
+            + bytes(&self.grams)
             + bytes(&self.basis)
             + self.effect.slope_storage_bytes();
         let actual = resident
@@ -281,64 +295,84 @@ impl<'a> SingleSlopeAbsorber<'a> {
                 iterations: 0,
             });
         }
-        coefficients
-            .par_chunks_mut(channels * rhs)
-            .enumerate()
-            .try_for_each(|(level, coefs)| -> Result<()> {
-                let members = self.partition.level_index().members(level);
-                for &row in members {
-                    let values = &original.as_slice()[row * rhs..(row + 1) * rhs];
-                    for channel in 0..channels {
-                        let left =
-                            weight(self.weights, row) * basis_value(&self.effect, channel, row);
-                        for (sum, &value) in coefs[channel * rhs..(channel + 1) * rhs]
-                            .iter_mut()
-                            .zip(values)
-                        {
-                            *sum = left.mul_add(value, *sum);
+        // In row-ordered groups the serial reconstruction can also compute
+        // norms in the original row order. Reuse the existing coefficient bank
+        // for fresh group maxima; its admission and peak remain conservative.
+        let serial_norms = if self.serial_ordered && rayon::current_num_threads() == 1 {
+            Some(if rhs <= 16 {
+                self.project_serial_ordered::<16, 64>(&original, &mut result, &mut coefficients)?
+            } else {
+                self.project_serial_ordered::<MAX_RHS, { MAX_CHANNELS * MAX_RHS }>(
+                    &original, &mut result, &mut coefficients)?
+            })
+        } else {
+            coefficients
+                .par_chunks_mut(channels * rhs)
+                .enumerate()
+                .try_for_each(|(level, coefs)| -> Result<()> {
+                    let members = self.partition.level_index().members(level);
+                    for &row in members {
+                        let values = &original.as_slice()[row * rhs..(row + 1) * rhs];
+                        for channel in 0..channels {
+                            let left =
+                                weight(self.weights, row) * basis_value(&self.effect, channel, row);
+                            for (sum, &value) in coefs[channel * rhs..(channel + 1) * rhs]
+                                .iter_mut()
+                                .zip(values)
+                            {
+                                *sum = left.mul_add(value, *sum);
+                            }
                         }
                     }
-                }
-                let mut gram = self.groups[level].gram;
-                solve_linear_system(
-                    &mut gram[..channels * channels],
-                    coefs,
-                    channels,
-                    rhs,
-                    1e-12,
-                )?;
-                Ok(())
-            })?;
-        result
-            .as_mut_slice()
-            .par_chunks_mut(rhs)
-            .enumerate()
-            .for_each(|(row, target)| {
-                let level = self.partition.codes()[row] as usize;
-                let coefs = &coefficients[level * channels * rhs..(level + 1) * channels * rhs];
-                for channel in 0..channels {
-                    let basis = basis_value(&self.effect, channel, row);
-                    for (fitted, &coefficient) in target
-                        .iter_mut()
-                        .zip(&coefs[channel * rhs..(channel + 1) * rhs])
-                    {
-                        *fitted = basis.mul_add(coefficient, *fitted);
+                    let width = channels * channels;
+                    let mut gram = [0.0; MAX_CHANNELS * MAX_CHANNELS];
+                    gram[..width].copy_from_slice(&self.grams[level * width..(level + 1) * width]);
+                    solve_linear_system(
+                        &mut gram[..channels * channels],
+                        coefs,
+                        channels,
+                        rhs,
+                        1e-12,
+                    )?;
+                    Ok(())
+                })?;
+            result
+                .as_mut_slice()
+                .par_chunks_mut(rhs)
+                .enumerate()
+                .for_each(|(row, target)| {
+                    let level = self.partition.codes()[row] as usize;
+                    let coefs = &coefficients[level * channels * rhs..(level + 1) * channels * rhs];
+                    for channel in 0..channels {
+                        let basis = basis_value(&self.effect, channel, row);
+                        for (fitted, &coefficient) in target
+                            .iter_mut()
+                            .zip(&coefs[channel * rhs..(channel + 1) * rhs])
+                        {
+                            *fitted = basis.mul_add(coefficient, *fitted);
+                        }
                     }
-                }
-                for (fitted, &value) in target
-                    .iter_mut()
-                    .zip(&original.as_slice()[row * rhs..(row + 1) * rhs])
-                {
-                    *fitted = value - *fitted;
-                }
-            });
+                    for (fitted, &value) in target
+                        .iter_mut()
+                        .zip(&original.as_slice()[row * rhs..(row + 1) * rhs])
+                    {
+                        *fitted = value - *fitted;
+                    }
+                });
+            None
+        };
         let certificate_started = Instant::now();
-        let residual_norms = self.norms(&result)?;
+        let residual_norms = match serial_norms {
+            Some(norms) => norms,
+            None => self.norms(&result)?,
+        };
         let mut scales = references;
         for (scale, norm) in scales.iter_mut().zip(&residual_norms) {
             *scale = scale.max(*norm);
         }
-        let certificate = self.check_matrix(&result, &scales, tolerance, &mut checks)?;
+        let right_scales = (self.serial_ordered && rayon::current_num_threads() == 1)
+            .then_some(&coefficients[..self.groups.len() * rhs]);
+        let certificate = self.check_matrix(&result, &scales, tolerance, &mut checks, right_scales)?;
         let certification_seconds = certificate_started.elapsed().as_secs_f64();
         if !certificate.passed {
             return Ok(SingleSlopeAttempt::Rejected {
@@ -398,12 +432,74 @@ impl<'a> SingleSlopeAbsorber<'a> {
         Ok(SingleSlopeAttempt::Certified(certified))
     }
 
+    fn project_serial_ordered<const WIDTH: usize, const CELLS: usize>(
+        &self,
+        original: &DenseMatrix,
+        result: &mut DenseMatrix,
+        right_scales: &mut [f64],
+    ) -> Result<Vec<f64>> {
+        let rhs = original.ncols();
+        let channels = self.effect.channels();
+        debug_assert!(rhs <= WIDTH && channels * rhs <= CELLS);
+        let mut norm_scales = [0.0; WIDTH];
+        let mut norm_sums = [1.0; WIDTH];
+        for level in 0..self.groups.len() {
+            let members = self.partition.level_index().members(level);
+            let mut coefficients = [0.0; CELLS];
+            let coefficients = &mut coefficients[..channels * rhs];
+            for &row in members {
+                let values = &original.as_slice()[row * rhs..(row + 1) * rhs];
+                for channel in 0..channels {
+                    let left = weight(self.weights, row) * basis_value(&self.effect, channel, row);
+                    for (sum, &value) in coefficients[channel * rhs..(channel + 1) * rhs]
+                        .iter_mut().zip(values)
+                    {
+                        *sum = left.mul_add(value, *sum);
+                    }
+                }
+            }
+            let width = channels * channels;
+            let mut gram = [0.0; MAX_CHANNELS * MAX_CHANNELS];
+            gram[..width].copy_from_slice(&self.grams[level * width..(level + 1) * width]);
+            solve_linear_system(&mut gram[..width], coefficients, channels, rhs, 1e-12)?;
+            let group_scales = &mut right_scales[level * rhs..(level + 1) * rhs];
+            for &row in members {
+                let target = &mut result.as_mut_slice()[row * rhs..(row + 1) * rhs];
+                for channel in 0..channels {
+                    let basis = basis_value(&self.effect, channel, row);
+                    for (fitted, &coefficient) in target.iter_mut()
+                        .zip(&coefficients[channel * rhs..(channel + 1) * rhs])
+                    {
+                        *fitted = basis.mul_add(coefficient, *fitted);
+                    }
+                }
+                for (column, (fitted, &value)) in target.iter_mut()
+                    .zip(&original.as_slice()[row * rhs..(row + 1) * rhs]).enumerate()
+                {
+                    *fitted = value - *fitted;
+                    let weighted = self.roots[row] * *fitted;
+                    if !weighted.is_finite() { return Err(invalid()); }
+                    update_scaled_sum_of_squares(weighted, &mut norm_scales[column], &mut norm_sums[column]);
+                    group_scales[column] = group_scales[column].max(weighted.abs());
+                }
+            }
+        }
+        let mut norms = filled(rhs, 0.0)?;
+        for column in 0..rhs {
+            norms[column] = if norm_scales[column] == 0.0 { 0.0 }
+                else { norm_scales[column] * norm_sums[column].sqrt() };
+            if !norms[column].is_finite() { return Err(invalid()); }
+        }
+        Ok(norms)
+    }
+
     fn check_matrix(
         &self,
         result: &DenseMatrix,
         scales: &[f64],
         tolerance: f64,
         checks: &mut [Check],
+        right_scales: Option<&[f64]>,
     ) -> Result<FeCertificate> {
         let rhs = result.ncols();
         checks
@@ -411,11 +507,11 @@ impl<'a> SingleSlopeAbsorber<'a> {
             .enumerate()
             .try_for_each(|(level, check)| -> Result<()> {
                 *check = if rhs == 1 {
-                    self.check_group::<1, 4>(level, result, scales)?
+                    self.check_group::<1, 4>(level, result, scales, right_scales)?
                 } else if rhs <= 16 {
-                    self.check_group::<16, 64>(level, result, scales)?
+                    self.check_group::<16, 64>(level, result, scales, right_scales)?
                 } else {
-                    self.check_group::<MAX_RHS, { MAX_CHANNELS * MAX_RHS }>(level, result, scales)?
+                    self.check_group::<MAX_RHS, { MAX_CHANNELS * MAX_RHS }>(level, result, scales, right_scales)?
                 };
                 Ok(())
             })?;
@@ -443,6 +539,7 @@ impl<'a> SingleSlopeAbsorber<'a> {
         level: usize,
         result: &DenseMatrix,
         scales: &[f64],
+        supplied_right_scales: Option<&[f64]>,
     ) -> Result<Check> {
         let rhs = result.ncols();
         let channels = self.effect.channels();
@@ -451,10 +548,14 @@ impl<'a> SingleSlopeAbsorber<'a> {
         let group = &self.groups[level];
         let members = self.partition.level_index().members(level);
         let mut right_scales = [0.0_f64; WIDTH];
-        for &row in members {
-            for col in 0..rhs {
-                right_scales[col] =
-                    right_scales[col].max((self.roots[row] * result[(row, col)]).abs());
+        if let Some(supplied) = supplied_right_scales {
+            right_scales[..rhs].copy_from_slice(&supplied[level * rhs..(level + 1) * rhs]);
+        } else {
+            for &row in members {
+                for col in 0..rhs {
+                    right_scales[col] =
+                        right_scales[col].max((self.roots[row] * result[(row, col)]).abs());
+                }
             }
         }
         let mut projections = [0.0_f64; CELLS];
@@ -587,17 +688,21 @@ fn build_groups(
     roots: &[f64],
     first: usize,
     groups: &mut [Group],
+    grams: &mut [f64],
     basis: &mut [f64],
     scratch: &mut [f64],
 ) -> Result<()> {
+    let channels = effect.channels();
+    let width = channels * channels;
     if groups.len() > 256 && rayon::current_num_threads() > 1 {
         let middle = groups.len() / 2;
         let split = groups[middle].start - groups[0].start;
         let (gl, gr) = groups.split_at_mut(middle);
+        let (ml, mr) = grams.split_at_mut(middle * width);
         let (bl, br) = basis.split_at_mut(split);
         let (sl, sr) = scratch.split_at_mut(split);
         let (l, r) = rayon::join(
-            || build_groups(partition, effect, weights, roots, first, gl, bl, sl),
+            || build_groups(partition, effect, weights, roots, first, gl, ml, bl, sl),
             || {
                 build_groups(
                     partition,
@@ -606,6 +711,7 @@ fn build_groups(
                     roots,
                     first + middle,
                     gr,
+                    mr,
                     br,
                     sr,
                 )
@@ -614,7 +720,6 @@ fn build_groups(
         l?;
         return r;
     }
-    let channels = effect.channels();
     let start = groups[0].start;
     for (index, group) in groups.iter_mut().enumerate() {
         let members = partition.level_index().members(first + index);
@@ -622,12 +727,13 @@ fn build_groups(
         let offset = group.start - start;
         let columns = &mut scratch[offset..offset + count * channels];
         let output = &mut basis[offset..offset + count * channels];
+        let gram = &mut grams[index * width..(index + 1) * width];
         for &row in members {
             for left in 0..channels {
                 for right in 0..channels {
                     let slot = left * channels + right;
-                    group.gram[slot] = (weight(weights, row) * basis_value(effect, left, row))
-                        .mul_add(basis_value(effect, right, row), group.gram[slot]);
+                    gram[slot] = (weight(weights, row) * basis_value(effect, left, row))
+                        .mul_add(basis_value(effect, right, row), gram[slot]);
                 }
             }
         }
@@ -710,6 +816,80 @@ mod tests {
     use super::*;
     use crate::fe::certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
     use crate::fe::{project_effect_in_place, EffectTerm, FeDesign, ProjectionWorkspace};
+
+    #[test]
+    fn ordered_serial_fusion_preserves_projection_norms_and_fresh_certificates() {
+        for threads in [1, 4] {
+            let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+            pool.install(|| {
+                for shuffled in [false, true] {
+                    for intercept in [false, true] {
+                        for channels in 1..=3 {
+                            for rhs in [1, 12, 52] {
+                                for weight_case in 0..3 {
+                                    let n = 1031;
+                                    let levels = 73;
+                                    let row_at = |row: usize| if shuffled { row * 37 % n } else { row };
+                                    let codes = (0..n).map(|row| (row_at(row) * levels / n) as u32).collect();
+                                    let slopes = (0..channels).map(|channel| (0..n).map(|row| {
+                                        let r = row_at(row);
+                                        match channel {
+                                            0 => ((r * 13) as f64).sin(),
+                                            1 => if r * levels / n % 3 == 0 { 0.0 } else { ((r * 19) as f64).cos() },
+                                            _ => ((r * 13) as f64).sin() + 1e-15 * (r as f64).cos(),
+                                        }
+                                    }).collect()).collect();
+                                    let effect = EffectTerm::new(codes, levels, intercept, slopes).unwrap();
+                                    let partition = BorrowedInterceptEffect::new(effect.codes(), levels, effect.level_index()).unwrap();
+                                    let weights: Vec<f64> = (0..n).map(|row| match weight_case {
+                                        0 => 1.0,
+                                        1 => 128.0,
+                                        _ => 10.0_f64.powi((row_at(row) % 13) as i32 - 6),
+                                    }).collect();
+                                    let borrowed = if weight_case == 0 { BorrowedMapWeights::Unit }
+                                        else { BorrowedMapWeights::Provided(&weights) };
+                                    let view = || CategoricalAbsorbedEffectView::new(intercept,
+                                        effect.slopes().iter().map(Vec::as_slice).collect()).unwrap();
+                                    let mut peak = SolverWorkspacePeak::ZERO;
+                                    let mut fused = SingleSlopeAbsorber::build(partition, view(), borrowed, rhs, None, &mut peak).unwrap().unwrap();
+                                    assert_eq!(fused.serial_ordered, threads == 1 && !shuffled);
+                                    let mut ordinary = SingleSlopeAbsorber::build(partition, view(), borrowed, rhs, None, &mut peak).unwrap().unwrap();
+                                    ordinary.serial_ordered = false;
+                                    let input = DenseMatrix::from_columns(&(0..rhs).map(|col| (0..n)
+                                        .map(|row| ((row_at(row) * (col + 3)) as f64 * 0.019).cos())
+                                        .collect()).collect::<Vec<_>>()).unwrap();
+                                    let a = fused.absorb(input.clone(), 1e-8, None, None, false).unwrap();
+                                    let b = ordinary.absorb(input.clone(), 1e-8, None, None, false).unwrap();
+                                    match (a, b) {
+                                        (SingleSlopeAttempt::Certified(mut a), SingleSlopeAttempt::Certified(mut b)) => {
+                                            assert_eq!(a.residualized().as_slice().iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                                                b.residualized().as_slice().iter().map(|v| v.to_bits()).collect::<Vec<_>>());
+                                            assert_eq!(a.take_residual_norms(), b.take_residual_norms());
+                                            assert_eq!(a.report().certificate, b.report().certificate);
+                                            let references = weighted_column_norms(&input, &weights).unwrap();
+                                            let design = FeDesign::new(n, vec![effect.clone()]).unwrap();
+                                            let independent = certify_residuals_with_reference_norms(&design, &weights,
+                                                a.residualized(), &references, 1e-8).unwrap();
+                                            assert!(independent.passed);
+                                            assert_eq!(independent.relative_infinity_norm, a.report().certificate.relative_infinity_norm);
+                                            assert_eq!(independent.absolute_infinity_norm, a.report().certificate.absolute_infinity_norm);
+                                        }
+                                        (SingleSlopeAttempt::Rejected { original: a, iterations: ai, .. },
+                                         SingleSlopeAttempt::Rejected { original: b, iterations: bi, .. }) => {
+                                            assert_eq!(a, input);
+                                            assert_eq!(a, b);
+                                            assert_eq!(ai, bi);
+                                        }
+                                        _ => panic!("serial fusion changed certification or fallback"),
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
 
     #[test]
     fn cached_basis_matches_independent_reference_and_reuses_fresh_residual_checks() {

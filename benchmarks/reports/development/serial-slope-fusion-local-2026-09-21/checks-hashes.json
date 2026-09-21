@@ -1,0 +1,130 @@
+{
+  "sf1-slope-tests1.txt": {
+    "original_sha256": "35ff5fa6040ea1c374b15107a770e047eb24ee6fd51fce80cfee1d012b149245",
+    "portable_sha256": "289265744464be2063f375e2f002004aa7392be0de52f6e3359548a0450079e7"
+  },
+  "sf1-screen-plan1.json": {
+    "original_sha256": "c1cb0daa5f67ca04d440cda1f3bbafbba273ab907b41d3ce187615a323c3896d",
+    "portable_sha256": "c1cb0daa5f67ca04d440cda1f3bbafbba273ab907b41d3ce187615a323c3896d"
+  },
+  "sf1-screen-progress1.json": {
+    "original_sha256": "b1f961cbe34dd65950dea75b26467502151ce14d5301a82fe5a7fc56d6f6c14f",
+    "portable_sha256": "02c7f62b46af69fc14d4c3907c24389a6f44050848609f0e203b9f7218227606"
+  },
+  "sf1-screen-complete1.json": {
+    "original_sha256": "b8f6a4646f5061c63b89e1d8065ad7b72f5b5bb628443c17444835c20f83b8ff",
+    "portable_sha256": "b8f6a4646f5061c63b89e1d8065ad7b72f5b5bb628443c17444835c20f83b8ff"
+  },
+  "sf1-weight-screen-plan1.json": {
+    "original_sha256": "d4de02446ffbfd0b3a06c82937128149b88b9be64738e9b22bf44d18f6339d14",
+    "portable_sha256": "d4de02446ffbfd0b3a06c82937128149b88b9be64738e9b22bf44d18f6339d14"
+  },
+  "sf1-weight-screen-progress1.json": {
+    "original_sha256": "0e847003d9c8a1b98078d1bdf001672a43b70ef8b0c05d25ec784751fdddf30e",
+    "portable_sha256": "32145dd96bea5787fddbaab1edf980fd719ccb5ecc9a0a74e9a4b2271c74fcd5"
+  },
+  "sf1-weight-screen-complete1.json": {
+    "original_sha256": "27316a4f571c43316b01f60ad828e56a14bb8e4228aa513b93f61b0acc84c21a",
+    "portable_sha256": "27316a4f571c43316b01f60ad828e56a14bb8e4228aa513b93f61b0acc84c21a"
+  },
+  "sf1-combined-audit1.json": {
+    "original_sha256": "1cdfe74773393b49903d19c79081d49c6840344a78b9de1b74fe8611305c624a",
+    "portable_sha256": "1cdfe74773393b49903d19c79081d49c6840344a78b9de1b74fe8611305c624a"
+  },
+  "sf1-combined-audit1.txt": {
+    "original_sha256": "f5b6da6c63adf78aaf348b591a31c3e5717629c7ee28a74444bea8b6491a4c5d",
+    "portable_sha256": "f5b6da6c63adf78aaf348b591a31c3e5717629c7ee28a74444bea8b6491a4c5d"
+  },
+  "sf1-screen-score1.json": {
+    "original_sha256": "4aef5dcb10d8d7e59dffc12794089e37c7aad6665a2284e11424785f1e970fd9",
+    "portable_sha256": "4aef5dcb10d8d7e59dffc12794089e37c7aad6665a2284e11424785f1e970fd9"
+  },
+  "sf1-weight-screen-score1.json": {
+    "original_sha256": "89bde704eac734e314f86f53053650452d9cfdc4d9ce0033e8f56b01cbd2120d",
+    "portable_sha256": "89bde704eac734e314f86f53053650452d9cfdc4d9ce0033e8f56b01cbd2120d"
+  },
+  "wr2-serial-profile/c000-r0-wr2/native-trace.txt": {
+    "original_sha256": "2bb712cdb526961e612c1aafa2143f50c098abb83e0a07b4d87199c6bd48a26a",
+    "portable_sha256": "2bb712cdb526961e612c1aafa2143f50c098abb83e0a07b4d87199c6bd48a26a",
+    "original_stream_sha256": "bf04f0c8f1b19dd13d61331cdb764c84d083759b12c333b76576fc208abee729",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-profile/c000-r0-wr2-profile/native-trace.txt": {
+    "original_sha256": "bf0b38f8865af43e56c4f49711505de9de946f1303aaa9142a5b6b66f42f1c1e",
+    "portable_sha256": "bf0b38f8865af43e56c4f49711505de9de946f1303aaa9142a5b6b66f42f1c1e",
+    "original_stream_sha256": "49b9f7ba608264728785361ff88dd59cde15bc1004ac00c3d90b2248c72c1bd1",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-profile/c000-r1-wr2/native-trace.txt": {
+    "original_sha256": "671e837be656e74d61716d64513e45a2a0b28c45a02dfe1cbfce5ffd71c8987e",
+    "portable_sha256": "671e837be656e74d61716d64513e45a2a0b28c45a02dfe1cbfce5ffd71c8987e",
+    "original_stream_sha256": "5374cbb7d845f6d3f5b5498e7c35eae40d1cc3bb59eb9e304be89fb9fdfe8ad4",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-profile/c000-r1-wr2-profile/native-trace.txt": {
+    "original_sha256": "cf37e6d73403de7b3e33bf1630906d71f49a6c316f7fb9c8f82506cc04e0531a",
+    "portable_sha256": "cf37e6d73403de7b3e33bf1630906d71f49a6c316f7fb9c8f82506cc04e0531a",
+    "original_stream_sha256": "f4834d23d16edfc9b6926966aee156d59b3379bd246d648c0fd8b3621ec2e0b4",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-profile/c000-r2-wr2/native-trace.txt": {
+    "original_sha256": "7258b2d5c9671d1def03ae65ee4c930c1e5fee4da5a0a8b0e7466a3d969a5a6d",
+    "portable_sha256": "7258b2d5c9671d1def03ae65ee4c930c1e5fee4da5a0a8b0e7466a3d969a5a6d",
+    "original_stream_sha256": "93895c95b62cf70d195b23a439d388c4783f146fce412a39b85728f5f83f5da7",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-profile/c000-r2-wr2-profile/native-trace.txt": {
+    "original_sha256": "775ce5b5ba0fbffae28a0cc9e93eed29d9626392671963e032ac29aafdd9013c",
+    "portable_sha256": "775ce5b5ba0fbffae28a0cc9e93eed29d9626392671963e032ac29aafdd9013c",
+    "original_stream_sha256": "97f9ff98d40946578f835eba9fcac3fe5d102870ffc0cd5a641f24ddbccb450f",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-pw-profile/c000-r0-sf1/native-trace.txt": {
+    "original_sha256": "5ddc46013a6958cbbc852db27d6e67ebc93a725dd8a79c453e7863b6558566dd",
+    "portable_sha256": "5ddc46013a6958cbbc852db27d6e67ebc93a725dd8a79c453e7863b6558566dd",
+    "original_stream_sha256": "fd082427d231aa1c44bf96de5f3271893b34619bff95b52cbb6754e27c998a6f",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-pw-profile/c000-r0-wr2-profile/native-trace.txt": {
+    "original_sha256": "62dde76919daeeb9c0e03aab608ac614557203054454d07f8bb1c320771a2eb9",
+    "portable_sha256": "62dde76919daeeb9c0e03aab608ac614557203054454d07f8bb1c320771a2eb9",
+    "original_stream_sha256": "0c322f3495fd3cd8d36f568b24d199d81d7f7f77c870009c1bae57de277e635f",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-pw-profile/c000-r1-sf1/native-trace.txt": {
+    "original_sha256": "f60808506adbceac4c1f38d987943fd259b976ffc3f8ba090b7f6d264e4d2467",
+    "portable_sha256": "f60808506adbceac4c1f38d987943fd259b976ffc3f8ba090b7f6d264e4d2467",
+    "original_stream_sha256": "5f0a3efa01eb2577250df4dff402bb67f9ab656753460b98f5dec1a1574e2850",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-pw-profile/c000-r1-wr2-profile/native-trace.txt": {
+    "original_sha256": "83ee6cfe849b6dc9d02f7d1de9c89c17691d2652110b347fd199499539767b9b",
+    "portable_sha256": "83ee6cfe849b6dc9d02f7d1de9c89c17691d2652110b347fd199499539767b9b",
+    "original_stream_sha256": "420a5a8f360cf9ddf04d615cf6aab8a4275247d523e85d41a803c472089c703c",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-pw-profile/c001-r0-sf1/native-trace.txt": {
+    "original_sha256": "dca5f94fbbe40797002ecf12c7b8f04a3b4add0981d4236fce8797b6838535fa",
+    "portable_sha256": "dca5f94fbbe40797002ecf12c7b8f04a3b4add0981d4236fce8797b6838535fa",
+    "original_stream_sha256": "9c4993374c82b20f9b506b78bf0a5b4385aab5dd7505226049e0e8b51e39cd95",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-pw-profile/c001-r0-wr2-profile/native-trace.txt": {
+    "original_sha256": "41f2dcc5556e5932f28fa0fef4c17d18558ce9106a23a36207bfe6c9d3e5503d",
+    "portable_sha256": "41f2dcc5556e5932f28fa0fef4c17d18558ce9106a23a36207bfe6c9d3e5503d",
+    "original_stream_sha256": "4e5b9dbe44d28ff645222627734a622f5e5bc4d6a8dcb05c2e8d33ed7e3c23eb",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-pw-profile/c001-r1-sf1/native-trace.txt": {
+    "original_sha256": "70c3a3ae392616a2437390a3ca5dd50f1a247d6f44a9135820e7a09e02d002f7",
+    "portable_sha256": "70c3a3ae392616a2437390a3ca5dd50f1a247d6f44a9135820e7a09e02d002f7",
+    "original_stream_sha256": "6aad96d1acd0b2d4b78815e2e6e8dafdb9f6c7df7cc7634c48e0106501da2a38",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  },
+  "wr2-serial-pw-profile/c001-r1-wr2-profile/native-trace.txt": {
+    "original_sha256": "5a8843e806f913d1b8afa756d874ae9843ae4a2e30fd8711a3781ff331529196",
+    "portable_sha256": "5a8843e806f913d1b8afa756d874ae9843ae4a2e30fd8711a3781ff331529196",
+    "original_stream_sha256": "47e3a615e569c1cb9332bf580f8c3c00928b28a96eb7d0edce989e55decf352c",
+    "extraction": "Only native phase/slope profile lines, in original order."
+  }
+}

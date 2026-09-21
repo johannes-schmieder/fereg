@@ -137,6 +137,11 @@ work. Norm handoff to OLS is limited to unit weights because the generic slope
 projector and OLS use different supplied-weight divisors. Explicit solvers,
 low-memory and shared/PPML projection paths remain separate. See
 [ADR 0087](adr/0087-single-partition-ols-slope-geometry.md).
+Under [ADR 0092](adr/0092-compact-ordered-single-slope-passes.md), Grams use
+actual channel-square storage. Serial fits with ordered groups combine
+projection, reconstruction and fresh norm/maxima accumulation while preserving
+observation and arithmetic order. Independent QR and raw-moment checks still
+run on the returned residuals; shuffled/threaded fits keep their prior traversal.
 
 At 3–8 RHS columns the same-call OLS owner may retain useful full-width pilot
 state under [ADR 0086](adr/0086-useful-narrow-ols-schur-pilot.md). The original

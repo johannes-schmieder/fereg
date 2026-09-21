@@ -38,23 +38,40 @@ def instrument(source):
             position = text.index(marker, first) + len(marker)
             timer = '\n        struct CachedTimer(Instant, usize);\n        impl Drop for CachedTimer { fn drop(&mut self) {\n            eprintln!("SLOPE_PROFILE|cached_total|rhs={}|seconds={:.9}", self.1, self.0.elapsed().as_secs_f64());\n        } }\n        let _cached_timer = CachedTimer(Instant::now(), original.ncols());\n'
             text = text[:position] + timer + text[position:]
-            markers = [
-                ('        coefficients\n            .par_chunks_mut(channels * rhs)', '        let profile_projection = Instant::now();\n'),
-                ('        result\n            .as_mut_slice()', '        let profile_reconstruction = Instant::now();\n'),
-                ('        let certificate_started = Instant::now();', '        let profile_norms = Instant::now();\n'),
-                ('        let certificate = self.check_matrix(&result, &scales, tolerance, &mut checks)?;', '        let profile_checks = Instant::now();\n'),
-            ]
-            for marker, insertion in markers:
-                assert text.count(marker) == 1, marker
-                text = text.replace(marker, insertion + marker)
-            marker = '        let certification_seconds = certificate_started.elapsed().as_secs_f64();'
-            assert text.count(marker) == 1
-            text = text.replace(marker, '''        eprintln!("SLOPE_PROFILE|cached_passes|rhs={}|prepare={:.9}|projection={:.9}|reconstruction={:.9}|norms={:.9}|checks={:.9}",
-                rhs, profile_projection.duration_since(started).as_secs_f64(),
-                profile_reconstruction.duration_since(profile_projection).as_secs_f64(),
-                profile_norms.duration_since(profile_reconstruction).as_secs_f64(),
-                profile_checks.duration_since(profile_norms).as_secs_f64(), profile_checks.elapsed().as_secs_f64());
+            if "let serial_norms" in text:
+                markers = [
+                    ('        // In row-ordered groups', '        let profile_projection = Instant::now();\n'),
+                    ('        let certificate_started = Instant::now();', '        let profile_norms = Instant::now();\n'),
+                    ('        let certificate = self.check_matrix(&result, &scales, tolerance, &mut checks, right_scales)?;', '        let profile_checks = Instant::now();\n'),
+                ]
+                for marker, insertion in markers:
+                    assert text.count(marker) == 1, marker
+                    text = text.replace(marker, insertion + marker)
+                marker = '        let certification_seconds = certificate_started.elapsed().as_secs_f64();'
+                assert text.count(marker) == 1
+                text = text.replace(marker, '''        eprintln!("SLOPE_PROFILE|cached_fused_passes|rhs={}|prepare={:.9}|projection_reconstruction={:.9}|remaining_norms={:.9}|checks={:.9}",
+                    rhs, profile_projection.duration_since(started).as_secs_f64(),
+                    profile_norms.duration_since(profile_projection).as_secs_f64(),
+                    profile_checks.duration_since(profile_norms).as_secs_f64(), profile_checks.elapsed().as_secs_f64());
 ''' + marker)
+            else:
+                markers = [
+                    ('        coefficients\n            .par_chunks_mut(channels * rhs)', '        let profile_projection = Instant::now();\n'),
+                    ('        result\n            .as_mut_slice()', '        let profile_reconstruction = Instant::now();\n'),
+                    ('        let certificate_started = Instant::now();', '        let profile_norms = Instant::now();\n'),
+                    ('        let certificate = self.check_matrix(&result, &scales, tolerance, &mut checks)?;', '        let profile_checks = Instant::now();\n'),
+                ]
+                for marker, insertion in markers:
+                    assert text.count(marker) == 1, marker
+                    text = text.replace(marker, insertion + marker)
+                marker = '        let certification_seconds = certificate_started.elapsed().as_secs_f64();'
+                assert text.count(marker) == 1
+                text = text.replace(marker, '''        eprintln!("SLOPE_PROFILE|cached_passes|rhs={}|prepare={:.9}|projection={:.9}|reconstruction={:.9}|norms={:.9}|checks={:.9}",
+                    rhs, profile_projection.duration_since(started).as_secs_f64(),
+                    profile_reconstruction.duration_since(profile_projection).as_secs_f64(),
+                    profile_norms.duration_since(profile_reconstruction).as_secs_f64(),
+                    profile_checks.duration_since(profile_norms).as_secs_f64(), profile_checks.elapsed().as_secs_f64());
+    ''' + marker)
         else:
             probes = [
                 ("        let mut coefficients = filled(", "        let profile_reference = Instant::now();\n"),

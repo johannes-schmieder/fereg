@@ -262,23 +262,34 @@ independent output audits pass. Unit K10/T1 is 118 to 113 ms versus fixest 92 ms
 Serial PW three-slope-only robust/all is 237 to 230 ms versus fixest 151 ms;
 clustered/all is 261 to 262 versus 164 ms. Those serial reference gaps remain.
 
-Current resume point: profile serial weighted slope outputs before freezing
-the next kernel candidate. The sf1 draft is still uncommitted.
-Fresh wr2 K10/T1 phase diagnostics place about 12 ms in residual checks and
-7 ms in reconstruction/norm scans. The isolated draft combines projection,
-reconstruction, row-ordered norms and fresh group maxima only for serial ordered
-groups; shuffled/threaded paths keep their traversal. The three focused slope
-tests pass, including bit-identical old-path comparisons and an independent
-rank-aware certificate across widths, weights, group orders and team sizes.
-Plugin `90d4d382e9f7030e7db2b152b5b1cfe097d4dca147f49c1843a2ef4bdd550b62`
-builds and passes the ABI test. Do not accept without its paired screen and
-appropriate weight/output checks. The preceding wr2 profile plugin is
-`853b84009836fa107083613c5437ddfc67044b0db1e050349e79cacae5297a39`.
-Then freeze routing and complete the expanded large screen,
-protected controls, current-candidate science, final independent blocks,
-constrained whole-fit checks and focused Linux runs. Raw artifacts and immutable
-snapshot identities remain under `target/ols-next-20260921`; do not overwrite
-failed attempts or use fresh validation seeds before freezing routing rules.
+ADR 0092 accepts the compact Gram storage and ordered serial slope passes for
+local development. The [source-bound report](benchmarks/reports/development/serial-slope-fusion-local-2026-09-21/README.md)
+preserves 101 successful screen/diagnostic calls, three captured sources and
+all thirty exact native pairs. Three focused slope fixtures and the plugin ABI
+pass. Only indentation differs from the measured sf1 source. The updated slope
+profiler passes four additional T1/T16 diagnostic calls with exact six-bundle
+and sample equality; its trace and identity are in `profiler-check.json`.
+
+Serial weighted output traces place about 26 ms in preparation, 85 ms in the
+fit and 38 ms in outputs, including 14 ms in group recovery and 18 ms in fresh
+finishing/certification. These phases overlap their subtotals; the fit's
+`within_norms` also includes score-cache construction. Retaining single-slope
+products for outputs remains an unimplemented memory/ownership question.
+
+`target/g21tail` completes the remaining twenty-four expanded coverage cells
+with 198 successful calls and clean isolation. All eighteen ordinary-fixest
+comparisons win by more than ten percent; six FW cells use the native baseline.
+All 48 native inference checks, 144 exact within-arm repeats and 36 candidate
+output audits pass. Default-reference discrepancies are preserved. Reports
+are under `target/ols-next-20260921/coverage-tail-*`; portable archival is next.
+
+Current resume point: seal the slope checkpoint and tail coverage, then run the
+111 protected native controls on sf1 before further routing development.
+Complete current-candidate science, final independent blocks, constrained
+whole-fit checks and focused Linux runs before closing the milestone. Routing
+changes still require a separate decision and cross-platform evidence; fresh
+seeds 202609211 and 202609212 remain untouched. The four other modified core
+files remain unaccepted graph/fit drafts, captured in prior reports.
 
 ## Repository cleanup and development push — 2026-09-21
 

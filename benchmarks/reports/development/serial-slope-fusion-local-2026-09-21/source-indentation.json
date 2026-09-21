@@ -1,0 +1,8 @@
+{
+  "status": "pass",
+  "scope": "Only indentation of the two new else blocks after measurement; non-whitespace bytes identical.",
+  "source": "crates/fereg-core/src/fe/single_slope.rs",
+  "captured_sha256": "9d1f7b716d9479122a2d08e14f3fafb1af1cc2eef49469e309d6bedca12cbb2a",
+  "indented_sha256": "ddf370f9ef2e7b1f615f30562cdad0d887bdd1bf5f8f2fec4b83d1baafdd739e",
+  "non_whitespace_sha256": "d3cbef41f30449c6262401c3ef57c4383c459d1762049ad6da893f57e15ed225"
+}

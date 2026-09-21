@@ -1,0 +1,21 @@
+{
+  "status": "pass",
+  "checks": "No machine home paths in portable archive members; raw licensed logs and binaries omitted.",
+  "archives": [
+    {
+      "archive": "checks.zip",
+      "sha256": "2cffafeb80974a6605c314463b8876190a1d6b0e227519caf266c4b9056e7d1b",
+      "members": 25
+    },
+    {
+      "archive": "evidence.zip",
+      "sha256": "a1f29b401f4025ecc536ba89e5d7b2722978cbb139c9b03f9164fc3867408ddd",
+      "members": 2484
+    },
+    {
+      "archive": "sources.zip",
+      "sha256": "afa01010f86365338c10fe217debb6abe2a1cb6f36734e2bdc149fe98550bcb3",
+      "members": 47
+    }
+  ]
+}
