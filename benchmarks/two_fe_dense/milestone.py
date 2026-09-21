@@ -58,7 +58,7 @@ def main(a):
     plan = dict(schema='ols-graph-coverage-execution-v1', phase=a.phase, label=a.label,
         manifest=spec, manifest_sha256=broad.sha(MANIFEST), cells=cells, selected_indices=a.indices, repeats=repeats,
         baseline=a.baseline, candidate=a.candidate, controller_sha256=broad.sha(Path(__file__)),
-        runner_sha256=broad.sha(HERE / 'run.py'))
+        runner_sha256=broad.sha(HERE / 'run.py'), keep_going=a.keep_going)
     if a.dry_run:
         print(json.dumps(plan, indent=2)); return
     a.root.mkdir(parents=True, exist_ok=True)
@@ -78,6 +78,7 @@ def main(a):
             '--record-reference-science-disagreement', '--record-reference-output-disagreement',
             *broad.arguments(cell)]
         if a.phase == 'small': command.append('--oracle')
+        if a.keep_going: command.append('--keep-going')
         output = a.root / (label + '.stdout.txt')
         assert not output.exists(), 'unrecorded prior dispatch requires inspection: ' + label
         with output.open('w') as stream:
@@ -99,4 +100,5 @@ if __name__ == '__main__':
     p.add_argument('--candidate', required=True); p.add_argument('--baseline', default='baseline')
     p.add_argument('--label', required=True); p.add_argument('--phase', choices=['small', 'screen', 'block-a', 'block-b'], required=True)
     p.add_argument('--indices', type=int, nargs='+'); p.add_argument('--dry-run', action='store_true')
+    p.add_argument('--keep-going', action='store_true')
     main(p.parse_args())

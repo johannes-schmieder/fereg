@@ -417,17 +417,30 @@ def main(a):
                       absorb=' '.join(f'out_fe{j+1}={effect}' for j,effect in enumerate(a.effects)) if mode!='none' else ' '.join(a.effects),
                       fit_options=('residuals(out_resid) ' if mode=='all' else '') + f'memory({a.memory})')
             os.environ['ONE_FE_BREADTH_OUTPUTS']=mode
+            failed_variants = {}
             for rep in range(1,a.repeats+1):
                 rotation=(rep-1)%len(a.variants);order=a.variants[rotation:]+a.variants[:rotation]
                 outputs={}
                 for variant in order:
+                    if variant in failed_variants:
+                        checks.append(dict(case=case,n=a.n,k=k,rep=rep,variant=variant,
+                            application_status='not_attempted_after_failure',
+                            prior_failed_run=failed_variants[variant]))
+                        continue
                     arm='fixest' if variant=='fixest' else 'fereg'
                     source,identity=identities.get(variant,(None,None))
                     output=root/'runs'/f'{a.label}-{case}-n{a.n}-k{k}-s{a.seed}-shuffle{int(a.shuffled)}-t{a.threads}-r{rep}-{variant}'
+                    if a.trace: os.environ['ONE_FE_BREADTH_TRACE_DIR'] = str(output)
                     result=measure(root,cell,arm,'warm',data,warm,output,manifest,
                                    identity=dict(shared,native=identity),source=source,trace=a.trace,solver=a.solver)
                     print(output.name,result['status'],result['seconds'],flush=True)
-                    assert result['status']=='pass',output
+                    if result['status'] != 'pass':
+                        if not a.keep_going: raise AssertionError(output)
+                        failed_variants[variant] = output.name
+                        checks.append(dict(case=case,n=a.n,k=k,rep=rep,variant=variant,
+                            application_status='failure',run=output.name,result_status=result['status']))
+                        write(root/(a.label+'-progress.json'),checks)
+                        continue
                     outputs[variant]=output
                     if a.oracle:
                         try:
@@ -437,26 +450,30 @@ def main(a):
                                 raise
                             oracle_check = dict(status='mismatch', detail=str(error))
                         checks.append(dict(run=output.name, oracle=oracle_check))
-                for variant in a.variants[1:]:
-                    reference,actual=outputs[a.variants[0]],outputs[variant]
+                successful = [variant for variant in a.variants if variant in outputs]
+                for variant in successful[1:]:
+                    reference_variant = successful[0]
+                    reference,actual=outputs[reference_variant],outputs[variant]
                     try:
                         comparison=profile.compare(reference,actual,exact_native=False)
                     except AssertionError as error:
                         if not (a.record_reference_science_disagreement and variant=='fixest'):
                             raise
                         comparison=dict(status='mismatch', detail=str(error))
-                    if variant!='fixest' and a.variants[0]!='fixest':
+                    if variant!='fixest' and reference_variant!='fixest':
                         for name in ['fereg_status','fereg_dof']:
                             np.testing.assert_array_equal(pd.read_csv(reference/(name+'.csv')),pd.read_csv(actual/(name+'.csv')))
-                    checks.append(dict(case=case,n=a.n,k=k,rep=rep,variant=variant,science=comparison,
+                    checks.append(dict(case=case,n=a.n,k=k,rep=rep,variant=variant,reference_variant=reference_variant,science=comparison,
                                        outputs=compare_outputs(reference,actual,a.n,mode,
                                            a.record_reference_output_disagreement and variant=='fixest', len(a.effects))))
                 write(root/(a.label+'-progress.json'),checks)
     status = 'reference_output_mismatch' if any(c.get('outputs',{}).get('status')=='mismatch' for c in checks) else 'pass'
     if any(c.get('science',{}).get('status')=='mismatch' or c.get('oracle',{}).get('status')=='mismatch' for c in checks):
         status = 'reference_science_mismatch'
+    if any(c.get('application_status') == 'failure' for c in checks): status = 'application_failure'
     write(root/(a.label+'-complete.json'),dict(status=status,checks=checks))
     print('TWO_FE_DENSE_COMPLETE',a.label,status,flush=True)
+    if status == 'application_failure': raise SystemExit(1)
 
 
 if __name__=='__main__':
@@ -472,6 +489,8 @@ if __name__=='__main__':
     p.add_argument('--memory',choices=['fast','low'],default='fast')
     p.add_argument('--timeout',type=int,default=240)
     p.add_argument('--trace',action='store_true');p.add_argument('--oracle',action='store_true')
+    p.add_argument('--keep-going',action='store_true',
+        help='preserve a failed arm, skip its remaining repetitions in that cell, and measure the other arms')
     p.add_argument('--reference-precision',action='store_true',help='separate tight-reference diagnostic; headline timing retains defaults')
     p.add_argument('--reference-recovery-precision',action='store_true',help='tighten only fixef recovery for a separate output-accuracy diagnostic')
     p.add_argument('--reference-full-dof',action='store_true',
@@ -481,7 +500,7 @@ if __name__=='__main__':
                    help='record observed reference output mismatches explicitly; never classify them as passing science')
     p.add_argument('--record-reference-science-disagreement',action='store_true',
                    help='retain failed reference science comparisons during diagnostic screens; does not satisfy science gates')
-    p.add_argument('--solver',choices=['auto','map','cg','lsmr','cmg'],default='auto')
+    p.add_argument('--solver',choices=['auto','map','cg','lsmr','cmg','it'],default='auto')
     p.add_argument('--weight-kind',choices=['none','aw','pw','fw'],default='none')
     p.add_argument('--weight-design',choices=['none','constant','moderate','dispersed','group_concentrated','bridge_cut'],default='none')
     a=p.parse_args()

@@ -16,7 +16,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False):
+def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False):
     root = root.resolve()
     source = root / name
     source.mkdir(parents=True, exist_ok=False)
@@ -47,6 +47,24 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
     if profile_slopes:
         import importlib.util
         spec = importlib.util.spec_from_file_location("slope_probes", REPO / "benchmarks/one_fe_profile/slope_instrument.py")
+        probes = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probes)
+        probes.instrument(source)
+    if profile_inference:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("inference_probes", REPO / "benchmarks/one_fe_profile/inference_instrument.py")
+        probes = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probes)
+        probes.instrument(source)
+    if profile_recovery:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("recovery_probes", REPO / "benchmarks/one_fe_profile/recovery_instrument.py")
+        probes = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probes)
+        probes.instrument(source)
+    if profile_schur:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("schur_probes", REPO / "benchmarks/one_fe_profile/schur_instrument.py")
         probes = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probes)
         probes.instrument(source)
@@ -83,6 +101,12 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         identity.setdefault("diagnostics", []).append("weighted_statistics_phases")
     if profile_slopes:
         identity.setdefault("diagnostics", []).append("slope_phases")
+    if profile_inference:
+        identity.setdefault("diagnostics", []).append("inference_phases")
+    if profile_recovery:
+        identity.setdefault("diagnostics", []).append("recovery_fallbacks")
+    if profile_schur:
+        identity.setdefault("diagnostics", []).append("schur_pilot_steps")
     (root / ("identity-" + name + ".json")).write_text(json.dumps(identity, indent=2) + "\n")
     print("BUILD_PASS", name, identity["plugin"], flush=True)
 
@@ -98,5 +122,8 @@ if __name__ == "__main__":
     p.add_argument("--profile-breadth", action="store_true")
     p.add_argument("--profile-statistics", action="store_true")
     p.add_argument("--profile-slopes", action="store_true")
+    p.add_argument("--profile-inference", action="store_true")
+    p.add_argument("--profile-recovery", action="store_true")
+    p.add_argument("--profile-schur", action="store_true")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur)

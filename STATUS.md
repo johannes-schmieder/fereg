@@ -109,6 +109,10 @@ losses, plus 28 FW native controls. The near-tie degree-six robust fits and
 A bounded recovery diagnostic reproduces the ring timeout after fit/inference,
 and samples recovery fallback work. Its earlier trace-directory warmup failure
 is retained. New fallback instrumentation is being built; no fix is yet accepted.
+The [portable partial screen](benchmarks/reports/development/two-fe-large-screen-partial-local-2026-09-21/README.md)
+now preserves all 943 application records, the interrupted request, original
+runner reconstruction, independent audits and missing-cell inventory. It remains
+evidence for recovery2, not for the subsequent candidate changes.
 
 The draft large-inference oracle passes 92 full-dummy SVD/literal-expansion
 cross-checks (`graph-inference-oracle-check2`). The first checker failure exposed
@@ -160,15 +164,30 @@ Default reference output discrepancies remain. Unit native peak falls from
 77,750,133 to 65,362,880 bytes. This isolated artifact includes neither loader
 nor Schur changes. Protected controls/final blocks remain open.
 
-Uncommitted `sl2` follows the actually successful solver after capped Schur
+Local checkpoint `987e8336` commits the loader and ordered-cluster changes;
+nothing is pushed. Uncommitted `sl2` follows the actually successful solver after capped Schur
 fallback, avoiding a redundant Schur retry on the final residual. `nr1` also
 binds numeric raw-residual columns once; its focused bitwise test passes but
 the initial screen gains only 2–7 ms and weighted robust ties/losses remain.
 The first `sl2` screen was rejected before application dispatch because its
-chosen root already held a small-science controller; that refusal is preserved
-and the fresh-root repeat is running. Serial K10 slope profiling still places
+chosen root already held a small-science controller; that refusal is preserved.
+The fresh-root repeat passes: full-output median is 449 versus sl1's 500 ms,
+with passing native direct inference/output audits and retained reference
+discrepancies. Serial K10 slope profiling still places
 roughly 12 ms in absorber preparation, 13 ms in raw moments and 25 ms in initial
-cached absorption. Routing, serial work and these residual drafts remain open.
+cached absorption. `nr2a` additionally uses an already available raw-column
+maximum bound to avoid a residual pass, with full rescaling fallback for extreme
+cancellation, and extends existing unit-weight final overlap to dimensions 6/7.
+The bound test and 21 overlap tests pass; all native large direct-oracle checks
+pass. Unit degree-six robust and shuffled K5 medians are 58/228 versus fixest
+67/250 ms. Weighted margins are smaller. Preserve the nr2 compile failure from
+an argument inserted at the wrong call site; nr2a is the corrected isolated build.
+Combined `m1` includes the committed loader/cluster changes, sl2 and residual
+work, plus a guarded weighted narrow overlap that excludes shared callers and
+does not reuse unit-weight RSS. Its 108-case weighted/error-order test passes;
+the paired combined screen is running. `m1-profile` adds isolated slope-pass,
+inference, recovery and per-step Schur pilot diagnostics. No new route threshold
+has been chosen; fresh validation seeds are untouched.
 
 SCC read-only preflight failed authentication before remote inspection or any
 mutation (`target/ols-next-20260921/scc-readonly-preflight.txt`). A renewal
