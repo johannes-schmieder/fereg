@@ -9,17 +9,37 @@ import zipfile
 def sha(data): return hashlib.sha256(data).hexdigest()
 
 
-def archive(roots, output):
+def archive(roots, output, compact=False):
     repo = Path(__file__).resolve().parents[2]
     output.mkdir(parents=True, exist_ok=False)
     records, hashes, campaigns = [], {}, []
+    objects = set()
     def portable(data):
         return data.replace(str(repo).encode(), b'<repository>').replace(b'/tmp/fereg-fixest-local-20260911/work/R', b'<reference-library>')
     with zipfile.ZipFile(output / 'evidence.zip', 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as bundle:
+        def object_reference(data, suffix):
+            name = 'objects/' + sha(data) + suffix
+            if name not in objects:
+                bundle.writestr(name, data)
+                objects.add(name)
+            return name
+
         def add(root, path):
             relative = root.name + '/' + str(path.relative_to(root))
             raw = path.read_bytes(); clean = raw if path.suffix == '.bin' else portable(raw)
-            hashes[relative] = dict(original_sha256=sha(raw), portable_sha256=sha(clean))
+            entry = dict(original_sha256=sha(raw), portable_sha256=sha(clean))
+            if compact and path.name == 'outputs.bin':
+                entry['archive_member'] = object_reference(clean, '.bin')
+                hashes[relative] = entry
+                return
+            if compact and path.name == 'result.json':
+                result = json.loads(clean)
+                fingerprint = json.dumps(result['measurement_fingerprint'], indent=2, sort_keys=True).encode()
+                result['measurement_fingerprint'] = {'$archive_ref': object_reference(fingerprint, '.json')}
+                clean = (json.dumps(result, indent=2, sort_keys=True) + '\n').encode()
+                entry['archive_sha256'] = sha(clean)
+                entry['encoding'] = 'externalized_measurement_fingerprint'
+            hashes[relative] = entry
             bundle.writestr(relative, clean)
         for root in roots:
             root = root.resolve()
@@ -53,4 +73,5 @@ def archive(roots, output):
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__); p.add_argument('output', type=Path); p.add_argument('roots', nargs='+', type=Path)
-    a = p.parse_args(); archive(a.roots, a.output)
+    p.add_argument('--compact', action='store_true', help='store shared fingerprints and duplicate vectors once, with explicit hash references')
+    a = p.parse_args(); archive(a.roots, a.output, a.compact)

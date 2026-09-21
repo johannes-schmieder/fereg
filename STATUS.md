@@ -72,26 +72,31 @@ Constrained whole-fit memory, final blocks and Linux confirmation remain open.
 The [archived graph pilots](benchmarks/reports/development/two-fe-science-pilots-local-2026-09-21/README.md)
 retain 231 application calls, both controller versions and all failed attempts.
 Archive integrity, source-hash reconstruction and portable-path checks pass.
-The expanded graph pilot has attempted 44 small clustered/full-output cells at
-`target/g21`, using candidate recovery2 and the unchanged milestone baseline.
-Forty cells complete native oracle/comparison checks; four weak_d3 inputs fail
-generation because N=960 is outside its registered branch envelope. Preserve
-all attempts. The next runner must use the minimum valid weak graph (N=7,680)
-with an independently checked sparse explicit-dummy oracle; also use N=1,920
-for other small graphs so degree-six offsets have nonzero moduli. Reference
-variance-correction/default-accuracy discrepancies require separate adjudication.
-The corrected `target/g21v2` pilot completes all 44 cells without process failure.
-Its sparse explicit-dummy oracle independently cross-checks all forty original
-dense-SVD cells, including literal FW expansion. The full 1,518-cell small
-science matrix is now running in four independent streams at `target/g21s0`
-through `target/g21s3`; dispatch/terminal receipts are under
-`target/ols-next-20260921/graph-science-*`. Candidate is recovery2, baseline is
-0efa78bd; all concurrent timings are diagnostic. Do not edit the graph runner,
-oracle or their controller sources while these streams run: manifest validation
-will reject source drift. Full large graph timings, routing calibration, protected
-controls, final repeated blocks and Linux confirmation remain open. Fresh seeds
-remain untouched. Current resume point: collect/adjudicate the full small matrix,
-archive both pilots and their failed attempts, then screen the new large cells.
+The corrected 44-cell pilot passes all native checks after preserving four
+original weak-input generation failures and the original degree-six small-size
+warning. The [full small matrix](benchmarks/reports/development/two-fe-full-science-local-2026-09-21/README.md)
+now completes all 1,518 cells and 4,158 calls without process failure. All 3,036
+native explicit-dummy checks pass, including literal FW expansion; every paired
+coefficient/covariance/sample/output comparison is exact. The 766 default
+fixest oracle discrepancies remain failures. Separate tighter diagnostics
+resolve sixty of sixty-six full-output representatives; six sparse-graph
+cases remain discrepant. Eighteen rejected below-floor reference calls are
+preserved alongside the supported repeats. All 102 repeated native scientific
+and output bundles are byte-identical to the original matrix. Portable archive
+reconstruction checks all 104,370 entries; raw licensed logs remain local.
+
+The updated recovery2 diagnostic puts PW three-slope-only recovery at about
+14 ms. A first slope-only loader guard experiment (`slope-rhs1`) passes its
+focused SPI test and three-pair science, but does not improve timing: the
+public no-intercept recipe remains excluded by a separate compiled-model
+check. It is experimental and uncommitted; preserve its failed performance
+hypothesis and investigate the actual recipe before retaining any guard change.
+Artifacts and receipts remain under `target/ols-next-20260921`.
+
+Current resume point: large graph timing screens, actual slope-only input recipe,
+narrow two-FE margins and measured auto calibration. Protected controls, final
+repeated blocks, constrained whole-fit memory and Linux confirmation remain
+open. Fresh validation seeds remain untouched. No push is authorized.
 
 ## Repository cleanup and development push — 2026-09-21
 
