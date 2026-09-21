@@ -21,8 +21,8 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v38.json"
-CONTRACT_ID = "fereg-allocation-source-contract-v38"
+DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v39.json"
+CONTRACT_ID = "fereg-allocation-source-contract-v39"
 SCHEMA_VERSION = 21
 
 # Keep the watched surface narrow enough to describe the actual OLS seam, but
@@ -171,7 +171,7 @@ F0_PREEXISTING_BOUNDARY_HASHES = {
 # Reviewed OLS changes since the extraction checkpoint. These are exact body
 # replacements, never an allow-list of functions whose bodies may drift.
 # See docs/allocation_inventory.md for decisions and source-bound evidence.
-REVIEWED_BOUNDARY_SOURCE_SHA = 'd2ec66e3a69f92628e4b2a109ae6b2a2ad85984c'
+REVIEWED_BOUNDARY_SOURCE_SHA = '12de1adb6e8ec6b39ce988602236c05175cb5864'
 REVIEWED_BOUNDARY_HASHES = {
     ('crates/fereg-plugin/src/estimate.rs', 'estimate_ols_test'):
         'a054a147e23573fb51b0af77dcb29010976bb1009cfae02f2968ee829985fcf7',

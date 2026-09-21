@@ -65,9 +65,9 @@ robust/all outputs is 106 versus 113 ms; two-way clustered/all outputs is 138
 versus 131 ms. These three-pair screens retain the remaining losses.
 The archive records 112 successful calls, one failed diagnostic warmup, a
 pre-application environment failure, focused core/SPI checks, AW/PW/FW output
-audits and four final-artifact licensed fixtures. Allocation refresh follows
-this source checkpoint; constrained whole-fit memory, final blocks and Linux
-confirmation remain open.
+audits and four final-artifact licensed fixtures. The [allocation refresh](benchmarks/reports/development/slopes-recovery-allocation-local-2026-09-21/README.md)
+binds OLS v39/action v24 to `12de1adb`; repository and source-pin checks pass.
+Constrained whole-fit memory, final blocks and Linux confirmation remain open.
 
 The expanded graph pilot has attempted 44 small clustered/full-output cells at
 `target/g21`, using candidate recovery2 and the unchanged milestone baseline.
@@ -77,9 +77,18 @@ all attempts. The next runner must use the minimum valid weak graph (N=7,680)
 with an independently checked sparse explicit-dummy oracle; also use N=1,920
 for other small graphs so degree-six offsets have nonzero moduli. Reference
 variance-correction/default-accuracy discrepancies require separate adjudication.
-No full small matrix, new large graph matrix or routing calibration has run yet.
-Fresh seeds remain untouched. Next finish the recovery source checkpoint and
-extend the graph oracle/controller before launching the full matrix.
+The corrected `target/g21v2` pilot completes all 44 cells without process failure.
+Its sparse explicit-dummy oracle independently cross-checks all forty original
+dense-SVD cells, including literal FW expansion. The full 1,518-cell small
+science matrix is now running in four independent streams at `target/g21s0`
+through `target/g21s3`; dispatch/terminal receipts are under
+`target/ols-next-20260921/graph-science-*`. Candidate is recovery2, baseline is
+0efa78bd; all concurrent timings are diagnostic. Do not edit the graph runner,
+oracle or their controller sources while these streams run: manifest validation
+will reject source drift. Full large graph timings, routing calibration, protected
+controls, final repeated blocks and Linux confirmation remain open. Fresh seeds
+remain untouched. Current resume point: collect/adjudicate the full small matrix,
+archive both pilots and their failed attempts, then screen the new large cells.
 
 ## Repository cleanup and development push — 2026-09-21
 
