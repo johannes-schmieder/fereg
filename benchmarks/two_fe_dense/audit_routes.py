@@ -80,8 +80,15 @@ def audit(root, output):
         valid = {name: value['median_seconds'] for name, value in families.items() if value['valid']}
         fastest = min(valid, key=valid.get) if valid else None
         auto_ratio = valid['auto'] / valid[fastest] if fastest and 'auto' in valid else None
+        paired_auto_ratio = None
+        if fastest and 'auto' in valid:
+            by_pair = {(r['family'], r['rep']): r['seconds'] for r in records
+                       if r['index'] == index and r['family'] in ('auto', fastest)}
+            paired_auto_ratio = statistics.median(by_pair['auto', rep] / by_pair[fastest, rep]
+                for rep in range(1, plan['repeats'] + 1))
         cells.append(dict(index=index, cell=cell, families=families, fastest_valid=fastest,
-                          auto_to_fastest_valid=auto_ratio))
+                          auto_to_fastest_valid=auto_ratio,
+                          median_paired_auto_to_fastest_valid=paired_auto_ratio))
     receipt = dict(schema='ols-whole-command-route-audit-v1', complete=True,
         attempted=len(records), planned=len(plan['cells']) * len(plan['families']) * plan['repeats'],
         plan_sha256=sha(root / 'route-plan.json'), progress_sha256=sha(root / 'route-progress.json'),

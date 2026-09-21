@@ -1,0 +1,17 @@
+{
+  "schema": "ring-cycle-route-archive-integrity-v1",
+  "status": "pass",
+  "stored_entries_verified": 9742,
+  "local_output_arrays_omitted": 144,
+  "plugin": "a07732eea15a47a185903bf7403cd74f111a5eebbd5e558fbb371f02728bef56",
+  "base_commit": "987e8336f5adf614744a25c0ba14d65946e92c9e",
+  "source_files": 517,
+  "modified_from_base": [
+    "crates/fereg-core/src/fe/borrowed_map.rs",
+    "crates/fereg-core/src/fe/cmg.rs",
+    "crates/fereg-core/src/ols/prepared_fit.rs",
+    "crates/fereg-core/src/ols/prepared_rhs.rs"
+  ],
+  "source_reconstruction": "all_captured_hashes_match",
+  "machine_home_path_matches": []
+}

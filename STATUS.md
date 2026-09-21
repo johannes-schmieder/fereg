@@ -97,6 +97,27 @@ unit-ring robust/full-output paired ratios versus m5 are 0.937/0.976; dense
 changes little. The production cap remains 64. Broader routing and holdout
 validation remain open.
 
+The [expanded ring/cycle auto/LSMR comparison](benchmarks/reports/development/ring-cycle-route-calibration-local-2026-09-21/README.md)
+(`target/g21r16`, `g21r8`, `g21r1`)
+completes 288 attempts and 288 independent scientific passes across K6/K50,
+unit/AW, robust/no outputs and clustered/full outputs. T16 cycle/AW/K6 robust
+auto repeat one has a possible overlap and is excluded. All T8/T1 timings have
+no detected overlap. Maximum paired auto/fastest-valid ratios are 1.617 at T16,
+1.889 at T8 and 2.096 at T1. Some robust-only T16/T8 cells favor auto, so a
+blanket LSMR switch is unsupported. Auditor sources and whole-command reports
+are preserved under `target/ols-next-20260921/ring-cycle-route-*`; both fresh
+validation seeds are still unused. The portable archive verifies 9,742 stored
+entries, 144 omitted local arrays and complete m5 source reconstruction.
+
+The new `cb1` draft batches public two-FE automatic CMG subtraction across
+rows for N>=16384, at least three RHS columns and at least eight workers.
+It checks all residuals before mutation and adds no data bank. Explicit/shared,
+higher-dimensional and smaller/serial calls retain the old subtraction.
+Plugin `206fa4d9769dff2e31a57f3e4d1b453e0a68cc94c4b5039747cccfeef4c3d76f`
+built and passed the ABI fixture; its bitwise/finite-rejection test passes. The prepared
+ten-cell screen includes the unresolved direct m5/m4 unit-ring robust control.
+No performance or scientific acceptance of cb1 is claimed yet.
+
 Memory roots `target/g21mc1`, `g21mc2` and `g21mc3` preserve the initial reserve/
 CLI mistake, baseline-and-m5 preparation rejection at 300 MB usable, and fast
 rejection plus low/auto 120-second timeouts at 400 MB usable. Traces show that
@@ -140,8 +161,8 @@ SCC read-only preflight failed authentication before any remote inspection or
 mutation. A renewal question is pending with Johannes; no SCC job was submitted.
 The cluster skill was read. Linux confirmation remains blocked on access.
 
-Current resume point: run the prepared 288-attempt cycle/ring
-LSMR versus auto comparison across K6/K50, outputs and T1/8/16; repeat
+Current resume point: finish cb1's focused test and run its prepared screen,
+then assess CMG kernels before freezing routing. Repeat
 contaminated timings and the m5/m4 control. Complete the expanded large screen,
 protected controls, current-candidate science, final independent blocks,
 constrained whole-fit checks and focused Linux runs. Raw artifacts and immutable

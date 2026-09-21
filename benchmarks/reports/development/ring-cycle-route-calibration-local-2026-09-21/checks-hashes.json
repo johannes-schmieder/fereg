@@ -1,0 +1,34 @@
+{
+  "ring-cycle-route-t16-audit1.json": {
+    "original_sha256": "335f5daefc1ae41c15ed69872666dd84a4f2337039e93eb481ba23bd1d3bd211",
+    "portable_sha256": "335f5daefc1ae41c15ed69872666dd84a4f2337039e93eb481ba23bd1d3bd211"
+  },
+  "ring-cycle-route-t16-audit1.txt": {
+    "original_sha256": "95c3c2d09b3d24f8e729c8ec31419ab3f81b2c9b85ad36c67b4c02cdf2f1e3a1",
+    "portable_sha256": "95c3c2d09b3d24f8e729c8ec31419ab3f81b2c9b85ad36c67b4c02cdf2f1e3a1"
+  },
+  "ring-cycle-route-t8-audit1.json": {
+    "original_sha256": "b22baf2fd5a9d38157671fe3a2eda7d566eeb144819ab9947d9376e662a0e4ca",
+    "portable_sha256": "b22baf2fd5a9d38157671fe3a2eda7d566eeb144819ab9947d9376e662a0e4ca"
+  },
+  "ring-cycle-route-t8-audit1.txt": {
+    "original_sha256": "20fd9f6974a713c0f8589cbaff0f76a5bd9ba1b5827cf088195eef094e7b662c",
+    "portable_sha256": "20fd9f6974a713c0f8589cbaff0f76a5bd9ba1b5827cf088195eef094e7b662c"
+  },
+  "ring-cycle-route-t1-audit1.json": {
+    "original_sha256": "37c2ca01279af746f48d3d4a40279729a7d0d49f5d37baf8b619e084d55c3ecf",
+    "portable_sha256": "37c2ca01279af746f48d3d4a40279729a7d0d49f5d37baf8b619e084d55c3ecf"
+  },
+  "ring-cycle-route-t1-audit1.txt": {
+    "original_sha256": "20fd9f6974a713c0f8589cbaff0f76a5bd9ba1b5827cf088195eef094e7b662c",
+    "portable_sha256": "20fd9f6974a713c0f8589cbaff0f76a5bd9ba1b5827cf088195eef094e7b662c"
+  },
+  "ring-cycle-route-expansion-plan1.json": {
+    "original_sha256": "2eb37cefeac1f224b6a8e3c4a7d8a0abde82a6e21283fa0de02ce678f57ef6a9",
+    "portable_sha256": "2eb37cefeac1f224b6a8e3c4a7d8a0abde82a6e21283fa0de02ce678f57ef6a9"
+  },
+  "ring-cycle-route-expansion-progress1.json": {
+    "original_sha256": "ae3f6c2d17bf5ad711f1a113a4331a52cf810fc2bbe9570b4aa34ff5512c2efd",
+    "portable_sha256": "596fe648b5dd41087b60e167ed98f6bfc64263b05abc24bb80e7ca1419eb082e"
+  }
+}
