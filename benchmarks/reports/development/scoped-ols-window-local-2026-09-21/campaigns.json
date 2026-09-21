@@ -1,0 +1,50 @@
+[
+  {
+    "completion": {
+      "attempted": 13,
+      "plan_sha256": "f2825221363c2daa4ba0502b99f53974d53b513204e398d12b8ef453f1965961",
+      "planned": 13,
+      "progress_sha256": "03bbc343e96734c8972fe70bd03f618f3ecabac059ca9c95ead6d7b66f286403",
+      "status": "attempts_complete"
+    },
+    "label": "screen",
+    "plan_sha256": "f2825221363c2daa4ba0502b99f53974d53b513204e398d12b8ef453f1965961",
+    "root": "g21ow3"
+  },
+  {
+    "completion": {
+      "attempted": 14,
+      "plan_sha256": "c3c58eb0043fa1bd8f8d1ee679cce31b7114ec0a750fcec14200c6b1e497309b",
+      "planned": 14,
+      "progress_sha256": "c4bc3199b78ce5af646dcd6343af43b83046e1cd181176a81b2a2ed08f2aceb6",
+      "status": "attempts_complete"
+    },
+    "label": "screen",
+    "plan_sha256": "c3c58eb0043fa1bd8f8d1ee679cce31b7114ec0a750fcec14200c6b1e497309b",
+    "root": "g21nrt2"
+  },
+  {
+    "completion": {
+      "attempted": 6,
+      "plan_sha256": "507e261359f2dcdd37b99c2ac779fc8af70ce765455746ce690e2425094b89cc",
+      "planned": 6,
+      "progress_sha256": "578159bb822742429e57563eb3d9a9a151a1983b484d2b9e9e4d5972e80b1968",
+      "status": "attempts_complete"
+    },
+    "label": "diagnostic",
+    "plan_sha256": "507e261359f2dcdd37b99c2ac779fc8af70ce765455746ce690e2425094b89cc",
+    "root": "g21owmem1"
+  },
+  {
+    "completion": {
+      "attempted": 4,
+      "plan_sha256": "9134e94ea230dbc137599998a97d907790866a88fa6ae40b5cf54181b173f297",
+      "planned": 4,
+      "progress_sha256": "32a0e0abe0566c7d56acc58fdcfe918ace796122deeb884ed4fb26cde632278e",
+      "status": "attempts_complete"
+    },
+    "label": "diagnostic",
+    "plan_sha256": "9134e94ea230dbc137599998a97d907790866a88fa6ae40b5cf54181b173f297",
+    "root": "g21owmem3"
+  }
+]

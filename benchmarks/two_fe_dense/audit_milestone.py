@@ -10,7 +10,26 @@ from score import read, sha
 EXPORTS = ['coefficients.csv', 'covariance.csv', 'b.csv', 'V.csv', 'fereg_fit.csv', 'fereg_dof.csv']
 
 
-def audit(root, label, output):
+def load_oracle_cache(path):
+    receipt = read(path)
+    assert receipt['complete'] and receipt['native_complete'] == receipt['planned']
+    assert len(receipt['records']) == receipt['planned']
+    assert receipt['oracle_source_sha256'] == sha(Path(graph_oracle.__file__))
+    cache = {}
+    for record in receipt['records']:
+        assert record['status'] == 'native_pass'
+        for checked in record['attempts']:
+            if checked['variant'] == 'fixest':
+                continue
+            assert checked['status'] == 'pass'
+            oracle = checked['oracle']
+            key = (checked['input_sha256'], record['cell']['weight_kind'], oracle['vce'])
+            assert cache.setdefault(key, oracle) == oracle
+    assert cache
+    return cache
+
+
+def audit(root, label, output, oracle_cache_path=None):
     assert not output.exists()
     plan_path = root / (label + '-plan.json'); plan = read(plan_path)
     progress_path = root / (label + '-progress.json'); progress = read(progress_path)
@@ -22,7 +41,8 @@ def audit(root, label, output):
     assert len(set(planned_variants)) == len(planned_variants)
     native_variants = [v for v in planned_variants if v != 'fixest']
     assert native_variants
-    records, oracles = [], {}
+    records, oracles, oracle_origins, checked_inputs = [], {}, {}, {}
+    cached_oracles = load_oracle_cache(oracle_cache_path) if oracle_cache_path else {}
     for index, cell in enumerate(plan['cells']):
         attempt = progress[index] if index < len(progress) else None
         record = dict(index=index, cell=cell, attempts=[], application_counts={},
@@ -40,8 +60,23 @@ def audit(root, label, output):
                 continue
             first = passing[0]; result = read(first); data = Path(read(first.parent / 'request.json')['data'])
             key = (data, cell['weight_kind'], result['cell']['vce'])
-            if key not in oracles: oracles[key] = graph_oracle.solve(*key)
+            if oracle_cache_path:
+                if data not in checked_inputs:
+                    checked_inputs[data] = sha(data)
+                assert checked_inputs[data] == result['input_sha256']
+            if key not in oracles:
+                cached = cached_oracles.get((result.get('input_sha256'), cell['weight_kind'], result['cell']['vce']))
+                if cached is not None:
+                    # The cache stores independently solved equations, never
+                    # native FE state. Verify the actual original input before
+                    # applying that same oracle to another artifact's exports.
+                    oracles[key] = cached
+                    oracle_origins[key] = 'verified_cache'
+                else:
+                    oracles[key] = graph_oracle.solve(*key)
+                    oracle_origins[key] = 'fresh_solve'
             checked = graph_oracle.compare(first, oracles[key]); checked['variant'] = variant
+            checked['oracle_origin'] = oracle_origins[key]
             record['attempts'].append(checked)
             if variant != 'fixest':
                 exports = EXPORTS + (['outputs.bin'] if result['cell']['outputs'] != 'none' else [])
@@ -61,10 +96,11 @@ def audit(root, label, output):
             and all(r['status'] == 'pass' for r in record['repeated_native_exports']) else 'native_incomplete_or_mismatch'
         records.append(record)
         print(index, record['status'], [r['status'] for r in record['attempts']], flush=True)
-        output.write_text(json.dumps(dict(schema='expanded-graph-independent-audit-v2',
+        output.write_text(json.dumps(dict(schema='expanded-graph-independent-audit-v3',
             plan_sha256=sha(plan_path), progress_sha256=sha(progress_path),
             oracle_source_sha256=sha(Path(graph_oracle.__file__)), controller_sha256=sha(Path(__file__)),
             native_variants=native_variants, repetitions=repetitions,
+            oracle_cache_sha256=sha(oracle_cache_path) if oracle_cache_path else None,
             complete=False, records=records), indent=2, sort_keys=True) + '\n')
     receipt = read(output); receipt.update(complete=True, records=records,
         planned=len(plan['cells']), native_complete=sum(r['status'] == 'native_pass' for r in records))
@@ -75,4 +111,5 @@ def audit(root, label, output):
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__); p.add_argument('root', type=Path)
     p.add_argument('label'); p.add_argument('output', type=Path)
-    a = p.parse_args(); audit(a.root, a.label, a.output)
+    p.add_argument('--oracle-cache', type=Path)
+    a = p.parse_args(); audit(a.root, a.label, a.output, a.oracle_cache)

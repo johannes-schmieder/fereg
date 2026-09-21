@@ -424,19 +424,44 @@ is preserved. Both weighted 1.5 GB calls time out at ninety seconds. The
 follow-up completes all four attempts; this scoped change does not resolve
 the weighted constrained case.
 
-The thirteen-cell `ols-window-screen2.py` and fourteen-cell
-`narrow-residual-screen1.py` controllers are prepared, not executed. They
-separate the serial memory change from narrow numeric subtraction using
-out-of-envelope controls and distinct captured artifacts.
+The [scoped-window archive](benchmarks/reports/development/scoped-ols-window-local-2026-09-21/README.md)
+completes both isolated screens. All thirteen window cells and 78 calls have
+clean isolation, 26 passing native inference checks, 78 exact repeats and
+72 output audits. All 39 cross-artifact pairs have exact exports, samples and
+saved vectors. Unit ring K50/T1/all saves 121,868,720 tracked bytes, from
+645,481,767 to 523,613,047, with paired time ratio 0.9948. Other peaks are
+unchanged; all native time ratios lie between 0.9908 and 1.0171.
 
-Current resume point: run the two isolated paired screens now that independent
-auditing, builds and constrained diagnostics have finished.
-Complete current-candidate science,
-primary/holdout final blocks, constrained whole-fit checks and focused Linux
-runs before closing the milestone. The initial norm handoff is committed at
-`4708834b`; cycle experiment evidence is committed at `9e4daec9`. Six core files
-remain modified, including the tested but unaccepted window draft and earlier unaccepted
-graph kernels. Keep old
+The fourteen-cell narrow-residual screen completes 126 calls with clean
+isolation, 28 native inference checks, 84 exact repeats and six native output
+audits. All 42 native pairs have exact exports, samples and allocation peaks.
+The runtime gains are inconsistent, with ratios 0.9783–1.0345 including
+excluded controls. This experiment is rejected and reverted; prepared_fit.rs
+again exactly matches ow2. The reference audit preserves thirteen passes and
+one discrepancy. A mistaken invocation of the native-only output auditor on
+fixest is preserved as a controller error, not a scientific reference failure.
+
+Auditor v3 optionally reuses independently solved equations only with a
+matching solver source, complete prior audit, weight/VCE and verified original
+input hash. New inputs use fresh solves. Four focused controller fixtures
+pass; two fresh independent re-solves exactly reproduce cached unit/weighted
+oracles. This avoids repeating the same dense factorization in later blocks;
+each new export and each native runtime certificate is still checked.
+
+The rebuilt `owf1` candidate is
+`a2d0e6bd836c3f9af8992b9d49adcfaf669e3bac326e36ecc2f9deb12479ccb0`.
+It contains the scoped window and the preceding residual traversal. Its build,
+actual ABI and eight focused core fixtures pass. The 214-attempt archive
+verifies 5,415 stored entries, 82 omitted arrays, five successful source trees
+and the failed ow1 tree; the separate privacy scan passes 5,432 members.
+
+Current resume point: freeze owf1 for the two five-pair primary/holdout blocks
+and finish current-candidate protection/coverage. Focused Linux confirmation
+and routing validation remain required before closing the milestone. The
+initial norm handoff is committed at `4708834b`, cycle experiment evidence at
+`9e4daec9`, and the primary training screen at `d764894f`. Six core files remain
+modified, including the tested but unaccepted window and earlier graph
+kernels. Keep old
 routes where cross-platform confirmation is missing; do not inspect fresh
 routing seeds while choosing thresholds. Serial weighted slope losses remain.
 
