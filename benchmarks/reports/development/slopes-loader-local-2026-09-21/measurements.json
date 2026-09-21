@@ -1,0 +1,1934 @@
+[
+  {
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c000-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.116,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.01426025,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.06233779199999999,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c000-r0-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.102,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014848417,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.06272045799999999,
+    "plugin": "3472957d9655132bf34317e2f4bb3b280a4acc5f2f7d0a9f5b58452b73d25f96",
+    "process_returncode": 0,
+    "run": "c000-r0-slope-rhs1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.105,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs1"
+  },
+  {
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c000-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.112,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014118707999999999,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.06327125000000001,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c000-r1-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.103,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014343792,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.06420595800000001,
+    "plugin": "3472957d9655132bf34317e2f4bb3b280a4acc5f2f7d0a9f5b58452b73d25f96",
+    "process_returncode": 0,
+    "run": "c000-r1-slope-rhs1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.105,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs1"
+  },
+  {
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c000-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.116,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014188540999999999,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.064618834,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c000-r2-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.104,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014095917,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.06160666599999999,
+    "plugin": "3472957d9655132bf34317e2f4bb3b280a4acc5f2f7d0a9f5b58452b73d25f96",
+    "process_returncode": 0,
+    "run": "c000-r2-slope-rhs1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.101,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs1"
+  },
+  {
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c001-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.134,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.016509291000000002,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.09497629199999999,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c001-r0-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.139,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.032719666,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.09606445899999999,
+    "plugin": "3472957d9655132bf34317e2f4bb3b280a4acc5f2f7d0a9f5b58452b73d25f96",
+    "process_returncode": 0,
+    "run": "c001-r0-slope-rhs1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.156,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs1"
+  },
+  {
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c001-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.132,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.016887542000000002,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.09388254199999999,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c001-r1-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.138,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.016688916999999998,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.09301616700000001,
+    "plugin": "3472957d9655132bf34317e2f4bb3b280a4acc5f2f7d0a9f5b58452b73d25f96",
+    "process_returncode": 0,
+    "run": "c001-r1-slope-rhs1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.136,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs1"
+  },
+  {
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c001-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.133,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.016404834,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.092035375,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c001-r2-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.135,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs1-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.016476166,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.096602042,
+    "plugin": "3472957d9655132bf34317e2f4bb3b280a4acc5f2f7d0a9f5b58452b73d25f96",
+    "process_returncode": 0,
+    "run": "c001-r2-slope-rhs1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.139,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs1"
+  },
+  {
+    "allocation_peak_bytes": 5656297.0,
+    "campaign": "rhs2-aw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "iid_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "iid",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_seconds": 0.00249775,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.012037958000000001,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c000-r0-slope-recovery2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.024,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 5656297.0,
+    "campaign": "rhs2-aw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "iid_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "iid",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_seconds": 0.002699542,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.009139999999999999,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c000-r0-slope-rhs2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.021,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "allocation_peak_bytes": 5656345.0,
+    "campaign": "rhs2-aw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_seconds": 0.0025199999999999997,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.011673709,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c001-r0-slope-recovery2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.024,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 5656345.0,
+    "campaign": "rhs2-aw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_seconds": 0.002751167,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.01181375,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c001-r0-slope-rhs2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.024,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "allocation_peak_bytes": 28986869.0,
+    "campaign": "rhs2-aw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_seconds": 0.002772667,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.017249625,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c002-r0-slope-recovery2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.03,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 28986869.0,
+    "campaign": "rhs2-aw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_seconds": 0.002505792,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.014547541,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c002-r0-slope-rhs2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.026,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "allocation_peak_bytes": 5656297.0,
+    "campaign": "rhs2-fw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "iid_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "iid",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "",
+      "weight": "[fw=w]",
+      "weight_kind": "fw"
+    },
+    "input_seconds": 0.002328042,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.010254042000000001,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c000-r0-slope-recovery2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.022,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 5656297.0,
+    "campaign": "rhs2-fw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "iid_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "iid",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "",
+      "weight": "[fw=w]",
+      "weight_kind": "fw"
+    },
+    "input_seconds": 0.002511083,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.009079292,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c000-r0-slope-rhs2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.02,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "allocation_peak_bytes": 5656345.0,
+    "campaign": "rhs2-fw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[fw=w]",
+      "weight_kind": "fw"
+    },
+    "input_seconds": 0.002445416,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.012474124999999999,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c001-r0-slope-recovery2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.024,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 5656345.0,
+    "campaign": "rhs2-fw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[fw=w]",
+      "weight_kind": "fw"
+    },
+    "input_seconds": 0.002596334,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.013140374999999998,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c001-r0-slope-rhs2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.024,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "allocation_peak_bytes": 28986869.0,
+    "campaign": "rhs2-fw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[fw=w]",
+      "weight_kind": "fw"
+    },
+    "input_seconds": 0.002580792,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.017337958,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c002-r0-slope-recovery2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.029,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 28986869.0,
+    "campaign": "rhs2-fw-science",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 16385,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[fw=w]",
+      "weight_kind": "fw"
+    },
+    "input_seconds": 0.0029204590000000002,
+    "input_sha256": "c25be6d9a6feb75e50ddda3d5f4ed9b1a950decc9ea20afb7ea41980f3796a6a",
+    "native_seconds": 0.042188166,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c002-r0-slope-rhs2",
+    "sample_sha256": "578bf0f3b123618e0f99d64c5533f2bb37a2dd14aba47ebc0fb3c4e6408ce703",
+    "seconds": 0.067,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c000-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.113,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014058917,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.059154665999999995,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c000-r0-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.1,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.012123209000000001,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.055477333,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c000-r0-slope-rhs2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.095,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c000-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.118,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014086875,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.063339042,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c000-r1-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.103,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.012145290999999999,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.058068167000000004,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c000-r1-slope-rhs2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.096,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c000-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.113,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014172291,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.061241624999999994,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c000-r2-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.104,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 84790720.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.012100709,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.056566041,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c000-r2-slope-rhs2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.094,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c001-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.136,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.01635975,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.09448562499999999,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c001-r0-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.138,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014068458,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.089022208,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c001-r0-slope-rhs2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.129,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c001-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.131,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.016409875,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.093049833,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c001-r1-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.135,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014132041000000001,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.086784917,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c001-r1-slope-rhs2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.126,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  },
+  {
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "run": "c001-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.135,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "fixest"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.016499208,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.093260125,
+    "plugin": "bef34c8c45052866f2bde2b52e0041183013f58e089ba86995f7b246cf3c9c41",
+    "process_returncode": 0,
+    "run": "c001-r2-slope-recovery2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.136,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-recovery2"
+  },
+  {
+    "allocation_peak_bytes": 90699788.0,
+    "campaign": "rhs2-pw-primary",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_seconds": 0.014081,
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "native_seconds": 0.088067,
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "run": "c001-r2-slope-rhs2",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "seconds": 0.129,
+    "sentinel": true,
+    "status": "pass",
+    "variant": "slope-rhs2"
+  }
+]

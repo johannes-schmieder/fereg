@@ -92,9 +92,91 @@ public no-intercept recipe remains excluded by a separate compiled-model
 check. It is experimental and uncommitted; preserve its failed performance
 hypothesis and investigate the actual recipe before retaining any guard change.
 Artifacts and receipts remain under `target/ols-next-20260921`.
+The [loader checkpoint](benchmarks/reports/development/slopes-loader-local-2026-09-21/README.md)
+now accepts the actual no-constant RHS layout under [ADR 0089](docs/adr/0089-slope-only-loaded-rhs.md).
+Its portable archives retain the first ineffective guard experiment, all 48
+science/screen calls, four constrained-memory attempts and failed generation/
+fixture/archive attempts. Exact production-prefix and later-test bindings are
+recorded separately; nothing is installed or pushed.
 
-Current resume point: large graph timing screens, actual slope-only input recipe,
-narrow two-FE margins and measured auto calibration. Protected controls, final
+The sequential 168-cell large graph screen at `target/g21l` is paused after
+114 complete three-pair cells and a baseline timeout on bottleneck-ring K6
+unit-weight clustered/all outputs (cell 113). The next call was interrupted
+deliberately; preserve `large-screen-pause.json` under the local artifact root.
+`graph-screen-partial-score1.json` records 82 comparable timing wins and four
+losses, plus 28 FW native controls. The near-tie degree-six robust fits and
+5% clustered/full-output loss remain targets. Unfinished cells remain open.
+A bounded recovery diagnostic reproduces the ring timeout after fit/inference,
+and samples recovery fallback work. Its earlier trace-directory warmup failure
+is retained. New fallback instrumentation is being built; no fix is yet accepted.
+
+The draft large-inference oracle passes 92 full-dummy SVD/literal-expansion
+cross-checks (`graph-inference-oracle-check2`). The first checker failure exposed
+LAPACK's default cutoff retaining a redundant dummy direction; the checker now
+uses its pseudoinverse's explicit cutoff and asserts the known graph rank.
+No estimator tolerance changed. Native large-case audits remain open.
+The slope-only loading layout is still uncommitted. `slope-rhs2` plugin
+`87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202`
+passes the expanded SPI test, six pipeline tests, and AW/FW output checks.
+Its PW three-slope-only K6 screen improves robust/all outputs from 103 to 95 ms
+and clustered/all outputs from 136 to 129 ms; fixest medians are 113/135 ms.
+Both native peak values are unchanged. Preserve two earlier expanded SPI
+fixture failures (exactly absorbed finite regressors, then unused sources) and
+their corrections. The first failure remains an explicit rejection test.
+
+The constrained whole-fit slope check at `target/g21m{f,l,a,0}` passes:
+90,000,000 usable bytes exclude the 111,692,448-byte fast plan, while low and auto
+select the 47,730,304-byte plan and agree with the unconstrained fit. The receipt
+is `rhs2-whole-fit-memory-check.json`; this is diagnostic, not complete allocation
+proof. Four earlier 65,536-row attempts failed input generation before calling
+Stata; the valid repeat uses 65,535 rows and preserves those failures.
+
+All 114 completed large cells pass the independent graph inference audit; all
+168 candidate output bundles pass reconstruction/normal-equation checks.
+`graph-screen-partial-oracle1.json` and the output audit retain the incomplete
+cells and 26 reference mismatches. No default reference failure is reclassified.
+
+The saved-effect timeout is traced to reconstruction misses: direct graph
+recovery reaches 1.45e-9 and SD/ordinary LSMR recovery 5.63e-10, above the existing
+1e-10 threshold; the subsequent MAP fallback stalls. Explicit fit `solver(lsmr)`
+passes with retained coefficients. Experimental `sl1` plugin
+`09918b81095bb01637716a59758d275e04ca5f78134ce655ac0e761ab3828ca6`
+uses the existing memory-admitted direct LSMR route after an unreconstructed
+capped Schur attempt. Sixteen focused Schur tests pass. On bottleneck unit K6,
+three-pair robust/all-clustered medians are 304/478 ms versus fixest 2,598/2,661 ms.
+All six native direct-oracle checks and three output audits pass; fixest's six
+direct-oracle discrepancies remain. A stopped build with a shared Cargo target
+is retained but never used; `sl1` was built in its own target. The extra route
+assertion, broader calibration, memory and Linux confirmation remain open.
+
+Degree-six profiling identifies about 28 ms in clustered covariance and 9 ms
+in bread/raw-residual construction. The [narrow clustered checkpoint](benchmarks/reports/development/narrow-cluster-local-2026-09-21/README.md)
+accepts `ord6` under [ADR 0090](docs/adr/0090-narrow-ols-ordered-cluster-reduction.md).
+Three-pair unit/AW/PW/FW two-way clustered full-output medians improve from
+141/151/156/156 to 123/132/135/133 ms; comparable fixest medians are 134/153/157 ms.
+All 81 applications and independent inference checks pass, along with 21
+candidate output audits and an exact group-meat oracle at 1/8/16 workers.
+Default reference output discrepancies remain. Unit native peak falls from
+77,750,133 to 65,362,880 bytes. This isolated artifact includes neither loader
+nor Schur changes. Protected controls/final blocks remain open.
+
+Uncommitted `sl2` follows the actually successful solver after capped Schur
+fallback, avoiding a redundant Schur retry on the final residual. `nr1` also
+binds numeric raw-residual columns once; its focused bitwise test passes but
+the initial screen gains only 2–7 ms and weighted robust ties/losses remain.
+The first `sl2` screen was rejected before application dispatch because its
+chosen root already held a small-science controller; that refusal is preserved
+and the fresh-root repeat is running. Serial K10 slope profiling still places
+roughly 12 ms in absorber preparation, 13 ms in raw moments and 25 ms in initial
+cached absorption. Routing, serial work and these residual drafts remain open.
+
+SCC read-only preflight failed authentication before remote inspection or any
+mutation (`target/ols-next-20260921/scc-readonly-preflight.txt`). A renewal
+question is pending with Johannes; Mac work continues. No SCC job was submitted.
+
+Current resume point: collect the large screen, validate the drafted slope-only
+input recipe and independent large-inference oracle, then narrow two-FE margins
+and measured auto calibration. Protected controls, final
 repeated blocks, constrained whole-fit memory and Linux confirmation remain
 open. Fresh validation seeds remain untouched. No push is authorized.
 

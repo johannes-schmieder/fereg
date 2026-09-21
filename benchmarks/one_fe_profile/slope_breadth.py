@@ -22,8 +22,13 @@ CASES['cluster2_outputs']=('cluster c1 c2','~c1+c2','all')
 CASES['robust_outputs']=('robust','hetero','all')
 
 
-def stage(root, names, intercept):
+def stage(root, names, intercept, memory_limit=None):
     folder=breadth.stage(root,base.profile)
+    if memory_limit is not None:
+        p = folder / 'measure.py'
+        marker = '    environment.update(thread_environment(threads))'
+        p.write_text(breadth.replace_once(p.read_text(), marker,
+            marker + '\n    environment["FEREG_MEMORY_LIMIT_BYTES"] = ' + repr(str(memory_limit))))
     p=folder/'r_worker.R'; text=p.read_text()
     effect='g1['+('' if intercept else '[')+','.join(names)+']'+('' if intercept else ']')
     text=breadth.replace_once(text,'paste(cell$effects, collapse=" + ")',json.dumps(effect))
@@ -218,9 +223,13 @@ def audit_outputs(path,output,cell):
 def main(a):
     if a.weight_kind=='fw' and 'fixest' in a.variants:raise ValueError('Ordinary fixest weights are not an FW inference comparator')
     if a.weight_kind=='pw' and any(not CASES[c][0] for c in a.cases):raise ValueError('PW requires robust or clustered inference')
+    if a.memory_limit_bytes is not None:
+        if a.memory_limit_bytes <= 0: raise ValueError('Memory limit must be positive')
+        os.environ['FEREG_MEMORY_LIMIT_BYTES'] = str(a.memory_limit_bytes)
+    memory_limit = os.environ.get('FEREG_MEMORY_LIMIT_BYTES')
     root=a.root.resolve();root.mkdir(parents=True,exist_ok=False);(root/'work/refs').mkdir(parents=True)
     names=['z']+[f'z{i}' for i in range(2,a.slope_count+1)];intercept=not a.slope_only
-    folder=stage(root,names,intercept);sys.path.insert(0,str(folder));measure=base.load('slope_measure_breadth',folder/'measure.py').measure
+    folder=stage(root,names,intercept,memory_limit);sys.path.insert(0,str(folder));measure=base.load('slope_measure_breadth',folder/'measure.py').measure
     artifacts=a.artifacts.resolve();identities={}
     for variant in a.variants:
         if variant!='fixest':
@@ -234,13 +243,16 @@ def main(a):
     for k,t,case in itertools.product(a.widths,a.threads,a.cases):
         vce,r_vce,outputs=CASES[case]
         term='g1'+('##' if intercept else '#')+'c.('+ ' '.join(names)+')'
+        fit_options = ['residuals(out_resid)'] if outputs == 'all' else []
+        if a.memory: fit_options.append(f'memory({a.memory})')
         cells.append(dict(model='ols',design='one_fe',n=a.n,k=k,threads=t,effects=['g1'],
             absorb=('out_fe=' if outputs!='none' else '')+term,vce=vce,r_vce=r_vce,outputs=outputs,case=case,
             weight_kind=a.weight_kind,weight='' if a.weight_kind=='none' else f'[{a.weight_kind}=w]',
-            fit_options='residuals(out_resid)' if outputs=='all' else '',intercept=intercept,slope_names=names,seed=a.seed,section='width'))
+            fit_options=' '.join(fit_options),intercept=intercept,slope_names=names,seed=a.seed,section='width'))
     plan=dict(schema='one-fe-slope-breadth-v1',cells=cells,variants=a.variants,repeats=a.repeats,diagnostic=a.trace,solver=a.solver,
         identities=identities,reference=reference,controller={p.name:base.sha(p) for p in folder.iterdir() if p.is_file()},
-        runner_sha256=base.sha(Path(__file__)),parent_runner_sha256=base.sha(Path(base.__file__)))
+        runner_sha256=base.sha(Path(__file__)),parent_runner_sha256=base.sha(Path(base.__file__)),
+        memory_limit_bytes=int(memory_limit) if memory_limit else None)
     base.write(root/'plan.json',plan)
     manifest=json.loads((REPO/'benchmarks/systematic/manifest.json').read_text());manifest['measurement'].update(command_timeout_seconds=120,rss_interval_seconds=.05)
     inputs={}
@@ -295,4 +307,6 @@ if __name__=='__main__':
     p.add_argument('--solver',choices=['auto','map','cg','lsmr'],default='auto');p.add_argument('--weight-kind',choices=['none','aw','pw','fw'],default='none')
     p.add_argument('--slope-count',type=int,choices=[1,2,3],default=1);p.add_argument('--slope-only',action='store_true')
     p.add_argument('--cases',choices=list(CASES),nargs='+',default=['iid'])
+    p.add_argument('--memory', choices=['auto', 'fast', 'low'])
+    p.add_argument('--memory-limit-bytes', type=int, help='recorded development whole-action memory test seam')
     main(p.parse_args())

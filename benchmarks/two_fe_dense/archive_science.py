@@ -9,7 +9,7 @@ import zipfile
 def sha(data): return hashlib.sha256(data).hexdigest()
 
 
-def archive(roots, output, compact=False):
+def archive(roots, output, compact=False, omit_output_arrays=False):
     repo = Path(__file__).resolve().parents[2]
     output.mkdir(parents=True, exist_ok=False)
     records, hashes, campaigns = [], {}, []
@@ -28,6 +28,10 @@ def archive(roots, output, compact=False):
             relative = root.name + '/' + str(path.relative_to(root))
             raw = path.read_bytes(); clean = raw if path.suffix == '.bin' else portable(raw)
             entry = dict(original_sha256=sha(raw), portable_sha256=sha(clean))
+            if omit_output_arrays and path.name == 'outputs.bin':
+                entry.update(storage='local_only', bytes=len(raw))
+                hashes[relative] = entry
+                return
             if compact and path.name == 'outputs.bin':
                 entry['archive_member'] = object_reference(clean, '.bin')
                 hashes[relative] = entry
@@ -74,4 +78,6 @@ def archive(roots, output, compact=False):
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__); p.add_argument('output', type=Path); p.add_argument('roots', nargs='+', type=Path)
     p.add_argument('--compact', action='store_true', help='store shared fingerprints and duplicate vectors once, with explicit hash references')
-    a = p.parse_args(); archive(a.roots, a.output, a.compact)
+    p.add_argument('--omit-output-arrays', action='store_true',
+                   help='retain large output vectors locally with explicit byte counts and hashes')
+    a = p.parse_args(); archive(a.roots, a.output, a.compact, a.omit_output_arrays)

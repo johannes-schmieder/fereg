@@ -136,7 +136,7 @@ struct EstimateAction {
     preparation_memory: crate::ols_preparation_memory::OlsPreparationMemory,
     frame_memory: crate::ols_frame_memory::OlsFrameMemory,
     generated_columns: usize,
-    loaded_rhs_width: Option<usize>,
+    loaded_rhs_layout: Option<crate::numeric_pipeline::NumericRhsLayout>,
     prepared_owner_bytes: u128,
     execution_parent_bytes: u128,
     output_parent_bytes: u128,
@@ -236,11 +236,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &action.request, spi.nobs()?, 0,
         action.metadata_owner_bytes, action.memory_plan.usable_bytes,
     )?;
-    let input_team = (action.candidate_all
-        && !action.request.absorbed_terms.is_empty()
-        && action.request.absorbed_terms.iter().all(|term| term.intercept
-            && term.categorical_sources.len() == 1
-            && (term.slope_sources.is_empty() || action.request.absorbed_terms.len() == 1)))
+    let input_team = (action.candidate_all && numeric_pipeline_effects_supported(&action.request))
         .then(|| ThreadTeam::new(action.fit.execution.threads));
     let mut loaded_rhs = None;
     let rhs_budget = if action.fit.execution.mode != PreparedOlsExecutionMode::Fast { 0 } else { action.memory_plan.usable_bytes.map_or(usize::MAX, |usable| {
@@ -256,7 +252,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         input_team,
         &mut loaded_rhs,
         rhs_budget,
-        action.loaded_rhs_width,
+        action.loaded_rhs_layout,
     )?;
     action.loaded_fit_workspace_bytes = loaded_rhs.as_ref().map_or(0, |rows| rows.capacity() as u128 * 8);
     action.input_peak_bytes = input_memory.peak();
@@ -1292,7 +1288,7 @@ impl EstimateActionSpec {
             preparation_memory,
             frame_memory,
             generated_columns: prepared_model.columns.len(),
-            loaded_rhs_width: numeric_loaded_rhs_width(&prepared_model),
+            loaded_rhs_layout: numeric_loaded_rhs_layout(&prepared_model),
             prepared_owner_bytes: 0,
             execution_parent_bytes: 0,
             output_parent_bytes: 0,
@@ -1653,13 +1649,23 @@ pub(crate) fn load_ols_input_with_memory(
     load_ols_input_with_team(request, candidate_all, input_complete, memory, spi, None, &mut None, 0, None)
 }
 
+fn numeric_pipeline_effects_supported(request: &OlsRequestV1) -> bool {
+    !request.absorbed_terms.is_empty()
+        && request.absorbed_terms.iter().all(|term| {
+            term.categorical_sources.len() == 1
+                && (term.slope_sources.is_empty() || request.absorbed_terms.len() == 1)
+                && (term.intercept || (1..=3).contains(&term.slope_sources.len()))
+        })
+}
+
 // Use the already validated finite model, including its cluster-source graph.
 // Loading only materializes this recipe; the final fit checks every row/value.
-fn numeric_loaded_rhs_width(model: &fereg_core::ols::PreparedOlsModel) -> Option<usize> {
-    (matches!(model.columns.last().map(|c| &c.kind), Some(PreparedOlsColumnKind::Intercept))
-        && model.columns[..model.columns.len().saturating_sub(1)].iter().enumerate().all(|(index, column)|
-            matches!(column.kind, PreparedOlsColumnKind::Continuous { prepared_source_index, .. } if index == prepared_source_index)))
-        .then_some(model.columns.len() + 1)
+fn numeric_loaded_rhs_layout(model: &fereg_core::ols::PreparedOlsModel) -> Option<crate::numeric_pipeline::NumericRhsLayout> {
+    let append_intercept = matches!(model.columns.last().map(|c| &c.kind), Some(PreparedOlsColumnKind::Intercept));
+    let numeric = model.columns.len().saturating_sub(usize::from(append_intercept));
+    model.columns[..numeric].iter().enumerate().all(|(index, column)|
+        matches!(column.kind, PreparedOlsColumnKind::Continuous { prepared_source_index, .. } if index == prepared_source_index))
+        .then_some(crate::numeric_pipeline::NumericRhsLayout { width: model.columns.len() + 1, append_intercept })
 }
 
 fn load_ols_input_with_team(
@@ -1671,7 +1677,7 @@ fn load_ols_input_with_team(
     team: Option<ThreadTeam>,
     rhs: &mut Option<Vec<f64>>,
     rhs_budget: usize,
-    compiled_rhs_width: Option<usize>,
+    compiled_rhs_layout: Option<crate::numeric_pipeline::NumericRhsLayout>,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
     let mut candidate = reserved_filled(n, candidate_all, "OLS candidate marker")?;
@@ -1740,7 +1746,7 @@ fn load_ols_input_with_team(
     let all_sources_numeric = source_loaders
         .iter()
         .all(|(_, loader)| matches!(loader, OlsSourceLoader::Numeric(_)));
-    let mut rhs_width = 0;
+    let mut rhs_layout = None;
     if candidate_all && all_sources_numeric {
         if let Some(team) = team {
                 let width = numeric_width;
@@ -1748,14 +1754,12 @@ fn load_ols_input_with_team(
                 let min_numeric_width = if team.threads() >= 8 { 3 } else { 9 };
                 if spi.supports_numeric_rows() && team.threads() > 1 && n >= 16_384
                     && (min_numeric_width..=64).contains(&width)
-                    && !request.absorbed_terms.is_empty()
-                    && request.absorbed_terms.iter().all(|term| term.intercept
-                        && term.categorical_sources.len() == 1
-                        && (term.slope_sources.is_empty() || request.absorbed_terms.len() == 1))
+                    && numeric_pipeline_effects_supported(request)
                 {
-                    if let Some(compiled_width) = compiled_rhs_width.filter(|w| (min_rhs_width..=width).contains(w)) {
-                        rhs_width = compiled_width;
-                        if let Some(elements) = n.checked_mul(rhs_width) {
+                    if let Some(layout) = compiled_rhs_layout.filter(|layout| (min_rhs_width..=width).contains(&layout.width)
+                        && (layout.append_intercept || (request.absorbed_terms.len() == 1
+                            && (1..=3).contains(&request.absorbed_terms[0].slope_sources.len())))) {
+                        if let Some(elements) = n.checked_mul(layout.width) {
                             if let Some(bytes) = elements.checked_mul(8).filter(|bytes| *bytes <= rhs_budget && *bytes <= memory.remaining().saturating_sub(2 * 4096 * width * 8 + 4096)) {
                                 memory.admit(bytes as u128)?;
                                 let mut rows = Vec::new();
@@ -1763,6 +1767,7 @@ fn load_ols_input_with_team(
                                 if rows.capacity() == elements {
                                     memory.retain(bytes as u128)?;
                                     *rhs = Some(rows);
+                                    rhs_layout = Some(layout);
                                 }
                             }
                         }
@@ -1793,7 +1798,7 @@ fn load_ols_input_with_team(
             }
         }
         crate::numeric_pipeline::try_read_reserved(spi, &positions, n, &mut columns,
-            &mut missing, team.expect("deferred input has a team"), memory, rhs.as_mut().map(|rows| (rows, rhs_width)))?
+            &mut missing, team.expect("deferred input has a team"), memory, rhs.as_mut().zip(rhs_layout))?
     } else { false };
     if defer_columns && !reserved_read {
         // A rejected optional path has not read observations. Restore the
@@ -1858,7 +1863,7 @@ fn load_ols_input_with_team(
         }
         let pipelined = if reserved_read { true } else if candidate_all && all_sources_numeric {
             if let Some(team) = team {
-                crate::numeric_pipeline::try_read_with_rhs(spi, &positions, &mut columns, &mut missing, team, memory, rhs.as_mut().map(|rows| (rows, rhs_width)))?
+                crate::numeric_pipeline::try_read_with_rhs(spi, &positions, &mut columns, &mut missing, team, memory, rhs.as_mut().zip(rhs_layout))?
             } else { false }
         } else { false };
         if !pipelined {
@@ -5617,7 +5622,7 @@ mod tests {
                         sources: if extra_sources == 0 { vec![SourceId::new(11).unwrap()] }
                             else { vec![SourceId::new(12).unwrap(), SourceId::new(13).unwrap()] } }],
                 };
-                let compiled_width = numeric_loaded_rhs_width(&clustered_request.validate_and_compile().unwrap());
+                let compiled_width = numeric_loaded_rhs_layout(&clustered_request.validate_and_compile().unwrap());
                 let reference_loaded = load_ols_input(&request, true, false, &mut spi.clone()).unwrap();
                 let mut rhs = None;
                 let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
@@ -5671,10 +5676,10 @@ mod tests {
     fn slope_loaded_rhs_preserves_classification_and_inference() {
         let (_, mut base) = fixture(OlsVceKind::Iid);
         base.nobs = 16_387;
-        base.nvars = 11;
+        base.nvars = 14;
         base.numeric_rows_enabled = true;
         base.data.clear();
-        for row in 1..=base.nobs { for variable in 1..=11 {
+        for row in 1..=base.nobs { for variable in 1..=14 {
             let value = match variable { 1 => 1.0, 9 => ((row-1)/7) as f64,
                 11 => (1+row%7) as f64, _ => ((row*variable as usize) as f64).sin() };
             base.data.insert((variable,row),(value,false));
@@ -5699,27 +5704,57 @@ mod tests {
                 template.model.terms.push(term);
             }
         }
-        for weighted in [false,true] { for case in 0..4 {
+        for weighted in [false,true] { for case in 0..11 {
             let mut request=template.clone();let mut spi=base.clone();
             if weighted { request.bindings.push(OlsInputBinding {stata_var_position:11,role:OlsInputRole::AnalyticWeight}); }
             match case { 1=> {spi.data.insert((10,3),(1e100,true));},
                 2=> {spi.data.insert((9,3),(1e100,true));},
                 3=> {request.absorbed_terms[0].intercept=false;}, _=>{} }
+            if case >= 4 {
+                request.absorbed_terms[0].intercept = false;
+                request.include_intercept = false;
+            }
+            if case == 5 { spi.data.insert((10,3),(1e100,true)); }
+            if (6..10).contains(&case) {
+                for id in 9..=if case == 9 { 11 } else { 10 } {
+                    let source = SourceId::new(id).unwrap();
+                    request.model.sources.push(SourceEntry { id: source, canonical_name: format!("z{id}") });
+                    request.bindings.push(OlsInputBinding { stata_var_position: id + 3, role: OlsInputRole::NumericSource(source) });
+                    request.absorbed_terms[0].slope_sources.push(source);
+                }
+            }
+            if case == 10 {
+                request.absorbed_terms[0].slope_sources = vec![SourceId::new(8).unwrap(), SourceId::new(5).unwrap(), SourceId::new(6).unwrap()];
+            }
             let plan=plan_categorical_absorbed_request(&request).unwrap();
-            let compiled=numeric_loaded_rhs_width(&plan.availability_request().validate_and_compile().unwrap());
+            let compiled=numeric_loaded_rhs_layout(&plan.availability_request().validate_and_compile().unwrap());
             let reference=load_ols_input(&request,true,false,&mut spi.clone()).unwrap();
             let mut rhs=None;let mut memory=loading_memory(&request,spi.nobs,0,0,None).unwrap();
-            let required=spi.nobs*8*8;
+            let required = if case == 7 { 0 } else { spi.nobs * 8 * 8 };
+            let team = (case != 8).then(|| ThreadTeam::new(ThreadConfig::from_requested(8,false).unwrap()));
             let loaded=load_ols_input_with_team(&request,true,false,&mut memory,&mut spi,
-                Some(ThreadTeam::new(ThreadConfig::from_requested(8,false).unwrap())),&mut rhs,required,compiled).unwrap();
+                team,&mut rhs,required,compiled).unwrap();
             assert_eq!(loaded,reference);
-            assert_eq!(rhs.is_some(),case!=3);
+            assert_eq!(rhs.is_some(), case < 7 || case == 10);
+            if let Some(rows) = rhs.as_ref() {
+                let layout = compiled.unwrap();
+                assert_eq!(rows.len(), spi.nobs * layout.width);
+                assert_eq!(layout.append_intercept, request.include_intercept);
+            }
             let prepared=prepare_categorical_ols_data_owned(&request,loaded).unwrap();
             let mut config=PreparedOlsRobustConfig::default();
             config.fit.execution.threads=ThreadConfig::from_requested(8,false).unwrap();
-            let expected=fereg_core::ols::fit_prepared_categorical_ols_robust_map(&prepared,config).unwrap_or_else(|error| panic!("weighted={weighted} case={case}: {error:?}"));
+            let expected=fereg_core::ols::fit_prepared_categorical_ols_robust_map(&prepared,config);
             let actual=fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
-                &prepared,config,rhs.map(LoadedOlsRows::from)).unwrap();
+                &prepared,config,rhs.map(LoadedOlsRows::from));
+            if case == 10 {
+                // The existing fit rejects this exactly absorbed finite-score
+                // fixture; loading reuse must preserve that failure boundary.
+                assert_eq!(expected.unwrap_err(), actual.unwrap_err());
+                continue;
+            }
+            let expected=expected.unwrap_or_else(|error| panic!("weighted={weighted} case={case}: {error:?}"));
+            let actual=actual.unwrap();
             assert_eq!(expected.fit().coefficients(),actual.fit().coefficients());
             assert_eq!(expected.covariance(),actual.covariance());
             assert_eq!(expected.statistics(),actual.statistics());
@@ -5811,7 +5846,7 @@ mod tests {
                 }
                 let budget = if case == 6 { 0 } else { spi.nobs * (k + 2) * 8 };
                 let threads = ThreadConfig::from_requested(if case == 7 { 4 } else { 8 }, false).unwrap();
-                let compiled_width = numeric_loaded_rhs_width(&request.validate_and_compile().unwrap());
+                let compiled_width = numeric_loaded_rhs_layout(&request.validate_and_compile().unwrap());
                 let reference = load_ols_input(&request, candidate_all, false, &mut spi.clone()).unwrap();
                 let mut rhs = None;
                 let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();

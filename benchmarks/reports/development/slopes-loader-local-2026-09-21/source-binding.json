@@ -1,0 +1,16 @@
+{
+  "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+  "base_commit": "ffa3bde17997ddf3dbf420f97113dcdf588569f8",
+  "overlays": {
+    "crates/fereg-plugin/src/estimate.rs": {
+      "artifact_source_sha256": "df1c3d099d6c5eb26d006cd49c0a37ab858661db070d4a8a404df1f358867232",
+      "current_source_sha256": "84213af3aef0e38762d90aaaea3aebe75fcf5bb810252305efefcd58b3d3fb20",
+      "production_prefix_equal": true
+    },
+    "crates/fereg-plugin/src/numeric_pipeline.rs": {
+      "artifact_source_sha256": "e3179b8806fd9297fc2a6e9195ceaad759b40850eb3f29e4496badabc8f99310",
+      "current_source_sha256": "e3179b8806fd9297fc2a6e9195ceaad759b40850eb3f29e4496badabc8f99310",
+      "production_prefix_equal": true
+    }
+  }
+}

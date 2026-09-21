@@ -1,0 +1,214 @@
+[
+  {
+    "campaign": "rhs1-pw-primary",
+    "case": "cluster2_outputs",
+    "intercept": false,
+    "k": 6,
+    "slopes": 3,
+    "threads": 16,
+    "variants": {
+      "fixest": {
+        "median": 0.133,
+        "median_paired_ratio": 1.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "seconds": [
+          0.134,
+          0.132,
+          0.133
+        ]
+      },
+      "slope-recovery2": {
+        "median": 0.138,
+        "median_paired_ratio": 1.037313432835821,
+        "paired_ratios": [
+          1.037313432835821,
+          1.0454545454545454,
+          1.0150375939849625
+        ],
+        "seconds": [
+          0.139,
+          0.138,
+          0.135
+        ]
+      },
+      "slope-rhs1": {
+        "median": 0.139,
+        "median_paired_ratio": 1.0451127819548873,
+        "paired_ratios": [
+          1.164179104477612,
+          1.0303030303030303,
+          1.0451127819548873
+        ],
+        "seconds": [
+          0.156,
+          0.136,
+          0.139
+        ]
+      }
+    },
+    "weight_kind": "pw"
+  },
+  {
+    "campaign": "rhs1-pw-primary",
+    "case": "robust_outputs",
+    "intercept": false,
+    "k": 6,
+    "slopes": 3,
+    "threads": 16,
+    "variants": {
+      "fixest": {
+        "median": 0.116,
+        "median_paired_ratio": 1.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "seconds": [
+          0.116,
+          0.112,
+          0.116
+        ]
+      },
+      "slope-recovery2": {
+        "median": 0.103,
+        "median_paired_ratio": 0.8965517241379309,
+        "paired_ratios": [
+          0.8793103448275861,
+          0.9196428571428571,
+          0.8965517241379309
+        ],
+        "seconds": [
+          0.102,
+          0.103,
+          0.104
+        ]
+      },
+      "slope-rhs1": {
+        "median": 0.105,
+        "median_paired_ratio": 0.9051724137931033,
+        "paired_ratios": [
+          0.9051724137931033,
+          0.9375,
+          0.8706896551724138
+        ],
+        "seconds": [
+          0.105,
+          0.105,
+          0.101
+        ]
+      }
+    },
+    "weight_kind": "pw"
+  },
+  {
+    "campaign": "rhs2-pw-primary",
+    "case": "cluster2_outputs",
+    "intercept": false,
+    "k": 6,
+    "slopes": 3,
+    "threads": 16,
+    "variants": {
+      "fixest": {
+        "median": 0.135,
+        "median_paired_ratio": 1.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "seconds": [
+          0.136,
+          0.131,
+          0.135
+        ]
+      },
+      "slope-recovery2": {
+        "median": 0.136,
+        "median_paired_ratio": 1.0147058823529411,
+        "paired_ratios": [
+          1.0147058823529411,
+          1.0305343511450382,
+          1.0074074074074073
+        ],
+        "seconds": [
+          0.138,
+          0.135,
+          0.136
+        ]
+      },
+      "slope-rhs2": {
+        "median": 0.129,
+        "median_paired_ratio": 0.9555555555555555,
+        "paired_ratios": [
+          0.9485294117647058,
+          0.9618320610687022,
+          0.9555555555555555
+        ],
+        "seconds": [
+          0.129,
+          0.126,
+          0.129
+        ]
+      }
+    },
+    "weight_kind": "pw"
+  },
+  {
+    "campaign": "rhs2-pw-primary",
+    "case": "robust_outputs",
+    "intercept": false,
+    "k": 6,
+    "slopes": 3,
+    "threads": 16,
+    "variants": {
+      "fixest": {
+        "median": 0.113,
+        "median_paired_ratio": 1.0,
+        "paired_ratios": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "seconds": [
+          0.113,
+          0.118,
+          0.113
+        ]
+      },
+      "slope-recovery2": {
+        "median": 0.103,
+        "median_paired_ratio": 0.8849557522123894,
+        "paired_ratios": [
+          0.8849557522123894,
+          0.8728813559322034,
+          0.9203539823008848
+        ],
+        "seconds": [
+          0.1,
+          0.103,
+          0.104
+        ]
+      },
+      "slope-rhs2": {
+        "median": 0.095,
+        "median_paired_ratio": 0.831858407079646,
+        "paired_ratios": [
+          0.8407079646017699,
+          0.8135593220338984,
+          0.831858407079646
+        ],
+        "seconds": [
+          0.095,
+          0.096,
+          0.094
+        ]
+      }
+    },
+    "weight_kind": "pw"
+  }
+]

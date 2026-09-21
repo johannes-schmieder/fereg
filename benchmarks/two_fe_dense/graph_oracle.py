@@ -7,6 +7,7 @@ The small dense-SVD oracle in run.py provides a separate implementation check.
 """
 import argparse
 import hashlib
+import itertools
 import json
 from pathlib import Path
 
@@ -22,7 +23,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def solve(data, kind):
+def solve(data, kind, vce=''):
     info = json.loads(data.with_suffix('.json').read_text())
     assert sha(data) == info['sha256']
     n, k = info['n'], info['k']
@@ -79,10 +80,39 @@ def solve(data, kind):
     total_rank = nl + nr - components + k
     assert effective_n > total_rank
     bread = np.linalg.inv(within[:, 1:].T @ (within[:, 1:] * weight[:, None]))
-    covariance = bread * rss / (effective_n - total_rank)
+    correction_df = effective_n - total_rank
+    if not vce:
+        covariance = bread * rss / correction_df
+    else:
+        influence = (within[:, 1:] @ bread) * residual[:, None]
+        if vce == 'robust':
+            scores = influence * (root_w if kind == 'fw' else weight)[:, None]
+            covariance = scores.T @ scores * effective_n / correction_df
+        else:
+            assert vce.startswith('cluster ')
+            names = vce.split()[1:]
+            covariance = np.zeros((k, k))
+            for count in range(1, len(names) + 1):
+                for subset in itertools.combinations(names, count):
+                    _, codes = np.unique(np.column_stack([columns[name] for name in subset]), axis=0, return_inverse=True)
+                    sums = np.column_stack([np.bincount(codes, weights=weight * influence[:, j]) for j in range(k)])
+                    covariance += (-1) ** (count + 1) * (sums.T @ sums)
+            nonnested = []
+            for effect, levels in [('g1', nl), ('g2', nr)]:
+                nested = any(pd.DataFrame({'effect': columns[effect], 'cluster': columns[name]})
+                             .groupby('effect')['cluster'].nunique().max() == 1 for name in names)
+                if not nested: nonnested.append(levels)
+            nuisance_rank = nl + nr - components if len(nonnested) == 2 else nonnested[0] if nonnested else 1
+            correction_df = effective_n - k - nuisance_rank
+            g = min(len(np.unique(columns[name])) for name in names)
+            assert correction_df > 0 and g > 1
+            covariance *= (effective_n - 1) / correction_df * g / (g - 1)
+            eig, vectors = np.linalg.eigh(covariance)
+            if eig.size and eig.min() < 0: covariance = (vectors * np.maximum(eig, 0)) @ vectors.T
     finite_score = float(np.max(np.abs(within[:, 1:].T @ (weight * residual)), initial=0) / weight.sum())
     assert finite_score < 1e-11
     return dict(beta=beta, covariance=covariance, rss=rss, n=effective_n, rank=total_rank,
+                vce=vce, correction_df=correction_df,
                 components=components, refinement_group_means=history, finite_score=finite_score,
                 direct_factor_nonzeros=int(factor.L.nnz + factor.U.nnz))
 
@@ -90,7 +120,7 @@ def solve(data, kind):
 def compare(result_path, oracle):
     run = result_path.parent
     result = json.loads(result_path.read_text())
-    assert result['status'] == 'pass' and result['cell']['vce'] == ''
+    assert result['status'] == 'pass' and result['cell']['vce'] == oracle['vce']
     names = [f'x{j}' for j in range(1, result['cell']['k'] + 1)]
     b = pd.read_csv(run / 'coefficients.csv').set_index('name').loc[names, 'value'].to_numpy(dtype=float)
     V = pd.read_csv(run / 'covariance.csv').pivot(index='row', columns='column', values='value').loc[names, names].to_numpy(dtype=float)
@@ -98,6 +128,8 @@ def compare(result_path, oracle):
                   covariance=bool(np.allclose(V, oracle['covariance'], rtol=1e-6, atol=1e-10)),
                   rss=bool(np.isclose(result['metadata']['rss'], oracle['rss'], rtol=1e-8, atol=0)),
                   effective_n=result['metadata']['N'] == oracle['n'])
+    if 'fereg_df_correction' in result['metadata']:
+        checks['correction_df'] = result['metadata']['fereg_df_correction'] == oracle['correction_df']
     return dict(run=run.name, result_sha256=sha(result_path), input_sha256=result['input_sha256'],
                 checks=checks, status='pass' if all(checks.values()) else 'mismatch',
                 coefficients_max_error=float(np.max(np.abs(b - oracle['beta']), initial=0)),
@@ -113,7 +145,7 @@ def audit(paths, output):
         result = json.loads(path.read_text())
         request = json.loads((path.parent / 'request.json').read_text())
         data = Path(request['data'])
-        key = (data, result['cell'].get('weight_kind', 'none'))
+        key = (data, result['cell'].get('weight_kind', 'none'), result['cell']['vce'])
         if key not in cache:
             cache[key] = solve(*key)
         record = compare(path, cache[key])

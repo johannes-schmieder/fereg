@@ -1,0 +1,142 @@
+[
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "iid",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "memory(fast)",
+      "intercept": true,
+      "k": 50,
+      "model": "ols",
+      "n": 65535,
+      "outputs": "none",
+      "r_vce": "iid",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_kind": "none"
+    },
+    "input_sha256": "982a43b32fb2b9ddf6e5de4275f66aad68e5399491af7657381ae4f612f00c4b",
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "root": "g21mf",
+    "run": "c000-r0-slope-rhs2",
+    "sample_sha256": null,
+    "sentinel": true,
+    "status": "worker_failure"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "iid",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "memory(low)",
+      "intercept": true,
+      "k": 50,
+      "model": "ols",
+      "n": 65535,
+      "outputs": "none",
+      "r_vce": "iid",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_kind": "none"
+    },
+    "input_sha256": "982a43b32fb2b9ddf6e5de4275f66aad68e5399491af7657381ae4f612f00c4b",
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "root": "g21ml",
+    "run": "c000-r0-slope-rhs2",
+    "sample_sha256": "83af58044ce0de3d494ab7564eb33c8abadccd2a6a9b57733c06bf825460cd09",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "iid",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "memory(auto)",
+      "intercept": true,
+      "k": 50,
+      "model": "ols",
+      "n": 65535,
+      "outputs": "none",
+      "r_vce": "iid",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_kind": "none"
+    },
+    "input_sha256": "982a43b32fb2b9ddf6e5de4275f66aad68e5399491af7657381ae4f612f00c4b",
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "root": "g21ma",
+    "run": "c000-r0-slope-rhs2",
+    "sample_sha256": "83af58044ce0de3d494ab7564eb33c8abadccd2a6a9b57733c06bf825460cd09",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "iid",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "memory(fast)",
+      "intercept": true,
+      "k": 50,
+      "model": "ols",
+      "n": 65535,
+      "outputs": "none",
+      "r_vce": "iid",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 16,
+      "vce": "",
+      "weight": "",
+      "weight_kind": "none"
+    },
+    "input_sha256": "982a43b32fb2b9ddf6e5de4275f66aad68e5399491af7657381ae4f612f00c4b",
+    "plugin": "87a05c6b4d457bdf3ef965c5b58321e6961be71f6f76cfc11dc25df6f3a08202",
+    "process_returncode": 0,
+    "root": "g21m0",
+    "run": "c000-r0-slope-rhs2",
+    "sample_sha256": "83af58044ce0de3d494ab7564eb33c8abadccd2a6a9b57733c06bf825460cd09",
+    "sentinel": true,
+    "status": "pass"
+  }
+]

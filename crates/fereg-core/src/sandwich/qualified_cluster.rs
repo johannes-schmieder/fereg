@@ -104,7 +104,9 @@ where
                 groups: reduced.groups,
             });
         }
-        let prefer_ordered = rayon::current_num_threads() > 1 && dimension >= 8;
+        let threads = rayon::current_num_threads();
+        let prefer_ordered = threads > 1 && dimension >= 8
+            || threads >= 8 && nobs >= 16_384 && dimension >= 6;
         if !prefer_ordered {
             if let Some(plan) =
                 dense_subset_plan(dimensions, mask, nobs, dimension, policy.maximum_dimensions)?
@@ -1370,6 +1372,92 @@ mod scratch_table_tests {
             target
                 .try_reserve_exact(elements)
                 .map_err(|_| allocation(label))
+        }
+    }
+
+    #[test]
+    fn narrow_threaded_cluster_meat_matches_exact_weighted_group_oracle() {
+        #[derive(Clone, Copy)]
+        struct NarrowDesign(usize, usize);
+        impl SandwichDesign for NarrowDesign {
+            fn nrows(&self) -> usize { self.0 }
+            fn dimension(&self) -> usize { self.1 }
+            fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
+                for (column, value) in output.iter_mut().enumerate() {
+                    *value = ((row * (2 * column + 1) % 19) as i64 - 9) as f64 / 8.0;
+                }
+                Ok(())
+            }
+        }
+        #[derive(Clone, Copy)]
+        struct WeightedScores(usize, usize);
+        impl SandwichScoreMultiplier for WeightedScores {
+            fn nrows(&self) -> usize { self.0 }
+            fn score_pair(&self, row: usize) -> Result<super::super::SandwichScorePair> {
+                let weight = match self.1 {
+                    0 => 1.0,
+                    1 => (1 + row % 4) as f64 / 4.0,
+                    2 => if row % 17 == 0 { 8.0 } else { 0.125 },
+                    _ => (1 + row % 5) as f64,
+                };
+                let value = weight * ((row % 11) as i64 - 5) as f64;
+                Ok(super::super::SandwichScorePair { production: value, certificate: value })
+            }
+        }
+        // Dyadic scores keep every group sum and outer product exact in f64.
+        // The independent map oracle uses integer arithmetic in units of 1/64,
+        // including noncontiguous labels, unbalanced groups and intersections.
+        let nrows = 32_771;
+        let first: Vec<u32> = (0..nrows).map(|r| if r % 7 == 0 { 17 } else { (r % 3) as u32 }).collect();
+        let second: Vec<u32> = (0..nrows).map(|r| ((r / 13) % 41) as u32 * 2).collect();
+        let dimensions: [&[u32]; 2] = [&first, &second];
+        let policy = QualifiedClusterRoutePolicy {
+            maximum_dimensions: 10, reduction_maximum_blocks: 64,
+            partial_budget_bytes: 64 << 20, ordered_rows_per_block: 16_384,
+            dense_groups_per_block: 1_024,
+        };
+        for dimension in [6, 7] {
+            for weight_kind in 0..4 {
+                let design = NarrowDesign(nrows, dimension);
+                let multipliers = WeightedScores(nrows, weight_kind);
+                for mask in 1..4 {
+                    let mut groups = std::collections::BTreeMap::<(u32, u32), Vec<i64>>::new();
+                    for row in 0..nrows {
+                        let key = (if mask & 1 != 0 { first[row] } else { 0 },
+                            if mask & 2 != 0 { second[row] } else { 0 });
+                        let group = groups.entry(key).or_insert_with(|| vec![0; dimension]);
+                        let weight_eighths = match weight_kind {
+                            0 => 8, 1 => 2 * (1 + row % 4) as i64,
+                            2 => if row % 17 == 0 { 64 } else { 1 },
+                            _ => 8 * (1 + row % 5) as i64,
+                        };
+                        for (column, value) in group.iter_mut().enumerate() {
+                            *value += weight_eighths * ((row % 11) as i64 - 5)
+                                * ((row * (2 * column + 1) % 19) as i64 - 9);
+                        }
+                    }
+                    let mut exact = vec![0i64; dimension * dimension];
+                    for group in groups.values() {
+                        for i in 0..dimension {
+                            for j in 0..dimension { exact[i * dimension + j] += group[i] * group[j]; }
+                        }
+                    }
+                    let expected: Vec<f64> = exact.iter().map(|&v| v as f64 / 4096.0).collect();
+                    for threads in [1, 8, 16] {
+                        let team = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+                        let mut reservation = Reservation::default();
+                        let actual = team.install(|| reduce_qualified_cluster_subset(
+                            &design, Some(design), multipliers, &dimensions, mask,
+                            QualifiedClusterCertificateRoute::OlsIndependentRaw, policy, &mut reservation,
+                        )).unwrap();
+                        assert_eq!(actual.groups, groups.len());
+                        assert_eq!(actual.production, expected);
+                        assert_eq!(actual.certificate, expected);
+                        assert_eq!(reservation.0.iter().any(|(label, _)|
+                            *label == "unable to reserve qualified clustered ordered partials"), threads > 1);
+                    }
+                }
+            }
         }
     }
     #[test]

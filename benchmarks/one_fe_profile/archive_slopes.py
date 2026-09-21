@@ -44,7 +44,7 @@ def archive(root, output, selected_campaigns=None):
             controller=folder/'controller'
             for path in sorted(controller.glob('*')):
                 if path.is_file() and path.suffix in ('.py','.R','.do','.json'):add(path)
-            for run in sorted((folder/'runs').iterdir()):
+            for run in sorted((folder/'runs').glob('*')):
                 if not run.is_dir():continue
                 for path in sorted(run.iterdir()):
                     if path.suffix in ('.json','.csv'):add(path)
