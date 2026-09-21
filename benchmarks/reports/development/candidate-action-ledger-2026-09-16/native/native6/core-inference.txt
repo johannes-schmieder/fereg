@@ -1,0 +1,9 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.60s
+     Running unittests src/lib.rs ($RUN/native6/target/debug/deps/fereg_core-bfb63d930001cbdd)
+
+running 2 tests
+test ols::prepared_robust::tests::score_reconstruction_admits_retained_fe_parent_before_solver_setup ... ok
+test ols::prepared_robust::tests::score_reconstruction_retains_its_separate_solver_memory_report ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 888 filtered out; finished in 0.04s
+

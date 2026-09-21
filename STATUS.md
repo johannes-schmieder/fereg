@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-20
+**Last updated:** 2026-09-21
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,30 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
+
+## Repository cleanup and development push — 2026-09-21
+
+Johannes requested committing and pushing all outstanding work, with cleanup
+first. The [cleanup receipt](benchmarks/reports/development/repository-cleanup-2026-09-21/README.md)
+records archival of the unreferenced CMG container draft outside active source,
+restoration of six orphan-only inventory edits, and removal of six regenerable
+LaTeX temporary files. No compiled estimator behavior changes. Previously
+uncommitted allocation-history reports/manifests, Veneto benchmark sources and
+aggregate receipts, and the absorbed-slope profiling report are included.
+
+Original machine-local requests and the stopped-campaign evidence ZIP remain
+local and unchanged. Portable exports preserve all numerical contents and map
+original hashes to path-redacted derivatives. The stopped campaign remains
+stopped. Private data, installed environments and raw licensed logs remain
+ignored; this does not authorize any new SCC work or campaign continuation.
+
+The repository checker reports allocation source/inventory drift against the
+older pinned snapshots after the recent optimizations. Preserve that failure;
+a new reviewed inventory checkpoint is needed before qualification. This push
+is a development checkpoint, not release qualification. JSON/Python parse and
+portable archive integrity checks accompany the cleanup. The completed local
+two-way milestone below remains exact-artifact evidence for its captured source,
+not a new qualification claim about this archival commit.
 
 ## Broad two-way OLS milestone complete — 2026-09-20
 
@@ -1000,6 +1024,22 @@ topology/inference pass reuse and output/prediction pass reduction. Guards for
 weights, changed samples, memory and multiple/slope FEs remain authoritative.
 No estimator changes, installed-package replacement or qualification occurred.
 
+## One-FE absorbed-slope investigation — 2026-09-19
+
+The [local slope investigation](benchmarks/reports/development/one-fe-absorbed-slopes-local-2026-09-19/README.md)
+isolates repeated serial certification in `absorb(g1##c.z)`. With 245,760 rows,
+49,152 groups and 16 native threads, three-run fereg/fixest medians are
+342/54 ms for ten controls and 864/193 ms for fifty. Both native projections
+finish after one sweep, but the generic automatic path runs six certificates
+per command. Diagnostic certificates consume about 68–71% of command time;
+actual projection and owned-design construction are much smaller costs.
+Thirty-eight application calls pass, including a small independent dummy oracle,
+fifteen stock comparator pairs and exact instrumented scientific exports.
+The next slope-specific boundary is direct one-partition projection with reused
+group geometry, parallel work and preserved independent terminal certification.
+No estimator change is adopted. This Mac diagnostic is separate from the
+intercept-only one-FE optimization and the light campaign's multiway slopes.
+
 ## One-FE optimization implementation — 2026-09-19
 
 **The owner-approved local Mac endpoint is achieved.** The
@@ -1338,6 +1378,363 @@ license. No installed artifacts, issue #27, push, tag, release or stopped
 campaign was changed. Earlier unrelated dirty memory work remains preserved.
 The earlier dated checkpoints below retain their historical source scope.
 
+## Candidate preparation: input, generation and worker lifetime accounting
+
+Latest tested snapshot: `5240e58-generation-capacity4`; main remains
+`5240e589400c888690666265263ad96f9b694aa6`. The
+[PPML generation report](benchmarks/reports/development/candidate-ppml-generation-memory-2026-09-16/README.md)
+records capacity admission for transferred raw inputs, factor/cluster-only
+sources, original reporting slots and both simultaneous old/new prepared
+generations. Every generation checks actual retained capacities before commit.
+The strict-checkpoint bound also charges the specialized caller's fifth
+K-sized active-identity bank. Initial generation construction now belongs to
+the preparation timing/allocation window. Classification, scientific thresholds,
+weight semantics, transactional replacement and public wire definitions remain.
+
+Final job 7608507 passes 343 native checks, Linux build/export/actual-loader
+checks and nine alternating fresh-process pairs / 18 licensed commands. All
+scientific outputs, samples/order, saved outputs and non-time solver fields are
+exact. All 18 explicit sentinels and 36 isolation checks pass. The job reserved
+28 slots, used four physical execution cores, and finished in 290 seconds with
+failed=0/exit=0 and 3.343G job maxvmem. All 39 Python checks, repository checks,
+OLS v29 and action v14 inventories pass. These structural inventories alone do
+not establish byte coverage. All checkpoint jobs are terminal.
+
+Baseline/candidate command medians are 0.316/0.300 seconds for saved-slope
+low-memory OLS, 0.107/0.108 for narrow PPML and 1.033/1.021 for weighted,
+clustered PPML with saved effects. No command or comparable phase crosses the
+5% AND 10 ms threshold. The preserved preparation flag is 0.07147/0.10903:
+the candidate window newly includes the existing initial-generation constructor.
+This is a measurement-boundary change, not an asserted 38 ms kernel slowdown.
+The first two native peaks are unchanged; weighted PPML rises 5,011 bytes to
+64,690,503. RSS, scratch, zero PPML fallbacks and per-pair observations are in
+the report. No universal speed or whole-command memory-reduction claim is made.
+The incremental baseline is unpublished `5240e58-worker-retirement1`.
+
+The report preserves the original generation1 test-syntax failure and the
+28-slot/32-host-CPU assertion failure, plus independently bound generation2/3
+checkpoints. Production Rust/Stata/build files match the tested snapshot;
+source, artifact, input and reference identities are retained. Full Rust
+formatting is not claimed: the direct check still reports layout differences.
+The installed universal plugin remains unchanged at
+`4187efdfbd6235e63c369d9b42dede6381b8a9e50b5360fd63ee237bd6c11b08`.
+
+Other completed, separately bound checkpoints from this continuation:
+
+- [Input/metadata admission](benchmarks/reports/development/candidate-input-memory-2026-09-16/README.md):
+  bounded string dictionaries and transport/compiler preflights; 183 final
+  native checks and exact-science cost/diagnostic comparisons. Original timing
+  flags and the bounded diagnostic that did not reproduce them remain.
+- [CMG containers](benchmarks/reports/development/candidate-cmg-memory-2026-09-16/README.md):
+  descriptor/Arc/spare-capacity and terminal-factor supplements; 221 native
+  checks and 18 licensed commands, with no command/phase threshold crossing.
+  This is not the full dependency-construction proof.
+- [Worker retirement](benchmarks/reports/development/candidate-worker-lifetime-2026-09-16/README.md):
+  native pool retirement joins workers; the isolated CMG shutdown draft passes
+  its focused checks and 18 exact-science commands. The 319 reported native
+  test executions include repeated plugin suites. CMG's production pin has
+  not changed; authorization to modify that separate repository is pending.
+
+**Resume boundary:** whole-action coverage remains incomplete and its ratio
+undefined. The retained raw/prepared omissions and strict caller bank are fixed;
+complete transport/ABI, construction, numerical/fallback/recovery, dependency/
+runtime and core assembly lifetimes still require proofs. Bit 7 retains its
+original strict/rollback meaning. The CMG draft is reviewable but unintegrated;
+its integration is not by itself sufficient to clear every remaining bit.
+Xcode licensing, full formatting, candidate freeze, universal/Rosetta and
+Mac/Linux packaging/installation remain later gates. The named OLS
+publication/recovery-parent item is resolved; complete recovery-frame coverage
+and the combined P0 item remain open in the [roadmap progress](https://github.com/johannes-schmieder/fereg/issues/27#issuecomment-5706676076).
+No empirical rerun, campaign restart, commit, push, tag, release or installed
+package replacement occurred. Unrelated STATUS content and receipts survive.
+
+## Candidate preparation: core PPML certification lifetime and masks
+
+The [core certification report](benchmarks/reports/development/candidate-core-certification-2026-09-16/README.md)
+records snapshot `5240e58-core-certification1`. It releases obsolete final-fit,
+Hessian and prepared-generation owners before independent certification and
+includes original/candidate-row and metadata validation masks in the checked
+publication allowance. Sequential validators combine by maximum; concurrent
+masks add. The earlier conservative parent reserve remains. Scientific rules
+and public field definitions/wire layout are unchanged.
+
+All 260 focused native checks pass (128 plugin, 46 memory, 30 result and 56
+prepared estimator), including the new four-fixture ownership probe and
+original/candidate-axis bounds. All 38 Python checks, repository checks and
+OLS v26/action v9 audits pass. Job 7598585's original exit-126 receipt is
+preserved: the snapshot copier lost the loader script's execute permission
+after native tests and compilation passed. Mode restoration changed no bytes;
+the one wrapper retry, job 7598655, verifies the identical plugin and passes
+Linux export/loader checks and nine alternating pairs / 18 licensed commands.
+Both use 28-core reservations with four physical execution cores. The retry
+finished in 61 seconds, failed=0/exit=0. All checkpoint jobs are terminal.
+
+Scientific outputs, sample/order, solver non-time fields and saved outputs
+match exactly. Complete-command baseline/candidate medians are 0.319/0.296
+seconds (saved-slope OLS), 0.124/0.126 (narrow PPML) and 1.053/1.033 (weighted,
+clustered PPML with saved effects). No command or reported phase crosses the
+5% AND 10 ms slowdown threshold. This incremental comparison uses unpublished
+`5240e58-publication-lifetime4`, not committed main. Weighted PPML measured
+peak rises from 64,688,484 to 65,723,031 bytes; no whole-command memory-reduction
+claim is made. Source, artifacts, inputs, phases, RSS/scratch and zero PPML
+fallbacks are bound in the report; historical failed receipts remain intact.
+
+This closes the identified certification lifetime/mask defects, not the entire
+allocation proof. Construction/decoder/string, numerical and generation
+overlaps, nested dependency/worker lifetimes and remaining result assembly
+still require coverage. Whole-action coverage and its ratio remain undefined.
+The Xcode-license prerequisite, candidate freeze, universal/Rosetta and
+Mac/Linux packaging/installation gates remain. The installed Mac artifact is
+unchanged. No empirical rerun, campaign restart, commit, push or release occurred.
+
+## Candidate preparation: PPML publication parents and terminal observation
+
+The [PPML publication report](benchmarks/reports/development/candidate-ppml-publication-2026-09-16/README.md)
+records a capacity inventory for certified results, including nested metadata
+and separation witnesses. The plugin admits surviving action/result parents
+plus shadows before shadow allocation, and checks capacities before stores.
+The scalar planner also includes declared-channel slice descriptors. Original-N
+sample-mask allocation and the final OS thread-count query are removed. The
+private ABI trace now separately observes action return, including failures;
+public base fields and numerical policies remain unchanged.
+
+Snapshot `5240e58-publication-lifetime2`, job 7596013, passes 202 distinct native
+checks (127 plugin, 30 result, 45 memory); the 127 plugin checks also pass with
+the audit enabled. Tests include independent deallocation counts, spare nested
+capacity, exact/one-byte-short admission, allocation-free validation/stores,
+interruption, repeated calls and a 5,334-case sample-mask oracle. All 38 Python
+checks, repository check and OLS v25/action v8 audits pass. Original failed job
+7595986 and static-check failures are preserved. The installed Mac plugin is
+unchanged; no empirical estimation or campaign restart occurred.
+
+Final snapshot `5240e58-publication-lifetime4`, job 7596067, passes the final
+127 plugin tests, Linux build/export/actual-loader checks and all nine paired
+comparisons (18 fresh Stata commands). Scientific outputs, samples/order,
+solver non-time fields and saved outputs match exactly. After the requested
+28-core reservation change, it finished in 242 seconds, failed=0/exit=0, with
+full-node isolation checked around every command and four execution cores.
+The monitor has been deleted; all checkpoint jobs are terminal.
+
+The saved-slope low-memory timing flag does not reproduce: complete-command
+medians are 0.303/0.299 seconds, narrow PPML 0.123/0.122 and weighted/clustered
+saved PPML 1.014/1.020. All clear the declared 5% AND 10 ms threshold; reported
+phase medians also clear it. The fixed checkpoint's cost gate passes. The
+baseline is unadopted `5240e58-action-coverage3`, not committed main. Native
+allocation/RSS/scratch and zero PPML fallback counts are recorded in the report;
+no universal speedup or complete action-memory proof is claimed. Superseded
+job 7596058 was canceled before starting; all earlier flags remain preserved.
+
+This closes the plugin frame after core PPML certification. Whole-action
+coverage remains incomplete: decoder/string/construction, full numerical and
+PPML generation overlap, dependency/worker lifetimes and core certification
+still need proofs. The ratio remains undefined. The Mac Xcode-license
+prerequisite, candidate freeze, universal/Rosetta validation, Mac/Linux review
+package and installation gates remain. No commit, push, tag, release or
+installed-package replacement was performed.
+
+## Candidate preparation: shared lifetime ledger and FE parent guards
+
+The [action-lifetime report](benchmarks/reports/development/candidate-action-ledger-2026-09-16/README.md)
+records a fixed-size OLS/PPML ledger and explicit fast-fit/uncached-inference FE
+coefficient parents. The former reserves initial/combined products before a
+retained solver captures its budget; the latter charges the observed final
+product capacity beside score reabsorption. Both translate the nested solver
+peak back to the original execution base. These are conservative admission
+changes, not a measured speedup or proof of a prior whole-action cap breach.
+
+The private version-1 trace requires each model stage, sums simultaneous owners,
+maxes sequential frames and preserves unknown coverage. Its observation is
+explicitly precommit, not terminal publication. Public base-memory fields and
+wire versions are unchanged. The allocation inventory now gives each missing
+owner family a source location and an explicit proof obligation.
+
+Snapshot `5240e58-lifetime-ledger4` passes 121 plugin unit/mock-SPI checks both
+with and without the audit flag. All 930 emitted model records validate; every
+incomplete ratio remains undefined. Its job 7590673 is still recorded as failed
+because a new core-test namespace was wrong. Final snapshot
+`5240e58-lifetime-ledger6`, job 7590739, passes 45 distinct focused core checks,
+including exact/one-byte-short fit admission and unchanged fit/inference results.
+Only test bodies differ between those snapshots; production tokens/literals
+match. All 38 source-contract/inventory Python checks pass, preserving the
+historical manifests and F0 pins (current OLS v24/action v7). Every failed build,
+fixture and initial static-check receipt is retained. The installed Mac plugin
+is unchanged, and all six bounded development jobs are terminal.
+
+Whole-action coverage is still incomplete: compiler/string construction,
+complete numerical/PPML generation overlaps, dependency containers, cold and
+retiring worker pools, and terminal output/publication proofs remain. No new
+performance comparison was run; the saved-slope low-memory timing flag remains
+open. The Xcode-license prerequisite, freeze, Mac/Linux review packaging and
+installation gates remain. No production adoption, commit, push, tag, package
+replacement, empirical estimation or campaign restart is claimed.
+
+## Candidate preparation: numeric construction and frame admission added
+
+The [construction/frame report](benchmarks/reports/development/candidate-action-frames-2026-09-16/README.md)
+records additional uncommitted OLS reservations for numeric dictionary growth,
+construction topology/pruning/metadata, repeated slope-channel identities,
+and finite/inference frames beside retained request/prepared owners. Dense
+cluster tables are charged together with their parallel partials. Numerical
+policies and public base-memory fields are unchanged. Whole-action coverage
+and its ratio remain undefined; these envelopes are not complete byte proofs.
+
+Snapshot `5240e58-action-frames3` passes 114 plugin tests and Linux binary/ABI
+checks in job 7590380. All 27 alternating pairs (54 fresh Stata commands) over
+nine fixed cases preserve exact science, samples/order, solver non-time fields
+and saved outputs. Full-node scheduled occupancy is checked before/after every
+command. A stricter VCE-specific allocator test passes separately in job
+7590422; only that test differs from the measured production snapshot. The
+35 source-contract and three inventory Python tests, repository checker and
+OLS v23/action v6 audits pass. Original stale-manifest and local-toolchain
+failures remain recorded. The installed Mac binary remains unchanged.
+
+The original weak-graph aggregate native flag does not reproduce in diagnostic
+7590338 or the full-node screen. Subphase timing remains variable. The latter
+screen flags absorbed slopes (.329/.376 seconds) and saved slopes in low mode
+(.533/.575). One bounded diagnostic, 7590402, reverses the absorbed-slope flag
+(.377/.320); identical binaries shift by +53.7 ms in their fit phase. Saved-slope
+low remains flagged (.509/.568), while identical-binary controls vary by -52 ms.
+That is insufficient to attribute the discrepancy or accept the cost gate.
+Every original failure/flag is preserved. No additional fit retry is scheduled.
+
+The dependency audit identifies specific missing owners in CMG's principal-array
+reports: hierarchy/workspace descriptor banks, graph Arc owners, some spare
+capacity and its separately owned Rayon pool. These are not complete heap reports.
+Remaining memory proof: those dependency/runtime lifetimes, string dictionaries
+at SPI loading, decoder/compiler work before admission, retained FE coefficient
+parent overlaps, and complete PPML parent/current-generation overlap. The local
+Xcode-license prerequisite and freeze/package/install gates remain open. No
+adoption, commit, push, tag, installed-package replacement, empirical rerun or
+campaign restart is claimed. All this task's bounded jobs are terminal; unrelated
+SCC jobs were left untouched.
+
+## Candidate preparation: request/slope admission fixed; action proof still open
+
+The [request-owner/slope report](benchmarks/reports/development/candidate-action-owners-slopes-2026-09-16/README.md)
+records two additional uncommitted OLS fixes: exact nested request/output-name
+capacities charged beside each execution/publication parent, and saved-slope
+recovery admission for retained coefficients, LSMR and MAP. Topology validation
+is checked before allocation; LSMR includes slope whitening and its retained
+certificate frame. PPML route policy and public base fields are unchanged.
+
+Snapshot `5240e58-action-coverage3` passes 289 focused native checks, including
+independent allocator deallocation/peak checks, exact/one-byte-short budgets,
+weighted known-span recovery, retained products, failure atomicity and repeated
+calls. Native-test job 7590299 then fails in the separate build wrapper because
+Cargo was invoked outside source; that receipt remains failed. One narrow
+wrapper correction, job 7590309, passes binary/ABI checks and 21 alternating
+Stata pairs (42 commands), with scheduler failed=0/exit=0 and a terminal sentinel.
+All scientific matrices, samples/order, solver non-time fields and saved outputs
+match. Native peaks, scratch and public base bytes match in every pair.
+Thirty-eight Python checks, both inventories (OLS v22/action v5), the repository
+checker and diff whitespace checks pass. The installed Mac artifact is unchanged.
+
+The earlier slope command-time flag does not reproduce beyond the declared
+median threshold in the serialized single-NUMA comparison (0.193/0.200 seconds,
+with identical-artifact controls 0.229/0.220). A concurrent-build noisy attempt
+is preserved as inconclusive; exclusive scheduler core ownership was not verified.
+The combined prototype's seven command-time medians all pass, including slopes
+0.132/0.136 seconds and saved slopes in fast/low modes. A separate tiny-weighted-
+bridge native-phase shift (+12.6 ms) remains explicit despite only +5 ms in the
+complete command. Its branch has no numerical or solver-policy changes, but
+phase attribution is not proven; no further ambiguous retry is scheduled.
+
+Remaining: compiler/factorization construction, complete finite/inference frames,
+PPML parent/current-generation overlap proof, opaque dependency/worker-pool
+storage, and versioned whole-action protocol diagnostics. Whole-action coverage
+and ratio remain undefined. The phase flag, Mac Xcode-license prerequisite,
+freeze/package/install gates also remain open. No production adoption, commit,
+push, package replacement, empirical rerun or campaign restart is claimed.
+
+## Candidate preparation: OLS retained parents checked, cost gate open
+
+The [retained-parent report](benchmarks/reports/development/candidate-ols-prepared-parents-2026-09-16/README.md)
+records uncommitted numeric-array preflight, exact retained prepared/inference
+capacity counts, internal admission reconciliation and earlier release of
+obsolete pruning state. All six OLS VCE/topology branches preserve public base
+fields. Saved-output admission counts simultaneous preparation/inference owners;
+solver storage remains separately admitted. No action-coverage certificate is
+claimed.
+
+Snapshot `5240e58-ols-prepared-parent2`, based on main `5240e589`, matches all
+163 tested native files. SCC job 7590173 passes 285 distinct native tests,
+including independent allocator-deallocation checks, exact/one-byte-short
+boundaries, allocation-failure, interruption and repeated-call controls.
+OLS v21/action v4 inventories and the full repository checker pass. Thirty-four
+of 35 source-contract Python tests initially pass; one ambiguous mutation anchor
+is repaired and its focused recheck passes. All three action-inventory tests
+pass. The original failed receipt and all historical source pins are preserved.
+
+Job 7590187 passes exact scientific results in 27 alternating pairs (54 fresh
+commands) over nine fixed synthetic cases. The comparison baseline is the
+preceding unadopted publication prototype, not committed main. Slopes flag
+0.238/0.262 s medians (+24 ms, +10.08%); the other eight cases clear the declared
+threshold. Singleton-heavy PW/cluster/interaction controls retain exactly half
+of 16,384/32,768 rows. The larger case's native peak falls 14.44%; this is a
+local lifetime observation, not general memory qualification. The three-FE
+base-only reporting discrepancy reproduces and still does not establish a cap
+breach.
+
+The one bounded attribution check, job 7590196, passes exact science in all
+12 commands. Slope comparison medians remain 0.217/0.236 s, while identical
+baseline controls vary 0.317/0.215 s. Attribution is indeterminate, and the cost
+gate stays open. All four task jobs (including earlier snapshot 7590163) have
+terminal success receipts and scheduler failed=0/exit=0. No further fit retry
+is scheduled. Existing reconstruction jobs were not changed.
+
+Next: complete construction/compiler containers, finite/inference transient
+frames, slope recovery and dependency/pool byte proofs; resolve cost attribution
+before adopting the combined prototype. Whole-action coverage and ratio remain
+undefined. The installed Mac plugin is unchanged; no production commit, push,
+package replacement, tag, release or empirical rerun was performed. The Mac/Linux
+review candidate remains unready.
+
+## Candidate preparation: OLS publication prototype, adoption pending
+
+The [OLS publication report](benchmarks/reports/development/candidate-ols-publication-memory-2026-09-16/README.md)
+records an uncommitted implementation for full reported-axis shadow matrices,
+validators, requested observation outputs and nested saved-channel registries.
+Admission happens before row reads; actual capacities are checked before any
+store. Recovery adds its live caller buffers without charging returned channels
+twice. Absorption and publication remain sequential. Public base fields are
+unchanged. This prototype is not adopted yet.
+
+SCC job 7590002 passes 189 distinct native tests, including exact/one-byte-short
+fast/low admission and transactional capacity-failure checks. All 40 focused
+Python checks, OLS v20/action v3 inventories and the full repository checker
+pass. Both isolated Linux builds and ABI tests pass. Existing F0/historical
+inventories and the installed plugin are unchanged.
+
+Job 7590006 completes 15 alternating paired comparisons with exact scientific
+matrices, sample/order, saved outputs and non-time solver fields. Four cases
+clear the cost threshold; saved generated AW output fails it: 0.625/0.779 s
+medians (+154 ms, +24.64%). Each arm reports identical 8,998,670 native bytes
+and 5,898,240 scratch bytes. The failed build-wrapper receipt is preserved.
+One native-phase diagnostic pair, job 7590011, gives 0.362/0.367 s and exact
+science. It does not reproduce the slowdown, but cannot replace the original
+three-pair gate. Its traced diagnostic also ran on a different host.
+
+The [bounded control recheck](benchmarks/reports/development/candidate-ols-publication-recheck-2026-09-16/README.md),
+job 7590027, completes three alternating baseline/candidate pairs and three
+interleaved unchanged-artifact controls. All 12 commands pass with exact
+science. Complete-command medians are 0.461/0.440 s (-21 ms, -4.56%); control
+medians are 0.423/0.437 s (+14 ms, +3.31%). The earlier slowdown does not
+reproduce, but one identical-artifact control pair differs by 83 ms / 17.89%.
+Attribution remains indeterminate; the original failed receipt is preserved.
+Native allocation/scratch match across all runs. Plugin-through-pre-store
+medians rise 15.4 ms / 5.1%, while native medians rise 9.7 ms / 3.3%; complete
+phase/RSS evidence is retained. Fresh repository and both inventory checks pass.
+The source still matches all 162 tested native files. No estimator source or
+installed binary was changed. This check adds no adoption or speed claim.
+
+Next: continue the OLS preparation/inference/recovery parent proof,
+compiler/topology metadata and dependency/pool capacities; preserve the timing
+uncertainty for adoption review. No additional fit or campaign retry is
+scheduled. Whole-action coverage and ratio remain undefined. The Mac/Linux
+candidate is not ready; Mac prerequisite, freeze, packaging and clean-install
+gates remain open. No installed package, push, tag, release or empirical rerun
+was performed.
+
 ## Candidate preparation: PPML metadata and repository checks repaired
 
 The [parent/metadata checkpoint](benchmarks/reports/development/candidate-memory-parents-2026-09-16/README.md)
@@ -1363,7 +1760,7 @@ and action v2 without changing F0 or historical pins. Installed plugin unchanged
 Remaining coverage: OLS preparation/inference/recovery/publication parents,
 complete categorical/compiler metadata and opaque dependency/pool capacities.
 Whole-action peak/ratio remain undefined; public base fields/wires are unchanged.
-The next implementation boundary is OLS publication storage/admission. Candidate
+The newer checkpoint above tests OLS publication storage/admission. Candidate
 freeze, licensed Mac/Linux validation, packaging/install checks and the Mac
 Xcode prerequisite remain open. Nothing has been pushed or released.
 
@@ -4308,6 +4705,103 @@ stays stopped. No commit, push or release action was taken.
 The numeric-pass follow-up above addresses the next RHS and raw-residual
 work. Coefficient-space Irons–Tuck and batch missing detection were slower
 and were not retained in this preceding investigation.
+
+## Veneto benchmark: stopped and reported
+
+Johannes stopped the Veneto campaign on September 12. Array **7529406** was
+cancelled and the `finish-scc-veneto-benchmark-pdf` monitor deleted. The
+[cancellation receipt](Veneto_Benchmark/results/scc/campaign-stopped.json)
+confirms it left the queue: tasks 1--10 completed, tasks 11--12 were interrupted,
+and tasks 13--24 never started. No campaign continuation is authorized.
+
+The single [11-page PDF](Veneto_Benchmark/output/pdf/Veneto_Benchmark.pdf)
+contains vector runtime/RSS figures across 1/2/4/8/14/28 affinity cores,
+cold and warm measurement tables, numerical comparisons, PPML failure analysis
+and provenance. Main figures/counts use **110 calls from ten complete tasks**;
+14 finished calls from interrupted tasks are supplementary only. Two commands
+were cancelled mid-estimation and are not counted as native estimator failures.
+The [delivery receipt](Veneto_Benchmark/results/scc/report-delivery.json)
+binds the PDF, all-page visual review, source scripts and analysis checks.
+Production consumed 18.98 node-hours including cancelled tasks (17.57 in
+complete tasks); setup/smoke and queue waiting are additional.
+
+Fereg OLS matches reghdfe slopes, full slope covariance and observation samples
+in all ten complete-task fits. At equal one-to-four allowed processors, cold
+command times are 10.6--12.5 times shorter, with higher RSS. Supplementary
+14/28-core OLS fits also pass b/V/sample checks. Independent graph analysis
+finds 41,901 components, explaining most other commands' approximately 1.1%
+OLS SE excess. Areg reports e(converged)=0 at 50 APM iterations in every observed
+call; tested postprocessing corrects the frozen collector's numeric-zero
+classification without altering original receipts.
+
+Feppml has nine native r(430) failures and one successful cold 14-core fit in
+the complete tasks; a supplementary 28-core warm fit also fails. The passing
+fit matches ppmlhdfe b/V/sample, but does not establish reliable performance.
+Quiet logs suppress the precise native error, so initial/ordinary/strict/final
+certificate paths cannot be distinguished from these receipts. Frozen-source
+inspection confirms multiple r(430) paths; no specific root cause is claimed.
+Pyfixest has eight weighted-FE demeaning failures and two timeouts in complete
+tasks: its 10,000-iteration inner cap is distinct from the 25-iteration outer
+Poisson cap. Gglm reaches the 2,400-second cap in all ten complete tasks.
+These two unsuccessful PPML arms consume 65.0% of measured command time/bounds.
+
+[Stopped analysis](Veneto_Benchmark/results/scc/stopped-analysis/audit.json)
+and [failure evidence](Veneto_Benchmark/results/scc/stopped-analysis/failure-audit.json)
+preserve full comparisons, accounting, supplementary checks, data geometry and
+exact-source references. All 3,159,720 PPML outcomes are strictly positive,
+ruling out zero-outcome separation. Daily pay spans a 56.4-million-to-one range;
+24.0% of workers are observed at multiple firms. These suggest numerical
+difficulty but do not prove the failing iteration's conditioning. No estimator
+was rerun, no solver/tolerance/sample was changed, and no production source was
+edited for the stopped-campaign report. The subsequent user-requested logged
+reproduction is a separate follow-up, described below.
+
+The frozen candidate is **d44e36b**, preceding the newer local OLS changes.
+Each task reserved 28 E5-2680v4 cores and 84 GiB, but Stata/MP was licensed for
+**four processors**; native Rust and R/Python thread controls are separate.
+Only one cold call exists at every setting, with one complete warm repetition
+through eight cores. Different affinities used two physical hosts. The report
+retains these limits, native accuracy disagreements and failed memory bounds.
+
+The panel has 1,133,933 workers and 125,707 firms after common singleton pruning
+in 1999--2001. [Sample identities](Veneto_Benchmark/results/sample.json) and
+[independent small-panel checks](Veneto_Benchmark/results/independent-validation.json)
+remain preserved. This is VWH source-family data, not an exact KSS replication.
+The [SCC authorization](Veneto_Benchmark/results/scc/data-authorization.json)
+and [transfer verification](Veneto_Benchmark/results/scc/data-transfer-verification.json)
+cover six derived files staged in the owner-only run directory. Raw source data
+remain local. SCC smoke 7529248 and acceptance gate 7529405 passed before
+production. Local pilot/stopped receipts and the earlier nine-task preliminary
+audit remain unchanged. The [SCC protocol](Veneto_Benchmark/scc/README.md)
+describes rebuilding the stopped report from preserved aggregate evidence.
+
+Johannes requested Telegram delivery and a separate PPML investigation after
+the report. The [Telegram receipt](Veneto_Benchmark/results/scc/telegram-delivery.json)
+records successful delivery of the unchanged PDF. The
+[diagnostic addendum](Veneto_Benchmark/results/scc/ppml-diagnostic/analysis.md)
+locates the reproduced failure in the initial weighted-regression predictor
+reconstruction check, before any PPML update. Original-binary job **7535359**
+captures the native error at four threads. Logging-only job **7535389**
+identifies reconstruction as the sole failed certificate at four and fourteen
+threads: response-relative errors are 2.357e-14 and 1.486e-14 against a
+1.421e-14 cutoff, while term-scaled errors are below machine epsilon. The six
+other initial-regression checks pass. The measured cancellation ratio is 392.
+This is numerical fragility in reconstructing a small response from larger
+opposing terms; fourteen cores is not a reliable workaround.
+
+The [diagnosis receipt](Veneto_Benchmark/results/scc/ppml-diagnostic/diagnosis.json)
+verifies all 2,028 frozen source files, with one logging-only modified file,
+and binds the measured certificate fields to both diagnostic fits. The new
+jobs use the same input and scientific settings on a Gold-6226R; their timings
+are not benchmark observations. Controller log-name and build-directory
+errors are preserved separately in the addendum. Final build/ABI checks,
+application sentinels and scheduler failed=0/exit=0 pass for job 7535389.
+All diagnostics are terminal; total reserved resource use is about 0.50 core-hours.
+Production code and the frozen binary remain unchanged. The focused repair
+target is stable combined-predictor construction and a justified reconstruction
+certificate, followed by an independent cancellation fixture and bounded
+full-panel numerical validation. Downstream PPML convergence after such a
+repair has not been tested. The campaign remains stopped.
 
 ## Systematic benchmark campaign: stopped and reported
 

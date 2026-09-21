@@ -1,0 +1,19 @@
+cmg_ols_small 1 baseline pass 0.124
+cmg_ols_small 1 candidate pass 0.081
+cmg_ols_small 2 candidate pass 0.081
+cmg_ols_small 2 baseline pass 0.073
+cmg_ols_small 3 baseline pass 0.073
+cmg_ols_small 3 candidate pass 0.079
+cmg_ols_weighted 1 baseline pass 0.204
+cmg_ols_weighted 1 candidate pass 0.225
+cmg_ols_weighted 2 candidate pass 0.206
+cmg_ols_weighted 2 baseline pass 0.229
+cmg_ols_weighted 3 baseline pass 0.222
+cmg_ols_weighted 3 candidate pass 0.201
+cmg_ppml 1 baseline pass 0.28
+cmg_ppml 1 candidate pass 0.303
+cmg_ppml 2 candidate pass 0.273
+cmg_ppml 2 baseline pass 0.279
+cmg_ppml 3 baseline pass 0.264
+cmg_ppml 3 candidate pass 0.264
+PUBLICATION_PAIRED_COMPLETE

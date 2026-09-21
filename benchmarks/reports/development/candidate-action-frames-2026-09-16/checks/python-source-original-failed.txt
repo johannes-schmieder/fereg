@@ -1,0 +1,399 @@
+EEEEEEEEEEEE.EEEEEEEYou have not agreed to the Xcode license agreements. Please run 'sudo xcodebuild -license' from within a Terminal window to review and agree to the Xcode and Apple SDKs license.
+EEEFEE.EEEEE.You have not agreed to the Xcode license agreements. Please run 'sudo xcodebuild -license' from within a Terminal window to review and agree to the Xcode and Apple SDKs license.
+E.
+======================================================================
+ERROR: test_action_literal_swap_cannot_route_fereg_to_ppml (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_action_literal_swap_cannot_route_fereg_to_ppml)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 424, in test_action_literal_swap_cannot_route_fereg_to_ppml
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_allocation_in_session_guard_executed_by_public_ols_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_allocation_in_session_guard_executed_by_public_ols_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 513, in test_allocation_in_session_guard_executed_by_public_ols_is_rejected
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_c_bridge_allocation_on_public_fereg_route_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_c_bridge_allocation_on_public_fereg_route_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 336, in test_c_bridge_allocation_on_public_fereg_route_is_rejected
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_cfg_literal_cannot_disable_the_compiled_ffi_route (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_cfg_literal_cannot_disable_the_compiled_ffi_route)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 476, in test_cfg_literal_cannot_disable_the_compiled_ffi_route
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_cfg_test_comparison_and_char_cannot_hide_following_production (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_cfg_test_comparison_and_char_cannot_hide_following_production)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 679, in test_cfg_test_comparison_and_char_cannot_hide_following_production
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_changed_public_fereg_adapter_routing_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_changed_public_fereg_adapter_routing_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 586, in test_changed_public_fereg_adapter_routing_is_rejected
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_clone_hidden_observation_copy_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_clone_hidden_observation_copy_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 641, in test_clone_hidden_observation_copy_is_rejected
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_comments_and_whitespace_do_not_change_the_structural_contract (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_comments_and_whitespace_do_not_change_the_structural_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 165, in test_comments_and_whitespace_do_not_change_the_structural_contract
+    self.assertEqual(CONTRACT.audit_repository(candidate, MANIFEST), [])
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_core_module_path_cannot_replace_compiled_ols_graph (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_core_module_path_cannot_replace_compiled_ols_graph)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 371, in test_core_module_path_cannot_replace_compiled_ols_graph
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_current_source_matches_closed_inventory_and_exact_boundaries (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_current_source_matches_closed_inventory_and_exact_boundaries)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 55, in test_current_source_matches_closed_inventory_and_exact_boundaries
+    self.assertEqual(CONTRACT.audit_repository(ROOT, MANIFEST), [])
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_direct_observation_sized_allocation_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_direct_observation_sized_allocation_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 178, in test_direct_observation_sized_allocation_is_rejected
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_existing_core_module_path_literal_cannot_retarget_to_ppml (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_existing_core_module_path_literal_cannot_retarget_to_ppml)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 399, in test_existing_core_module_path_literal_cannot_retarget_to_ppml
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_ffi_dispatch_body_is_an_exact_routing_boundary (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_ffi_dispatch_body_is_an_exact_routing_boundary)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 609, in test_ffi_dispatch_body_is_an_exact_routing_boundary
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_ffi_import_alias_cannot_retarget_ols_to_ppml (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_ffi_import_alias_cannot_retarget_ols_to_ppml)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 265, in test_ffi_import_alias_cannot_retarget_ols_to_ppml
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_indirect_observation_by_column_allocation_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_indirect_observation_by_column_allocation_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 230, in test_indirect_observation_by_column_allocation_is_rejected
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_native_build_source_list_cannot_omit_the_c_bridge (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_native_build_source_list_cannot_omit_the_c_bridge)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 356, in test_native_build_source_list_cannot_omit_the_c_bridge
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_new_memory_helper_is_in_closed_inventory (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_new_memory_helper_is_in_closed_inventory)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 142, in test_new_memory_helper_is_in_closed_inventory
+    CONTRACT.audit_repository(candidate, MANIFEST)))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_new_ols_helper_file_is_not_outside_the_closed_inventory (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_new_ols_helper_file_is_not_outside_the_closed_inventory)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 736, in test_new_ols_helper_file_is_not_outside_the_closed_inventory
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_opaque_matrix_constructor_is_rejected_by_exact_structure (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_opaque_matrix_constructor_is_rejected_by_exact_structure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 662, in test_opaque_matrix_constructor_is_rejected_by_exact_structure
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_pinned_preexisting_hashes_are_derived_from_exact_f0 (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_pinned_preexisting_hashes_are_derived_from_exact_f0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 68, in test_pinned_preexisting_hashes_are_derived_from_exact_f0
+    source = subprocess.run(
+             ~~~~~~~~~~~~~~^
+        ["git", "show", f"{CONTRACT.F0_SOURCE_SHA}:{relative}"],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        stdout=subprocess.PIPE,
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    ).stdout.decode("utf-8")
+    ^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'show', '2dee5d8c4cd99b51bbaca600348f66f325b58ab4:crates/fereg-plugin/src/estimate.rs']' returned non-zero exit status 69.
+
+======================================================================
+ERROR: test_plugin_cargo_lib_path_cannot_replace_the_compiled_route (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_plugin_cargo_lib_path_cannot_replace_the_compiled_route)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 311, in test_plugin_cargo_lib_path_cannot_replace_the_compiled_route
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_plugin_module_path_cannot_replace_watched_estimate_source (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_plugin_module_path_cannot_replace_watched_estimate_source)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 286, in test_plugin_module_path_cannot_replace_watched_estimate_source
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_ppml_import_on_public_ols_adapter_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_ppml_import_on_public_ols_adapter_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 249, in test_ppml_import_on_public_ols_adapter_is_rejected
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_ppml_session_allocations_are_excluded_until_fereg_enters_session (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_ppml_session_allocations_are_excluded_until_fereg_enters_session)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 751, in test_ppml_session_allocations_are_excluded_until_fereg_enters_session
+    self.assertEqual(CONTRACT.audit_repository(candidate, MANIFEST), [])
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_provably_test_only_cfg_and_preceding_attributes_are_excluded (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_provably_test_only_cfg_and_preceding_attributes_are_excluded)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 706, in test_provably_test_only_cfg_and_preceding_attributes_are_excluded
+    self.assertEqual(CONTRACT.audit_repository(candidate, MANIFEST), [])
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_public_fereg_error_path_allocation_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_public_fereg_error_path_allocation_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 200, in test_public_fereg_error_path_allocation_is_rejected
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_retained_qr_and_session_constructor_are_ppml_only (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_retained_qr_and_session_constructor_are_ppml_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 549, in test_retained_qr_and_session_constructor_are_ppml_only
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_retained_session_call_in_transitive_ols_helper_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_retained_session_call_in_transitive_ols_helper_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 571, in test_retained_session_call_in_transitive_ols_helper_is_rejected
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_retained_session_call_on_one_shot_boundary_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_retained_session_call_on_one_shot_boundary_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 492, in test_retained_session_call_on_one_shot_boundary_is_rejected
+    violations = CONTRACT.audit_repository(candidate, MANIFEST)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1521, in audit_repository
+    expected = _load_contract(contract_path)
+  File "<REPOSITORY>/scripts/fereg_allocation_source_contract.py", line 1295, in _load_contract
+    raise ContractError("allocation source contract identity is invalid")
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+======================================================================
+ERROR: test_reviewed_boundaries_are_exact_source_pins (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_reviewed_boundaries_are_exact_source_pins)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 128, in test_reviewed_boundaries_are_exact_source_pins
+    source = subprocess.check_output(
+        ["git", "show", f"{CONTRACT.REVIEWED_BOUNDARY_SOURCE_SHA}:{relative}"],
+        cwd=ROOT, text=True,
+    )
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 473, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               **kwargs).stdout
+               ^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'show', 'a765c338f252350d0a9f5bf496330181dfbdb4b8:crates/fereg-plugin/src/estimate.rs']' returned non-zero exit status 69.
+
+======================================================================
+FAIL: test_policy_fields_cannot_be_removed_to_accept_a_mutation (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_policy_fields_cannot_be_removed_to_accept_a_mutation)
+----------------------------------------------------------------------
+scripts.fereg_allocation_source_contract.ContractError: allocation source contract identity is invalid
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<REPOSITORY>/tests/python/test_fereg_allocation_source_contract.py", line 763, in test_policy_fields_cannot_be_removed_to_accept_a_mutation
+    with self.assertRaisesRegex(CONTRACT.ContractError, "policy was weakened"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "policy was weakened" does not match "allocation source contract identity is invalid"
+
+----------------------------------------------------------------------
+Ran 35 tests in 33.541s
+
+FAILED (failures=1, errors=30)

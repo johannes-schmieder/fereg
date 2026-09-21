@@ -1,0 +1,35 @@
+{
+  "approved_storage": "/projectnb/welfgr/",
+  "user_statements": [
+    "projectnb/welfgr/ is good",
+    "You can upload the veneto data"
+  ],
+  "recorded_at_utc": "2026-09-11T18:26:52.501945+00:00",
+  "scope": "Derived Veneto OLS and PPML model inputs; owner-only run directory",
+  "files": {
+    "veneto-ols.dta": {
+      "bytes": 164311115,
+      "sha256": "d50dcfb78b7bb87fe8a48d384dd486f194bf1bf1442849619b0f8328f2fa79a0"
+    },
+    "veneto-ols.bin": {
+      "bytes": 202222080,
+      "sha256": "c4dcfab63d8a076f5b94d14b3e18aadc5d8402b484b27d0eaa1e8f808428c8e5"
+    },
+    "veneto-ols.json": {
+      "bytes": 772,
+      "sha256": "bd562024815e91933dd08f00fd17467bfd83d0e06a00ad73d37005badf285c35"
+    },
+    "veneto-ppml.dta": {
+      "bytes": 164311115,
+      "sha256": "92062a6bccaa7b55c3a213e288cf0d22e68668e21f454119ac168dbd938cb08d"
+    },
+    "veneto-ppml.bin": {
+      "bytes": 202222080,
+      "sha256": "6f1fae78ca0e33b77cdabdd59613011c85a8b9ab87bf8119977f2c50ed74a35d"
+    },
+    "veneto-ppml.json": {
+      "bytes": 772,
+      "sha256": "fe7ca23688d13d0f319a48c338d65c3c8842dec265b13a7072ba9779fad36678"
+    }
+  }
+}

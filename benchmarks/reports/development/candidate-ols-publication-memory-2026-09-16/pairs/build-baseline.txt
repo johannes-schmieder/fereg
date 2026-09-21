@@ -1,0 +1,1 @@
+error: could not find `Cargo.toml` in `$RUN/pairs` or any parent directory

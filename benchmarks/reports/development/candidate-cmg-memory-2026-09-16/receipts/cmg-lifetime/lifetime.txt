@@ -1,0 +1,17 @@
+   Compiling crossbeam-utils v0.8.22
+   Compiling crossbeam-epoch v0.9.20
+   Compiling crossbeam-deque v0.8.7
+   Compiling rayon-core v1.13.0
+   Compiling either v1.18.0
+   Compiling rayon v1.12.0
+   Compiling cmg v0.1.0 ($RUN/cmg-lifetime/source)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.27s
+     Running unittests src/lib.rs ($RUN/cmg-lifetime/target/debug/deps/cmg-65a312ac56d5f620)
+
+running 3 tests
+test execution::lifetime_tests::join_guard_waits_for_every_worker_on_success_and_partial_construction ... ok
+test execution::lifetime_tests::partial_rayon_spawn_failure_joins_the_started_workers ... ok
+test execution::lifetime_tests::repeated_executors_join_their_exact_thread_handles ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 34 filtered out; finished in 0.00s
+

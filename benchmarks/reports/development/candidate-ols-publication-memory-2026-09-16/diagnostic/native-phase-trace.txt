@@ -1,0 +1,8 @@
+ARM baseline
+FEREG_PHASE|ols_prepare|seconds=0.010663894
+FEREG_PHASE|low_score_retention|retained=0|scratch_peak_bytes=5898240|copy_columns=0|copy_failures=0|copy_seconds=0.000000000
+FEREG_PHASE|iid|setup_statistics=0.001518755|covariance=0.000004500|wald=0.000011642|certificate=0.000013065|total=0.001548184
+ARM candidate
+FEREG_PHASE|ols_prepare|seconds=0.010695922
+FEREG_PHASE|low_score_retention|retained=0|scratch_peak_bytes=5898240|copy_columns=0|copy_failures=0|copy_seconds=0.000000000
+FEREG_PHASE|iid|setup_statistics=0.003829792|covariance=0.000007116|wald=0.000024566|certificate=0.000019106|total=0.003881108

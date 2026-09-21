@@ -1,0 +1,4 @@
+HOSTNAME                ARCH         NCPU  LOAD  MEMTOT  MEMUSE  SWAPTO  SWAPUS
+-------------------------------------------------------------------------------
+global                  -               -     -       -       -       -       -
+scc-xc1                 linux-x64      28  0.00  503.3G    1.9G    8.0G  268.0K

@@ -1,0 +1,43 @@
+==============================================================
+qname        onrcc-m512-pub      
+hostname     scc-xb3.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_mem_input     
+jobnumber    7605980             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Wed Sep 16 18:25:50 2026
+start_time   Wed Sep 16 18:34:15 2026
+end_time     Wed Sep 16 18:36:23 2026
+granted_pe   omp28               
+slots        28                  
+failed       0    
+exit_status  0                   
+ru_wallclock 128          
+ru_utime     205.417      
+ru_stime     14.243       
+ru_maxrss    1800044             
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    2952407             
+ru_majflt    2222                
+ru_nswap     0                   
+ru_inblock   1141512             
+ru_oublock   3492968             
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     174428              
+ru_nivcsw    42444               
+cpu          219.659      
+mem          254.316           
+io           14.479            
+iow          0.000             
+maxvmem      3.252G
+arid         undefined

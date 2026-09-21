@@ -1,0 +1,14 @@
+{
+  "cmg_ols_small": {
+    "data_sha256": "11c471465a60da45d48e4e4ae5dea310ae9edbfeb8877c1dc10e5899fe91157b",
+    "metadata_sha256": "f76307631a038b88b9f31bfd92b81d6e2d9586a08c57aa8835c2d9a64efc0bbb"
+  },
+  "cmg_ols_weighted": {
+    "data_sha256": "3afd2286f5e4307dbfec3e7a1199d026232c34cec2ac1864e208d4eef6fd352b",
+    "metadata_sha256": "75032bfe9ca480c6e96f9ebc62f59c3d376688fbd40c7ecfef4eec4e6a122595"
+  },
+  "cmg_ppml": {
+    "data_sha256": "40055336a2b56130e7b9a13dbd68a2aa63e531e49dd35f48cd93e872b4fd056c",
+    "metadata_sha256": "fd0e4c701865ef9df3eb535f2dd24d08dbef06a9131eac1c550798ec722f26c9"
+  }
+}

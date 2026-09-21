@@ -1,0 +1,28 @@
+{
+  "source": "5240e58-publication-lifetime4",
+  "count": 287,
+  "by_estimator_and_return_code": [
+    {
+      "estimator": "ols",
+      "return_code": 198,
+      "records": 1
+    },
+    {
+      "estimator": "ppml",
+      "return_code": 198,
+      "records": 1
+    },
+    {
+      "estimator": "ols",
+      "return_code": 0,
+      "records": 3
+    },
+    {
+      "estimator": "ols",
+      "return_code": 3499,
+      "records": 282
+    }
+  ],
+  "arithmetic_valid": true,
+  "scope": "Actual-loader ABI checks; successful PPML terminal trace is not exercised by this loader fixture. PPML publication uses separate passing mock-SPI and licensed paired fixtures."
+}

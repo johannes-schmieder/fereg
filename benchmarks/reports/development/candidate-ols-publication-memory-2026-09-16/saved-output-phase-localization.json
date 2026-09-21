@@ -1,0 +1,108 @@
+{
+  "original_gate": "failed_unresolved",
+  "arms": [
+    {
+      "run": "saved_generated_aw-p1-baseline",
+      "command_seconds": 0.5549999999999999,
+      "preflight_seconds": 0.000674182,
+      "input_seconds": 0.007824145999999999,
+      "native_seconds": 0.401325743,
+      "pre_store_seconds": 0.409824071,
+      "unseparated_outer_and_store_seconds": 0.14517592899999993,
+      "allocation_bytes": 8998670.0,
+      "scratch_bytes": 5898240.0,
+      "usable_bytes": 106191939175.0,
+      "load": [
+        1.98,
+        1.31,
+        0.75
+      ]
+    },
+    {
+      "run": "saved_generated_aw-p1-candidate",
+      "command_seconds": 0.585,
+      "preflight_seconds": 0.00065627,
+      "input_seconds": 0.007719103,
+      "native_seconds": 0.398710417,
+      "pre_store_seconds": 0.40708579,
+      "unseparated_outer_and_store_seconds": 0.17791420999999996,
+      "allocation_bytes": 8998670.0,
+      "scratch_bytes": 5898240.0,
+      "usable_bytes": 106192302900.0,
+      "load": [
+        1.98,
+        1.31,
+        0.75
+      ]
+    },
+    {
+      "run": "saved_generated_aw-p2-baseline",
+      "command_seconds": 0.625,
+      "preflight_seconds": 0.000644393,
+      "input_seconds": 0.007792636,
+      "native_seconds": 0.424740855,
+      "pre_store_seconds": 0.433177884,
+      "unseparated_outer_and_store_seconds": 0.191822116,
+      "allocation_bytes": 8998670.0,
+      "scratch_bytes": 5898240.0,
+      "usable_bytes": 106190579303.0,
+      "load": [
+        1.98,
+        1.31,
+        0.75
+      ]
+    },
+    {
+      "run": "saved_generated_aw-p2-candidate",
+      "command_seconds": 0.859,
+      "preflight_seconds": 0.000643511,
+      "input_seconds": 0.010582877000000001,
+      "native_seconds": 0.6251349929999999,
+      "pre_store_seconds": 0.636361381,
+      "unseparated_outer_and_store_seconds": 0.22263861900000004,
+      "allocation_bytes": 8998670.0,
+      "scratch_bytes": 5898240.0,
+      "usable_bytes": 106191837594.0,
+      "load": [
+        1.98,
+        1.31,
+        0.75
+      ]
+    },
+    {
+      "run": "saved_generated_aw-p3-baseline",
+      "command_seconds": 0.857,
+      "preflight_seconds": 0.001356904,
+      "input_seconds": 0.015971533,
+      "native_seconds": 0.542693412,
+      "pre_store_seconds": 0.560021849,
+      "unseparated_outer_and_store_seconds": 0.296978151,
+      "allocation_bytes": 8998670.0,
+      "scratch_bytes": 5898240.0,
+      "usable_bytes": 106191303476.0,
+      "load": [
+        1.9,
+        1.3,
+        0.75
+      ]
+    },
+    {
+      "run": "saved_generated_aw-p3-candidate",
+      "command_seconds": 0.779,
+      "preflight_seconds": 0.00084069,
+      "input_seconds": 0.015412941000000001,
+      "native_seconds": 0.530806555,
+      "pre_store_seconds": 0.547060186,
+      "unseparated_outer_and_store_seconds": 0.23193981400000008,
+      "allocation_bytes": 8998670.0,
+      "scratch_bytes": 5898240.0,
+      "usable_bytes": 106187928372.0,
+      "load": [
+        1.9,
+        1.3,
+        0.75
+      ]
+    }
+  ],
+  "interpretation": "No memory-admission branch change is evident. Six identical allocation/scratch values and scientific outputs do not explain native timing variation. One diagnostic pair cannot replace the original three-pair gate."
+}

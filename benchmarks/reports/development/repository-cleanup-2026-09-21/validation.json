@@ -1,0 +1,17 @@
+{
+  "historical_csv_and_patch_bytes_preserved": true,
+  "json_files_parsed": 733,
+  "portable_archive_changed_path_only_members": 5330,
+  "portable_archive_original_members": 45992,
+  "portable_provenance_records": 232,
+  "production_behavior_changed": false,
+  "python_files_parsed": 98,
+  "qualification": false,
+  "repository_checker_after_returncode": 1,
+  "repository_checker_before_returncode": 1,
+  "repository_checker_findings": 102,
+  "repository_checker_findings_identical": true,
+  "repository_checker_output_sha256": "9f872a82990383608015bd29e0a81fc32302a588ebdb581302e211f4ec0922dd",
+  "schema": "repository-cleanup-validation-v1",
+  "shell_files_syntax_checked": 51
+}

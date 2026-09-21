@@ -1,0 +1,651 @@
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -125,6 +125,7 @@
+     fit: PreparedOlsFitConfig,
+     memory_plan: MemoryPlan,
+     preparation_memory: crate::ols_preparation_memory::OlsPreparationMemory,
++    frame_memory: crate::ols_frame_memory::OlsFrameMemory,
+     prepared_owner_bytes: u128,
+     metadata_owner_bytes: u128,
+     publication_memory: crate::ols_publication_memory::OlsPublicationMemory,
+@@ -504,7 +505,10 @@
+     /// its frames. Public base estimates retain their historical meaning.
+     fn admit_prepared_parent(&mut self, owned_bytes: u128) -> Result<()> {
+         let public_base = self.memory_plan.estimate;
+-        let mut execution = self.preparation_memory.with_prepared_owner(public_base, owned_bytes)?;
++        let reconciled = self.preparation_memory.with_prepared_owner(public_base, owned_bytes)?;
++        let frame_parent = owned_bytes.checked_add(self.preparation_memory.frame_metadata_bytes)
++            .ok_or_else(|| allocation("OLS transient metadata parent overflows"))?;
++        let mut execution = self.frame_memory.with_parent(reconciled, frame_parent)?;
+         execution.fast_bytes = execution.fast_bytes.checked_add(self.metadata_owner_bytes)
+             .ok_or_else(|| allocation("OLS execution metadata size overflows"))?;
+         execution.low_bytes = execution.low_bytes.checked_add(self.metadata_owner_bytes)
+@@ -920,7 +924,12 @@
+             extended_fe_rows,
+             clusters.len(),
+         )?;
++        let preparation_memory = preparation_memory.with_construction(spi.nobs()?, &request, &clusters)?;
+         preparation_memory.admit_numeric_arrays(memory_plan.usable_bytes)?;
++        let frame_memory = crate::ols_frame_memory::OlsFrameMemory::estimate(
++            spi.nobs()?, prepared_model.columns.len(), prepared_model.coefficients.len(),
++            clusters.len(), self.poolsize, self.vce != OlsVceKind::Iid,
++        )?;
+         let default_fit = PreparedOlsFitConfig::default();
+         let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
+         let fit = PreparedOlsFitConfig {
+@@ -1019,6 +1028,7 @@
+             fit,
+             memory_plan,
+             preparation_memory,
++            frame_memory,
+             prepared_owner_bytes: 0,
+             metadata_owner_bytes: 0,
+             publication_memory,
+@@ -4156,6 +4166,113 @@
+ 
+     #[test]
+     #[cfg(feature = "ffi")]
++    fn numeric_dictionary_growth_stays_inside_construction_envelope() {
++        let _guard = instrumentation::lock_action_observation();
++        for n in [1, 7, 257, 4097, 8193, 65537] {
++            for levels in [1, 31, n] {
++                let values: Vec<f64> = (0..n).map(|i| (i % levels) as f64 * 100000.5 + 0.25).collect();
++                let start = instrumentation::begin_observation();
++                let encoded = fereg_core::factorize::factorize_f64(&values).unwrap();
++                let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
++                assert!(u128::from(peak) <= n as u128 * 96 + 4096, "dictionary {n}/{levels}: {peak}");
++                for (i, code) in encoded.codes.iter().enumerate() {
++                    assert_eq!(encoded.levels[*code as usize], values[i]);
++                }
++            }
++        }
++    }
++
++    #[test]
++    #[cfg(feature = "ffi")]
++    fn construction_and_transient_frame_peaks_bound_independent_allocations() {
++        let _guard = instrumentation::lock_action_observation();
++        let team = ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap());
++        team.install(|| ()).unwrap();
++        for rows in [257, 8193] {
++            for complex in [false, true] {
++                for vce in [OlsVceKind::Iid, OlsVceKind::Robust, OlsVceKind::Clustered] {
++                    let (args, mut spi) = saved_output_fixture();
++                    let mut action = EstimateActionSpec::parse(&args).unwrap()
++                        .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
++                    action.request.keep_singletons = true;
++                    action.request.absorbed_terms[0].saved_name.clear();
++                    if complex {
++                        action.request.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
++                    }
++                    let loaded = LoadedOlsInput {
++                        candidate: vec![true; rows],
++                        outcome: LoadedNumericColumn { values: (0..rows).map(|i| {
++                            let x = ((i * 7) % 109) as f64;
++                            0.8 * x + (i % 31) as f64 + ((i * 3) % 7) as f64
++                        }).collect(), missing: vec![false; rows] },
++                        numeric_sources: vec![
++                            (SourceId::new(1).unwrap(), LoadedNumericColumn {
++                                values: (0..rows).map(|i| ((i * 7) % 109) as f64).collect(), missing: vec![false; rows],
++                            }),
++                            // Non-integer, widely spaced labels force dictionary
++                            // factorization rather than the dense integer path.
++                            (SourceId::new(2).unwrap(), LoadedNumericColumn {
++                                values: (0..rows).map(|i| (i % 31) as f64 * 100000.5).collect(), missing: vec![false; rows],
++                            }),
++                        ],
++                        analytic_weight: None, frequency_weight: None, probability_weight: None,
++                    };
++                    let clusters = vec![OlsClusterTermV1 {
++                        label: "g".to_owned(), sources: vec![SourceId::new(2).unwrap()],
++                    }];
++                    let construction = crate::ols_preparation_memory::OlsPreparationMemory::estimate(rows, 3, false, 1, clusters.len()).unwrap()
++                        .with_construction(rows, &action.request, &clusters).unwrap();
++                    let bound = construction.preparation_peak_bytes(0).unwrap();
++                    construction.admit_numeric_arrays(Some(bound)).unwrap();
++                    assert_eq!(construction.admit_numeric_arrays(Some(bound-1)).unwrap_err().code, ErrorCode::Allocation);
++                    let request = OlsClusteredRequestV1 { ols: action.request, clusters };
++                    team.install(|| {
++                        let start = instrumentation::begin_observation();
++                        // Use the complex topology even for the intercept-only
++                        // control, exercising construction overlap and validation.
++                        let prepared = prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
++                        let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
++                        assert!(u128::from(peak) <= bound, "construction {peak} > {bound}");
++                        for mode in [PreparedOlsExecutionMode::Fast, PreparedOlsExecutionMode::Low] {
++                            let mut fit = action.fit;
++                            fit.execution.mode = mode;
++                            fit.absorb.retain_coefficients = false;
++                            fit.absorb.solver_memory_budget = None;
++                            let model = crate::ols_frame_memory::OlsFrameMemory::estimate(rows,
++                                prepared.ols().model().columns.len(), prepared.ols().model().coefficients.len(),
++                                if vce == OlsVceKind::Clustered { prepared.clusters().len() } else { 0 },
++                                fit.execution.poolsize, vce != OlsVceKind::Iid).unwrap();
++                            let start = instrumentation::begin_observation();
++                            let (solver_peak, owned) = match vce {
++                                OlsVceKind::Iid => {
++                                    let r = fit_prepared_categorical_ols_unadjusted_map(prepared.ols(),
++                                        PreparedOlsUnadjustedConfig { fit, ..Default::default() }).unwrap();
++                                    (r.fit().solver_workspace_peak().bytes(), r.owned_buffer_bytes())
++                                },
++                                OlsVceKind::Robust => {
++                                    let r = fit_prepared_categorical_ols_robust_map(prepared.ols(),
++                                        PreparedOlsRobustConfig { fit, ..Default::default() }).unwrap();
++                                    (r.fit().solver_workspace_peak().bytes(), r.owned_buffer_bytes())
++                                },
++                                OlsVceKind::Clustered => {
++                                    let r = fit_prepared_categorical_ols_clustered_map(&prepared,
++                                        PreparedOlsClusteredConfig { fit, ..Default::default() }).unwrap();
++                                    (r.fit().solver_workspace_peak().bytes(), r.owned_buffer_bytes())
++                                },
++                            };
++                            let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
++                            let frame = if mode == PreparedOlsExecutionMode::Fast { model.fast_bytes } else { model.low_bytes };
++                            let total = frame + u128::from(solver_peak.expect("modeled fixture solver"));
++                            assert!(u128::from(peak) <= total, "frame {peak} > {total}; owner {owned}");
++                        }
++                    }).unwrap();
++                }
++            }
++        }
++    }
++
++    #[test]
++    #[cfg(feature = "ffi")]
+     fn action_metadata_matches_independent_deallocation_and_counts_spare_capacity() {
+         let _guard = instrumentation::lock_action_observation();
+         for (args, mut spi) in [
+@@ -4237,9 +4354,11 @@
+             let unrestricted = spec.decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+             let public_base = unrestricted.memory_plan.estimate;
+             let owned_bytes = public_base.fast_bytes.max(public_base.low_bytes) + 4096;
+-            let adjusted = unrestricted.preparation_memory.with_prepared_owner(public_base, owned_bytes).unwrap();
++            let reconciled = unrestricted.preparation_memory.with_prepared_owner(public_base, owned_bytes).unwrap();
++            let adjusted = unrestricted.frame_memory.with_parent(reconciled, owned_bytes + unrestricted.preparation_memory.frame_metadata_bytes).unwrap();
+             let execution = (if mode == MemoryMode::Fast { adjusted.fast_bytes } else { adjusted.low_bytes }) + unrestricted.metadata_owner_bytes;
+-            let usable = execution + unrestricted.publication_memory.peak_bytes();
++            let usable = (execution + unrestricted.publication_memory.peak_bytes()).max(
++                unrestricted.preparation_memory.preparation_peak_bytes(unrestricted.metadata_owner_bytes).unwrap());
+             let available = 512 * 1024 * 1024 + usable;
+             let mut exact = spec.decode_with_memory_limit(&mut spi, || Ok(Some(available))).unwrap();
+             exact.admit_prepared_parent(owned_bytes).unwrap();
+@@ -4265,9 +4384,11 @@
+                 let unrestricted = spec
+                     .decode_with_memory_limit(&mut spi, || Ok(None))
+                     .unwrap();
+-                let base = unrestricted.memory_plan.selected_bytes() + unrestricted.metadata_owner_bytes;
++                let frame = unrestricted.frame_memory.with_parent(unrestricted.memory_plan.estimate, unrestricted.preparation_memory.frame_metadata_bytes).unwrap();
++                let base = (if mode == MemoryMode::Fast { frame.fast_bytes } else { frame.low_bytes }) + unrestricted.metadata_owner_bytes;
+                 let reserve = unrestricted.publication_memory.peak_bytes();
+-                let limit = 512 * 1024 * 1024 + base + reserve;
++                let usable = (base + reserve).max(unrestricted.preparation_memory.preparation_peak_bytes(unrestricted.metadata_owner_bytes).unwrap());
++                let limit = 512 * 1024 * 1024 + usable;
+                 let exact = spec
+                     .decode_with_memory_limit(&mut spi, || Ok(Some(limit)))
+                     .unwrap();
+@@ -4277,7 +4398,7 @@
+                 );
+                 let solver = exact.fit.absorb.solver_memory_budget.unwrap();
+                 assert_eq!(solver.execution_bytes, base);
+-                assert_eq!(solver.usable_bytes, base + reserve);
++                assert_eq!(solver.usable_bytes, usable);
+                 let error = spec
+                     .decode_with_memory_limit(&mut spi, || Ok(Some(limit - 1)))
+                     .unwrap_err();
+--- a/crates/fereg-plugin/src/lib.rs
++++ b/crates/fereg-plugin/src/lib.rs
+@@ -4,6 +4,7 @@
+ mod estimate;
+ mod input;
+ mod instrumentation;
++mod ols_frame_memory;
+ mod ols_preparation_memory;
+ mod ols_publication_memory;
+ mod output;
+--- a/crates/fereg-plugin/src/ols_preparation_memory.rs
++++ b/crates/fereg-plugin/src/ols_preparation_memory.rs
+@@ -10,6 +10,8 @@
+     pub(crate) input_array_bytes: u128,
+     pub(crate) numeric_preparation_array_bytes: u128,
+     prepared_payload_allowance: u128,
++    construction_bytes: u128,
++    pub(crate) frame_metadata_bytes: u128,
+ }
+ 
+ impl OlsPreparationMemory {
+@@ -31,18 +33,172 @@
+         // here by a full second value bank. Singleton compaction retains two
+         // value/map banks, one original-axis reason mask and the keep mask.
+         // These stages are sequential; their array peaks are not summed.
+-        let classification_arrays = add(input_array_bytes, mul(n, add(mul(value_columns, 8)?, 9)?)?)?;
++        let classification_arrays =
++            add(input_array_bytes, mul(n, add(mul(value_columns, 8)?, 9)?)?)?;
+         let singleton_compaction_arrays = mul(n, add(mul(value_columns, 16)?, 18)?)?;
+-        let numeric_preparation_array_bytes = classification_arrays.max(singleton_compaction_arrays);
++        let numeric_preparation_array_bytes =
++            classification_arrays.max(singleton_compaction_arrays);
+         // This is exactly the prepared-payload portion of estimate_phase2_memory:
+         // loaded outcome/sources, optional weight allowance, row map and codes.
+         // Its separate outcome/working vectors and all finite/parallel reserves
+         // remain intact when actual prepared ownership exceeds this allowance.
+-        let prepared_payload_allowance = mul(n, add(
+-            add(mul(loaded, 8)?, 16)?,
+-            mul(add(fe_channels as u128, clusters as u128)?, 4)?,
+-        )?)?;
+-        Ok(Self { input_array_bytes, numeric_preparation_array_bytes, prepared_payload_allowance })
++        let prepared_payload_allowance = mul(
++            n,
++            add(
++                add(mul(loaded, 8)?, 16)?,
++                mul(add(fe_channels as u128, clusters as u128)?, 4)?,
++            )?,
++        )?;
++        Ok(Self {
++            input_array_bytes,
++            numeric_preparation_array_bytes,
++            prepared_payload_allowance,
++            construction_bytes: 0,
++            frame_metadata_bytes: 0,
++        })
++    }
++
++    /// Supplement the input-array floor with the construction families in
++    /// prepared.rs and prepared_categorical_data.rs. Source descriptors are
++    /// inspected without allocating a categorical marker on the row axis.
++    pub(crate) fn with_construction(
++        mut self,
++        rows: usize,
++        request: &fereg_core::ols::OlsRequestV1,
++        clusters: &[fereg_core::ols::OlsClusterTermV1],
++    ) -> Result<Self> {
++        use fereg_core::metadata::ComponentKind;
++        let categories = request
++            .model
++            .sources
++            .iter()
++            .filter(|source| {
++                request.model.terms.iter().any(|term| {
++                    term.components.iter().any(|component| {
++                        component.source == source.id
++                            && component.kind == ComponentKind::Categorical
++                    })
++                }) || request
++                    .absorbed_terms
++                    .iter()
++                    .any(|term| term.categorical_sources.contains(&source.id))
++                    || clusters
++                        .iter()
++                        .any(|cluster| cluster.sources.contains(&source.id))
++            })
++            .count() as u128;
++        let effects = request.absorbed_terms.len() as u128;
++        let complex = request.absorbed_terms.iter().any(|term| {
++            term.categorical_sources.len() > 1
++                || !term.slope_sources.is_empty()
++                || !term.saved_name.is_empty()
++        });
++        let n = rows as u128;
++        let numeric = self.numeric_preparation_array_bytes;
++        // Candidate and final codes/levels, availability and final membership
++        // indexes, compacted/original level identities, remaps and cursors.
++        // Count all declared effects (deduplication can only reduce this).
++        let topology = mul(
++            n,
++            add(
++                mul(categories, if complex { 48 } else { 12 })?,
++                mul(effects, if complex { 48 } else { 24 })?,
++            )?,
++        )?;
++        // Hash factorization's largest growth keeps old/new bucket tables,
++        // growing provisional levels and N codes simultaneously. Sorting drops
++        // the dictionary first. Dense integer and tuple paths use <= 12N.
++        let factorization = if categories == 0 {
++            0
++        } else {
++            add(mul(n, 96)?, 4096)?
++        };
++        // Counts, XOR active-row identities, queue and queue markers: 25 bytes
++        // per level. Active/initial masks and dropped-row list coexist.
++        let pruning = add(
++            mul(n, add(mul(effects, 25)?, 10)?)?,
++            mul(add(effects, 1)?, 8)?,
++        )?;
++        let cluster_codes = mul(mul(n, clusters.len() as u128)?, 4)?;
++        // Compiler and availability-request copies, nested recipes and BTree
++        // validation registries are metadata-scale, never N-by-K expansions.
++        let descriptors = add(
++            request.model.sources.len() as u128,
++            add(
++                request.model.terms.len() as u128,
++                request.bindings.len() as u128,
++            )?,
++        )?;
++        let cluster_metadata = clusters.iter().try_fold(0, |total, cluster| {
++            add(
++                total,
++                add(
++                    cluster.label.capacity() as u128,
++                    mul(cluster.sources.capacity() as u128, 4)?,
++                )?,
++            )
++        })?;
++        // Every saved/reported slope channel repeats the categorical label
++        // and source identity. This is a product of channel count and tuple
++        // arity/name length, not bounded by a constant times request bytes.
++        let mut channel_metadata = 0;
++        for effect in &request.absorbed_terms {
++            let mut label = effect.categorical_sources.len().saturating_sub(1) as u128;
++            for id in &effect.categorical_sources {
++                let source = request
++                    .model
++                    .sources
++                    .iter()
++                    .find(|source| source.id == *id)
++                    .ok_or_else(|| allocation("OLS metadata source is absent"))?;
++                label = add(label, source.canonical_name.len() as u128)?;
++            }
++            let identity = mul(effect.categorical_sources.len() as u128, 4)?;
++            if effect.intercept {
++                channel_metadata = add(channel_metadata, add(add(label, identity)?, 256)?)?;
++            }
++            for id in &effect.slope_sources {
++                let source = request
++                    .model
++                    .sources
++                    .iter()
++                    .find(|source| source.id == *id)
++                    .ok_or_else(|| allocation("OLS slope metadata source is absent"))?;
++                let channel = add(add(label, source.canonical_name.len() as u128)?, 3)?;
++                channel_metadata = add(channel_metadata, add(add(channel, identity)?, 256)?)?;
++            }
++        }
++        self.frame_metadata_bytes = add(
++            mul(channel_metadata, 2)?,
++            add(
++                mul(request.owned_buffer_bytes(), 2)?,
++                mul(descriptors, 128)?,
++            )?,
++        )?;
++        let metadata = add(
++            mul(add(request.owned_buffer_bytes(), cluster_metadata)?, 8)?,
++            add(
++                add(mul(descriptors, 256)?, mul(channel_metadata, 8)?)?,
++                4096,
++            )?,
++        )?;
++        self.construction_bytes = add(
++            add(numeric, topology)?,
++            add(
++                factorization.max(pruning).max(mul(n, 12)?),
++                add(cluster_codes, metadata)?,
++            )?,
++        )?;
++        Ok(self)
++    }
++
++    pub(crate) fn preparation_peak_bytes(self, parent: u128) -> Result<u128> {
++        add(
++            parent,
++            self.input_array_bytes
++                .max(self.numeric_preparation_array_bytes)
++                .max(self.construction_bytes),
++        )
+     }
+ 
+     pub(crate) fn with_prepared_owner(
+@@ -62,21 +218,29 @@
+         self.admit_numeric_arrays_with_parent(usable_bytes, 0)
+     }
+ 
+-    pub(crate) fn admit_numeric_arrays_with_parent(self, usable_bytes: Option<u128>, parent_bytes: u128) -> Result<()> {
+-        let peak = add(parent_bytes, self.input_array_bytes.max(self.numeric_preparation_array_bytes))?;
++    pub(crate) fn admit_numeric_arrays_with_parent(
++        self,
++        usable_bytes: Option<u128>,
++        parent_bytes: u128,
++    ) -> Result<()> {
++        let peak = self.preparation_peak_bytes(parent_bytes)?;
+         if usable_bytes.is_some_and(|usable| peak > usable) {
+-            return Err(allocation("OLS loading and numeric preparation arrays exceed usable memory"));
++            return Err(allocation(
++                "OLS loading and numeric preparation arrays exceed usable memory",
++            ));
+         }
+         Ok(())
+     }
+ }
+ 
+ fn add(a: u128, b: u128) -> Result<u128> {
+-    a.checked_add(b).ok_or_else(|| allocation("OLS preparation memory size overflows"))
++    a.checked_add(b)
++        .ok_or_else(|| allocation("OLS preparation memory size overflows"))
+ }
+ 
+ fn mul(a: u128, b: u128) -> Result<u128> {
+-    a.checked_mul(b).ok_or_else(|| allocation("OLS preparation memory size overflows"))
++    a.checked_mul(b)
++        .ok_or_else(|| allocation("OLS preparation memory size overflows"))
+ }
+ 
+ fn allocation(message: &'static str) -> FeregError {
+@@ -95,11 +259,31 @@
+         // Classification: input + second value bank + map/reasons = 17,440,000.
+         assert_eq!(memory.numeric_preparation_array_bytes, 17_440_000);
+         memory.admit_numeric_arrays(Some(17_440_000)).unwrap();
+-        assert_eq!(memory.admit_numeric_arrays(Some(17_439_999)).unwrap_err().code, ErrorCode::Allocation);
++        assert_eq!(
++            memory
++                .admit_numeric_arrays(Some(17_439_999))
++                .unwrap_err()
++                .code,
++            ErrorCode::Allocation
++        );
+         memory.admit_numeric_arrays(None).unwrap();
+-        memory.admit_numeric_arrays_with_parent(Some(17_440_137), 137).unwrap();
+-        assert_eq!(memory.admit_numeric_arrays_with_parent(Some(17_440_136), 137).unwrap_err().code, ErrorCode::Allocation);
+-        assert_eq!(memory.admit_numeric_arrays_with_parent(None, u128::MAX).unwrap_err().code, ErrorCode::Allocation);
++        memory
++            .admit_numeric_arrays_with_parent(Some(17_440_137), 137)
++            .unwrap();
++        assert_eq!(
++            memory
++                .admit_numeric_arrays_with_parent(Some(17_440_136), 137)
++                .unwrap_err()
++                .code,
++            ErrorCode::Allocation
++        );
++        assert_eq!(
++            memory
++                .admit_numeric_arrays_with_parent(None, u128::MAX)
++                .unwrap_err()
++                .code,
++            ErrorCode::Allocation
++        );
+         let narrow = OlsPreparationMemory::estimate(10_000, 2, false, 0, 0).unwrap();
+         assert_eq!(narrow.numeric_preparation_array_bytes, 500_000);
+         assert!(OlsPreparationMemory::estimate(usize::MAX, usize::MAX, true, 0, 0).is_err());
+@@ -115,7 +299,16 @@
+         let larger = memory.with_prepared_owner(base, 6_201).unwrap();
+         assert_eq!(larger.fast_bytes, base.fast_bytes + 1_001);
+         assert_eq!(larger.low_bytes, base.low_bytes + 1_001);
+-        assert_eq!(larger.fast_bytes-base.fast_bytes, larger.low_bytes-base.low_bytes);
+-        assert_eq!(memory.with_prepared_owner(base, u128::MAX).unwrap_err().code, ErrorCode::Allocation);
+-    }
+-}
++        assert_eq!(
++            larger.fast_bytes - base.fast_bytes,
++            larger.low_bytes - base.low_bytes
++        );
++        assert_eq!(
++            memory
++                .with_prepared_owner(base, u128::MAX)
++                .unwrap_err()
++                .code,
++            ErrorCode::Allocation
++        );
++    }
++}
+--- a/crates/fereg-plugin/src/ols_frame_memory.rs
++++ b/crates/fereg-plugin/src/ols_frame_memory.rs
+@@ -0,0 +1,161 @@
++//! OLS-owned transient numerical frames, excluding FE solver/dependency storage.
++//!
++//! The prepared owner and request are added by the caller. Sequential finite,
++//! score-certificate and covariance stages share a maximum, while buffers that
++//! survive into each stage are summed. Public base-memory fields are unchanged.
++
++use fereg_core::error::{ErrorCode, FeregError, Result};
++use fereg_core::MemoryEstimate;
++
++#[derive(Debug, Clone, Copy)]
++pub(crate) struct OlsFrameMemory {
++    pub fast_bytes: u128,
++    pub low_bytes: u128,
++    pub cluster_reduction_bytes: u128,
++}
++
++impl OlsFrameMemory {
++    pub(crate) fn estimate(
++        rows: usize,
++        generated: usize,
++        reported: usize,
++        clusters: usize,
++        poolsize: usize,
++        robust: bool,
++    ) -> Result<Self> {
++        if poolsize == 0 || clusters > 10 {
++            return Err(FeregError::new(
++                ErrorCode::InvalidArgument,
++                "invalid OLS frame dimensions",
++            ));
++        }
++        let n = rows as u128;
++        let k = generated as u128;
++        let p = reported as u128;
++        let q = k.max(p);
++        let square = mul(q, q)?;
++        let blocks = rows.div_ceil(16_384).clamp(1, 64) as u128;
++        // Within/RHS and the optional packed score cache; QR outcome, raw and
++        // independent residuals, normalized weights, and certificate vectors.
++        let fast_rows = mul(mul(n, add(mul(k, 2)?, 8)?)?, 8)?;
++        let low_rows = add(
++            mul(mul(n, add(poolsize.min(generated) as u128, 8)?)?, 8)?,
++            // Working and score scratch I/O buffers, row cache and transpose.
++            // Private file payload is reported separately, never heap-charged.
++            if generated == 0 { 0 } else { 4 * (1 << 20) },
++        )?;
++        // Gram, QR/Cholesky trial, inverse/bread and independent checks. The
++        // failed Cholesky's local owners drop before QR fallback begins.
++        let finite = add(add(mul(square, 128)?, mul(q, 1024)?)?, 4096)?;
++        // Fused moments use at most 64 columns and 64 deterministic blocks;
++        // larger axes take the columnwise path. Norm/mean partials are linear.
++        let moment_k = k.min(64);
++        let moments = mul(
++            mul(blocks, add(mul(moment_k, moment_k)?, mul(add(k, 1)?, 8)?)?)?,
++            8,
++        )?;
++        let fit = add(finite, moments)?;
++        let partial_stride = add(mul(square, 2)?, add(mul(q, 4)?, 1)?)?;
++        let partial_bytes = mul(partial_stride, 8)?;
++        // The reducers permit one block even if one block exceeds 32 MiB.
++        let reduction_blocks = blocks.min(((32 << 20) / partial_bytes.max(1)).max(1));
++        let ordinary_partials = mul(reduction_blocks, partial_bytes)?;
++        let cluster_reduction_bytes = if clusters == 0 {
++            0
++        } else {
++            // Dense subset slots are bounded by the product of level counts,
++            // each <= N, and by the actual reducer's admission ceiling. Sorted
++            // fallback keeps two radix orders, not one N-vector per subset.
++            let ceiling = mul(n, 32)?.max(64 << 20);
++            let bytes_per_group = add(mul(p, 16)?, 1)?;
++            let mut dense = bytes_per_group;
++            for _ in 0..clusters {
++                dense = dense.saturating_mul(n).min(ceiling);
++            }
++            let dense_blocks = ((dense / bytes_per_group.max(1)).div_ceil(1024))
++                .clamp(1, 64)
++                .min(((32 << 20) / partial_bytes.max(1)).max(1));
++            add(
++                dense.max(mul(n, 16)?),
++                mul(dense_blocks.max(reduction_blocks), partial_bytes)?,
++            )?
++        };
++        let inference = if robust || clusters != 0 {
++            let reducers = cluster_reduction_bytes.max(ordinary_partials);
++            // Covariance meat/corrections, independent influence matrices,
++            // sandwich, eigensystem/clipping/certificates and Wald work.
++            let covariance = add(mul(square, 192)?, mul(q, 1024)?)?;
++            let subsets = if clusters == 0 {
++                0
++            } else {
++                (1_u128 << clusters) - 1
++            };
++            add(add(covariance, reducers)?, add(mul(subsets, 128)?, 4096)?)?
++        } else {
++            finite
++        };
++        let sequential = fit.max(inference);
++        Ok(Self {
++            fast_bytes: add(fast_rows, sequential)?,
++            low_bytes: add(low_rows, sequential)?,
++            cluster_reduction_bytes,
++        })
++    }
++
++    pub(crate) fn with_parent(self, base: MemoryEstimate, parent: u128) -> Result<MemoryEstimate> {
++        Ok(MemoryEstimate {
++            fast_bytes: base.fast_bytes.max(add(parent, self.fast_bytes)?),
++            low_bytes: base.low_bytes.max(add(parent, self.low_bytes)?),
++            recommended_poolsize: base.recommended_poolsize,
++        })
++    }
++}
++
++fn add(a: u128, b: u128) -> Result<u128> {
++    a.checked_add(b).ok_or_else(overflow)
++}
++fn mul(a: u128, b: u128) -> Result<u128> {
++    a.checked_mul(b).ok_or_else(overflow)
++}
++fn overflow() -> FeregError {
++    FeregError::new(ErrorCode::Allocation, "OLS transient frame size overflows")
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn dense_cluster_and_parallel_partials_coexist() {
++        let cluster = OlsFrameMemory::estimate(16_384, 2, 3, 2, 10, true).unwrap();
++        assert!(cluster.cluster_reduction_bytes > 64 << 20);
++        let unclustered = OlsFrameMemory::estimate(16_384, 2, 3, 0, 10, true).unwrap();
++        assert!(cluster.fast_bytes > unclustered.fast_bytes + (64 << 20));
++        // A single tiny dimension cannot consume the generic 64 MiB ceiling.
++        assert!(
++            OlsFrameMemory::estimate(12, 2, 3, 1, 10, true)
++                .unwrap()
++                .cluster_reduction_bytes
++                < 16_384
++        );
++    }
++
++    #[test]
++    fn finite_wide_rank_zero_and_low_frames_are_checked() {
++        for (n, k) in [(0, 0), (12, 0), (7680, 2), (65537, 65), (1000, 1000)] {
++            let m = OlsFrameMemory::estimate(n, k, k + 1, 0, 10, false).unwrap();
++            let base = MemoryEstimate {
++                fast_bytes: 1,
++                low_bytes: 2,
++                recommended_poolsize: 10,
++            };
++            let execution = m.with_parent(base, 1234).unwrap();
++            assert_eq!(execution.fast_bytes, m.fast_bytes + 1234);
++            assert_eq!(execution.low_bytes, m.low_bytes + 1234);
++            assert!(m.with_parent(base, u128::MAX).is_err());
++        }
++        assert!(
++            OlsFrameMemory::estimate(usize::MAX, usize::MAX, usize::MAX, 10, 10, true).is_err()
++        );
++    }
++}

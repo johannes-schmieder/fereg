@@ -1,0 +1,167 @@
+Diff in $REPO/crates/fereg-core/src/ppml/memory.rs:1184:
+     // The row-scaled metadata includes categorical sources that are absent
+     // from the absorbed-effect count (finite factors and cluster-only sources).
+     let prepared_generation_bytes = checked_sum(&[
+-        bytes_f64(checked_mul(n, checked_sum(&[loaded, 3])?, "PPML generation numerics")?)?,
+-        checked_mul(loaded, size_of::<Vec<f64>>() as u128, "PPML numeric descriptors")?,
++        bytes_f64(checked_mul(
++            n,
++            checked_sum(&[loaded, 3])?,
++            "PPML generation numerics",
++        )?)?,
++        checked_mul(
++            loaded,
++            size_of::<Vec<f64>>() as u128,
++            "PPML numeric descriptors",
++        )?,
+         checked_mul(n, word, "PPML generation sample row map")?,
+         original_n,
+         dimensions.metadata.prepared_nested_bytes,
+Diff in $REPO/crates/fereg-core/src/ppml/memory.rs:1192:
+         dimensions.metadata.generation_fixed_bytes,
+-        checked_mul(n, dimensions.metadata.generation_bytes_per_row, "PPML generation topology rows")?,
++        checked_mul(
++            n,
++            dimensions.metadata.generation_bytes_per_row,
++            "PPML generation topology rows",
++        )?,
+         checked_mul(levels, word, "PPML generation membership offsets")?,
+-        checked_mul(reported_coefficient_slots,
+-            (size_of::<PreparedOlsCoefficient>() + size_of::<PreparedOlsColumn>()
++        checked_mul(
++            reported_coefficient_slots,
++            (size_of::<PreparedOlsCoefficient>()
++                + size_of::<PreparedOlsColumn>()
+                 + size_of::<CoefficientSlot>()) as u128,
+-            "PPML generation reserved coefficient axis")?,
++            "PPML generation reserved coefficient axis",
++        )?,
+     ])?;
+     let legacy_generation_bytes = checked_sum(&[
+-        canonical_numeric_bytes, topology_bytes, cluster_topology_bytes,
+-        prepared_model_metadata_bytes, checked_mul(n, word, "PPML generation row allowance")?,
++        canonical_numeric_bytes,
++        topology_bytes,
++        cluster_topology_bytes,
++        prepared_model_metadata_bytes,
++        checked_mul(n, word, "PPML generation row allowance")?,
+         original_n,
+     ])?;
+     let prepared_generation_supplement_bytes =
+Diff in $REPO/crates/fereg-core/src/ppml/memory.rs:1740:
+         "PPML bounded diagnostic record",
+     )?;
+ 
+-    let input_owner_supplement_bytes = dimensions.metadata.input_owner_bytes
++    let input_owner_supplement_bytes = dimensions
++        .metadata
++        .input_owner_bytes
+         .saturating_sub(config.embedding_resident_bytes);
+     let common = checked_sum(&[
+         config.embedding_resident_bytes,
+Diff in $REPO/crates/fereg-core/src/ppml/memory.rs:3713:
+         for embedding in [0, 113, 10_007, 10_008] {
+             let mut shape = shape;
+             shape.metadata.input_owner_bytes = 10_007;
+-            let after = estimate_ppml_memory(shape, PpmlMemoryConfig {
+-                embedding_resident_bytes: embedding, ..PpmlMemoryConfig::default()
+-            }).unwrap();
+-            assert_eq!(after.fast.input_owner_supplement_bytes, 10_007_u128.saturating_sub(embedding));
+-            assert_eq!(after.fast.iteration_peak_bytes - before.fast.iteration_peak_bytes,
+-                embedding.max(10_007));
+-            assert_eq!(after.fast.separation_peak_bytes - before.fast.separation_peak_bytes,
+-                embedding.max(10_007));
++            let after = estimate_ppml_memory(
++                shape,
++                PpmlMemoryConfig {
++                    embedding_resident_bytes: embedding,
++                    ..PpmlMemoryConfig::default()
++                },
++            )
++            .unwrap();
++            assert_eq!(
++                after.fast.input_owner_supplement_bytes,
++                10_007_u128.saturating_sub(embedding)
++            );
++            assert_eq!(
++                after.fast.iteration_peak_bytes - before.fast.iteration_peak_bytes,
++                embedding.max(10_007)
++            );
++            assert_eq!(
++                after.fast.separation_peak_bytes - before.fast.separation_peak_bytes,
++                embedding.max(10_007)
++            );
+         }
+     }
+ 
+Diff in $REPO/crates/fereg-core/src/ppml/memory.rs:3735:
+         let after = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+         for (before, after) in [(before.fast, after.fast), (before.low, after.low)] {
+             assert!(before.prepared_generation_supplement_bytes > 0);
+-            assert_eq!(after.prepared_generation_bytes - before.prepared_generation_bytes, 97);
++            assert_eq!(
++                after.prepared_generation_bytes - before.prepared_generation_bytes,
++                97
++            );
+             assert_eq!(after.iteration_peak_bytes - before.iteration_peak_bytes, 97);
+-            assert_eq!(after.separation_replacement_generation_bytes
+-                - before.separation_replacement_generation_bytes, 97);
+-            assert_eq!(after.separation_rebase_bytes - before.separation_rebase_bytes, 97);
+-            assert_eq!(after.separation_peak_bytes - before.separation_peak_bytes, 194);
++            assert_eq!(
++                after.separation_replacement_generation_bytes
++                    - before.separation_replacement_generation_bytes,
++                97
++            );
++            assert_eq!(
++                after.separation_rebase_bytes - before.separation_rebase_bytes,
++                97
++            );
++            assert_eq!(
++                after.separation_peak_bytes - before.separation_peak_bytes,
++                194
++            );
+         }
+-        let config = PpmlMemoryConfig { requested: MemoryMode::Fast,
+-            ..PpmlMemoryConfig::default() };
++        let config = PpmlMemoryConfig {
++            requested: MemoryMode::Fast,
++            ..PpmlMemoryConfig::default()
++        };
+         let peak = estimate_ppml_memory(shape, config).unwrap().fast.peak_bytes;
+         // This fixture remains below the fixed-headroom crossover.
+         assert!(peak < 4 * MINIMUM_HEADROOM_BYTES);
+Diff in $REPO/crates/fereg-core/src/ppml/memory.rs:3750:
+-        plan_ppml_memory(shape, PpmlMemoryConfig { available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES), ..config }).unwrap();
+-        assert_eq!(plan_ppml_memory(shape, PpmlMemoryConfig {
+-            available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES - 1), ..config
+-        }).unwrap_err().code, ErrorCode::Allocation);
++        plan_ppml_memory(
++            shape,
++            PpmlMemoryConfig {
++                available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES),
++                ..config
++            },
++        )
++        .unwrap();
++        assert_eq!(
++            plan_ppml_memory(
++                shape,
++                PpmlMemoryConfig {
++                    available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES - 1),
++                    ..config
++                }
++            )
++            .unwrap_err()
++            .code,
++            ErrorCode::Allocation
++        );
+         shape.metadata.generation_bytes_per_row = u128::MAX;
+-        assert_eq!(estimate_ppml_memory(shape, config).unwrap_err().code, ErrorCode::Allocation);
++        assert_eq!(
++            estimate_ppml_memory(shape, config).unwrap_err().code,
++            ErrorCode::Allocation
++        );
+     }
+ 
+     #[test]

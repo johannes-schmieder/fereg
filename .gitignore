@@ -15,6 +15,13 @@
 /benchmarks/reports/*.csv
 /benchmarks/reports/*.json
 /benchmarks/reports/development/*/work/
+/benchmarks/reports/systematic-stopped-2026-09-11/work/
+# Original run requests retain machine-local execution paths. Portable exports
+# preserve their contents and original hashes without changing these originals.
+/benchmarks/reports/development/systematic-final-smoke-2026-09-11/results/**/request.json
+/benchmarks/reports/development/systematic-pilot-2026-09-11/results/**/request.json
+/benchmarks/reports/development/systematic-2026-09-10/oracle-retest-exceptions.txt
+/benchmarks/reports/systematic-stopped-2026-09-11/evidence.zip
 /benchmarks/reports/captured/**/*.o[0-9]*
 /benchmarks/reports/captured/**/*.e[0-9]*
 /tests/manual/*_runs.csv

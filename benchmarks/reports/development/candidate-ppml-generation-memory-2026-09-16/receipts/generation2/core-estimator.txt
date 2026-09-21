@@ -1,0 +1,64 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running unittests src/lib.rs ($RUN/generation2/target/debug/deps/fereg_core-bfb63d930001cbdd)
+
+running 57 tests
+test ppml::prepared_estimator::tests::accepted_mu_drop_then_publication_fit_failure_returns_no_composite ... ok
+test ppml::prepared_estimator::tests::action_allocator_observation_is_attached_after_composite_certification ... ok
+test ppml::prepared_estimator::tests::allocation_audit_counts_only_executed_linear_subproblems ... ok
+test ppml::prepared_estimator::tests::automatic_family_matches_explicit_solver_and_preserves_requested_identity ... ok
+test ppml::prepared_estimator::tests::automatic_low_memory_retains_certified_map ... ok
+test ppml::prepared_estimator::tests::automatic_lsmr_admission_preserves_map_only_surfaces ... ok
+test ppml::prepared_estimator::tests::automatic_specialized_fit_is_interruption_atomic ... ok
+test ppml::prepared_estimator::tests::automatic_workspace_budget_veto_selects_map_without_solver_retry ... ok
+test ppml::prepared_estimator::tests::bounded_integer_counts_match_exact_sets_and_reject_unbounded_domains ... ok
+test ppml::prepared_estimator::tests::canonical_profile_recovery_preserves_composite_publication_and_failure_atomicity ... ok
+test ppml::prepared_estimator::tests::cluster_preflight_bound_dominates_exact_subset_groups_without_n_storage ... ok
+test ppml::prepared_estimator::tests::clustered_composite_uses_final_codes_and_shared_multiway_inventory ... ok
+test ppml::prepared_estimator::tests::default_auto_absorb_policy_is_resolved_once_for_separation_and_fit ... ok
+test ppml::prepared_estimator::tests::domain_and_memory_failures_return_no_composite_value ... ok
+test ppml::prepared_estimator::tests::exact_fe_separation_rebases_every_final_product_once ... ok
+test ppml::prepared_estimator::tests::excluded_zero_keeps_conservative_admission_but_compact_report_bank ... ok
+test ppml::prepared_estimator::tests::explicit_lsmr_matches_map_and_reports_its_concrete_engine ... ok
+test ppml::prepared_estimator::tests::explicit_public_map_matches_one_effect_auto_bitwise ... ok
+test ppml::prepared_estimator::tests::fe_run_bounds_dominate_exact_groups_under_order_masks_interactions_and_slopes ... ok
+test ppml::prepared_estimator::tests::fe_run_refinement_is_interruptible_and_does_not_claim_unique_runs ... ok
+test ppml::prepared_estimator::tests::final_sample_rebase_preserves_the_full_original_omission_axis ... ok
+test ppml::prepared_estimator::tests::fit_only_and_residual_only_results_retain_no_unrequested_predictor_state ... ok
+test ppml::prepared_estimator::tests::fitted_mu_drop_restarts_and_rebases_the_original_axis ... ok
+test ppml::prepared_estimator::tests::frequency_weights_and_exposure_reach_the_same_certified_boundary ... ok
+test ppml::prepared_estimator::tests::generation_parent_bound_covers_factors_clusters_slopes_and_rebases ... ok
+test ppml::prepared_estimator::tests::huge_finite_outcome_is_numerical_r430_with_no_composite_publication ... ok
+test ppml::prepared_estimator::tests::interrupt_callback_may_be_non_send_and_runs_only_on_the_caller_thread ... ok
+test ppml::prepared_estimator::tests::metadata_admission_counts_nested_recipes_labels_and_partial_saves ... ok
+test ppml::prepared_estimator::tests::no_fe_constant_is_identified_with_a_real_robust_covariance_coordinate ... ok
+test ppml::prepared_estimator::tests::one_and_multiway_fe_use_normalized_constant_and_exact_final_topology ... ok
+test ppml::prepared_estimator::tests::one_and_two_fe_ppml_map_keep_fused_projection_capacities_stable ... ok
+test ppml::prepared_estimator::tests::partial_saved_fe_publication_retains_full_final_hessian_certificate ... ok
+test ppml::prepared_estimator::tests::positive_outcome_scan_remains_interruptible_before_admission ... ok
+test ppml::prepared_estimator::tests::positive_outcomes_bound_report_banks_across_routes_weights_and_singletons ... ok
+test ppml::prepared_estimator::tests::ppml_result_freezes_pairwise_shared_topology_dof ... ok
+test ppml::prepared_estimator::tests::public_cmg_fallback_retains_retry_timing_and_certificate_evidence ... ok
+test ppml::prepared_estimator::tests::public_cmg_intermediate_budget_rejection_precedes_route_observation_preparation ... ok
+test ppml::prepared_estimator::tests::public_cmg_matches_the_map_ppml_oracle ... ok
+test ppml::prepared_estimator::tests::public_cmg_non_numerical_failures_remain_fatal ... ok
+test ppml::prepared_estimator::tests::public_cmg_numerical_failure_falls_back_to_map_permanently ... ok
+test ppml::prepared_estimator::tests::public_cmg_rejects_four_fixed_effect_dimensions ... ok
+test ppml::prepared_estimator::tests::public_cmg_retries_only_the_failed_projection_rhs ... ok
+test ppml::prepared_estimator::tests::public_lsmr_checkpoint_workspace_is_required_before_canonical_work ... ok
+test ppml::prepared_estimator::tests::public_specialized_solvers_reject_memory_low ... ok
+test ppml::prepared_estimator::tests::publication_capacity_failure_is_allocation_r909 ... ok
+test ppml::prepared_estimator::tests::pweights_and_offset_are_canonicalized_on_the_certified_final_sample ... ok
+test ppml::prepared_estimator::tests::requested_mu_without_a_candidate_is_reported_and_never_skipped ... ok
+test ppml::prepared_estimator::tests::saved_effect_recovery_honors_admission_inside_a_different_outer_pool ... ok
+test ppml::prepared_estimator::tests::saved_fe_recovery_uses_the_hessian_of_the_published_strict_state ... ok
+test ppml::prepared_estimator::tests::saved_intercept_and_slope_recover_through_ppml_fallible_map ... ok
+test ppml::prepared_estimator::tests::saved_slope_recovery_allocation_failure_is_r909_and_atomic ... ok
+test ppml::prepared_estimator::tests::three_effect_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh ... ok
+test ppml::prepared_estimator::tests::two_way_clustered_composite_publishes_every_final_subset ... ok
+test ppml::prepared_estimator::tests::unrepresentable_pweight_range_returns_atomic_r430_with_and_without_fixed_effects ... ok
+test ppml::prepared_estimator::tests::unsupported_public_solver_topology_fails_before_fit_lifetime_allocation ... ok
+test ppml::prepared_estimator::tests::zero_active_control_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh ... ok
+test ppml::prepared_estimator::tests::zero_active_control_lsmr_uses_joint_state_but_reports_fused_identity ... ok
+
+test result: ok. 57 passed; 0 failed; 0 ignored; 0 measured; 844 filtered out; finished in 0.67s
+

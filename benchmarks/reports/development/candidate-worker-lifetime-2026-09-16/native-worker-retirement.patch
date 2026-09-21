@@ -1,0 +1,194 @@
+--- a/crates/fereg-core/src/parallel.rs
++++ b/crates/fereg-core/src/parallel.rs
+@@ -6,7 +6,95 @@
+ #[derive(Debug)]
+ struct CachedThreadPool {
+     threads: usize,
+-    pool: Arc<rayon::ThreadPool>,
++    pool: Arc<OwnedThreadPool>,
++}
++
++/// Own worker handles as well as the Rayon registry. Rayon alone signals
++/// termination on drop, so an evicted team could overlap the next Stata call.
++#[derive(Debug)]
++struct OwnedThreadPool {
++    pool: Option<rayon::ThreadPool>,
++    workers: JoinedWorkers,
++}
++
++#[derive(Debug)]
++struct JoinedWorkers(Vec<std::thread::JoinHandle<()>>);
++
++impl JoinedWorkers {
++    fn join(&mut self) {
++        for handle in self.0.drain(..) {
++            let _ = handle.join();
++        }
++    }
++}
++
++impl Drop for JoinedWorkers {
++    fn drop(&mut self) {
++        self.join();
++    }
++}
++
++impl OwnedThreadPool {
++    fn new(threads: usize) -> Result<Self> {
++        let mut handles = Vec::new();
++        handles.try_reserve_exact(threads).map_err(|_| {
++            FeregError::new(
++                ErrorCode::Allocation,
++                "unable to reserve worker-team handles",
++            )
++        })?;
++        let mut workers = JoinedWorkers(handles);
++        let pool = rayon::ThreadPoolBuilder::new()
++            .num_threads(threads)
++            .spawn_handler(|thread| {
++                let mut builder = std::thread::Builder::new();
++                if let Some(name) = thread.name() {
++                    builder = builder.name(name.to_owned());
++                }
++                if let Some(size) = thread.stack_size() {
++                    builder = builder.stack_size(size);
++                }
++                workers.0.push(builder.spawn(|| thread.run())?);
++                Ok(())
++            })
++            .build()
++            .map_err(|error| {
++                FeregError::new(
++                    ErrorCode::Allocation,
++                    format!("unable to construct fereg worker team: {error}"),
++                )
++            })?;
++        Ok(Self {
++            pool: Some(pool),
++            workers,
++        })
++    }
++
++    fn install<T: Send>(&self, function: impl FnOnce() -> T + Send) -> T {
++        self.pool
++            .as_ref()
++            .expect("live worker team")
++            .install(function)
++    }
++}
++
++impl Drop for OwnedThreadPool {
++    fn drop(&mut self) {
++        let on_own_worker = self
++            .pool
++            .as_ref()
++            .is_some_and(|pool| pool.current_thread_index().is_some());
++        drop(self.pool.take());
++        if on_own_worker {
++            // The public Rust API can be called by external asynchronous Rayon
++            // work. Joining ourselves (or peers waiting for us) would deadlock.
++            // Stata actions use only scoped work and release their teams on the
++            // calling thread; this escape is outside that action lifetime proof.
++            self.workers.0.clear();
++        } else {
++            self.workers.join();
++        }
++    }
+ }
+ 
+ static THREAD_POOL: OnceLock<Mutex<Option<CachedThreadPool>>> = OnceLock::new();
+@@ -21,7 +109,7 @@
+ /// fallible lock/build step; installing work afterward is infallible.
+ #[derive(Debug, Clone)]
+ pub(crate) struct InstalledThreadTeam {
+-    pool: Arc<rayon::ThreadPool>,
++    pool: Arc<OwnedThreadPool>,
+ }
+ 
+ impl InstalledThreadTeam {
+@@ -69,6 +157,7 @@
+     /// cannot tolerate another fallible exit.
+     pub(crate) fn acquire(self) -> Result<InstalledThreadTeam> {
+         let cache = THREAD_POOL.get_or_init(|| Mutex::new(None));
++        let mut retired = None;
+         let pool = {
+             let mut guard = cache.lock().map_err(|_| {
+                 FeregError::new(
+@@ -80,16 +169,8 @@
+                 .as_ref()
+                 .is_none_or(|cached| cached.threads != self.threads)
+             {
+-                let pool = rayon::ThreadPoolBuilder::new()
+-                    .num_threads(self.threads)
+-                    .build()
+-                    .map_err(|error| {
+-                        FeregError::new(
+-                            ErrorCode::Allocation,
+-                            format!("unable to construct fereg worker team: {error}"),
+-                        )
+-                    })?;
+-                *guard = Some(CachedThreadPool {
++                let pool = OwnedThreadPool::new(self.threads)?;
++                retired = guard.replace(CachedThreadPool {
+                     threads: self.threads,
+                     pool: Arc::new(pool),
+                 });
+@@ -101,6 +182,7 @@
+                     .pool,
+             )
+         };
++        drop(retired);
+         Ok(InstalledThreadTeam { pool })
+     }
+ 
+@@ -169,6 +251,50 @@
+     use crate::options::ThreadConfig;
+ 
+     #[test]
++    fn owned_pool_joins_on_calling_thread_and_handles_nested_teams() {
++        for threads in [1, 4, 1] {
++            let mut pool = OwnedThreadPool::new(threads).unwrap();
++            assert_eq!(pool.install(rayon::current_num_threads), threads);
++            assert_eq!(pool.workers.0.len(), threads);
++            drop(pool.pool.take());
++            for handle in pool.workers.0.drain(..) {
++                handle.join().unwrap();
++            }
++        }
++        let outer = ThreadTeam::new(ThreadConfig::from_requested(2, true).unwrap());
++        let inner = ThreadTeam::new(ThreadConfig::from_requested(3, true).unwrap());
++        assert_eq!(
++            outer
++                .install(|| inner.install(rayon::current_num_threads).unwrap())
++                .unwrap(),
++            3
++        );
++    }
++
++    #[test]
++    fn last_owner_on_own_worker_does_not_join_itself() {
++        let pool = Arc::new(OwnedThreadPool::new(2).unwrap());
++        let owner = Arc::clone(&pool);
++        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
++        let (go_tx, go_rx) = std::sync::mpsc::channel();
++        let (done_tx, done_rx) = std::sync::mpsc::channel();
++        pool.pool.as_ref().unwrap().spawn(move || {
++            ready_tx.send(()).unwrap();
++            go_rx.recv().unwrap();
++            drop(owner);
++            done_tx.send(()).unwrap();
++        });
++        ready_rx
++            .recv_timeout(std::time::Duration::from_secs(5))
++            .unwrap();
++        drop(pool);
++        go_tx.send(()).unwrap();
++        done_rx
++            .recv_timeout(std::time::Duration::from_secs(5))
++            .unwrap();
++    }
++
++    #[test]
+     fn ranges_cover_exactly_once() {
+         let team = ThreadTeam::new(ThreadConfig::from_requested(32, true).expect("config"));
+         let ranges = team.ranges(101, 1);

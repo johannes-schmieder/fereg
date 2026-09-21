@@ -1,0 +1,21 @@
+{
+  "timestamp_utc": "2026-09-16T18:14:28.126859+00:00",
+  "job_id": 7596067,
+  "reason": "User requested a 28-core node",
+  "operation": "qalter -pe omp28 28 7596067",
+  "scheduler_response": [
+    "modified parallel environment of job 7596067",
+    "modified slot range of job 7596067"
+  ],
+  "verified_parallel_environment": "omp28",
+  "verified_slots": 28,
+  "verified_state": "qw",
+  "previous_parallel_environment": "omp32",
+  "previous_slots": 32,
+  "execution_cores": 4,
+  "mem_per_core": "2G",
+  "h_rt_seconds": 1200,
+  "frozen_source_unchanged": true,
+  "fixed_cases_unchanged": true,
+  "monitor_unchanged": true
+}

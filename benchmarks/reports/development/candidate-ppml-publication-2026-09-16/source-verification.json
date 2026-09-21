@@ -1,0 +1,20 @@
+{
+  "base_sha": "5240e589400c888690666265263ad96f9b694aa6",
+  "final_source": "5240e58-publication-lifetime4",
+  "final_bound_files": 290,
+  "current_matches_final": true,
+  "passing_core_source_matches_final": true,
+  "native2_to_final_changes": [
+    {
+      "path": "crates/fereg-plugin/src/ffi.rs",
+      "native2_sha256": "0818811d9ceb8c23cde4eb1d071e93bc21ba56ad7efd58e20697d66e4c375ebd",
+      "final_sha256": "3ed1f5b1e138818781c86b770b020de87333944034fbd02783870a726518e2ba"
+    },
+    {
+      "path": "crates/fereg-plugin/src/ppml_estimate.rs",
+      "native2_sha256": "64b2cb5d3f6cba3eeb95096fb3e7c841834b71a7de1352cf6cda282062d2ecce",
+      "final_sha256": "cce70f46747db5e08a3b66e9e636bdec4b81cf8ef5546fc00b7a8f522c4a9fb6"
+    }
+  ],
+  "installed_mac_sha256": "4187efdfbd6235e63c369d9b42dede6381b8a9e50b5360fd63ee237bd6c11b08"
+}

@@ -1,0 +1,71 @@
+[
+  {
+    "path": "crates/fereg-plugin/src/estimate.rs",
+    "before": {
+      "path": "crates/fereg-plugin/src/estimate.rs",
+      "production_tokens_sha256": "eecfd12aebe39a84d28060b5d5af1893a3cc4996a800a20704fbe5e538509510",
+      "production_literals_sha256": "c2a3e2314c21935f9a3bd238964a7055e0a3f3838d8b21e9291b536726836d42",
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "allocation_site_count": 152,
+      "allocation_sites_sha256": "4184b0b7dc55f3649c726ae97e50df8bc61f91bd8570afad4aad00fcdd442942"
+    },
+    "after": {
+      "path": "crates/fereg-plugin/src/estimate.rs",
+      "production_tokens_sha256": "6918fa8cce968b93423a31e4d6764599c4463f86ad3bb07e16ab02a21b898836",
+      "production_literals_sha256": "56965ff4d04177d69ba07c931d62972c6cde504b7c2eb6ee1bf0e395848fe121",
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "allocation_site_count": 153,
+      "allocation_sites_sha256": "a0de164268c102ab870d944173156b827e4f25ed4de8b8cdf18abf8c24e94741"
+    }
+  },
+  {
+    "path": "crates/fereg-plugin/src/lib.rs",
+    "before": {
+      "path": "crates/fereg-plugin/src/lib.rs",
+      "production_tokens_sha256": "06e47ee89cb794fa114aa7acd334a8bb6c612db2ed4bcfcc64f6965646c567a7",
+      "production_literals_sha256": "8c0f45cb5d9d70eb41921e218fd327ba59796c42d7fbd569bb3b0191dba824b6",
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "after": {
+      "path": "crates/fereg-plugin/src/lib.rs",
+      "production_tokens_sha256": "abd308436a036f8d361a567334c17c909e89885de82afb44e79de532e86a215b",
+      "production_literals_sha256": "8c0f45cb5d9d70eb41921e218fd327ba59796c42d7fbd569bb3b0191dba824b6",
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  {
+    "path": "crates/fereg-plugin/src/ols_publication_memory.rs",
+    "before": null,
+    "after": {
+      "path": "crates/fereg-plugin/src/ols_publication_memory.rs",
+      "production_tokens_sha256": "0e8400c3843d9e3a6befd383de7216019234842f67b9c76532289c4a2f7024d9",
+      "production_literals_sha256": "3ff9dbebf2772437d70dd54a9ace123f709857d4904d6273d58f3af3ab939de6",
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  {
+    "path": "crates/fereg-plugin/src/result.rs",
+    "before": {
+      "path": "crates/fereg-plugin/src/result.rs",
+      "production_tokens_sha256": "e0a72392990ab046115f509d3199f5e2925824badc1dbefa6b6fd30ebc09c760",
+      "production_literals_sha256": "bdc8b73b0adab5833574c3500b95fb0e8b05d17579ab7c3967deacb25d7c6fa0",
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "allocation_site_count": 31,
+      "allocation_sites_sha256": "64f3682bd5a4d4e91f91b72781a39edc1d8d5fae5352b6b3c9443bd3eb387155"
+    },
+    "after": {
+      "path": "crates/fereg-plugin/src/result.rs",
+      "production_tokens_sha256": "717563f08f3309110f96f2653e0441409f9e9b4b9962027b91377e47bc192ecf",
+      "production_literals_sha256": "bdc8b73b0adab5833574c3500b95fb0e8b05d17579ab7c3967deacb25d7c6fa0",
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "allocation_site_count": 31,
+      "allocation_sites_sha256": "64f3682bd5a4d4e91f91b72781a39edc1d8d5fae5352b6b3c9443bd3eb387155"
+    }
+  }
+]

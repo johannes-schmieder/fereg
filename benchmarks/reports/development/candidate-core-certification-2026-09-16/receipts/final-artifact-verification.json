@@ -1,0 +1,9 @@
+{
+  "source": "5240e58-core-certification1",
+  "source_files": 290,
+  "baseline_files": 291,
+  "test_executables": {
+    "target/debug/deps/fereg_core-bfb63d930001cbdd": "5bce87790f3a6157e4dba7297c87505758374d207635d06741f1c5ef516ac67c",
+    "target/debug/deps/fereg_plugin-e651ae9cfb533d78": "f95dcaf92bb948c6b4361d3f5368b634363293042e7e6c5251e9f10bb69895ef"
+  }
+}

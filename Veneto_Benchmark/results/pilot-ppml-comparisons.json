@@ -1,0 +1,37 @@
+[
+  {
+    "arm": "feppml",
+    "status": "pass",
+    "N": 3159720.0,
+    "coefficient_pass": true,
+    "se_pass": true,
+    "max_absolute_coefficient_difference": 1.461802900948328e-12,
+    "max_relative_se_difference": 2.360034563161187e-08
+  },
+  {
+    "arm": "fixest",
+    "status": "pass",
+    "N": 3159720,
+    "coefficient_pass": false,
+    "se_pass": true,
+    "max_absolute_coefficient_difference": 5.391310389790682e-08,
+    "max_relative_se_difference": 4.850085062579196e-08
+  },
+  {
+    "arm": "gglm",
+    "status": "command_timeout"
+  },
+  {
+    "arm": "ppmlhdfe",
+    "status": "pass",
+    "N": 3159720.0,
+    "coefficient_pass": true,
+    "se_pass": true,
+    "max_absolute_coefficient_difference": 0.0,
+    "max_relative_se_difference": 0.0
+  },
+  {
+    "arm": "pyfixest",
+    "status": "worker_failure"
+  }
+]

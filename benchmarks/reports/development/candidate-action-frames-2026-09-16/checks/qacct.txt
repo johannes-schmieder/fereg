@@ -1,0 +1,129 @@
+==============================================================
+qname        econ                
+hostname     scc-ei3.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_frame_mem     
+jobnumber    7590352             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Wed Sep 16 08:09:33 2026
+start_time   Wed Sep 16 08:10:25 2026
+end_time     Wed Sep 16 08:11:32 2026
+granted_pe   omp                 
+slots        4                   
+failed       0    
+exit_status  0                   
+ru_wallclock 67           
+ru_utime     126.249      
+ru_stime     9.901        
+ru_maxrss    1162908             
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    1815480             
+ru_majflt    1869                
+ru_nswap     0                   
+ru_inblock   496168              
+ru_oublock   1974632             
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     160516              
+ru_nivcsw    72867               
+cpu          136.150      
+mem          138.549           
+io           6.715             
+iow          0.000             
+maxvmem      3.292G
+arid         undefined
+==============================================================
+qname        econ                
+hostname     scc-tb4.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_weak_trace    
+jobnumber    7590338             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Wed Sep 16 07:58:40 2026
+start_time   Wed Sep 16 07:59:54 2026
+end_time     Wed Sep 16 08:00:05 2026
+granted_pe   omp                 
+slots        4                   
+failed       0    
+exit_status  0                   
+ru_wallclock 11           
+ru_utime     24.992       
+ru_stime     2.956        
+ru_maxrss    84932               
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    103712              
+ru_majflt    22                  
+ru_nswap     0                   
+ru_inblock   28480               
+ru_oublock   94856               
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     15764               
+ru_nivcsw    42966               
+cpu          27.948       
+mem          4.528             
+io           1.600             
+iow          0.000             
+maxvmem      1.341G
+arid         undefined
+==============================================================
+qname        econ                
+hostname     scc-wo4.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_frame_pairs   
+jobnumber    7590380             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Wed Sep 16 08:31:04 2026
+start_time   Wed Sep 16 08:32:21 2026
+end_time     Wed Sep 16 08:39:40 2026
+granted_pe   omp28               
+slots        28                  
+failed       0    
+exit_status  0                   
+ru_wallclock 439          
+ru_utime     627.416      
+ru_stime     55.998       
+ru_maxrss    1176284             
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    6109850             
+ru_majflt    5577                
+ru_nswap     0                   
+ru_inblock   1479920             
+ru_oublock   4281424             
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     341685              
+ru_nivcsw    175262              
+cpu          683.414      
+mem          395.292           
+io           29.949            
+iow          0.000             
+maxvmem      2.476G
+arid         undefined

@@ -1,0 +1,1219 @@
+diff --git a/crates/fereg-core/src/data/sample.rs b/crates/fereg-core/src/data/sample.rs
+index ca327514..590b8276 100644
+--- a/crates/fereg-core/src/data/sample.rs
++++ b/crates/fereg-core/src/data/sample.rs
+@@ -188,6 +188,23 @@ pub struct PreparedNumericSample {
+ }
+ 
+ impl PreparedNumericSample {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        use crate::memory::vec_capacity_bytes as bytes;
++        bytes(&self.original_row_by_active)
++            + bytes(&self.outcome)
++            + bytes(&self.regressors)
++            + self.regressors.iter().map(bytes).sum::<u128>()
++            + match &self.weights {
++                PreparedWeights::None => 0,
++                PreparedWeights::Provided { values, .. } => bytes(values),
++            }
++            + match &self.adjustment {
++                PreparedAdjustment::None => 0,
++                PreparedAdjustment::Offset(values) | PreparedAdjustment::Exposure(values) => bytes(values),
++            }
++            + bytes(&self.drop_reasons)
++    }
++
+     #[must_use]
+     pub fn n_active(&self) -> usize {
+         self.original_row_by_active.len()
+diff --git a/crates/fereg-core/src/fe/design.rs b/crates/fereg-core/src/fe/design.rs
+index 29e39e31..8ad35e53 100644
+--- a/crates/fereg-core/src/fe/design.rs
++++ b/crates/fereg-core/src/fe/design.rs
+@@ -32,6 +32,11 @@ pub struct LevelIndex {
+ }
+ 
+ impl LevelIndex {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        crate::memory::vec_capacity_bytes(&self.offsets)
++            + crate::memory::vec_capacity_bytes(&self.observations)
++    }
++
+     pub fn from_codes(codes: &[u32], n_levels: usize) -> Result<Self> {
+         let mut reservation = SystemReservation;
+         Self::from_codes_with_reservation(codes, n_levels, &mut reservation)
+diff --git a/crates/fereg-core/src/fe/interaction.rs b/crates/fereg-core/src/fe/interaction.rs
+index 4d28bd16..fcb9f933 100644
+--- a/crates/fereg-core/src/fe/interaction.rs
++++ b/crates/fereg-core/src/fe/interaction.rs
+@@ -42,6 +42,10 @@ pub struct EncodedInteraction {
+ }
+ 
+ impl EncodedInteraction {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        crate::memory::vec_capacity_bytes(&self.codes)
++    }
++
+     #[must_use]
+     pub fn codes(&self) -> &[u32] {
+         &self.codes
+diff --git a/crates/fereg-core/src/fe/partition.rs b/crates/fereg-core/src/fe/partition.rs
+index 94aa08b9..2facb46b 100644
+--- a/crates/fereg-core/src/fe/partition.rs
++++ b/crates/fereg-core/src/fe/partition.rs
+@@ -25,6 +25,14 @@ pub struct CategoricalPartition {
+ }
+ 
+ impl CategoricalPartition {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        let key = match &self.key {
++            CategoricalPartitionKey::Single(_) => 0,
++            CategoricalPartitionKey::Interaction(indices) => crate::memory::vec_capacity_bytes(indices),
++        };
++        key + self.owned_interaction.as_ref().map_or(0, EncodedInteraction::owned_buffer_bytes)
++    }
++
+     /// Construct a zero-copy partition over one authoritative categorical
+     /// source.
+     pub fn single(
+diff --git a/crates/fereg-core/src/fe/topology_finalize.rs b/crates/fereg-core/src/fe/topology_finalize.rs
+index 985594fa..419bc9a0 100644
+--- a/crates/fereg-core/src/fe/topology_finalize.rs
++++ b/crates/fereg-core/src/fe/topology_finalize.rs
+@@ -63,6 +63,18 @@ pub struct FinalizedCategoricalTopology {
+ }
+ 
+ impl FinalizedCategoricalTopology {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        use crate::memory::vec_capacity_bytes as bytes;
++        bytes(&self.compacted_sources)
++            + self.compacted_sources.iter().map(|source| bytes(&source.codes) + bytes(&source.original_levels)).sum::<u128>()
++            + bytes(&self.candidate_to_compacted_source)
++            + bytes(&self.remapped_effect_recipes)
++            + self.remapped_effect_recipes.iter().map(bytes).sum::<u128>()
++            + bytes(&self.effect_to_topology)
++            + bytes(&self.retained_rows)
++            + self.registry.owned_buffer_bytes()
++    }
++
+     #[must_use]
+     pub fn compacted_sources(&self) -> &[CompactedCategoricalSource] {
+         &self.compacted_sources
+diff --git a/crates/fereg-core/src/fe/topology_registry.rs b/crates/fereg-core/src/fe/topology_registry.rs
+index 5c9fcd8a..6e96808a 100644
+--- a/crates/fereg-core/src/fe/topology_registry.rs
++++ b/crates/fereg-core/src/fe/topology_registry.rs
+@@ -16,6 +16,11 @@ pub struct CategoricalTopologyRegistry {
+ }
+ 
+ impl CategoricalTopologyRegistry {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        crate::memory::vec_capacity_bytes(&self.sources)
++            + self.sources.iter().map(CategoricalTopologySource::owned_buffer_bytes).sum::<u128>()
++    }
++
+     #[must_use]
+     pub const fn new() -> Self {
+         Self {
+diff --git a/crates/fereg-core/src/fe/topology_source.rs b/crates/fereg-core/src/fe/topology_source.rs
+index e9e7f397..9080c536 100644
+--- a/crates/fereg-core/src/fe/topology_source.rs
++++ b/crates/fereg-core/src/fe/topology_source.rs
+@@ -22,6 +22,10 @@ pub struct CategoricalTopologySource {
+ }
+ 
+ impl CategoricalTopologySource {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        self.partition.owned_buffer_bytes() + self.level_index.owned_buffer_bytes()
++    }
++
+     /// Construct a topology source that borrows one authoritative code column.
+     pub fn single(
+         categorical_source_index: usize,
+diff --git a/crates/fereg-core/src/memory.rs b/crates/fereg-core/src/memory.rs
+index 16caf4c8..69247487 100644
+--- a/crates/fereg-core/src/memory.rs
++++ b/crates/fereg-core/src/memory.rs
+@@ -17,6 +17,12 @@ pub use workspace_peak::SolverWorkspacePeak;
+ const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
+ const LOW_MODE_TRANSPOSE_BUFFER_BYTES: u128 = 1024 * 1024;
+ 
++/// Heap payload of an owned vector, including unused capacity. The descriptor
++/// belongs to its containing owner. This reads no elements and allocates nothing.
++pub(crate) fn vec_capacity_bytes<T>(values: &Vec<T>) -> u128 {
++    values.capacity() as u128 * std::mem::size_of::<T>() as u128
++}
++
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct MemoryEstimate {
+     pub fast_bytes: u128,
+diff --git a/crates/fereg-core/src/ols/prepared.rs b/crates/fereg-core/src/ols/prepared.rs
+index f2102c67..d36299ff 100644
+--- a/crates/fereg-core/src/ols/prepared.rs
++++ b/crates/fereg-core/src/ols/prepared.rs
+@@ -133,6 +133,12 @@ pub struct PreparedOlsModel {
+ }
+ 
+ impl PreparedOlsModel {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        crate::memory::vec_capacity_bytes(&self.coefficients)
++            + crate::memory::vec_capacity_bytes(&self.columns)
++            + self.nested_recipe_capacity_bytes()
++    }
++
+     pub(crate) fn nested_recipe_capacity_bytes(&self) -> u128 {
+         self.columns
+             .iter()
+@@ -286,6 +292,22 @@ pub struct PreparedOlsData {
+ }
+ 
+ impl PreparedOlsData {
++    /// Heap buffers retained by preparation beside fit/inference/recovery.
++    /// Counts each owner once, including unused capacity and nested metadata;
++    /// excludes stack storage, construction scratch and dependency workspaces.
++    #[must_use]
++    pub fn owned_buffer_bytes(&self) -> u128 {
++        use crate::memory::vec_capacity_bytes as bytes;
++        self.model.owned_buffer_bytes()
++            + self.sample.owned_buffer_bytes()
++            + bytes(&self.categorical_sources)
++            + self.categorical_sources.iter().map(|source| bytes(&source.encoded.codes) + bytes(&source.encoded.levels)).sum::<u128>()
++            + bytes(&self.fe_topology.sources)
++            + self.fe_topology.sources.iter().map(|source| source.level_index.owned_buffer_bytes()).sum::<u128>()
++            + bytes(&self.fe_topology.effects)
++            + self.fe_topology.effects.iter().map(|effect| effect.label.capacity() as u128).sum::<u128>()
++    }
++
+     /// Borrow the current intercept-only FE design without copying codes or
+     /// level membership. This structural adapter invokes no numerical solver.
+     pub fn borrowed_intercept_fe_design(&self) -> Result<BorrowedInterceptFeDesign<'_>> {
+@@ -745,8 +767,7 @@ fn finish_prepare_ols_data(
+     )?;
+     let num_singletons = singleton_result.dropped_observations.len();
+     let cascade_events = singleton_result.cascade_events;
+-    let sample =
+-        sample.compact_active_rows(&singleton_result.active, crate::data::DropReason::Singleton)?;
++    drop(singleton_result.dropped_observations);
+ 
+     // With no singleton deletion, the pruning codes already live on the final
+     // compact axis. Reusing them avoids a second observation-scale
+@@ -757,10 +778,19 @@ fn finish_prepare_ols_data(
+             .iter()
+             .any(|candidate| candidate.source == *source)
+     });
+-    let (categorical_sources, fixed_effects) = if num_singletons == 0
+-        && pruning_covers_final_sources
+-    {
+-        (pruning_categorical_sources, pruning_fixed_effects)
++    let reusable_pruning = if num_singletons == 0 && pruning_covers_final_sources {
++        Some((pruning_categorical_sources, pruning_fixed_effects))
++    } else {
++        // These codes/levels no longer describe the final sample. Release them
++        // before numeric compaction and final factorization allocate replacements.
++        drop(pruning_categorical_sources);
++        drop(pruning_fixed_effects);
++        None
++    };
++    let sample = sample.compact_active_rows(&singleton_result.active, crate::data::DropReason::Singleton)?;
++    drop(singleton_result.active);
++    let (categorical_sources, fixed_effects) = if let Some(reusable) = reusable_pruning {
++        reusable
+     } else {
+         let categorical_sources = factorize_categorical_sources(request, &sample, cluster_sources)?;
+         let fixed_effects = prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;
+diff --git a/crates/fereg-core/src/ols/prepared_categorical_data.rs b/crates/fereg-core/src/ols/prepared_categorical_data.rs
+index 7ac4d6f4..2289a2cd 100644
+--- a/crates/fereg-core/src/ols/prepared_categorical_data.rs
++++ b/crates/fereg-core/src/ols/prepared_categorical_data.rs
+@@ -64,6 +64,24 @@ pub struct PreparedCategoricalOlsData {
+ }
+ 
+ impl PreparedCategoricalOlsData {
++    /// Retained heap buffers, with topology-backed codes counted only at their
++    /// owner. Construction scratch and numerical/dependency frames are separate.
++    #[must_use]
++    pub fn owned_buffer_bytes(&self) -> u128 {
++        use crate::memory::vec_capacity_bytes as bytes;
++        self.sample.owned_buffer_bytes()
++            + bytes(&self.model.columns)
++            + bytes(&self.model.coefficients)
++            + self.nested_metadata_capacity_bytes()
++            + bytes(&self.categorical_sources)
++            + self.categorical_sources.iter().map(|source| match &source.storage {
++                PreparedCategoricalModelSourceStorage::Topology { candidate_levels, .. } => bytes(candidate_levels),
++                PreparedCategoricalModelSourceStorage::Owned { encoded } => bytes(&encoded.codes) + bytes(&encoded.levels),
++            }).sum::<u128>()
++            + self.fe_topology.owned_buffer_bytes()
++            + self.report_plan.owned_buffer_bytes()
++    }
++
+     /// Executable recipe payloads and FE metadata; excludes numeric topology
+     /// and top-level finite descriptors, charged separately by the planner.
+     pub(crate) fn nested_metadata_capacity_bytes(&self) -> u128 {
+@@ -1047,20 +1065,29 @@ fn finish_prepare_categorical_ols_data(
+         plan.requested_keep_singletons(),
+     )?;
+     let (singleton, _, _) = singleton_result.into_parts();
+-    let fe_topology =
+-        finalize_categorical_topology(&candidate_views, &recipe_views, &singleton.active)?;
++    drop(initially_active);
+     let num_singletons = singleton.dropped_observations.len();
+     let cascade_events = singleton.cascade_events;
++    drop(singleton.dropped_observations);
++    let fe_topology =
++        finalize_categorical_topology(&candidate_views, &recipe_views, &singleton.active)?;
++    drop(candidate_views);
++    drop(recipe_views);
+ 
+     let PreparedOlsData {
+         model: availability_model,
+         sample,
+         categorical_sources: candidate_sources,
++        fe_topology: availability_topology,
+         ..
+     } = availability;
++    // Finalized topology replaces the availability topology before numeric
++    // compaction allocates a second value bank.
++    drop(availability_topology);
+     let final_sources = final_categorical_sources(&availability_model, cluster_sources)?;
+     let model_source_plans = plan_model_sources(candidate_sources, &final_sources, &fe_topology)?;
+     let sample = sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;
++    drop(singleton.active);
+     if fe_topology.retained_rows().len() != sample.n_active() {
+         return Err(invalid(
+             "final categorical topology retained-row count differs from compact sample",
+diff --git a/crates/fereg-core/src/ols/prepared_categorical_rebase.rs b/crates/fereg-core/src/ols/prepared_categorical_rebase.rs
+index 3acae194..c8f62e25 100644
+--- a/crates/fereg-core/src/ols/prepared_categorical_rebase.rs
++++ b/crates/fereg-core/src/ols/prepared_categorical_rebase.rs
+@@ -28,6 +28,10 @@ pub struct PreparedCategoricalOlsReportPlan {
+ }
+ 
+ impl PreparedCategoricalOlsReportPlan {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        crate::memory::vec_capacity_bytes(&self.original_slots)
++    }
++
+     #[must_use]
+     pub const fn original_coefficient_count(&self) -> usize {
+         self.original_coefficient_count
+diff --git a/crates/fereg-core/src/ols/prepared_clustered.rs b/crates/fereg-core/src/ols/prepared_clustered.rs
+index 31ab97d7..34977b67 100644
+--- a/crates/fereg-core/src/ols/prepared_clustered.rs
++++ b/crates/fereg-core/src/ols/prepared_clustered.rs
+@@ -206,6 +206,16 @@ pub struct CertifiedPreparedOlsClustered {
+ }
+ 
+ impl CertifiedPreparedOlsClustered {
++    /// Heap owners retained after inference, excluding prepared data/cluster codes.
++    #[must_use]
++    pub fn owned_buffer_bytes(&self) -> u128 {
++        use crate::memory::vec_capacity_bytes as bytes;
++        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
++            + bytes(&self.cluster_counts) + bytes(&self.subsets)
++            + bytes(&self.covariance.raw_values) + bytes(&self.covariance.values)
++            + bytes(&self.covariance.standard_errors)
++    }
++
+     #[must_use]
+     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+         &self.fit
+@@ -273,6 +283,16 @@ pub struct CertifiedPreparedCategoricalOlsClustered {
+ }
+ 
+ impl CertifiedPreparedCategoricalOlsClustered {
++    /// Heap owners retained after inference, excluding prepared data/cluster codes.
++    #[must_use]
++    pub fn owned_buffer_bytes(&self) -> u128 {
++        use crate::memory::vec_capacity_bytes as bytes;
++        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
++            + bytes(&self.cluster_counts) + bytes(&self.subsets)
++            + bytes(&self.covariance.raw_values) + bytes(&self.covariance.values)
++            + bytes(&self.covariance.standard_errors)
++    }
++
+     #[must_use]
+     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+         &self.fit
+diff --git a/crates/fereg-core/src/ols/prepared_clusters.rs b/crates/fereg-core/src/ols/prepared_clusters.rs
+index f85aacaf..593904ab 100644
+--- a/crates/fereg-core/src/ols/prepared_clusters.rs
++++ b/crates/fereg-core/src/ols/prepared_clusters.rs
+@@ -87,6 +87,15 @@ pub struct PreparedOlsClusterDesign {
+ }
+ 
+ impl PreparedOlsClusterDesign {
++    /// Owned cluster buffers only; simple dimensions borrow OLS source codes.
++    #[must_use]
++    pub fn owned_buffer_bytes(&self) -> u128 {
++        self.metadata_capacity_bytes() + self.dimensions.iter().map(|dimension| match &dimension.codes {
++            PreparedOlsClusterCodes::CategoricalSource { .. } => 0,
++            PreparedOlsClusterCodes::Interaction(codes) => crate::memory::vec_capacity_bytes(codes),
++        }).sum::<u128>()
++    }
++
+     pub(crate) fn metadata_capacity_bytes(&self) -> u128 {
+         self.dimensions.capacity() as u128
+             * std::mem::size_of::<PreparedOlsClusterDimension>() as u128
+diff --git a/crates/fereg-core/src/ols/prepared_dof.rs b/crates/fereg-core/src/ols/prepared_dof.rs
+index 2580ae20..6d5ec410 100644
+--- a/crates/fereg-core/src/ols/prepared_dof.rs
++++ b/crates/fereg-core/src/ols/prepared_dof.rs
+@@ -58,6 +58,13 @@ pub struct PreparedOlsAbsorbedDofReport {
+     pub is_approximate: bool,
+ }
+ 
++impl PreparedOlsAbsorbedDofReport {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        crate::memory::vec_capacity_bytes(&self.effects)
++            + self.effects.iter().map(|effect| effect.label.capacity() as u128).sum::<u128>()
++    }
++}
++
+ trait PreparedDofReservation {
+     fn reserve_vec<T>(
+         &mut self,
+diff --git a/crates/fereg-core/src/ols/prepared_fit.rs b/crates/fereg-core/src/ols/prepared_fit.rs
+index 8b7b401e..80258113 100644
+--- a/crates/fereg-core/src/ols/prepared_fit.rs
++++ b/crates/fereg-core/src/ols/prepared_fit.rs
+@@ -445,6 +445,23 @@ impl PreparedOlsFastScoreCache {
+ }
+ 
+ impl CertifiedPreparedOlsFit {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        use crate::memory::vec_capacity_bytes as bytes;
++        let warnings = |report: &SolveReport| bytes(&report.warnings)
++            + report.warnings.iter().map(|warning| warning.capacity() as u128).sum::<u128>();
++        let cache = self.fast_score_cache.as_ref().map_or(0, |cache| match cache {
++            PreparedOlsFastScoreCache::Packed { generated_columns, within, means } =>
++                bytes(generated_columns) + within.storage_capacity() as u128 * 8 + bytes(means),
++            PreparedOlsFastScoreCache::Strided { generated_columns, within, reference_norms, means } =>
++                bytes(generated_columns) + within.storage_capacity() as u128 * 8 + bytes(reference_norms) + bytes(means),
++        });
++        bytes(&self.coefficients) + bytes(&self.kept_generated_columns)
++            + bytes(&self.dropped_generated_columns) + bytes(&self.bread.coordinates)
++            + bytes(&self.bread.values) + self.residuals.storage_capacity() as u128 * 8
++            + self.recovered_fe_coefficients.as_ref().map_or(0, FeCoefficientBatch::retained_bytes)
++            + cache + warnings(&self.absorption_report) + warnings(&self.residual_absorption_report)
++    }
++
+     #[must_use]
+     pub fn coefficients(&self) -> &[PreparedOlsFittedCoefficient] {
+         &self.coefficients
+diff --git a/crates/fereg-core/src/ols/prepared_robust.rs b/crates/fereg-core/src/ols/prepared_robust.rs
+index c24950c0..c79435e7 100644
+--- a/crates/fereg-core/src/ols/prepared_robust.rs
++++ b/crates/fereg-core/src/ols/prepared_robust.rs
+@@ -118,6 +118,14 @@ pub struct CertifiedPreparedOlsRobust {
+ }
+ 
+ impl CertifiedPreparedOlsRobust {
++    /// Heap owners retained after inference, excluding the borrowed prepared data.
++    #[must_use]
++    pub fn owned_buffer_bytes(&self) -> u128 {
++        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
++            + crate::memory::vec_capacity_bytes(&self.covariance.values)
++            + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
++    }
++
+     #[must_use]
+     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+         &self.fit
+@@ -174,6 +182,14 @@ pub struct CertifiedPreparedCategoricalOlsRobust {
+ }
+ 
+ impl CertifiedPreparedCategoricalOlsRobust {
++    /// Heap owners retained after inference, excluding the borrowed prepared data.
++    #[must_use]
++    pub fn owned_buffer_bytes(&self) -> u128 {
++        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
++            + crate::memory::vec_capacity_bytes(&self.covariance.values)
++            + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
++    }
++
+     #[must_use]
+     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+         &self.fit
+diff --git a/crates/fereg-core/src/ols/prepared_unadjusted.rs b/crates/fereg-core/src/ols/prepared_unadjusted.rs
+index 4202b838..f0463651 100644
+--- a/crates/fereg-core/src/ols/prepared_unadjusted.rs
++++ b/crates/fereg-core/src/ols/prepared_unadjusted.rs
+@@ -139,6 +139,14 @@ pub struct CertifiedPreparedOlsUnadjusted {
+ }
+ 
+ impl CertifiedPreparedOlsUnadjusted {
++    /// Heap owners retained after inference, excluding the borrowed prepared data.
++    #[must_use]
++    pub fn owned_buffer_bytes(&self) -> u128 {
++        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
++            + crate::memory::vec_capacity_bytes(&self.covariance.values)
++            + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
++    }
++
+     #[must_use]
+     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+         &self.fit
+@@ -198,6 +206,14 @@ pub struct CertifiedPreparedCategoricalOlsUnadjusted {
+ }
+ 
+ impl CertifiedPreparedCategoricalOlsUnadjusted {
++    /// Heap owners retained after inference, excluding the borrowed prepared data.
++    #[must_use]
++    pub fn owned_buffer_bytes(&self) -> u128 {
++        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
++            + crate::memory::vec_capacity_bytes(&self.covariance.values)
++            + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
++    }
++
+     #[must_use]
+     pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+         &self.fit
+diff --git a/crates/fereg-core/src/ols/topology_dof.rs b/crates/fereg-core/src/ols/topology_dof.rs
+index 1ef6f5df..ab839088 100644
+--- a/crates/fereg-core/src/ols/topology_dof.rs
++++ b/crates/fereg-core/src/ols/topology_dof.rs
+@@ -84,6 +84,16 @@ pub struct CategoricalTopologyDofReport {
+     pub is_approximate: bool,
+ }
+ 
++impl CategoricalTopologyDofReport {
++    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
++        crate::memory::vec_capacity_bytes(&self.effects)
++            + self.effects.iter().map(|effect| effect.label.capacity() as u128 + match &effect.identity {
++                CategoricalTopologyDofEffectIdentity::Explicit { sources, .. } => crate::memory::vec_capacity_bytes(sources),
++                CategoricalTopologyDofEffectIdentity::ImplicitNoAbsorb => 0,
++            }).sum::<u128>()
++    }
++}
++
+ /// Compute absorbed rank for finalized categorical topology.
+ ///
+ /// `effect_specs` and `topology.effect_to_topology()` are both in requested
+diff --git a/crates/fereg-plugin/src/estimate.rs b/crates/fereg-plugin/src/estimate.rs
+index d904fb22..2ed78f03 100644
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -34,8 +34,8 @@ use fereg_core::protocol::{
+     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
+ };
+ use fereg_core::{
+-    estimate_phase2_memory, plan_ols_memory, CategoricalTopologyDofReport, FeSolverMemoryBudget,
+-    MapConfig, MemoryMode, MemoryPlan, PreparedCategoricalOlsData, ThreadConfig, ThreadTeam,
++    estimate_phase2_memory, CategoricalTopologyDofReport, FeSolverMemoryBudget, MapConfig,
++    MemoryMode, MemoryPlan, PreparedCategoricalOlsData, ThreadConfig, ThreadTeam,
+ };
+ use rayon::prelude::*;
+ 
+@@ -100,6 +100,19 @@ struct DerivedObservationOutputs {
+     saved_channels: Vec<Option<Vec<f64>>>,
+ }
+ 
++impl DerivedObservationOutputs {
++    fn capacity_bytes(&self) -> u128 {
++        let values = [&self.xb, &self.xbd, &self.absorbed]
++            .into_iter()
++            .chain(self.saved_channels.iter())
++            .map(|value| value.as_ref().map_or(0, Vec::capacity) as u128)
++            .sum::<u128>();
++        values * std::mem::size_of::<f64>() as u128
++            + self.saved_channels.capacity() as u128
++                * std::mem::size_of::<Option<Vec<f64>>>() as u128
++    }
++}
++
+ #[derive(Debug)]
+ struct EstimateAction {
+     request: OlsRequestV1,
+@@ -111,6 +124,9 @@ struct EstimateAction {
+     account_cluster_nesting: bool,
+     fit: PreparedOlsFitConfig,
+     memory_plan: MemoryPlan,
++    preparation_memory: crate::ols_preparation_memory::OlsPreparationMemory,
++    prepared_owner_bytes: u128,
++    publication_memory: crate::ols_publication_memory::OlsPublicationMemory,
+     requested_tolerance: f64,
+     outputs: ObservationOutputs,
+     matrices: PreparedResultMatrices,
+@@ -189,7 +205,8 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+         local_bundle.as_ref().map_or(args, |values| values.as_slice()),
+     )?;
+     drop(local_bundle);
+-    let action = specification.decode_and_validate(spi)?;
++    let mut action = specification.decode_and_validate(spi)?;
++    drop(specification);
+     let preflight_seconds = started.elapsed().as_secs_f64();
+     let loaded = load_ols_input(
+         &action.request,
+@@ -216,6 +233,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                 prepare_ols_data_owned(&action.request, loaded)
+             })?;
++            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
+             let prepare_seconds = trace_started.elapsed().as_secs_f64();
+             let inference_started = Instant::now();
+             let inference = fit_prepared_ols_unadjusted_map(
+@@ -226,6 +244,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+                     ..PreparedOlsUnadjustedConfig::default()
+                 },
+             )?;
++            action.admit_output_parent(inference.owned_buffer_bytes())?;
+             let inference_seconds = inference_started.elapsed().as_secs_f64();
+             let outputs_started = Instant::now();
+             let result_data = PreparedOlsResultData::legacy(&prepared);
+@@ -260,6 +279,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                 prepare_ols_data_owned(&action.request, loaded)
+             })?;
++            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
+             let prepare_seconds = trace_started.elapsed().as_secs_f64();
+             let inference_started = Instant::now();
+             let inference = fit_prepared_ols_robust_map(
+@@ -270,6 +290,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+                     ..PreparedOlsRobustConfig::default()
+                 },
+             )?;
++            action.admit_output_parent(inference.owned_buffer_bytes())?;
+             let inference_seconds = inference_started.elapsed().as_secs_f64();
+             let outputs_started = Instant::now();
+             let result_data = PreparedOlsResultData::legacy(&prepared);
+@@ -306,6 +327,8 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                 prepare_ols_clustered_data_owned(&request, loaded)
+             })?;
++            drop(request);
++            action.admit_prepared_parent(prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes())?;
+             let inference = fit_prepared_ols_clustered_map(
+                 &prepared,
+                 PreparedOlsClusteredConfig {
+@@ -315,6 +338,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+                     ..PreparedOlsClusteredConfig::default()
+                 },
+             )?;
++            action.admit_output_parent(inference.owned_buffer_bytes())?;
+             let result_data = PreparedOlsResultData::legacy(prepared.ols());
+             let derived = build_derived_observation_outputs(
+                 result_data,
+@@ -336,6 +360,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                 prepare_categorical_ols_data_owned(&action.request, loaded)
+             })?;
++            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
+             let inference = fit_prepared_categorical_ols_unadjusted_map(
+                 &prepared,
+                 PreparedOlsUnadjustedConfig {
+@@ -344,6 +369,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+                     ..PreparedOlsUnadjustedConfig::default()
+                 },
+             )?;
++            action.admit_output_parent(inference.owned_buffer_bytes())?;
+             let result_data = PreparedOlsResultData::categorical(&prepared);
+             let derived = build_derived_observation_outputs(
+                 result_data,
+@@ -365,6 +391,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                 prepare_categorical_ols_data_owned(&action.request, loaded)
+             })?;
++            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
+             let inference = fit_prepared_categorical_ols_robust_map(
+                 &prepared,
+                 PreparedOlsRobustConfig {
+@@ -373,6 +400,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+                     ..PreparedOlsRobustConfig::default()
+                 },
+             )?;
++            action.admit_output_parent(inference.owned_buffer_bytes())?;
+             let result_data = PreparedOlsResultData::categorical(&prepared);
+             let derived = build_derived_observation_outputs(
+                 result_data,
+@@ -398,6 +426,8 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+             let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+                 prepare_categorical_ols_clustered_data_owned(&request, loaded)
+             })?;
++            drop(request);
++            action.admit_prepared_parent(prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes())?;
+             let inference = fit_prepared_categorical_ols_clustered_map(
+                 &prepared,
+                 PreparedOlsClusteredConfig {
+@@ -407,6 +437,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
+                     ..PreparedOlsClusteredConfig::default()
+                 },
+             )?;
++            action.admit_output_parent(inference.owned_buffer_bytes())?;
+             let result_data = PreparedOlsResultData::categorical(prepared.ols());
+             let derived = build_derived_observation_outputs(
+                 result_data,
+@@ -449,6 +480,49 @@ fn prepare_loaded_ols<T: Send>(
+     Ok(prepared)
+ }
+ 
++impl EstimateAction {
++    /// Reconcile the surviving preparation owner before fit/inference allocates
++    /// its frames. Public base estimates retain their historical meaning.
++    fn admit_prepared_parent(&mut self, owned_bytes: u128) -> Result<()> {
++        let public_base = self.memory_plan.estimate;
++        let execution = self.preparation_memory.with_prepared_owner(public_base, owned_bytes)?;
++        let mut plan = self.publication_memory.plan(
++            self.memory_plan.requested,
++            execution,
++            self.memory_plan.available_bytes,
++        )?;
++        let execution_bytes = plan.selected_bytes();
++        self.fit.execution.mode = match plan.selected {
++            MemoryMode::Fast => PreparedOlsExecutionMode::Fast,
++            MemoryMode::Low => PreparedOlsExecutionMode::Low,
++            MemoryMode::Auto => return Err(invalid("unresolved prepared OLS memory mode")),
++        };
++        self.fit.absorb.solver_memory_budget = plan.usable_bytes.map(|usable_bytes| {
++            FeSolverMemoryBudget { execution_bytes, usable_bytes }
++        });
++        self.fit.absorb.retain_coefficients = self.outputs.saved_channels.iter().any(Option::is_some)
++            && plan.selected == MemoryMode::Fast;
++        plan.estimate = public_base;
++        self.memory_plan = plan;
++        self.prepared_owner_bytes = owned_bytes;
++        Ok(())
++    }
++
++    fn admit_output_parent(&mut self, inference_bytes: u128) -> Result<()> {
++        let owned = self.prepared_owner_bytes.checked_add(inference_bytes)
++            .ok_or_else(|| allocation("OLS output parent size overflows"))?;
++        if let Some(budget) = self.fit.absorb.solver_memory_budget.as_mut() {
++            let parent = budget.execution_bytes.max(owned);
++            if !parent.checked_add(self.publication_memory.peak_bytes())
++                .is_some_and(|peak| peak <= budget.usable_bytes) {
++                return Err(allocation("OLS retained inference and publication exceed usable memory"));
++            }
++            budget.execution_bytes = parent;
++        }
++        Ok(())
++    }
++}
++
+ impl EstimateActionSpec {
+     fn parse(args: &[String]) -> Result<Self> {
+         let values = parse_estimate_key_values(args)?;
+@@ -664,6 +738,14 @@ impl EstimateActionSpec {
+     }
+ 
+     fn decode_and_validate(&self, spi: &mut dyn SpiApi) -> Result<EstimateAction> {
++        self.decode_with_memory_limit(spi, imposed_memory_limit_bytes)
++    }
++
++    fn decode_with_memory_limit(
++        &self,
++        spi: &mut dyn SpiApi,
++        available_bytes: impl FnOnce() -> Result<Option<u128>>,
++    ) -> Result<EstimateAction> {
+         if !matches!(self.solver, FeSolverKind::Auto | FeSolverKind::Lsmr)
+             && self.preconditioner != LsmrPreconditioner::Off
+         {
+@@ -787,8 +869,34 @@ impl EstimateActionSpec {
+             clusters.len(),
+             self.poolsize,
+         )?;
++        let publication_memory = crate::ols_publication_memory::OlsPublicationMemory::estimate(
++            crate::ols_publication_memory::OlsPublicationShape {
++                observations: spi.nobs()?,
++                reported_coefficients: prepared_model.coefficients.len(),
++                fe_channels: extended_fe_rows,
++                cluster_dimensions: clusters.len(),
++                xb: self.outputs.xb.is_some(),
++                xbd: self.outputs.xbd.is_some(),
++                absorbed: self.outputs.absorbed.is_some(),
++                saved_channels: self
++                    .outputs
++                    .saved_channels
++                    .iter()
++                    .filter(|value| value.is_some())
++                    .count(),
++            },
++        )?;
+         let memory_plan =
+-            plan_ols_memory(self.memory, memory_estimate, imposed_memory_limit_bytes()?)?;
++            publication_memory.plan(self.memory, memory_estimate, available_bytes()?)?;
++        let preparation_memory = crate::ols_preparation_memory::OlsPreparationMemory::estimate(
++            spi.nobs()?,
++            loaded_numeric_columns,
++            request.bindings.iter().any(|binding| matches!(binding.role,
++                OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight)),
++            extended_fe_rows,
++            clusters.len(),
++        )?;
++        preparation_memory.admit_numeric_arrays(memory_plan.usable_bytes)?;
+         let default_fit = PreparedOlsFitConfig::default();
+         let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
+         let fit = PreparedOlsFitConfig {
+@@ -886,6 +994,9 @@ impl EstimateActionSpec {
+             account_cluster_nesting: self.account_cluster_nesting,
+             fit,
+             memory_plan,
++            preparation_memory,
++            prepared_owner_bytes: 0,
++            publication_memory,
+             requested_tolerance: self.tolerance,
+             outputs: self.outputs.clone(),
+             matrices,
+@@ -1588,7 +1699,11 @@ fn build_derived_observation_outputs_in_team(
+             xb: None,
+             xbd: None,
+             absorbed: None,
+-            saved_channels: vec![None; requested.saved_channels.len()],
++            saved_channels: reserved_filled(
++                requested.saved_channels.len(),
++                None,
++                "derived saved-output registry",
++            )?,
+         });
+     }
+     let n = prepared.sample().n_active();
+@@ -1601,28 +1716,28 @@ fn build_derived_observation_outputs_in_team(
+     let needs_absorbed =
+         requested.absorbed.is_some() || requested.saved_channels.iter().any(Option::is_some);
+     let materialize_xb = requested.xb.is_some() || requested.absorbed.is_some();
+-    let fitted_terms = fit
+-        .coefficients()
+-        .iter()
+-        .filter_map(
+-            |fitted| match (fitted.generated_column_index, fitted.value) {
+-                (Some(column), Some(coefficient)) => Some(Ok((column, coefficient))),
+-                (None, None) => None,
+-                (Some(_), None)
+-                    if matches!(
+-                        fitted.status,
+-                        PreparedOlsFitStatus::CollinearWithFixedEffects
+-                            | PreparedOlsFitStatus::NumericallyRankDeficient
+-                    ) =>
+-                {
+-                    None
+-                }
+-                _ => Some(Err(invalid(
++    let mut fitted_terms = reserved_empty(fit.coefficients().len(), "derived OLS fitted terms")?;
++    for fitted in fit.coefficients() {
++        match (fitted.generated_column_index, fitted.value) {
++            (Some(column), Some(coefficient)) => push_reserved(
++                &mut fitted_terms,
++                (column, coefficient),
++                "derived OLS fitted-term capacity exhausted",
++            )?,
++            (None, None) => {}
++            (Some(_), None)
++                if matches!(
++                    fitted.status,
++                    PreparedOlsFitStatus::CollinearWithFixedEffects
++                        | PreparedOlsFitStatus::NumericallyRankDeficient
++                ) => {}
++            _ => {
++                return Err(invalid(
+                     "derived OLS output coefficient identity is incomplete",
+-                ))),
+-            },
+-        )
+-        .collect::<Result<Vec<_>>>()?;
++                ))
++            }
++        }
++    }
+     for fitted in fit.coefficients() {
+         if fitted.value.is_some()
+             && !matches!(
+@@ -1710,6 +1825,29 @@ fn build_derived_observation_outputs_in_team(
+                 "derived saved-output request mask capacity exhausted",
+             )?;
+         }
++        // The recovery model already charges returned channels and its own
++        // scratch. Only these caller-owned buffers coexist with that attempt;
++        // xbd and the publication matrices are constructed after it returns.
++        let parent_bytes = (xb_work.as_ref().map_or(0, Vec::capacity) as u128
++            + absorbed_target.as_ref().map_or(0, Vec::capacity) as u128)
++            * std::mem::size_of::<f64>() as u128
++            + fitted_terms.capacity() as u128 * std::mem::size_of::<(usize, f64)>() as u128
++            + saved_channels.capacity() as u128 * std::mem::size_of::<Option<Vec<f64>>>() as u128
++            + mask.capacity() as u128 * std::mem::size_of::<bool>() as u128;
++        let recovery_budget = fit_config
++            .absorb
++            .solver_memory_budget
++            .map(|budget| {
++                budget
++                    .execution_bytes
++                    .checked_add(parent_bytes)
++                    .map(|execution_bytes| FeSolverMemoryBudget {
++                        execution_bytes,
++                        ..budget
++                    })
++                    .ok_or_else(|| allocation("OLS recovery parent byte count overflows"))
++            })
++            .transpose()?;
+         let recovered = categorical.recover_absorbed_effects_fast(
+             absorbed_target
+                 .as_deref()
+@@ -1729,7 +1867,7 @@ fn build_derived_observation_outputs_in_team(
+                 check_every: 1,
+                 symmetric: true,
+             },
+-            fit_config.absorb.solver_memory_budget,
++            recovery_budget,
+         )?;
+         let (absorbed_sum, channels) = recovered.into_optional_parts();
+         recovered_absorbed = absorbed_sum;
+@@ -1823,6 +1961,16 @@ fn precommit_and_store(
+         ));
+     }
+     let runtime = build_runtime_shadow(action, shadow, observation)?;
++    let publication_bytes = shadow.capacity_bytes()
++        + derived.capacity_bytes()
++        + runtime.capacity() as u128 * std::mem::size_of::<f64>() as u128;
++    if shadow.capacity_bytes() > action.publication_memory.shadow_bytes
++        || publication_bytes > action.publication_memory.publication_bytes
++    {
++        return Err(allocation(
++            "OLS publication capacities exceed preflight admission",
++        ));
++    }
+     validate_shadow_against_outputs(action, shadow)?;
+     validate_derived_against_outputs(action, shadow, derived)?;
+     validate_defined_value_table(&runtime, "OLS runtime shadow")?;
+@@ -3809,6 +3957,295 @@ mod tests {
+         (args, spi)
+     }
+ 
++    #[test]
++    #[cfg(feature = "ffi")]
++    fn prepared_owner_accounting_matches_independent_allocator_deallocation() {
++        use fereg_core::data::WeightKind;
++        let _guard = instrumentation::lock_action_observation();
++        fn check<T>(owner: T, bytes: u128) {
++            let before = crate::ffi::allocation_usage();
++            drop(owner);
++            let after = crate::ffi::allocation_usage();
++            assert_eq!(u128::from(before.current_bytes - after.current_bytes), bytes);
++        }
++        for complex in [false, true] {
++            for clustered in [false, true] {
++                for weight in [None, Some(WeightKind::Analytic), Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
++                    let (args, mut spi) = saved_output_fixture();
++                    let mut action = EstimateActionSpec::parse(&args).unwrap()
++                        .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
++                    let mut loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
++                    action.request.keep_singletons = true;
++                    action.request.absorbed_terms[0].saved_name.clear();
++                    if complex {
++                        action.request.absorbed_terms[0].categorical_sources.push(SourceId::new(1).unwrap());
++                        action.request.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
++                    }
++                    let mut repeated = action.request.absorbed_terms[0].clone();
++                    repeated.id = AbsorbTermId::new(2).unwrap();
++                    repeated.label = "repeated".to_owned();
++                    action.request.absorbed_terms.push(repeated);
++                    if let Some(kind) = weight {
++                        let column = LoadedNumericColumn { values: vec![2.0; 6], missing: vec![false; 6] };
++                        let role = match kind {
++                            WeightKind::Analytic => { loaded.analytic_weight = Some(column); OlsInputRole::AnalyticWeight },
++                            WeightKind::Frequency => { loaded.frequency_weight = Some(column); OlsInputRole::FrequencyWeight },
++                            WeightKind::Probability => { loaded.probability_weight = Some(column); OlsInputRole::ProbabilityWeight },
++                            WeightKind::Importance => unreachable!("unsupported fixture weight"),
++                        };
++                        action.request.bindings.push(OlsInputBinding { stata_var_position: 12, role });
++                    }
++                    // Retained capacities deliberately exceed logical lengths.
++                    loaded.outcome.values.reserve(100);
++                    if clustered {
++                        let request = OlsClusteredRequestV1 { ols: action.request, clusters: vec![
++                            OlsClusterTermV1 { label: "simple".to_owned(), sources: vec![SourceId::new(2).unwrap()] },
++                            OlsClusterTermV1 { label: "interaction".to_owned(), sources: vec![SourceId::new(1).unwrap(), SourceId::new(2).unwrap()] },
++                        ] };
++                        if complex {
++                            let owner = prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
++                            let before = crate::ffi::allocation_usage();
++                            let bytes = owner.ols().owned_buffer_bytes() + owner.clusters().owned_buffer_bytes();
++                            assert_eq!(crate::ffi::allocation_usage().events, before.events);
++                            check(owner, bytes);
++                        } else {
++                            let owner = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
++                            let bytes = owner.ols().owned_buffer_bytes() + owner.clusters().owned_buffer_bytes();
++                            check(owner, bytes);
++                        }
++                    } else if complex {
++                        let owner = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
++                        let bytes = owner.owned_buffer_bytes();
++                        check(owner, bytes);
++                    } else {
++                        let mut owner = prepare_ols_data_owned(&action.request, loaded).unwrap();
++                        owner.sample.outcome.reserve(101);
++                        owner.model.columns.reserve(17);
++                        owner.categorical_sources[0].encoded.levels.reserve(15);
++                        let before = crate::ffi::allocation_usage();
++                        let bytes = owner.owned_buffer_bytes();
++                        assert_eq!(crate::ffi::allocation_usage().events, before.events);
++                        check(owner, bytes);
++                    }
++                }
++            }
++        }
++    }
++
++    #[test]
++    #[cfg(feature = "ffi")]
++    fn inference_owner_accounting_matches_allocator_in_all_six_routes() {
++        let _guard = instrumentation::lock_action_observation();
++        fn check<T>(owner: T, bytes: u128) {
++            let before = crate::ffi::allocation_usage();
++            drop(owner);
++            let after = crate::ffi::allocation_usage();
++            assert_eq!(u128::from(before.current_bytes - after.current_bytes), bytes);
++        }
++        for mode in [PreparedOlsExecutionMode::Fast, PreparedOlsExecutionMode::Low] {
++            let (args, mut spi) = saved_output_fixture();
++            let mut action = EstimateActionSpec::parse(&args).unwrap()
++                .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
++            action.fit.execution.mode = mode;
++            let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
++            action.request.absorbed_terms[0].saved_name.clear();
++            let clustered = OlsClusteredRequestV1 {
++                ols: action.request.clone(),
++                clusters: vec![OlsClusterTermV1 { label: "g".to_owned(), sources: vec![SourceId::new(2).unwrap()] }],
++            };
++            let iid = PreparedOlsUnadjustedConfig { fit: action.fit, ..Default::default() };
++            let robust = PreparedOlsRobustConfig { fit: action.fit, ..Default::default() };
++            let cluster = PreparedOlsClusteredConfig { fit: action.fit, ..Default::default() };
++            let prepared = prepare_ols_data_owned(&action.request, loaded.clone()).unwrap();
++            let inference = fit_prepared_ols_unadjusted_map(&prepared, iid).unwrap();
++            let bytes = inference.owned_buffer_bytes();
++            check(inference, bytes);
++            let inference = fit_prepared_ols_robust_map(&prepared, robust).unwrap();
++            let bytes = inference.owned_buffer_bytes();
++            check(inference, bytes);
++            let prepared = prepare_ols_clustered_data_owned(&clustered, loaded.clone()).unwrap();
++            let inference = fit_prepared_ols_clustered_map(&prepared, cluster).unwrap();
++            let bytes = inference.owned_buffer_bytes();
++            check(inference, bytes);
++            let prepared = prepare_categorical_ols_data_owned(&action.request, loaded.clone()).unwrap();
++            let inference = fit_prepared_categorical_ols_unadjusted_map(&prepared, iid).unwrap();
++            let bytes = inference.owned_buffer_bytes();
++            check(inference, bytes);
++            let inference = fit_prepared_categorical_ols_robust_map(&prepared, robust).unwrap();
++            let bytes = inference.owned_buffer_bytes();
++            check(inference, bytes);
++            let prepared = prepare_categorical_ols_clustered_data_owned(&clustered, loaded).unwrap();
++            let inference = fit_prepared_categorical_ols_clustered_map(&prepared, cluster).unwrap();
++            let bytes = inference.owned_buffer_bytes();
++            check(inference, bytes);
++        }
++    }
++
++    #[test]
++    fn output_parent_admission_adds_live_owners_and_rejects_before_stores() {
++        let (args, mut spi) = saved_output_fixture();
++        let mut action = EstimateActionSpec::parse(&args).unwrap()
++            .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
++        action.prepared_owner_bytes = 1000;
++        let peak = 3000 + action.publication_memory.peak_bytes();
++        action.fit.absorb.solver_memory_budget = Some(FeSolverMemoryBudget {
++            execution_bytes: 1500, usable_bytes: peak-1,
++        });
++        assert_eq!(action.admit_output_parent(2000).unwrap_err().code, ErrorCode::Allocation);
++        assert_eq!(action.fit.absorb.solver_memory_budget.unwrap().execution_bytes, 1500);
++        action.fit.absorb.solver_memory_budget.as_mut().unwrap().usable_bytes = peak;
++        action.admit_output_parent(2000).unwrap();
++        assert_eq!(action.fit.absorb.solver_memory_budget.unwrap().execution_bytes, 3000);
++        action.admit_output_parent(2000).unwrap();
++        assert_eq!(action.fit.absorb.solver_memory_budget.unwrap().execution_bytes, 3000);
++        assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
++        assert_eq!(spi.receipt_complete(), 0.0);
++    }
++
++    #[test]
++    fn prepared_parent_exact_budget_reaches_solver_and_preserves_public_base() {
++        let (args, mut spi) = saved_output_fixture();
++        let mut spec = EstimateActionSpec::parse(&args).unwrap();
++        for mode in [MemoryMode::Fast, MemoryMode::Low] {
++            spec.memory = mode;
++            let unrestricted = spec.decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
++            let public_base = unrestricted.memory_plan.estimate;
++            let owned_bytes = public_base.fast_bytes.max(public_base.low_bytes) + 4096;
++            let adjusted = unrestricted.preparation_memory.with_prepared_owner(public_base, owned_bytes).unwrap();
++            let execution = if mode == MemoryMode::Fast { adjusted.fast_bytes } else { adjusted.low_bytes };
++            let usable = execution + unrestricted.publication_memory.peak_bytes();
++            let available = 512 * 1024 * 1024 + usable;
++            let mut exact = spec.decode_with_memory_limit(&mut spi, || Ok(Some(available))).unwrap();
++            exact.admit_prepared_parent(owned_bytes).unwrap();
++            assert_eq!(exact.memory_plan.estimate, public_base);
++            assert_eq!(exact.fit.absorb.solver_memory_budget.unwrap(), FeSolverMemoryBudget { execution_bytes: execution, usable_bytes: usable });
++            let mut short = spec.decode_with_memory_limit(&mut spi, || Ok(Some(available-1))).unwrap();
++            assert_eq!(short.admit_prepared_parent(owned_bytes).unwrap_err().code, ErrorCode::Allocation);
++            assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
++            assert_eq!(spi.receipt_complete(), 0.0);
++        }
++    }
++
++    #[test]
++    fn publication_admission_uses_reported_axis_before_reading_rows() {
++        for (args, mut spi) in [
++            fixture(OlsVceKind::Iid),
++            factor_scatter_fixture(),
++            saved_output_fixture(),
++        ] {
++            let mut spec = EstimateActionSpec::parse(&args).unwrap();
++            for mode in [MemoryMode::Fast, MemoryMode::Low] {
++                spec.memory = mode;
++                let unrestricted = spec
++                    .decode_with_memory_limit(&mut spi, || Ok(None))
++                    .unwrap();
++                let base = unrestricted.memory_plan.selected_bytes();
++                let reserve = unrestricted.publication_memory.peak_bytes();
++                let limit = 512 * 1024 * 1024 + base + reserve;
++                let exact = spec
++                    .decode_with_memory_limit(&mut spi, || Ok(Some(limit)))
++                    .unwrap();
++                assert_eq!(
++                    exact.memory_plan.estimate,
++                    unrestricted.memory_plan.estimate
++                );
++                let solver = exact.fit.absorb.solver_memory_budget.unwrap();
++                assert_eq!(solver.execution_bytes, base);
++                assert_eq!(solver.usable_bytes, base + reserve);
++                let error = spec
++                    .decode_with_memory_limit(&mut spi, || Ok(Some(limit - 1)))
++                    .unwrap_err();
++                assert_eq!(error.code, ErrorCode::Allocation);
++                assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
++                assert_eq!(spi.receipt_complete(), 0.0);
++            }
++        }
++    }
++
++    #[test]
++    fn saved_publication_checks_observed_capacities_before_any_store() {
++        let _guard = instrumentation::lock_action_observation();
++        for mode in [MemoryMode::Fast, MemoryMode::Low] {
++            let (args, mut spi) = saved_output_fixture();
++            let mut spec = EstimateActionSpec::parse(&args).unwrap();
++            spec.memory = mode;
++            let mut action = spec
++                .decode_with_memory_limit(&mut spi, || Ok(None))
++                .unwrap();
++            let observation = ActionObservation {
++                started: Instant::now(),
++                resources_start: instrumentation::begin_observation(),
++                preflight_seconds: 0.0,
++                input_load_seconds: 0.0,
++            };
++            let loaded = load_ols_input(
++                &action.request,
++                action.candidate_all,
++                action.input_complete,
++                &mut spi,
++            )
++            .unwrap();
++            let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
++            let inference = fit_prepared_categorical_ols_unadjusted_map(
++                &prepared,
++                PreparedOlsUnadjustedConfig {
++                    fit: action.fit,
++                    absorbed_dof: action.absorbed_dof,
++                    ..PreparedOlsUnadjustedConfig::default()
++                },
++            )
++            .unwrap();
++            let result_data = PreparedOlsResultData::categorical(&prepared);
++            let derived = build_derived_observation_outputs(
++                result_data,
++                Some(&prepared),
++                inference.fit(),
++                &action.outputs,
++                normalization_known_connected(inference.absorbed_dof()),
++                action.fit,
++            )
++            .unwrap();
++            let mut shadow = build_shadow_result(
++                result_data,
++                None,
++                CertifiedOlsInference::CategoricalIid(&inference),
++                action.outputs.residual.is_some(),
++            )
++            .unwrap();
++            let runtime = build_runtime_shadow(&action, &shadow, &observation).unwrap();
++            let bytes = shadow.capacity_bytes()
++                + derived.capacity_bytes()
++                + runtime.capacity() as u128 * std::mem::size_of::<f64>() as u128;
++            assert_eq!(
++                shadow.capacity_bytes(),
++                action.publication_memory.shadow_bytes
++            );
++            assert_eq!(bytes, action.publication_memory.publication_bytes);
++            drop(runtime);
++
++            action.publication_memory.publication_bytes = bytes - 1;
++            let error = precommit_and_store(&action, &shadow, &derived, &observation, &mut spi)
++                .unwrap_err();
++            assert_eq!(error.code, ErrorCode::Allocation);
++            assert_eq!((spi.store_calls, spi.receipt_complete()), (0, 0.0));
++            action.publication_memory.publication_bytes = bytes;
++            // Lengths and scientific payload are unchanged; excess reserved
++            // capacity alone must also fail before publication starts.
++            shadow.b.reserve_exact(1);
++            assert!(shadow.capacity_bytes() > action.publication_memory.shadow_bytes);
++            assert_eq!(
++                precommit_and_store(&action, &shadow, &derived, &observation, &mut spi)
++                    .unwrap_err()
++                    .code,
++                ErrorCode::Allocation
++            );
++            assert_eq!((spi.store_calls, spi.receipt_complete()), (0, 0.0));
++            shadow.b.shrink_to_fit();
++            precommit_and_store(&action, &shadow, &derived, &observation, &mut spi).unwrap();
++            assert_eq!(spi.receipt_complete(), 1.0);
++        }
++    }
++
+     #[test]
+     fn guarded_iid_robust_and_clustered_actions_commit_complete_last() {
+         for kind in [OlsVceKind::Iid, OlsVceKind::Robust, OlsVceKind::Clustered] {
+diff --git a/crates/fereg-plugin/src/lib.rs b/crates/fereg-plugin/src/lib.rs
+index 6003358d..af9e6eae 100644
+--- a/crates/fereg-plugin/src/lib.rs
++++ b/crates/fereg-plugin/src/lib.rs
+@@ -4,6 +4,8 @@ mod dispatch;
+ mod estimate;
+ mod input;
+ mod instrumentation;
++mod ols_preparation_memory;
++mod ols_publication_memory;
+ mod output;
+ mod ppml_estimate;
+ mod ppml_result;
+diff --git a/crates/fereg-plugin/src/result.rs b/crates/fereg-plugin/src/result.rs
+index 315af26c..fd9b5adc 100644
+--- a/crates/fereg-plugin/src/result.rs
++++ b/crates/fereg-plugin/src/result.rs
+@@ -281,6 +281,30 @@ pub(crate) struct OlsShadowResult<'a> {
+     pub(crate) execution: PreparedOlsExecutionReport,
+ }
+ 
++impl OlsShadowResult<'_> {
++    pub(crate) fn capacity_bytes(&self) -> u128 {
++        [
++            &self.b,
++            &self.covariance,
++            &self.coefficient_status,
++            &self.omission_b_marker,
++            &self.omission_v_marker,
++            &self.fit,
++            &self.dof,
++            &self.solver,
++            &self.fixed_effects,
++            &self.clusters,
++            &self.subsets,
++            &self.certificates,
++            &self.receipt,
++        ]
++        .into_iter()
++        .map(|values| values.capacity() as u128)
++        .sum::<u128>()
++            * std::mem::size_of::<f64>() as u128
++    }
++}
++
+ pub(crate) fn build_shadow_result<'a>(
+     prepared: PreparedOlsResultData<'a>,
+     clustered_prepared: Option<PreparedOlsClusteredResultData<'a>>,

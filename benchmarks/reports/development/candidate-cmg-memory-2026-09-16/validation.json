@@ -1,0 +1,12 @@
+{
+  "snapshot": "5240e58-cmg-containers1",
+  "native_checks": 221,
+  "commands": 18,
+  "all_science_exact": true,
+  "command_and_phase_cost_gate": true,
+  "whole_action_coverage_complete": false,
+  "whole_action_ratio": null,
+  "publication_eligible": false,
+  "dependency_draft_tests": 18,
+  "dependency_pins_changed": false
+}

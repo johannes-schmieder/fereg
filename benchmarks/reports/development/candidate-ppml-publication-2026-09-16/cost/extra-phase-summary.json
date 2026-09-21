@@ -1,0 +1,251 @@
+[
+  {
+    "case": "saved_slopes_low",
+    "values": {
+      "baseline": {
+        "input_seconds": [
+          0.000629377,
+          0.000632668,
+          0.000618003
+        ],
+        "preparation_seconds": [
+          0.007135855,
+          0.001351357,
+          0.0013642460000000002
+        ],
+        "fit_inference_seconds": [
+          0.20743718800000002,
+          0.207037023,
+          0.21103293399999998
+        ],
+        "native_total_seconds": [
+          0.21520242,
+          0.209021048,
+          0.213015183
+        ],
+        "native_peak_bytes": [
+          3301792.0,
+          3301792.0,
+          3301792.0
+        ],
+        "native_peak_delta_bytes": [
+          3299322.0,
+          3299322.0,
+          3299322.0
+        ],
+        "scratch_bytes": [
+          1573056.0,
+          1573056.0,
+          1573056.0
+        ]
+      },
+      "candidate": {
+        "input_seconds": [
+          0.000596944,
+          0.000588225,
+          0.000593592
+        ],
+        "preparation_seconds": [
+          0.0013553670000000001,
+          0.001353142,
+          0.001357368
+        ],
+        "fit_inference_seconds": [
+          0.20522346200000002,
+          0.207072652,
+          0.214329585
+        ],
+        "native_total_seconds": [
+          0.207175773,
+          0.209014019,
+          0.216280545
+        ],
+        "native_peak_bytes": [
+          3301792.0,
+          3301792.0,
+          3301792.0
+        ],
+        "native_peak_delta_bytes": [
+          3299322.0,
+          3299322.0,
+          3299322.0
+        ],
+        "scratch_bytes": [
+          1573056.0,
+          1573056.0,
+          1573056.0
+        ]
+      }
+    },
+    "medians": {
+      "baseline": {
+        "input_seconds": 0.000629377,
+        "preparation_seconds": 0.0013642460000000002,
+        "fit_inference_seconds": 0.20743718800000002,
+        "native_total_seconds": 0.213015183,
+        "native_peak_bytes": 3301792.0,
+        "native_peak_delta_bytes": 3299322.0,
+        "scratch_bytes": 1573056.0
+      },
+      "candidate": {
+        "input_seconds": 0.000593592,
+        "preparation_seconds": 0.0013553670000000001,
+        "fit_inference_seconds": 0.207072652,
+        "native_total_seconds": 0.209014019,
+        "native_peak_bytes": 3301792.0,
+        "native_peak_delta_bytes": 3299322.0,
+        "scratch_bytes": 1573056.0
+      }
+    }
+  },
+  {
+    "case": "ppml_narrow",
+    "values": {
+      "baseline": {
+        "feppml_fallback_count": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "feppml_fallback_mask": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "feppml_solver_fallback_count": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "inner_iterations": [
+          6.0,
+          6.0,
+          6.0
+        ],
+        "step_halvings": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "candidate": {
+        "feppml_fallback_count": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "feppml_fallback_mask": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "feppml_solver_fallback_count": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "inner_iterations": [
+          6.0,
+          6.0,
+          6.0
+        ],
+        "step_halvings": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "medians": {
+      "baseline": {
+        "feppml_fallback_count": 0.0,
+        "feppml_fallback_mask": 0.0,
+        "feppml_solver_fallback_count": 0.0,
+        "inner_iterations": 6.0,
+        "step_halvings": 0.0
+      },
+      "candidate": {
+        "feppml_fallback_count": 0.0,
+        "feppml_fallback_mask": 0.0,
+        "feppml_solver_fallback_count": 0.0,
+        "inner_iterations": 6.0,
+        "step_halvings": 0.0
+      }
+    }
+  },
+  {
+    "case": "ppml_saved_weighted",
+    "values": {
+      "baseline": {
+        "feppml_fallback_count": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "feppml_fallback_mask": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "feppml_solver_fallback_count": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "inner_iterations": [
+          49.0,
+          49.0,
+          49.0
+        ],
+        "step_halvings": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "candidate": {
+        "feppml_fallback_count": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "feppml_fallback_mask": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "feppml_solver_fallback_count": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "inner_iterations": [
+          49.0,
+          49.0,
+          49.0
+        ],
+        "step_halvings": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "medians": {
+      "baseline": {
+        "feppml_fallback_count": 0.0,
+        "feppml_fallback_mask": 0.0,
+        "feppml_solver_fallback_count": 0.0,
+        "inner_iterations": 49.0,
+        "step_halvings": 0.0
+      },
+      "candidate": {
+        "feppml_fallback_count": 0.0,
+        "feppml_fallback_mask": 0.0,
+        "feppml_solver_fallback_count": 0.0,
+        "inner_iterations": 49.0,
+        "step_halvings": 0.0
+      }
+    }
+  }
+]

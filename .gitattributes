@@ -1,3 +1,4 @@
 # Frozen receipts and replayable patches must preserve their original bytes.
 # Patch context and Stata/CSV exports can contain significant whitespace.
 benchmarks/reports/** -text -whitespace
+Veneto_Benchmark/results/** -text -whitespace

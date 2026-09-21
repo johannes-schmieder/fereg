@@ -1,0 +1,52 @@
+{
+  "archived_unused_source": {
+    "archive": "benchmarks/reports/development/candidate-cmg-memory-2026-09-16/cmg_container_memory.rs",
+    "no_rust_module_references": true,
+    "original": "crates/fereg-core/src/fe/cmg_container_memory.rs",
+    "sha256": "fa5e90ab9f183a564cb4b3f8a6c4e926c56a893379b21de82f46543913506843"
+  },
+  "date": "2026-09-21",
+  "old_source_inventory_drift_preserved": true,
+  "production_behavior_changed": false,
+  "removed_regenerable_latex_files": [
+    {
+      "bytes": 2358,
+      "path": "benchmarks/reports/systematic-stopped-2026-09-11/work/latex/discussion.out",
+      "sha256": "d3c796e2f42ee6e12280d7ae07a82ccf9c32793c07b9e1b0786dc04cb044f245"
+    },
+    {
+      "bytes": 7891,
+      "path": "benchmarks/reports/systematic-stopped-2026-09-11/work/latex/figure-atlas.aux",
+      "sha256": "01c1b864d28d18d658f83be2fc725a4e6bd1a7208c5bcc8377f91507d30afc82"
+    },
+    {
+      "bytes": 93234,
+      "path": "benchmarks/reports/systematic-stopped-2026-09-11/work/latex/figure-atlas.log",
+      "sha256": "1c42dfd77f518fc56b8d01497ff79bee1a6f3a099731b70d8416c53af1be415f"
+    },
+    {
+      "bytes": 3356,
+      "path": "benchmarks/reports/systematic-stopped-2026-09-11/work/latex/discussion.aux",
+      "sha256": "19e8df2d9735e93df8eaa592e06156fa4460d168705021098bc9f9a690238e7f"
+    },
+    {
+      "bytes": 17972,
+      "path": "benchmarks/reports/systematic-stopped-2026-09-11/work/latex/discussion.log",
+      "sha256": "14ef8c085ddd336ecf0185aa625c1116af6a892cbf50efda3afb121a9003ba1a"
+    },
+    {
+      "bytes": 0,
+      "path": "benchmarks/reports/systematic-stopped-2026-09-11/work/latex/figure-atlas.out",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "restored_manifests": [
+    "benchmarks/manifests/action_allocation_inventory_v19.json",
+    "benchmarks/manifests/action_allocation_inventory_v20.json",
+    "benchmarks/manifests/action_allocation_inventory_v21.json",
+    "benchmarks/manifests/fereg_allocation_source_contract_v34.json",
+    "benchmarks/manifests/fereg_allocation_source_contract_v35.json",
+    "benchmarks/manifests/fereg_allocation_source_contract_v36.json"
+  ],
+  "schema": "repository-cleanup-v1"
+}

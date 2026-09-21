@@ -1,0 +1,101 @@
+[
+  {
+    "id": "numeric_narrow",
+    "data": "numeric_narrow.dta",
+    "generated": true,
+    "expected_sample_rows": 7680,
+    "solver": "auto",
+    "strings": false,
+    "cell": {
+      "name": "numeric_narrow",
+      "model": "ols",
+      "section": "width",
+      "design": "synthetic",
+      "n": 7680,
+      "k": 2,
+      "threads": 4,
+      "effects": [
+        "g1"
+      ],
+      "weight": "",
+      "absorb": "",
+      "vce": "",
+      "fit_options": "memory(fast) residuals(saved_e)"
+    }
+  },
+  {
+    "id": "string_wide",
+    "data": "string_wide.dta",
+    "generated": true,
+    "expected_sample_rows": 65536,
+    "solver": "auto",
+    "strings": true,
+    "cell": {
+      "name": "string_wide",
+      "model": "ols",
+      "section": "width",
+      "design": "synthetic",
+      "n": 65536,
+      "k": 20,
+      "threads": 4,
+      "effects": [
+        "g1"
+      ],
+      "weight": "",
+      "absorb": "s_g1",
+      "vce": "robust",
+      "fit_options": "memory(fast) residuals(saved_e)",
+      "string_columns": "g1 g2"
+    }
+  },
+  {
+    "id": "string_cluster_low",
+    "data": "string_cluster_low.dta",
+    "generated": true,
+    "expected_sample_rows": 65536,
+    "solver": "auto",
+    "strings": true,
+    "cell": {
+      "name": "string_cluster_low",
+      "model": "ols",
+      "section": "width",
+      "design": "synthetic",
+      "n": 65536,
+      "k": 4,
+      "threads": 4,
+      "effects": [
+        "g1"
+      ],
+      "weight": "[fw=w]",
+      "absorb": "s_g1",
+      "vce": "cluster s_g2",
+      "fit_options": "memory(low) residuals(saved_e)",
+      "string_columns": "g1 g2"
+    }
+  },
+  {
+    "id": "ppml_string_cluster",
+    "data": "ppml_string_cluster.dta",
+    "generated": true,
+    "expected_sample_rows": 32768,
+    "solver": "auto",
+    "strings": true,
+    "cell": {
+      "name": "ppml_string_cluster",
+      "model": "ppml",
+      "section": "width",
+      "design": "synthetic",
+      "n": 32768,
+      "k": 2,
+      "threads": 4,
+      "effects": [
+        "g1"
+      ],
+      "weight": "[fw=w]",
+      "absorb": "s_g1",
+      "vce": "cluster s_g2",
+      "fit_options": "memory(fast) residuals(saved_e)",
+      "string_columns": "g1 g2"
+    }
+  }
+]

@@ -1,0 +1,42 @@
+{
+  "job_id": "7536367",
+  "host": "scc-gr4.scc.bu.edu",
+  "sge_failed": 0,
+  "exit_status": 1,
+  "wall_seconds": 92,
+  "maxvmem": "2.521G",
+  "application_smoke": {
+    "break_receipts": [],
+    "build_rc": 0,
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "plugin_filename": "fereg_linux.plugin",
+    "plugin_sha256": "cfcd6d457197c958b0fd4a776e511b6deb4b3a04e731c886cd24e889c1b394b0",
+    "profile": "scc-dev-ppml",
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "ci/feppml_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "PC (64-bit x86-64)",
+    "stata_os": "Unix",
+    "stata_processors": 4,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 1
+  },
+  "failure": "Full-panel controller referenced work/task-01 instead of work/campaign/task-01; no full-panel fit launched.",
+  "preserved_root": "Veneto_Benchmark/work/ppml-fix/scc-first-attempt",
+  "correction": "Reference path corrected; full-panel sample N=3159720 confirmed before resubmission.",
+  "followup_job": "7536374"
+}

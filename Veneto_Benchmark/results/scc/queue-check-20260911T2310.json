@@ -1,0 +1,20 @@
+{
+  "checked_at_utc": "2026-09-11T23:10:36.437389+00:00",
+  "smoke_job_id": "7529248",
+  "acceptance_job_id": "7529405",
+  "production_job_id": "7529406",
+  "states": {
+    "smoke": "qw",
+    "acceptance": "hqw",
+    "production": "hqw"
+  },
+  "diagnostic": "qalter -w p 7529248 (non-submitting scheduler verification)",
+  "diagnostic_sha256": "d3bf9917abc7eb4e7a9d93e64518624bf36709f13f5ca6d110e3ab21d1f6269e",
+  "terminal_diagnostic_lines": [
+    "Job 7529248 cannot run because it exceeds limit \"////scc-ic2/\" in rule \"max_slots_per_host/1\"",
+    "Job 7529248 cannot run in PE \"omp28\" because it only offers 0 slots",
+    "verification: no suitable queues"
+  ],
+  "interpretation": "No currently schedulable whole 28-core node in the requested CPU class; available candidate hosts excluded by current slot limits or queue availability. No application has started.",
+  "action": "Preserve submitted jobs and frozen design; existing monitor continues."
+}

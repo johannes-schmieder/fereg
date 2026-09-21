@@ -1,0 +1,166 @@
+{
+  "base_source": "d44e36bfa5ad7e41a06752d1008f0b9683f8c8dd",
+  "job_id": "7535389",
+  "host": "scc-ei3",
+  "cpu_type": "Gold-6226R",
+  "comparison_is_benchmark": false,
+  "settings_changed": false,
+  "original_four_thread_trace_exact_match": false,
+  "original_four_thread_trace_same_routes_iterations_and_decisions": true,
+  "original_four_thread_trace_numeric_differences": [
+    {
+      "phase": "lsmr_rhs",
+      "rhs": "2",
+      "field": "within_normal",
+      "original": 7.966641368052096e-08,
+      "instrumented": 7.966641368078917e-08,
+      "absolute_difference": 2.6821827670399454e-19
+    },
+    {
+      "phase": "lsmr_rhs",
+      "rhs": "2",
+      "field": "fereg_relinf",
+      "original": 4.1824388131200655e-09,
+      "instrumented": 4.182438813200237e-09,
+      "absolute_difference": 8.0171172149252e-20
+    },
+    {
+      "phase": "lsmr_rhs",
+      "rhs": "4",
+      "field": "within_normal",
+      "original": 2.43824520527233e-06,
+      "instrumented": 2.4382452052800754e-06,
+      "absolute_difference": 7.745269269693322e-18
+    },
+    {
+      "phase": "lsmr_rhs",
+      "rhs": "4",
+      "field": "fereg_relinf",
+      "original": 2.2051302678559878e-07,
+      "instrumented": 2.205130267855545e-07,
+      "absolute_difference": 4.428394127363889e-20
+    },
+    {
+      "phase": "lsmr_rhs",
+      "rhs": "5",
+      "field": "within_normal",
+      "original": 4.1502181526900933e-13,
+      "instrumented": 4.150218152690073e-13,
+      "absolute_difference": 2.0194839173657902e-27
+    }
+  ],
+  "tracked_source_files_checked": 2028,
+  "changed_files": [
+    {
+      "path": "crates/fereg-core/src/ols/linear_session.rs",
+      "original_git_blob": "0bd05afbfc087212569c2332cf117cf0c2a244ba",
+      "diagnostic_git_blob": "1fa69947c439bac7cc0a49329528cbea3d5b77ad",
+      "diagnostic_sha256": "d9c7ee9da31f38738fa59ffff3423d88aeaadfdf327406e3f1f9811966053c4b"
+    }
+  ],
+  "fits": [
+    {
+      "threads": 4,
+      "application_rc": 430,
+      "diagnostic_seconds": 10.861,
+      "input_sha256": "92062a6bccaa7b55c3a213e288cf0d22e68668e21f454119ac168dbd938cb08d",
+      "plugin_sha256": "831bfd3f7106761646d531661c6cd1e7f2db699c27d2c2fb45ea290f85aaa8b9",
+      "failed_certificate": "predictor reconstruction",
+      "passed_certificates": [
+        "rank",
+        "linear score",
+        "bread/inverse",
+        "FE absorption",
+        "residual absorption",
+        "retained design inverse"
+      ],
+      "scale": {
+        "relative_error": 2.3574622737908473e-14,
+        "threshold": 1.4210854715202004e-14,
+        "cancellation_max": 392.0302060794343,
+        "termwise_error_max": 1.5919247395336314e-16,
+        "absolute_error_max": 2.2737367544323206e-13,
+        "response_max": 1841.88972101466,
+        "finite_max": 0.6899629789155715,
+        "absorbed_max": 1230.9204529367787,
+        "residual_max": 1104.4971840386115
+      },
+      "error_cutoff_ratio": 1.6589165965288222,
+      "certificate_fields": {
+        "phase": "linear_output_certificate",
+        "rank": "PreparedOlsRankCertificate { relative_threshold: 8.980464372143615e-8, maximum_dropped_trailing_norm: 0.0, condition_proxy: 586.8821757713014, passed: true }",
+        "score": "PreparedOlsScoreCertificate { relative_infinity_norm: 1.7073688531138232e-7, relative_two_norm: 7.635585636458353e-8, moments: 5, passed: true }",
+        "bread": "PreparedOlsBreadCertificate { left_inverse_relative_infinity_norm: 4.114245804880384e-12, right_inverse_relative_infinity_norm: 2.0982007169435764e-12, reported_left_inverse_relative_infinity_norm: 7.096383330547988e-14, reported_right_inverse_relative_infinity_norm: 7.242939104390619e-15, symmetry_relative_infinity_norm: 1.3763481646882177e-21, minimum_diagonal: 4.287929604717895e-8, intercept_formula_relative_error: 0.0, intercept_normalization_relative_error: 0.0, passed: true }",
+        "absorption": "true",
+        "residual_absorption": "true",
+        "within": "LinearWithinDesignCertificate { left_inverse_relative_infinity_norm: 4.114245804880384e-12, right_inverse_relative_infinity_norm: 2.0982007169435764e-12, passed: true }",
+        "reconstruction": "LinearReconstructionCertificate { relative_infinity_norm: 2.3574622737908473e-14, passed: false }"
+      }
+    },
+    {
+      "threads": 14,
+      "application_rc": 430,
+      "diagnostic_seconds": 9.048,
+      "input_sha256": "92062a6bccaa7b55c3a213e288cf0d22e68668e21f454119ac168dbd938cb08d",
+      "plugin_sha256": "831bfd3f7106761646d531661c6cd1e7f2db699c27d2c2fb45ea290f85aaa8b9",
+      "failed_certificate": "predictor reconstruction",
+      "passed_certificates": [
+        "rank",
+        "linear score",
+        "bread/inverse",
+        "FE absorption",
+        "residual absorption",
+        "retained design inverse"
+      ],
+      "scale": {
+        "relative_error": 1.486364442234979e-14,
+        "threshold": 1.4210854715202004e-14,
+        "cancellation_max": 392.03020607943495,
+        "termwise_error_max": 1.5581648730587472e-16,
+        "absolute_error_max": 2.2737367544323206e-13,
+        "response_max": 1841.88972101466,
+        "finite_max": 0.6899629789125776,
+        "absorbed_max": 1230.92045293678,
+        "residual_max": 1104.497184038612
+      },
+      "error_cutoff_ratio": 1.0459359919040947,
+      "certificate_fields": {
+        "phase": "linear_output_certificate",
+        "rank": "PreparedOlsRankCertificate { relative_threshold: 8.980464372143615e-8, maximum_dropped_trailing_norm: 0.0, condition_proxy: 586.8821757712818, passed: true }",
+        "score": "PreparedOlsScoreCertificate { relative_infinity_norm: 1.7073688530914326e-7, relative_two_norm: 7.635585636358216e-8, moments: 5, passed: true }",
+        "bread": "PreparedOlsBreadCertificate { left_inverse_relative_infinity_norm: 4.093939653976356e-12, right_inverse_relative_infinity_norm: 2.0911707406278852e-12, reported_left_inverse_relative_infinity_norm: 7.077972758065364e-14, reported_right_inverse_relative_infinity_norm: 7.253102201894494e-15, symmetry_relative_infinity_norm: 2.6468660492121874e-22, minimum_diagonal: 4.287929604717845e-8, intercept_formula_relative_error: 1.7004890043105495e-16, intercept_normalization_relative_error: 0.0, passed: true }",
+        "absorption": "true",
+        "residual_absorption": "true",
+        "within": "LinearWithinDesignCertificate { left_inverse_relative_infinity_norm: 4.093939653976356e-12, right_inverse_relative_infinity_norm: 2.0911707406278852e-12, passed: true }",
+        "reconstruction": "LinearReconstructionCertificate { relative_infinity_norm: 1.486364442234979e-14, passed: false }"
+      }
+    }
+  ],
+  "evidence_sha256": {
+    "original/diagnose_ppml.sh": "c0603e09830bf4ab36f1325b46d45ee67b4e713c7a9103e04f55827fd89ac5c3",
+    "original/diagnose_ppml.do": "d030bf1b858a6b4bd1ffc1f88e4abc9f6f5700af1af87d3a183e1103aaa24e96",
+    "original/diagnose_ppml.py": "408f72c7ee6626c2444b1807035f82053f75a982e2a15cf935e46f32047cf9fe",
+    "original/veneto_ppml_trace.o7535359": "c53918ece5e4138aaffc6dd298f00ff9087d45d2bfa9b63805fa21266a53c49f",
+    "original/t4/stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "original/t4/metadata.tsv": "b004447366605b2a99bf60c312c21f5f03bef0c1e71f1e1e82e2ca092860f4a8",
+    "original/t4/stderr.txt": "c7caae754bc9f9bbde10805ccf4527e75abaa26f8becc0612e949f6338983763",
+    "original/t4/t4.log": "7475350081a580e7021bb74f884a523ebc1f74bfb9b718e8e3e5fdceac09871e",
+    "original/t4/solver-trace.txt": "c7caae754bc9f9bbde10805ccf4527e75abaa26f8becc0612e949f6338983763",
+    "certificates/veneto_ppml_cert.o7535389": "b4a1f6d0a288222fa0a4dac9f0b0435cc07585da9ea91dce4188f85f4e42645c",
+    "certificates/COMPLETE.json": "b57d379199a45dec160f3d69247bc2d71eb2c387166a0f1c80c3b80217eab211",
+    "certificates/instrumented-plugin.sha256": "990566945d710687ccf794bbce1f4b85c951535c251855e8762e81cdab49851c",
+    "certificates/build.log": "2b81b3898c0ab119e0a90d8ab83ccea87ac25f53c854c4609aba0fe5c7eac1c1",
+    "certificates/t4/stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "certificates/t4/metadata.tsv": "1c5c023d244bb6c70168c45055adbad4d5afc78f9a7ba49cc6b8d25a8bd8d964",
+    "certificates/t4/stderr.txt": "66f18326adc4f7ee4adbae248166d248e197a5b228341ff0d6daafd16d4d525b",
+    "certificates/t4/t4.log": "a213e2a386b7ffeb144cf65251d266a0ff7951c5b954d2f5837016c62b5869ef",
+    "certificates/t4/receipt.json": "b55460bd217edef10396d6c5617fa84be1bee20c0e335df9c146b46c9b4278e2",
+    "certificates/t4/solver-trace.txt": "2a28c7bfb9fd47eb67f54b5adf4d41eff8c3282f99ff6387b3aeee0a9564d8b1",
+    "certificates/t14/stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "certificates/t14/metadata.tsv": "6c9b5bbf6b96b5adafe6c60030b23c89d41f682a425d07b0b2f9b48ca4378314",
+    "certificates/t14/stderr.txt": "22f598634842279e322f41c357b147698d0d8a6ae3df838fa24962a4be7475b0",
+    "certificates/t14/t14.log": "f463a4cfcf4a1a80020720f809efd4a03c7dc761d1d7e4b25b347582dd5a70cd",
+    "certificates/t14/receipt.json": "40f56426299e008620bd0573f341d3d06d227cdb60e0f8677eb5f6d4eb6ef369",
+    "certificates/t14/solver-trace.txt": "ef25ca5fa3dbffe1b18c3d6cb768dc678a6a23db5223e31901748aa0270617ac"
+  }
+}

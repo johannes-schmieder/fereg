@@ -1,0 +1,90 @@
+{
+  "arm": "ppmlhdfe",
+  "cell": {
+    "effects": [
+      "g1",
+      "g2"
+    ],
+    "k": 4,
+    "model": "ppml",
+    "n": 3159720,
+    "threads": 4
+  },
+  "coefficients": [
+    {
+      "name": "x1",
+      "se": 0.096996338143538,
+      "value": -0.2112517588695121
+    },
+    {
+      "name": "x2",
+      "se": 0.0077528219828664,
+      "value": 0.0194560505681023
+    },
+    {
+      "name": "x3",
+      "se": 0.0399122798543546,
+      "value": 0.1134988357947809
+    },
+    {
+      "name": "x4",
+      "se": 0.07850221454601299,
+      "value": 0.1936972999364842
+    }
+  ],
+  "command_time_lower_bound": null,
+  "cpu_affinity": null,
+  "input_sha256": "92062a6bccaa7b55c3a213e288cf0d22e68668e21f454119ac168dbd938cb08d",
+  "input_value_audit": "columnwise IEEE-754 SHA-256",
+  "job_id": null,
+  "measurement_fingerprint": "550efef14d03bfeb86a2749a24be69910479c8040001a2673d95e35e6a3eaba3",
+  "metadata": {
+    "N": 3159720.0,
+    "N_full": 3159720.0,
+    "N_hdfe": 2.0,
+    "N_hdfe_extended": 2.0,
+    "chi2": 245.19910698725687,
+    "command": "ppmlhdfe y x1 x2 x3 x4, absorb(g1 g2) vce(robust)",
+    "converged": 1.0,
+    "deviance": 28924746.97649495,
+    "df": 1941977.0,
+    "df_a": 1217739.0,
+    "df_a_initial": 1259640.0,
+    "df_a_nested": 0.0,
+    "df_a_redundant": 41901.0,
+    "df_m": 4.0,
+    "drop_singletons": 1.0,
+    "ic": 13.0,
+    "ic2": 684.0,
+    "ll": -24837832.489036508,
+    "ll_0": -269428569.0151165,
+    "num_separated": 0.0,
+    "num_singletons": 0.0,
+    "processors_lic": 8.0,
+    "processors_mach": 24.0,
+    "r2_p": 0.9078129220675074,
+    "rank": 4.0,
+    "rc": 0.0,
+    "rmse": 0.8712265201224845,
+    "rss": 1474029.7732463777,
+    "sample_kind": "observation_ids",
+    "seconds": 247.446,
+    "stata_processors": 4.0,
+    "stata_version": 19.0
+  },
+  "peak_process_tree_threads": 6,
+  "peak_rss_gib": 2.0069580078125,
+  "phase": "cold",
+  "platform": "macOS Apple M2 Ultra",
+  "process_returncode": 0,
+  "repetition": 0,
+  "rss_interval_seconds": 0.01,
+  "rss_samples": 9323,
+  "sample_rows": 3159720,
+  "sample_sha256": "dc41be917e63c14c8626abd0bc59d1b4b9a67685c8599abe6c33545ce1d8b1b7",
+  "schema": "veneto-local-arm-v1",
+  "seconds": 247.446,
+  "sentinel": true,
+  "status": "pass",
+  "task_id": null
+}

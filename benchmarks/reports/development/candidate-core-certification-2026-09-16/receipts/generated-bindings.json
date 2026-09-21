@@ -1,0 +1,10 @@
+{
+  "ppml_narrow": {
+    "data_sha256": "d4ac672c9cc3452ced7a1ec3158012ad460a3eb31015833b65cb6e1ef1c9e696",
+    "metadata_sha256": "f60075f9262906fbe1b1c4076ecb286358c0ee0842374d1a31ae82b90a14d7ec"
+  },
+  "ppml_saved_weighted": {
+    "data_sha256": "f19f0153951737e45935e94c2bd7926f504af2d9c583c4515de1ae6d684804f6",
+    "metadata_sha256": "15c300738646c319aefcb411be8e38be2a55f2d6a6bbc0f1f7c5e9a0b55e9e5a"
+  }
+}

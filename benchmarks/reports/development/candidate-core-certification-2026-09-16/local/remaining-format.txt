@@ -1,0 +1,10 @@
+Diff in $REPO/crates/fereg-core/src/ppml/prepared_estimator.rs:2527:
+             + inference.vce.standard_errors.capacity()
+             + inference.vce.z_statistics.capacity()) as u128
+             * std::mem::size_of::<f64>() as u128
+-            + inference.wald.tested_columns.capacity() as u128 * std::mem::size_of::<usize>() as u128;
++            + inference.wald.tested_columns.capacity() as u128
++                * std::mem::size_of::<usize>() as u128;
+         assert!(
+             result
+                 .memory()

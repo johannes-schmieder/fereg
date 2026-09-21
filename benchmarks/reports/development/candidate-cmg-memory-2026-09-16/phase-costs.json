@@ -1,0 +1,548 @@
+[
+  {
+    "case": "cmg_ols_small",
+    "observations": {
+      "baseline": {
+        "values": {
+          "command_seconds": [
+            0.163,
+            0.081,
+            0.074
+          ],
+          "rss_peak_gib": [
+            0.06978225708007812,
+            0.07137298583984375,
+            0.07271194458007812
+          ],
+          "metadata_preflight_seconds": [
+            0.000307632,
+            0.000311369,
+            0.000303869
+          ],
+          "input_load_seconds": [
+            0.0006230389999999999,
+            0.000614915,
+            0.000687268
+          ],
+          "post_input_native_seconds": [
+            0.027697131000000003,
+            0.021382291,
+            0.021277901
+          ],
+          "plugin_precommit_seconds": [
+            0.028627802,
+            0.022308575,
+            0.022269038
+          ],
+          "allocation_peak_bytes": [
+            2457707.0,
+            2457707.0,
+            2457707.0
+          ],
+          "allocation_delta_bytes": [
+            2455876.0,
+            2455876.0,
+            2455876.0
+          ],
+          "scratch_bytes": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "medians": {
+          "command_seconds": 0.081,
+          "rss_peak_gib": 0.07137298583984375,
+          "metadata_preflight_seconds": 0.000307632,
+          "input_load_seconds": 0.0006230389999999999,
+          "post_input_native_seconds": 0.021382291,
+          "plugin_precommit_seconds": 0.022308575,
+          "allocation_peak_bytes": 2457707.0,
+          "allocation_delta_bytes": 2455876.0,
+          "scratch_bytes": 0.0
+        }
+      },
+      "candidate": {
+        "values": {
+          "command_seconds": [
+            0.081,
+            0.074,
+            0.075
+          ],
+          "rss_peak_gib": [
+            0.06978225708007812,
+            0.07028961181640625,
+            0.07687759399414062
+          ],
+          "metadata_preflight_seconds": [
+            0.000309683,
+            0.006130534,
+            0.006467611
+          ],
+          "input_load_seconds": [
+            0.0006485499999999999,
+            0.0006235030000000001,
+            0.0005875430000000003
+          ],
+          "post_input_native_seconds": [
+            0.021565706999999996,
+            0.021448724,
+            0.022294440000000002
+          ],
+          "plugin_precommit_seconds": [
+            0.02252394,
+            0.028202761,
+            0.029349594
+          ],
+          "allocation_peak_bytes": [
+            2457707.0,
+            2457707.0,
+            2457707.0
+          ],
+          "allocation_delta_bytes": [
+            2455876.0,
+            2455876.0,
+            2455876.0
+          ],
+          "scratch_bytes": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "medians": {
+          "command_seconds": 0.075,
+          "rss_peak_gib": 0.07028961181640625,
+          "metadata_preflight_seconds": 0.006130534,
+          "input_load_seconds": 0.0006235030000000001,
+          "post_input_native_seconds": 0.021565706999999996,
+          "plugin_precommit_seconds": 0.028202761,
+          "allocation_peak_bytes": 2457707.0,
+          "allocation_delta_bytes": 2455876.0,
+          "scratch_bytes": 0.0
+        }
+      }
+    },
+    "timing_flags": []
+  },
+  {
+    "case": "cmg_ols_weighted",
+    "observations": {
+      "baseline": {
+        "values": {
+          "command_seconds": [
+            0.205,
+            0.217,
+            0.201
+          ],
+          "rss_peak_gib": [
+            0.07860565185546875,
+            0.08121490478515625,
+            0.08127212524414062
+          ],
+          "metadata_preflight_seconds": [
+            0.000371459,
+            0.000376093,
+            0.000421514
+          ],
+          "input_load_seconds": [
+            0.017666578999999998,
+            0.017706888,
+            0.016547706
+          ],
+          "post_input_native_seconds": [
+            0.133219669,
+            0.130027054,
+            0.131532723
+          ],
+          "plugin_precommit_seconds": [
+            0.151257707,
+            0.148110035,
+            0.148501943
+          ],
+          "allocation_peak_bytes": [
+            19754402.0,
+            19754402.0,
+            19754402.0
+          ],
+          "allocation_delta_bytes": [
+            19752463.0,
+            19752463.0,
+            19752463.0
+          ],
+          "scratch_bytes": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "medians": {
+          "command_seconds": 0.205,
+          "rss_peak_gib": 0.08121490478515625,
+          "metadata_preflight_seconds": 0.000376093,
+          "input_load_seconds": 0.017666578999999998,
+          "post_input_native_seconds": 0.131532723,
+          "plugin_precommit_seconds": 0.148501943,
+          "allocation_peak_bytes": 19754402.0,
+          "allocation_delta_bytes": 19752463.0,
+          "scratch_bytes": 0.0
+        }
+      },
+      "candidate": {
+        "values": {
+          "command_seconds": [
+            0.228,
+            0.215,
+            0.204
+          ],
+          "rss_peak_gib": [
+            0.07849884033203125,
+            0.080047607421875,
+            0.08124542236328125
+          ],
+          "metadata_preflight_seconds": [
+            0.000375881,
+            0.000368854,
+            0.000363398
+          ],
+          "input_load_seconds": [
+            0.016842982,
+            0.017012414,
+            0.015222045
+          ],
+          "post_input_native_seconds": [
+            0.154481238,
+            0.13402883799999998,
+            0.13634226400000002
+          ],
+          "plugin_precommit_seconds": [
+            0.171700101,
+            0.151410106,
+            0.151927707
+          ],
+          "allocation_peak_bytes": [
+            19754402.0,
+            19754402.0,
+            19754402.0
+          ],
+          "allocation_delta_bytes": [
+            19752463.0,
+            19752463.0,
+            19752463.0
+          ],
+          "scratch_bytes": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "medians": {
+          "command_seconds": 0.215,
+          "rss_peak_gib": 0.080047607421875,
+          "metadata_preflight_seconds": 0.000368854,
+          "input_load_seconds": 0.016842982,
+          "post_input_native_seconds": 0.13634226400000002,
+          "plugin_precommit_seconds": 0.151927707,
+          "allocation_peak_bytes": 19754402.0,
+          "allocation_delta_bytes": 19752463.0,
+          "scratch_bytes": 0.0
+        }
+      }
+    },
+    "timing_flags": []
+  },
+  {
+    "case": "cmg_ppml",
+    "observations": {
+      "baseline": {
+        "values": {
+          "command_seconds": [
+            0.276,
+            0.278,
+            0.283
+          ],
+          "rss_peak_gib": [
+            0.06728744506835938,
+            0.0671234130859375,
+            0.07268905639648438
+          ],
+          "feppml_allocation_peak": [
+            10004442.0,
+            10004442.0,
+            10004442.0
+          ],
+          "feppml_allocation_peak_delta": [
+            10002279.0,
+            10002279.0,
+            10002279.0
+          ],
+          "feppml_fallback_count": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_fallback_mask": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_modeled_scratch_bytes": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_scratch_bytes": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_solver_fallback_count": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_time_fe_projection": [
+            0.07837173,
+            0.105361505,
+            0.0962205
+          ],
+          "feppml_time_fe_recovery": [
+            1.474e-06,
+            1.681e-06,
+            1.645e-06
+          ],
+          "feppml_time_finite_solve": [
+            0.021487644,
+            0.017420216,
+            0.025490023
+          ],
+          "feppml_time_inference": [
+            0.000618056,
+            0.000603392,
+            0.000598022
+          ],
+          "feppml_time_line_search": [
+            0.011546043,
+            0.012101382,
+            0.017329632
+          ],
+          "feppml_time_preparation": [
+            0.008718893,
+            0.013611432,
+            0.013506189
+          ],
+          "feppml_time_publication": [
+            0.006110121,
+            0.005510282,
+            0.005799162
+          ],
+          "feppml_time_separation_fe": [
+            0.000194229,
+            0.000193404,
+            0.000217498
+          ],
+          "feppml_time_separation_ir": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_time_separation_simplex": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_time_strict_final_solve": [
+            0.058184123,
+            0.053104933,
+            0.052159634
+          ],
+          "feppml_time_weight_refresh": [
+            0.003032815,
+            0.008943167,
+            0.003000441
+          ],
+          "inner_iterations": [
+            23.0,
+            23.0,
+            23.0
+          ],
+          "step_halvings": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "medians": {
+          "command_seconds": 0.278,
+          "rss_peak_gib": 0.06728744506835938,
+          "feppml_allocation_peak": 10004442.0,
+          "feppml_allocation_peak_delta": 10002279.0,
+          "feppml_fallback_count": 0.0,
+          "feppml_fallback_mask": 0.0,
+          "feppml_modeled_scratch_bytes": 0.0,
+          "feppml_scratch_bytes": 0.0,
+          "feppml_solver_fallback_count": 0.0,
+          "feppml_time_fe_projection": 0.0962205,
+          "feppml_time_fe_recovery": 1.645e-06,
+          "feppml_time_finite_solve": 0.021487644,
+          "feppml_time_inference": 0.000603392,
+          "feppml_time_line_search": 0.012101382,
+          "feppml_time_preparation": 0.013506189,
+          "feppml_time_publication": 0.005799162,
+          "feppml_time_separation_fe": 0.000194229,
+          "feppml_time_separation_ir": 0.0,
+          "feppml_time_separation_simplex": 0.0,
+          "feppml_time_strict_final_solve": 0.053104933,
+          "feppml_time_weight_refresh": 0.003032815,
+          "inner_iterations": 23.0,
+          "step_halvings": 0.0
+        }
+      },
+      "candidate": {
+        "values": {
+          "command_seconds": [
+            0.264,
+            0.282,
+            0.223
+          ],
+          "rss_peak_gib": [
+            0.06893539428710938,
+            0.07361984252929688,
+            0.06824493408203125
+          ],
+          "feppml_allocation_peak": [
+            10431056.0,
+            10002138.0,
+            10434672.0
+          ],
+          "feppml_allocation_peak_delta": [
+            10428893.0,
+            9999975.0,
+            10432509.0
+          ],
+          "feppml_fallback_count": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_fallback_mask": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_modeled_scratch_bytes": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_scratch_bytes": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_solver_fallback_count": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_time_fe_projection": [
+            0.085085655,
+            0.108544701,
+            0.065578344
+          ],
+          "feppml_time_fe_recovery": [
+            1.495e-06,
+            1.692e-06,
+            1.485e-06
+          ],
+          "feppml_time_finite_solve": [
+            0.02401485,
+            0.019153067,
+            0.012383201
+          ],
+          "feppml_time_inference": [
+            0.000629798,
+            0.000580808,
+            0.000517546
+          ],
+          "feppml_time_line_search": [
+            0.011478905,
+            0.012127706,
+            0.011509982
+          ],
+          "feppml_time_preparation": [
+            0.008401583,
+            0.013500324,
+            0.007521802
+          ],
+          "feppml_time_publication": [
+            0.005807975,
+            0.0056110150000000004,
+            0.006443027
+          ],
+          "feppml_time_separation_fe": [
+            0.00019448,
+            0.000199673,
+            0.00019314
+          ],
+          "feppml_time_separation_ir": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_time_separation_simplex": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "feppml_time_strict_final_solve": [
+            0.051179809,
+            0.054838512,
+            0.054331504
+          ],
+          "feppml_time_weight_refresh": [
+            0.002986143,
+            0.003024092,
+            0.003010373
+          ],
+          "inner_iterations": [
+            23.0,
+            23.0,
+            23.0
+          ],
+          "step_halvings": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "medians": {
+          "command_seconds": 0.264,
+          "rss_peak_gib": 0.06893539428710938,
+          "feppml_allocation_peak": 10431056.0,
+          "feppml_allocation_peak_delta": 10428893.0,
+          "feppml_fallback_count": 0.0,
+          "feppml_fallback_mask": 0.0,
+          "feppml_modeled_scratch_bytes": 0.0,
+          "feppml_scratch_bytes": 0.0,
+          "feppml_solver_fallback_count": 0.0,
+          "feppml_time_fe_projection": 0.085085655,
+          "feppml_time_fe_recovery": 1.495e-06,
+          "feppml_time_finite_solve": 0.019153067,
+          "feppml_time_inference": 0.000580808,
+          "feppml_time_line_search": 0.011509982,
+          "feppml_time_preparation": 0.008401583,
+          "feppml_time_publication": 0.005807975,
+          "feppml_time_separation_fe": 0.00019448,
+          "feppml_time_separation_ir": 0.0,
+          "feppml_time_separation_simplex": 0.0,
+          "feppml_time_strict_final_solve": 0.054331504,
+          "feppml_time_weight_refresh": 0.003010373,
+          "inner_iterations": 23.0,
+          "step_halvings": 0.0
+        }
+      }
+    },
+    "timing_flags": []
+  }
+]

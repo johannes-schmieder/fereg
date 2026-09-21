@@ -1,0 +1,7196 @@
+[
+  {
+    "kind": "control",
+    "left": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+        "group": "control",
+        "label": "left",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e589400c888690666265263ad96f9b694aa6"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388804657152.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 71651328.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 71651328.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.423,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.06673049926757812,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 26,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388804657152"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77760931430"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311043725722"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                59133952"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                71651328"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                59133952"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                71651328"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "   .00046021099999999998"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "    .0063674589999999998"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .28376497099999998"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .29059264099999998"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                12517376"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.423,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0047184190000000006"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "     .028325343000000003"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "              .000172428"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "    .0017840639999999999"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.16,
+        0.06,
+        0.05
+      ],
+      "task_id": "undefined"
+    },
+    "order": [
+      "left",
+      "right"
+    ],
+    "pair": 1,
+    "right": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+        "group": "control",
+        "label": "right",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e589400c888690666265263ad96f9b694aa6"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388804780032.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 69730304.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 69730304.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.437,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.06494140625,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 25,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388804780032"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77760956006"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311043824026"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                57208832"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                69730304"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                57208832"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                69730304"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "   .00046386000000000002"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "     .015369552000000002"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .29026548499999999"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .30609889699999998"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                12521472"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.437,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0044073070000000001"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "     .011029609000000001"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "   .00017074000000000001"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "               .00153491"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.16,
+        0.06,
+        0.05
+      ],
+      "task_id": "undefined"
+    },
+    "science": {
+      "input_exact": true,
+      "sample_order_exact": true,
+      "scientific_export_hashes": {
+        "V": "72c9317e831fe0e6ae381bdb04af6ca58fac4a8c84c9aaec0c98b61456343e9a",
+        "b": "f7c38322bc42fda7a5850b386f4fb7b30e94cb564432b2b7c096f5f2d6e48fb8",
+        "fereg_certificate": "9aa477b429f5e999bfe44a48b2c77db4f7f8349f2f00dcc79606444a8425a830",
+        "fereg_cluster": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "fereg_dof": "88862d831952726e1956108ecc39b013d47f29d0fbb2ff51ee72ec42b9e48b02",
+        "fereg_fe": "f09d6e6737430493bf5c53ec8aa6a3b6d44408a93ff9d38bb2fb66a25b3976f6",
+        "fereg_fit": "cea4725a89e14ef16cdf58fde18839e907e19989f873a4221b05db0c15c7c849",
+        "fereg_status": "5a7020ee5f2fb781341e671de8732e06c818e9e176f6a84c7a7e6652bdf00b02",
+        "fereg_subset": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "saved_outputs": "89376adfbd36b2e1e12575ef8f25dd85f71eaed7219f6ac1a4fdb92dde2374b2"
+      },
+      "solver_nontime_exact": true
+    }
+  },
+  {
+    "baseline": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+        "group": "comparison",
+        "label": "baseline",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e589400c888690666265263ad96f9b694aa6"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388799213568.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 70574080.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 70574080.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.461,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.06486129760742188,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 28,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388799213568"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77759842713"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311039370855"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                57126912"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                70574080"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                57126912"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                70574080"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "              .000472239"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "     .012216709000000001"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .31681004100000004"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .32949898900000002"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                13447168"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.461,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0062513380000000004"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "              .012080924"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "               .00017197"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "              .001358749"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.7,
+        0.18,
+        0.09
+      ],
+      "task_id": "undefined"
+    },
+    "candidate": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "dd3d00eee8e114a0c325ae14b6d44601eb0d1a8394ec267bbba297067b3bfac4",
+        "group": "comparison",
+        "label": "candidate",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e58-ols-publication-admission1"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388799283200.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 69783552.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 69783552.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.44,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.08061599731445312,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 30,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388799283200"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77759856640"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311039426560"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                57139200"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                69783552"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                57139200"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                69783552"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "   .00045794899999999998"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "     .012298581000000001"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .30455753000000002"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .31731406000000001"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                12644352"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.44,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0019774039999999999"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "              .015347397"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "              .000178364"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "    .0015641520000000001"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.7,
+        0.18,
+        0.09
+      ],
+      "task_id": "undefined"
+    },
+    "kind": "comparison",
+    "order": [
+      "baseline",
+      "candidate"
+    ],
+    "pair": 1,
+    "science": {
+      "input_exact": true,
+      "sample_order_exact": true,
+      "scientific_export_hashes": {
+        "V": "72c9317e831fe0e6ae381bdb04af6ca58fac4a8c84c9aaec0c98b61456343e9a",
+        "b": "f7c38322bc42fda7a5850b386f4fb7b30e94cb564432b2b7c096f5f2d6e48fb8",
+        "fereg_certificate": "9aa477b429f5e999bfe44a48b2c77db4f7f8349f2f00dcc79606444a8425a830",
+        "fereg_cluster": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "fereg_dof": "88862d831952726e1956108ecc39b013d47f29d0fbb2ff51ee72ec42b9e48b02",
+        "fereg_fe": "f09d6e6737430493bf5c53ec8aa6a3b6d44408a93ff9d38bb2fb66a25b3976f6",
+        "fereg_fit": "cea4725a89e14ef16cdf58fde18839e907e19989f873a4221b05db0c15c7c849",
+        "fereg_status": "5a7020ee5f2fb781341e671de8732e06c818e9e176f6a84c7a7e6652bdf00b02",
+        "fereg_subset": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "saved_outputs": "89376adfbd36b2e1e12575ef8f25dd85f71eaed7219f6ac1a4fdb92dde2374b2"
+      },
+      "solver_nontime_exact": true
+    }
+  },
+  {
+    "baseline": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+        "group": "comparison",
+        "label": "baseline",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e589400c888690666265263ad96f9b694aa6"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388800151552.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 70897664.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 70897664.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.469,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.06546783447265625,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 29,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388800151552"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77760030310"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311040121242"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                57188352"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                70897664"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                57188352"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                70897664"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "              .000452869"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "    .0066015500000000003"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .29482990199999998"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .30188432100000001"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                13709312"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.469,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0043118489999999995"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "     .016253447000000001"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "              .000169782"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "              .001584991"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.7,
+        0.18,
+        0.09
+      ],
+      "task_id": "undefined"
+    },
+    "candidate": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "dd3d00eee8e114a0c325ae14b6d44601eb0d1a8394ec267bbba297067b3bfac4",
+        "group": "comparison",
+        "label": "candidate",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e58-ols-publication-admission1"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388800053248.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 70639616.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 70639616.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.53,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.06578826904296875,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 34,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388800053248"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77760010649"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311040042599"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                57126912"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                70639616"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                57126912"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                70639616"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "   .00046468699999999998"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "    .0074319859999999998"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .39552657999999996"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .40342325299999998"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                13512704"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.53,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0033340040000000002"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "     .017051509999999999"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "   .00017151199999999999"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "              .002714204"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.7,
+        0.18,
+        0.09
+      ],
+      "task_id": "undefined"
+    },
+    "kind": "comparison",
+    "order": [
+      "candidate",
+      "baseline"
+    ],
+    "pair": 2,
+    "science": {
+      "input_exact": true,
+      "sample_order_exact": true,
+      "scientific_export_hashes": {
+        "V": "72c9317e831fe0e6ae381bdb04af6ca58fac4a8c84c9aaec0c98b61456343e9a",
+        "b": "f7c38322bc42fda7a5850b386f4fb7b30e94cb564432b2b7c096f5f2d6e48fb8",
+        "fereg_certificate": "9aa477b429f5e999bfe44a48b2c77db4f7f8349f2f00dcc79606444a8425a830",
+        "fereg_cluster": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "fereg_dof": "88862d831952726e1956108ecc39b013d47f29d0fbb2ff51ee72ec42b9e48b02",
+        "fereg_fe": "f09d6e6737430493bf5c53ec8aa6a3b6d44408a93ff9d38bb2fb66a25b3976f6",
+        "fereg_fit": "cea4725a89e14ef16cdf58fde18839e907e19989f873a4221b05db0c15c7c849",
+        "fereg_status": "5a7020ee5f2fb781341e671de8732e06c818e9e176f6a84c7a7e6652bdf00b02",
+        "fereg_subset": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "saved_outputs": "89376adfbd36b2e1e12575ef8f25dd85f71eaed7219f6ac1a4fdb92dde2374b2"
+      },
+      "solver_nontime_exact": true
+    }
+  },
+  {
+    "kind": "control",
+    "left": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+        "group": "control",
+        "label": "left",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e589400c888690666265263ad96f9b694aa6"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388794556416.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 69525504.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 69525504.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.422,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.06475067138671875,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 27,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388794556416"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77758911283"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311035645133"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                56877056"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                69525504"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                56877056"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                69525504"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "   .00047616100000000001"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "     .016840125000000001"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .28634995900000004"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "              .303666245"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                12648448"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.422,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0020361400000000001"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "     .025911682000000002"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "              .000175071"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "    .0013999049999999999"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.97,
+        0.24,
+        0.11
+      ],
+      "task_id": "undefined"
+    },
+    "order": [
+      "right",
+      "left"
+    ],
+    "pair": 2,
+    "right": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+        "group": "control",
+        "label": "right",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e589400c888690666265263ad96f9b694aa6"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388794322944.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 71557120.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 71557120.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.419,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.073944091796875,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 27,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388794322944"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77758864588"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311035458356"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                58974208"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                71557120"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                58974208"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                71557120"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "   .00045655799999999997"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "    .0076643620000000001"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .26291110200000001"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .27103202199999998"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                12582912"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.419,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0023053349999999999"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "              .010455467"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "              .000172048"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "    .0013137719999999999"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.7,
+        0.18,
+        0.09
+      ],
+      "task_id": "undefined"
+    },
+    "science": {
+      "input_exact": true,
+      "sample_order_exact": true,
+      "scientific_export_hashes": {
+        "V": "72c9317e831fe0e6ae381bdb04af6ca58fac4a8c84c9aaec0c98b61456343e9a",
+        "b": "f7c38322bc42fda7a5850b386f4fb7b30e94cb564432b2b7c096f5f2d6e48fb8",
+        "fereg_certificate": "9aa477b429f5e999bfe44a48b2c77db4f7f8349f2f00dcc79606444a8425a830",
+        "fereg_cluster": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "fereg_dof": "88862d831952726e1956108ecc39b013d47f29d0fbb2ff51ee72ec42b9e48b02",
+        "fereg_fe": "f09d6e6737430493bf5c53ec8aa6a3b6d44408a93ff9d38bb2fb66a25b3976f6",
+        "fereg_fit": "cea4725a89e14ef16cdf58fde18839e907e19989f873a4221b05db0c15c7c849",
+        "fereg_status": "5a7020ee5f2fb781341e671de8732e06c818e9e176f6a84c7a7e6652bdf00b02",
+        "fereg_subset": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "saved_outputs": "89376adfbd36b2e1e12575ef8f25dd85f71eaed7219f6ac1a4fdb92dde2374b2"
+      },
+      "solver_nontime_exact": true
+    }
+  },
+  {
+    "kind": "control",
+    "left": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+        "group": "control",
+        "label": "left",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e589400c888690666265263ad96f9b694aa6"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388794503168.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 70455296.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 70455296.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.464,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.06561660766601562,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 30,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388794503168"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77758900633"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311035602535"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                56881152"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                70455296"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                56881152"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                70455296"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "   .00046014599999999998"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "    .0078733750000000002"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .33598521399999998"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .34431873499999999"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                13574144"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.464,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0032419569999999997"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "     .016176154999999998"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "              .000172776"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "    .0015621890000000001"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.97,
+        0.24,
+        0.11
+      ],
+      "task_id": "undefined"
+    },
+    "order": [
+      "left",
+      "right"
+    ],
+    "pair": 3,
+    "right": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+        "group": "control",
+        "label": "right",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e589400c888690666265263ad96f9b694aa6"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388796145664.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 70660096.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 70660096.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.5469999999999999,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.06580734252929688,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 36,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388796145664"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77759229132"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311036916532"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                57151488"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                70660096"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                57151488"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                70660096"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "   .00046029300000000002"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "    .0077242740000000006"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .40204323000000003"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .41022779700000001"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                13508608"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.5469999999999999,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "              .007533723"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "     .025124522999999999"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "   .00017226899999999999"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "    .0027274399999999998"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.97,
+        0.24,
+        0.11
+      ],
+      "task_id": "undefined"
+    },
+    "science": {
+      "input_exact": true,
+      "sample_order_exact": true,
+      "scientific_export_hashes": {
+        "V": "72c9317e831fe0e6ae381bdb04af6ca58fac4a8c84c9aaec0c98b61456343e9a",
+        "b": "f7c38322bc42fda7a5850b386f4fb7b30e94cb564432b2b7c096f5f2d6e48fb8",
+        "fereg_certificate": "9aa477b429f5e999bfe44a48b2c77db4f7f8349f2f00dcc79606444a8425a830",
+        "fereg_cluster": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "fereg_dof": "88862d831952726e1956108ecc39b013d47f29d0fbb2ff51ee72ec42b9e48b02",
+        "fereg_fe": "f09d6e6737430493bf5c53ec8aa6a3b6d44408a93ff9d38bb2fb66a25b3976f6",
+        "fereg_fit": "cea4725a89e14ef16cdf58fde18839e907e19989f873a4221b05db0c15c7c849",
+        "fereg_status": "5a7020ee5f2fb781341e671de8732e06c818e9e176f6a84c7a7e6652bdf00b02",
+        "fereg_subset": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "saved_outputs": "89376adfbd36b2e1e12575ef8f25dd85f71eaed7219f6ac1a4fdb92dde2374b2"
+      },
+      "solver_nontime_exact": true
+    }
+  },
+  {
+    "baseline": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+        "group": "comparison",
+        "label": "baseline",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e589400c888690666265263ad96f9b694aa6"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388797304832.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 70721536.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 70721536.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.397,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.06505584716796875,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 26,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388797304832"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77759460966"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311037843866"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                57196544"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                70721536"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                57196544"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                70721536"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "   .00045402399999999997"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "              .007776308"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .27929079200000001"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .28752112400000002"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                13524992"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.397,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0028444710000000003"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "               .01199717"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "   .00017399700000000001"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "              .001668051"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.97,
+        0.24,
+        0.11
+      ],
+      "task_id": "undefined"
+    },
+    "candidate": {
+      "arm": "fereg",
+      "cell": {
+        "absorb": "saved_g=g1",
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "fit_options": "residuals(saved_e) memory(low)",
+        "h_levels": 4,
+        "k": 8,
+        "levels": 4,
+        "model": "ols",
+        "n": 30720,
+        "name": "saved_generated_aw",
+        "rhs": "x1-x8 i.f##i.h",
+        "section": "width",
+        "threads": 4,
+        "vce": "",
+        "weight": "[aw=w]"
+      },
+      "command_time_lower_bound": null,
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "discarded_attempt_cost_coverage": "included in elapsed time; not separately observed",
+      "discarded_attempt_seconds": null,
+      "failure_stage": null,
+      "input_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+      "input_value_audit": "columnwise IEEE-754 SHA-256",
+      "job_id": "7590027",
+      "machine": "x86_64",
+      "measurement_fingerprint": {
+        "artifact_sha256": "dd3d00eee8e114a0c325ae14b6d44601eb0d1a8394ec267bbba297067b3bfac4",
+        "group": "comparison",
+        "label": "candidate",
+        "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+        "reference_lock_sha256": "bbd972f111965ce7a3f41ee39acac9cbd0149f7fa52359ae02cb766e7ef1bec4",
+        "source": "5240e58-ols-publication-admission1"
+      },
+      "metadata": {
+        "F": 536.7984955248227,
+        "N": 30720.0,
+        "N_full": 30720.0,
+        "N_hdfe": 1.0,
+        "N_hdfe_extended": 1.0,
+        "command": "fereg y x1-x8 i.f##i.h  [aw=w], absorb(saved_g=g1) threads(4) solver(auto) poolsize(10) residuals(saved_e) memory(low)",
+        "converged": 1.0,
+        "df_a": 6144.0,
+        "df_a_initial": 6144.0,
+        "df_a_nested": 0.0,
+        "df_a_redundant": 0.0,
+        "df_m": 23.0,
+        "df_r": 24553.0,
+        "drop_singletons": 1.0,
+        "fereg_available_memory_bytes": 388798484480.0,
+        "fereg_deterministic": 0.0,
+        "fereg_df_correction": 24553.0,
+        "fereg_df_fit": 24553.0,
+        "fereg_iterate": 16000.0,
+        "fereg_memory_fast_bytes": 22245888.0,
+        "fereg_memory_low_bytes": 12726784.0,
+        "fereg_memory_selected_bytes": 12726784.0,
+        "fereg_native_allocation_bytes": 8998688.0,
+        "fereg_peak_rss_bytes": 70533120.0,
+        "fereg_poolsize": 10.0,
+        "fereg_requested_threads": 4.0,
+        "fereg_requested_tolerance": 1e-08,
+        "fereg_rss_bytes": 70533120.0,
+        "fereg_scratch_bytes": 5898240.0,
+        "fereg_threads": 4.0,
+        "fereg_timeit": 0.0,
+        "fereg_tolerance": 1e-08,
+        "fereg_v_determinant": 0.0,
+        "fereg_verbose": 0.0,
+        "ic": 1.0,
+        "ll": -17869.22616533623,
+        "ll_0": -24126.280475016294,
+        "mss": 6083.169576980394,
+        "num_singletons": 0.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2": 0.5137784986181431,
+        "r2_a": 0.39167359178311145,
+        "r2_a_within": 0.33397228555179903,
+        "r2_within": 0.3345956025046112,
+        "rank": 23.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "rmse": 0.48421896719519025,
+        "rss": 5756.893005127784,
+        "sample_kind": "observation_ids",
+        "seconds": 0.388,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "sumweights": 122874.0,
+        "tss": 11840.062582108178,
+        "tss_within": 8651.720708184346
+      },
+      "peak_process_tree_threads": 8,
+      "peak_rss_gib": 0.06917953491210938,
+      "phase": "cold",
+      "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+      "process_returncode": 0,
+      "rss_interval_seconds": 0.01,
+      "rss_samples": 26,
+      "runtime": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "1",
+          "row": "3",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "3",
+          "value": "                      10"
+        },
+        {
+          "column": "1",
+          "row": "4",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "4",
+          "value": "                22245888"
+        },
+        {
+          "column": "1",
+          "row": "5",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "5",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "6",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "6",
+          "value": "            388798484480"
+        },
+        {
+          "column": "1",
+          "row": "7",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "7",
+          "value": "             77759696896"
+        },
+        {
+          "column": "1",
+          "row": "8",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "8",
+          "value": "            311038787584"
+        },
+        {
+          "column": "1",
+          "row": "9",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "9",
+          "value": "                 5898240"
+        },
+        {
+          "column": "1",
+          "row": "10",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "10",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "11",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "11",
+          "value": "                    2456"
+        },
+        {
+          "column": "1",
+          "row": "12",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "12",
+          "value": "                 9001144"
+        },
+        {
+          "column": "1",
+          "row": "13",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "13",
+          "value": "                 8998688"
+        },
+        {
+          "column": "1",
+          "row": "14",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "14",
+          "value": "                57012224"
+        },
+        {
+          "column": "1",
+          "row": "15",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "15",
+          "value": "                70533120"
+        },
+        {
+          "column": "1",
+          "row": "16",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "16",
+          "value": "                57012224"
+        },
+        {
+          "column": "1",
+          "row": "17",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "17",
+          "value": "                70533120"
+        },
+        {
+          "column": "1",
+          "row": "18",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "18",
+          "value": "              .000462199"
+        },
+        {
+          "column": "1",
+          "row": "19",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "19",
+          "value": "    .0077793840000000003"
+        },
+        {
+          "column": "1",
+          "row": "20",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "20",
+          "value": "      .26932171199999999"
+        },
+        {
+          "column": "1",
+          "row": "21",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "21",
+          "value": "      .27756329499999999"
+        },
+        {
+          "column": "1",
+          "row": "22",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "22",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "23",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "23",
+          "value": "  1.0000000000000000e-08"
+        },
+        {
+          "column": "1",
+          "row": "24",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "24",
+          "value": "                   16000"
+        },
+        {
+          "column": "1",
+          "row": "25",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "25",
+          "value": "                12726784"
+        },
+        {
+          "column": "1",
+          "row": "26",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "26",
+          "value": "      .70706692279840688"
+        },
+        {
+          "column": "1",
+          "row": "27",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "27",
+          "value": "                13520896"
+        },
+        {
+          "column": "1",
+          "row": "28",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "28",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "29",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "29",
+          "value": "                       4"
+        },
+        {
+          "column": "1",
+          "row": "30",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "30",
+          "value": "                       0"
+        }
+      ],
+      "sample_rows": 30720,
+      "sample_sha256": "8f6ff02540472e3d95bb5eb7bc9fb134ea0e65c67c8c045588c2c247c533d472",
+      "schema": "fixest-gap-local-arm-v1",
+      "seconds": 0.388,
+      "sentinel": true,
+      "solver": [
+        {
+          "column": "1",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "1",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "1",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "1",
+          "value": "  9.4008456630584758e-15"
+        },
+        {
+          "column": "6",
+          "row": "1",
+          "value": "  6.2245809278525373e-18"
+        },
+        {
+          "column": "7",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "8",
+          "row": "1",
+          "value": "  1.1190395464771594e-18"
+        },
+        {
+          "column": "9",
+          "row": "1",
+          "value": "    .0023624029999999999"
+        },
+        {
+          "column": "10",
+          "row": "1",
+          "value": "              .017191246"
+        },
+        {
+          "column": "11",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "1",
+          "value": "                       0"
+        },
+        {
+          "column": "1",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "2",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "3",
+          "row": "2",
+          "value": "                       1"
+        },
+        {
+          "column": "4",
+          "row": "2",
+          "value": "                       2"
+        },
+        {
+          "column": "5",
+          "row": "2",
+          "value": "  3.8926877827543806e-15"
+        },
+        {
+          "column": "6",
+          "row": "2",
+          "value": "  5.0101276640954902e-18"
+        },
+        {
+          "column": "7",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "8",
+          "row": "2",
+          "value": "  7.8429280660042599e-19"
+        },
+        {
+          "column": "9",
+          "row": "2",
+          "value": "              .000174601"
+        },
+        {
+          "column": "10",
+          "row": "2",
+          "value": "    .0013515409999999999"
+        },
+        {
+          "column": "11",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "12",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "13",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "14",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "15",
+          "row": "2",
+          "value": "                       0"
+        },
+        {
+          "column": "16",
+          "row": "2",
+          "value": "                       0"
+        }
+      ],
+      "stata_worker_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "status": "pass",
+      "system_load_average_at_launch": [
+        0.97,
+        0.24,
+        0.11
+      ],
+      "task_id": "undefined"
+    },
+    "kind": "comparison",
+    "order": [
+      "baseline",
+      "candidate"
+    ],
+    "pair": 3,
+    "science": {
+      "input_exact": true,
+      "sample_order_exact": true,
+      "scientific_export_hashes": {
+        "V": "72c9317e831fe0e6ae381bdb04af6ca58fac4a8c84c9aaec0c98b61456343e9a",
+        "b": "f7c38322bc42fda7a5850b386f4fb7b30e94cb564432b2b7c096f5f2d6e48fb8",
+        "fereg_certificate": "9aa477b429f5e999bfe44a48b2c77db4f7f8349f2f00dcc79606444a8425a830",
+        "fereg_cluster": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "fereg_dof": "88862d831952726e1956108ecc39b013d47f29d0fbb2ff51ee72ec42b9e48b02",
+        "fereg_fe": "f09d6e6737430493bf5c53ec8aa6a3b6d44408a93ff9d38bb2fb66a25b3976f6",
+        "fereg_fit": "cea4725a89e14ef16cdf58fde18839e907e19989f873a4221b05db0c15c7c849",
+        "fereg_status": "5a7020ee5f2fb781341e671de8732e06c818e9e176f6a84c7a7e6652bdf00b02",
+        "fereg_subset": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41",
+        "saved_outputs": "89376adfbd36b2e1e12575ef8f25dd85f71eaed7219f6ac1a4fdb92dde2374b2"
+      },
+      "solver_nontime_exact": true
+    }
+  }
+]

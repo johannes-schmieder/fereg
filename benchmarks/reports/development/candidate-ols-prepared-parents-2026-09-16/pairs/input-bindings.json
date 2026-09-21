@@ -1,0 +1,11 @@
+{
+  "fixed_manifest_sha256": "e7cba8ac61ef0ac80bc33dbf6e0b647ed41cf1966433faceeb382dc7d307b1b7",
+  "requests_sha256": "2cb0d3bd10192c1bc2db29d4bfe34ad340a4e1f69062f6e3a4bf67e63d96160f",
+  "harness": {
+    "common.py": "fd7ff16ddb1b72574d6ee66bfd767914733936eace0d65872b7634c4084a7968",
+    "generate-singletons.py": "9563a7c3f0f041d915df8f5dbb6e226b68d6b10608acac2f7565617d307b3ee7",
+    "measure.py": "562e81288991c101b387d429e0b411614256cba14a48bae2ce013a56b616887d",
+    "run-screen.py": "d34496db56cf3d037088d3e77a58f3b63a5490ae4869c3e1aaba4dcfd630150d",
+    "stata_worker.do": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c"
+  }
+}

@@ -1,0 +1,45 @@
+Diff in $REPO/crates/fereg-core/src/ppml/memory.rs:5097:
+         let expected_wald = (2 * rank * rank + 2 * rank) * size_of::<f64>() as u128
+             + rank * size_of::<usize>() as u128
+             + validator_dimensions.reported_coefficient_slots as u128;
+-        let expected = expected_psd.max(expected_wald)
++        let expected = expected_psd
++            .max(expected_wald)
+             .max(validator_dimensions.original_observations as u128)
+             .max(2 * validator_dimensions.candidate_observations as u128)
+-            .max((validator_dimensions.reported_coefficient_slots
+-                + validator_dimensions.requested_saved_fe_channels) as u128);
++            .max(
++                (validator_dimensions.reported_coefficient_slots
++                    + validator_dimensions.requested_saved_fe_channels) as u128,
++            );
+         assert_eq!(
+             estimate.fast.publication_validator_workspace_bytes,
+             expected
+Diff in $REPO/crates/fereg-core/src/ppml/memory.rs:5182:
+         shape.original_observations = 1_000_000;
+         shape.candidate_observations = 100_000;
+         let original = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+-        assert_eq!(original.fast.publication_validator_workspace_bytes, 1_000_000);
+-        assert_eq!(original.low.publication_validator_workspace_bytes, 1_000_000);
++        assert_eq!(
++            original.fast.publication_validator_workspace_bytes,
++            1_000_000
++        );
++        assert_eq!(
++            original.low.publication_validator_workspace_bytes,
++            1_000_000
++        );
+         shape.candidate_observations = 750_000;
+         let replay = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+         assert_eq!(replay.fast.publication_validator_workspace_bytes, 1_500_000);
+Diff in $REPO/crates/fereg-core/src/ppml/prepared_estimator.rs:2527:
+             + inference.vce.standard_errors.capacity()
+             + inference.vce.z_statistics.capacity()) as u128
+             * std::mem::size_of::<f64>() as u128
+-            + inference.wald.tested_columns.capacity() as u128 * std::mem::size_of::<usize>() as u128;
++            + inference.wald.tested_columns.capacity() as u128
++                * std::mem::size_of::<usize>() as u128;
+         assert!(
+             result
+                 .memory()

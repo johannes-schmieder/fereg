@@ -1,0 +1,112 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling autocfg v1.5.1
+   Compiling crossbeam-utils v0.8.22
+   Compiling serde_core v1.0.229
+   Compiling crossbeam-epoch v0.9.20
+   Compiling num-traits v0.2.19
+   Compiling serde v1.0.229
+   Compiling cfg-if v1.0.4
+   Compiling crossbeam-deque v0.8.7
+   Compiling syn v3.0.3
+   Compiling thiserror v2.0.20
+   Compiling rayon-core v1.13.0
+   Compiling semver v1.0.28
+   Compiling libc v0.2.189
+   Compiling rustc_version v0.4.1
+   Compiling scopeguard v1.2.0
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling lock_api v0.4.14
+   Compiling heapless v0.7.17
+   Compiling matrixmultiply v0.3.11
+   Compiling cpufeatures v0.3.0
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.20
+   Compiling byteorder v1.5.0
+   Compiling either v1.18.0
+   Compiling rayon v1.12.0
+   Compiling hash32 v0.2.1
+   Compiling chacha20 v0.10.1
+   Compiling spin v0.9.9
+   Compiling portable-atomic v1.15.0
+   Compiling rawpointer v0.2.1
+   Compiling stable_deref_trait v1.2.1
+   Compiling cobs v0.3.0
+   Compiling rand v0.10.2
+   Compiling num-integer v0.1.47
+   Compiling num-complex v0.4.6
+   Compiling thread_local v1.1.10
+   Compiling ndarray v0.17.2
+   Compiling fereg-core v0.5.0 ($RUN/native2/source/crates/fereg-core)
+   Compiling cmg v0.1.0 (https://github.com/johannes-schmieder/CMG?rev=90e1fe0b0c14065155532711246ede6678bb4935#90e1fe0b)
+   Compiling schwarz-precond v0.4.0 (https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a)
+   Compiling postcard v1.1.3
+   Compiling approx-chol v0.5.0
+   Compiling within v0.4.0 (https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 43.49s
+     Running unittests src/lib.rs ($RUN/native2/target/debug/deps/fereg_core-bfb63d930001cbdd)
+
+running 43 tests
+test fe::borrowed_map::tests::cg_workspace_report_counts_capacity_early_exit_and_retained_coefficients ... ok
+test fe::borrowed_map::tests::retained_lsmr_reports_reused_operator_overlap_and_preserves_results ... ok
+test fe::borrowed_map::tests::retained_lsmr_reuses_preparation_and_preserves_each_batch ... ok
+test fe::borrowed_map::tests::retained_map_level_major_accumulator_reconstructs_every_rhs ... ok
+test fe::cmg::tests::cmg_workspace_retained_polish_and_released_final_correction_have_different_peaks ... ok
+test fe::design::tests::retained_effect_roles_rank_levels_and_break_ties_by_original_position ... ok
+test fe::topology_finalize::tests::no_effects_copy_no_sources_but_preserve_retained_rows ... ok
+test fe::topology_slope_map::tests::retained_coefficient_connected_hint_matches_component_normalization ... ok
+test fe::topology_slope_map::tests::retained_coefficient_saved_only_plan_omits_combined_observation_vector ... ok
+test memory::owned_fe::tests::owned_shape_charges_actual_retained_capacities_and_membership_scratch ... ok
+test memory::tests::lsmr_batch_model_bounds_window_frames_and_retained_outputs ... ok
+test ols::finite_wls_kernel::tests::retained_dense_moment_cache_rejects_nonfinite_selected_values ... ok
+test ols::finite_wls_kernel::tests::retained_dense_moments_preserve_scalar_order_across_cache_boundaries ... ok
+test ols::finite_wls_kernel::tests::retained_qr_covers_single_column_and_clear_threshold_sides ... ok
+test ols::finite_wls_kernel::tests::retained_qr_direct_span_accepts_an_exact_dependency ... ok
+test ols::finite_wls_kernel::tests::retained_qr_direct_span_fails_closed_in_the_threshold_guard ... ok
+test ols::finite_wls_kernel::tests::retained_qr_direct_span_rejects_a_perturbed_omitted_direction ... ok
+test ols::finite_wls_kernel::tests::retained_qr_drops_general_exact_linear_combinations ... ok
+test ols::finite_wls_kernel::tests::retained_qr_handles_exact_deficiency_above_sixty_four_columns ... ok
+test ols::finite_wls_kernel::tests::retained_qr_handles_extreme_finite_column_scales ... ok
+test ols::finite_wls_kernel::tests::retained_qr_is_canonical_under_row_and_column_permutations ... ok
+test ols::finite_wls_kernel::tests::retained_qr_marks_both_sides_of_rank_threshold_ambiguous ... ok
+test ols::finite_wls_kernel::tests::retained_qr_rank_decision_is_invariant_to_exact_column_scaling ... ok
+test ols::finite_wls_kernel::tests::retained_qr_rejects_nonfinite_observation_space_inputs ... ok
+test ols::prepared_fit::tests::categorical_one_fe_initial_projection_preserves_warm_and_retained_paths ... ok
+test ols::prepared_fit::tests::direct_prepared_cg_checks_joint_budget_with_retained_coefficients ... ok
+test ols::prepared_fit::tests::retained_fe_parent_is_admitted_before_session_and_survives_peak_reporting ... FAILED
+test ols::prepared_fit::tests::retained_fresh_frozen_and_strict_kernels_use_requested_team_against_global_pool ... ok
+test ols::prepared_fit::tests::retained_low_residual_report_preserves_actual_work_without_changing_one_shot ... ok
+test ols::prepared_fit::tests::retained_session_covers_zero_and_single_finite_rank_through_final_handoff ... ok
+test ols::prepared_fit::tests::retained_session_drops_general_and_scaled_exact_linear_combinations ... ok
+test ols::prepared_fit::tests::retained_session_matches_one_shot_above_sixty_four_columns_with_exact_deficiency ... ok
+test ols::prepared_fit::tests::strict_rollback_is_allocation_free_and_preserves_retained_storage ... ok
+test ols::prepared_fit::tests::strided_session_cache_compacts_in_place_and_reports_retained_capacity ... ok
+test ols::prepared_robust::tests::retained_low_scores_preserve_rank_selection_and_reject_corrupt_columns ... ok
+test ols::prepared_scratch::tests::failed_retained_write_returns_the_working_buffer_and_removes_its_file ... ok
+test ols::prepared_scratch::tests::retained_columns_survive_working_mutation_without_another_io_bank ... ok
+test ppml::categorical_lsmr::tests::joint_memory_estimate_scales_with_retained_design_and_thread_team ... ok
+test ppml::categorical_lsmr::tests::joint_solver_tracks_retained_team_across_one_four_one ... ok
+test ppml::memory::tests::retained_generation_zero_active_pweights_are_charged_exactly ... ok
+test ppml::prepared::tests::unweighted_fractional_outcomes_are_retained_with_physical_effective_n ... ok
+test ppml_separation::prepared_coordinator::tests::generation_zero_candidate_and_retained_axes_share_one_allocation ... ok
+test prepared_fit_view::retained_parent_tests::retained_product_parent_counts_both_lifetimes_and_checks_overflow ... ok
+
+failures:
+
+---- ols::prepared_fit::tests::retained_fe_parent_is_admitted_before_session_and_survives_peak_reporting stdout ----
+
+thread 'ols::prepared_fit::tests::retained_fe_parent_is_admitted_before_session_and_survives_peak_reporting' panicked at crates/fereg-core/src/ols/prepared_fit.rs:7108:9:
+assertion `left == right` failed
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    ols::prepared_fit::tests::retained_fe_parent_is_admitted_before_session_and_survives_peak_reporting
+
+test result: FAILED. 42 passed; 1 failed; 0 ignored; 0 measured; 846 filtered out; finished in 28.07s
+
+error: test failed, to rerun pass `-p fereg-core --lib`

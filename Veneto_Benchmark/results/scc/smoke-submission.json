@@ -1,0 +1,36 @@
+{
+  "job_id": "7529248",
+  "run_id": "20260911-veneto-d44e36b",
+  "platform": "BU SCC",
+  "source_sha": "d44e36bfa5ad7e41a06752d1008f0b9683f8c8dd",
+  "submitted_at_utc": "2026-09-11T18:09:03.160425+00:00",
+  "suite": "synthetic_smoke",
+  "input_classification": "generated synthetic; no Veneto records transferred",
+  "resources": {
+    "project": "welfgr",
+    "slots": 28,
+    "cpu_type": "E5-2680v4",
+    "h_rt_seconds": 1800,
+    "mem_per_core": "3G"
+  },
+  "input_and_controller_sha256": {
+    "input/runtime-inventory.json": "74f8f7ae6d1ae60ce78d3ae04adab7718ddccba538c4d8a3b0b93f373f1f0b2f",
+    "input/synthetic-ppml.json": "79f5341e595ec6e852488253ffffc45fce940710035459d0d7a2ece830db4ae5",
+    "input/synthetic-ols.json": "45b3d5012ff4aef90e68753be56be7f90522ec8c39524ab68e251c2f00dc1c94",
+    "input/synthetic-ols.bin": "f819679eb2ada16e8f3280ca13bbeefc2c0915bc05fe2b12e37a747c7f2afbd3",
+    "input/synthetic-ppml.dta": "72d15c972f1cec358b6446941e1278d80df3bfd7dc90adc5bcc05422cb545059",
+    "input/synthetic-ppml.bin": "3712a33e5f0bd2df08457cd4b14ef5cc04932ffd7a89be96d8719fd18715706d",
+    "input/synthetic-ols.dta": "eebbccc20e4dff4b2d890e62eda7909c7db7619ac00bde2da427f4bd95a17eca",
+    "controller/python_worker.py": "f4c9080502e83401daa1b40cc99430c6d222d732aebe8e15ac83b1e90a0602e2",
+    "controller/measure.py": "b5f01a4f24100fb15b0553f17a0e4b7d1df2f3b461db7165d979d08146897636",
+    "controller/stata_worker.do": "ad6c34546c8cd8c2cca9bddadef62c8cf6b6992fac54e747a6b77094428b287c",
+    "controller/accounting.py": "46f0f082254a25fd09a8b3fb179f7f8f7b81b4a01bb25f4006d7ba0b8619d0e2",
+    "controller/run_scc.py": "6a2d8215437837f301b9f8ac2476f9a895518c99e93b3fdbece14970ab6ea07b",
+    "controller/r_worker.R": "5e919f0675fe34dffab0903a09247280cd71f4e01ed89cb0dbc776acb3119433",
+    "controller/common.py": "dfb15d34b8df2d5899e14f4306fbc732f070ef219cd472fd4e3702f31daca09c",
+    "controller/oracle.py": "14031f83f55cae46b487bc3334a893972bd6c7437dfebe50c6c0f7b66d9b3b4c",
+    "controller/job.sh": "deafc07a2982395cc4c747824e3c0a73ce11b64a74bf8105347ec41c2d4e7451"
+  },
+  "expected_calls": 22,
+  "expected_oracle_checks": 4
+}

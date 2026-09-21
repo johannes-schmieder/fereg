@@ -1,0 +1,13 @@
+control 1 left pass 0.317
+control 1 right pass 0.215
+comparison 1 baseline pass 0.217
+comparison 1 candidate pass 0.262
+control 2 right pass 0.207
+control 2 left pass 0.195
+comparison 2 candidate pass 0.204
+comparison 2 baseline pass 0.197
+control 3 left pass 0.345
+control 3 right pass 0.32
+comparison 3 baseline pass 0.264
+comparison 3 candidate pass 0.236
+OLS_PARENT_CONTROL_CHECK_COMPLETE

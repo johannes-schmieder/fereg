@@ -1,0 +1,639 @@
+--- a/crates/fereg-core/src/ppml/memory.rs
++++ b/crates/fereg-core/src/ppml/memory.rs
+@@ -465,6 +465,8 @@
+     /// Still-live embedding/action storage measured relative to the action
+     /// allocator baseline immediately before entering the core fit.
+     pub embedding_resident_bytes: u128,
++    /// Transferred raw-owner capacity not already included in the embedding.
++    pub input_owner_supplement_bytes: u128,
+     pub canonical_numeric_bytes: u128,
+     /// Owner-side candidate-capacity offset/logged-exposure storage.  The
+     /// generation-local compact offset remains separately included in
+@@ -502,6 +504,12 @@
+     /// Retained coefficient/column/report-plan metadata prepared before the
+     /// numerical fit. This is K/slot-sized, never N-by-K.
+     pub prepared_model_metadata_bytes: u128,
++    /// Complete retained prepared generation, excluding shared raw-owner Arcs.
++    /// This independently bounds capacities, including the original slot axis.
++    pub prepared_generation_bytes: u128,
++    /// Increment above the legacy retained-generation fields. It accompanies
++    /// both the current generation and a simultaneous replacement generation.
++    pub prepared_generation_supplement_bytes: u128,
+     /// Complete replacement-generation payload held beside the old prepared
+     /// generation during an accepted atomic rebase: canonical numerics,
+     /// categorical/cluster topology, model metadata, its original-axis drop
+@@ -1171,6 +1179,31 @@
+             "PPML prepared finite-column metadata",
+         )?,
+     ])?;
++    // Constructors reserve coefficients, columns and reporting slots at the
++    // original reporting axis even if rebasing removes most logical slots.
++    // The row-scaled metadata includes categorical sources that are absent
++    // from the absorbed-effect count (finite factors and cluster-only sources).
++    let prepared_generation_bytes = checked_sum(&[
++        bytes_f64(checked_mul(n, checked_sum(&[loaded, 3])?, "PPML generation numerics")?)?,
++        checked_mul(loaded, size_of::<Vec<f64>>() as u128, "PPML numeric descriptors")?,
++        checked_mul(n, word, "PPML generation sample row map")?,
++        original_n,
++        dimensions.metadata.prepared_nested_bytes,
++        dimensions.metadata.generation_fixed_bytes,
++        checked_mul(n, dimensions.metadata.generation_bytes_per_row, "PPML generation topology rows")?,
++        checked_mul(levels, word, "PPML generation membership offsets")?,
++        checked_mul(reported_coefficient_slots,
++            (size_of::<PreparedOlsCoefficient>() + size_of::<PreparedOlsColumn>()
++                + size_of::<CoefficientSlot>()) as u128,
++            "PPML generation reserved coefficient axis")?,
++    ])?;
++    let legacy_generation_bytes = checked_sum(&[
++        canonical_numeric_bytes, topology_bytes, cluster_topology_bytes,
++        prepared_model_metadata_bytes, checked_mul(n, word, "PPML generation row allowance")?,
++        original_n,
++    ])?;
++    let prepared_generation_supplement_bytes =
++        prepared_generation_bytes.saturating_sub(legacy_generation_bytes);
+     // Atomic rebase is a true old-plus-new transaction.  The ordinary
+     // `common` payload below already owns the raw owner, current generation,
+     // and steady ledgers.  A replacement generation is built in full before
+@@ -1187,6 +1220,7 @@
+             topology_bytes,
+             cluster_topology_bytes,
+             prepared_model_metadata_bytes,
++            prepared_generation_supplement_bytes,
+             dimensions.metadata.preparation_transient_bytes,
+             replacement_drop_reason_bytes,
+             replacement_row_map_bytes,
+@@ -1706,8 +1740,11 @@
+         "PPML bounded diagnostic record",
+     )?;
+ 
++    let input_owner_supplement_bytes = dimensions.metadata.input_owner_bytes
++        .saturating_sub(config.embedding_resident_bytes);
+     let common = checked_sum(&[
+         config.embedding_resident_bytes,
++        input_owner_supplement_bytes,
+         canonical_numeric_bytes,
+         retained_base_adjustment_bytes,
+         retained_raw_preseparation_probability_weight_bytes,
+@@ -1716,6 +1753,7 @@
+         row_ledger_bytes,
+         row_axis_arc_header_bytes,
+         prepared_model_metadata_bytes,
++        prepared_generation_supplement_bytes,
+         separation_method_report_row_bytes,
+         separation_method_report_level_bytes,
+         separation_method_report_record_bytes,
+@@ -1845,7 +1883,10 @@
+     // Two mutually exclusive non-square candidate boundaries must both fit.
+     // The installed/pre-install stage owns candidate fit kept+dropped,
+     // candidate basis kept+dropped, candidate active positions, and the
+-    // outer rollback copy (four K index banks), plus one complete set of
++    // outer rollback copy (four K index banks), plus the caller's copied
++    // active-column identities when a specialized engine changes basis.
++    // That fifth bank survives the transaction through engine refresh. Add
++    // one complete set of
+     // fitted coefficient, bread-coordinate, and basis-slot records. Earlier,
+     // fit assembly instead overlaps final fitted coefficients/coordinates
+     // with generated Option/status vectors, reference/score norms, rollback
+@@ -1859,7 +1900,7 @@
+     )?)?;
+     let strict_installed_metadata_bytes = checked_sum(&[
+         checked_mul(
+-            checked_mul(k, 4, "PPML strict installed rank-index banks")?,
++            checked_mul(k, 5, "PPML strict installed rank-index banks")?,
+             word,
+             "PPML strict installed rank-index bytes",
+         )?,
+@@ -1954,6 +1995,7 @@
+         preparation_metadata_transient_bytes: dimensions.metadata.preparation_transient_bytes,
+         result_metadata_bytes,
+         embedding_resident_bytes: config.embedding_resident_bytes,
++        input_owner_supplement_bytes,
+         canonical_numeric_bytes,
+         retained_base_adjustment_bytes,
+         retained_raw_preseparation_probability_weight_bytes,
+@@ -1967,6 +2009,8 @@
+         row_ledger_bytes,
+         row_axis_arc_header_bytes,
+         prepared_model_metadata_bytes,
++        prepared_generation_bytes,
++        prepared_generation_supplement_bytes,
+         separation_replacement_generation_bytes,
+         separation_rebase_proposal_bytes,
+         separation_rebase_direction_bytes,
+@@ -3663,6 +3707,55 @@
+     }
+ 
+     #[test]
++    fn raw_owner_capacity_supplements_but_never_duplicates_embedding() {
++        let shape = dimensions();
++        let before = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
++        for embedding in [0, 113, 10_007, 10_008] {
++            let mut shape = shape;
++            shape.metadata.input_owner_bytes = 10_007;
++            let after = estimate_ppml_memory(shape, PpmlMemoryConfig {
++                embedding_resident_bytes: embedding, ..PpmlMemoryConfig::default()
++            }).unwrap();
++            assert_eq!(after.fast.input_owner_supplement_bytes, 10_007_u128.saturating_sub(embedding));
++            assert_eq!(after.fast.iteration_peak_bytes - before.fast.iteration_peak_bytes,
++                embedding.max(10_007));
++            assert_eq!(after.fast.separation_peak_bytes - before.fast.separation_peak_bytes,
++                embedding.max(10_007));
++        }
++    }
++
++    #[test]
++    fn generation_supplement_is_admitted_for_both_simultaneous_owners() {
++        let mut shape = dimensions();
++        // Force the categorical capacity bound to dominate the old FE heuristic.
++        shape.metadata.generation_fixed_bytes = 123_457;
++        shape.metadata.generation_bytes_per_row = 1_024;
++        let before = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
++        shape.metadata.generation_fixed_bytes += 97;
++        let after = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
++        for (before, after) in [(before.fast, after.fast), (before.low, after.low)] {
++            assert!(before.prepared_generation_supplement_bytes > 0);
++            assert_eq!(after.prepared_generation_bytes - before.prepared_generation_bytes, 97);
++            assert_eq!(after.iteration_peak_bytes - before.iteration_peak_bytes, 97);
++            assert_eq!(after.separation_replacement_generation_bytes
++                - before.separation_replacement_generation_bytes, 97);
++            assert_eq!(after.separation_rebase_bytes - before.separation_rebase_bytes, 97);
++            assert_eq!(after.separation_peak_bytes - before.separation_peak_bytes, 194);
++        }
++        let config = PpmlMemoryConfig { requested: MemoryMode::Fast,
++            ..PpmlMemoryConfig::default() };
++        let peak = estimate_ppml_memory(shape, config).unwrap().fast.peak_bytes;
++        // This fixture remains below the fixed-headroom crossover.
++        assert!(peak < 4 * MINIMUM_HEADROOM_BYTES);
++        plan_ppml_memory(shape, PpmlMemoryConfig { available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES), ..config }).unwrap();
++        assert_eq!(plan_ppml_memory(shape, PpmlMemoryConfig {
++            available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES - 1), ..config
++        }).unwrap_err().code, ErrorCode::Allocation);
++        shape.metadata.generation_bytes_per_row = u128::MAX;
++        assert_eq!(estimate_ppml_memory(shape, config).unwrap_err().code, ErrorCode::Allocation);
++    }
++
++    #[test]
+     fn nested_metadata_is_admitted_at_every_overlapping_lifetime() {
+         let plain_dimensions = dimensions();
+         let plain = estimate_ppml_memory(plain_dimensions, PpmlMemoryConfig::default()).unwrap();
+@@ -3671,6 +3764,7 @@
+             prepared_nested_bytes: 70_003,
+             preparation_transient_bytes: 90_007,
+             result_bytes: 110_017,
++            ..Default::default()
+         };
+         let charged = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+         for (before, after) in [(plain.fast, charged.fast), (plain.low, charged.low)] {
+@@ -4395,7 +4489,7 @@
+         let expected_phase_metadata = |dimensions: PpmlMemoryDimensions| {
+             let k = dimensions.finite_columns as u128;
+             let slots = dimensions.coefficient_slots as u128;
+-            let installed = k * 4 * size_of::<usize>() as u128
++            let installed = k * 5 * size_of::<usize>() as u128
+                 + slots
+                     * (size_of::<PreparedOlsFittedCoefficient>()
+                         + size_of::<PreparedOlsBreadCoordinate>()
+@@ -4471,6 +4565,8 @@
+             + inventory.row_ledger_bytes
+             + inventory.row_axis_arc_header_bytes
+             + inventory.prepared_model_metadata_bytes
++            + inventory.prepared_generation_supplement_bytes
++            + inventory.input_owner_supplement_bytes
+             + inventory.separation_method_report_row_bytes
+             + inventory.separation_method_report_level_bytes
+             + inventory.separation_method_report_record_bytes
+@@ -4615,6 +4711,8 @@
+             + inventory.row_ledger_bytes
+             + inventory.row_axis_arc_header_bytes
+             + inventory.prepared_model_metadata_bytes
++            + inventory.prepared_generation_supplement_bytes
++            + inventory.input_owner_supplement_bytes
+             + inventory.separation_method_report_row_bytes
+             + inventory.separation_method_report_level_bytes
+             + inventory.separation_method_report_record_bytes
+--- a/crates/fereg-core/src/ppml/metadata_memory.rs
++++ b/crates/fereg-core/src/ppml/metadata_memory.rs
+@@ -20,9 +20,17 @@
+ /// Rebased generations retain the original reporting-axis reservations.
+ #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+ pub struct PpmlMetadataMemory {
++    /// Capacity sum of the transferred raw request and input owner. The
++    /// embedding observation may already include it; only a shortfall is added.
++    pub input_owner_bytes: u128,
+     pub prepared_nested_bytes: u128,
+     pub preparation_transient_bytes: u128,
+     pub result_bytes: u128,
++    /// Retained categorical/topology descriptors outside the model metadata.
++    pub generation_fixed_bytes: u128,
++    /// Codes, level identities and topology row maps per retained observation.
++    /// Membership offsets are charged separately at the admitted FE level axis.
++    pub generation_bytes_per_row: u128,
+ }
+ 
+ impl PpmlMetadataMemory {
+@@ -126,12 +134,85 @@
+             bytes::<PreparedOlsColumn>(slots)?,
+             availability_request_metadata_bytes(request)?,
+         ])?;
++        let (generation_fixed_bytes, generation_bytes_per_row) =
++            generation_storage(request, clusters)?;
+         Ok(Self {
++            input_owner_bytes: 0,
++            generation_fixed_bytes,
++            generation_bytes_per_row,
+             prepared_nested_bytes: prepared,
+             preparation_transient_bytes: transient,
+             result_bytes: result,
+         })
+     }
++}
++
++/// Complete retained categorical storage, including finite-only and cluster-only
++/// sources. All source-set counting is metadata-sized and allocation-free.
++fn generation_storage(
++    request: &OlsRequestV1,
++    clusters: &[OlsClusterTermV1],
++) -> Result<(u128, u128)> {
++    use crate::fe::{CategoricalTopologySource, CompactedCategoricalSource};
++    use crate::metadata::ComponentKind;
++    use crate::prepared_categorical_data::PreparedCategoricalModelSource;
++    let mut categories = 0;
++    let mut compacted = 0;
++    let mut ordinary = 0;
++    let mut row_bytes = size_of::<usize>() as u128; // topology retained-row map
++    for source in &request.model.sources {
++        let absorbed = request.absorbed_terms.iter().any(|effect| {
++            effect.categorical_sources.contains(&source.id)
++        });
++        let modeled = request.model.terms.iter().any(|term| {
++            term.components.iter().any(|component| {
++                component.source == source.id && component.kind == ComponentKind::Categorical
++            })
++        }) || clusters.iter().any(|cluster| cluster.sources.contains(&source.id));
++        if absorbed || modeled { categories += 1; }
++        if absorbed {
++            compacted += 1;
++            // Compact codes and original-level identities; each has <= N entries.
++            add(&mut row_bytes, 2 * size_of::<u32>() as u128)?;
++        }
++        if modeled {
++            ordinary += 1;
++            // A topology-backed source owns only its candidate f64 level table.
++            // An ordinary source owns an additional compact u32 code vector.
++            add(&mut row_bytes, size_of::<f64>() as u128
++                + if absorbed { 0 } else { size_of::<u32>() as u128 })?;
++        }
++    }
++    let effects = request.absorbed_terms.len();
++    // Registry growth uses try_reserve(1): geometric capacity < 2*len, with
++    // Rust's four-element minimum. No registry allocation for zero effects.
++    let registry_capacity = if effects == 0 { 0 } else {
++        effects.checked_mul(2).ok_or_else(overflow)?.max(4)
++    };
++    let mut fixed = sum(&[
++        bytes::<CompactedCategoricalSource>(compacted)?,
++        bytes::<PreparedCategoricalModelSource>(ordinary)?,
++        bytes::<Option<usize>>(categories)?,
++        bytes::<Vec<usize>>(effects)?,
++        bytes::<usize>(effects)?, // effect -> topology
++        bytes::<CategoricalTopologySource>(registry_capacity)?,
++        bytes::<usize>(effects)?, // terminal membership offsets
++    ])?;
++    for effect in &request.absorbed_terms {
++        add(&mut fixed, bytes::<usize>(effect.categorical_sources.len())?)?;
++        add(&mut row_bytes, size_of::<usize>() as u128)?; // memberships
++        if effect.categorical_sources.len() > 1 {
++            // Canonical partition key and one interaction code per observation.
++            add(&mut fixed, bytes::<usize>(effect.categorical_sources.len())?)?;
++            add(&mut row_bytes, size_of::<u32>() as u128)?;
++        }
++    }
++    for cluster in clusters {
++        if cluster.sources.len() > 1 {
++            add(&mut row_bytes, size_of::<u32>() as u128)?;
++        }
++    }
++    Ok((fixed, row_bytes))
+ }
+ 
+ /// `plan_categorical_absorbed_request` keeps a fallible model copy, synthetic
+--- a/crates/fereg-core/src/ppml/prepared_estimator.rs
++++ b/crates/fereg-core/src/ppml/prepared_estimator.rs
+@@ -248,6 +248,7 @@
+         ),
+         requested_saved_channel_count,
+     )?;
++    preflight_dimensions.metadata.input_owner_bytes = raw_input_owner_bytes(&request, &loaded);
+     // This scalar refinement reads raw outcome values only after the row
+     // classifier has resolved domain/error precedence. Excluded nonpositive
+     // rows can only retain the wider envelope. No sample state is allocated.
+@@ -320,7 +321,7 @@
+         loaded.ols,
+         numeric,
+         loaded.adjustment,
+-    )?;
++    )?.with_generation_memory_bound(preliminary_plan.selected_inventory().prepared_generation_bytes);
+     let preparation_elapsed = preparation_clock.elapsed();
+     let preparation_peak =
+         end_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
+@@ -522,8 +523,10 @@
+     let convergence = convergence_report(&fit)?;
+     let clusters = cluster_metadata(prepared)?;
+     let mut memory = fit.diagnostics().memory.clone();
+-    memory.record_phase(PpmlPhase::Preparation, preparation_elapsed);
+-    if let Some(bytes) = preparation_peak {
++    memory.record_phase(PpmlPhase::Preparation,
++        preparation_elapsed + separation_outcome.initial_preparation_elapsed);
++    if let Some(bytes) = preparation_peak.into_iter()
++        .chain(separation_outcome.initial_preparation_peak).max() {
+         memory.observe_phase_peak(PpmlPhase::Preparation, bytes);
+     }
+     record_separation_timings(&mut memory, &separation_outcome.separation)?;
+@@ -1186,6 +1189,25 @@
+     })
+ }
+ 
++/// Count capacities of the owner transferred to the separation coordinator.
++/// This descriptor-only walk allocates nothing and reads no observation values.
++fn raw_input_owner_bytes(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -> u128 {
++    use crate::memory::vec_capacity_bytes as bytes;
++    let column = |value: &LoadedNumericColumn| bytes(&value.values) + bytes(&value.missing);
++    request.ols.owned_buffer_bytes()
++        + bytes(&request.clusters)
++        + request.clusters.iter().map(|cluster| {
++            cluster.label.capacity() as u128 + bytes(&cluster.sources)
++        }).sum::<u128>()
++        + bytes(&loaded.ols.candidate)
++        + column(&loaded.ols.outcome)
++        + bytes(&loaded.ols.numeric_sources)
++        + loaded.ols.numeric_sources.iter().map(|(_, value)| column(value)).sum::<u128>()
++        + [&loaded.ols.analytic_weight, &loaded.ols.frequency_weight,
++            &loaded.ols.probability_weight, &loaded.adjustment]
++            .into_iter().flatten().map(column).sum::<u128>()
++}
++
+ fn final_memory_dimensions(
+     prepared: &PreparedPpmlModelGeneration,
+     clusters: &[&[u32]],
+@@ -1685,6 +1707,50 @@
+     use std::sync::atomic::{AtomicUsize, Ordering};
+ 
+     static FIT_PHASE_BEGINS: AtomicUsize = AtomicUsize::new(0);
++
++    #[test]
++    fn generation_parent_bound_covers_factors_clusters_slopes_and_rebases() {
++        use crate::ppml_separation::PreparedSeparationRebuilder;
++        let mut fixtures = Vec::new();
++        for effects in [0, 1, 2, 4] {
++            for clustered in [false, true] {
++                for probability in [false, true] {
++                    fixtures.push(fixture(effects, false, clustered, probability, true, false));
++                }
++            }
++        }
++        fixtures.push(factor_rebase_fixture());
++        let (mut slope, data) = fixture(2, false, true, true, true, false);
++        slope.ols.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
++        fixtures.push((slope, data));
++        let (mut interaction, data) = fixture(2, false, true, false, false, false);
++        interaction.ols.absorbed_terms[0].categorical_sources.push(SourceId::new(3).unwrap());
++        interaction.clusters[0].sources.push(SourceId::new(2).unwrap());
++        fixtures.push((interaction, data));
++        for (request, loaded) in fixtures {
++            let input = borrowed_numeric_input(&request, &loaded).unwrap();
++            let classification = classify_ppml_numeric_data(&input.as_input()).unwrap();
++            let dimensions = conservative_preflight_dimensions_from_classification(
++                &request, classification, input.numeric_sources.len(),
++                input.offset.is_some() || input.exposure.is_some(),
++                loaded.ols.probability_weight.is_some(), 0,
++            ).unwrap();
++            let plan = plan_ppml_memory(dimensions, request.memory).unwrap();
++            let bound = plan.selected_inventory().prepared_generation_bytes;
++            let numeric = select_ppml_numeric_data(&input.as_input(), classification).unwrap();
++            drop(input);
++            let mut owner = PreparedPpmlModelOwner::from_selection(
++                request.ols, request.clusters, loaded.ols, numeric, loaded.adjustment,
++            ).unwrap().with_generation_memory_bound(bound);
++            let rows = owner.candidate_original_rows();
++            let old = owner.rebuild_generation(&rows, 0).unwrap();
++            let new = owner.rebuild_generation(&rows[..rows.len() - 2], 1).unwrap();
++            assert!(old.owned_buffer_bytes() <= bound);
++            assert!(new.owned_buffer_bytes() <= bound);
++            // Old/new coexist through commit; neither can use the other's bound.
++            assert!(old.owned_buffer_bytes() + new.owned_buffer_bytes() <= 2 * bound);
++        }
++    }
+ 
+     #[test]
+     fn metadata_admission_counts_nested_recipes_labels_and_partial_saves() {
+--- a/crates/fereg-core/src/ppml/prepared_model.rs
++++ b/crates/fereg-core/src/ppml/prepared_model.rs
+@@ -127,6 +127,22 @@
+ }
+ 
+ impl PreparedPpmlModelGeneration {
++    /// All generation-owned heap capacities. The shared initial-drop-reason
++    /// Arc belongs to the immutable raw owner and is counted there exactly once.
++    pub(super) fn owned_buffer_bytes(&self) -> u128 {
++        let prepared = self.fit_view().owned_buffer_bytes()
++            + self.cluster_design().map_or(0, PreparedOlsClusterDesign::owned_buffer_bytes);
++        prepared + crate::memory::vec_capacity_bytes(&self.offset)
++            + self.unit_prior_weights.as_ref().map_or(0, crate::memory::vec_capacity_bytes)
++    }
++
++    fn validate_memory_bound(&self, bound: Option<u128>) -> Result<()> {
++        if bound.is_some_and(|bound| self.owned_buffer_bytes() > bound) {
++            return Err(allocation("PPML prepared generation capacities exceed admission"));
++        }
++        Ok(())
++    }
++
+     pub(crate) const fn generation(&self) -> usize {
+         self.generation
+     }
+@@ -253,6 +269,7 @@
+ /// rebuild swaps in a newly allocated mask, constructs a wholly owned result,
+ /// and restores the baseline mask before returning either success or error.
+ pub(crate) struct PreparedPpmlModelOwner {
++    generation_memory_bound: Option<u128>,
+     request: OlsClusteredRequestV1,
+     loaded: LoadedOlsInput,
+     candidate_original_rows: Arc<Vec<usize>>,
+@@ -270,6 +287,11 @@
+ }
+ 
+ impl PreparedPpmlModelOwner {
++    pub(crate) fn with_generation_memory_bound(mut self, bytes: u128) -> Self {
++        self.generation_memory_bound = Some(bytes);
++        self
++    }
++
+     pub(crate) fn from_selection(
+         request: OlsRequestV1,
+         clusters: Vec<OlsClusterTermV1>,
+@@ -365,6 +387,7 @@
+         // singleton policy as part of its certified fixed point.
+         request.keep_singletons = true;
+         Ok(Self {
++            generation_memory_bound: None,
+             request: OlsClusteredRequestV1 {
+                 ols: request,
+                 clusters,
+@@ -634,7 +657,7 @@
+             .base_offset
+             .as_ref()
+             .map_or(0, |_| self.requested_candidate_observations);
+-        Ok(PreparedPpmlModelGeneration {
++        let prepared = PreparedPpmlModelGeneration {
+             generation,
+             prepared,
+             offset,
+@@ -646,7 +669,9 @@
+             initial_drop_reasons: Arc::clone(&self.initial_drop_reasons),
+             weight_report,
+             adjustment_report: self.adjustment_report,
+-        })
++        };
++        prepared.validate_memory_bound(self.generation_memory_bound)?;
++        Ok(prepared)
+     }
+ }
+ 
+@@ -1083,6 +1108,36 @@
+             PreparedPpmlModelOwner::new(self.request, self.clusters, self.loaded, numeric)
+                 .expect("prepared owner")
+         }
++    }
++
++    #[test]
++    fn generation_capacity_guard_counts_spare_capacity_and_preserves_rollback() {
++        let fixture = categorical_clustered_fixture();
++        let numeric = fixture.prepare_numeric();
++        let mut owner = fixture.into_owner(numeric);
++        let rows = owner.candidate_original_rows.to_vec();
++        let initial = owner.rebuild_generation(&rows, 0).unwrap();
++        let exact = initial.owned_buffer_bytes();
++        initial.validate_memory_bound(Some(exact)).unwrap();
++        assert_eq!(initial.validate_memory_bound(Some(exact - 1)).unwrap_err().code,
++            ErrorCode::Allocation);
++        let candidate = owner.loaded.candidate.clone();
++        let probability = owner.loaded.probability_weight.clone();
++        owner.generation_memory_bound = Some(exact - 1);
++        assert_eq!(owner.rebuild_generation(&rows, 1).unwrap_err().code, ErrorCode::Allocation);
++        assert_eq!(owner.loaded.candidate, candidate);
++        assert_eq!(owner.loaded.probability_weight, probability);
++        owner.generation_memory_bound = Some(exact);
++        for generation in 1..=3 {
++            let replacement = owner.rebuild_generation(&rows, generation).unwrap();
++            assert_eq!(replacement.owned_buffer_bytes(), exact);
++            assert_eq!(replacement.outcome(), initial.outcome());
++        }
++        let mut spare = initial;
++        spare.offset.reserve_exact(37);
++        assert!(spare.owned_buffer_bytes() > exact);
++        assert_eq!(spare.validate_memory_bound(Some(exact)).unwrap_err().code,
++            ErrorCode::Allocation);
+     }
+ 
+     #[test]
+--- a/crates/fereg-core/src/ppml/prepared_separation.rs
++++ b/crates/fereg-core/src/ppml/prepared_separation.rs
+@@ -8,7 +8,7 @@
+ //! the shared certified prepared weighted-linear boundary.
+ 
+ use std::sync::Arc;
+-use std::time::Instant;
++use std::time::{Duration, Instant};
+ 
+ #[cfg(test)]
+ use std::cell::Cell;
+@@ -124,6 +124,8 @@
+     /// final generation merges this with numeric/domain reasons exactly once.
+     pub(crate) original_axis_reasons: Vec<Option<SeparationDropReason>>,
+     phase_allocation_peaks: PreparedSeparationPhasePeaks,
++    pub(crate) initial_preparation_elapsed: Duration,
++    pub(crate) initial_preparation_peak: Option<u64>,
+ }
+ 
+ /// Unforgeable (outside this module) terminal separation certification.
+@@ -380,8 +382,9 @@
+     ) -> Result<T>,
+ {
+     validate_config(config)?;
+-    let coordinator = PreparedSeparationCoordinator::new(owner)?;
+-    coordinate_prepared_ppml_separation(
++    let (coordinator, initial_preparation_elapsed, initial_preparation_peak) =
++        prepare_initial_generation(owner, phase_allocation_probe)?;
++    let (mut outcome, fit) = coordinate_prepared_ppml_separation(
+         coordinator,
+         ppml,
+         config,
+@@ -404,7 +407,28 @@
+                 interrupt,
+             )
+         },
+-    )
++    )?;
++    outcome.initial_preparation_elapsed = initial_preparation_elapsed;
++    outcome.initial_preparation_peak = initial_preparation_peak;
++    Ok((outcome, fit))
++}
++
++/// A separate scope makes success and failed initial construction observable;
++/// later rebuilds remain nested in the requesting separation phase.
++fn prepare_initial_generation(
++    owner: PreparedPpmlModelOwner,
++    phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
++) -> Result<(PreparedSeparationCoordinator<PreparedPpmlModelOwner>, Duration, Option<u64>)> {
++    let started = Instant::now();
++    begin_phase_allocation(phase_allocation_probe, PpmlPhase::Preparation);
++    let coordinator = PreparedSeparationCoordinator::new(owner);
++    // Close this window even when a failed allocation/rebuild rejects the
++    // initial generation. Later atomic rebuilds are inside separation phases.
++    let initial_preparation_peak =
++        end_phase_allocation(phase_allocation_probe, PpmlPhase::Preparation);
++    let initial_preparation_elapsed = started.elapsed();
++    let coordinator = coordinator?;
++    Ok((coordinator, initial_preparation_elapsed, initial_preparation_peak))
+ }
+ 
+ #[allow(clippy::too_many_arguments)]
+@@ -1026,6 +1050,8 @@
+         candidate_original_rows,
+         original_axis_reasons,
+         phase_allocation_peaks,
++        initial_preparation_elapsed: Duration::ZERO,
++        initial_preparation_peak: None,
+     };
+     Ok((outcome, final_fit))
+ }
+@@ -3326,6 +3352,29 @@
+     static PHASE_PROBE_ENDS: AtomicU64 = AtomicU64::new(0);
+     static MU_PHASE_ACTIVE: AtomicBool = AtomicBool::new(false);
+     static MU_FIT_CALLS: AtomicU64 = AtomicU64::new(0);
++
++    #[test]
++    fn initial_generation_phase_closes_on_success_and_capacity_rejection() {
++        let _guard = PHASE_PROBE_TEST_LOCK.lock().unwrap();
++        for rejected in [false, true] {
++            PHASE_PROBE_EVENTS.lock().unwrap().clear();
++            PHASE_PROBE_ENDS.store(0, Ordering::SeqCst);
++            let (request, clusters, loaded, uses) = fixture();
++            let numeric = prepare_numeric(&loaded, &uses);
++            let mut owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap();
++            if rejected { owner = owner.with_generation_memory_bound(0); }
++            let result = prepare_initial_generation(owner, Some(deterministic_phase_probe));
++            if rejected {
++                assert_eq!(result.err().unwrap().code, ErrorCode::Allocation);
++            } else {
++                assert_eq!(result.unwrap().2, Some(1));
++            }
++            assert_eq!(*PHASE_PROBE_EVENTS.lock().unwrap(), vec![
++                (PpmlPhase::Preparation, super::super::PpmlPhaseAllocatorEvent::Begin, 0),
++                (PpmlPhase::Preparation, super::super::PpmlPhaseAllocatorEvent::End, 1),
++            ]);
++        }
++    }
+ 
+     #[test]
+     fn impossible_detector_workspace_reservation_maps_to_allocation() {

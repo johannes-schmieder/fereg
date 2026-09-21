@@ -1,0 +1,75 @@
+[
+  {
+    "id": "saved_slopes_low",
+    "cell": {
+      "name": "saved_slopes_low",
+      "model": "ols",
+      "section": "width",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "design": "one_fe",
+      "n": 8193,
+      "k": 8,
+      "absorb": "saved_g=g1##c.z",
+      "slope": true,
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h",
+      "fit_options": "residuals(saved_e) memory(low)"
+    },
+    "data": "absorbed_slopes.dta",
+    "data_sha256": "455ddcbde69eb54ddebaafdd4fead743c54a3594859c142f3117c1eddc7f6d8f",
+    "metadata_sha256": "7dec6244841b94c5163b72e155365308f4c972669a384fd585db1d27ed7a56f4",
+    "solver": "auto"
+  },
+  {
+    "id": "ppml_narrow",
+    "data": "ppml_narrow.dta",
+    "generated": true,
+    "expected_sample_rows": 7680,
+    "solver": "auto",
+    "cell": {
+      "name": "ppml_narrow",
+      "model": "ppml",
+      "section": "width",
+      "design": "synthetic",
+      "n": 7680,
+      "k": 2,
+      "threads": 4,
+      "effects": [
+        "g1"
+      ],
+      "weight": "",
+      "absorb": "",
+      "vce": "robust",
+      "fit_options": "memory(fast) residuals(saved_e)"
+    }
+  },
+  {
+    "id": "ppml_saved_weighted",
+    "data": "ppml_saved_weighted.dta",
+    "generated": true,
+    "expected_sample_rows": 65536,
+    "solver": "auto",
+    "cell": {
+      "name": "ppml_saved_weighted",
+      "model": "ppml",
+      "section": "width",
+      "design": "synthetic",
+      "n": 65536,
+      "k": 10,
+      "threads": 4,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "weight": "[fw=w]",
+      "absorb": "saved_a=g1 saved_b=g2",
+      "vce": "cluster g1",
+      "fit_options": "memory(fast) residuals(saved_e)"
+    }
+  }
+]

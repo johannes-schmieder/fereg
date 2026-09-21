@@ -1,0 +1,15 @@
+{
+  "commit": "90e1fe0b0c14065155532711246ede6678bb4935",
+  "files": {
+    "src/memory.rs": "d3bf1eef32ad78ec4b90fa32d20528f8a780444ac3238690e43e4648a8572f98",
+    "src/hierarchy.rs": "1b68d5de3c9e040fe60a587b3747c3b1167076a4d44bea12b6df13bbbd0aae88",
+    "src/workspace.rs": "f84f376a02cb8c1a7bca6ab36e18712caf42b9949faa1b509c2a289becc4b992",
+    "src/preconditioner.rs": "31b43579ba592d03e149daa8e2ebae28aab23615a4a044f6a8b640ef8f2d3ff0",
+    "src/parallel_solver.rs": "ce9e022f58c1b5a003a4ae8fecf7fabb07eb57168ed5032242edf89611fe50f8",
+    "src/graph.rs": "6fd213e67d11b0990e7a4035a7077c54ab783e90070683151de27ce3d2b8841c",
+    "src/components.rs": "916b53087db267c42b42e95471e61cf85d50da6d7abf07f8cf677af140fa11ef",
+    "src/ldl.rs": "934fc903e4831bd5dfcd22cee7fee4ce9d13226516803c9ddf9ba093423b9cdc",
+    "src/execution.rs": "76b3cfd6611c049d264f23c2ef13041d9c824ed5c0ad09682b83329679b14805"
+  },
+  "full_dependency_coverage": false
+}

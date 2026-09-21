@@ -1,0 +1,43 @@
+{
+  "all_science_exact": true,
+  "artifacts": {
+    "baseline": "07bca07ac2be3c66d982ef5a5f4a3422dcdc31ef73e36a69b71a92807496211d",
+    "candidate": "fd5da43cae056689f7ba372996c352c911b89abd41b498020a5f1252ff720937"
+  },
+  "development_only": true,
+  "pairs": 9,
+  "performance_gate_pass": true,
+  "source": "5240e58-runtime-draft2",
+  "summary": [
+    {
+      "case": "cmg_ols_small",
+      "delta_seconds": 0.008000000000000007,
+      "median_seconds": {
+        "baseline": 0.073,
+        "candidate": 0.081
+      },
+      "regression_requires_investigation": false,
+      "relative_change": 0.1095890410958904
+    },
+    {
+      "case": "cmg_ols_weighted",
+      "delta_seconds": -0.016000000000000014,
+      "median_seconds": {
+        "baseline": 0.222,
+        "candidate": 0.206
+      },
+      "regression_requires_investigation": false,
+      "relative_change": -0.07207207207207211
+    },
+    {
+      "case": "cmg_ppml",
+      "delta_seconds": -0.006000000000000005,
+      "median_seconds": {
+        "baseline": 0.279,
+        "candidate": 0.273
+      },
+      "regression_requires_investigation": false,
+      "relative_change": -0.021505376344086002
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+saved_slopes_low 1 baseline pass 0.369
+saved_slopes_low 1 candidate pass 0.297
+saved_slopes_low 2 candidate pass 0.301
+saved_slopes_low 2 baseline pass 0.303
+saved_slopes_low 3 baseline pass 0.299
+saved_slopes_low 3 candidate pass 0.299
+ppml_narrow 1 baseline pass 0.124
+ppml_narrow 1 candidate pass 0.111
+ppml_narrow 2 candidate pass 0.125
+ppml_narrow 2 baseline pass 0.123
+ppml_narrow 3 baseline pass 0.118
+ppml_narrow 3 candidate pass 0.122
+ppml_saved_weighted 1 baseline pass 1.009
+ppml_saved_weighted 1 candidate pass 1.02
+ppml_saved_weighted 2 candidate pass 1.005
+ppml_saved_weighted 2 baseline pass 1.048
+ppml_saved_weighted 3 baseline pass 1.014
+ppml_saved_weighted 3 candidate pass 1.072
+PUBLICATION_PAIRED_COMPLETE

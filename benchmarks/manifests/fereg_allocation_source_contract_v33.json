@@ -1,0 +1,2165 @@
+{
+  "schema_version": 21,
+  "contract_id": "fereg-allocation-source-contract-v33",
+  "policy": {
+    "watched_exact_files": [
+      "crates/fereg-core/build.rs",
+      "crates/fereg-core/src/error.rs",
+      "crates/fereg-core/src/factorize.rs",
+      "crates/fereg-core/src/lib.rs",
+      "crates/fereg-core/src/memory.rs",
+      "crates/fereg-core/src/metadata.rs",
+      "crates/fereg-core/src/options.rs",
+      "crates/fereg-core/src/parallel.rs",
+      "crates/fereg-core/src/protocol.rs",
+      "crates/fereg-core/src/sandwich.rs",
+      "crates/fereg-plugin/src/estimate.rs",
+      "crates/fereg-plugin/src/ffi.rs",
+      "crates/fereg-plugin/src/input.rs",
+      "crates/fereg-plugin/src/result.rs",
+      "crates/fereg-plugin/src/result_view.rs"
+    ],
+    "watched_globs": [
+      "crates/fereg-core/src/data/**/*.rs",
+      "crates/fereg-core/src/fe/**/*.rs",
+      "crates/fereg-core/src/linalg/**/*.rs",
+      "crates/fereg-core/src/memory/**/*.rs",
+      "crates/fereg-core/src/ols/**/*.rs",
+      "crates/fereg-core/src/sandwich/**/*.rs",
+      "crates/fereg-plugin/src/**/*.rs"
+    ],
+    "watched_cargo_files": [
+      ".cargo/config.toml",
+      "Cargo.lock",
+      "Cargo.toml",
+      "crates/fereg-core/Cargo.toml",
+      "crates/fereg-plugin/Cargo.toml"
+    ],
+    "native_route_files": [
+      {
+        "path": "plugin/stplugin.c",
+        "normalization": "c_tokens"
+      },
+      {
+        "path": "plugin/stplugin.h",
+        "normalization": "c_tokens"
+      },
+      {
+        "path": "plugin/stata_bridge.c",
+        "normalization": "c_tokens"
+      },
+      {
+        "path": "plugin/stata_bridge.h",
+        "normalization": "c_tokens"
+      },
+      {
+        "path": "plugin/Makefile",
+        "normalization": "exact_text"
+      },
+      {
+        "path": "plugin/exports_linux.map",
+        "normalization": "exact_text"
+      },
+      {
+        "path": "plugin/exports_macos.txt",
+        "normalization": "exact_text"
+      },
+      {
+        "path": "scripts/build_linux.sh",
+        "normalization": "exact_text"
+      },
+      {
+        "path": "scripts/build_macos.sh",
+        "normalization": "exact_text"
+      },
+      {
+        "path": "scripts/build_windows.ps1",
+        "normalization": "exact_text"
+      }
+    ],
+    "excluded_source_prefixes": [],
+    "excluded_source_files": [],
+    "boundary_only_source_files": [
+      "crates/fereg-core/src/ols/linear_session.rs",
+      "crates/fereg-plugin/src/ppml_estimate.rs",
+      "crates/fereg-plugin/src/ppml_result.rs"
+    ],
+    "fereg_shared_source_regions": [
+      {
+        "path": "crates/fereg-core/src/ols/linear_session.rs",
+        "name": "phase_allocation_guard"
+      }
+    ],
+    "boundary_functions": [
+      {
+        "path": "crates/fereg-plugin/src/ffi.rs",
+        "function": "fereg_dispatch"
+      },
+      {
+        "path": "crates/fereg-plugin/src/estimate.rs",
+        "function": "estimate_ols_test"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+        "function": "fit_prepared_ols_unadjusted_map"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+        "function": "fit_prepared_categorical_ols_unadjusted_map"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+        "function": "fit_prepared_ols_robust_map"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+        "function": "fit_prepared_categorical_ols_robust_map"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_clustered.rs",
+        "function": "fit_prepared_ols_clustered_map"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_clustered.rs",
+        "function": "fit_prepared_categorical_ols_clustered_map"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_ols_coefficients_map"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_categorical_ols_coefficients_map"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_ols_coefficients_view_map"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_ols_coefficients_view_map_with_frame"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_weighted_linear_once"
+      }
+    ],
+    "prepared_parent_boundary": {
+      "path": "crates/fereg-plugin/src/estimate.rs",
+      "function": "estimate_ols_test",
+      "source_excerpt": "benchmarks/reports/development/candidate-ols-prepared-parents-2026-09-16/estimate_ols_test.rs",
+      "source_sha256": "7df2af893c2c5dcb34c145ee28f6bc4cff22668843026b4c9ddff35321210110",
+      "body_tokens_sha256": "2e773012989878a653488bfb8bbbedc5c75bd68ce592ce1dc3111c9eb57925ae"
+    },
+    "input_memory_boundary": {
+      "path": "crates/fereg-plugin/src/estimate.rs",
+      "function": "estimate_ols_test",
+      "source_excerpt": "benchmarks/reports/development/candidate-input-memory-2026-09-16/estimate_ols_test.rs",
+      "source_sha256": "a0b0d1e531e98bd3ef3645974e116bd8e87cacec2bb88b3b68d36b1b300cfd0a",
+      "body_tokens_sha256": "c7c805580e24c703d70617b966c6168a1d7d0e540395c82652c473964a76a8bf"
+    },
+    "reviewed_boundary_source_sha": "a765c338f252350d0a9f5bf496330181dfbdb4b8",
+    "reviewed_boundary_hashes": [
+      {
+        "path": "crates/fereg-plugin/src/estimate.rs",
+        "function": "estimate_ols_test",
+        "body_tokens_sha256": "6d29cf038c0065b4a26ed1f62fa381c972b286aa4850b51614094fb43baabad8"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+        "function": "fit_prepared_ols_robust_map",
+        "body_tokens_sha256": "8e72d5101457a0057b093ffe30f96cc2149020f8dfc5586dda9cc85842fae712"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+        "function": "fit_prepared_categorical_ols_robust_map",
+        "body_tokens_sha256": "cf8a0058719d64704735547f435f886899a20467d7f3b5b1a1778e08bd7b73ef"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_ols_coefficients_view_map",
+        "body_tokens_sha256": "787412f726e1f0dfc92e01511c2fc74408d19a6d705ed4fbc86cd5542f99051b"
+      }
+    ],
+    "f0_source_sha": "2dee5d8c4cd99b51bbaca600348f66f325b58ab4",
+    "f0_preexisting_boundary_hashes": [
+      {
+        "path": "crates/fereg-plugin/src/estimate.rs",
+        "function": "estimate_ols_test",
+        "body_tokens_sha256": "4b8ff295a425a1e6cadb5422a026b726ed8300e961fc8eca9770ee4f96f5f2cb"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+        "function": "fit_prepared_ols_unadjusted_map",
+        "body_tokens_sha256": "99f6c5a29eec027d043f813cae0b1bb6764d6b2eb254ed56f060d04f2d3f0d8b"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+        "function": "fit_prepared_categorical_ols_unadjusted_map",
+        "body_tokens_sha256": "e551e3b485cb929c0ece4ae876e9616ea50aa583113f7fcd88dd842825ebab95"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+        "function": "fit_prepared_ols_robust_map",
+        "body_tokens_sha256": "127fa026f148f4ce79e022b89b17fe0f3a8a292f0d1987ac88275a5d54be2cf2"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+        "function": "fit_prepared_categorical_ols_robust_map",
+        "body_tokens_sha256": "83eff57f7aaa0fe594085707a4662ad1ace7f8c8c090245eddd2816c3076c2a8"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_clustered.rs",
+        "function": "fit_prepared_ols_clustered_map",
+        "body_tokens_sha256": "06f222d6c7a9aca1605f45fceaf1b7c6895bf7b694e74abe05210de0a443c427"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_clustered.rs",
+        "function": "fit_prepared_categorical_ols_clustered_map",
+        "body_tokens_sha256": "7352e1ed804f454de2a3271b36bffad62087c6153c527ec5069e081bed90b71e"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_ols_coefficients_map",
+        "body_tokens_sha256": "2bb68a40720f9989f108aee3782755c315acc62a8f89ed6d5a68ea2dbaf64ebd"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_categorical_ols_coefficients_map",
+        "body_tokens_sha256": "2bb68a40720f9989f108aee3782755c315acc62a8f89ed6d5a68ea2dbaf64ebd"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_ols_coefficients_view_map",
+        "body_tokens_sha256": "33b448405a8e6ebbcaa342bc9c59d86acde43bf6aa2068902a67d3560e910832"
+      }
+    ],
+    "f0_preexisting_boundary_literal_hashes": [
+      {
+        "path": "crates/fereg-plugin/src/estimate.rs",
+        "function": "estimate_ols_test",
+        "literal_count": 4,
+        "literals_sha256": "9ef282b93c2c9d59dfb279cc8de461a3114740a9041e9dbde36305e22c351e9e"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+        "function": "fit_prepared_ols_unadjusted_map",
+        "literal_count": 0,
+        "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+        "function": "fit_prepared_categorical_ols_unadjusted_map",
+        "literal_count": 0,
+        "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+        "function": "fit_prepared_ols_robust_map",
+        "literal_count": 0,
+        "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+        "function": "fit_prepared_categorical_ols_robust_map",
+        "literal_count": 0,
+        "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_clustered.rs",
+        "function": "fit_prepared_ols_clustered_map",
+        "literal_count": 0,
+        "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_clustered.rs",
+        "function": "fit_prepared_categorical_ols_clustered_map",
+        "literal_count": 0,
+        "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_ols_coefficients_map",
+        "literal_count": 0,
+        "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_categorical_ols_coefficients_map",
+        "literal_count": 0,
+        "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+        "function": "fit_prepared_ols_coefficients_view_map",
+        "literal_count": 0,
+        "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ],
+    "f0_route_literal_bindings": [
+      {
+        "path": "crates/fereg-plugin/src/estimate.rs",
+        "constant": "ACTION_ESTIMATE_OLS",
+        "literal": "\"estimate-ols\""
+      },
+      {
+        "path": "crates/fereg-plugin/src/estimate.rs",
+        "constant": "CONFIRMATION",
+        "literal": "\"fereg-estimation\""
+      }
+    ],
+    "f0_ffi_ols_branch": {
+      "path": "crates/fereg-plugin/src/ffi.rs",
+      "function": "fereg_dispatch",
+      "token_count": 45,
+      "tokens_sha256": "24459b4fdba127bd31d99d2edcd3862134308b6649ca7fbef5bcbc2dcf873482"
+    },
+    "forbidden_boundary_tokens": [
+      "CertifiedLinearSession",
+      "PpmlMemoryDimensions",
+      "PpmlMemoryPlan",
+      "fit_prepared_ppml",
+      "prepare_ppml",
+      "solve_fresh",
+      "solve_frozen",
+      "solve_warm",
+      "strictify"
+    ],
+    "forbidden_adapter_token_fragments": [
+      "linear_session",
+      "ppml"
+    ],
+    "forbidden_boundary_token_fragments": [
+      "ppml",
+      "session"
+    ]
+  },
+  "cargo_wiring": [
+    {
+      "path": ".cargo/config.toml",
+      "semantic_sha256": "81bef54d2c88f2de040fe86334f0c9a256f8eff1b233f8e7faf6458aab45abe6"
+    },
+    {
+      "path": "Cargo.lock",
+      "semantic_sha256": "a08502e753435861d4c2980a9cc0096bce533e62398307841af909ba322ad68e"
+    },
+    {
+      "path": "Cargo.toml",
+      "semantic_sha256": "70d1caa48b1655c3f07fcc50d2d066e4f1d0d4342b818e10189cd59c746bdaaa"
+    },
+    {
+      "path": "crates/fereg-core/Cargo.toml",
+      "semantic_sha256": "59c2a83cd1f22993d22d23a1dccd857cf48ce35bbc8d3edd8f52244d6b6a0e77"
+    },
+    {
+      "path": "crates/fereg-plugin/Cargo.toml",
+      "semantic_sha256": "d79a8f8085aaedf0975a15997d075fec86f647e4afcc2f6ba040ea0728d9e9f8"
+    }
+  ],
+  "native_route_wiring": [
+    {
+      "path": "plugin/stplugin.c",
+      "normalization": "c_tokens",
+      "production_token_count": 25,
+      "production_tokens_sha256": "c70bec64c5d9869ffd7eac50ba492489fcee8b4e186304c91f04395be793900d",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "plugin/stplugin.h",
+      "normalization": "c_tokens",
+      "production_token_count": 1705,
+      "production_tokens_sha256": "f4aec5ee81b7b4952d20d790a08b9f36e7f347679d9a377861c5fff06aaf2427",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "plugin/stata_bridge.c",
+      "normalization": "c_tokens",
+      "production_token_count": 1674,
+      "production_tokens_sha256": "0bf32b2bd7b1bffe66192d1c173bf2f897e1cf0a464248f83c199be600325814",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "plugin/stata_bridge.h",
+      "normalization": "c_tokens",
+      "production_token_count": 463,
+      "production_tokens_sha256": "7cffdaa6dcbfb3be317191cfab4b3dcf6ba82612a1c6d0687f86a42f5b776e4a",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "plugin/Makefile",
+      "normalization": "exact_text",
+      "exact_text_sha256": "18451e052fb74e72a15c9642299a83d81f503eb93310e0d67ab6031dab3e5a8e"
+    },
+    {
+      "path": "plugin/exports_linux.map",
+      "normalization": "exact_text",
+      "exact_text_sha256": "754786c0c3a5a387319b42ffdbdac5aad339e01dfc98586e151c823939b1dae0"
+    },
+    {
+      "path": "plugin/exports_macos.txt",
+      "normalization": "exact_text",
+      "exact_text_sha256": "b3d3f7e98b7896eb948879a07eab68fe5d6cb69b3c0fbe3abf53e43277903c1f"
+    },
+    {
+      "path": "scripts/build_linux.sh",
+      "normalization": "exact_text",
+      "exact_text_sha256": "b12212217ed6d490ef70308738839f04a08d22b382491ed5c25cabf436747758"
+    },
+    {
+      "path": "scripts/build_macos.sh",
+      "normalization": "exact_text",
+      "exact_text_sha256": "c00d7a5b006b9c5e164ffcef8e32b5c5c1b0acbb913600b4ff39a32c4e99cfd5"
+    },
+    {
+      "path": "scripts/build_windows.ps1",
+      "normalization": "exact_text",
+      "exact_text_sha256": "213bf6e0049651060804fca496147bc3711786defdb07db1842676472a972b1d"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "crates/fereg-core/build.rs",
+      "allocation_site_count": 4,
+      "allocation_sites_sha256": "60ea71bf47167ef13b05d8bed3cd2e7a449ac3f78e64ad2dae35c852c7266c71",
+      "scale_hint_counts": {
+        "model_or_fixed": 4
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 211,
+      "production_tokens_sha256": "4155d8d36dcc21cbd07cab4848d7f6b17fda90d301df9d984a3d06a678e62a08",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 15,
+      "production_literals_sha256": "b6cd23542c0c2686d7a9c531e2448838c06279dab1bb6279d205538bd07fe2e4",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/data/mod.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 76,
+      "production_tokens_sha256": "690ce7365116df924da09f77232f4ee174ba9be36d719800cde59c2082895a62",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 0,
+      "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/data/model_matrix.rs",
+      "allocation_site_count": 9,
+      "allocation_sites_sha256": "2a0f1f66a11172d1cea7566610763e374523f87786d73e5f342f9991ed4b8d4f",
+      "scale_hint_counts": {
+        "model_or_fixed": 8,
+        "observation_by_column": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2001,
+      "production_tokens_sha256": "18974002beaddf6b79c24ebcedf6027f43365b6921f1bf1382684581943b11db",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 16,
+      "production_literals_sha256": "49041f1c56bdcc12a25cf04eaf380d1e7ff16e89cd02492baec6970d5d3eb189",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/data/sample.rs",
+      "allocation_site_count": 23,
+      "allocation_sites_sha256": "69519de51f57e1beb85e79da43705a7d65edf5251dee7a75e9438c9240729054",
+      "scale_hint_counts": {
+        "model_or_fixed": 9,
+        "observation": 12,
+        "observation_by_column": 2
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 4795,
+      "production_tokens_sha256": "88ee1f054d403f96404453f6aae1fc682d5e36f14b0de85d719285991c561794",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 47,
+      "production_literals_sha256": "6e92054710efc3f7feefbfa32dfcb201ec369c3c502a7c7a7350b5d6612acca4",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/data/weights.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 77,
+      "production_tokens_sha256": "7805a14590f4ddd39750208b249d1d9e5a950e6fd800a8904d1e0dec30ca1830",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 4,
+      "production_literals_sha256": "2b7ee2bf1fcbc0d8aa4c87b1ce3fb629d817aaa0a8576d73ea1187ebd533aa45",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/error.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 452,
+      "production_tokens_sha256": "9642e72d766a746315f05caaafb3973c990ad2168b95e99552d73ff4b93e1b3f",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 16,
+      "production_literals_sha256": "fb212e1f485f0bc72a3679400317f5cd1ae4b5f5b17298ce42cb88c714fc749f",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/factorize.rs",
+      "allocation_site_count": 40,
+      "allocation_sites_sha256": "4f3b5dfd373579753a6bf8881a87ef2ed1b36b378749d8be37759ad4efe1d471",
+      "scale_hint_counts": {
+        "model_or_fixed": 40
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1803,
+      "production_tokens_sha256": "53e66d7337316a12a0edbc671b80ed96f03b8487b34f699df6e8b0628f706e99",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 9,
+      "production_literals_sha256": "55e93bdddd565a6231a809d31fc9ddd4235380f618544263f60e02416a2dc6ed",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/accelerated_map.rs",
+      "allocation_site_count": 13,
+      "allocation_sites_sha256": "cabd0ac17e2ec456e249b5a202e57070fab8da2fd46117dd197d63e33a3fdeee",
+      "scale_hint_counts": {
+        "model_or_fixed": 13
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 3498,
+      "production_tokens_sha256": "bb35b2e6f63dee1f6cdc49e8ae80838841777fb9dfb3adfd7cc102453a0616df",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 32,
+      "production_literals_sha256": "66fdb18b47a221106b1f9b586cdb20ecd72eae547c47a35f769910e85d7a5c4d",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/auto.rs",
+      "allocation_site_count": 8,
+      "allocation_sites_sha256": "502f45412a2110c46ddd06c6c64b5848282af56d114c2dead48739e69cbbfa98",
+      "scale_hint_counts": {
+        "model_or_fixed": 8
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1895,
+      "production_tokens_sha256": "b1dace5ec8806990083fade55b950f292730171ec252b87f741e5e7416a0262b",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 12,
+      "production_literals_sha256": "acfd825104e1ec9b639a0c7b032a5b71abd38e5d90a8ded146e81ba04c0c9b84",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/borrowed_map.rs",
+      "allocation_site_count": 90,
+      "allocation_sites_sha256": "ecf759089da328d1b8fea5ce124c7d6ef2a2d9bda2e66d5582bcce8173b78c58",
+      "scale_hint_counts": {
+        "fe_level": 1,
+        "model_or_fixed": 89
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 48525,
+      "production_tokens_sha256": "68c100bb2a09fc6cee7eda14ad75665de82073c9d67ea2f151a154a6f83397bb",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 398,
+      "production_literals_sha256": "faa7cffe81c6f633c7ea4b1cae588411483f951114dc91c9468696ad36a93aa5",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/categorical_request.rs",
+      "allocation_site_count": 36,
+      "allocation_sites_sha256": "d7ca46ad79fa93df2c92a681206af9a6b2ee595340c317b628a94118b589cbd6",
+      "scale_hint_counts": {
+        "model_or_fixed": 36
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 3039,
+      "production_tokens_sha256": "3ac9b8a8c346d96c92d43afdb26d0473dfa38076fe0a4d6a81d3185992551bf2",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 52,
+      "production_literals_sha256": "766414d7e17e31d0baf72db115aff091cf2c2e484b7917486eadc83b2af9558c",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/certificate.rs",
+      "allocation_site_count": 9,
+      "allocation_sites_sha256": "cd74510ca15d46af5b5932bce6e670125737f9d4a32a70e6bb9380854f0b1cfd",
+      "scale_hint_counts": {
+        "model_or_fixed": 9
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2288,
+      "production_tokens_sha256": "22d0a6c0ec2bc84173408de816cb87e6c675389b4a723d933792e6144c4cd7b5",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 18,
+      "production_literals_sha256": "f2592f803f9ce5771db4dc4a0106067e372a5df67fa872db46923c3210d8c4ff",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/cmg.rs",
+      "allocation_site_count": 40,
+      "allocation_sites_sha256": "8b990592562f097434bebbd05efcda8dccaf547c97dfdc478a6539d52e96def6",
+      "scale_hint_counts": {
+        "fe_level": 2,
+        "model_or_fixed": 37,
+        "observation": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 20780,
+      "production_tokens_sha256": "f4f75090965385ade917cb51fb8a970c7126885a80d9fca0beb5f5ba4d9eb4dc",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 153,
+      "production_literals_sha256": "f4162f13beaef612ad9b72715e7dd3f90b5f49435de58dcf975f6b33f2ccbf8e",
+      "module_binding_count": 1,
+      "module_bindings_sha256": "56cd6e9675e2370ad237ca6da51fc584993dcf17954699849178cd62b3d0c18f"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/cmg_admission.rs",
+      "allocation_site_count": 2,
+      "allocation_sites_sha256": "19ae8b567126f0b70a35c9bf5deda5f5a7e312847355f85e3d043b318fcc2ea0",
+      "scale_hint_counts": {
+        "model_or_fixed": 2
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 858,
+      "production_tokens_sha256": "7b1af3d447e81cd25399984a28e8536cce0b0bafe49fc0c57dc2c0eb9e4e8e8f",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 5,
+      "production_literals_sha256": "5d04c02cb196754569d3de1de67e1b91fe3705659e83ef65d256212e5f59aaf0",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/cmg_container_memory.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 798,
+      "production_tokens_sha256": "6fd971fd9ca83531c08f4e719396bb1081497bf993a23e2bc2b2ba76b9a307b7",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 2,
+      "production_literals_sha256": "6fb0d11fadfbf506cee555f6c611abaa1f988f3c1e6be1fb433f5a5f12e3e12c",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/components.rs",
+      "allocation_site_count": 22,
+      "allocation_sites_sha256": "43b42aacbbb83f448b8f7f0ee4a40a82475b6eb34548ce4efe2c5a22635de97c",
+      "scale_hint_counts": {
+        "model_or_fixed": 22
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1855,
+      "production_tokens_sha256": "b9b7c6329b22f7b1a4971cf963feade5a7934ed2f0193d3ba8dc1aa11e555db9",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 21,
+      "production_literals_sha256": "d3d9a7a921589dcf40a80dd2ccea93bed63ca83a851a353026425a325c953cee",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/design.rs",
+      "allocation_site_count": 13,
+      "allocation_sites_sha256": "592f31082d892cd4aa4737ed7c1d8447bd84456a657d5dc6e2254b68545c7add",
+      "scale_hint_counts": {
+        "fe_level": 3,
+        "model_or_fixed": 10
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2993,
+      "production_tokens_sha256": "cc47d622c5f3178c73d274095426bdde7f5fd35c2ac9ac91e8b3ee956de42692",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 29,
+      "production_literals_sha256": "44760a7a7d36db37af24b4f919a0dd04e0c4bb04a295e715ba33f16f6e998026",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/interaction.rs",
+      "allocation_site_count": 19,
+      "allocation_sites_sha256": "be2a12b414cae795ac440e97d2b7bf19afbb1e9128700edf7410af3a92b6dd0f",
+      "scale_hint_counts": {
+        "model_or_fixed": 17,
+        "observation": 2
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1715,
+      "production_tokens_sha256": "180e9c7a27e7e8bbd9a03cf698d0beed09233a8d286e8ff6fc14c9e5da63e211",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 18,
+      "production_literals_sha256": "1889c4f682ba06db78750475ab51639ba06d70447f128c4016f79f777e88a06b",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/lsmr.rs",
+      "allocation_site_count": 16,
+      "allocation_sites_sha256": "f05e4b6a87f661abc05738765aa3a38b9c5b42ea3c559441c7742ce3a960c149",
+      "scale_hint_counts": {
+        "model_or_fixed": 16
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1734,
+      "production_tokens_sha256": "67e1d7a5eaf7f5cc196eec9f8a81e18ba73065d35673ae6dc1f8a44af9437f14",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 22,
+      "production_literals_sha256": "9f05fd34ec93d856cc2e4d6a89c446c31375cb7d8df14079d970bba84262ac25",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/lsmr_batch.rs",
+      "allocation_site_count": 10,
+      "allocation_sites_sha256": "9d272feaa7c658f103aa2c2b3d18d68e7c3a13bb81f8cdeaf9a9c96a8a476403",
+      "scale_hint_counts": {
+        "model_or_fixed": 10
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 942,
+      "production_tokens_sha256": "b3c828eca46005308367459348f25d5be65ff682c7dcaff7be723dd355a79687",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 5,
+      "production_literals_sha256": "9bd3459d2af79b76eeff89bcf137847c32efeb39602e2b31a332f39050947ef5",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/map.rs",
+      "allocation_site_count": 7,
+      "allocation_sites_sha256": "da6976bbbaaee36c4513b7cbd487936a02a8a569afa115446500c2bd635b90f9",
+      "scale_hint_counts": {
+        "model_or_fixed": 7
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 4948,
+      "production_tokens_sha256": "e8017e6bfab97d51f852a2652813bffd9c2379a2272665b1455e36dabfe2e083",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 23,
+      "production_literals_sha256": "9b4e0aee77a616a2359f59bf948fc52a4b96b840e41c15b3ed708c3a46871f57",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/mod.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 557,
+      "production_tokens_sha256": "beeab5c8e03385f7dc88613b9441d1ccec2fb5362843e64f2ca3c0037eb78301",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 0,
+      "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/partition.rs",
+      "allocation_site_count": 12,
+      "allocation_sites_sha256": "8adf3fb8f8d9add6b21879d70777e9d1f02b4d9c86af127610349cbcfca557b7",
+      "scale_hint_counts": {
+        "model_or_fixed": 12
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1543,
+      "production_tokens_sha256": "1dad0dc3179237a1f0d668026a8524454659f6eeb11e0622db69285d3b89bc26",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 25,
+      "production_literals_sha256": "a1059096bfd7d064bb3f9a19a77e326885aaa96197166c2dfd9165e18275e401",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/partition_registry.rs",
+      "allocation_site_count": 7,
+      "allocation_sites_sha256": "4ea7817a81e9a01a8e693573cdd781b74811265f7f24582a0b199375b4415322",
+      "scale_hint_counts": {
+        "model_or_fixed": 7
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 795,
+      "production_tokens_sha256": "58fe02ad682225acf6ea843c769fe4e21f40f642bc4088f64f99eb084d4f32d1",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 8,
+      "production_literals_sha256": "f91164a7d4418d7dfbb462f54769854ac27929a412b412694a411fdd7c40ead7",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/partition_singleton.rs",
+      "allocation_site_count": 10,
+      "allocation_sites_sha256": "3fe7d73ce1157d2fc26bd48f02b4f1f5a582886eb54c61027350a9704ddf3360",
+      "scale_hint_counts": {
+        "model_or_fixed": 10
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 813,
+      "production_tokens_sha256": "58a603a15979a4946cc0730d0dfab042e0c8832ff8ff3249596506de87d82715",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 7,
+      "production_literals_sha256": "c97cda7aacf582d683dec2fc225e6a5f42097c63edcf0fc581df3c9ba828df25",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/partition_validation.rs",
+      "allocation_site_count": 5,
+      "allocation_sites_sha256": "38cf1fc23c6c565f3e81d378df17b69cd76729210cef7599ff2ce74c2128bf56",
+      "scale_hint_counts": {
+        "model_or_fixed": 5
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 539,
+      "production_tokens_sha256": "c920124efd1f6a307ba7e2889e97f685d6b8ce9cb08ce15d32deedfaecedbb6c",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 5,
+      "production_literals_sha256": "bf0148ce10cfe00c33678549c602bda98dca6a596bed1dd36a8478b6e4d33d57",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/projection.rs",
+      "allocation_site_count": 3,
+      "allocation_sites_sha256": "d3bce55e387980d27c20da9e9eefe860afab67b80d028d3334dd4092eb15868f",
+      "scale_hint_counts": {
+        "model_or_fixed": 3
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 756,
+      "production_tokens_sha256": "27585bd474b0afbec14fbdebf8385d349d68f29533a02bb128051395a972cfdf",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 6,
+      "production_literals_sha256": "83b2305c398f8fd5b0162e9ee11835a750cbe07d772a15e5654e4b2aab81dbf9",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/report.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 251,
+      "production_tokens_sha256": "ffeeaa5d7e80f774dd6163a8c966408107d253d1f3b9a7c4983021b0cd502b96",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 0,
+      "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/singleton.rs",
+      "allocation_site_count": 19,
+      "allocation_sites_sha256": "01569522e6726855e9ae58a73e947b10057ce8fd775951d33548e763715799fa",
+      "scale_hint_counts": {
+        "model_or_fixed": 18,
+        "observation": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2229,
+      "production_tokens_sha256": "6d1c4024405a27f21a2dd918063d9f23b89fd0727dca6a7c9e047176607abb3e",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 29,
+      "production_literals_sha256": "22409d7dc36eee15ac1ba3944cf85de9d22b2056c77013ef845634260c30db08",
+      "module_binding_count": 1,
+      "module_bindings_sha256": "052e862e81f90fc16231b24d2ff08d36c67206030d37ae180bf5ec35be62a658"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/singleton_index_tests.rs",
+      "allocation_site_count": 41,
+      "allocation_sites_sha256": "1b2e7ecc5f6a5eff211b2eb24a1f960ea069d749f78f0daf6aec49220c188cc8",
+      "scale_hint_counts": {
+        "fe_level": 2,
+        "model_or_fixed": 24,
+        "observation": 15
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2529,
+      "production_tokens_sha256": "4af791b0396dd1162d50e519b74933e43890d9dc8b6d3ddf27ea8d62262b4ab2",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 6,
+      "production_literals_sha256": "64545c7d375819e7ac49049605a7b2cd0641ae6d236efab3675d1a8c627f69b0",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/topology_adapter.rs",
+      "allocation_site_count": 7,
+      "allocation_sites_sha256": "91d9a711a1fb473c4d9d3a9886087afeb9bda08f9751e1ab41e2bd684f16d0e0",
+      "scale_hint_counts": {
+        "model_or_fixed": 7
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 565,
+      "production_tokens_sha256": "1af589e12929c47406c337d4c51fe9935f2fbe063435276801acdc40d407e3f7",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 6,
+      "production_literals_sha256": "04fbdf9813aab3be7bbbc93f3bde425d9f219cb0056f8c8844060a76de17665e",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/topology_finalize.rs",
+      "allocation_site_count": 30,
+      "allocation_sites_sha256": "d4b4e5a1a1790996b87b154c1b6daf7b5ac35c1c557ee3bade33f5aee79f53e0",
+      "scale_hint_counts": {
+        "model_or_fixed": 29,
+        "observation": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2720,
+      "production_tokens_sha256": "43b94e1eb19582046411c819e196255af261eeab7da90086feac098416c940c4",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 44,
+      "production_literals_sha256": "71b8a76554f1b831b6952d9b23ce2f949ae99758d325a3f4641e1cb636b26661",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/topology_map.rs",
+      "allocation_site_count": 23,
+      "allocation_sites_sha256": "993357a0e5022fd336ee40eaf18a56804f052b4a014624ef2ae021b8fbe64af7",
+      "scale_hint_counts": {
+        "model_or_fixed": 23
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1849,
+      "production_tokens_sha256": "8ea476f6f98dd9d6308a92b0e474597f5c6e0be357795d87f458d89157b7cb4c",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 19,
+      "production_literals_sha256": "f3af923e99a3406a6056c0049d46ef75f76f2001e9be1988ed701e218b15aa7d",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/topology_registry.rs",
+      "allocation_site_count": 7,
+      "allocation_sites_sha256": "4f852555bbe427fa35303b2455ee6e1369b6a96ae521f766466ac0c19ea6c4b4",
+      "scale_hint_counts": {
+        "model_or_fixed": 7
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 839,
+      "production_tokens_sha256": "823e4b30c767bfbe839c6877255b3f06bc1b5b2aae0a6e57fd76dd32738e5f3d",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 8,
+      "production_literals_sha256": "2658a8c499561438d5a19722102715b845683e9943f526420265ba05c6386bb6",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/topology_rhs.rs",
+      "allocation_site_count": 7,
+      "allocation_sites_sha256": "cb379177669fa2453bb3ea09fd7921926c2d2c39c62b32fbdd7f911ac92874c0",
+      "scale_hint_counts": {
+        "model_or_fixed": 6,
+        "observation": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1204,
+      "production_tokens_sha256": "89aae9ad01bd685c9eeadba6f36a629d61f5249916305520719a41e4f4bbf43d",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 15,
+      "production_literals_sha256": "10e9031c75f527d2c5a81e2d6c72c91dc2c5fe5fcca1f08f15bdd12fc0319b76",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/topology_slope_map.rs",
+      "allocation_site_count": 69,
+      "allocation_sites_sha256": "a70481be52d693bb2d993523e408ea86d8a5f04e71e029359a8455e07c57b850",
+      "scale_hint_counts": {
+        "model_or_fixed": 69
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 17122,
+      "production_tokens_sha256": "3a871ef1a3eabb60a3bb0adf84bb4f83e795f81f3fc94197cdeb3e0d3d062bdc",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 187,
+      "production_literals_sha256": "04ede5dff0bd0538fc658237e075523ada7ec741d3eb092321ac4c5db2ac5764",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/fe/topology_source.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 571,
+      "production_tokens_sha256": "7ca6fe3b13021021cb920ea3e11d5d816e8241529c74c3450ea8c2bb90dfb3d3",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 1,
+      "production_literals_sha256": "f3734790617679e527bb6ae274d642d849025004f28d6e04d5f4571280587af6",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/lib.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 798,
+      "production_tokens_sha256": "0939ced28aec2111fc881196e7a83f5fc284db6f63a0c5ae22e8593a3522d979",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 8,
+      "production_literals_sha256": "e7c6a164e846011c0cefb2290c648d1f7bc52c4d8c63a76bcc7e1a4decc0562f",
+      "module_binding_count": 7,
+      "module_bindings_sha256": "ffe2ac90bfac7e8d3594485eaa774739152219a460b78cd616ac48be9be9cc40"
+    },
+    {
+      "path": "crates/fereg-core/src/linalg/mod.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 15,
+      "production_tokens_sha256": "51b96d2055f639a35fb17073e1ecc77ef2b7e73207cdcb156b3a868abe8be9b5",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 0,
+      "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/linalg/solve.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 728,
+      "production_tokens_sha256": "e481f2f022761c134fba50e52f9f44583c9f7b971d51a1ac45dff28786115c15",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 2,
+      "production_literals_sha256": "965f005b635743dc9c3800dd70096333f553d35ff180fe7456d886e0b3f2ca5a",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/memory.rs",
+      "allocation_site_count": 4,
+      "allocation_sites_sha256": "00dfcd0de375531ad62847f3ebe9a3fa4d7d906feae6b7167808310e23807dc4",
+      "scale_hint_counts": {
+        "model_or_fixed": 4
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 3567,
+      "production_tokens_sha256": "f8a9c7e0c2126a09045e20ebc2f13af7e95148f90b8133fba6cad560d89939bb",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 86,
+      "production_literals_sha256": "bbfd24f38b05ec2da6de75655ddd319faae6e89efe57d303dc56383d7c4147d0",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/memory/categorical_schwarz.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 907,
+      "production_tokens_sha256": "a50d0d61c725dcbb1345461587c018de06c8d3daa9531e4f354c089565643f02",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 31,
+      "production_literals_sha256": "d973e8a415a340fcc5e597c676b7cb804fdafe879b305e59feef03381ba7bd13",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/memory/owned_fe.rs",
+      "allocation_site_count": 3,
+      "allocation_sites_sha256": "6e5499ce7aaf4a5ed5aefa8359bfa41e920e4919bfacf68c913872ea4dfde5eb",
+      "scale_hint_counts": {
+        "model_or_fixed": 3
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1630,
+      "production_tokens_sha256": "57c7c2404dbc4a72662e53585b5e82d65cc880fdbd645163fb229021e3986887",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 32,
+      "production_literals_sha256": "38e53906e14ea7d9be427b8bad314b3e26eed5337e2f656192c813332bb32cd0",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/memory/slope_recovery.rs",
+      "allocation_site_count": 3,
+      "allocation_sites_sha256": "c23e412ef9d4c26698a82ad61cd2af670fdbd9f677874a5dc658c61d99e7e7ed",
+      "scale_hint_counts": {
+        "fe_level": 1,
+        "model_or_fixed": 2
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 599,
+      "production_tokens_sha256": "3880ff171ddd846d0e3ba9a4d6a5f9ec1870672b67e513977404c0817891ae4d",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 8,
+      "production_literals_sha256": "9bafc77a536302c7ad113da867aaf9906a1afbd6d201341fec39f315d5e9491c",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/memory/workspace_peak.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 280,
+      "production_tokens_sha256": "7d08f1f7408d76a3edd39b477f1bdc0e095ed438f80ff290e982099334249c2d",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 2,
+      "production_literals_sha256": "8f7c7e174e1f80fd98197c12cd00d34ebe4d36748f1230bd7bd56c628daa4f51",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/metadata.rs",
+      "allocation_site_count": 98,
+      "allocation_sites_sha256": "c78b20f95dff60215a3b10f5cc24ee810f9ce896e45f64a4de6c546e653a58c0",
+      "scale_hint_counts": {
+        "model_or_fixed": 93,
+        "observation": 5
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 7019,
+      "production_tokens_sha256": "9c7fe156c38a207c0fcdb361694202219f4dec579a593b90fdde5726f64fe4a6",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 149,
+      "production_literals_sha256": "e557dd00ba74c657c647406cd01d94f0219de1236dbcacbefec584ecf37b4454",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/dof.rs",
+      "allocation_site_count": 5,
+      "allocation_sites_sha256": "863989f7977bffb673aed31a8f45a1f74357e1fd45652b65bb0e46b03029462a",
+      "scale_hint_counts": {
+        "model_or_fixed": 5
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 749,
+      "production_tokens_sha256": "1b7522ac9aa0d0472c4e2cb95a8987a9e32e7743eb504b6a7e29ccde4066f0e2",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 4,
+      "production_literals_sha256": "88ca4199aa0485a221969e2da284e90bb513a21cc49d6f254170afd530df02a0",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/finite_wls_kernel.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 11800,
+      "production_tokens_sha256": "8fad19af74ed5b6a8217cb3e0b9acb6ae2e0adac08b2e4947624d43ed5106561",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 70,
+      "production_literals_sha256": "f3e2d0a85ad6228d4ae1a9ae2a6e59a18ed728b8f18ce0627863081e1bf54bf1",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/fit.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 536,
+      "production_tokens_sha256": "7e44d9e6d031b8ade85ba54f259151d920d060f977df1c4abad8581746b4a043",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 0,
+      "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/linear_session.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "boundary_only",
+      "production_token_count": 0,
+      "production_tokens_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "structure_inventory": "boundary_only",
+      "fereg_shared_regions": [
+        {
+          "name": "phase_allocation_guard",
+          "allocation_site_count": 0,
+          "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "scale_hint_counts": {},
+          "production_token_count": 381,
+          "production_tokens_sha256": "01fb92898ef07fba87c31f83dc5b9c9d6f680faa496827cb7504275038cc0656",
+          "production_literal_count": 0,
+          "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      ],
+      "production_literal_count": 0,
+      "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "module_binding_count": 1,
+      "module_bindings_sha256": "595365297007e9f843a5dff93e75d5cb805982dee4329e44f1dbbac224cd473c"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/mod.rs",
+      "allocation_site_count": 20,
+      "allocation_sites_sha256": "3fd9be95907ad4f7cd84209e6958e6c30ade339abdd6c52845884410ee716f7c",
+      "scale_hint_counts": {
+        "model_or_fixed": 20
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2267,
+      "production_tokens_sha256": "2adcedf660c40f9755713db1700221866b234f095c17bd071aab0c6566889b7c",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 7,
+      "production_literals_sha256": "1b72ad0121396d38bb0ff6ee95f4958e9d4d49d5abe80bc9ffa68e8f88105586",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared.rs",
+      "allocation_site_count": 98,
+      "allocation_sites_sha256": "e8a442fa8f463964ac32ccebf9e0b73fd5bc9c0d89d68e5f6a98632591018f6e",
+      "scale_hint_counts": {
+        "cluster": 13,
+        "model_or_fixed": 40,
+        "observation": 41,
+        "observation_by_column": 4
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 10937,
+      "production_tokens_sha256": "4c3db4f631573af74161c7f6ccc90e1e31e4faa7c8beca83c1e573137ae74e30",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 118,
+      "production_literals_sha256": "c17339c629b2c4909e8e41a4701d838f757c73783a965082dd35f0709c7b8c04",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_categorical_clusters.rs",
+      "allocation_site_count": 19,
+      "allocation_sites_sha256": "b77706396771d934ccdd4a2c9b8c03caeb25c66054231273411b532bed1ac95e",
+      "scale_hint_counts": {
+        "cluster": 5,
+        "model_or_fixed": 14
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2181,
+      "production_tokens_sha256": "6013e4c306dc0b94c883bb91ac7c4c4b2afcc183769bd0210c38b1c124c4f1a4",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 28,
+      "production_literals_sha256": "560eb7adaef0df40a6cf99c607167d8338aff04dd15274e68612964aebb7625d",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_categorical_data.rs",
+      "allocation_site_count": 55,
+      "allocation_sites_sha256": "7e21209341b3d2ca76edb9d506be6acca4fb9519a4d869907069d4efd2a962db",
+      "scale_hint_counts": {
+        "model_or_fixed": 55
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 9086,
+      "production_tokens_sha256": "ce9a2619978e8b12d174d0b7bbd64fcb9a46dc647ba2eb9c9ef5527bfb092a25",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 97,
+      "production_literals_sha256": "a69066305be4279b1f288f76c0ec1ca256deaac24b0135472057f868928bf64f",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_categorical_effect.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 441,
+      "production_tokens_sha256": "f5071fc86d4378da427529756b46b829550429c97c1ba98782b139dc96630c53",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 6,
+      "production_literals_sha256": "b64ca189a55d9e1f42eb999dfee1c906085ed18fbfbafa76c03621579324ac29",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_categorical_rebase.rs",
+      "allocation_site_count": 19,
+      "allocation_sites_sha256": "41b8ec9299c0073da83b1684c8186eee6d443429e9fc12994a42aff229ac585a",
+      "scale_hint_counts": {
+        "model_or_fixed": 19
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2153,
+      "production_tokens_sha256": "ef3535974f968c1e68c93fceb36e65ddcfae54cb45c84b388229e098a37785b1",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 24,
+      "production_literals_sha256": "4bf315e53bd9ab547266ca0c994f045d2f54f8a82ddfa47a8f504654f0eff4c5",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_categorical_request.rs",
+      "allocation_site_count": 33,
+      "allocation_sites_sha256": "d08017e845347c765a1edae3f2ac54e1e74de4d4f60daeeb8d817d3bd33a5f46",
+      "scale_hint_counts": {
+        "model_or_fixed": 33
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2798,
+      "production_tokens_sha256": "233c4e3bb92afae8eae067ad9e463de1f10698c8815abe8e72a95bd48b555f99",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 50,
+      "production_literals_sha256": "727ce6323c2323ee02497410befa151aec3919900c0aae88e0366f8728943067",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_categorical_singleton.rs",
+      "allocation_site_count": 3,
+      "allocation_sites_sha256": "1b7d405f288139f661db664fb92b0321924fdc84996b9a07870beb14bd29e328",
+      "scale_hint_counts": {
+        "model_or_fixed": 3
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 263,
+      "production_tokens_sha256": "49ca4539d86dec6099873c037c0748eb18e1874acbdddb87b8134eb83fe39f8d",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 2,
+      "production_literals_sha256": "db9dbb152ea5328c40b3f4fbf0a8010ffec751d67eb2b5f88c1fd8a4cde7fee8",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_categorical_topology.rs",
+      "allocation_site_count": 14,
+      "allocation_sites_sha256": "17bf308cc050852ac2ef087acbb13d90f03b02841faae28681ea47d46e74a309",
+      "scale_hint_counts": {
+        "model_or_fixed": 14
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1496,
+      "production_tokens_sha256": "85dc9b064b74edfb0587d0b8c1037c172c228d301abfb9e362f18266d7af6fab",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 15,
+      "production_literals_sha256": "eae55c9556e977d1a71872d545afa257fae59f07cb9d501cec822b5355cf50bf",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_clustered.rs",
+      "allocation_site_count": 30,
+      "allocation_sites_sha256": "c2971e8da1049e2e2f3f73ada8f3e261e1850dd45909b20b587ebf003dda470a",
+      "scale_hint_counts": {
+        "cluster": 2,
+        "fe_level": 1,
+        "model_or_fixed": 27
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 12475,
+      "production_tokens_sha256": "c597a82f53f9c82e4d423bef9ebf3b7dee9aa702b4e91e65e9be4ad6838e7d18",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 95,
+      "production_literals_sha256": "d35976fe0138371788e02a93bad80e4ca45d65d6598f22bb3ebf2d0d53dddce8",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_clustered_view.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 234,
+      "production_tokens_sha256": "fe863d4e96ebcee6c677652dd031267bd1778931dcf76327f8548e2c407f8eda",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 0,
+      "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_clusters.rs",
+      "allocation_site_count": 25,
+      "allocation_sites_sha256": "1fe5befcca9695b6138fc0a3d24d9af487c6538c2756f4909281d83c66aa9be2",
+      "scale_hint_counts": {
+        "cluster": 9,
+        "model_or_fixed": 15,
+        "observation": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2970,
+      "production_tokens_sha256": "aa45ba817619492fe0cc655e5cb88d5abba5613db7a8d45645dc23e3f9cc09cc",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 33,
+      "production_literals_sha256": "6e3fb2bc0d4126684ea566d749443dfe4dfd6853b8f2309ec143448977dc40f2",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_dof.rs",
+      "allocation_site_count": 23,
+      "allocation_sites_sha256": "83e2fddda766e76329e019423a79c02b20eb0b3e8d944c1184c27a00555a6416",
+      "scale_hint_counts": {
+        "cluster": 1,
+        "model_or_fixed": 20,
+        "observation": 2
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 3882,
+      "production_tokens_sha256": "a5852b721c4817ccf69da45d77bc4e955b55084aa641c3d8f6300301fd47c627",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 70,
+      "production_literals_sha256": "3ad36e5cad245ef2408c945892b47184c5f05ab9e09e204c2f59c0931f08ac30",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+      "allocation_site_count": 148,
+      "allocation_sites_sha256": "adaa4c6a1cdfe47a0832371f0aa2543ffdaca44df4e9e381130d4a0d2b120ae4",
+      "scale_hint_counts": {
+        "model_or_fixed": 144,
+        "observation": 4
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 36229,
+      "production_tokens_sha256": "bfe378db04ad71b7f926aac81c862321c1c4cc808d0198c4c7bbe9931fefff9d",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 368,
+      "production_literals_sha256": "ac10a4c82c712123df41d5fedcd6c885f3accf2d79d9191be3a5fca2d75ff973",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_fit_view.rs",
+      "allocation_site_count": 28,
+      "allocation_sites_sha256": "725739bcf11e01d2817462f7a97a1652ec58c5cc58712a958b4a2e83640d9463",
+      "scale_hint_counts": {
+        "model_or_fixed": 27,
+        "observation": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 6906,
+      "production_tokens_sha256": "a9b20d45b7853b9922f48246aa93c453c03989fba3320c709dc654bd1694ae27",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 46,
+      "production_literals_sha256": "317250bc07d7d5f81b7eca42b16a29f2d76169782085945bb4bd30c7767d1be0",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_inference_view.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 2597,
+      "production_tokens_sha256": "759d89f39e33cdf6d14f1f5211573954897e41fcc8754e31b271e5e576354beb",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 36,
+      "production_literals_sha256": "45c329363f1fdda8aa2df0d2c8acadbe1ba0d5e5710c435bf0d20d3f9fbd2453",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_rhs.rs",
+      "allocation_site_count": 3,
+      "allocation_sites_sha256": "f7ec8cf64b97a0fe52e81b4d7dad7f24b2753940ea533ab4f884e68c4d6a9903",
+      "scale_hint_counts": {
+        "model_or_fixed": 3
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 4136,
+      "production_tokens_sha256": "24fa1772a5026dd6a655b0ad50ee6c0a21c3a7b8f80ace5464f19dbf710c21f7",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 45,
+      "production_literals_sha256": "88aedd1ad1bebe119f81aa89ecc5d9b06d243bf538f878852ffb4ce3984ad746",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+      "allocation_site_count": 16,
+      "allocation_sites_sha256": "1ca5c963ff178d41e5728e67153c60073eb9a60b5d5ca2e6a3afbd9b4f5d33d5",
+      "scale_hint_counts": {
+        "model_or_fixed": 16
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 8506,
+      "production_tokens_sha256": "07e63fb7a311f3e95d5bd6372e114c5d0d0d0baed5b5162056282b1c7ce1e61f",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 67,
+      "production_literals_sha256": "fa8e6985ec0f7ef1d8992e35e2851698d648e6e4365e2968ed9dca7bb49ec435",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_scores.rs",
+      "allocation_site_count": 27,
+      "allocation_sites_sha256": "764b8368de53964274b3a8ec9fd157439f5fa0c8d847e7e93b41bfafcb1eea30",
+      "scale_hint_counts": {
+        "model_or_fixed": 27
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 7981,
+      "production_tokens_sha256": "1d68beeda28596a5d47ab33de8bb87c24035d982e099f01ddc544796bc72ce4c",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 76,
+      "production_literals_sha256": "6be49729c806ba367491a46bcba36fb0041359d4ea5c3255c2406406fea9733a",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_scratch.rs",
+      "allocation_site_count": 5,
+      "allocation_sites_sha256": "4619124d862f0b260647741b69347eb1d9b17a8f2190d1e6ebced19309edd3a7",
+      "scale_hint_counts": {
+        "model_or_fixed": 5
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 4727,
+      "production_tokens_sha256": "1bf580b2691dcde147f6c4d5094cc028a3d15856998dc3e9dbf0cfdb2f8b6b26",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 73,
+      "production_literals_sha256": "b0cc53388b8f812c97adc78c3e33cb841f426ebce77356ee151a947772320a3d",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+      "allocation_site_count": 10,
+      "allocation_sites_sha256": "172d1a43f282ce907d26f609b8a1934a3f8f5a97a9185de4eaee4d59911cb5b1",
+      "scale_hint_counts": {
+        "model_or_fixed": 10
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 9813,
+      "production_tokens_sha256": "2ae9d35a2572ef64b18e5e21046bc1388dc5f868173119b25b4085269ee3f46f",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 101,
+      "production_literals_sha256": "f5516afab5c2731c367823db23539094d9b397dd43d5216b4d095cdb05bbbbf3",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/rank.rs",
+      "allocation_site_count": 31,
+      "allocation_sites_sha256": "6704538471bf60109cf14abd1745f316421a8168e70c739161a4a6b296e3a66e",
+      "scale_hint_counts": {
+        "model_or_fixed": 31
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 3550,
+      "production_tokens_sha256": "e7fa2b3c35c2f150c7b0ea99b0f961b9f4a86fe81df20d0bc120a96aac1196de",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 6,
+      "production_literals_sha256": "4068c484a29e637cd8e006a481bfaa011b888a37134f388d30ccb759f4e3e718",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/topology_dof.rs",
+      "allocation_site_count": 28,
+      "allocation_sites_sha256": "d19692c66f8ba5d6a785e1fe0efa91824cd0b575d814ab2e9b13c144c8cc844a",
+      "scale_hint_counts": {
+        "cluster": 1,
+        "fe_level": 2,
+        "model_or_fixed": 22,
+        "observation": 3
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 4564,
+      "production_tokens_sha256": "ad16ae5cb8e300a55d0e4f2f50f157a28245b43b7778f2ff353aace737b49f96",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 71,
+      "production_literals_sha256": "803f0caf28c8fb2e1b67b904b4fc7c64578946cf55c91c30deec1e03d66e702d",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/vce.rs",
+      "allocation_site_count": 19,
+      "allocation_sites_sha256": "46a5ad2259971fd74df38c81417ccef50d7a28f65d18a0dbb531dd0807fff92e",
+      "scale_hint_counts": {
+        "fe_level": 2,
+        "model_or_fixed": 17
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1958,
+      "production_tokens_sha256": "60352a380b525464f38a25857c0b7a46c6ff727883e99929615f9824cd4a5b8e",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 6,
+      "production_literals_sha256": "e77ea0729e6a1d6523ab409d55f0a28db35e2f4c7168526b0808eba8803ed010",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/options.rs",
+      "allocation_site_count": 1,
+      "allocation_sites_sha256": "b726796c4f9c64669d766a968661fb52bcbfc7804822bcb44615150526a36f8e",
+      "scale_hint_counts": {
+        "model_or_fixed": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 313,
+      "production_tokens_sha256": "efdb0c60c373c2124ea6593c25d11f776976399218922f82fcc686d914c19b41",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 5,
+      "production_literals_sha256": "5a9e9f1e521b18d097711b6f469c719d7d2571108574ee6faf9f1f529eaea409",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/parallel.rs",
+      "allocation_site_count": 9,
+      "allocation_sites_sha256": "531bef40c2971aa75e812692919ef11305ca6c7150a4912d0505bf052494e909",
+      "scale_hint_counts": {
+        "model_or_fixed": 9
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1395,
+      "production_tokens_sha256": "e3e515074718aaab0aa0ce9f76e0a372308c54806e7e142bc9b64160462b6bf8",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 6,
+      "production_literals_sha256": "b57b8ddb15266dbd29690607ea1ce4929097ccf41b3697def9928233d2275557",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/protocol.rs",
+      "allocation_site_count": 14,
+      "allocation_sites_sha256": "b648de595b2d7d8243b1064436a0b092752aadcd68ff30f25a72443161bcb03a",
+      "scale_hint_counts": {
+        "model_or_fixed": 14
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2684,
+      "production_tokens_sha256": "5ca7851372c48bd942e87e047e8723f306782c9aa4e5ed530d4b204d3fe91bf1",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 27,
+      "production_literals_sha256": "164502881762a68c8386105fb5ae51e267027fa03d3e7689d66605fdcd9044e1",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/sandwich.rs",
+      "allocation_site_count": 47,
+      "allocation_sites_sha256": "6100616af32052acba6486ac6344b234302bc29d4a078b466f8eadae8876347b",
+      "scale_hint_counts": {
+        "cluster": 10,
+        "fe_level": 1,
+        "model_or_fixed": 35,
+        "observation": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 7058,
+      "production_tokens_sha256": "778423fb752b44de6ce1d2f81e2e1e2728281542915e5c8dc3aed41668e3b3bf",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 98,
+      "production_literals_sha256": "7a041d92d84585b42834c44916bc411958fd61b83b1dc75df4a8adfea63dbaf6",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/sandwich/qualified_cluster.rs",
+      "allocation_site_count": 44,
+      "allocation_sites_sha256": "ce2b9648f5766d382ade2fc4eb179e24224beb06afee1230f99c788110e0c4b4",
+      "scale_hint_counts": {
+        "cluster": 7,
+        "fe_level": 10,
+        "model_or_fixed": 25,
+        "observation": 2
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 7182,
+      "production_tokens_sha256": "1672a56523a8e5c479e12567cb96b4acfed60253df34ec4819e4238a441317f4",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 91,
+      "production_literals_sha256": "f45be16a07378afcb7f52210494eac6b3659f578202068449a7c12e8ed4c3963",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/action_memory.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 1487,
+      "production_tokens_sha256": "814fc13589e2a18b9b45716fb9564692a359784b21667f2ad0d88d1cf5e359fd",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 16,
+      "production_literals_sha256": "bf21dd98a8ead90dc311e7ef09fbd08ec0505f02cd91f6fcd43231afa80a11df",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/dispatch.rs",
+      "allocation_site_count": 6,
+      "allocation_sites_sha256": "8684a7adad7d254355207e8b9461616f042a9dd6d051e0269d717274033ab2bf",
+      "scale_hint_counts": {
+        "model_or_fixed": 6
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 914,
+      "production_tokens_sha256": "2d35597ba923f375a33397919042638fd4e92f8d272a4fb2329bd9860897b196",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 33,
+      "production_literals_sha256": "bd165162e14b64e80f0f1d9264f34789974ac35606bc8dd2e0ddb33b43a2a906",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/estimate.rs",
+      "allocation_site_count": 148,
+      "allocation_sites_sha256": "b797cf1e71fe38959189e84c8ce85ff2391a59ad99322cf74cde0c1bae7da3c4",
+      "scale_hint_counts": {
+        "cluster": 6,
+        "model_or_fixed": 127,
+        "observation": 11,
+        "observation_by_column": 4
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 22562,
+      "production_tokens_sha256": "98dafd96ec54344eaceb2d3f6bcc746f10983a7fac963a5341039d6665c30142",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 430,
+      "production_literals_sha256": "304957152406537e10533c3c5e66437535debefe04e709df10aa584af3e6b6c7",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/ffi.rs",
+      "allocation_site_count": 32,
+      "allocation_sites_sha256": "faf38f836c223f9d1c2139c775dd6022d55e0c861d2e6a4049f225b4913e1c17",
+      "scale_hint_counts": {
+        "model_or_fixed": 32
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 7237,
+      "production_tokens_sha256": "70324b6c177106381c6c856c2d27dd62b72f702216cc1dc8a63b1d6c7c648d42",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 90,
+      "production_literals_sha256": "7f84f8b644c8fa17baae95a989fb9ae2f34b366be9e4af5d4285928544acd446",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/input.rs",
+      "allocation_site_count": 65,
+      "allocation_sites_sha256": "adfd023cc20fe078cf16140711524ffc1ee2495ca007e91b763601c49e1c7062",
+      "scale_hint_counts": {
+        "model_or_fixed": 54,
+        "observation": 6,
+        "observation_by_column": 5
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 6017,
+      "production_tokens_sha256": "3098b871e1afafec24472ba6509d4b095f2b6dc932292231f7522389a405632e",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 163,
+      "production_literals_sha256": "789a25a05c97216e9d5322c207663abe24b4ec242a09ae759e9fecacd8ed6f82",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/input_memory.rs",
+      "allocation_site_count": 10,
+      "allocation_sites_sha256": "65079d0d90a1c3665fcc12a824ee400b6f7edf659dffb179156220f748033523",
+      "scale_hint_counts": {
+        "model_or_fixed": 10
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 1677,
+      "production_tokens_sha256": "218bfe9e21cda64b2b7e4a386985295965e44c6dc844c774b3e8bc934f26d220",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 11,
+      "production_literals_sha256": "61b2d210a5884e740cf69a7fb1dbb284e58bc34c477dae5254da7dcd8a15cde3",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/instrumentation.rs",
+      "allocation_site_count": 5,
+      "allocation_sites_sha256": "f92eacf3c884ee0ae0ab6be0c2d63a2b1aaed676948612af958a4f95a7c6a6cf",
+      "scale_hint_counts": {
+        "model_or_fixed": 4,
+        "observation": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 2182,
+      "production_tokens_sha256": "78ef9e400c9893419d03c06473869e0fec1c595844df4677eb49610ea04d7cba",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 76,
+      "production_literals_sha256": "2b42249a3c74e222b7fd467152bd1900963d8f64920d27fe95b3cfbafad17bb3",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/lib.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 135,
+      "production_tokens_sha256": "4e5fc32a1bc7d842e2b7c9f268bd43f4595d085691dbff3a9fce2ff188af4a64",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 3,
+      "production_literals_sha256": "8c0f45cb5d9d70eb41921e218fd327ba59796c42d7fbd569bb3b0191dba824b6",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/metadata_memory.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 962,
+      "production_tokens_sha256": "7b1d9ea7d3e85f97f5faafb8e7e16850c692b374843c2b52571ad7c46a38244b",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 2,
+      "production_literals_sha256": "aaf66e3b37f3096217e22002bac824b21c495e089b564dc7ead09f012f20a6e5",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/ols_frame_memory.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 907,
+      "production_tokens_sha256": "1b12358a2279eb35d255680ddf01e43218094a64d3b7e3d8460a8f43fb9a2f75",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 2,
+      "production_literals_sha256": "92d5a58eae4d24ca715436b1050bc70416c98d70f531bd595011e45fd89382f2",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/ols_preparation_memory.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 1485,
+      "production_tokens_sha256": "1c847748a022a2ca61b56c0906a2a7717f61a17c738d5bb4a0f4ed86624854c5",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 5,
+      "production_literals_sha256": "74960ad7f6a827373b12b2d35442afd189a73728d7de699be7cf37608ac378c6",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/ols_publication_memory.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 1085,
+      "production_tokens_sha256": "0e8400c3843d9e3a6befd383de7216019234842f67b9c76532289c4a2f7024d9",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 2,
+      "production_literals_sha256": "3ff9dbebf2772437d70dd54a9ace123f709857d4904d6273d58f3af3ab939de6",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/output.rs",
+      "allocation_site_count": 2,
+      "allocation_sites_sha256": "c3f51c7df98a49150df961eccb882ac48166421d332366a23cd0770bbde723cc",
+      "scale_hint_counts": {
+        "model_or_fixed": 2
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 198,
+      "production_tokens_sha256": "1499aa7d19aaed2071dac30beba5dc3555598684ae58456b3cd9fbafcb38e142",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 4,
+      "production_literals_sha256": "f4104885928d1ef2203c74b467d52529093f03a14074f666bd821b4c6667573b",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/ppml_estimate.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "boundary_only",
+      "production_token_count": 0,
+      "production_tokens_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "structure_inventory": "boundary_only",
+      "fereg_shared_regions": [],
+      "production_literal_count": 0,
+      "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/ppml_result.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "boundary_only",
+      "production_token_count": 0,
+      "production_tokens_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "structure_inventory": "boundary_only",
+      "fereg_shared_regions": [],
+      "production_literal_count": 0,
+      "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/result.rs",
+      "allocation_site_count": 31,
+      "allocation_sites_sha256": "64f3682bd5a4d4e91f91b72781a39edc1d8d5fae5352b6b3c9443bd3eb387155",
+      "scale_hint_counts": {
+        "cluster": 2,
+        "model_or_fixed": 28,
+        "observation": 1
+      },
+      "allocation_inventory": "guarded",
+      "production_token_count": 7790,
+      "production_tokens_sha256": "d14decf42a269940e9f587d938b50612d5d81700cf7b865bd68c3358301c6426",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 93,
+      "production_literals_sha256": "bdc8b73b0adab5833574c3500b95fb0e8b05d17579ab7c3967deacb25d7c6fa0",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-plugin/src/result_view.rs",
+      "allocation_site_count": 0,
+      "allocation_sites_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "scale_hint_counts": {},
+      "allocation_inventory": "guarded",
+      "production_token_count": 711,
+      "production_tokens_sha256": "630e69a0c98af03d1c4e8bdfc0741abab5225958aa51218139a67caae632688c",
+      "structure_inventory": "guarded",
+      "fereg_shared_regions": [],
+      "production_literal_count": 0,
+      "production_literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "module_binding_count": 0,
+      "module_bindings_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  ],
+  "boundaries": [
+    {
+      "path": "crates/fereg-plugin/src/ffi.rs",
+      "function": "fereg_dispatch",
+      "token_count": 457,
+      "body_tokens_sha256": "9ce781df7ba27ff4ef95b68528830e1f88d3589713a21dcd4e49721aded8412c",
+      "literal_count": 1,
+      "literals_sha256": "fc94d9bf92b68eb71b8d472c3199a784ea95abf0886c68a3ce8004a9f258984a"
+    },
+    {
+      "path": "crates/fereg-plugin/src/estimate.rs",
+      "function": "estimate_ols_test",
+      "token_count": 1798,
+      "body_tokens_sha256": "c7c805580e24c703d70617b966c6168a1d7d0e540395c82652c473964a76a8bf",
+      "literal_count": 4,
+      "literals_sha256": "9ef282b93c2c9d59dfb279cc8de461a3114740a9041e9dbde36305e22c351e9e"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+      "function": "fit_prepared_ols_unadjusted_map",
+      "token_count": 69,
+      "body_tokens_sha256": "99f6c5a29eec027d043f813cae0b1bb6764d6b2eb254ed56f060d04f2d3f0d8b",
+      "literal_count": 0,
+      "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+      "function": "fit_prepared_categorical_ols_unadjusted_map",
+      "token_count": 134,
+      "body_tokens_sha256": "e551e3b485cb929c0ece4ae876e9616ea50aa583113f7fcd88dd842825ebab95",
+      "literal_count": 0,
+      "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+      "function": "fit_prepared_ols_robust_map",
+      "token_count": 87,
+      "body_tokens_sha256": "8e72d5101457a0057b093ffe30f96cc2149020f8dfc5586dda9cc85842fae712",
+      "literal_count": 0,
+      "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+      "function": "fit_prepared_categorical_ols_robust_map",
+      "token_count": 152,
+      "body_tokens_sha256": "cf8a0058719d64704735547f435f886899a20467d7f3b5b1a1778e08bd7b73ef",
+      "literal_count": 0,
+      "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_clustered.rs",
+      "function": "fit_prepared_ols_clustered_map",
+      "token_count": 38,
+      "body_tokens_sha256": "06f222d6c7a9aca1605f45fceaf1b7c6895bf7b694e74abe05210de0a443c427",
+      "literal_count": 0,
+      "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_clustered.rs",
+      "function": "fit_prepared_categorical_ols_clustered_map",
+      "token_count": 103,
+      "body_tokens_sha256": "7352e1ed804f454de2a3271b36bffad62087c6153c527ec5069e081bed90b71e",
+      "literal_count": 0,
+      "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+      "function": "fit_prepared_ols_coefficients_map",
+      "token_count": 8,
+      "body_tokens_sha256": "2bb68a40720f9989f108aee3782755c315acc62a8f89ed6d5a68ea2dbaf64ebd",
+      "literal_count": 0,
+      "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+      "function": "fit_prepared_categorical_ols_coefficients_map",
+      "token_count": 8,
+      "body_tokens_sha256": "2bb68a40720f9989f108aee3782755c315acc62a8f89ed6d5a68ea2dbaf64ebd",
+      "literal_count": 0,
+      "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+      "function": "fit_prepared_ols_coefficients_view_map",
+      "token_count": 85,
+      "body_tokens_sha256": "787412f726e1f0dfc92e01511c2fc74408d19a6d705ed4fbc86cd5542f99051b",
+      "literal_count": 0,
+      "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+      "function": "fit_prepared_ols_coefficients_view_map_with_frame",
+      "token_count": 16,
+      "body_tokens_sha256": "76e69f69b255e3c077dc7033d29a2384a98e5b7761e607183e3285e833bb9b79",
+      "literal_count": 0,
+      "literals_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+      "function": "fit_prepared_weighted_linear_once",
+      "token_count": 145,
+      "body_tokens_sha256": "cc7a470a8c5a17d44986d5d2d8c8fa3e038583c94f561594c110987d7cae9894",
+      "literal_count": 1,
+      "literals_sha256": "e9c68ebe140ebca2b93cbc37103f214d779df2cabf220718222c76390fe7248c"
+    }
+  ]
+}

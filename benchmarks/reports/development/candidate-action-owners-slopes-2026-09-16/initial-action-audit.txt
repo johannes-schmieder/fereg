@@ -1,0 +1,8 @@
+action allocation source set changed
+action allocation source changed: crates/fereg-core/src/memory.rs
+action allocation source changed: crates/fereg-core/src/memory/owned_fe.rs
+action allocation source changed: crates/fereg-core/src/ols/prepared.rs
+action allocation source changed: crates/fereg-core/src/ols/prepared_categorical_data.rs
+action allocation source changed: crates/fereg-plugin/src/estimate.rs
+action allocation source changed: crates/fereg-plugin/src/ols_preparation_memory.rs
+action allocation inventory: FAIL

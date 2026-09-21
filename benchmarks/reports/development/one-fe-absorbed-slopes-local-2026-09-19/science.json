@@ -1,0 +1,161 @@
+{
+  "pairs": [
+    {
+      "run": "n245760-k10-t1-s1-fereg-auto-r0",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 1.3877787807814457e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 6.839791049078475e-20
+      }
+    },
+    {
+      "run": "n245760-k10-t1-s1-fereg-auto-r1",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 1.3877787807814457e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 6.839791049078475e-20
+      }
+    },
+    {
+      "run": "n245760-k10-t1-s1-fereg-auto-r2",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 1.3877787807814457e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 6.839791049078475e-20
+      }
+    },
+    {
+      "run": "n245760-k10-t16-s0-fereg-auto-r0",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 2.0816681711721685e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 4.468098796766434e-20
+      }
+    },
+    {
+      "run": "n245760-k10-t16-s1-fereg-auto-r0",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 1.3877787807814457e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 6.839791049078475e-20
+      }
+    },
+    {
+      "run": "n245760-k10-t16-s1-fereg-auto-r1",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 1.3877787807814457e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 6.839791049078475e-20
+      }
+    },
+    {
+      "run": "n245760-k10-t16-s1-fereg-auto-r2",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 1.3877787807814457e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 6.839791049078475e-20
+      }
+    },
+    {
+      "run": "n245760-k50-t1-s1-fereg-auto-r0",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 8.715250743307479e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 8.025637175234496e-20
+      }
+    },
+    {
+      "run": "n245760-k50-t1-s1-fereg-auto-r1",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 8.715250743307479e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 8.025637175234496e-20
+      }
+    },
+    {
+      "run": "n245760-k50-t1-s1-fereg-auto-r2",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 8.715250743307479e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 8.025637175234496e-20
+      }
+    },
+    {
+      "run": "n245760-k50-t16-s0-fereg-auto-r0",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 1.8110513089197866e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 6.37392292808861e-20
+      }
+    },
+    {
+      "run": "n245760-k50-t16-s1-fereg-auto-r0",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 8.715250743307479e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 8.025637175234496e-20
+      }
+    },
+    {
+      "run": "n245760-k50-t16-s1-fereg-auto-r1",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 8.715250743307479e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 8.025637175234496e-20
+      }
+    },
+    {
+      "run": "n245760-k50-t16-s1-fereg-auto-r2",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 8.715250743307479e-15,
+        "coefficients.csv:se": 1.0018028073766061e-16,
+        "covariance.csv:value": 8.025637175234496e-20
+      }
+    },
+    {
+      "run": "n360-k2-t1-s1-fereg-auto-r0",
+      "sample_exact": true,
+      "df_exact": true,
+      "max_abs": {
+        "coefficients.csv:value": 4.163336342344337e-16,
+        "coefficients.csv:se": 0.0,
+        "covariance.csv:value": 6.006480035569695e-17
+      }
+    }
+  ],
+  "oracle": {
+    "n": 360,
+    "rank": 146,
+    "df_residual": 214,
+    "rss": 66.10951856967431,
+    "status": "pass"
+  }
+}

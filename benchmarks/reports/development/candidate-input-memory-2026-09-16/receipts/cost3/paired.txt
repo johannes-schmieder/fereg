@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "$RUN/cost3/harness/run-screen.py", line 62, in <module>
+    receipt=measure(root,req['cell'],'feppml'if req['cell']['model']=='ppml'else'fereg','cold',data,data,out,manifest,source=sources[arm],solver=req['solver'],identity={'arm':arm,'source':fixed['baseline_source']if arm=='baseline'else ident['label'],'artifact_sha256':artifacts[arm],'reference_lock_sha256':ident['reference_lock_sha256'],'fixed_cases_sha256':bindings['fixed_manifest_sha256']})
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$RUN/cost3/harness/measure.py", line 125, in measure
+    raise ValueError("Stata imported values differ from canonical hashes")
+ValueError: Stata imported values differ from canonical hashes

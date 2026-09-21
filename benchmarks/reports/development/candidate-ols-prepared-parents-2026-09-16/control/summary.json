@@ -1,0 +1,43 @@
+{
+  "all_science_exact": true,
+  "comparison": {
+    "absolute_shift_exceeds_threshold": true,
+    "delta_seconds": 0.01899999999999999,
+    "medians": {
+      "baseline": 0.217,
+      "candidate": 0.236
+    },
+    "ranges": {
+      "baseline": [
+        0.197,
+        0.264
+      ],
+      "candidate": [
+        0.204,
+        0.262
+      ]
+    },
+    "relative_change": 0.0875576036866359
+  },
+  "control": {
+    "absolute_shift_exceeds_threshold": true,
+    "delta_seconds": -0.10200000000000001,
+    "medians": {
+      "left": 0.317,
+      "right": 0.215
+    },
+    "ranges": {
+      "left": [
+        0.195,
+        0.345
+      ],
+      "right": [
+        0.207,
+        0.32
+      ]
+    },
+    "relative_change": -0.3217665615141956
+  },
+  "original_failed_gate_preserved": true,
+  "outcome": "indeterminate_control_variation"
+}

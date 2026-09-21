@@ -1,0 +1,120 @@
+[
+  {
+    "id": "small_narrow",
+    "cell": {
+      "name": "small_narrow",
+      "model": "ols",
+      "section": "width",
+      "threads": 1,
+      "n": 7680,
+      "k": 2,
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "vce": "",
+      "fit_options": "memory(fast)"
+    },
+    "data": "small_narrow.dta",
+    "data_sha256": "fbb397ec4da2ad97a21db9249b461a9772a71287c5254cf94254abd4872bd0ff",
+    "metadata_sha256": "9881384aa6dc89c07ce944979d8d3b9682e194f8863d7ccd8d11283110a44c07",
+    "solver": "auto"
+  },
+  {
+    "id": "wide_one_fe",
+    "cell": {
+      "name": "wide_one_fe",
+      "model": "ols",
+      "section": "width",
+      "threads": 4,
+      "n": 122880,
+      "k": 50,
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "vce": "robust",
+      "fit_options": "memory(fast)"
+    },
+    "data": "wide_one_fe.dta",
+    "data_sha256": "6f53b9f772d006530e95046364b74e9894c6620081cbb83477f98b89905bf2ed",
+    "metadata_sha256": "d1204db2313cf039a55e0615085b736c7efcb99ab0418c4ae2cedb03e10e5feb",
+    "solver": "auto"
+  },
+  {
+    "id": "weak_wide",
+    "cell": {
+      "name": "weak_wide",
+      "model": "ols",
+      "section": "width",
+      "threads": 4,
+      "n": 122880,
+      "k": 65,
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "weight": "[aw=w]",
+      "vce": "robust",
+      "fit_options": "memory(fast)"
+    },
+    "data": "weak_wide.dta",
+    "data_sha256": "f680f9b741f0c980b9f9be647787f84e99fa06e137642c8eaef48b779a926aeb",
+    "metadata_sha256": "562b8b3a1a9876f81a9e806c906fdd89a42c710c54613733ff812a15593d5629",
+    "solver": "auto"
+  },
+  {
+    "id": "three_fe_fw_generated",
+    "cell": {
+      "name": "three_fe_fw_generated",
+      "model": "ols",
+      "section": "width",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "design": "three_fe_sparse",
+      "n": 30720,
+      "k": 8,
+      "effects": [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "weight": "[fw=w]",
+      "rhs": "x1-x8 i.f##i.h",
+      "fit_options": "memory(fast)"
+    },
+    "data": "three_fe_fw_generated.dta",
+    "data_sha256": "2ac59a3758b6a16aa974c876170e700ab2e1c583e234573a4fe4c755ae18e02b",
+    "metadata_sha256": "a34e80c9553721d630b0b161edf5303a9f0273affe8ec983772f21dbddc8fa5c",
+    "solver": "auto"
+  },
+  {
+    "id": "saved_generated_aw",
+    "cell": {
+      "name": "saved_generated_aw",
+      "model": "ols",
+      "section": "width",
+      "threads": 4,
+      "vce": "",
+      "levels": 4,
+      "h_levels": 4,
+      "design": "one_fe",
+      "n": 30720,
+      "k": 8,
+      "weight": "[aw=w]",
+      "absorb": "saved_g=g1",
+      "fit_options": "residuals(saved_e) memory(low)",
+      "effects": [
+        "g1"
+      ],
+      "rhs": "x1-x8 i.f##i.h"
+    },
+    "data": "saved_generated_aw.dta",
+    "data_sha256": "34ed96ed08ddab4812a02f9961989af3e4bc846e4e923fa5ac016b6babc74999",
+    "metadata_sha256": "cb6f806d5507da61712ee9078a3b205b9e6b467e7f6f147688243c58fd811527",
+    "solver": "auto"
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "file": "python-final.txt",
+    "original_sha256": "6048002a5d7f999ff30766013bf18ae3d250557e5f1f0570ae25da191bdbbc94"
+  },
+  {
+    "file": "repository-final.txt",
+    "original_sha256": "ab65a76e0f248481217961f3c175ebc2c84ccf7cce6b3e35d39ca124d9994258"
+  },
+  {
+    "file": "action-final-audit.txt",
+    "original_sha256": "69c28ecba0b7e4677ad4c2b3956e3c5558d92f8ffe1465ad4fbb745cf79e3a0d"
+  },
+  {
+    "file": "ols-final-audit.txt",
+    "original_sha256": "b796c0a0e84b1b3bc6b3a9c36972db77f1fbcf6f1a3fba91017c571e0760d7fb"
+  },
+  {
+    "file": "final-parse-check.txt",
+    "original_sha256": "db36c364bff10f4e3d5c12053be06b221f1d9a2ebc0c9150058ba034d39030f3"
+  }
+]

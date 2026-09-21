@@ -1,0 +1,24 @@
+.....F.............................
+======================================================================
+FAIL: test_changed_public_fereg_adapter_routing_is_rejected (test_fereg_allocation_source_contract.FeregAllocationSourceContractTests.test_changed_public_fereg_adapter_routing_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "$REPO/tests/python/test_fereg_allocation_source_contract.py", line 581, in test_changed_public_fereg_adapter_routing_is_rejected
+    self._replace(
+    ~~~~~~~~~~~~~^
+        estimate,
+        ^^^^^^^^^
+        "            let inference = fit_prepared_ols_unadjusted_map(",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "            let inference = fit_prepared_ols_robust_map(",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "$REPO/tests/python/test_fereg_allocation_source_contract.py", line 51, in _replace
+    raise AssertionError(f"mutation anchor is not unique in {path}: {old!r}")
+AssertionError: mutation anchor is not unique in $TMP/tmpak6mg2ne/candidate/crates/fereg-plugin/src/estimate.rs: '            let inference = fit_prepared_ols_unadjusted_map('
+
+----------------------------------------------------------------------
+Ran 35 tests in 315.697s
+
+FAILED (failures=1)

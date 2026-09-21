@@ -1,0 +1,31 @@
+{
+  "scope": "Bounded cumulative unpublished memory-admission cost check; whole-node reservation, four physical execution cores; synthetic inputs only",
+  "baseline_source": "5240e58-action-coverage3",
+  "candidate_source": "5240e58-publication-lifetime4",
+  "cases": [
+    "saved_slopes_low",
+    "ppml_narrow",
+    "ppml_saved_weighted"
+  ],
+  "measurement": {
+    "arm_orders": [
+      [
+        "baseline",
+        "candidate"
+      ],
+      [
+        "candidate",
+        "baseline"
+      ],
+      [
+        "baseline",
+        "candidate"
+      ]
+    ],
+    "no_retry_on_fit_failure": true,
+    "regression_rule": {
+      "relative": 0.05,
+      "absolute_seconds": 0.01
+    }
+  }
+}

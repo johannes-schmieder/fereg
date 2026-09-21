@@ -1,0 +1,43 @@
+==============================================================
+qname        econ                
+hostname     scc-gr4.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_gen_mem       
+jobnumber    7607971             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Wed Sep 16 20:13:32 2026
+start_time   Wed Sep 16 20:15:12 2026
+end_time     Wed Sep 16 20:15:13 2026
+granted_pe   omp28               
+slots        28                  
+failed       0    
+exit_status  1                   
+ru_wallclock 1            
+ru_utime     0.447        
+ru_stime     0.276        
+ru_maxrss    25908               
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    25818               
+ru_majflt    78                  
+ru_nswap     0                   
+ru_inblock   13064               
+ru_oublock   72                  
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     1485                
+ru_nivcsw    30                  
+cpu          0.723        
+mem          0.001             
+io           0.006             
+iow          0.000             
+maxvmem      41.438M
+arid         undefined

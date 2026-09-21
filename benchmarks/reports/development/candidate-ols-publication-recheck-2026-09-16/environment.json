@@ -1,0 +1,19 @@
+{
+  "artifacts": {
+    "baseline": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+    "candidate": "dd3d00eee8e114a0c325ae14b6d44601eb0d1a8394ec267bbba297067b3bfac4"
+  },
+  "baseline_source": "5240e589400c888690666265263ad96f9b694aa6",
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "host": "scc-gr4",
+  "job_id": "7590027",
+  "lscpu": "Architecture:        x86_64\nCPU op-mode(s):      32-bit, 64-bit\nByte Order:          Little Endian\nCPU(s):              32\nOn-line CPU(s) list: 0-31\nThread(s) per core:  1\nCore(s) per socket:  16\nSocket(s):           2\nNUMA node(s):        4\nVendor ID:           GenuineIntel\nCPU family:          6\nModel:               85\nModel name:          Intel(R) Xeon(R) Gold 6242 CPU @ 2.80GHz\nStepping:            7\nCPU MHz:             1322.308\nBogoMIPS:            5600.00\nVirtualization:      VT-x\nL1d cache:           32K\nL1i cache:           32K\nL2 cache:            1024K\nL3 cache:            22528K\nNUMA node0 CPU(s):   0,4,8,12,16,20,24,28\nNUMA node1 CPU(s):   1,5,9,13,17,21,25,29\nNUMA node2 CPU(s):   2,6,10,14,18,22,26,30\nNUMA node3 CPU(s):   3,7,11,15,19,23,27,31\nFlags:               fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cdp_l3 invpcid_single intel_ppin ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm mpx rdt_a avx512f avx512dq rdseed adx smap clflushopt clwb intel_pt avx512cd avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local dtherm ida arat pln pts pku ospke avx512_vnni md_clear flush_l1d arch_capabilities\n",
+  "plan_sha256": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+  "platform": "Linux-4.18.0-553.162.1.el8_10.x86_64-x86_64-with-glibc2.28",
+  "source_snapshot": "5240e58-ols-publication-admission1"
+}

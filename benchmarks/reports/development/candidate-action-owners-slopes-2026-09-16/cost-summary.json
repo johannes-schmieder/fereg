@@ -1,0 +1,240 @@
+{
+  "cases": [
+    {
+      "case": "small_narrow",
+      "arms": {
+        "baseline": {
+          "command_seconds": 0.024,
+          "phase_seconds": {
+            "preflight": 0.000384605,
+            "input": 0.000626353,
+            "native": 0.004166719,
+            "plugin_through_prestore": 0.005162218
+          },
+          "native_peak_bytes": 814095.0,
+          "scratch_bytes": 0.0,
+          "sampled_peak_rss_gib": 0.06612396240234375,
+          "public_base_selected_bytes": 1198152.0
+        },
+        "candidate": {
+          "command_seconds": 0.023,
+          "phase_seconds": {
+            "preflight": 0.00037447,
+            "input": 0.0006720820000000001,
+            "native": 0.004058285,
+            "plugin_through_prestore": 0.005164146
+          },
+          "native_peak_bytes": 814095.0,
+          "scratch_bytes": 0.0,
+          "sampled_peak_rss_gib": 0.06824493408203125,
+          "public_base_selected_bytes": 1198152.0
+        }
+      }
+    },
+    {
+      "case": "tiny_weighted_bridge",
+      "arms": {
+        "baseline": {
+          "command_seconds": 0.169,
+          "phase_seconds": {
+            "preflight": 0.000438148,
+            "input": 0.0026806760000000003,
+            "native": 0.104212206,
+            "plugin_through_prestore": 0.107343214
+          },
+          "native_peak_bytes": 8381070.0,
+          "scratch_bytes": 0.0,
+          "sampled_peak_rss_gib": 0.06418991088867188,
+          "public_base_selected_bytes": 8915488.0
+        },
+        "candidate": {
+          "command_seconds": 0.174,
+          "phase_seconds": {
+            "preflight": 0.000405203,
+            "input": 0.0028017429999999998,
+            "native": 0.11684700299999999,
+            "plugin_through_prestore": 0.120056993
+          },
+          "native_peak_bytes": 8381070.0,
+          "scratch_bytes": 0.0,
+          "sampled_peak_rss_gib": 0.064361572265625,
+          "public_base_selected_bytes": 8915488.0
+        }
+      }
+    },
+    {
+      "case": "three_fe_fw_generated",
+      "arms": {
+        "baseline": {
+          "command_seconds": 0.427,
+          "phase_seconds": {
+            "preflight": 0.000486311,
+            "input": 0.006720843000000001,
+            "native": 0.32312162899999997,
+            "plugin_through_prestore": 0.333945157
+          },
+          "native_peak_bytes": 50294690.0,
+          "scratch_bytes": 0.0,
+          "sampled_peak_rss_gib": 0.10626602172851562,
+          "public_base_selected_bytes": 22983168.0
+        },
+        "candidate": {
+          "command_seconds": 0.406,
+          "phase_seconds": {
+            "preflight": 0.000446508,
+            "input": 0.011893001,
+            "native": 0.310483561,
+            "plugin_through_prestore": 0.322828361
+          },
+          "native_peak_bytes": 50294690.0,
+          "scratch_bytes": 0.0,
+          "sampled_peak_rss_gib": 0.10488128662109375,
+          "public_base_selected_bytes": 22983168.0
+        }
+      }
+    },
+    {
+      "case": "absorbed_slopes",
+      "arms": {
+        "baseline": {
+          "command_seconds": 0.132,
+          "phase_seconds": {
+            "preflight": 0.000509942,
+            "input": 0.00127069,
+            "native": 0.07195541300000001,
+            "plugin_through_prestore": 0.073729183
+          },
+          "native_peak_bytes": 3239679.0,
+          "scratch_bytes": 0.0,
+          "sampled_peak_rss_gib": 0.07472991943359375,
+          "public_base_selected_bytes": 6034656.0
+        },
+        "candidate": {
+          "command_seconds": 0.136,
+          "phase_seconds": {
+            "preflight": 0.000472781,
+            "input": 0.001278744,
+            "native": 0.072449456,
+            "plugin_through_prestore": 0.074279007
+          },
+          "native_peak_bytes": 3239679.0,
+          "scratch_bytes": 0.0,
+          "sampled_peak_rss_gib": 0.07694244384765625,
+          "public_base_selected_bytes": 6034656.0
+        }
+      }
+    },
+    {
+      "case": "singleton_cascade_16384",
+      "arms": {
+        "baseline": {
+          "command_seconds": 0.204,
+          "phase_seconds": {
+            "preflight": 0.000297821,
+            "input": 0.001746814,
+            "native": 0.18384025399999998,
+            "plugin_through_prestore": 0.185884688
+          },
+          "native_peak_bytes": 68837908.0,
+          "scratch_bytes": 393216.0,
+          "sampled_peak_rss_gib": 0.09593582153320312,
+          "public_base_selected_bytes": 3866696.0
+        },
+        "candidate": {
+          "command_seconds": 0.205,
+          "phase_seconds": {
+            "preflight": 0.000267206,
+            "input": 0.001781384,
+            "native": 0.183716758,
+            "plugin_through_prestore": 0.185727829
+          },
+          "native_peak_bytes": 68837908.0,
+          "scratch_bytes": 393216.0,
+          "sampled_peak_rss_gib": 0.09463119506835938,
+          "public_base_selected_bytes": 3866696.0
+        }
+      }
+    },
+    {
+      "case": "saved_slopes_fast",
+      "arms": {
+        "baseline": {
+          "command_seconds": 0.16,
+          "phase_seconds": {
+            "preflight": 0.000503157,
+            "input": 0.001255253,
+            "native": 0.076370356,
+            "plugin_through_prestore": 0.078152191
+          },
+          "native_peak_bytes": 3239686.0,
+          "scratch_bytes": 0.0,
+          "sampled_peak_rss_gib": 0.07458114624023438,
+          "public_base_selected_bytes": 6034656.0
+        },
+        "candidate": {
+          "command_seconds": 0.14,
+          "phase_seconds": {
+            "preflight": 0.00047514,
+            "input": 0.001288555,
+            "native": 0.063827786,
+            "plugin_through_prestore": 0.065602358
+          },
+          "native_peak_bytes": 3239686.0,
+          "scratch_bytes": 0.0,
+          "sampled_peak_rss_gib": 0.07471084594726562,
+          "public_base_selected_bytes": 6034656.0
+        }
+      }
+    },
+    {
+      "case": "saved_slopes_low",
+      "arms": {
+        "baseline": {
+          "command_seconds": 0.249,
+          "phase_seconds": {
+            "preflight": 0.000507224,
+            "input": 0.0012906760000000001,
+            "native": 0.16213064700000002,
+            "plugin_through_prestore": 0.165035958
+          },
+          "native_peak_bytes": 3299302.0,
+          "scratch_bytes": 1573056.0,
+          "sampled_peak_rss_gib": 0.07408523559570312,
+          "public_base_selected_bytes": 4264840.0
+        },
+        "candidate": {
+          "command_seconds": 0.253,
+          "phase_seconds": {
+            "preflight": 0.000469354,
+            "input": 0.006261836,
+            "native": 0.166097727,
+            "plugin_through_prestore": 0.172964374
+          },
+          "native_peak_bytes": 3299302.0,
+          "scratch_bytes": 1573056.0,
+          "sampled_peak_rss_gib": 0.0771026611328125,
+          "public_base_selected_bytes": 4264840.0
+        }
+      }
+    }
+  ],
+  "phase_review_flags": [
+    {
+      "case": "tiny_weighted_bridge",
+      "phase": "native",
+      "baseline": 0.104212206,
+      "candidate": 0.11684700299999999,
+      "delta_seconds": 0.01263479699999999,
+      "relative_change": 0.12124104732990681
+    },
+    {
+      "case": "tiny_weighted_bridge",
+      "phase": "plugin_through_prestore",
+      "baseline": 0.107343214,
+      "candidate": 0.120056993,
+      "delta_seconds": 0.012713778999999995,
+      "relative_change": 0.1184404540001942
+    }
+  ],
+  "interpretation": "Command-level median gate passes. Tiny weighted bridge native/plugin phase shifts are recorded separately; the affected branch has no numerical or solver-policy changes, but phase attribution is not proven. No universal speed claim."
+}

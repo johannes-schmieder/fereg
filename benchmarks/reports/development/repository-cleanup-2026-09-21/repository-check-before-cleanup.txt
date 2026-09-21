@@ -1,0 +1,103 @@
+repository checks: FAIL
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/factorize.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/fe/borrowed_map.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/fe/design.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/fe/topology_finalize.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/fe/topology_registry.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/fe/topology_slope_map.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/ols/prepared.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/ols/prepared_categorical_data.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/ols/prepared_dof.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/ols/prepared_fit.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-core/src/ols/prepared_unadjusted.rs
+ - fereg allocation source contract: allocation syntax inventory changed: crates/fereg-plugin/src/estimate.rs
+ - fereg allocation source contract: exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_clustered.rs:fit_prepared_categorical_ols_clustered_map
+ - fereg allocation source contract: exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_clustered.rs:fit_prepared_ols_clustered_map
+ - fereg allocation source contract: exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_fit.rs:fit_prepared_weighted_linear_once
+ - fereg allocation source contract: exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_robust.rs:fit_prepared_categorical_ols_robust_map
+ - fereg allocation source contract: exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_robust.rs:fit_prepared_ols_robust_map
+ - fereg allocation source contract: exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_unadjusted.rs:fit_prepared_categorical_ols_unadjusted_map
+ - fereg allocation source contract: exact fereg adapter/one-shot boundary changed: crates/fereg-core/src/ols/prepared_unadjusted.rs:fit_prepared_ols_unadjusted_map
+ - fereg allocation source contract: exact fereg adapter/one-shot boundary changed: crates/fereg-plugin/src/estimate.rs:estimate_ols_test
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/data/sample.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/factorize.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/fe/borrowed_map.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/fe/design.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/fe/mod.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/fe/topology_finalize.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/fe/topology_registry.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/fe/topology_slope_map.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/fe/topology_source.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/mod.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared_categorical_data.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared_clustered.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared_dof.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared_fit.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared_fit_view.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared_inference_view.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared_rhs.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared_robust.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared_scores.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/prepared_unadjusted.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/ols/topology_dof.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-core/src/parallel.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-plugin/src/estimate.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-plugin/src/ffi.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-plugin/src/input.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-plugin/src/lib.rs
+ - fereg allocation source contract: guarded production token structure changed: crates/fereg-plugin/src/result_view.rs
+ - fereg allocation source contract: native ABI/build route changed: plugin/stata_bridge.c
+ - fereg allocation source contract: native ABI/build route changed: plugin/stata_bridge.h
+ - fereg allocation source contract: pinned fereg boundary changed: crates/fereg-core/src/ols/prepared_clustered.rs:fit_prepared_categorical_ols_clustered_map
+ - fereg allocation source contract: pinned fereg boundary changed: crates/fereg-core/src/ols/prepared_clustered.rs:fit_prepared_ols_clustered_map
+ - fereg allocation source contract: pinned fereg boundary changed: crates/fereg-core/src/ols/prepared_robust.rs:fit_prepared_categorical_ols_robust_map
+ - fereg allocation source contract: pinned fereg boundary changed: crates/fereg-core/src/ols/prepared_robust.rs:fit_prepared_ols_robust_map
+ - fereg allocation source contract: pinned fereg boundary changed: crates/fereg-core/src/ols/prepared_unadjusted.rs:fit_prepared_categorical_ols_unadjusted_map
+ - fereg allocation source contract: pinned fereg boundary changed: crates/fereg-core/src/ols/prepared_unadjusted.rs:fit_prepared_ols_unadjusted_map
+ - fereg allocation source contract: pinned fereg boundary changed: crates/fereg-plugin/src/estimate.rs:estimate_ols_test
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/factorize.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/fe/borrowed_map.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/fe/design.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/fe/topology_finalize.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/fe/topology_registry.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/fe/topology_slope_map.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/ols/prepared.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/ols/prepared_categorical_data.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/ols/prepared_fit.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/ols/prepared_unadjusted.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/ols/topology_dof.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-core/src/parallel.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-plugin/src/estimate.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-plugin/src/ffi.rs
+ - fereg allocation source contract: production literal payload changed: crates/fereg-plugin/src/input.rs
+ - fereg allocation source contract: watched fereg allocation source set changed; added=['crates/fereg-plugin/src/numeric_pipeline.rs'], removed=[]
+ - action allocation source set changed
+ - action allocation source changed: crates/fereg-core/src/data/sample.rs
+ - action allocation source changed: crates/fereg-core/src/factorize.rs
+ - action allocation source changed: crates/fereg-core/src/fe/borrowed_map.rs
+ - action allocation source changed: crates/fereg-core/src/fe/design.rs
+ - action allocation source changed: crates/fereg-core/src/fe/mod.rs
+ - action allocation source changed: crates/fereg-core/src/fe/topology_finalize.rs
+ - action allocation source changed: crates/fereg-core/src/fe/topology_registry.rs
+ - action allocation source changed: crates/fereg-core/src/fe/topology_slope_map.rs
+ - action allocation source changed: crates/fereg-core/src/fe/topology_source.rs
+ - action allocation source changed: crates/fereg-core/src/ols/mod.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared_categorical_data.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared_clustered.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared_dof.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared_fit.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared_fit_view.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared_inference_view.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared_rhs.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared_robust.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared_scores.rs
+ - action allocation source changed: crates/fereg-core/src/ols/prepared_unadjusted.rs
+ - action allocation source changed: crates/fereg-core/src/ols/topology_dof.rs
+ - action allocation source changed: crates/fereg-core/src/parallel.rs
+ - action allocation source changed: crates/fereg-plugin/src/estimate.rs
+ - action allocation source changed: crates/fereg-plugin/src/ffi.rs
+ - action allocation source changed: crates/fereg-plugin/src/input.rs
+ - action allocation source changed: crates/fereg-plugin/src/lib.rs
+ - action allocation source changed: crates/fereg-plugin/src/result_view.rs

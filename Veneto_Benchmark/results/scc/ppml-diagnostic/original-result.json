@@ -1,0 +1,32 @@
+{
+  "job_id": "7535359",
+  "host": "scc-ei3.scc.bu.edu",
+  "cpu_type": "Gold-6226R",
+  "application_rc": 430,
+  "application_seconds": 10.73,
+  "application_sentinel": true,
+  "native_error": [
+    "fereg: nonconvergence: prepared PPML initial weighted-linear solve did not certify"
+  ],
+  "initial_projection_certificate": {
+    "relative_infinity_norm": 2.475852462708384e-07,
+    "threshold": 1e-06,
+    "passed": true,
+    "iterations": 10
+  },
+  "completed_irls_iterations": 0,
+  "scheduler_failed": 0,
+  "scheduler_exit_status": 1,
+  "controller_error": "Expected diagnose_ppml.log; Stata wrote t4.log. Four-thread result is complete; fourteen-thread fit did not start. Corrected controller in job 7535388.",
+  "hashes": {
+    "diagnose_ppml.sh": "c0603e09830bf4ab36f1325b46d45ee67b4e713c7a9103e04f55827fd89ac5c3",
+    "diagnose_ppml.do": "d030bf1b858a6b4bd1ffc1f88e4abc9f6f5700af1af87d3a183e1103aaa24e96",
+    "diagnose_ppml.py": "408f72c7ee6626c2444b1807035f82053f75a982e2a15cf935e46f32047cf9fe",
+    "veneto_ppml_trace.o7535359": "c53918ece5e4138aaffc6dd298f00ff9087d45d2bfa9b63805fa21266a53c49f",
+    "t4/stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "t4/metadata.tsv": "b004447366605b2a99bf60c312c21f5f03bef0c1e71f1e1e82e2ca092860f4a8",
+    "t4/stderr.txt": "c7caae754bc9f9bbde10805ccf4527e75abaa26f8becc0612e949f6338983763",
+    "t4/t4.log": "7475350081a580e7021bb74f884a523ebc1f74bfb9b718e8e3e5fdceac09871e",
+    "t4/solver-trace.txt": "c7caae754bc9f9bbde10805ccf4527e75abaa26f8becc0612e949f6338983763"
+  }
+}

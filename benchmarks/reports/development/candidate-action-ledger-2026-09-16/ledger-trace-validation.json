@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "reports": 930,
+  "ols": 362,
+  "ppml": 568,
+  "all_stages_present": true,
+  "parent_workspace_sums_valid": true,
+  "sequential_maxima_valid": true,
+  "all_coverage_incomplete": true,
+  "all_ratios_undefined": true,
+  "observation": "precommit"
+}

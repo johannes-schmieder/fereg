@@ -1,0 +1,40 @@
+{
+  "7535359": {
+    "slots": 14,
+    "host": "scc-ei3.scc.bu.edu",
+    "cpu_type": "Gold-6226R",
+    "start_utc": "2026-09-12T11:43:06Z",
+    "end_utc": "2026-09-12T11:43:19Z",
+    "failed": 0,
+    "exit_status": 1,
+    "wall_seconds": 13,
+    "maxvmem": "6.711G",
+    "interpretation": "Application completed at r(430); log-filename assertion stopped controller before second fit."
+  },
+  "7535389": {
+    "slots": 14,
+    "host": "scc-ei3.scc.bu.edu",
+    "cpu_type": "Gold-6226R",
+    "start_utc": "2026-09-12T11:52:06Z",
+    "end_utc": "2026-09-12T11:53:56Z",
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 110,
+    "maxvmem": "8.214G",
+    "interpretation": "Build and two diagnostic fits completed. Both expected native failures captured; terminal job sentinel present."
+  },
+  "7535388": {
+    "slots": 14,
+    "host": "scc-ei3.scc.bu.edu",
+    "cpu_type": "Gold-6226R",
+    "start_utc": "2026-09-12T11:49:06Z",
+    "end_utc": "2026-09-12T11:49:12Z",
+    "failed": 0,
+    "exit_status": 101,
+    "wall_seconds": 6,
+    "maxvmem": "58.914M",
+    "interpretation": "Cargo.toml not found because build controller was outside candidate working directory. No estimator ran."
+  },
+  "total_wall_seconds": 129,
+  "total_reserved_core_hours": 0.5016666666666667
+}

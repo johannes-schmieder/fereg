@@ -1,0 +1,18 @@
+{
+  "snapshot": "5240e58-core-certification1",
+  "base_sha": "5240e589400c888690666265263ad96f9b694aa6",
+  "native_checks": 260,
+  "python_checks": 38,
+  "source_files_verified_against_working_tree": 290,
+  "worker_commands": 18,
+  "pairs": 9,
+  "all_science_exact": true,
+  "command_timing_gate_pass": true,
+  "reported_phase_timing_gate_pass": true,
+  "phase_timing_flags": [],
+  "scheduled_isolation_observations": 36,
+  "whole_action_coverage_complete": false,
+  "whole_action_ratio": null,
+  "publication_eligible": false,
+  "installed_package_replaced": false
+}

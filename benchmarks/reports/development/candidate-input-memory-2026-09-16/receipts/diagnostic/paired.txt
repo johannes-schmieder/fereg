@@ -1,0 +1,25 @@
+numeric_narrow 1 baseline pass 0.067
+numeric_narrow 1 candidate pass 0.061
+numeric_narrow 2 candidate pass 0.054
+numeric_narrow 2 baseline pass 0.054
+numeric_narrow 3 baseline pass 0.054
+numeric_narrow 3 candidate pass 0.055
+numeric_narrow_aa 1 baseline pass 0.054
+numeric_narrow_aa 1 candidate pass 0.055
+numeric_narrow_aa 2 candidate pass 0.055
+numeric_narrow_aa 2 baseline pass 0.054
+numeric_narrow_aa 3 baseline pass 0.055
+numeric_narrow_aa 3 candidate pass 0.056
+ppml_string_cluster 1 baseline pass 0.259
+ppml_string_cluster 1 candidate pass 0.231
+ppml_string_cluster 2 candidate pass 0.272
+ppml_string_cluster 2 baseline pass 0.281
+ppml_string_cluster 3 baseline pass 0.281
+ppml_string_cluster 3 candidate pass 0.245
+ppml_string_cluster_aa 1 baseline pass 0.312
+ppml_string_cluster_aa 1 candidate pass 0.246
+ppml_string_cluster_aa 2 candidate pass 0.254
+ppml_string_cluster_aa 2 baseline pass 0.261
+ppml_string_cluster_aa 3 baseline pass 0.233
+ppml_string_cluster_aa 3 candidate pass 0.301
+PUBLICATION_PAIRED_COMPLETE

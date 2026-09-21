@@ -1,0 +1,12 @@
+{
+  "fixed_manifest_sha256": "4c0f2d844672ca6061a5abe0da20c3520fcd276f2a936b9e5376474b7527c297",
+  "requests_sha256": "02f485c1ad65d5bb68d2a1906bf81a56852f1e2b93dd1479ddd58ed0311b453b",
+  "harness": {
+    "measure.py": "562e81288991c101b387d429e0b411614256cba14a48bae2ce013a56b616887d",
+    "stata_worker.do": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+    "generate-singletons.py": "9563a7c3f0f041d915df8f5dbb6e226b68d6b10608acac2f7565617d307b3ee7",
+    "select-cpus.py": "c1783a00e9b49f3daf36b49beb3faac066bf7a0a6310281410eab3d694a88ff8",
+    "common.py": "fd7ff16ddb1b72574d6ee66bfd767914733936eace0d65872b7634c4084a7968",
+    "run-screen.py": "d34496db56cf3d037088d3e77a58f3b63a5490ae4869c3e1aaba4dcfd630150d"
+  }
+}

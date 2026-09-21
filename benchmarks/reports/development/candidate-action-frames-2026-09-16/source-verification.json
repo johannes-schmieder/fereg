@@ -1,0 +1,31 @@
+{
+  "bound_files": 289,
+  "changed_since_snapshot": [
+    {
+      "current_sha256": "492aa9c535e5258024d3a9100c512def588facb2f24ff9f03f650569dc51e0e7",
+      "path": "crates/fereg-plugin/src/estimate.rs",
+      "tested_sha256": "99695a5a349120730f0491a5911bd7bf163ab64bd7b8233a1871b624e151f8ac"
+    },
+    {
+      "current_sha256": "9b264554fe70ed950ef3d4d6014d5db8a9f1ac87494919e47f440fbf40b4b296",
+      "path": "scripts/action_allocation_inventory.py",
+      "tested_sha256": "e57a42a9510abe7494f4c59703069f6ec88f0d61392b8229b535d81650f04fd6"
+    },
+    {
+      "current_sha256": "e04e2a51cf8d67a9451d078589a026e0c4a20d986e227dd82567ad733092f22a",
+      "path": "scripts/fereg_allocation_source_contract.py",
+      "tested_sha256": "23aeff4a3a95f7a68ba48fbdb129cca794b18b5d0477ce9e3b076641d348dabd"
+    }
+  ],
+  "estimate_production_identity": {
+    "literals": "6ca637760706d11fe781a0605455e0ca0ad84ea4e5a86229f0994463b5c95126",
+    "tokens": "fbd834d07d6e7e7db378d4a37383595773763c0e3e1f4e7d177b1f66c39ffc32"
+  },
+  "exact_snapshot": "5240e58-action-frames3",
+  "installed_mac_sha256": "4187efdfbd6235e63c369d9b42dede6381b8a9e50b5360fd63ee237bd6c11b08",
+  "notes": [
+    "estimate.rs differs only in tightened route-specific allocation test; production tokens unchanged",
+    "two inventory renderers advanced to v23/v6 after snapshot; audited separately"
+  ],
+  "test_only_change_verified": true
+}

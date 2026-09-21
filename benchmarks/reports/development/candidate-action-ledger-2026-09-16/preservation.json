@@ -1,0 +1,7 @@
+{
+  "unrelated_initial_untracked_entries": 358,
+  "all_preserved": true,
+  "unrelated_status_patch": "reapplied with fuzz=0 and exact combined-content check",
+  "installed_mac_sha256": "4187efdfbd6235e63c369d9b42dede6381b8a9e50b5360fd63ee237bd6c11b08",
+  "base_sha": "5240e589400c888690666265263ad96f9b694aa6"
+}

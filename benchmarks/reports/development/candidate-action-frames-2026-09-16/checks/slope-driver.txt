@@ -1,0 +1,25 @@
+absorbed_slopes-AB-1-0-baseline pass 0.28
+absorbed_slopes-AB-1-1-candidate pass 0.387
+absorbed_slopes-AA-1-0-baseline pass 0.335
+absorbed_slopes-AA-1-1-baseline pass 0.404
+absorbed_slopes-AB-2-0-candidate pass 0.32
+absorbed_slopes-AB-2-1-baseline pass 0.377
+absorbed_slopes-AA-2-0-baseline pass 0.396
+absorbed_slopes-AA-2-1-baseline pass 0.412
+absorbed_slopes-AB-3-0-baseline pass 0.383
+absorbed_slopes-AB-3-1-candidate pass 0.312
+absorbed_slopes-AA-3-0-baseline pass 0.357
+absorbed_slopes-AA-3-1-baseline pass 0.297
+saved_slopes_low-AB-1-0-baseline pass 0.509
+saved_slopes_low-AB-1-1-candidate pass 0.573
+saved_slopes_low-AA-1-0-baseline pass 0.609
+saved_slopes_low-AA-1-1-baseline pass 0.5569999999999999
+saved_slopes_low-AB-2-0-candidate pass 0.568
+saved_slopes_low-AB-2-1-baseline pass 0.479
+saved_slopes_low-AA-2-0-baseline pass 0.57
+saved_slopes_low-AA-2-1-baseline pass 0.474
+saved_slopes_low-AB-3-0-baseline pass 0.557
+saved_slopes_low-AB-3-1-candidate pass 0.513
+saved_slopes_low-AA-3-0-baseline pass 0.649
+saved_slopes_low-AA-3-1-baseline pass 0.6
+SLOPE_COST_DIAGNOSTIC_PASS

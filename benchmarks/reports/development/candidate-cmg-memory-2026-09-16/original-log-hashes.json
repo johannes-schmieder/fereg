@@ -1,0 +1,2370 @@
+[
+  {
+    "path": "receipts/cmg1/allocation.txt",
+    "original_sha256": "8c348a2d9214c10d1c59da9f68cf92542b4708a5a4dc95176c22c37730f875dc"
+  },
+  {
+    "path": "receipts/cmg1/artifacts.json",
+    "original_sha256": "fdcb3e1229c640c8af7b711e946f6cd3f12191da859b37a49cdd16a4d451d8e4"
+  },
+  {
+    "path": "receipts/cmg1/audit-loader.txt",
+    "original_sha256": "3a850bb1f7854f6b6886f326e68717cc5a50abc3287bad4e5fc0184cffc23a50"
+  },
+  {
+    "path": "receipts/cmg1/build-success.txt",
+    "original_sha256": "7415ae115d6a85d9c3b1bbeb1c9e8791dd9a9f797638fe3efd39e29853c8613c"
+  },
+  {
+    "path": "receipts/cmg1/build.txt",
+    "original_sha256": "89a792bf9c949d681ec452a9bab0d92b95657f1706a680be78021d7e3da921cb"
+  },
+  {
+    "path": "receipts/cmg1/cmg-tests.txt",
+    "original_sha256": "8a8bf5f46db424c3195aa33ab7947e1ee48f5858c3374af9f204f2daa4b3bf42"
+  },
+  {
+    "path": "receipts/cmg1/core-memory.txt",
+    "original_sha256": "22e0458c83f4011935b5948d1b76be73279dcdb76850116fd8ef468fa5ecd02e"
+  },
+  {
+    "path": "receipts/cmg1/fixed-cases.json",
+    "original_sha256": "572a1b165e989ec2e8c215d6cd6a023d1071ef7fb228399cc61c6576ee8eb9af"
+  },
+  {
+    "path": "receipts/cmg1/generated-bindings.json",
+    "original_sha256": "6ea4e05c991344f85e4f1920f28626ed6bdcb4d3bb3581b10d055c066eed76f9"
+  },
+  {
+    "path": "receipts/cmg1/host-context.txt",
+    "original_sha256": "dbf3dee6f49af8c89bf50b92d597191f74e055f7b513d8c0e6ab933f10af3036"
+  },
+  {
+    "path": "receipts/cmg1/identity.json",
+    "original_sha256": "3958142bfb7d81c25f0652ab8edc258cfe4e46021b50a9add4114ffc3f395304"
+  },
+  {
+    "path": "receipts/cmg1/input-bindings.json",
+    "original_sha256": "9e1f8ee5a1948a501b3c8559b63fa9aea0459280bae41a85bc50a1ad8a461d52"
+  },
+  {
+    "path": "receipts/cmg1/paired.txt",
+    "original_sha256": "3c1c8e39603c422d832e7cfb619834c9ca69cd88d856130bffa2387d6f7509a3"
+  },
+  {
+    "path": "receipts/cmg1/placement.json",
+    "original_sha256": "8764dcd006fa7a34466a526caa43cce467f517148cbee8efa88697533e32ba58"
+  },
+  {
+    "path": "receipts/cmg1/plugin-tests.txt",
+    "original_sha256": "72702dc05574755cf26048beb878ed8eaec9e2e8bc2dceaee7fd439bc38872bf"
+  },
+  {
+    "path": "receipts/cmg1/qacct-7606295.txt",
+    "original_sha256": "3964131f44c3c4c23d19b833d93ed9e9b7408233f66ca4ffae31ff291af2cc2e"
+  },
+  {
+    "path": "receipts/cmg1/requests.json",
+    "original_sha256": "0ed6b8233fff5ab4ee205505885a1b3d6c368265544cc3cf0a7b2cdebb9cedea"
+  },
+  {
+    "path": "receipts/cmg1/run.sh",
+    "original_sha256": "8b9ea2a9393f2b59ca73eec2081fa623d097939d887138c147d45ebe9b10fda3"
+  },
+  {
+    "path": "receipts/cmg1/test-executable-hashes.json",
+    "original_sha256": "adbb638f5b180cf74da881e9061c4b6f7e05b9c0d2452d59a10c21db1823d514"
+  },
+  {
+    "path": "receipts/cmg-retry/PASS",
+    "original_sha256": "a3acc699d00d96c2c4a87d45dffe92208ad534948bda53b163f1e8a5343b8a04"
+  },
+  {
+    "path": "receipts/cmg-retry/allocation.txt",
+    "original_sha256": "75afbf2e267c22e2c87704d5c054945c20df3ff9555c4ae31fd23c7430a96d83"
+  },
+  {
+    "path": "receipts/cmg-retry/artifacts.json",
+    "original_sha256": "fdcb3e1229c640c8af7b711e946f6cd3f12191da859b37a49cdd16a4d451d8e4"
+  },
+  {
+    "path": "receipts/cmg-retry/build-success.txt",
+    "original_sha256": "7415ae115d6a85d9c3b1bbeb1c9e8791dd9a9f797638fe3efd39e29853c8613c"
+  },
+  {
+    "path": "receipts/cmg-retry/fixed-cases.json",
+    "original_sha256": "572a1b165e989ec2e8c215d6cd6a023d1071ef7fb228399cc61c6576ee8eb9af"
+  },
+  {
+    "path": "receipts/cmg-retry/generated-bindings.json",
+    "original_sha256": "6ea4e05c991344f85e4f1920f28626ed6bdcb4d3bb3581b10d055c066eed76f9"
+  },
+  {
+    "path": "receipts/cmg-retry/host-context.txt",
+    "original_sha256": "a603f101b8ebef1d059d63a00673e762f243b1aaa015a24eabd521179209bd60"
+  },
+  {
+    "path": "receipts/cmg-retry/identity.json",
+    "original_sha256": "41c89cfebe591d96a50172d0b78a48ebd9b1856fdd1e7a83f149a8a708c7a114"
+  },
+  {
+    "path": "receipts/cmg-retry/input-bindings.json",
+    "original_sha256": "9e1f8ee5a1948a501b3c8559b63fa9aea0459280bae41a85bc50a1ad8a461d52"
+  },
+  {
+    "path": "receipts/cmg-retry/isolation.jsonl",
+    "original_sha256": "53a5b84a0567be84eb24c819e660a9b85f5d1d61203eae4a7ef9c2ebbf3ac58f"
+  },
+  {
+    "path": "receipts/cmg-retry/paired.txt",
+    "original_sha256": "ba86d8fce5d01c8ce15c2e38b8bde2dd6b3c3ff7f9f95c0147042f3429f2c99b"
+  },
+  {
+    "path": "receipts/cmg-retry/partial-results.json",
+    "original_sha256": "6974a9dd4b9a97a0cc283942e2700bf74d7b7c8760dec69b4e1382ac8d0aa6e9"
+  },
+  {
+    "path": "receipts/cmg-retry/placement.json",
+    "original_sha256": "8764dcd006fa7a34466a526caa43cce467f517148cbee8efa88697533e32ba58"
+  },
+  {
+    "path": "receipts/cmg-retry/qacct-7606394.txt",
+    "original_sha256": "df6e47dcd4d9d29317292a283d6dda3bd7317695413a3efc651060a006535741"
+  },
+  {
+    "path": "receipts/cmg-retry/requests.json",
+    "original_sha256": "0ed6b8233fff5ab4ee205505885a1b3d6c368265544cc3cf0a7b2cdebb9cedea"
+  },
+  {
+    "path": "receipts/cmg-retry/run.sh",
+    "original_sha256": "a1bdf348955e4e3ed6fa3538a136dfac5e1272feeec022f0224d3f9e7d8cd8dc"
+  },
+  {
+    "path": "receipts/cmg-retry/summary.json",
+    "original_sha256": "aa0fab1485050ced5645d4a32bf4b3a83e15fd277733e7f16c650a9fc25c9a45"
+  },
+  {
+    "path": "receipts/cmg-retry/worker-receipt-validation.json",
+    "original_sha256": "d94ec7b0fecbb9dfd3ef95d949197daefe53a633994221b3ffffb6e8200ef54a"
+  },
+  {
+    "path": "receipts/cmg-lifetime/PASS",
+    "original_sha256": "afc27be23820a39464485e62189364346f1d9ebe4ecc59d18ccce7fbbfbb39bc"
+  },
+  {
+    "path": "receipts/cmg-lifetime/allocation.txt",
+    "original_sha256": "56fca8699173b45699234a43a4a08304691b151e2d514fc15ca75c2e3156a9f7"
+  },
+  {
+    "path": "receipts/cmg-lifetime/identity.json",
+    "original_sha256": "9b930df11cf4ff350a71596a31b30c5df75b0616cce38acd68a3b7f93c416c3f"
+  },
+  {
+    "path": "receipts/cmg-lifetime/lifetime.txt",
+    "original_sha256": "2abc8f6991d6c53ce9ecea8aeb8430aa05a41e13a619a4b27ff15a334fa90608"
+  },
+  {
+    "path": "receipts/cmg-lifetime/qacct-7606305.txt",
+    "original_sha256": "e1d69f9f5d6ed3b48d500208402fda0eb88d69f9572b3a028c6c556d142fd4ab"
+  },
+  {
+    "path": "receipts/cmg-lifetime/regression.txt",
+    "original_sha256": "6d0611f3bd8e50a4f67f12bed33be27efe9329068ddc739e630b270d4554dc42"
+  },
+  {
+    "path": "receipts/cmg-lifetime/run.sh",
+    "original_sha256": "48bb6bbb461210c2b58e3cb41e01ca365602a8a29244d7f69e880379079d5953"
+  },
+  {
+    "path": "receipts/cmg-lifetime/test-executable-hashes.json",
+    "original_sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/coefficients.csv",
+    "original_sha256": "5d88bc3370272c5a77511a2456bec40516e6df4eef43775a5436b2350901a2bc"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/V.csv",
+    "original_sha256": "8ccf66974b0721f55b1c3ecdca590c0b3f7a1c715a99230893e4910d7f7760e2"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/import-hashes.json",
+    "original_sha256": "5f02005fdadc83b7923d9726f8d98db6ef054fe198298d19c2600a7e122f70f4"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/b.csv",
+    "original_sha256": "f349ac27db29d0d5ec62dda790750ecd360f39642af04cd4b76f53297d6270af"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/fereg_solver.csv",
+    "original_sha256": "746767b86e09c7195f5d07b543dbc20ea41d5315154e6a375d6c9330566615cf"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/result.json",
+    "original_sha256": "f65e9bfb861c9dc10086988cc9ae5f255a547e7497333662c8a80c0f6d77ef81"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/fereg_fe.csv",
+    "original_sha256": "8b85eaf8a3cc9d02d3e60cb8f3fbf6362d2f1357ffd70acb690c475c3a2bd1d1"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/covariance.csv",
+    "original_sha256": "d80c1a5b367b12af01abf9873fcc214214352b1922276b347e2b68b0304d3291"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/fereg_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/fereg_runtime.csv",
+    "original_sha256": "6a56e23873e2824171edc8f3ced859f6a2305b88df9e1b222057f887fe65a20f"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/fereg_status.csv",
+    "original_sha256": "62b3ac0011b9b6da8a1abd4b7239932ccdac597186b385ad8568ab71fae96b47"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/fereg_certificate.csv",
+    "original_sha256": "0fe8ee5b01b937b088af5cf05e98ba0fda3e5033e4a56b8b6d5d2c88398c6de8"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/fereg_dof.csv",
+    "original_sha256": "a4b57e83e60f3a1f45e8de5b379da8950ca0627a038471134c68b585d32a52d0"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/fereg_fit.csv",
+    "original_sha256": "03caab96f06461324411cc45a510cd99339991f2480a097db352e7828f1c810b"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/fereg_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-baseline/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/coefficients.csv",
+    "original_sha256": "5d88bc3370272c5a77511a2456bec40516e6df4eef43775a5436b2350901a2bc"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/V.csv",
+    "original_sha256": "8ccf66974b0721f55b1c3ecdca590c0b3f7a1c715a99230893e4910d7f7760e2"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/import-hashes.json",
+    "original_sha256": "5f02005fdadc83b7923d9726f8d98db6ef054fe198298d19c2600a7e122f70f4"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/b.csv",
+    "original_sha256": "f349ac27db29d0d5ec62dda790750ecd360f39642af04cd4b76f53297d6270af"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/fereg_solver.csv",
+    "original_sha256": "3b36a4527d3d6b0b0a562117a3712d598415ce5a8bb786136ecdfd3ccb181154"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/result.json",
+    "original_sha256": "4c9d449470c683adc9dd4910b19fd5107083965b8aca3b5c9b857f2730bfbdf2"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/fereg_fe.csv",
+    "original_sha256": "8b85eaf8a3cc9d02d3e60cb8f3fbf6362d2f1357ffd70acb690c475c3a2bd1d1"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/covariance.csv",
+    "original_sha256": "d80c1a5b367b12af01abf9873fcc214214352b1922276b347e2b68b0304d3291"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/fereg_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/fereg_runtime.csv",
+    "original_sha256": "8f45cbc0c06fcef0bc93afc24593fcfc832f0233e09aaf15c7727569b697eadc"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/fereg_status.csv",
+    "original_sha256": "62b3ac0011b9b6da8a1abd4b7239932ccdac597186b385ad8568ab71fae96b47"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/fereg_certificate.csv",
+    "original_sha256": "0fe8ee5b01b937b088af5cf05e98ba0fda3e5033e4a56b8b6d5d2c88398c6de8"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/fereg_dof.csv",
+    "original_sha256": "a4b57e83e60f3a1f45e8de5b379da8950ca0627a038471134c68b585d32a52d0"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/fereg_fit.csv",
+    "original_sha256": "03caab96f06461324411cc45a510cd99339991f2480a097db352e7828f1c810b"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/fereg_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p1-candidate/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/coefficients.csv",
+    "original_sha256": "5d88bc3370272c5a77511a2456bec40516e6df4eef43775a5436b2350901a2bc"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/V.csv",
+    "original_sha256": "8ccf66974b0721f55b1c3ecdca590c0b3f7a1c715a99230893e4910d7f7760e2"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/import-hashes.json",
+    "original_sha256": "5f02005fdadc83b7923d9726f8d98db6ef054fe198298d19c2600a7e122f70f4"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/b.csv",
+    "original_sha256": "f349ac27db29d0d5ec62dda790750ecd360f39642af04cd4b76f53297d6270af"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/fereg_solver.csv",
+    "original_sha256": "d5f733c0444bc83757faad7dd67a4221a2c6167600580ceee3a34c6367600e40"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/result.json",
+    "original_sha256": "58682a2c8cfd13af965a6d0acaf7a05eab589fe0cf6a54f431eaedb39e88bd9f"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/fereg_fe.csv",
+    "original_sha256": "8b85eaf8a3cc9d02d3e60cb8f3fbf6362d2f1357ffd70acb690c475c3a2bd1d1"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/covariance.csv",
+    "original_sha256": "d80c1a5b367b12af01abf9873fcc214214352b1922276b347e2b68b0304d3291"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/fereg_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/fereg_runtime.csv",
+    "original_sha256": "fb42478bf33fef6b9ec4457f39fb2deaef111476d14e0e5b8a5bf278809e45c6"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/fereg_status.csv",
+    "original_sha256": "62b3ac0011b9b6da8a1abd4b7239932ccdac597186b385ad8568ab71fae96b47"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/fereg_certificate.csv",
+    "original_sha256": "0fe8ee5b01b937b088af5cf05e98ba0fda3e5033e4a56b8b6d5d2c88398c6de8"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/fereg_dof.csv",
+    "original_sha256": "a4b57e83e60f3a1f45e8de5b379da8950ca0627a038471134c68b585d32a52d0"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/fereg_fit.csv",
+    "original_sha256": "03caab96f06461324411cc45a510cd99339991f2480a097db352e7828f1c810b"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/fereg_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-baseline/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/coefficients.csv",
+    "original_sha256": "5d88bc3370272c5a77511a2456bec40516e6df4eef43775a5436b2350901a2bc"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/V.csv",
+    "original_sha256": "8ccf66974b0721f55b1c3ecdca590c0b3f7a1c715a99230893e4910d7f7760e2"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/import-hashes.json",
+    "original_sha256": "5f02005fdadc83b7923d9726f8d98db6ef054fe198298d19c2600a7e122f70f4"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/b.csv",
+    "original_sha256": "f349ac27db29d0d5ec62dda790750ecd360f39642af04cd4b76f53297d6270af"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/fereg_solver.csv",
+    "original_sha256": "f65bfa4eed58a1f00940bafc4b5374b0954efd1d273168c2af4e1c1cebfc4192"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/result.json",
+    "original_sha256": "94a800f21f659fa611e1de3aa0e79aa9850933fd5ad6382b70f6ef72c21d9564"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/fereg_fe.csv",
+    "original_sha256": "8b85eaf8a3cc9d02d3e60cb8f3fbf6362d2f1357ffd70acb690c475c3a2bd1d1"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/covariance.csv",
+    "original_sha256": "d80c1a5b367b12af01abf9873fcc214214352b1922276b347e2b68b0304d3291"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/fereg_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/fereg_runtime.csv",
+    "original_sha256": "e1c0f94c4aceeebb9bcd3fa49d10c7e5dec346d61ce29e9974d09ad042da421c"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/fereg_status.csv",
+    "original_sha256": "62b3ac0011b9b6da8a1abd4b7239932ccdac597186b385ad8568ab71fae96b47"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/fereg_certificate.csv",
+    "original_sha256": "0fe8ee5b01b937b088af5cf05e98ba0fda3e5033e4a56b8b6d5d2c88398c6de8"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/fereg_dof.csv",
+    "original_sha256": "a4b57e83e60f3a1f45e8de5b379da8950ca0627a038471134c68b585d32a52d0"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/fereg_fit.csv",
+    "original_sha256": "03caab96f06461324411cc45a510cd99339991f2480a097db352e7828f1c810b"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/fereg_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p2-candidate/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/coefficients.csv",
+    "original_sha256": "5d88bc3370272c5a77511a2456bec40516e6df4eef43775a5436b2350901a2bc"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/V.csv",
+    "original_sha256": "8ccf66974b0721f55b1c3ecdca590c0b3f7a1c715a99230893e4910d7f7760e2"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/import-hashes.json",
+    "original_sha256": "5f02005fdadc83b7923d9726f8d98db6ef054fe198298d19c2600a7e122f70f4"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/b.csv",
+    "original_sha256": "f349ac27db29d0d5ec62dda790750ecd360f39642af04cd4b76f53297d6270af"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/fereg_solver.csv",
+    "original_sha256": "afd2ec6a0a59229ad627c4c44c85881f0caf72403c3438ad05e7fe6be68003b8"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/result.json",
+    "original_sha256": "51752e484bdba96f70d7d886f2cfafffceefe4b4017d95663d452ad795ce29e4"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/fereg_fe.csv",
+    "original_sha256": "8b85eaf8a3cc9d02d3e60cb8f3fbf6362d2f1357ffd70acb690c475c3a2bd1d1"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/covariance.csv",
+    "original_sha256": "d80c1a5b367b12af01abf9873fcc214214352b1922276b347e2b68b0304d3291"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/fereg_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/fereg_runtime.csv",
+    "original_sha256": "fca37f8b4791a4beb804676f0f02d4cdad20596ddcec74fdd7eb5a19b27641cb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/fereg_status.csv",
+    "original_sha256": "62b3ac0011b9b6da8a1abd4b7239932ccdac597186b385ad8568ab71fae96b47"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/fereg_certificate.csv",
+    "original_sha256": "0fe8ee5b01b937b088af5cf05e98ba0fda3e5033e4a56b8b6d5d2c88398c6de8"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/fereg_dof.csv",
+    "original_sha256": "a4b57e83e60f3a1f45e8de5b379da8950ca0627a038471134c68b585d32a52d0"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/fereg_fit.csv",
+    "original_sha256": "03caab96f06461324411cc45a510cd99339991f2480a097db352e7828f1c810b"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/fereg_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-baseline/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/coefficients.csv",
+    "original_sha256": "5d88bc3370272c5a77511a2456bec40516e6df4eef43775a5436b2350901a2bc"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/V.csv",
+    "original_sha256": "8ccf66974b0721f55b1c3ecdca590c0b3f7a1c715a99230893e4910d7f7760e2"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/import-hashes.json",
+    "original_sha256": "5f02005fdadc83b7923d9726f8d98db6ef054fe198298d19c2600a7e122f70f4"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/b.csv",
+    "original_sha256": "f349ac27db29d0d5ec62dda790750ecd360f39642af04cd4b76f53297d6270af"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/fereg_solver.csv",
+    "original_sha256": "723fdfd328bdb8af6c290b6562c046a3f7c2666ed24a24cf901d35488308bc1b"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/result.json",
+    "original_sha256": "72ef0943b52a60834e9a36557a67ead9bbce577836c7fea0ae7595edf85a6825"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/fereg_fe.csv",
+    "original_sha256": "8b85eaf8a3cc9d02d3e60cb8f3fbf6362d2f1357ffd70acb690c475c3a2bd1d1"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/covariance.csv",
+    "original_sha256": "d80c1a5b367b12af01abf9873fcc214214352b1922276b347e2b68b0304d3291"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/fereg_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/fereg_runtime.csv",
+    "original_sha256": "f84b446334f24e5f54ec38e5491fd8a79f2c29f9ae54901571dad5c4929df76d"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/fereg_status.csv",
+    "original_sha256": "62b3ac0011b9b6da8a1abd4b7239932ccdac597186b385ad8568ab71fae96b47"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/fereg_certificate.csv",
+    "original_sha256": "0fe8ee5b01b937b088af5cf05e98ba0fda3e5033e4a56b8b6d5d2c88398c6de8"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/fereg_dof.csv",
+    "original_sha256": "a4b57e83e60f3a1f45e8de5b379da8950ca0627a038471134c68b585d32a52d0"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/fereg_fit.csv",
+    "original_sha256": "03caab96f06461324411cc45a510cd99339991f2480a097db352e7828f1c810b"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/fereg_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ols_small-p3-candidate/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/coefficients.csv",
+    "original_sha256": "49c3870ba16deb245f374d11686ee48246ca80d6fc2c41f2aae29c928a676e47"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/V.csv",
+    "original_sha256": "35520e5c1fd726289cf5383dbefee321c4c7527b01a38fc00a78b984451590da"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/import-hashes.json",
+    "original_sha256": "571442737399dc1d395a7856b897e1692e38b4ea24f1b796a09ec7e9895657ae"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/b.csv",
+    "original_sha256": "e483f94acf061f681e7c491c462439c1ccebebcd2b06ef6ec3a39961421c08e6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/fereg_solver.csv",
+    "original_sha256": "7b5141a529607232a57d29c15544f1181703676cabea0d29eab907fd7084a0a2"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/result.json",
+    "original_sha256": "ffa45291194b3ea0920dcd23e8936454569b4d9f7deb7a0bcbcfe971be6720b6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/fereg_fe.csv",
+    "original_sha256": "bafe7eec972ae170ea73b1a6d451cd86dc6c44605d6f8bec8e11721ad31df1b9"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/covariance.csv",
+    "original_sha256": "848256fad256a69f69255da19d48579a3fea9d732a42654d8f7d89bd796d2a64"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/fereg_cluster.csv",
+    "original_sha256": "9b58df130bd5ff22dd8982e71f9a166913d33ea68bc531a778e7f3b737ab230c"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/fereg_runtime.csv",
+    "original_sha256": "083f72b994dad0807c5660ba8a632b4ebb02cbf45f170965031e08c8e3f16826"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/fereg_status.csv",
+    "original_sha256": "6538e6c5cbb179b101ce67f82148277824892b8c0fcc1de0bed49cc8dd9ab5cc"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/fereg_certificate.csv",
+    "original_sha256": "de93fd5271f7a0e6d822c118010527038a2429d68460129de69272ba71b1c6b6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/fereg_dof.csv",
+    "original_sha256": "751665eecb68445b1a93881ba659340951054620ade2065f69023a3912948acb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/fereg_fit.csv",
+    "original_sha256": "c5539963c89fdc0c2556ce7734eb07ca107e156da85b27daafbce9e4dfb017fe"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/fereg_subset.csv",
+    "original_sha256": "d37842f0d946179a7a670819971a6ddb8262093f44c0160f6c4150516464bcf0"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-baseline/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/coefficients.csv",
+    "original_sha256": "49c3870ba16deb245f374d11686ee48246ca80d6fc2c41f2aae29c928a676e47"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/V.csv",
+    "original_sha256": "35520e5c1fd726289cf5383dbefee321c4c7527b01a38fc00a78b984451590da"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/import-hashes.json",
+    "original_sha256": "571442737399dc1d395a7856b897e1692e38b4ea24f1b796a09ec7e9895657ae"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/b.csv",
+    "original_sha256": "e483f94acf061f681e7c491c462439c1ccebebcd2b06ef6ec3a39961421c08e6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/fereg_solver.csv",
+    "original_sha256": "e7fdb7ec4470afdef18722a4f6d96df4a6e904cbf894970f860941b5252fde1b"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/result.json",
+    "original_sha256": "0783d590435a45c1d80394e530792b480f08356da307ed554556949e1cac1de8"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/fereg_fe.csv",
+    "original_sha256": "bafe7eec972ae170ea73b1a6d451cd86dc6c44605d6f8bec8e11721ad31df1b9"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/covariance.csv",
+    "original_sha256": "848256fad256a69f69255da19d48579a3fea9d732a42654d8f7d89bd796d2a64"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/fereg_cluster.csv",
+    "original_sha256": "9b58df130bd5ff22dd8982e71f9a166913d33ea68bc531a778e7f3b737ab230c"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/fereg_runtime.csv",
+    "original_sha256": "6fe63eba94948cea636bc035d284705ce1098224bd91b50ce96f13c5f67c515d"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/fereg_status.csv",
+    "original_sha256": "6538e6c5cbb179b101ce67f82148277824892b8c0fcc1de0bed49cc8dd9ab5cc"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/fereg_certificate.csv",
+    "original_sha256": "de93fd5271f7a0e6d822c118010527038a2429d68460129de69272ba71b1c6b6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/fereg_dof.csv",
+    "original_sha256": "751665eecb68445b1a93881ba659340951054620ade2065f69023a3912948acb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/fereg_fit.csv",
+    "original_sha256": "c5539963c89fdc0c2556ce7734eb07ca107e156da85b27daafbce9e4dfb017fe"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/fereg_subset.csv",
+    "original_sha256": "d37842f0d946179a7a670819971a6ddb8262093f44c0160f6c4150516464bcf0"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p1-candidate/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/coefficients.csv",
+    "original_sha256": "49c3870ba16deb245f374d11686ee48246ca80d6fc2c41f2aae29c928a676e47"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/V.csv",
+    "original_sha256": "35520e5c1fd726289cf5383dbefee321c4c7527b01a38fc00a78b984451590da"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/import-hashes.json",
+    "original_sha256": "571442737399dc1d395a7856b897e1692e38b4ea24f1b796a09ec7e9895657ae"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/b.csv",
+    "original_sha256": "e483f94acf061f681e7c491c462439c1ccebebcd2b06ef6ec3a39961421c08e6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/fereg_solver.csv",
+    "original_sha256": "c8ddac7c30fa020cdc6004e50df3c2f2897097c232da9643e528e713c0ad19b6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/result.json",
+    "original_sha256": "bd39d8518e0e8bca474db6a2e2ac42648860383e076bc5eb232d7f96972c9b11"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/fereg_fe.csv",
+    "original_sha256": "bafe7eec972ae170ea73b1a6d451cd86dc6c44605d6f8bec8e11721ad31df1b9"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/covariance.csv",
+    "original_sha256": "848256fad256a69f69255da19d48579a3fea9d732a42654d8f7d89bd796d2a64"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/fereg_cluster.csv",
+    "original_sha256": "9b58df130bd5ff22dd8982e71f9a166913d33ea68bc531a778e7f3b737ab230c"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/fereg_runtime.csv",
+    "original_sha256": "1e1abe761c880b288b813e81030dd823b6757fc81e7d3bc60a1a7abbfbf80114"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/fereg_status.csv",
+    "original_sha256": "6538e6c5cbb179b101ce67f82148277824892b8c0fcc1de0bed49cc8dd9ab5cc"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/fereg_certificate.csv",
+    "original_sha256": "de93fd5271f7a0e6d822c118010527038a2429d68460129de69272ba71b1c6b6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/fereg_dof.csv",
+    "original_sha256": "751665eecb68445b1a93881ba659340951054620ade2065f69023a3912948acb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/fereg_fit.csv",
+    "original_sha256": "c5539963c89fdc0c2556ce7734eb07ca107e156da85b27daafbce9e4dfb017fe"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/fereg_subset.csv",
+    "original_sha256": "d37842f0d946179a7a670819971a6ddb8262093f44c0160f6c4150516464bcf0"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-baseline/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/coefficients.csv",
+    "original_sha256": "49c3870ba16deb245f374d11686ee48246ca80d6fc2c41f2aae29c928a676e47"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/V.csv",
+    "original_sha256": "35520e5c1fd726289cf5383dbefee321c4c7527b01a38fc00a78b984451590da"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/import-hashes.json",
+    "original_sha256": "571442737399dc1d395a7856b897e1692e38b4ea24f1b796a09ec7e9895657ae"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/b.csv",
+    "original_sha256": "e483f94acf061f681e7c491c462439c1ccebebcd2b06ef6ec3a39961421c08e6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/fereg_solver.csv",
+    "original_sha256": "2057ebcaacc16117384fec17bdf0921c5479dc397d977d0e90793ed5c6ac774b"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/result.json",
+    "original_sha256": "9be2953648826d7a1f1b3273b721f7a046d4950eb7d2e5f5b55ab5b572a95356"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/fereg_fe.csv",
+    "original_sha256": "bafe7eec972ae170ea73b1a6d451cd86dc6c44605d6f8bec8e11721ad31df1b9"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/covariance.csv",
+    "original_sha256": "848256fad256a69f69255da19d48579a3fea9d732a42654d8f7d89bd796d2a64"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/fereg_cluster.csv",
+    "original_sha256": "9b58df130bd5ff22dd8982e71f9a166913d33ea68bc531a778e7f3b737ab230c"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/fereg_runtime.csv",
+    "original_sha256": "d7b34498f0a56e3457c1270cb356767043ff4bb0e9e4a9c6bdccc063f0010361"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/fereg_status.csv",
+    "original_sha256": "6538e6c5cbb179b101ce67f82148277824892b8c0fcc1de0bed49cc8dd9ab5cc"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/fereg_certificate.csv",
+    "original_sha256": "de93fd5271f7a0e6d822c118010527038a2429d68460129de69272ba71b1c6b6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/fereg_dof.csv",
+    "original_sha256": "751665eecb68445b1a93881ba659340951054620ade2065f69023a3912948acb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/fereg_fit.csv",
+    "original_sha256": "c5539963c89fdc0c2556ce7734eb07ca107e156da85b27daafbce9e4dfb017fe"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/fereg_subset.csv",
+    "original_sha256": "d37842f0d946179a7a670819971a6ddb8262093f44c0160f6c4150516464bcf0"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p2-candidate/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/coefficients.csv",
+    "original_sha256": "49c3870ba16deb245f374d11686ee48246ca80d6fc2c41f2aae29c928a676e47"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/V.csv",
+    "original_sha256": "35520e5c1fd726289cf5383dbefee321c4c7527b01a38fc00a78b984451590da"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/import-hashes.json",
+    "original_sha256": "571442737399dc1d395a7856b897e1692e38b4ea24f1b796a09ec7e9895657ae"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/b.csv",
+    "original_sha256": "e483f94acf061f681e7c491c462439c1ccebebcd2b06ef6ec3a39961421c08e6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/fereg_solver.csv",
+    "original_sha256": "afb39cb860e33c9ebf3bc4d765363bdafe3664bae28f2e8d1b22815f968fc0f1"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/result.json",
+    "original_sha256": "47a2fc85b92e20a7ada121f592768d7918d844c932bc3fc1ba1ef00033bfa274"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/fereg_fe.csv",
+    "original_sha256": "bafe7eec972ae170ea73b1a6d451cd86dc6c44605d6f8bec8e11721ad31df1b9"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/covariance.csv",
+    "original_sha256": "848256fad256a69f69255da19d48579a3fea9d732a42654d8f7d89bd796d2a64"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/fereg_cluster.csv",
+    "original_sha256": "9b58df130bd5ff22dd8982e71f9a166913d33ea68bc531a778e7f3b737ab230c"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/fereg_runtime.csv",
+    "original_sha256": "59d5eb82f29b640832c6a61a458674bcf195d2733c65c7a46801414ee6320957"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/fereg_status.csv",
+    "original_sha256": "6538e6c5cbb179b101ce67f82148277824892b8c0fcc1de0bed49cc8dd9ab5cc"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/fereg_certificate.csv",
+    "original_sha256": "de93fd5271f7a0e6d822c118010527038a2429d68460129de69272ba71b1c6b6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/fereg_dof.csv",
+    "original_sha256": "751665eecb68445b1a93881ba659340951054620ade2065f69023a3912948acb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/fereg_fit.csv",
+    "original_sha256": "c5539963c89fdc0c2556ce7734eb07ca107e156da85b27daafbce9e4dfb017fe"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/fereg_subset.csv",
+    "original_sha256": "d37842f0d946179a7a670819971a6ddb8262093f44c0160f6c4150516464bcf0"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-baseline/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/coefficients.csv",
+    "original_sha256": "49c3870ba16deb245f374d11686ee48246ca80d6fc2c41f2aae29c928a676e47"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/V.csv",
+    "original_sha256": "35520e5c1fd726289cf5383dbefee321c4c7527b01a38fc00a78b984451590da"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/import-hashes.json",
+    "original_sha256": "571442737399dc1d395a7856b897e1692e38b4ea24f1b796a09ec7e9895657ae"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/b.csv",
+    "original_sha256": "e483f94acf061f681e7c491c462439c1ccebebcd2b06ef6ec3a39961421c08e6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/fereg_solver.csv",
+    "original_sha256": "7ffe3d18d3ae3e41507860e5c35224f63ddbfc6e1288c0c5fda245d61c936709"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/result.json",
+    "original_sha256": "16e051469e67b9a5bb606a3aea787929cb4fe774edb3dba7b5548d47aa53682a"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_separation_sequence.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_separation.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/fereg_fe.csv",
+    "original_sha256": "bafe7eec972ae170ea73b1a6d451cd86dc6c44605d6f8bec8e11721ad31df1b9"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/covariance.csv",
+    "original_sha256": "848256fad256a69f69255da19d48579a3fea9d732a42654d8f7d89bd796d2a64"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/fereg_cluster.csv",
+    "original_sha256": "9b58df130bd5ff22dd8982e71f9a166913d33ea68bc531a778e7f3b737ab230c"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/fereg_runtime.csv",
+    "original_sha256": "ca7da227a87afab2ebaa964d05de469bdfb2588224402d1d41819fcf17dcc309"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/fereg_status.csv",
+    "original_sha256": "6538e6c5cbb179b101ce67f82148277824892b8c0fcc1de0bed49cc8dd9ab5cc"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_receipt.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/fereg_certificate.csv",
+    "original_sha256": "de93fd5271f7a0e6d822c118010527038a2429d68460129de69272ba71b1c6b6"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/fereg_dof.csv",
+    "original_sha256": "751665eecb68445b1a93881ba659340951054620ade2065f69023a3912948acb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/fereg_fit.csv",
+    "original_sha256": "c5539963c89fdc0c2556ce7734eb07ca107e156da85b27daafbce9e4dfb017fe"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_inference.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/fereg_subset.csv",
+    "original_sha256": "d37842f0d946179a7a670819971a6ddb8262093f44c0160f6c4150516464bcf0"
+  },
+  {
+    "path": "cost/cmg_ols_weighted-p3-candidate/feppml_drop_counts.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/coefficients.csv",
+    "original_sha256": "607635b1909298230de5135ff389c0d42538aea1b175cb69d7bb03f8bf4b731c"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/V.csv",
+    "original_sha256": "e5ca76fd69ffb2947718b5b4af0a1c5807b5fca4ae4eb8cd2f078cfa49843266"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/import-hashes.json",
+    "original_sha256": "2e91cace20a4e6243185e2703a216c41ec8e939d72b62b3939fec3875511929a"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/b.csv",
+    "original_sha256": "bade022fdc63c188b0c4ddb0675c5f295dd9bc707addf1a8b2784a13bb6c7463"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/fereg_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/result.json",
+    "original_sha256": "2b80efbe191f7b4ee680377cf765af68ea9894a264ceee14b7ede1cdf6063abc"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_separation_sequence.csv",
+    "original_sha256": "d62b6b4c55f1b7854be6285dfb70fd49df29b4076ff16cd13dfd6dcd07dc9c2d"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_separation.csv",
+    "original_sha256": "72fff1cd284038773a2286fc3474120fd0468af46a169987d657d1f22a529888"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_fe.csv",
+    "original_sha256": "7e24a0b9517b497ec6c0b60ad1b3f65f5bb4254f5d52aa0bfa2fc6e624e67dce"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/fereg_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/covariance.csv",
+    "original_sha256": "e81e6c77a1433e058a257b4a444a63707d7efefe20112ec460092f6618c5ebce"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_status.csv",
+    "original_sha256": "dfa96cb18a8954f44891dfe993827e936d51cf27235c8106f54a87c444e04c90"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/fereg_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/fereg_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/fereg_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_dof.csv",
+    "original_sha256": "5bb1f3f5109effe9af8ed567666c482ed20560ed502a9da0152291845009c826"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_receipt.csv",
+    "original_sha256": "44a4fc89221b7ee638f2d7181f75e7cd1cfdabf19c86cbd0a8e9ec7aa7053ed3"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/fereg_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/fereg_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/fereg_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_solver.csv",
+    "original_sha256": "a36a835510b5fd813ee60cf302f3da6a2c9f804542dd5db361ee433dde97f988"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_runtime.csv",
+    "original_sha256": "77339b748a76589849e016c68c6b95be154875425179ac0bcb04b067fa0a0e4e"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_fit.csv",
+    "original_sha256": "638ad392d58310ed06e631a1c2bb82389325e8c6176e71af030c63e4f38ac34f"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_inference.csv",
+    "original_sha256": "3ddf4bbdbb1ef872b22a88865b710b1e80ae93daa38ceb68f9eb5a9ce65319d2"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_certificate.csv",
+    "original_sha256": "b607f454059aac57520f3d790f0b9a052a82dbcf378d911e90031c97fabbcb6d"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/fereg_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-baseline/feppml_drop_counts.csv",
+    "original_sha256": "d9620180c979b678d9f34af16b10c54562e452fb66fceeb2d159f266f766b002"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/coefficients.csv",
+    "original_sha256": "607635b1909298230de5135ff389c0d42538aea1b175cb69d7bb03f8bf4b731c"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/V.csv",
+    "original_sha256": "e5ca76fd69ffb2947718b5b4af0a1c5807b5fca4ae4eb8cd2f078cfa49843266"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/import-hashes.json",
+    "original_sha256": "2e91cace20a4e6243185e2703a216c41ec8e939d72b62b3939fec3875511929a"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/b.csv",
+    "original_sha256": "bade022fdc63c188b0c4ddb0675c5f295dd9bc707addf1a8b2784a13bb6c7463"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/fereg_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/result.json",
+    "original_sha256": "685dd6d69ad3c7e2a77b37985d770a8ea355648b12ada6e884ac286b58562939"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_separation_sequence.csv",
+    "original_sha256": "d62b6b4c55f1b7854be6285dfb70fd49df29b4076ff16cd13dfd6dcd07dc9c2d"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_separation.csv",
+    "original_sha256": "72fff1cd284038773a2286fc3474120fd0468af46a169987d657d1f22a529888"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_fe.csv",
+    "original_sha256": "7e24a0b9517b497ec6c0b60ad1b3f65f5bb4254f5d52aa0bfa2fc6e624e67dce"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/fereg_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/covariance.csv",
+    "original_sha256": "e81e6c77a1433e058a257b4a444a63707d7efefe20112ec460092f6618c5ebce"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_status.csv",
+    "original_sha256": "dfa96cb18a8954f44891dfe993827e936d51cf27235c8106f54a87c444e04c90"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/fereg_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/fereg_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/fereg_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_dof.csv",
+    "original_sha256": "5bb1f3f5109effe9af8ed567666c482ed20560ed502a9da0152291845009c826"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_receipt.csv",
+    "original_sha256": "44a4fc89221b7ee638f2d7181f75e7cd1cfdabf19c86cbd0a8e9ec7aa7053ed3"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/fereg_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/fereg_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/fereg_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_solver.csv",
+    "original_sha256": "d17eeb33c75af2ae0adfebe709066e23c70b93ee2fed138b148e881575841b74"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_runtime.csv",
+    "original_sha256": "ffc4bf0b1aeb815adbcd311a2be32e5a1066db4411f14de0ffaf4047e7069910"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_fit.csv",
+    "original_sha256": "638ad392d58310ed06e631a1c2bb82389325e8c6176e71af030c63e4f38ac34f"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_inference.csv",
+    "original_sha256": "3ddf4bbdbb1ef872b22a88865b710b1e80ae93daa38ceb68f9eb5a9ce65319d2"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_certificate.csv",
+    "original_sha256": "b607f454059aac57520f3d790f0b9a052a82dbcf378d911e90031c97fabbcb6d"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/fereg_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p1-candidate/feppml_drop_counts.csv",
+    "original_sha256": "d9620180c979b678d9f34af16b10c54562e452fb66fceeb2d159f266f766b002"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/coefficients.csv",
+    "original_sha256": "607635b1909298230de5135ff389c0d42538aea1b175cb69d7bb03f8bf4b731c"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/V.csv",
+    "original_sha256": "e5ca76fd69ffb2947718b5b4af0a1c5807b5fca4ae4eb8cd2f078cfa49843266"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/import-hashes.json",
+    "original_sha256": "2e91cace20a4e6243185e2703a216c41ec8e939d72b62b3939fec3875511929a"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/b.csv",
+    "original_sha256": "bade022fdc63c188b0c4ddb0675c5f295dd9bc707addf1a8b2784a13bb6c7463"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/fereg_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/result.json",
+    "original_sha256": "ce79671ecbade771dce02d7b0ca05002c4375045271e3badf94acc2b87ce1813"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_separation_sequence.csv",
+    "original_sha256": "d62b6b4c55f1b7854be6285dfb70fd49df29b4076ff16cd13dfd6dcd07dc9c2d"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_separation.csv",
+    "original_sha256": "72fff1cd284038773a2286fc3474120fd0468af46a169987d657d1f22a529888"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_fe.csv",
+    "original_sha256": "7e24a0b9517b497ec6c0b60ad1b3f65f5bb4254f5d52aa0bfa2fc6e624e67dce"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/fereg_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/covariance.csv",
+    "original_sha256": "e81e6c77a1433e058a257b4a444a63707d7efefe20112ec460092f6618c5ebce"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_status.csv",
+    "original_sha256": "dfa96cb18a8954f44891dfe993827e936d51cf27235c8106f54a87c444e04c90"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/fereg_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/fereg_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/fereg_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_dof.csv",
+    "original_sha256": "5bb1f3f5109effe9af8ed567666c482ed20560ed502a9da0152291845009c826"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_receipt.csv",
+    "original_sha256": "44a4fc89221b7ee638f2d7181f75e7cd1cfdabf19c86cbd0a8e9ec7aa7053ed3"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/fereg_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/fereg_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/fereg_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_solver.csv",
+    "original_sha256": "c033425b3be59c0f9788567acdcda91d171af3f39d4fa8b1637c0a8b25beef5c"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_runtime.csv",
+    "original_sha256": "bcb223b885c767a67ba25f258d6bc10163afbf1c07685cc3397c4d4eee82bc26"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_fit.csv",
+    "original_sha256": "638ad392d58310ed06e631a1c2bb82389325e8c6176e71af030c63e4f38ac34f"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_inference.csv",
+    "original_sha256": "3ddf4bbdbb1ef872b22a88865b710b1e80ae93daa38ceb68f9eb5a9ce65319d2"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_certificate.csv",
+    "original_sha256": "b607f454059aac57520f3d790f0b9a052a82dbcf378d911e90031c97fabbcb6d"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/fereg_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-baseline/feppml_drop_counts.csv",
+    "original_sha256": "d9620180c979b678d9f34af16b10c54562e452fb66fceeb2d159f266f766b002"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/coefficients.csv",
+    "original_sha256": "607635b1909298230de5135ff389c0d42538aea1b175cb69d7bb03f8bf4b731c"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/V.csv",
+    "original_sha256": "e5ca76fd69ffb2947718b5b4af0a1c5807b5fca4ae4eb8cd2f078cfa49843266"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/import-hashes.json",
+    "original_sha256": "2e91cace20a4e6243185e2703a216c41ec8e939d72b62b3939fec3875511929a"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/b.csv",
+    "original_sha256": "bade022fdc63c188b0c4ddb0675c5f295dd9bc707addf1a8b2784a13bb6c7463"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/fereg_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/result.json",
+    "original_sha256": "273dc2556a2aa1a8ea61203917af230ea03e8ff794747522d8f3c4f5d0ec7868"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_separation_sequence.csv",
+    "original_sha256": "d62b6b4c55f1b7854be6285dfb70fd49df29b4076ff16cd13dfd6dcd07dc9c2d"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_separation.csv",
+    "original_sha256": "72fff1cd284038773a2286fc3474120fd0468af46a169987d657d1f22a529888"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_fe.csv",
+    "original_sha256": "7e24a0b9517b497ec6c0b60ad1b3f65f5bb4254f5d52aa0bfa2fc6e624e67dce"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/fereg_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/covariance.csv",
+    "original_sha256": "e81e6c77a1433e058a257b4a444a63707d7efefe20112ec460092f6618c5ebce"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_status.csv",
+    "original_sha256": "dfa96cb18a8954f44891dfe993827e936d51cf27235c8106f54a87c444e04c90"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/fereg_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/fereg_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/fereg_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_dof.csv",
+    "original_sha256": "5bb1f3f5109effe9af8ed567666c482ed20560ed502a9da0152291845009c826"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_receipt.csv",
+    "original_sha256": "44a4fc89221b7ee638f2d7181f75e7cd1cfdabf19c86cbd0a8e9ec7aa7053ed3"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/fereg_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/fereg_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/fereg_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_solver.csv",
+    "original_sha256": "d355489659f4a2fae89fb0c46b0a8cc55eea664a9503de7a87619e8daed98607"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_runtime.csv",
+    "original_sha256": "3fc697b0303db80ccc6b9397000c0d3d4bea4a9c4831173d7c917afd95d62082"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_fit.csv",
+    "original_sha256": "638ad392d58310ed06e631a1c2bb82389325e8c6176e71af030c63e4f38ac34f"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_inference.csv",
+    "original_sha256": "3ddf4bbdbb1ef872b22a88865b710b1e80ae93daa38ceb68f9eb5a9ce65319d2"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_certificate.csv",
+    "original_sha256": "b607f454059aac57520f3d790f0b9a052a82dbcf378d911e90031c97fabbcb6d"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/fereg_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p2-candidate/feppml_drop_counts.csv",
+    "original_sha256": "d9620180c979b678d9f34af16b10c54562e452fb66fceeb2d159f266f766b002"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/coefficients.csv",
+    "original_sha256": "607635b1909298230de5135ff389c0d42538aea1b175cb69d7bb03f8bf4b731c"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/V.csv",
+    "original_sha256": "e5ca76fd69ffb2947718b5b4af0a1c5807b5fca4ae4eb8cd2f078cfa49843266"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/import-hashes.json",
+    "original_sha256": "2e91cace20a4e6243185e2703a216c41ec8e939d72b62b3939fec3875511929a"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/b.csv",
+    "original_sha256": "bade022fdc63c188b0c4ddb0675c5f295dd9bc707addf1a8b2784a13bb6c7463"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/fereg_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/result.json",
+    "original_sha256": "3d40e4875d106d8086009f19c8c32620dba201772eb7c5722b45af60452c7081"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_separation_sequence.csv",
+    "original_sha256": "d62b6b4c55f1b7854be6285dfb70fd49df29b4076ff16cd13dfd6dcd07dc9c2d"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_separation.csv",
+    "original_sha256": "72fff1cd284038773a2286fc3474120fd0468af46a169987d657d1f22a529888"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_fe.csv",
+    "original_sha256": "7e24a0b9517b497ec6c0b60ad1b3f65f5bb4254f5d52aa0bfa2fc6e624e67dce"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/fereg_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/covariance.csv",
+    "original_sha256": "e81e6c77a1433e058a257b4a444a63707d7efefe20112ec460092f6618c5ebce"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_status.csv",
+    "original_sha256": "dfa96cb18a8954f44891dfe993827e936d51cf27235c8106f54a87c444e04c90"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/fereg_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/fereg_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/fereg_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_dof.csv",
+    "original_sha256": "5bb1f3f5109effe9af8ed567666c482ed20560ed502a9da0152291845009c826"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_receipt.csv",
+    "original_sha256": "44a4fc89221b7ee638f2d7181f75e7cd1cfdabf19c86cbd0a8e9ec7aa7053ed3"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/fereg_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/fereg_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/fereg_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_solver.csv",
+    "original_sha256": "a107d53306dbdaf166c6651858ae5caaa00d68fb844d0d96a341865c2ae697bd"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_runtime.csv",
+    "original_sha256": "b25dedb8250e22e6e43f1477a651ca2f8d08b8171f23faad76eb1cc09d25f32b"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_fit.csv",
+    "original_sha256": "638ad392d58310ed06e631a1c2bb82389325e8c6176e71af030c63e4f38ac34f"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_inference.csv",
+    "original_sha256": "3ddf4bbdbb1ef872b22a88865b710b1e80ae93daa38ceb68f9eb5a9ce65319d2"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_certificate.csv",
+    "original_sha256": "b607f454059aac57520f3d790f0b9a052a82dbcf378d911e90031c97fabbcb6d"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/fereg_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-baseline/feppml_drop_counts.csv",
+    "original_sha256": "d9620180c979b678d9f34af16b10c54562e452fb66fceeb2d159f266f766b002"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/coefficients.csv",
+    "original_sha256": "607635b1909298230de5135ff389c0d42538aea1b175cb69d7bb03f8bf4b731c"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_subset.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/V.csv",
+    "original_sha256": "e5ca76fd69ffb2947718b5b4af0a1c5807b5fca4ae4eb8cd2f078cfa49843266"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/import-hashes.json",
+    "original_sha256": "2e91cace20a4e6243185e2703a216c41ec8e939d72b62b3939fec3875511929a"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/b.csv",
+    "original_sha256": "bade022fdc63c188b0c4ddb0675c5f295dd9bc707addf1a8b2784a13bb6c7463"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/fereg_solver.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/result.json",
+    "original_sha256": "1b4e53f8b2fcda151874075b171d417ba4ad7638be8d7c957e0956f462049abf"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_separation_sequence.csv",
+    "original_sha256": "d62b6b4c55f1b7854be6285dfb70fd49df29b4076ff16cd13dfd6dcd07dc9c2d"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_separation.csv",
+    "original_sha256": "72fff1cd284038773a2286fc3474120fd0468af46a169987d657d1f22a529888"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_fe.csv",
+    "original_sha256": "7e24a0b9517b497ec6c0b60ad1b3f65f5bb4254f5d52aa0bfa2fc6e624e67dce"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/fereg_fe.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/covariance.csv",
+    "original_sha256": "e81e6c77a1433e058a257b4a444a63707d7efefe20112ec460092f6618c5ebce"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_status.csv",
+    "original_sha256": "dfa96cb18a8954f44891dfe993827e936d51cf27235c8106f54a87c444e04c90"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/fereg_cluster.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/fereg_runtime.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/fereg_status.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/stderr.txt",
+    "original_sha256": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_dof.csv",
+    "original_sha256": "5bb1f3f5109effe9af8ed567666c482ed20560ed502a9da0152291845009c826"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_receipt.csv",
+    "original_sha256": "44a4fc89221b7ee638f2d7181f75e7cd1cfdabf19c86cbd0a8e9ec7aa7053ed3"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/fereg_certificate.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/fereg_dof.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/fereg_fit.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_solver.csv",
+    "original_sha256": "3d72d57eff3f3f9c9bd376ea17d389d1d550521e33c1bfe002bc3895be462aef"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_runtime.csv",
+    "original_sha256": "c7d8749ecff62a0e46ba0fb41d4ea49532e531c7035b92977811d8955e1f6826"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_fit.csv",
+    "original_sha256": "638ad392d58310ed06e631a1c2bb82389325e8c6176e71af030c63e4f38ac34f"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_cluster.csv",
+    "original_sha256": "5e4934cb7ca3e346e0d7a1eb535780232f99aea54c1c046d351971fa0b4bcf41"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_inference.csv",
+    "original_sha256": "3ddf4bbdbb1ef872b22a88865b710b1e80ae93daa38ceb68f9eb5a9ce65319d2"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_certificate.csv",
+    "original_sha256": "b607f454059aac57520f3d790f0b9a052a82dbcf378d911e90031c97fabbcb6d"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/fereg_subset.csv",
+    "original_sha256": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+  },
+  {
+    "path": "cost/cmg_ppml-p3-candidate/feppml_drop_counts.csv",
+    "original_sha256": "d9620180c979b678d9f34af16b10c54562e452fb66fceeb2d159f266f766b002"
+  },
+  {
+    "path": "harness/measure.py",
+    "original_sha256": "562e81288991c101b387d429e0b411614256cba14a48bae2ce013a56b616887d"
+  },
+  {
+    "path": "harness/stata_worker.do",
+    "original_sha256": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c"
+  },
+  {
+    "path": "harness/generate-publication.py",
+    "original_sha256": "0a606e39f5f7b93fe2fca3862f6aff46e3a9520a09287162fca790dc55ef78e0"
+  },
+  {
+    "path": "harness/generate-singletons.py",
+    "original_sha256": "9563a7c3f0f041d915df8f5dbb6e226b68d6b10608acac2f7565617d307b3ee7"
+  },
+  {
+    "path": "harness/select-cpus.py",
+    "original_sha256": "7ef5853a24151b9bf8a1e0a361dfcf5df6f62f7e2007965237ee3da14270d8ca"
+  },
+  {
+    "path": "harness/common.py",
+    "original_sha256": "fd7ff16ddb1b72574d6ee66bfd767914733936eace0d65872b7634c4084a7968"
+  },
+  {
+    "path": "harness/run-screen.py",
+    "original_sha256": "46c319089e124d5ba54c28069963979d2b741841238ff5ada03befee665ef9a7"
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "harness/measure.py": "562e81288991c101b387d429e0b411614256cba14a48bae2ce013a56b616887d",
+  "harness/stata_worker.do": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+  "harness/check.py": "3d96772b6afb7aea8b868685154cc7bf57208c18204b12986415697696ac437e",
+  "harness/select-cpus.py": "c1783a00e9b49f3daf36b49beb3faac066bf7a0a6310281410eab3d694a88ff8",
+  "harness/common.py": "fd7ff16ddb1b72574d6ee66bfd767914733936eace0d65872b7634c4084a7968",
+  "plan.json": "097eccaf73aabea400e86f1a22d3b59ee9dabbb2b31b40cc21e1d551cd3e46a2",
+  "run.sh": "280bcf6556fa0eaba5f51ec528e909e3c5a0be91c3a408184343e893618a59c5"
+}

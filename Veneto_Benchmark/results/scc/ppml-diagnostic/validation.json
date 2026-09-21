@@ -1,0 +1,18 @@
+{
+  "verified_at_utc": "2026-09-12T12:00:49.113930+00:00",
+  "receipt_audit": "passed: two instrumented fits; six initial-regression checks pass, reconstruction fails; all source files verified",
+  "python_and_shell_syntax": "passed",
+  "linux_instrumented_build": "passed with binary audit and actual-plugin ABI/self-test",
+  "terminal_scheduler_job": "7535389 failed=0 exit_status=0; both application sentinels and job sentinel present",
+  "production_estimator_changes": false,
+  "benchmark_resumed": false,
+  "report_pdf_unchanged": true,
+  "report_telegram_delivery": "sent, command exit 0",
+  "sha256": {
+    "results/scc/ppml-diagnostic/analysis.md": "3d5345fb977b13098b85a6a769666ded8e02f882dc56b985fc812317fec6fc04",
+    "results/scc/ppml-diagnostic/diagnosis.json": "4fd4ccdb4929f87759821740528268dfd893353049a7a2b7c8b4a73bedf301fa",
+    "results/scc/ppml-diagnostic/accounting.json": "3de6d3e42a72b4d0b63c93444f4bb67fbd776649c4cdc527c3de6679f5bc3f90",
+    "results/scc/ppml-diagnostic/certificate-trace.patch": "3ded57cad65eecd0d3a2c3e061ee5ba5c78174f6493e54ab77af54c8335fa1a0",
+    "scc/analyze_ppml_diagnostic.py": "b68c7960f05456fbd21fb827c63fe14581016b2bfe4eafc97ca204127059033e"
+  }
+}

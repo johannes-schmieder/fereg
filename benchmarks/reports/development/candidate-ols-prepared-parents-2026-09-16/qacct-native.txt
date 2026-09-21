@@ -1,0 +1,86 @@
+==============================================================
+qname        econ                
+hostname     scc-gd4.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_ols_parent    
+jobnumber    7590173             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Wed Sep 16 06:23:08 2026
+start_time   Wed Sep 16 06:23:43 2026
+end_time     Wed Sep 16 06:26:08 2026
+granted_pe   omp                 
+slots        4                   
+failed       0    
+exit_status  0                   
+ru_wallclock 145          
+ru_utime     225.799      
+ru_stime     18.385       
+ru_maxrss    1721164             
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    5238823             
+ru_majflt    4101                
+ru_nswap     0                   
+ru_inblock   1529456             
+ru_oublock   5305112             
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     219160              
+ru_nivcsw    70175               
+cpu          244.184      
+mem          233.245           
+io           27.099            
+iow          0.000             
+maxvmem      4.891G
+arid         undefined
+==============================================================
+qname        econ                
+hostname     scc-gr4.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_ols_parent    
+jobnumber    7590163             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Wed Sep 16 06:14:12 2026
+start_time   Wed Sep 16 06:14:44 2026
+end_time     Wed Sep 16 06:16:44 2026
+granted_pe   omp                 
+slots        4                   
+failed       0    
+exit_status  0                   
+ru_wallclock 120          
+ru_utime     193.863      
+ru_stime     17.990       
+ru_maxrss    1622592             
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    5840183             
+ru_majflt    4098                
+ru_nswap     0                   
+ru_inblock   1531104             
+ru_oublock   5300920             
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     217849              
+ru_nivcsw    184146              
+cpu          211.853      
+mem          203.624           
+io           26.382            
+iow          0.000             
+maxvmem      4.684G
+arid         undefined

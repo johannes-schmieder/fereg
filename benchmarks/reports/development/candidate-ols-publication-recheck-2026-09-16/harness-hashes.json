@@ -1,0 +1,10 @@
+{
+  "plan.json": "43252ac3b0af7bca35ce0cfdfe09e7cbdbff8fc548b1a26edf94039097cf96d9",
+  "identity.json": "e9bf2b83be3185570545825a4da27758c850b473cc7fa5ea63390abb72bd5c3f",
+  "artifacts.json": "b4daa484b1ba54c994c5cd17451927b80685dca0de9b0b4ad3b00eff08b43168",
+  "run.sh": "2b6e8acf2bb511909ebd9ae6cdfd1b90dc006c302a393407c5ae57b37a64109d",
+  "harness/check.py": "992c06d0f4993d9921fb8d90a188d0750237db85ede666ff7872422759ef45b1",
+  "harness/common.py": "fd7ff16ddb1b72574d6ee66bfd767914733936eace0d65872b7634c4084a7968",
+  "harness/measure.py": "562e81288991c101b387d429e0b411614256cba14a48bae2ce013a56b616887d",
+  "harness/stata_worker.do": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c"
+}

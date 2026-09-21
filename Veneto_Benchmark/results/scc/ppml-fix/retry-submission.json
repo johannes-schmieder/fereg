@@ -1,0 +1,22 @@
+{
+  "job_id": "7536374",
+  "recorded_at_utc": "2026-09-12T14:58:54.259263+00:00",
+  "run_root": "/projectnb/welfgr/fereg/dev/20260912-veneto-ppml-fix-retry",
+  "build_job": "7536367",
+  "snapshot_sha256": "659924a603a3b750a7478cad608d95022166b5a83956e066d9b9e29698420b96",
+  "plugin_sha256": "cfcd6d457197c958b0fd4a776e511b6deb4b3a04e731c886cd24e889c1b394b0",
+  "slots": 14,
+  "mem_per_core": "3G",
+  "job_cap_seconds": 1320,
+  "fit_cap_seconds": 600,
+  "threads": [
+    4,
+    14
+  ],
+  "controller_sha256": {
+    "verify_ppml_resume.sh": "c88937d913d9d682ca6a5adf7844c6ed9f0a3fd037d991aae20fd0cad70bbbdd",
+    "verify_ppml.py": "422615622d18403d35fb91eb679cdd2fef6ac5997871e93e221449add43fb628",
+    "verify_ppml.do": "638dd0d72dfd813bf55e1452db87e3fb395d8413f4d965be0197757b41c3bb39"
+  },
+  "campaign_resumed": false
+}

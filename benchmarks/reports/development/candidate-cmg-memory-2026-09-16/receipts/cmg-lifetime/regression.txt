@@ -1,0 +1,29 @@
+   Compiling cmg v0.1.0 ($RUN/cmg-lifetime/source)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.92s
+     Running tests/memory_accounting.rs ($RUN/cmg-lifetime/target/debug/deps/memory_accounting-2501f7febd165e7e)
+
+running 1 test
+test exact_report_is_bounded_by_the_conservative_estimate ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/parallel.rs ($RUN/cmg-lifetime/target/debug/deps/parallel-47e60fb2190ff0ca)
+
+running 14 tests
+test one_thread_executor_preserves_serial_behavior ... ok
+test one_thread_parallel_cmg_plan_is_bitwise_serial ... ok
+test one_thread_planned_pcg_is_bitwise_serial ... ok
+test parallel_batch_matches_serial_results_and_input_order ... ok
+test parallel_cmg_plan_matches_stationary_cycle_and_rejects_other_hierarchies ... ok
+test parallel_contraction_and_hierarchy_match_serial_exactly ... ok
+test parallel_edge_sorting_matches_serial_canonicalization ... ok
+test parallel_heavy_edge_selection_and_grouping_match_serial_exactly ... ok
+test planned_parallel_pcg_matches_serial_certification ... ok
+test prepared_solver_empty_batch_is_observable_and_allocation_free ... ok
+test prepared_solver_matches_explicit_certified_results ... ok
+test prepared_solver_obeys_workspace_budget ... ok
+test prepared_solver_routes_single_and_batch_workloads ... ok
+test workspace_budget_limits_concurrency_and_rejects_too_small_budget ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.43s
+

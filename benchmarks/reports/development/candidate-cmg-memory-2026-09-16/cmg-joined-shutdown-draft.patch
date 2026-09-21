@@ -1,0 +1,179 @@
+--- a/src/execution.rs
++++ b/src/execution.rs
+@@ -66,7 +66,8 @@
+ /// configures or relies on Rayon's process-wide global pool.
+ #[cfg(feature = "parallel")]
+ pub struct ParallelExecutor {
+-    pool: rayon::ThreadPool,
++    pool: Option<rayon::ThreadPool>,
++    workers: JoinedWorkers,
+     threads: usize,
+     options: ParallelOptions,
+ }
+@@ -94,15 +95,28 @@
+         } else {
+             options.threads
+         };
++        let mut workers = JoinedWorkers::new(threads)?;
+         let pool = rayon::ThreadPoolBuilder::new()
+             .num_threads(threads)
+             .thread_name(|index| format!("cmg-worker-{index}"))
++            .spawn_handler(|thread| {
++                let mut builder = std::thread::Builder::new();
++                if let Some(name) = thread.name() {
++                    builder = builder.name(name.to_owned());
++                }
++                if let Some(size) = thread.stack_size() {
++                    builder = builder.stack_size(size);
++                }
++                workers.handles.push(builder.spawn(|| thread.run())?);
++                Ok(())
++            })
+             .build()
+             .map_err(|error| CmgError::ParallelRuntime {
+                 message: error.to_string(),
+             })?;
+         Ok(Self {
+-            pool,
++            pool: Some(pool),
++            workers,
+             threads,
+             options,
+         })
+@@ -151,7 +165,10 @@
+         Operation: FnOnce() -> Output + Send,
+         Output: Send,
+     {
+-        self.pool.install(operation)
++        self.pool
++            .as_ref()
++            .expect("live CMG executor")
++            .install(operation)
+     }
+ 
+     pub(crate) fn should_parallel(&self, length: usize) -> bool {
+@@ -165,3 +182,124 @@
+         quotient.saturating_add(remainder).max(1)
+     }
+ }
++
++// Rayon ThreadPool::drop only signals termination. Retain join handles so an
++// executor that has returned from its scoped kernels cannot overlap another
++// executor's admission. The builder's failure path signals termination before
++// this guard joins any successfully started workers.
++#[cfg(feature = "parallel")]
++#[derive(Debug)]
++struct JoinedWorkers {
++    handles: Vec<std::thread::JoinHandle<()>>,
++}
++
++#[cfg(feature = "parallel")]
++impl JoinedWorkers {
++    fn new(threads: usize) -> Result<Self, CmgError> {
++        let mut handles = Vec::new();
++        handles
++            .try_reserve_exact(threads)
++            .map_err(|_| CmgError::AllocationFailed {
++                context: "executor worker handles",
++            })?;
++        Ok(Self { handles })
++    }
++}
++
++#[cfg(feature = "parallel")]
++impl JoinedWorkers {
++    fn join(&mut self) {
++        for handle in self.handles.drain(..) {
++            // Worker operations are internal scoped kernels, not caller-supplied
++            // tasks that can own/drop this executor on one of its own workers.
++            // Join errors must not cause a second panic during unwinding.
++            let _ = handle.join();
++        }
++    }
++}
++
++#[cfg(feature = "parallel")]
++impl Drop for JoinedWorkers {
++    fn drop(&mut self) {
++        self.join();
++    }
++}
++
++#[cfg(feature = "parallel")]
++impl Drop for ParallelExecutor {
++    fn drop(&mut self) {
++        drop(self.pool.take());
++        self.workers.join();
++    }
++}
++
++#[cfg(all(test, feature = "parallel"))]
++mod lifetime_tests {
++    use super::*;
++    use std::sync::{
++        Arc,
++        atomic::{AtomicUsize, Ordering},
++    };
++
++    #[test]
++    fn join_guard_waits_for_every_worker_on_success_and_partial_construction() {
++        for count in [0, 1, 4, 28] {
++            let completed = Arc::new(AtomicUsize::new(0));
++            let mut workers = JoinedWorkers::new(count).unwrap();
++            for _ in 0..count {
++                let completed = Arc::clone(&completed);
++                workers.handles.push(std::thread::spawn(move || {
++                    std::thread::yield_now();
++                    completed.fetch_add(1, Ordering::SeqCst);
++                }));
++            }
++            drop(workers);
++            assert_eq!(completed.load(Ordering::SeqCst), count);
++        }
++    }
++
++    #[test]
++    fn repeated_executors_join_their_exact_thread_handles() {
++        for threads in [1, 4, 1, 8, 2, 4, 1] {
++            let mut executor = ParallelExecutor::new(ParallelOptions {
++                threads,
++                ..Default::default()
++            })
++            .unwrap();
++            assert_eq!(executor.install(rayon::current_num_threads), threads);
++            assert_eq!(executor.workers.handles.len(), threads);
++            // Signal the actual production pool and join its actual handles;
++            // none of these are detached test threads or sampled /proc counts.
++            drop(executor.pool.take());
++            for handle in executor.workers.handles.drain(..) {
++                handle.join().unwrap();
++            }
++        }
++    }
++
++    #[test]
++    fn partial_rayon_spawn_failure_joins_the_started_workers() {
++        for failed_index in [0, 1, 3] {
++            let completed = Arc::new(AtomicUsize::new(0));
++            let mut workers = JoinedWorkers::new(4).unwrap();
++            let outcome = rayon::ThreadPoolBuilder::new()
++                .num_threads(4)
++                .spawn_handler(|thread| {
++                    if workers.handles.len() == failed_index {
++                        return Err(std::io::Error::other("injected spawn failure"));
++                    }
++                    let completed = Arc::clone(&completed);
++                    workers.handles.push(std::thread::spawn(move || {
++                        thread.run();
++                        completed.fetch_add(1, Ordering::SeqCst);
++                    }));
++                    Ok(())
++                })
++                .build();
++            assert!(outcome.is_err());
++            drop(outcome);
++            drop(workers);
++            assert_eq!(completed.load(Ordering::SeqCst), failed_index);
++        }
++    }
++}

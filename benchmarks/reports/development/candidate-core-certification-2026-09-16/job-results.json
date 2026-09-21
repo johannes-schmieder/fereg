@@ -1,0 +1,24 @@
+[
+  {
+    "job_id": 7598585,
+    "snapshot": "5240e58-core-certification1",
+    "failed": "0",
+    "exit_status": "126",
+    "slots": "28",
+    "ru_wallclock": "240",
+    "maxvmem": "3.245G",
+    "start_time": "Wed Sep 16 14:44:02 2026",
+    "end_time": "Wed Sep 16 14:48:02 2026"
+  },
+  {
+    "job_id": 7598655,
+    "snapshot": "5240e58-core-certification1",
+    "failed": "0",
+    "exit_status": "0",
+    "slots": "28",
+    "ru_wallclock": "61",
+    "maxvmem": "1.394G",
+    "start_time": "Wed Sep 16 14:53:24 2026",
+    "end_time": "Wed Sep 16 14:54:25 2026"
+  }
+]

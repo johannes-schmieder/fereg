@@ -1,0 +1,23 @@
+{
+  "all_science_exact": true,
+  "artifacts": {
+    "baseline": "4c99d0ece967e6fe4782fb488aff75f3fff4d1748f0a76ea743b351afeefe918",
+    "candidate": "dd3d00eee8e114a0c325ae14b6d44601eb0d1a8394ec267bbba297067b3bfac4"
+  },
+  "development_only": true,
+  "pairs": 1,
+  "performance_gate_pass": true,
+  "source": "5240e58-ols-publication-admission1",
+  "summary": [
+    {
+      "case": "saved_generated_aw",
+      "delta_seconds": 0.0050000000000000044,
+      "median_seconds": {
+        "baseline": 0.362,
+        "candidate": 0.367
+      },
+      "regression_requires_investigation": false,
+      "relative_change": 0.013812154696132506
+    }
+  ]
+}

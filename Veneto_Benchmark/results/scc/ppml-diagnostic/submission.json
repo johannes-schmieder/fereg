@@ -1,0 +1,22 @@
+{
+  "job_id": "7535359",
+  "remote": "/projectnb/welfgr/fereg/runs/20260912-veneto-ppml-diagnostic-20260912T113252Z",
+  "benchmark_root": "/projectnb/welfgr/fereg/runs/20260911-veneto-d44e36b",
+  "source": "d44e36bfa5ad7e41a06752d1008f0b9683f8c8dd",
+  "created_utc": "20260912T113252Z",
+  "purpose": "Identify existing native feppml numerical failures with visible errors and traces; benchmark remains stopped",
+  "cores": [
+    4,
+    14
+  ],
+  "reserved_slots": 14,
+  "mem_per_core": "3G",
+  "wall_cap_seconds": 1800,
+  "fit_timeout_seconds": 600,
+  "changed_scientific_settings": false,
+  "controller_sha256": {
+    "diagnose_ppml.do": "d030bf1b858a6b4bd1ffc1f88e4abc9f6f5700af1af87d3a183e1103aaa24e96",
+    "diagnose_ppml.py": "408f72c7ee6626c2444b1807035f82053f75a982e2a15cf935e46f32047cf9fe",
+    "diagnose_ppml.sh": "c0603e09830bf4ab36f1325b46d45ee67b4e713c7a9103e04f55827fd89ac5c3"
+  }
+}

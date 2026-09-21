@@ -1,0 +1,24 @@
+[
+  {
+    "N": 3732,
+    "checks": {
+      "coefficients": true,
+      "sample_count": true,
+      "standard_errors": true
+    },
+    "max_absolute_b_error": 8.848477506262498e-14,
+    "max_absolute_se_error": 8.151812558310212e-14,
+    "model": "ols"
+  },
+  {
+    "N": 3732,
+    "checks": {
+      "coefficients": true,
+      "sample_count": true,
+      "standard_errors": true
+    },
+    "max_absolute_b_error": 9.966136804706593e-10,
+    "max_absolute_se_error": 2.1766477509288507e-12,
+    "model": "ppml"
+  }
+]

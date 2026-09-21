@@ -1,0 +1,43 @@
+==============================================================
+qname        econ                
+hostname     scc-tb4.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_ols_outputs   
+jobnumber    7590006             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Wed Sep 16 03:32:21 2026
+start_time   Wed Sep 16 03:33:13 2026
+end_time     Wed Sep 16 03:38:25 2026
+granted_pe   omp                 
+slots        4                   
+failed       0    
+exit_status  0                   
+ru_wallclock 312          
+ru_utime     485.575      
+ru_stime     34.652       
+ru_maxrss    1178792             
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    4572468             
+ru_majflt    432                 
+ru_nswap     0                   
+ru_inblock   519200              
+ru_oublock   2906288             
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     148424              
+ru_nivcsw    348340              
+cpu          520.227      
+mem          425.225           
+io           21.254            
+iow          0.000             
+maxvmem      2.467G
+arid         undefined

@@ -1,0 +1,232 @@
+--- a/crates/fereg-core/src/ppml/prepared_estimator.rs
++++ b/crates/fereg-core/src/ppml/prepared_estimator.rs
+@@ -545,7 +545,7 @@
+     if let Some(bytes) = recovery_peak {
+         memory.observe_phase_peak(PpmlPhase::FeRecovery, bytes);
+     }
+-    let result = CertifiedPpmlResult::new(CertifiedPpmlResultInput {
++    let result_input = CertifiedPpmlResultInput {
+         coefficients,
+         sample,
+         weights: prepared.weight_report(),
+@@ -562,8 +562,19 @@
+         memory,
+         solver: fit.diagnostics().solver,
+         certificate_tolerance: request.ppml.tolerance,
+-    })?
+-    .retain_requested_outputs();
++    };
++    // Every certification input now owns its data. Release the final Hessian
++    // products and prepared/raw generation before independent PSD, Wald and
++    // separation replay allocate their scratch; no solver state is needed.
++    drop(cluster_codes);
++    drop(fit);
++    drop(separation_outcome.prepared);
++    drop(separation_outcome.original_axis_reasons);
++    drop(separation_outcome.candidate_original_rows);
++    drop(wald_columns);
++    drop(omission_statuses);
++    drop(requested_saved_channels);
++    let result = CertifiedPpmlResult::new(result_input)?.retain_requested_outputs();
+     interrupt(PpmlInterruptPoint::Publication)?;
+     result.with_publication_observations(
+         publication_clock,
+--- a/crates/fereg-core/src/ppml/memory.rs
++++ b/crates/fereg-core/src/ppml/memory.rs
+@@ -1675,9 +1675,25 @@
+         checked_mul(k, word, "PPML publication Wald tested slots")?,
+         reported_coefficient_slots,
+     ])?;
++    // The original-axis generation mask, candidate-axis separation replay
++    // and inference-slot/saved-channel masks belong to sequential validators.
++    // Method-attribution storage is released before hash replay. Candidate
++    // capacity, rather than final N, bounds the replay after separation drops.
++    let publication_separation_replay_bytes = checked_mul(
++        dimensions.candidate_observations as u128,
++        (size_of::<bool>() + size_of::<Option<SeparationDropReason>>()) as u128,
++        "PPML publication separation replay masks",
++    )?;
++    let publication_metadata_mask_bytes = checked_sum(&[
++        reported_coefficient_slots,
++        dimensions.requested_saved_fe_channels as u128,
++    ])?;
+     let publication_validator_workspace_bytes = publication_psd_validator_bytes
+         .max(publication_wald_validator_bytes)
+-        .max(reported_coefficient_slots);
++        .max(dimensions.original_observations as u128)
++        .max(publication_separation_replay_bytes)
++        .max(publication_metadata_mask_bytes)
++        .max(k);
+     let diagnostic_bytes = checked_mul(
+         config.diagnostic_capacity as u128,
+         DIAGNOSTIC_RECORD_BYTES,
+@@ -5067,10 +5083,12 @@
+     fn publication_phase_models_independent_psd_and_wald_validation_scratch() {
+         let mut validator_dimensions = dimensions();
+         validator_dimensions.observations = 1_000;
++        validator_dimensions.original_observations = 1_000;
++        validator_dimensions.candidate_observations = 1_000;
+         validator_dimensions.separation_generation_capacity = 1_000;
+-        validator_dimensions.finite_columns = 7;
+-        validator_dimensions.coefficient_slots = 11;
+-        validator_dimensions.reported_coefficient_slots = 11;
++        validator_dimensions.finite_columns = 17;
++        validator_dimensions.coefficient_slots = 21;
++        validator_dimensions.reported_coefficient_slots = 21;
+         validator_dimensions.publication_matrix_cells = 0;
+         validator_dimensions.requested_output_columns = 0;
+         let estimate = estimate_ppml_memory(validator_dimensions, PpmlMemoryConfig::default())
+@@ -5081,7 +5099,14 @@
+         let expected_wald = (2 * rank * rank + 2 * rank) * size_of::<f64>() as u128
+             + rank * size_of::<usize>() as u128
+             + validator_dimensions.reported_coefficient_slots as u128;
+-        let expected = expected_psd.max(expected_wald);
++        let expected = expected_psd
++            .max(expected_wald)
++            .max(validator_dimensions.original_observations as u128)
++            .max(2 * validator_dimensions.candidate_observations as u128)
++            .max(
++                (validator_dimensions.reported_coefficient_slots
++                    + validator_dimensions.requested_saved_fe_channels) as u128,
++            );
+         assert_eq!(
+             estimate.fast.publication_validator_workspace_bytes,
+             expected
+@@ -5148,9 +5173,36 @@
+             .expect("slot-state estimate");
+         assert_eq!(
+             slot_only.fast.publication_validator_workspace_bytes,
+-            slot_only_dimensions.reported_coefficient_slots as u128,
+-            "a rank-zero result still reserves one validation bit per reporting slot",
+-        );
++            (slot_only_dimensions.reported_coefficient_slots
++                + slot_only_dimensions.requested_saved_fe_channels) as u128,
++            "slot and saved-channel masks coexist even at rank zero",
++        );
++    }
++
++    #[test]
++    fn publication_validation_uses_original_and_candidate_axes_after_drops() {
++        let mut shape = dimensions();
++        shape.observations = 8;
++        shape.fe_max_level_members = 8;
++        shape.separation_generation_capacity = 8;
++        shape.original_observations = 1_000_000;
++        shape.candidate_observations = 100_000;
++        let original = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
++        assert_eq!(
++            original.fast.publication_validator_workspace_bytes,
++            1_000_000
++        );
++        assert_eq!(
++            original.low.publication_validator_workspace_bytes,
++            1_000_000
++        );
++        shape.candidate_observations = 750_000;
++        let replay = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
++        assert_eq!(replay.fast.publication_validator_workspace_bytes, 1_500_000);
++        assert_eq!(replay.low.publication_validator_workspace_bytes, 1_500_000);
++        for (before, after) in [(original.fast, replay.fast), (original.low, replay.low)] {
++            assert!(after.publication_peak_bytes >= before.publication_peak_bytes + 500_000);
++        }
+     }
+ 
+     #[test]
+--- a/crates/fereg-core/src/ppml/result.rs
++++ b/crates/fereg-core/src/ppml/result.rs
+@@ -2882,6 +2882,9 @@
+         ));
+     }
+ 
++    // Attribution is fully checked; the independent hash replay owns its
++    // own active/reason vectors and no longer needs this candidate mask.
++    drop(globally_reported);
+     replay_separation_generation_hashes(report, candidate_original_rows)?;
+     Ok(true)
+ }
+--- a/crates/fereg-plugin/src/ppml_estimate.rs
++++ b/crates/fereg-plugin/src/ppml_estimate.rs
+@@ -4043,7 +4043,15 @@
+     }
+ 
+     fn with_certified_fixture(
++        fixture: (Vec<String>, FakeSpi),
++        assertion: impl FnOnce(EstimatePpmlAction, fereg_core::ppml::CertifiedPpmlResult, FakeSpi),
++    ) {
++        with_certified_fixture_probe(fixture, None, assertion);
++    }
++
++    fn with_certified_fixture_probe(
+         (args, mut spi): (Vec<String>, FakeSpi),
++        phase_allocation_probe: Option<fereg_core::ppml::PpmlPhaseAllocatorProbe>,
+         assertion: impl FnOnce(EstimatePpmlAction, fereg_core::ppml::CertifiedPpmlResult, FakeSpi),
+     ) {
+         let specification = EstimatePpmlSpec::parse(&args).expect("PPML fixture specification");
+@@ -4069,7 +4077,7 @@
+                 memory: action.memory,
+                 memory_preflight_probe: None,
+                 allocation_snapshot_probe: None,
+-                phase_allocation_probe: None,
++                phase_allocation_probe,
+                 linear_phase_allocation_probe: None,
+                 action_allocation_snapshot_probe: None,
+                 action_allocation_start: None,
+@@ -4114,6 +4122,58 @@
+             .expect("PPML fixture shadow");
+             assertion(&action, &mut shadow, &mut spi);
+         });
++    }
++
++    #[cfg(feature = "ffi")]
++    static CORE_PUBLICATION_END_CURRENT: AtomicU64 = AtomicU64::new(u64::MAX);
++
++    #[cfg(feature = "ffi")]
++    fn capture_core_publication_end(
++        phase: PpmlPhase,
++        event: fereg_core::ppml::PpmlPhaseAllocatorEvent,
++    ) -> u64 {
++        if phase == PpmlPhase::Publication
++            && event == fereg_core::ppml::PpmlPhaseAllocatorEvent::End
++        {
++            CORE_PUBLICATION_END_CURRENT.store(
++                crate::ffi::allocation_usage().current_bytes,
++                Ordering::Relaxed,
++            );
++        }
++        // This probe checks retained ownership, not a phase-peak estimate.
++        0
++    }
++
++    #[test]
++    #[cfg(feature = "ffi")]
++    fn core_publication_observation_has_no_obsolete_fit_or_generation_owner() {
++        let _guard = crate::instrumentation::lock_action_observation();
++        let (separated_args, mut separated_spi) =
++            allocation_failure_phase_fixture(PpmlPhase::SeparationFe);
++        for row in 1..=4 {
++            separated_spi.numeric.insert((2, row), (0.0, false));
++        }
++        let (mut low_args, low_spi) = categorical_absorb_cluster_weight_fixture();
++        replace_argument(&mut low_args, "memory", "memory=low".to_owned());
++        for fixture in [
++            fixture(),
++            categorical_absorb_cluster_weight_fixture(),
++            (separated_args, separated_spi),
++            (low_args, low_spi),
++        ] {
++            CORE_PUBLICATION_END_CURRENT.store(u64::MAX, Ordering::Relaxed);
++            with_certified_fixture_probe(
++                fixture,
++                Some(capture_core_publication_end),
++                |_action, _result, _spi| {
++                    assert_eq!(
++                        CORE_PUBLICATION_END_CURRENT.load(Ordering::Relaxed),
++                        crate::ffi::allocation_usage().current_bytes,
++                        "core return released obsolete state after the publication observation",
++                    );
++                },
++            );
++        }
+     }
+ 
+     #[test]

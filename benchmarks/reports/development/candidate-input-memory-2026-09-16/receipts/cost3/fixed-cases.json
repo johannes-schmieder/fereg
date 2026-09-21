@@ -1,0 +1,32 @@
+{
+  "scope": "Bounded frontend admission and string ownership check; four fixed cases, three alternating pairs, fresh processes on an entire 28-core node; four physical execution cores.",
+  "baseline_source": "5240e58-core-certification1",
+  "candidate_source": "5240e58-input-memory3",
+  "cases": [
+    "numeric_narrow",
+    "string_wide",
+    "string_cluster_low",
+    "ppml_string_cluster"
+  ],
+  "measurement": {
+    "arm_orders": [
+      [
+        "baseline",
+        "candidate"
+      ],
+      [
+        "candidate",
+        "baseline"
+      ],
+      [
+        "baseline",
+        "candidate"
+      ]
+    ],
+    "no_retry_on_fit_failure": true,
+    "regression_rule": {
+      "relative": 0.05,
+      "absolute_seconds": 0.01
+    }
+  }
+}

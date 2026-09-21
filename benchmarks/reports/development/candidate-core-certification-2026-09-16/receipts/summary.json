@@ -1,0 +1,43 @@
+{
+  "all_science_exact": true,
+  "artifacts": {
+    "baseline": "c3ada630de1278c771bb7c128591ff4e9104dae3abc8e0584475598966116e83",
+    "candidate": "a8e5a0078de990c22eb581566f40d58e20cd1b64e90ec4792a2794cc420208f3"
+  },
+  "development_only": true,
+  "pairs": 9,
+  "performance_gate_pass": true,
+  "source": "5240e58-core-certification1",
+  "summary": [
+    {
+      "case": "saved_slopes_low",
+      "delta_seconds": -0.02300000000000002,
+      "median_seconds": {
+        "baseline": 0.319,
+        "candidate": 0.296
+      },
+      "regression_requires_investigation": false,
+      "relative_change": -0.07210031347962387
+    },
+    {
+      "case": "ppml_narrow",
+      "delta_seconds": 0.0020000000000000018,
+      "median_seconds": {
+        "baseline": 0.124,
+        "candidate": 0.126
+      },
+      "regression_requires_investigation": false,
+      "relative_change": 0.016129032258064502
+    },
+    {
+      "case": "ppml_saved_weighted",
+      "delta_seconds": -0.020000000000000018,
+      "median_seconds": {
+        "baseline": 1.053,
+        "candidate": 1.033
+      },
+      "regression_requires_investigation": false,
+      "relative_change": -0.018993352326685642
+    }
+  ]
+}

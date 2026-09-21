@@ -1,0 +1,43 @@
+==============================================================
+qname        econ                
+hostname     scc-ei3.scc.bu.edu  
+group        welfgr              
+owner        johannes            
+project      welfgr              
+department   defaultdepartment   
+jobname      fereg_ppml_mem      
+jobnumber    7596013             
+taskid       undefined
+account      sge                 
+priority     0                   
+qsub_time    Wed Sep 16 12:27:36 2026
+start_time   Wed Sep 16 12:28:43 2026
+end_time     Wed Sep 16 12:31:12 2026
+granted_pe   omp                 
+slots        4                   
+failed       0    
+exit_status  0                   
+ru_wallclock 149          
+ru_utime     253.103      
+ru_stime     17.738       
+ru_maxrss    1800576             
+ru_ixrss     0                   
+ru_ismrss    0                   
+ru_idrss     0                   
+ru_isrss     0                   
+ru_minflt    4065061             
+ru_majflt    2237                
+ru_nswap     0                   
+ru_inblock   1200792             
+ru_oublock   3497912             
+ru_msgsnd    0                   
+ru_msgrcv    0                   
+ru_nsignals  0                   
+ru_nvcsw     308654              
+ru_nivcsw    1424821             
+cpu          270.841      
+mem          337.736           
+io           20.864            
+iow          0.000             
+maxvmem      3.293G
+arid         undefined

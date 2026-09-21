@@ -1,0 +1,17 @@
+[
+  {
+    "run": "numeric_narrow-p1-baseline",
+    "sentinels": [],
+    "stata_errors": [],
+    "done": false,
+    "receipt_pass": null,
+    "original_file_sha256": {
+      "INPUT.READY": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5",
+      "import.log": "5b901522c6dbe9012d611e85deb29524af76d7bdd9166971c37b73b91a1fd8c0",
+      "request.json": "5df7512783a010e1ce5ae427952f4e4be030365e76dca6cb254af8d36ea1f52f",
+      "stata_worker.do": "ac1843e5a4a0f101c2c04417ec3dc1b5f4615eac59923fa63ee3919834eeba5c",
+      "stderr.txt": "4c6a15d33668f77e6021e87e2174709a8dbf7ae32097baab815078849aec3d55",
+      "stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+]

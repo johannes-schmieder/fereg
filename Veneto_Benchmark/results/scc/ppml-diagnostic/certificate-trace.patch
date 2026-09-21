@@ -1,0 +1,50 @@
+--- a/crates/fereg-core/src/ols/linear_session.rs
++++ b/crates/fereg-core/src/ols/linear_session.rs
+@@ -842,6 +842,15 @@
+     }
+ 
+     pub(crate) fn certified(&self) -> bool {
++        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
++            eprintln!(
++                "FEREG_SOLVER_TRACE|phase=linear_output_certificate|rank={:?}|score={:?}|bread={:?}|absorption={}|residual_absorption={}|within={:?}|reconstruction={:?}",
++                self.fit.rank_certificate(), self.fit.score_certificate(),
++                self.fit.bread().certificate(), self.fit.absorption_report().certified(),
++                self.fit.residual_absorption_report().certified(), self.within.certificate,
++                self.reconstruction,
++            );
++        }
+         self.fit.rank_certificate().passed
+             && self.fit.score_certificate().passed
+             && self.fit.bread().certificate().passed
+@@ -4843,6 +4852,31 @@
+                 ));
+             }
+         }
++        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
++            let mut cancellation_max = 0.0_f64;
++            let mut termwise_error_max = 0.0_f64;
++            let mut absolute_error_max = 0.0_f64;
++            let mut response_max = 0.0_f64;
++            let mut finite_max = 0.0_f64;
++            let mut absorbed_max = 0.0_f64;
++            let mut residual_max = 0.0_f64;
++            for row in 0..rows {
++                let f = self.finite_predictor[row];
++                let a = self.absorbed_predictor[row];
++                let r = fit.residuals()[row];
++                let z = self.response[row];
++                let reconstructed = f + a + r;
++                let terms = f.abs() + a.abs() + r.abs() + z.abs();
++                cancellation_max = cancellation_max.max(terms / z.abs().max(1.0));
++                termwise_error_max = termwise_error_max.max((reconstructed - z).abs() / terms.max(1.0));
++                absolute_error_max = absolute_error_max.max((reconstructed - z).abs());
++                response_max = response_max.max(z.abs());
++                finite_max = finite_max.max(f.abs());
++                absorbed_max = absorbed_max.max(a.abs());
++                residual_max = residual_max.max(r.abs());
++            }
++            eprintln!("FEREG_SOLVER_TRACE|phase=reconstruction_scale|relative_error={relative_infinity_norm:.17e}|threshold={:.17e}|cancellation_max={cancellation_max:.17e}|termwise_error_max={termwise_error_max:.17e}|absolute_error_max={absolute_error_max:.17e}|response_max={response_max:.17e}|finite_max={finite_max:.17e}|absorbed_max={absorbed_max:.17e}|residual_max={residual_max:.17e}", 64.0 * f64::EPSILON);
++        }
+         Ok(LinearReconstructionCertificate {
+             relative_infinity_norm,
+             passed: relative_infinity_norm <= 64.0 * f64::EPSILON,

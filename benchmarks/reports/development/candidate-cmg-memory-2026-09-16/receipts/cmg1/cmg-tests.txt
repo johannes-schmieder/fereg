@@ -1,0 +1,92 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling autocfg v1.5.1
+   Compiling crossbeam-utils v0.8.22
+   Compiling crossbeam-epoch v0.9.20
+   Compiling serde_core v1.0.229
+   Compiling num-traits v0.2.19
+   Compiling crossbeam-deque v0.8.7
+   Compiling serde v1.0.229
+   Compiling cfg-if v1.0.4
+   Compiling syn v3.0.3
+   Compiling semver v1.0.28
+   Compiling libc v0.2.189
+   Compiling rayon-core v1.13.0
+   Compiling thiserror v2.0.20
+   Compiling rustc_version v0.4.1
+   Compiling getrandom v0.4.3
+   Compiling rand_core v0.10.1
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling heapless v0.7.17
+   Compiling matrixmultiply v0.3.11
+   Compiling either v1.18.0
+   Compiling byteorder v1.5.0
+   Compiling cpufeatures v0.3.0
+   Compiling chacha20 v0.10.1
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.20
+   Compiling hash32 v0.2.1
+   Compiling rayon v1.12.0
+   Compiling spin v0.9.9
+   Compiling rawpointer v0.2.1
+   Compiling portable-atomic v1.15.0
+   Compiling stable_deref_trait v1.2.1
+   Compiling cobs v0.3.0
+   Compiling rand v0.10.2
+   Compiling num-complex v0.4.6
+   Compiling num-integer v0.1.47
+   Compiling thread_local v1.1.10
+   Compiling ndarray v0.17.2
+   Compiling fereg-core v0.5.0 ($RUN/cmg1/source/crates/fereg-core)
+   Compiling cmg v0.1.0 (https://github.com/johannes-schmieder/CMG?rev=90e1fe0b0c14065155532711246ede6678bb4935#90e1fe0b)
+   Compiling schwarz-precond v0.4.0 (https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a)
+   Compiling postcard v1.1.3
+   Compiling approx-chol v0.5.0
+   Compiling within v0.4.0 (https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 14s
+     Running unittests src/lib.rs ($RUN/cmg1/target/debug/deps/fereg_core-bfb63d930001cbdd)
+
+running 38 tests
+test fe::cmg::tests::absorbed_nuisance_effect_agrees_with_full_multi_effect_cg ... ok
+test fe::cmg::tests::auto_cmg_memory_preflight_rejects_before_graph_construction ... ok
+test fe::cmg::tests::auto_direct_terminal_cg_guard_matches_locked_primary_boundaries ... ok
+test fe::cmg::tests::auto_hierarchy_guard_applies_only_to_costly_iterative_terminals ... ok
+test fe::cmg::tests::auto_hierarchy_guard_rejects_mixed_cliff_but_retains_all_tiny_graph ... ok
+test fe::cmg::tests::auto_requested_cmg_skips_map_pilot_and_certifies ... ok
+test fe::cmg::tests::auto_route_is_invariant_to_core_effect_order ... ok
+test fe::cmg::tests::auto_route_matches_calibrated_akm_shape_boundaries ... ok
+test fe::cmg::tests::cmg_container_admission_accepts_exact_budget_and_rejects_one_byte_short ... ok
+test fe::cmg::tests::cmg_workspace_failed_nuisance_construction_retains_its_admitted_attempt ... ok
+test fe::cmg::tests::cmg_workspace_preflight_rejection_does_not_charge_an_unallocated_attempt ... ok
+test fe::cmg::tests::cmg_workspace_report_observes_lazy_pool_growth ... ok
+test fe::cmg::tests::cmg_workspace_retained_polish_and_released_final_correction_have_different_peaks ... ok
+test fe::cmg::tests::component_quantiles_use_stable_nearest_lower_order_statistic ... ok
+test fe::cmg::tests::control_seed_admission_consumes_only_finite_certified_evidence ... ok
+test fe::cmg::tests::duplicate_matches_and_disconnected_components_are_supported ... ok
+test fe::cmg::tests::early_prepared_memory_bound_covers_exact_topology_and_frame ... ok
+test fe::cmg::tests::hierarchy_work_counts_recursive_level_visits ... ok
+test fe::cmg::tests::more_than_sixty_four_nuisance_columns_are_rejected ... ok
+test fe::cmg::tests::multiple_nuisance_effects_agree_with_full_multi_effect_cg ... ok
+test fe::cmg::tests::multiple_rhs_calls_reuse_one_hierarchy ... ok
+test fe::cmg::tests::nested_rank_deficient_nuisance_effect_is_handled ... ok
+test fe::cmg::tests::one_effect_uses_exact_direct_projection_but_retains_cmg_request ... ok
+test fe::cmg::tests::prepared_batches_align_with_the_admitted_pool_without_changing_solutions ... ok
+test fe::cmg::tests::prepared_cmg_seed_weight_boundary_and_memory_are_explicit ... ok
+test fe::cmg::tests::prepared_cmg_tracks_executor_width_across_one_four_one ... ok
+test fe::cmg::tests::prepared_cmg_warm_seed_is_consumed_recertified_and_invalidated ... ok
+test fe::cmg::tests::prepared_coarsening_certifies_large_permuted_weighted_three_fe_graphs ... ok
+test fe::cmg::tests::prepared_nuisance_grouping_preserves_memory_caps_and_zero_nuisance_policy ... ok
+test fe::cmg::tests::prepared_nuisance_potentials_are_current_weight_and_remove_only_duplicate_solves ... ok
+test fe::cmg::tests::prepared_topology_rejects_a_different_design_with_the_same_profile ... ok
+test fe::cmg::tests::swapping_cmg_bipartition_orientation_preserves_the_certified_projection ... ok
+test fe::cmg::tests::terminal_residual_correction_checks_its_cg_budget ... ok
+test fe::cmg::tests::three_way_profile_uses_two_largest_effects_as_core_in_every_order ... ok
+test fe::cmg::tests::upstream_cmg_errors_have_an_explicit_fail_closed_public_class ... ok
+test fe::cmg::tests::weighted_two_way_projection_agrees_with_certified_cg ... ok
+test fe::cmg_container_memory::tests::container_counting_is_checked_and_monotone_in_lazy_pool_growth ... ok
+test fe::cmg_container_memory::tests::ordinary_and_disconnected_hierarchies_fit_the_prebuild_container_bound ... ok
+
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 858 filtered out; finished in 41.90s
+
