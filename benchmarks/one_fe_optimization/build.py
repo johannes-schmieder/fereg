@@ -1,5 +1,6 @@
 """Isolated, source-hashed arm64 builds for the one-FE development campaign."""
 import argparse
+import datetime
 import hashlib
 import io
 import json
@@ -15,7 +16,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False):
+def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False):
     root = root.resolve()
     source = root / name
     source.mkdir(parents=True, exist_ok=False)
@@ -43,11 +44,17 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
     if profile_statistics:
         from statistics_profile import instrument
         instrument(source)
+    if profile_slopes:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("slope_probes", REPO / "benchmarks/one_fe_profile/slope_instrument.py")
+        probes = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probes)
+        probes.instrument(source)
     hashes = {str(p.relative_to(source)): sha(p) for p in sorted(source.rglob("*")) if p.is_file()}
     target = root / ("cargo-" + name)
     env = dict(os.environ, DEVELOPER_DIR="/Library/Developer/CommandLineTools",
                CARGO_NET_OFFLINE="true", CARGO_TARGET_DIR=str(target),
-               FEREG_GIT_COMMIT=commit[:8], FEREG_BUILD_DATE="2026-09-19")
+               FEREG_GIT_COMMIT=commit[:8], FEREG_BUILD_DATE=os.environ.get("FEREG_BUILD_DATE", datetime.datetime.now(datetime.timezone.utc).date().isoformat()))
     (source / "target/native").mkdir(parents=True)
     (source / "dist").mkdir()
     with (root / ("build-" + name + ".log")).open("w") as log:
@@ -74,6 +81,8 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         identity.setdefault("diagnostics", []).append("breadth_phases")
     if profile_statistics:
         identity.setdefault("diagnostics", []).append("weighted_statistics_phases")
+    if profile_slopes:
+        identity.setdefault("diagnostics", []).append("slope_phases")
     (root / ("identity-" + name + ".json")).write_text(json.dumps(identity, indent=2) + "\n")
     print("BUILD_PASS", name, identity["plugin"], flush=True)
 
@@ -88,5 +97,6 @@ if __name__ == "__main__":
     p.add_argument("--profile-completion", action="store_true")
     p.add_argument("--profile-breadth", action="store_true")
     p.add_argument("--profile-statistics", action="store_true")
+    p.add_argument("--profile-slopes", action="store_true")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes)

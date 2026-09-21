@@ -456,7 +456,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             candidate = self._source_root(Path(directory))
             estimate = candidate / "crates/fereg-plugin/src/estimate.rs"
             source = estimate.read_text(encoding="utf-8")
-            self.assertEqual(source.count('"FEREG_PHASE_TIMING"'), 3)
+            self.assertEqual(source.count('"FEREG_PHASE_TIMING"'), 5)
             estimate.write_text(
                 source.replace('"FEREG_PHASE_TIMING"', '"PATH"'),
                 encoding="utf-8",
@@ -589,7 +589,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             estimate = candidate / "crates/fereg-plugin/src/estimate.rs"
             self._replace(
                 estimate,
-                "            let inference = fit_prepared_ols_unadjusted_map(\n",
+                "            let inference = fit_prepared_ols_unadjusted_map_with_loaded_moments(\n",
                 "            let inference = fit_prepared_ols_robust_map(\n",
             )
             violations = CONTRACT.audit_repository(candidate, MANIFEST)

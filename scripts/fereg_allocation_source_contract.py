@@ -21,8 +21,8 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v36.json"
-CONTRACT_ID = "fereg-allocation-source-contract-v36"
+DEFAULT_CONTRACT = ROOT / "benchmarks/manifests/fereg_allocation_source_contract_v37.json"
+CONTRACT_ID = "fereg-allocation-source-contract-v37"
 SCHEMA_VERSION = 21
 
 # Keep the watched surface narrow enough to describe the actual OLS seam, but
@@ -171,14 +171,22 @@ F0_PREEXISTING_BOUNDARY_HASHES = {
 # Reviewed OLS changes since the extraction checkpoint. These are exact body
 # replacements, never an allow-list of functions whose bodies may drift.
 # See docs/allocation_inventory.md for decisions and source-bound evidence.
-REVIEWED_BOUNDARY_SOURCE_SHA = "a765c338f252350d0a9f5bf496330181dfbdb4b8"
+REVIEWED_BOUNDARY_SOURCE_SHA = '0efa78bd5edaf96e5dcce5704b1ab198e2d2f8df'
 REVIEWED_BOUNDARY_HASHES = {
     ('crates/fereg-plugin/src/estimate.rs', 'estimate_ols_test'):
-        '6d29cf038c0065b4a26ed1f62fa381c972b286aa4850b51614094fb43baabad8',
+        '282899fe84c6e44647d3d59f86ae2f9e5c7084f6a64fdd7b3b9ec87f6c2697c4',
+    ('crates/fereg-core/src/ols/prepared_unadjusted.rs', 'fit_prepared_ols_unadjusted_map'):
+        '49575b74c982d556412654e30b0907abb16f60906811d9846e7fd8d94383ff30',
+    ('crates/fereg-core/src/ols/prepared_unadjusted.rs', 'fit_prepared_categorical_ols_unadjusted_map'):
+        'f27daec2bf28078fa08df88129aad892fd9421f69b03e9178a0edbe5c73d6968',
     ('crates/fereg-core/src/ols/prepared_robust.rs', 'fit_prepared_ols_robust_map'):
-        '8e72d5101457a0057b093ffe30f96cc2149020f8dfc5586dda9cc85842fae712',
+        '33b9af80cefbe5d2f5525e2e351596b9208301894a821204769bfdb41bb8d153',
     ('crates/fereg-core/src/ols/prepared_robust.rs', 'fit_prepared_categorical_ols_robust_map'):
-        'cf8a0058719d64704735547f435f886899a20467d7f3b5b1a1778e08bd7b73ef',
+        'e109447f7422634efd60e4ff1823727acaa92887031702788505829a0a5f3ff1',
+    ('crates/fereg-core/src/ols/prepared_clustered.rs', 'fit_prepared_ols_clustered_map'):
+        'd870d42069c8ec532809238c18c155e783a06c1dea52083e03d4139fd4051e5e',
+    ('crates/fereg-core/src/ols/prepared_clustered.rs', 'fit_prepared_categorical_ols_clustered_map'):
+        '9a515b3cbb07747c476a8dfd0261e151faf4f00df7a67b2a7f9ed467a6c2cb70',
     ('crates/fereg-core/src/ols/prepared_fit.rs', 'fit_prepared_ols_coefficients_view_map'):
         '787412f726e1f0dfc92e01511c2fc74408d19a6d705ed4fbc86cd5542f99051b',
 }
@@ -1680,6 +1688,9 @@ def audit_repository(
             live_digest = PREPARED_PARENT_BOUNDARY["body_tokens_sha256"]
         if key == (INPUT_MEMORY_BOUNDARY["path"], INPUT_MEMORY_BOUNDARY["function"]):
             live_digest = INPUT_MEMORY_BOUNDARY["body_tokens_sha256"]
+        # Historical preparation/input excerpts remain independently checked; the newer
+        # exact-source review supplies the current implementation boundary.
+        live_digest = REVIEWED_BOUNDARY_HASHES.get(key, live_digest)
         observed_boundary = observed_boundaries.get(key)
         if (
             observed_boundary is None

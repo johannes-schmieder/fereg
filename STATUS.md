@@ -10,6 +10,25 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Next OLS optimization milestone — active, 2026-09-21
+
+Johannes approved implementation: absorbed slopes first, graph/weight/inference/
+output breadth and narrow wins next, then measured one-/two-FE auto routing and
+focused Linux confirmation. Use full small-case science and staged large timing;
+do not expand this into release qualification. Local checkpoint commits are
+approved; no new push is requested. Fresh routing validation seeds 202609211 and
+202609212 remain untouched.
+
+The [current-source baseline](benchmarks/reports/development/slopes-baseline-local-2026-09-21/README.md)
+reproduces the slope gap at unchanged `0efa78bd`: threaded K10/K50 medians are
+336/854 ms versus fixest 54/193 ms. All 24 calls and numerical comparisons pass;
+the small explicit-dummy oracle passes, and four diagnostic calls preserve
+native scientific exports bitwise. Six serial certificate passes dominate.
+The new versioned allocation inventories pass the repository checker, preserving
+old findings and memory-proof gaps. Implementation and broader validation remain
+open. Raw local artifacts and baseline identities are in
+`target/ols-next-20260921`; no remote work has run.
+
 ## Repository cleanup and development push — 2026-09-21
 
 Johannes requested committing and pushing all outstanding work, with cleanup

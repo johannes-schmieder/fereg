@@ -1,0 +1,431 @@
+{
+  "cells": [
+    {
+      "k": 10,
+      "median_paired_ratio": 3.519607843137255,
+      "seconds": {
+        "baseline": [
+          0.359,
+          0.369,
+          0.355
+        ],
+        "fixest": [
+          0.102,
+          0.095,
+          0.101
+        ]
+      },
+      "threads": 1
+    },
+    {
+      "k": 10,
+      "median_paired_ratio": 6.148148148148149,
+      "seconds": {
+        "baseline": [
+          0.336,
+          0.332,
+          0.336
+        ],
+        "fixest": [
+          0.055,
+          0.054,
+          0.053
+        ]
+      },
+      "threads": 16
+    },
+    {
+      "k": 50,
+      "median_paired_ratio": 1.5442278860569714,
+      "seconds": {
+        "baseline": [
+          1.03,
+          1.041,
+          1.035
+        ],
+        "fixest": [
+          0.667,
+          0.676,
+          0.665
+        ]
+      },
+      "threads": 1
+    },
+    {
+      "k": 50,
+      "median_paired_ratio": 4.424870466321243,
+      "seconds": {
+        "baseline": [
+          0.851,
+          0.858,
+          0.854
+        ],
+        "fixest": [
+          0.188,
+          0.206,
+          0.193
+        ]
+      },
+      "threads": 16
+    }
+  ],
+  "diagnostic_phases": [
+    {
+      "k": 10,
+      "phases": [
+        {
+          "phase": "owned_design",
+          "rhs": 12,
+          "seconds": 0.002165542
+        },
+        {
+          "phase": "certificate",
+          "rhs": 12,
+          "seconds": 0.055679625
+        },
+        {
+          "phase": "certificate",
+          "rhs": 12,
+          "seconds": 0.055351583
+        },
+        {
+          "phase": "projection",
+          "rhs": 12,
+          "seconds": 0.012199917
+        },
+        {
+          "phase": "certificate",
+          "rhs": 12,
+          "seconds": 0.054372958
+        },
+        {
+          "phase": "map",
+          "rhs": 12,
+          "seconds": 0.127412208
+        },
+        {
+          "phase": "auto",
+          "rhs": 12,
+          "seconds": 0.18871275
+        },
+        {
+          "phase": "owned_design",
+          "rhs": 1,
+          "seconds": 0.001991792
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.019747375
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.019255916
+        },
+        {
+          "phase": "projection",
+          "rhs": 1,
+          "seconds": 0.004005959
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.019377083
+        },
+        {
+          "phase": "map",
+          "rhs": 1,
+          "seconds": 0.044074417
+        },
+        {
+          "phase": "auto",
+          "rhs": 1,
+          "seconds": 0.065237792
+        }
+      ],
+      "rep": 0
+    },
+    {
+      "k": 10,
+      "phases": [
+        {
+          "phase": "owned_design",
+          "rhs": 12,
+          "seconds": 0.002067667
+        },
+        {
+          "phase": "certificate",
+          "rhs": 12,
+          "seconds": 0.055017583
+        },
+        {
+          "phase": "certificate",
+          "rhs": 12,
+          "seconds": 0.054979417
+        },
+        {
+          "phase": "projection",
+          "rhs": 12,
+          "seconds": 0.012122875
+        },
+        {
+          "phase": "certificate",
+          "rhs": 12,
+          "seconds": 0.055099
+        },
+        {
+          "phase": "map",
+          "rhs": 12,
+          "seconds": 0.127705625
+        },
+        {
+          "phase": "auto",
+          "rhs": 12,
+          "seconds": 0.188228584
+        },
+        {
+          "phase": "owned_design",
+          "rhs": 1,
+          "seconds": 0.002458167
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.019905833
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.019419875
+        },
+        {
+          "phase": "projection",
+          "rhs": 1,
+          "seconds": 0.003937792
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.01949525
+        },
+        {
+          "phase": "map",
+          "rhs": 1,
+          "seconds": 0.044353584
+        },
+        {
+          "phase": "auto",
+          "rhs": 1,
+          "seconds": 0.065725542
+        }
+      ],
+      "rep": 1
+    },
+    {
+      "k": 50,
+      "phases": [
+        {
+          "phase": "owned_design",
+          "rhs": 52,
+          "seconds": 0.002076041
+        },
+        {
+          "phase": "certificate",
+          "rhs": 52,
+          "seconds": 0.170881084
+        },
+        {
+          "phase": "certificate",
+          "rhs": 52,
+          "seconds": 0.171184667
+        },
+        {
+          "phase": "projection",
+          "rhs": 52,
+          "seconds": 0.040287125
+        },
+        {
+          "phase": "certificate",
+          "rhs": 52,
+          "seconds": 0.173274167
+        },
+        {
+          "phase": "map",
+          "rhs": 52,
+          "seconds": 0.40258975
+        },
+        {
+          "phase": "auto",
+          "rhs": 52,
+          "seconds": 0.591390334
+        },
+        {
+          "phase": "owned_design",
+          "rhs": 1,
+          "seconds": 0.001692667
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.019690917
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.020170416
+        },
+        {
+          "phase": "projection",
+          "rhs": 1,
+          "seconds": 0.004237
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.021544042
+        },
+        {
+          "phase": "map",
+          "rhs": 1,
+          "seconds": 0.04744175
+        },
+        {
+          "phase": "auto",
+          "rhs": 1,
+          "seconds": 0.068577708
+        }
+      ],
+      "rep": 0
+    },
+    {
+      "k": 50,
+      "phases": [
+        {
+          "phase": "owned_design",
+          "rhs": 52,
+          "seconds": 0.002244167
+        },
+        {
+          "phase": "certificate",
+          "rhs": 52,
+          "seconds": 0.172003792
+        },
+        {
+          "phase": "certificate",
+          "rhs": 52,
+          "seconds": 0.172496292
+        },
+        {
+          "phase": "projection",
+          "rhs": 52,
+          "seconds": 0.040030708
+        },
+        {
+          "phase": "certificate",
+          "rhs": 52,
+          "seconds": 0.174237667
+        },
+        {
+          "phase": "map",
+          "rhs": 52,
+          "seconds": 0.405542959
+        },
+        {
+          "phase": "auto",
+          "rhs": 52,
+          "seconds": 0.596111541
+        },
+        {
+          "phase": "owned_design",
+          "rhs": 1,
+          "seconds": 0.001800791
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.019192208
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.01964925
+        },
+        {
+          "phase": "projection",
+          "rhs": 1,
+          "seconds": 0.003912875
+        },
+        {
+          "phase": "certificate",
+          "rhs": 1,
+          "seconds": 0.019318417
+        },
+        {
+          "phase": "map",
+          "rhs": 1,
+          "seconds": 0.044308292
+        },
+        {
+          "phase": "auto",
+          "rhs": 1,
+          "seconds": 0.064934125
+        }
+      ],
+      "rep": 1
+    }
+  ],
+  "diagnostic_science": [
+    {
+      "comparison": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "k": 10,
+      "rep": 0
+    },
+    {
+      "comparison": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "k": 10,
+      "rep": 1
+    },
+    {
+      "comparison": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "k": 50,
+      "rep": 0
+    },
+    {
+      "comparison": {
+        "errors": {
+          "coefficients.csv:se": 0.0,
+          "coefficients.csv:value": 0.0,
+          "covariance.csv:value": 0.0
+        },
+        "sample_exact": true
+      },
+      "k": 50,
+      "rep": 1
+    }
+  ],
+  "groups": 49152,
+  "n": 245760,
+  "source": "0efa78bd5edaf96e5dcce5704b1ab198e2d2f8df"
+}

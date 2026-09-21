@@ -1,0 +1,1099 @@
+[
+  {
+    "path": "crates/fereg-core/src/data/sample.rs",
+    "before": 23,
+    "after": 23,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/factorize.rs",
+    "before": 40,
+    "after": 46,
+    "added": [
+      {
+        "call_sha256": "59f395fa8b4e8eeff1d13daddb0eb855f05bd54566643bdc2e6baf41b65480b9",
+        "function": "factorize_ordered_f64",
+        "kind": ".push",
+        "scale_hint": "fe_level"
+      },
+      {
+        "call_sha256": "079ad6c3c0cc7a6166318e535074d16c6971cff9e28d4e4a94652d78a6fe5b0e",
+        "function": "factorize_ordered_f64",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "18a703d2becc2230f15ea742901e1334af7617a3987e89c722ccb8382214455e",
+        "function": "factorize_ordered_f64",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "1adcac6d5c5f5a5e1f7e81feabee87b2716dee23267fde9805d523cb1c3e265a",
+        "function": "factorize_ordered_f64",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "factorize_ordered_f64",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "factorize_ordered_f64",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/fe/borrowed_map.rs",
+    "before": 90,
+    "after": 94,
+    "added": [
+      {
+        "call_sha256": "a4f3216912564ac807a4ab5b05c4d185391fb41820ea9bb5c2fa3758cbc78104",
+        "function": "apply_schur_parallel",
+        "kind": ".clone",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "a4f3216912564ac807a4ab5b05c4d185391fb41820ea9bb5c2fa3758cbc78104",
+        "function": "apply_schur_parallel",
+        "kind": ".clone",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "a4f3216912564ac807a4ab5b05c4d185391fb41820ea9bb5c2fa3758cbc78104",
+        "function": "cache_weighted_schur_edge_groups",
+        "kind": ".clone",
+        "scale_hint": "fe_level"
+      },
+      {
+        "call_sha256": "d5cf681ac77dccf5093c4921bcf62ccfdd19fc583c735e4c63f3de540e1b0c2c",
+        "function": "finish_ols_schur",
+        "kind": ".insert",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "finish_ols_schur",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "try_absorb_ols_schur_narrow_at_cap",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": [
+      {
+        "call_sha256": "d5cf681ac77dccf5093c4921bcf62ccfdd19fc583c735e4c63f3de540e1b0c2c",
+        "function": "absorb_ols_schur_at_cap",
+        "kind": ".insert",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "absorb_ols_schur_at_cap",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      }
+    ]
+  },
+  {
+    "path": "crates/fereg-core/src/fe/design.rs",
+    "before": 13,
+    "after": 21,
+    "added": [
+      {
+        "call_sha256": "853039428112602db6e511eb8ef792615253b6129d6a4237cfb349917606eb7b",
+        "function": "try_from_ordered_codes",
+        "kind": ".extend",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "478cd7ce3b904c5a0fda5d2b5bbce14b35a75d2e71e6fe85f76c7187521268b9",
+        "function": "try_from_ordered_codes",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "eb629d9cc63e6d5055eae18b33eb629b4770a78e2e61d23d3c822d8b1093e016",
+        "function": "try_from_ordered_codes",
+        "kind": ".push",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "f506474d6ecd67a86e0dba94aac9f6a8361f452f108b5ed8dfacbbcd241b0ffe",
+        "function": "try_from_ordered_codes",
+        "kind": ".resize",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b6bed3715e7a54a36f7418ed4722499d2dd1242d6fe6f14219923cda8b275e71",
+        "function": "try_from_ordered_codes",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "bb7980558c002886ed11260fdd66d6f2167f6d017844ce8c42ec914eeb5afcfc",
+        "function": "try_from_ordered_codes",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "try_from_ordered_codes",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "try_from_ordered_codes",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/fe/mod.rs",
+    "before": 0,
+    "after": 0,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/fe/topology_finalize.rs",
+    "before": 30,
+    "after": 42,
+    "added": [
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "from_single_source_index_with_reservation",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "from_single_source_index_with_reservation",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b94507575b178009f0fa335106700f45c5a42e28be3dc560a1c1067bf968adbd",
+        "function": "from_single_source_index_with_reservation",
+        "kind": "push_reserved",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "ea2ebdde9b924ca71f977f9b572dbb62d464932fd500482721597c6ae642548a",
+        "function": "from_single_source_index_with_reservation",
+        "kind": "push_reserved",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "13e0cfa375f45c20ea5ff9cfbefbb177fd9cd3afbdc08fa6048cfd1da9461b39",
+        "function": "from_single_source_index_with_reservation",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "5be87c827cb2445ddd7e6cd8e2981e2dfd192cd9f67599bee7a8e957b1cf86a5",
+        "function": "from_single_source_index_with_reservation",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "5be87c827cb2445ddd7e6cd8e2981e2dfd192cd9f67599bee7a8e957b1cf86a5",
+        "function": "from_single_source_index_with_reservation",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "6103ad0010f4cecaf7e20e879d2773de3192f5ff0da305978aac64158c2d3491",
+        "function": "from_single_source_index_with_reservation",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "c6c0998e33269856a66914fe3d799e5f625c606675a265646b3845ef2b8c8917",
+        "function": "from_single_source_index_with_reservation",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "3c74986af4f692f24cb72028cd9cf9c36e869536513ec8199dce87d0ff44a8c5",
+        "function": "into_design",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "5014d3fc19aeb24521f395ad6f1e84c1ebe82651aca66bea0ba83c94e6212f38",
+        "function": "into_design",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "into_design",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/fe/topology_registry.rs",
+    "before": 7,
+    "after": 10,
+    "added": [
+      {
+        "call_sha256": "eae285f0c2eb5799f93de28ef75132e2e04d163f7fde382c546b2548fca876cd",
+        "function": "from_single_source",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "5014d3fc19aeb24521f395ad6f1e84c1ebe82651aca66bea0ba83c94e6212f38",
+        "function": "from_single_source",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "from_single_source",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/fe/topology_slope_map.rs",
+    "before": 69,
+    "after": 71,
+    "added": [
+      {
+        "call_sha256": "46257ec3bf86b841642ae2733274e85b2df3715ec36438caf097bc0fa7f876dc",
+        "function": "recover_finalized_two_effects_graph_certified",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "8e83294c1a472ce4e354cd05417e6c501f22c286d87460ce06b5bc82f815a0bb",
+        "function": "recover_finalized_two_effects_graph_certified",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/fe/topology_source.rs",
+    "before": 0,
+    "after": 0,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/memory.rs",
+    "before": 4,
+    "after": 4,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/mod.rs",
+    "before": 20,
+    "after": 20,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared.rs",
+    "before": 98,
+    "after": 103,
+    "added": [
+      {
+        "call_sha256": "3a143153328743b632ce4649d0336b0aa2c741ffc956bf3f3b8b853e7a906072",
+        "function": "factorize_categorical_sources_reusing",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "9f31dbae00bf1bae242f8f63f32aa898828c075f6f10a6dc98521ec0c3d6ad65",
+        "function": "factorize_categorical_sources_reusing",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "497bed18eaf5517efec09f8b2abadb5040f7a52642d265abc42e6eb0aa90fa1b",
+        "function": "factorize_categorical_sources_reusing",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "factorize_categorical_sources_reusing",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "a43f3b8b8b4d268d24232db0176c32159b4aca34060a7ae3b332dbb694030f03",
+        "function": "finish_prepare_with_early_factor",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "5014d3fc19aeb24521f395ad6f1e84c1ebe82651aca66bea0ba83c94e6212f38",
+        "function": "finish_prepare_with_early_factor",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "finish_prepare_with_early_factor",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": [
+      {
+        "call_sha256": "3a143153328743b632ce4649d0336b0aa2c741ffc956bf3f3b8b853e7a906072",
+        "function": "factorize_categorical_sources",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "497bed18eaf5517efec09f8b2abadb5040f7a52642d265abc42e6eb0aa90fa1b",
+        "function": "factorize_categorical_sources",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      }
+    ]
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared_categorical_data.rs",
+    "before": 55,
+    "after": 56,
+    "added": [
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "finish_prepare_categorical_ols_data",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared_clustered.rs",
+    "before": 30,
+    "after": 30,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared_dof.rs",
+    "before": 23,
+    "after": 23,
+    "added": [
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "compute_with_nesting_reservation_validated",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "68162bf2d1e73faafc3c818637520b144ba7f554f722536987d52eb9c817d2df",
+        "function": "compute_with_nesting_reservation_validated",
+        "kind": "push_reserved",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "57487bc5bd3cbf983a0bf5c41586863882896e498d08f6763104d9ed1e9fa9e0",
+        "function": "compute_with_nesting_reservation_validated",
+        "kind": "push_reserved",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "a050ee8d9d516758b67583bdaed94f8dc5e12deaee03a7465a5261830e8d1d00",
+        "function": "compute_with_nesting_reservation_validated",
+        "kind": "push_reserved",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "53886539273c3b3f7baaa1b17f49ce1ff18402bb06af014b21e5d2f55e67d155",
+        "function": "compute_with_nesting_reservation_validated",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "2603055e8e99f2d1b2db28e9f170963a6d9f61cf7bf700f9c31509e9a9c4a225",
+        "function": "compute_with_nesting_reservation_validated",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "2603055e8e99f2d1b2db28e9f170963a6d9f61cf7bf700f9c31509e9a9c4a225",
+        "function": "compute_with_nesting_reservation_validated",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "ce30b00b8aaf2bc147e89709e7a71f06bb4e0218ce2240b51604659d8e3c1cc7",
+        "function": "compute_with_nesting_reservation_validated",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "ffc17ab211d2b84b32e55e347e2dd0641b32e7a160833e73f99507df3eef3037",
+        "function": "compute_with_nesting_reservation_validated",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": [
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "compute_with_nesting_reservation",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "68162bf2d1e73faafc3c818637520b144ba7f554f722536987d52eb9c817d2df",
+        "function": "compute_with_nesting_reservation",
+        "kind": "push_reserved",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "57487bc5bd3cbf983a0bf5c41586863882896e498d08f6763104d9ed1e9fa9e0",
+        "function": "compute_with_nesting_reservation",
+        "kind": "push_reserved",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "a050ee8d9d516758b67583bdaed94f8dc5e12deaee03a7465a5261830e8d1d00",
+        "function": "compute_with_nesting_reservation",
+        "kind": "push_reserved",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "53886539273c3b3f7baaa1b17f49ce1ff18402bb06af014b21e5d2f55e67d155",
+        "function": "compute_with_nesting_reservation",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "2603055e8e99f2d1b2db28e9f170963a6d9f61cf7bf700f9c31509e9a9c4a225",
+        "function": "compute_with_nesting_reservation",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "2603055e8e99f2d1b2db28e9f170963a6d9f61cf7bf700f9c31509e9a9c4a225",
+        "function": "compute_with_nesting_reservation",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "ce30b00b8aaf2bc147e89709e7a71f06bb4e0218ce2240b51604659d8e3c1cc7",
+        "function": "compute_with_nesting_reservation",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "ffc17ab211d2b84b32e55e347e2dd0641b32e7a160833e73f99507df3eef3037",
+        "function": "compute_with_nesting_reservation",
+        "kind": "reserved_filled",
+        "scale_hint": "model_or_fixed"
+      }
+    ]
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared_fit.rs",
+    "before": 148,
+    "after": 152,
+    "added": [
+      {
+        "call_sha256": "dd0b4635c97438de919cf74fc4c2a6c90cd571aa5e70b66f58668ba74bdaa890",
+        "function": "absorb_fit_matrix",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "5014d3fc19aeb24521f395ad6f1e84c1ebe82651aca66bea0ba83c94e6212f38",
+        "function": "absorb_fit_matrix",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "absorb_fit_matrix",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "820ce31e54a1a3f3ced60d564ab10b1e9a07e089e0038dd693c859b0eba6fb36",
+        "function": "reserve",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared_fit_view.rs",
+    "before": 28,
+    "after": 28,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared_inference_view.rs",
+    "before": 0,
+    "after": 0,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared_rhs.rs",
+    "before": 3,
+    "after": 3,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+    "before": 16,
+    "after": 16,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared_scores.rs",
+    "before": 27,
+    "after": 27,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+    "before": 10,
+    "after": 11,
+    "added": [
+      {
+        "call_sha256": "a4f3216912564ac807a4ab5b05c4d185391fb41820ea9bb5c2fa3758cbc78104",
+        "function": "build_reference_weight_report_with_outcome",
+        "kind": ".clone",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/ols/topology_dof.rs",
+    "before": 28,
+    "after": 28,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-core/src/parallel.rs",
+    "before": 9,
+    "after": 9,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-plugin/src/estimate.rs",
+    "before": 149,
+    "after": 171,
+    "added": [
+      {
+        "call_sha256": "1181d9b59b8c5f94db105720c5707ae1944c8eecc8e63714e4f65dc3ee5feefe",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "1181d9b59b8c5f94db105720c5707ae1944c8eecc8e63714e4f65dc3ee5feefe",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "5587ee52021b56627c418aabb65bf7c752d094b33a633fe729fc30ec99853745",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "5587ee52021b56627c418aabb65bf7c752d094b33a633fe729fc30ec99853745",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "806d1ef37afcb755e39b5adf0e663582b0ab13737ecd853b8c671128b0441e91",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "806d1ef37afcb755e39b5adf0e663582b0ab13737ecd853b8c671128b0441e91",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "983e7111f7562b9abef9c599308569227fca7670e71f96536fab208f43f1b244",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "aa7ec922d901eb1bc8507ad44f699f10438c59ee3876615340628e14bbabb5a5",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "ab3c924a1c6c69bb06e84d81876414b1451851c98dd44b4ff72473e38177c500",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "ab3c924a1c6c69bb06e84d81876414b1451851c98dd44b4ff72473e38177c500",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "c340dfdd4481821efeb83d14ba07bf1b1914dbe1090304e6228b98d643f848c3",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "c340dfdd4481821efeb83d14ba07bf1b1914dbe1090304e6228b98d643f848c3",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "c60a7505d4178b61ff5d407f5eea56f5a928525338adb1f17e0d60a37c78260a",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "d3087e286f5640d171ce78ff23b208829862cddc72abc6b03c6831b4b654b28f",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "d3087e286f5640d171ce78ff23b208829862cddc72abc6b03c6831b4b654b28f",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "de736a586bf0b2ce8ed86c0826c071097f49f965bf96f2f13163490d2b402e05",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "de736a586bf0b2ce8ed86c0826c071097f49f965bf96f2f13163490d2b402e05",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "fcc38010b60a4d9ab8d9d02f70a5e4752f0bd32c491e1c2b4e62f743792e0f98",
+        "function": "load_ols_input_with_team",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "800bde15cac9926199d69b9fff4cdb124ae47ed1edef25c142701181d00874ad",
+        "function": "load_ols_input_with_team",
+        "kind": ".resize",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "800bde15cac9926199d69b9fff4cdb124ae47ed1edef25c142701181d00874ad",
+        "function": "load_ols_input_with_team",
+        "kind": ".resize",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "800bde15cac9926199d69b9fff4cdb124ae47ed1edef25c142701181d00874ad",
+        "function": "load_ols_input_with_team",
+        "kind": ".resize",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "8104eb9642a6bf1fb09295f2b821cc1eb33be924bdc956221f914cd40b93337b",
+        "function": "load_ols_input_with_team",
+        "kind": ".resize",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "8104eb9642a6bf1fb09295f2b821cc1eb33be924bdc956221f914cd40b93337b",
+        "function": "load_ols_input_with_team",
+        "kind": ".resize",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "8104eb9642a6bf1fb09295f2b821cc1eb33be924bdc956221f914cd40b93337b",
+        "function": "load_ols_input_with_team",
+        "kind": ".resize",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "820ce31e54a1a3f3ced60d564ab10b1e9a07e089e0038dd693c859b0eba6fb36",
+        "function": "load_ols_input_with_team",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "d3c59dedafb44c60a7eb81e4cc7b5c550f735147f56dc056581c63d32082bdd3",
+        "function": "load_ols_input_with_team",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "load_ols_input_with_team",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "load_ols_input_with_team",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "610efffb3b98dfc5ec1c53224772e5877b63d71844210d69883cfb9244acb942",
+        "function": "load_ols_input_with_team",
+        "kind": "format!",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "610efffb3b98dfc5ec1c53224772e5877b63d71844210d69883cfb9244acb942",
+        "function": "load_ols_input_with_team",
+        "kind": "format!",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "cb529a06a576f9947957159e9335540d6ebc81bcba0d9a5503f3557b909bafee",
+        "function": "load_ols_input_with_team",
+        "kind": "push_reserved",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "e439b70bc3ad114bebb0dde7d6fbac8a36d365173a37f5effc94c99ef4cae213",
+        "function": "load_ols_input_with_team",
+        "kind": "push_reserved",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "f673a40f2e16a1e08ea98479080eaad96223f25b598e85d4dfb42605af186f0a",
+        "function": "load_ols_input_with_team",
+        "kind": "push_reserved",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "16fff8a49036ced384cccab1786ff3424b6926f5e9a2cc1db1b98edbf23a70bb",
+        "function": "load_ols_input_with_team",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "16fff8a49036ced384cccab1786ff3424b6926f5e9a2cc1db1b98edbf23a70bb",
+        "function": "load_ols_input_with_team",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "16fff8a49036ced384cccab1786ff3424b6926f5e9a2cc1db1b98edbf23a70bb",
+        "function": "load_ols_input_with_team",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "1f5a97cd9483bdac7e64c35f85c6f362538c72d65528bc19378bd3002e98befe",
+        "function": "load_ols_input_with_team",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "22dff565231180c66dccdab3ba0e5fa95c13fad81b0126b1d0d439bbad659ebd",
+        "function": "load_ols_input_with_team",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "22dff565231180c66dccdab3ba0e5fa95c13fad81b0126b1d0d439bbad659ebd",
+        "function": "load_ols_input_with_team",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "436c4ecc427d208747d48165efa878e47e03e31b97e1e2fb8f321e6ca57f0149",
+        "function": "load_ols_input_with_team",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "4db089d29411fa82d2407de7844576ae2d04e46db5c23e75ffcdd8afc37f92f5",
+        "function": "load_ols_input_with_team",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "7c6fe486d0f226b28d40c91a9eea3db092c62bbb936ed1080ce9403c6b12cd96",
+        "function": "load_ols_input_with_team",
+        "kind": "reserved_filled",
+        "scale_hint": "observation"
+      },
+      {
+        "call_sha256": "f8312a00309a5a78f3a3a9787ff811f60e8f811ede639ff28abe9b7655aa40eb",
+        "function": "loaded_column_reservation",
+        "kind": "reserved_empty",
+        "scale_hint": "observation_by_column"
+      },
+      {
+        "call_sha256": "f8312a00309a5a78f3a3a9787ff811f60e8f811ede639ff28abe9b7655aa40eb",
+        "function": "loaded_column_reservation",
+        "kind": "reserved_empty",
+        "scale_hint": "observation_by_column"
+      }
+    ],
+    "removed": [
+      {
+        "call_sha256": "1181d9b59b8c5f94db105720c5707ae1944c8eecc8e63714e4f65dc3ee5feefe",
+        "function": "load_ols_input_with_memory",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "1181d9b59b8c5f94db105720c5707ae1944c8eecc8e63714e4f65dc3ee5feefe",
+        "function": "load_ols_input_with_memory",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "5587ee52021b56627c418aabb65bf7c752d094b33a633fe729fc30ec99853745",
+        "function": "load_ols_input_with_memory",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "5587ee52021b56627c418aabb65bf7c752d094b33a633fe729fc30ec99853745",
+        "function": "load_ols_input_with_memory",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "806d1ef37afcb755e39b5adf0e663582b0ab13737ecd853b8c671128b0441e91",
+        "function": "load_ols_input_with_memory",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "983e7111f7562b9abef9c599308569227fca7670e71f96536fab208f43f1b244",
+        "function": "load_ols_input_with_memory",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "aa7ec922d901eb1bc8507ad44f699f10438c59ee3876615340628e14bbabb5a5",
+        "function": "load_ols_input_with_memory",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "d3087e286f5640d171ce78ff23b208829862cddc72abc6b03c6831b4b654b28f",
+        "function": "load_ols_input_with_memory",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "de736a586bf0b2ce8ed86c0826c071097f49f965bf96f2f13163490d2b402e05",
+        "function": "load_ols_input_with_memory",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "d3c59dedafb44c60a7eb81e4cc7b5c550f735147f56dc056581c63d32082bdd3",
+        "function": "load_ols_input_with_memory",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "load_ols_input_with_memory",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "610efffb3b98dfc5ec1c53224772e5877b63d71844210d69883cfb9244acb942",
+        "function": "load_ols_input_with_memory",
+        "kind": "format!",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "610efffb3b98dfc5ec1c53224772e5877b63d71844210d69883cfb9244acb942",
+        "function": "load_ols_input_with_memory",
+        "kind": "format!",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "cb529a06a576f9947957159e9335540d6ebc81bcba0d9a5503f3557b909bafee",
+        "function": "load_ols_input_with_memory",
+        "kind": "push_reserved",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "e439b70bc3ad114bebb0dde7d6fbac8a36d365173a37f5effc94c99ef4cae213",
+        "function": "load_ols_input_with_memory",
+        "kind": "push_reserved",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "f673a40f2e16a1e08ea98479080eaad96223f25b598e85d4dfb42605af186f0a",
+        "function": "load_ols_input_with_memory",
+        "kind": "push_reserved",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "1f5a97cd9483bdac7e64c35f85c6f362538c72d65528bc19378bd3002e98befe",
+        "function": "load_ols_input_with_memory",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "22dff565231180c66dccdab3ba0e5fa95c13fad81b0126b1d0d439bbad659ebd",
+        "function": "load_ols_input_with_memory",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "22dff565231180c66dccdab3ba0e5fa95c13fad81b0126b1d0d439bbad659ebd",
+        "function": "load_ols_input_with_memory",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "436c4ecc427d208747d48165efa878e47e03e31b97e1e2fb8f321e6ca57f0149",
+        "function": "load_ols_input_with_memory",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "4db089d29411fa82d2407de7844576ae2d04e46db5c23e75ffcdd8afc37f92f5",
+        "function": "load_ols_input_with_memory",
+        "kind": "reserved_empty",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "7c6fe486d0f226b28d40c91a9eea3db092c62bbb936ed1080ce9403c6b12cd96",
+        "function": "load_ols_input_with_memory",
+        "kind": "reserved_filled",
+        "scale_hint": "observation"
+      }
+    ]
+  },
+  {
+    "path": "crates/fereg-plugin/src/ffi.rs",
+    "before": 32,
+    "after": 32,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-plugin/src/input.rs",
+    "before": 65,
+    "after": 65,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-plugin/src/lib.rs",
+    "before": 0,
+    "after": 0,
+    "added": [],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-plugin/src/numeric_pipeline.rs",
+    "before": 0,
+    "after": 7,
+    "added": [
+      {
+        "call_sha256": "a5579b344eaf33839263c58b437790da7e652677c6e903c7cb0a6ce93464a995",
+        "function": "append_rhs",
+        "kind": ".extend_from_slice",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "7264ab43ffc01f4783f660a82a9cb8c76a19a23bf4732b202f19963d492b0526",
+        "function": "read_tiles",
+        "kind": ".resize",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "820ce31e54a1a3f3ced60d564ab10b1e9a07e089e0038dd693c859b0eba6fb36",
+        "function": "read_tiles",
+        "kind": ".try_reserve_exact",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "read_tiles",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "b1e0e5da2720111a9730c9fa1c803bd1c71f84d79167a690df6e3383950869ea",
+        "function": "read_tiles",
+        "kind": "Vec::new",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "3b29e037e02d7665d24bd88fcf42d3f7485b327826a018afcaf96203b2f85f2c",
+        "function": "try_read_reserved",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      },
+      {
+        "call_sha256": "fe4b538add05d75af0ccea6bfbfa65d52f12554921a3959becfe386fe02eb903",
+        "function": "try_read_reserved",
+        "kind": ".push",
+        "scale_hint": "model_or_fixed"
+      }
+    ],
+    "removed": []
+  },
+  {
+    "path": "crates/fereg-plugin/src/result_view.rs",
+    "before": 0,
+    "after": 0,
+    "added": [],
+    "removed": []
+  }
+]
