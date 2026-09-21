@@ -237,12 +237,43 @@ partial-screen recheck keeps 114 complete cells and does not retroactively claim
 clean isolation. The native-only audit option has been exercised by wr2's three
 cells; its earlier auditor source is preserved before that small extension.
 
-Current resume point: test an isolated serial LSMR transport-window experiment.
-The existing <=64-RHS envelope remains unwindowed even at T1, making its memory
-model charge many potentially live recurrences. An enforced outer window could
-reduce that model without relaxing admission. Measure exact numerical behavior,
-whole-command cost and bounded-memory outcomes before considering an OLS-scoped
-implementation; do not silently widen shared/PPML or explicit routing policy.
+The [serial LSMR window experiment](benchmarks/reports/development/serial-lsmr-window-local-2026-09-21/README.md)
+completes 26 successful calls. `sw1` enforces one live serial RHS and uses that
+same bound in its captured memory model. Five batch tests and 63 memory tests
+pass. The four-cell clean paired screen has exact numerical exports/samples/
+saved vectors, eight independent inference checks, twenty-four exact repeats
+and twelve output audits. Serial paired runtime ratios are 1.0011/1.0011/1.0092;
+tracked peaks fall by 122–136 MB. Both 1.5/1 GB usable ring calls now pass
+independent inference and outputs at a 523,613,047-byte tracked peak. The prior
+wr2 timeout and the corrected output-auditor glob failure remain preserved.
+The archive verifies 860 entries and both full source reconstructions.
+This is an isolated generic experiment; an OLS-scoped implementation and Linux
+evidence remain open. No production memory/admission rule was changed.
+
+`be5079f7` commits broad protection timing isolation and v2 scoring. Three
+score tests, four monitor tests and the unchanged 77/111-cell dry inventories
+pass. Unrecorded or possible-overlap timings remain visible but cannot rank.
+
+The `sf1` serial ordered-slope fusion screens complete 87 calls without detected
+overlap. All thirty native pairs have bit-identical finite exports and samples;
+all eighteen weighted output pairs also have exact saved vectors. The embedded
+independent output audits pass. Unit K10/T1 is 118 to 113 ms versus fixest 92 ms
+(paired native ratio 0.9573); K50/T1 and threaded controls are essentially stable.
+Serial PW three-slope-only robust/all is 237 to 230 ms versus fixest 151 ms;
+clustered/all is 261 to 262 versus 164 ms. Those serial reference gaps remain.
+
+Current resume point: profile serial weighted slope outputs before freezing
+the next kernel candidate. The sf1 draft is still uncommitted.
+Fresh wr2 K10/T1 phase diagnostics place about 12 ms in residual checks and
+7 ms in reconstruction/norm scans. The isolated draft combines projection,
+reconstruction, row-ordered norms and fresh group maxima only for serial ordered
+groups; shuffled/threaded paths keep their traversal. The three focused slope
+tests pass, including bit-identical old-path comparisons and an independent
+rank-aware certificate across widths, weights, group orders and team sizes.
+Plugin `90d4d382e9f7030e7db2b152b5b1cfe097d4dca147f49c1843a2ef4bdd550b62`
+builds and passes the ABI test. Do not accept without its paired screen and
+appropriate weight/output checks. The preceding wr2 profile plugin is
+`853b84009836fa107083613c5437ddfc67044b0db1e050349e79cacae5297a39`.
 Then freeze routing and complete the expanded large screen,
 protected controls, current-candidate science, final independent blocks,
 constrained whole-fit checks and focused Linux runs. Raw artifacts and immutable

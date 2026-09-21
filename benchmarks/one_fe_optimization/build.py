@@ -16,7 +16,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None):
+def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None, serial_lsmr_window=False):
     root = root.resolve()
     source = root / name
     source.mkdir(parents=True, exist_ok=False)
@@ -29,6 +29,9 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         path = source / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes((REPO / relative).read_bytes())
+    if serial_lsmr_window:
+        from serial_lsmr_window import instrument
+        instrument(source)
     if schur_narrow_cap is not None:
         assert 0 < schur_narrow_cap <= 64
         path = source / 'crates/fereg-core/src/fe/borrowed_map.rs'
@@ -102,6 +105,10 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
     if schur_narrow_cap is not None:
         identity['experiment'] = dict(schur_narrow_continuation_cap=schur_narrow_cap,
             scope='Narrow OLS entry point only; shared and wide Schur caps are unchanged.')
+    if serial_lsmr_window:
+        identity.setdefault('experiment', {})['serial_lsmr_window'] = dict(
+            active_rhs=1, scope='Captured-source generic serial transport/admission experiment; no production or shared-routing acceptance.',
+            instrument_sha256=sha(REPO / 'benchmarks/one_fe_optimization/serial_lsmr_window.py'))
     if profile_preparation:
         identity.setdefault("diagnostics", []).append("preparation_phases")
     if profile_completion:
@@ -138,5 +145,7 @@ if __name__ == "__main__":
     p.add_argument("--profile-schur", action="store_true")
     p.add_argument("--schur-narrow-cap", type=int, choices=range(1, 65),
                    help="isolated narrow OLS cap experiment; never modifies the checkout")
+    p.add_argument("--serial-lsmr-window", action="store_true",
+                   help="isolated serial RHS-window experiment; never modifies production source")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap, a.serial_lsmr_window)

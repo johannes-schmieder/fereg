@@ -1,0 +1,46 @@
+{
+  "sw1-batch-tests1.txt": {
+    "original_sha256": "1d22c557036647c6e5c11a724b4b6fb98d630373fb899ad190d2ed878c0969cb",
+    "portable_sha256": "4672f828cfe9cbc7fa3ee8fcf8771a97d3d683f318f43c43bc116e9aafa172f7"
+  },
+  "sw1-memory-tests1.txt": {
+    "original_sha256": "2a55ebba9a41594d8048b03ca141e5c8448c63abace2543bc3788ec0e8ca222c",
+    "portable_sha256": "8d43b764cd164bf83d618490660ba2ae52b9c19a318c2c946f9c5beb43f4187f"
+  },
+  "sw1-screen-inference1.json": {
+    "original_sha256": "f81bffd1a5c5736f7ff4a4fd6b96dbc27d5a0f1bf85ea124f3cc71d7f8e01c43",
+    "portable_sha256": "f81bffd1a5c5736f7ff4a4fd6b96dbc27d5a0f1bf85ea124f3cc71d7f8e01c43"
+  },
+  "sw1-screen-score1.json": {
+    "original_sha256": "fedc39b20263a753018b4428fe08707e8b61741050635eae33f2908715d3fd2e",
+    "portable_sha256": "fedc39b20263a753018b4428fe08707e8b61741050635eae33f2908715d3fd2e"
+  },
+  "sw1-screen-score1.txt": {
+    "original_sha256": "3f3e5ff2323043bb6f2a2d5a4e41f187d9b2656e978a82f4f4a1ed7f026e42c2",
+    "portable_sha256": "3f3e5ff2323043bb6f2a2d5a4e41f187d9b2656e978a82f4f4a1ed7f026e42c2"
+  },
+  "sw1-memory-audit1.json": {
+    "original_sha256": "322843a57b4845cb01ab363518714063c0b5136f9246ae5ed8173a7146e7eed3",
+    "portable_sha256": "322843a57b4845cb01ab363518714063c0b5136f9246ae5ed8173a7146e7eed3"
+  },
+  "sw1-audit1.txt": {
+    "original_sha256": "e2bb61276258d2c12ea235154467c855fe5c3b66d44b9f1b52dd933d454e3500",
+    "portable_sha256": "7bd0cb2aadfda435ea8ae596c9adfef2455c6377146d158d5a8bf939fa4022e8"
+  },
+  "sw1-memory-audit2.txt": {
+    "original_sha256": "dbfd37b9d2f2d692708559c0f0db7fd2a1549e56fc3a7150878696fe7ebee241",
+    "portable_sha256": "dbfd37b9d2f2d692708559c0f0db7fd2a1549e56fc3a7150878696fe7ebee241"
+  },
+  "cap1000-sw1/native-trace.txt": {
+    "original_sha256": "a6b29210f00d2cbe3af2464ab8e655c337ee2996fdc4cf11caf921c697711f23",
+    "portable_sha256": "a6b29210f00d2cbe3af2464ab8e655c337ee2996fdc4cf11caf921c697711f23",
+    "original_stream_sha256": "4544adada8ea591605cb41cf72cd9130fe7c1fa5c2a1275dfdf6b5f808739ebe",
+    "extraction": "Only native phase/solver trace lines, in original order."
+  },
+  "cap1500-sw1/native-trace.txt": {
+    "original_sha256": "31280d3bb94456db2e0ef622aec324b9735264017e3ebd564c88e030a1d24b83",
+    "portable_sha256": "31280d3bb94456db2e0ef622aec324b9735264017e3ebd564c88e030a1d24b83",
+    "original_stream_sha256": "65c60f65f7730a60bf462ffd9167f1fd519838b44841ef4943f4a0dc4b77a7f3",
+    "extraction": "Only native phase/solver trace lines, in original order."
+  }
+}
