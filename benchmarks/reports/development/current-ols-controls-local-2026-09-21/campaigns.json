@@ -1,0 +1,27 @@
+[
+  {
+    "completion": {
+      "attempted": 111,
+      "plan_sha256": "0e15bae435abcacbe4c098cbee9b253517ebda5609d5b4e5bc4826135e119327",
+      "planned": 111,
+      "process_failures": 0,
+      "progress_sha256": "dd614944e281adaf9060f3ada0155339404b87a2e479cfcdc551bc9184bc28c4",
+      "status": "attempts_complete"
+    },
+    "label": "final-controls1",
+    "plan_sha256": "0e15bae435abcacbe4c098cbee9b253517ebda5609d5b4e5bc4826135e119327",
+    "root": "g21finalcontrols1"
+  },
+  {
+    "completion": {
+      "attempted": 2,
+      "plan_sha256": "077fb439496f96fc3d64c2e63f32c8ff247f7d70e478934e48131f1db72282ff",
+      "planned": 2,
+      "process_failures": 0,
+      "status": "attempts_complete"
+    },
+    "label": "fine",
+    "plan_sha256": "077fb439496f96fc3d64c2e63f32c8ff247f7d70e478934e48131f1db72282ff",
+    "root": "g21fctrlhi1"
+  }
+]

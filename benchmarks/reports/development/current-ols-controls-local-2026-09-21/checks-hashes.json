@@ -1,0 +1,62 @@
+{
+  "final-candidate-freeze1.json": {
+    "original_sha256": "41b10e19826ac0f907d501975d9796995e07f235bbd80dc7032d4dbd596457e8",
+    "portable_sha256": "41b10e19826ac0f907d501975d9796995e07f235bbd80dc7032d4dbd596457e8"
+  },
+  "final-native-controls1.txt": {
+    "original_sha256": "0f48d30e7b66cf14ff01cbe9539493e7bdf02c302567a62ff511acb859af0aa2",
+    "portable_sha256": "0f48d30e7b66cf14ff01cbe9539493e7bdf02c302567a62ff511acb859af0aa2"
+  },
+  "final-native-control-audits1.txt": {
+    "original_sha256": "1b7f47683feb004845db4d494caf72d5c25035dc51f9b7a79ce060e11721d4be",
+    "portable_sha256": "1b7f47683feb004845db4d494caf72d5c25035dc51f9b7a79ce060e11721d4be"
+  },
+  "final-control-audit-complete1.json": {
+    "original_sha256": "0850bb18d566e53661c976a4f81295240a2637ea93c501d0ec6763eb3664d716",
+    "portable_sha256": "0850bb18d566e53661c976a4f81295240a2637ea93c501d0ec6763eb3664d716"
+  },
+  "final-control-clock-prepare1.txt": {
+    "original_sha256": "54cec2e8a8ddd1bac8f8da618100404c57426ae72cc79c5b6ce80070f02cd661",
+    "portable_sha256": "b0b67a367b3ff5cfb40339347c911c900c39f1eea93d8c1ac6769ca74f5fdb94"
+  },
+  "final-control-fine-clock1.txt": {
+    "original_sha256": "02a9df728f9baeae4abadacd5bc23e1a17223f6593a9708ed2d3dd99939bac4d",
+    "portable_sha256": "02a9df728f9baeae4abadacd5bc23e1a17223f6593a9708ed2d3dd99939bac4d"
+  },
+  "final-controls1-score1.json": {
+    "original_sha256": "218dd316bb31ad89d46d6173a335e292467cd02d63eecf2eb2a1307c90432bcb",
+    "portable_sha256": "218dd316bb31ad89d46d6173a335e292467cd02d63eecf2eb2a1307c90432bcb"
+  },
+  "final-controls1-score1.txt": {
+    "original_sha256": "8682b7411c2e30dd969af89d2cd56ee7ba56d1cfb9a70d4dd0f8f6dc03c9d66c",
+    "portable_sha256": "8682b7411c2e30dd969af89d2cd56ee7ba56d1cfb9a70d4dd0f8f6dc03c9d66c"
+  },
+  "final-controls1-science1.json": {
+    "original_sha256": "44b6b634968f882ec01c1e0d1931cbaa642408e5a13fffd2b4176d3e34ddf391",
+    "portable_sha256": "44b6b634968f882ec01c1e0d1931cbaa642408e5a13fffd2b4176d3e34ddf391"
+  },
+  "final-controls1-science1.txt": {
+    "original_sha256": "5de15d94cd3bd6e8c7831f4d56d3ce4f79cdcf1f3eda2ee91159cc23a0b17707",
+    "portable_sha256": "5de15d94cd3bd6e8c7831f4d56d3ce4f79cdcf1f3eda2ee91159cc23a0b17707"
+  },
+  "final-controls1-outputs1.txt": {
+    "original_sha256": "5fbfb6e5e9cb42561fc0d059f9a29d199ee163e0b7ea8be678e66975a430bb44",
+    "portable_sha256": "5fbfb6e5e9cb42561fc0d059f9a29d199ee163e0b7ea8be678e66975a430bb44"
+  },
+  "final-control-fine-science1.json": {
+    "original_sha256": "23b75a43eadfc51f8ae1c00f2cc58cae9b0233ca7e72549e5ea046ad6ef1d500",
+    "portable_sha256": "23b75a43eadfc51f8ae1c00f2cc58cae9b0233ca7e72549e5ea046ad6ef1d500"
+  },
+  "final-control-fine-science1.txt": {
+    "original_sha256": "f9d2b2de793c7e00f53c69f2f6fb8af9c21126d32aeae56c7ea5d301f67ed9db",
+    "portable_sha256": "f9d2b2de793c7e00f53c69f2f6fb8af9c21126d32aeae56c7ea5d301f67ed9db"
+  },
+  "final-control-fine-score1.json": {
+    "original_sha256": "2650176263ed5c9a931fd1b2dbd30864abe9187ed398c1d4a18bd76cc5c29c05",
+    "portable_sha256": "2650176263ed5c9a931fd1b2dbd30864abe9187ed398c1d4a18bd76cc5c29c05"
+  },
+  "final-control-fine-score1.txt": {
+    "original_sha256": "65f9907d477aefc1578b1fe09a128fa460c4963e76d45c3a55ebead1e355f77b",
+    "portable_sha256": "65f9907d477aefc1578b1fe09a128fa460c4963e76d45c3a55ebead1e355f77b"
+  }
+}

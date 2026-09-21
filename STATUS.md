@@ -468,15 +468,28 @@ discrepancies, and each holdout audit preserves two. The archive verifies
 the privacy check passes 33,471 members. This is exact-artifact Mac evidence,
 not completion of the broader milestone.
 
-The current-candidate 111-cell control controller and its audit are prepared,
-not executed. `current-graph-coverage1.py --dry-run` also verifies all 168
+The [current protected controls](benchmarks/reports/development/current-ols-controls-local-2026-09-21/README.md)
+complete 666 successful calls across all 111 cells with clean isolation. All
+333 native scientific comparisons and 129 independent output audits pass;
+252 six-bundle pairs and 78 saved-output pairs are bit-identical. Two original
+timing failures remain recorded: AW K1/N61440 at 1.05263 and unit K14/N61440
+at 1.09434. Fresh five-pair, single-command monotonic-clock confirmations give
+0.99254 and 1.01545; both ordinary-clock medians are 1.0. All twenty new calls
+and ten scientific comparisons pass with clean isolation. All 111 timing
+limits are met using these explicit confirmations. Peaks increase in eighteen
+cells, at most 25,772,088 bytes; no memory-neutrality claim follows. The
+686-call archive verifies 21,120 entries, 258 omitted arrays and both complete
+native source trees; its privacy check passes 21,132 members.
+
+`current-graph-coverage1.py --dry-run` verifies all 168
 unchanged large cells and native identities: 126 candidate/fixest cells and
 42 FW candidate/baseline cells, each with three pairs. The original three-arm
 measurements and failures remain unchanged. Its manifest projection only
 renames the existing thresholds for the broad scorer. No new routing seed is
 used, and the coverage controller has not dispatched applications.
 
-Current resume point: finish current-candidate protection/coverage. Focused Linux confirmation
+Current resume point: run and audit current-candidate expanded graph coverage.
+The final primary/holdout archive is committed at `f8610cee`. Focused Linux confirmation
 and routing validation remain required before closing the milestone. The
 initial norm handoff is committed at `4708834b`, cycle experiment evidence at
 `9e4daec9`, and the primary training screen at `d764894f`. Six core files remain
