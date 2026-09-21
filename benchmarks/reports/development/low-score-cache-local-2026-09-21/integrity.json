@@ -1,0 +1,66 @@
+{
+  "schema": "ols-low-score-cache-archive-integrity-v1",
+  "status": "pass",
+  "stored_entries_verified": 1380,
+  "local_output_arrays_omitted": 48,
+  "source_reconstruction": [
+    {
+      "variant": "m5",
+      "plugin": "a07732eea15a47a185903bf7403cd74f111a5eebbd5e558fbb371f02728bef56",
+      "base_commit": "987e8336f5adf614744a25c0ba14d65946e92c9e",
+      "source_files": 517,
+      "modified_from_base": [
+        "crates/fereg-core/src/fe/borrowed_map.rs",
+        "crates/fereg-core/src/fe/cmg.rs",
+        "crates/fereg-core/src/ols/prepared_fit.rs",
+        "crates/fereg-core/src/ols/prepared_rhs.rs"
+      ],
+      "status": "all_captured_hashes_match"
+    },
+    {
+      "variant": "m6",
+      "plugin": "53a0a60edb839a637b896e295ab24064cf3bbc8046a3b5383cc64195b6802ab7",
+      "base_commit": "987e8336f5adf614744a25c0ba14d65946e92c9e",
+      "source_files": 517,
+      "modified_from_base": [
+        "crates/fereg-core/src/fe/borrowed_map.rs",
+        "crates/fereg-core/src/fe/cmg.rs",
+        "crates/fereg-core/src/fe/single_slope.rs",
+        "crates/fereg-core/src/ols/prepared_fit.rs",
+        "crates/fereg-core/src/ols/prepared_rhs.rs"
+      ],
+      "status": "all_captured_hashes_match"
+    },
+    {
+      "variant": "m7",
+      "plugin": "2e117c55e0a8b6f14ddf0d9ae98ebf6b060457810560024ee80f3dcacd9debbb",
+      "base_commit": "987e8336f5adf614744a25c0ba14d65946e92c9e",
+      "source_files": 517,
+      "modified_from_base": [
+        "crates/fereg-core/src/fe/borrowed_map.rs",
+        "crates/fereg-core/src/fe/cmg.rs",
+        "crates/fereg-core/src/fe/single_slope.rs",
+        "crates/fereg-core/src/ols/prepared_fit.rs",
+        "crates/fereg-core/src/ols/prepared_rhs.rs",
+        "crates/fereg-plugin/src/estimate.rs"
+      ],
+      "status": "all_captured_hashes_match"
+    },
+    {
+      "variant": "sc1",
+      "plugin": "76f216103849051d2d234c8e6f3b937ced9003f2d620a4ddb520b7e15a1d33dd",
+      "base_commit": "987e8336f5adf614744a25c0ba14d65946e92c9e",
+      "source_files": 517,
+      "modified_from_base": [
+        "crates/fereg-core/src/fe/borrowed_map.rs",
+        "crates/fereg-core/src/fe/cmg.rs",
+        "crates/fereg-core/src/fe/single_slope.rs",
+        "crates/fereg-core/src/ols/prepared_fit.rs",
+        "crates/fereg-core/src/ols/prepared_rhs.rs",
+        "crates/fereg-core/src/ols/prepared_scores.rs"
+      ],
+      "status": "all_captured_hashes_match"
+    }
+  ],
+  "machine_home_path_matches": []
+}

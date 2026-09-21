@@ -121,15 +121,27 @@ pass. The public cycle/K6/AW/full-output run at `target/g21mc7` passes and takes
 cluster-ordered scratch-score reads repeatedly decoding large cache blocks.
 The low-final-product drafts do not establish a speed benefit and are rejected;
 their source snapshots and diagnostics remain preserved. A bounded read-ahead
-change is the next low-memory experiment.
+change resolves that bottleneck in the exercised cases.
+
+ADR 0091 accepts the [scratch-score cache change](benchmarks/reports/development/low-score-cache-local-2026-09-21/README.md)
+for local development. `sc1` plugin
+`76f216103849051d2d234c8e6f3b937ced9003f2d620a4ddb520b7e15a1d33dd`
+passes 27 calls, six native independent inference checks, eighteen exact repeats,
+six output audits and three focused core fixtures. Cycle/AW/K6 and K50 low-mode
+clustered full-output medians improve 23.121/37.150 to 0.753/9.261 seconds versus
+fixest 3.268/12.009. All nine native pairs have bit-identical exports and equal
+allocation peaks. The dense/unit/K6 robust low-mode control is 1.887 versus
+previous native 1.919 and fixest 0.378: its remaining reference gap is explicit.
+No cell has detected overlap. Both cycle reference oracle failures remain.
+The 57-call follow-on archive preserves m6/m7/sc1 and all four source identities;
+1,380 stored entries, 48 omitted local arrays and source reconstruction verify.
 
 SCC read-only preflight failed authentication before any remote inspection or
 mutation. A renewal question is pending with Johannes; no SCC job was submitted.
 The cluster skill was read. Linux confirmation remains blocked on access.
 
-Current resume point: measure scratch-score read-ahead without changing
-arithmetic or allocations. Continue cycle/ring
-LSMR versus auto comparisons across widths, outputs and threads; repeat
+Current resume point: run the prepared 288-attempt cycle/ring
+LSMR versus auto comparison across K6/K50, outputs and T1/8/16; repeat
 contaminated timings and the m5/m4 control. Complete the expanded large screen,
 protected controls, current-candidate science, final independent blocks,
 constrained whole-fit checks and focused Linux runs. Raw artifacts and immutable

@@ -332,7 +332,16 @@ impl PreparedOlsScratchScoreStorage {
         let cache_end = cache.start_row.saturating_add(cache.rows);
         if row < cache.start_row || row >= cache_end {
             let capacity_rows = cache.values.len() / rank;
-            let rows = capacity_rows.min(nrows - row);
+            // Cluster ordering can jump across the file on every row. Decode
+            // only that row after a jump; resume bounded read-ahead when the
+            // next request continues the previous block. The allocated cache
+            // and the score arithmetic are unchanged.
+            let read_ahead = if cache.rows == 0 || row == cache_end {
+                capacity_rows
+            } else {
+                1
+            };
+            let rows = read_ahead.min(nrows - row);
             let elements = rows
                 .checked_mul(rank)
                 .ok_or_else(|| allocation("prepared robust score cache dimensions overflow"))?;
@@ -1398,6 +1407,54 @@ fn invalid_data(message: impl Into<String>) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scratch_score_reads_preserve_bits_without_repeated_full_tile_decoding() {
+        let nrows = 65_537;
+        for rank in [1, 6, 50] {
+            let values: Vec<_> = (0..nrows * rank).map(|i| match i % 7 {
+                0 => -0.0,
+                1 => 1e-300,
+                2 => -1e300,
+                _ => (i as f64 * 0.17).sin(),
+            }).collect();
+            let mut scratch = PreparedOlsScratch::create(nrows, rank).unwrap();
+            scratch.write_linear(0, &values).unwrap();
+            let cache_rows = (TRANSPOSE_BUFFER_BYTES / 8 / rank).min(nrows);
+            let storage = PreparedOlsScratchScoreStorage {
+                scratch: RefCell::new(scratch),
+                cache: RefCell::new(PreparedOlsScoreRowCache {
+                    start_row: usize::MAX,
+                    rows: 0,
+                    values: vec![0.0; cache_rows * rank],
+                }),
+            };
+            let mut row_values = vec![0.0; rank];
+            for stride in [1, 32_771, 1] {
+                let mut decoded_rows = 0;
+                let mut reads = 0;
+                for index in 0..nrows {
+                    let row = index * stride % nrows;
+                    let misses = {
+                        let cache = storage.cache.borrow();
+                        row < cache.start_row || row >= cache.start_row.saturating_add(cache.rows)
+                    };
+                    storage.fill_row(nrows, rank, row, &mut row_values).unwrap();
+                    assert!(row_values.iter().zip(&values[row * rank..(row + 1) * rank])
+                        .all(|(actual, expected)| actual.to_bits() == expected.to_bits()));
+                    if misses {
+                        decoded_rows += storage.cache.borrow().rows;
+                        reads += 1;
+                    }
+                }
+                assert!(decoded_rows <= 2 * nrows, "rank={rank}, stride={stride}, decoded={decoded_rows}");
+                if stride == 1 {
+                    assert!(reads <= nrows.div_ceil(cache_rows) + 1);
+                }
+                assert_eq!(storage.cache.borrow().values.len(), cache_rows * rank);
+            }
+        }
+    }
 
     #[test]
     fn strided_gram_row_cache_preserves_products_and_nonfinite_rejection() {
