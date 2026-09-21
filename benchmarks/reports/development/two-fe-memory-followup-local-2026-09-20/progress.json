@@ -1,0 +1,525 @@
+[
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "index": 0,
+    "label": "memory-report-c000",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "494a33d3309406690633907467fe5e74a38b34083d3f71db85ebb7affeb9153a"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "index": 1,
+    "label": "memory-report-c001",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "b235f8caed4d451c7218aa377fc524bb9e08e4ae0d9cb0a8754df3b7b7b3a5f6"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "index": 2,
+    "label": "memory-report-c002",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "ad7eeb3973818de4518fa5bacdf4fbdbeb223a1d1c5ed4f90d686d2460c6db92"
+  },
+  {
+    "cell": {
+      "case": "cluster2_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "frequency",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "fw"
+    },
+    "index": 3,
+    "label": "memory-report-c003",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "f66b77499ade48c2b0b449ad1b16739ae6ecd2839bc0e5533bc7a313cef2c2d8"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "dispersed",
+      "weight_kind": "aw"
+    },
+    "index": 16,
+    "label": "memory-report-c016",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "ddcf7439a03295c89f6d0fcca09e592b4038f4f7bc7b26c467066e3bd84836a3"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "group_concentrated",
+      "weight_kind": "aw"
+    },
+    "index": 17,
+    "label": "memory-report-c017",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "e2bc2cef6beb66b5d7733d9014177b38529a0116c4e14151cfe7492e8ead0f4b"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "dispersed",
+      "weight_kind": "pw"
+    },
+    "index": 19,
+    "label": "memory-report-c019",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "244633270799472e7a592e376bad333018d18ef66dc5e1b90e772da9df3e7928"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weight-distribution",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "group_concentrated",
+      "weight_kind": "pw"
+    },
+    "index": 20,
+    "label": "memory-report-c020",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "764b75d0007d9eafa3ef581dc11dea3676d393f269c5f1a7ddaec98b9d4e2c87"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "weighted_bridge",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weighted-bridges",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "bridge_cut",
+      "weight_kind": "aw"
+    },
+    "index": 27,
+    "label": "memory-report-c027",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "67baa20f20b8ac1efbe0f4f354e42c93c39d7b722bf4ef5820b569f42a345dac"
+  },
+  {
+    "cell": {
+      "case": "robust_saved",
+      "design": "weighted_bridge",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "weighted-bridges",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "bridge_cut",
+      "weight_kind": "pw"
+    },
+    "index": 28,
+    "label": "memory-report-c028",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "db1fae554e92f7df8ba20c0319d704ab8571c4dc07b382111a02923503f3d159"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 0,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "index": 43,
+    "label": "memory-report-c043",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "b3ceb9f44583f7a99fe66953d974201e3db608c3e9c4d41571c99a4423d2dde8"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 0,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "index": 44,
+    "label": "memory-report-c044",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "0528ef2d9ef23e631b60a88caa70a7e0ff89d720481e73c154dd4a69b975afb8"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "width-boundaries",
+      "k": 1,
+      "memory": "fast",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "index": 46,
+    "label": "memory-report-c046",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "b4a3c6cda3fad95cfc93ced22b3f1a75911dcc45c99a9f0283ea7e1928af62da"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 7680,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "index": 55,
+    "label": "memory-report-c055",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "5df1c5bb3fd47e279af8833b1a01047c808939df9de300e3a053bb18bc9e4bad"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 7680,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "index": 56,
+    "label": "memory-report-c056",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "a3bfddaa97fd4aa1186e1273de9c99bb8a1f9e8361ab8c5bb773f7f71f32ae09"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 16383,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "index": 57,
+    "label": "memory-report-c057",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "fbbcc4303d7322f3ef164e043e5b1f466e0155538aae2dcee369829ff61f7e61"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "sample-boundaries",
+      "k": 6,
+      "memory": "fast",
+      "n": 16383,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "index": 58,
+    "label": "memory-report-c058",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "7ba329e82ad3d33cfa84cdb7a908979bfea160a6f2c2973b86b958a9e19e71b5"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "low-memory",
+      "k": 6,
+      "memory": "low",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "index": 63,
+    "label": "memory-report-c063",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "d12ca3ef9e1acad7aad4604892d45f2fe2f10dfce43a4ef22d9e42e84a909b4b"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "low-memory",
+      "k": 6,
+      "memory": "low",
+      "n": 61440,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "index": 64,
+    "label": "memory-report-c064",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "703eb7668867af1aead4db19c5db46ec810f3bcdc8fd7ca4c186c0d4f7f519d1"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "index": 67,
+    "label": "memory-report-c067",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "1a6a2003f860513c83aeace14d5067f685241822c7266e315a62c0e3e173e9e2"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1"
+      ],
+      "group": "protected-one-fe",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "index": 68,
+    "label": "memory-report-c068",
+    "returncode": 0,
+    "status": "pass",
+    "stdout_sha256": "4d92357f8b8659d152bdac68904dca7a0a2618cd38af9397e385890d27ae17c1"
+  }
+]

@@ -1,0 +1,657 @@
+{
+  "cells": [
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid_saved",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "dense-aw-requests",
+        "k": 6,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 17,
+      "observed_comparison": "reference_output_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid_outputs",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "dense-aw-requests",
+        "k": 6,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 18,
+      "observed_comparison": "reference_output_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid_saved",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "dense-aw-requests",
+        "k": 50,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 24,
+      "observed_comparison": "reference_output_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid_outputs",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "dense-aw-requests",
+        "k": 50,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 25,
+      "observed_comparison": "reference_output_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "cluster2_saved",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "dense-pw-requests",
+        "k": 6,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "pw"
+      },
+      "index": 29,
+      "observed_comparison": "reference_output_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "cluster2_saved",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "dense-pw-requests",
+        "k": 50,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "pw"
+      },
+      "index": 33,
+      "observed_comparison": "reference_output_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid_outputs",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "shuffled-aw",
+        "k": 6,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 31415927,
+        "shuffled": true,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 38,
+      "observed_comparison": "reference_output_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid_outputs",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "shuffled-aw",
+        "k": 50,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 31415927,
+        "shuffled": true,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 40,
+      "observed_comparison": "reference_output_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 41,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 42,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 50,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 43,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 50,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 44,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 53,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 54,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 50,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 55,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 50,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 56,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "bottleneck_ring",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 69,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "bottleneck_ring",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 70,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "bottleneck_ring",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 50,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 71,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "bottleneck_ring",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 50,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 72,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "cycle",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 73,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "cycle",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 74,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "cycle",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 50,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 75,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "primary-final-a",
+      "cell": {
+        "case": "iid",
+        "design": "cycle",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "other-graphs",
+        "k": 50,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 76,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "fresh-holdout-a",
+      "cell": {
+        "case": "iid_outputs",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "fresh-shuffled-aw",
+        "k": 6,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 104729,
+        "shuffled": true,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 4,
+      "observed_comparison": "reference_output_mismatch"
+    },
+    {
+      "block": "fresh-holdout-a",
+      "cell": {
+        "case": "iid_outputs",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "fresh-shuffled-aw",
+        "k": 50,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 104729,
+        "shuffled": true,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 6,
+      "observed_comparison": "reference_output_mismatch"
+    },
+    {
+      "block": "fresh-holdout-a",
+      "cell": {
+        "case": "iid",
+        "design": "bottleneck_ring",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "fresh-weak",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 104729,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 14,
+      "observed_comparison": "reference_science_mismatch"
+    },
+    {
+      "block": "fresh-holdout-a",
+      "cell": {
+        "case": "iid",
+        "design": "cycle",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "fresh-weak",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 104729,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 15,
+      "observed_comparison": "reference_science_mismatch"
+    }
+  ],
+  "headline_default_timings_unchanged": true,
+  "pairs_per_cell": 1,
+  "purpose": "Separately measure the pinned reference at tighter fit/recovery precision for every distinct final primary/holdout discrepancy; retain failed or capped references without counting them as matched-accuracy wins.",
+  "reference_tolerance": 1e-11,
+  "schema": "two-fe-final-accuracy-diagnostics-v1",
+  "variants": [
+    "usefulpilot",
+    "fixest"
+  ]
+}

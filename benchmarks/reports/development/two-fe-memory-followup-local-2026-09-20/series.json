@@ -1,0 +1,647 @@
+{
+  "memory-report-c000": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 6.03510974918689e-21
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c001": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.999810907149513e-16,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 9.47221063046723e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c002": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster_fe",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.7999924467604345e-15,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 2.187939042317061e-18
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c003": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_cross",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 2.319997492727932e-14,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 2.887620020484635e-17
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c016": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust_saved",
+          "k": 6,
+          "n": 245760,
+          "outputs": {
+            "max_abs_errors": [
+              2.6295654542707325e-10,
+              2.6245627893217716e-10
+            ],
+            "mismatched_values": [
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c017": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust_saved",
+          "k": 6,
+          "n": 245760,
+          "outputs": {
+            "max_abs_errors": [
+              1.2742695787437697e-11,
+              1.0609771091199538e-11
+            ],
+            "mismatched_values": [
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c019": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust_saved",
+          "k": 6,
+          "n": 245760,
+          "outputs": {
+            "max_abs_errors": [
+              2.6295654542707325e-10,
+              2.6245627893217716e-10
+            ],
+            "mismatched_values": [
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c020": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust_saved",
+          "k": 6,
+          "n": 245760,
+          "outputs": {
+            "max_abs_errors": [
+              1.2742695787437697e-11,
+              1.0609771091199538e-11
+            ],
+            "mismatched_values": [
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c027": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust_saved",
+          "k": 6,
+          "n": 245760,
+          "outputs": {
+            "max_abs_errors": [
+              4.8732684554408934e-11,
+              2.1092461111038574e-11
+            ],
+            "mismatched_values": [
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c028": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust_saved",
+          "k": 6,
+          "n": 245760,
+          "outputs": {
+            "max_abs_errors": [
+              4.8732684554408934e-11,
+              2.1092461111038574e-11
+            ],
+            "mismatched_values": [
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c043": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 0,
+          "n": 61440,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c044": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 0,
+          "n": 61440,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c046": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 1,
+          "n": 61440,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 1.0164395367051604e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c055": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c056": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 7680,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c057": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 16383,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c058": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid",
+          "k": 6,
+          "n": 16383,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c063": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 61440,
+          "outputs": {
+            "max_abs_errors": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c064": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_outputs",
+          "k": 6,
+          "n": 61440,
+          "outputs": {
+            "max_abs_errors": [
+              5.5393634124101254e-11,
+              5.5385307451416566e-11,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mismatched_values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2",
+              "residual",
+              "xb",
+              "xbd"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c067": {
+    "checks": {
+      "checks": [
+        {
+          "case": "robust",
+          "k": 1,
+          "n": 983040,
+          "outputs": {},
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "memory-report-c068": {
+    "checks": {
+      "checks": [
+        {
+          "case": "cluster2_saved",
+          "k": 1,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              0.0
+            ],
+            "mismatched_values": [
+              0
+            ],
+            "names": [
+              "fe1"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 0.0,
+              "coefficients.csv:value": 0.0,
+              "covariance.csv:value": 0.0
+            },
+            "sample_exact": true
+          },
+          "variant": "usefulpilot"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  }
+}

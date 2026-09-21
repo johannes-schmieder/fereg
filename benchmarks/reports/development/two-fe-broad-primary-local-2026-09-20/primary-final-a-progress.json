@@ -1,0 +1,1927 @@
+[
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 0,
+    "label": "primary-final-a-c000",
+    "process_returncode": 0,
+    "stdout_sha256": "67fcaeafd7f2fb7457ce8bfa5a1760d65002d21084884e0aba9934c18348ee73"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 1,
+    "label": "primary-final-a-c001",
+    "process_returncode": 0,
+    "stdout_sha256": "2dd2da96ad622fbd5bf607c5bf1d0d5400e5bd8d40ca1e29016240be32d9c774"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 3,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 2,
+    "label": "primary-final-a-c002",
+    "process_returncode": 0,
+    "stdout_sha256": "5aa6662f232e3b7d6fe70dfa126b1bc18893a744395c3281be7f86ce90ec8137"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 3,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 3,
+    "label": "primary-final-a-c003",
+    "process_returncode": 0,
+    "stdout_sha256": "f223bdca3cdbcc6e4d985690776bad67c2a653f42cd468328bdbd2e1cb9ec2b4"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 5,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 4,
+    "label": "primary-final-a-c004",
+    "process_returncode": 0,
+    "stdout_sha256": "946facccefcafa56e8d1fecd0a6776431193ed00edbe01ecc74beb2affd9af96"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 5,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 5,
+    "label": "primary-final-a-c005",
+    "process_returncode": 0,
+    "stdout_sha256": "5179f778b9d8ba114d376bc78a5f2f8aa76557c10d15880ec9a758838d233488"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 6,
+    "label": "primary-final-a-c006",
+    "process_returncode": 0,
+    "stdout_sha256": "81e17256cd34014e7e13a7afa24f53e907f43b54c91ccba408c759baf79171da"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 7,
+    "label": "primary-final-a-c007",
+    "process_returncode": 0,
+    "stdout_sha256": "eeafc5ca851bd2b57279860c920ccfb129013fc010149460b4d522599ab4d477"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 13,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 8,
+    "label": "primary-final-a-c008",
+    "process_returncode": 0,
+    "stdout_sha256": "4b204d0280f519fa5002f03ca629ae6527f89c0aa0da7c8dedbf18a061774c22"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 13,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 9,
+    "label": "primary-final-a-c009",
+    "process_returncode": 0,
+    "stdout_sha256": "edabfb784944508c3673c1bbac3aa68dcbccaf768327be515a91990c40d1f52d"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 10,
+    "label": "primary-final-a-c010",
+    "process_returncode": 0,
+    "stdout_sha256": "2d3a96fc3c7b10fec09f91e67e0e70395a7466fc6a44df5eb944650dd41c79b1"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-width",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 11,
+    "label": "primary-final-a-c011",
+    "process_returncode": 0,
+    "stdout_sha256": "1d62f93541f4d00bfc0e158dde958fd8795eba5b80456aea592bfa77ddb0035a"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 12,
+    "label": "primary-final-a-c012",
+    "process_returncode": 0,
+    "stdout_sha256": "1dcdf3a5f58577ac452ae3a5f1c2e81f543118c06d25e28c06d6f20980a32c71"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 13,
+    "label": "primary-final-a-c013",
+    "process_returncode": 0,
+    "stdout_sha256": "fd254bdd21daa8395e88a6aa1f136b3e6e282a9c2173baad228f06acca20d6db"
+  },
+  {
+    "cell": {
+      "case": "cluster_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 14,
+    "label": "primary-final-a-c014",
+    "process_returncode": 0,
+    "stdout_sha256": "46d99b95779c66256751ecd73f3e69f9c6f757b2689be1cc94c871541d135773"
+  },
+  {
+    "cell": {
+      "case": "cluster2_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 15,
+    "label": "primary-final-a-c015",
+    "process_returncode": 0,
+    "stdout_sha256": "df232510c819c5845fb6240dee19402b1f516bc0f89fd1c77d3ff6b5adb43ae3"
+  },
+  {
+    "cell": {
+      "case": "cluster2_nested",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 16,
+    "label": "primary-final-a-c016",
+    "process_returncode": 0,
+    "stdout_sha256": "9c9f67e5a1ca1092a686ee84362dadb89176b62ad7f0d2259aa480a7b0c90d63"
+  },
+  {
+    "cell": {
+      "case": "iid_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_output_mismatch",
+    "index": 17,
+    "label": "primary-final-a-c017",
+    "process_returncode": 0,
+    "stdout_sha256": "1ef9ae95eec31ec6b36024bc2f86ff82c6c3df428f42fcdb8f8068cbf6319678"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_output_mismatch",
+    "index": 18,
+    "label": "primary-final-a-c018",
+    "process_returncode": 0,
+    "stdout_sha256": "2d56d663a265eab9e7ff381314f0fe72098790b62800fe611c19e8d67e08d3d6"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 19,
+    "label": "primary-final-a-c019",
+    "process_returncode": 0,
+    "stdout_sha256": "7d89ad57916254b33230f898333a907e770a7fccefec0a369be2bfdff8cd16e4"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 20,
+    "label": "primary-final-a-c020",
+    "process_returncode": 0,
+    "stdout_sha256": "2b53194e04ddd0937b6b00b47fa5a70d551430cd130e322dddcc6fcca495065d"
+  },
+  {
+    "cell": {
+      "case": "cluster_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 21,
+    "label": "primary-final-a-c021",
+    "process_returncode": 0,
+    "stdout_sha256": "258c71f7060fca1d97a0ca237d6197a0d9d6ad55e505ec54c5257686327a71a1"
+  },
+  {
+    "cell": {
+      "case": "cluster2_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 22,
+    "label": "primary-final-a-c022",
+    "process_returncode": 0,
+    "stdout_sha256": "22dc6cc9f30e37e07a44a59e4b6c67fc4de5a48756538ea8a383dba5f7a5346a"
+  },
+  {
+    "cell": {
+      "case": "cluster2_nested",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 23,
+    "label": "primary-final-a-c023",
+    "process_returncode": 0,
+    "stdout_sha256": "0e4842e8bd61c5bcb19b84b7c80c14cb3c38289391377e628be4dc3e471f8129"
+  },
+  {
+    "cell": {
+      "case": "iid_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_output_mismatch",
+    "index": 24,
+    "label": "primary-final-a-c024",
+    "process_returncode": 0,
+    "stdout_sha256": "7b13ef7cbc94442e6e5e1861e55b34c8288c3855a5d4498b023d5dd6b677c1aa"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-aw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_output_mismatch",
+    "index": 25,
+    "label": "primary-final-a-c025",
+    "process_returncode": 0,
+    "stdout_sha256": "04efa369543e2d8e57073b5efd3fb26d4b1dac873f560bd9c62c16b225dfc77b"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-pw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 26,
+    "label": "primary-final-a-c026",
+    "process_returncode": 0,
+    "stdout_sha256": "c4f225739ece85e9f8fef26790693bbb88f2175ffcc2371e4c9dfa8f7ba9cc3b"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-pw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 27,
+    "label": "primary-final-a-c027",
+    "process_returncode": 0,
+    "stdout_sha256": "a941cb0ddbd216bbe38e9bd01d478e8f1fe2be2314d0dd1a44aefbf2243a5b6d"
+  },
+  {
+    "cell": {
+      "case": "cluster2_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-pw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 28,
+    "label": "primary-final-a-c028",
+    "process_returncode": 0,
+    "stdout_sha256": "3776a983bbb7fcd28f3030eb0a4ba26e67d0bb5437a754f36e8194d937e0532c"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-pw-requests",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "reference_output_mismatch",
+    "index": 29,
+    "label": "primary-final-a-c029",
+    "process_returncode": 0,
+    "stdout_sha256": "d6c198d87f0e1fe1f987c18bffa81109c476a5959de008c96a70c8ac68c93b2c"
+  },
+  {
+    "cell": {
+      "case": "robust",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-pw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 30,
+    "label": "primary-final-a-c030",
+    "process_returncode": 0,
+    "stdout_sha256": "fbf7b6b0b692708899375030eac26c638be8674a193d791355394e11cae7071a"
+  },
+  {
+    "cell": {
+      "case": "cluster_fe",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-pw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 31,
+    "label": "primary-final-a-c031",
+    "process_returncode": 0,
+    "stdout_sha256": "3b291633f56f3da9d46656f3f03f70d34244c4fb42d8edc7336c6ebc336f3189"
+  },
+  {
+    "cell": {
+      "case": "cluster2_cross",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-pw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "pass",
+    "index": 32,
+    "label": "primary-final-a-c032",
+    "process_returncode": 0,
+    "stdout_sha256": "b0a354be95607cf1fe39c4fe6db69a43d653dee902117bedc30dfe0b6bd91a57"
+  },
+  {
+    "cell": {
+      "case": "cluster2_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "dense-pw-requests",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "pw"
+    },
+    "comparison_status": "reference_output_mismatch",
+    "index": 33,
+    "label": "primary-final-a-c033",
+    "process_returncode": 0,
+    "stdout_sha256": "b80b4937580515324a65028b779ccc188d7623d776f91f0dd563ebaea416d382"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "shuffled-unit",
+      "k": 1,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 31415927,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 34,
+    "label": "primary-final-a-c034",
+    "process_returncode": 0,
+    "stdout_sha256": "8285679723bab3c900d249f666e39580390ba17ac08073c664c05d8ccf77165b"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "shuffled-unit",
+      "k": 5,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 31415927,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 35,
+    "label": "primary-final-a-c035",
+    "process_returncode": 0,
+    "stdout_sha256": "fa4a524cacadbd7a378f6725bb30d72f45deb1ad1ce7f5cd52b8dd775fd99df6"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "shuffled-unit",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 31415927,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 36,
+    "label": "primary-final-a-c036",
+    "process_returncode": 0,
+    "stdout_sha256": "badba937269d2d2bb7d9079ff64c1858a83ef08d7f8ada361fde309a39803097"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "shuffled-aw",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 31415927,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 37,
+    "label": "primary-final-a-c037",
+    "process_returncode": 0,
+    "stdout_sha256": "2de4f4d78b0dc110f95e91e3ca700458ab8874c0d5921437ce13e10c409f8f35"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "shuffled-aw",
+      "k": 6,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 31415927,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_output_mismatch",
+    "index": 38,
+    "label": "primary-final-a-c038",
+    "process_returncode": 0,
+    "stdout_sha256": "858dc263ceced03a5224c9191ed96b60aaa406d57791d159cd2c4769064948ce"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "shuffled-aw",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 31415927,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 39,
+    "label": "primary-final-a-c039",
+    "process_returncode": 0,
+    "stdout_sha256": "d79a0ed06fc66b096a1f0f55a7c1c4b17065e1a24745c142aab9bb9503d5b09e"
+  },
+  {
+    "cell": {
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "shuffled-aw",
+      "k": 50,
+      "memory": "fast",
+      "n": 983040,
+      "seed": 31415927,
+      "shuffled": true,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_output_mismatch",
+    "index": 40,
+    "label": "primary-final-a-c040",
+    "process_returncode": 0,
+    "stdout_sha256": "f6eee1c10cfa05abcd982c378351775f27d35ff1175375a364bc9d684de76582"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d2",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 41,
+    "label": "primary-final-a-c041",
+    "process_returncode": 0,
+    "stdout_sha256": "5fdce505abd765b591dcdf3a966b9eb5ae3e0b146d1da002cfbad7270d695f49"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d2",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 42,
+    "label": "primary-final-a-c042",
+    "process_returncode": 0,
+    "stdout_sha256": "13dfc9c07fb593d59a1ae671ec3622b57647279f48ec27ecf918e6002ea8f12b"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d2",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 43,
+    "label": "primary-final-a-c043",
+    "process_returncode": 0,
+    "stdout_sha256": "25b6477f7db566b02737aa08273ca504e0f74e420b7107532d8acd819c5875d7"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d2",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 44,
+    "label": "primary-final-a-c044",
+    "process_returncode": 0,
+    "stdout_sha256": "96e4c523d2778b6d9ce402da74fc6ad39720a13e4fcf3932d53f1917f83f0579"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 45,
+    "label": "primary-final-a-c045",
+    "process_returncode": 0,
+    "stdout_sha256": "af697bed524bb73a4407b1351ec99b87377f54797f341bf3b669185fa139c948"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 46,
+    "label": "primary-final-a-c046",
+    "process_returncode": 0,
+    "stdout_sha256": "5232724745186729102b17c1d89c3a7281467f1e240aec2d4afd9c8b3c68aaa2"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 47,
+    "label": "primary-final-a-c047",
+    "process_returncode": 0,
+    "stdout_sha256": "d2dd6216a392fb8b3f5615c905034a0930cba454636062f2574574ae56b9ee0e"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 48,
+    "label": "primary-final-a-c048",
+    "process_returncode": 0,
+    "stdout_sha256": "1d213675d7f5295c2ded19461292f511d5a6bc49a44f77af06e413f491b7cb58"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 49,
+    "label": "primary-final-a-c049",
+    "process_returncode": 0,
+    "stdout_sha256": "6483caad188aa67b6b3289e0864b5eda0de08b4c0a417dd43d9da419653511b4"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 50,
+    "label": "primary-final-a-c050",
+    "process_returncode": 0,
+    "stdout_sha256": "ce1a90f4df03b47d8f1380a5131015b6d0a5a14d6c154a6b19c6c6da043b4eaf"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 51,
+    "label": "primary-final-a-c051",
+    "process_returncode": 0,
+    "stdout_sha256": "a2dc060f021a8991cb6edba35a3e72d04d11eb7ad02739d8b5329a330d36746b"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 52,
+    "label": "primary-final-a-c052",
+    "process_returncode": 0,
+    "stdout_sha256": "b000a736276c5ebc7fb9ee7c86a5c6b59f0353335a14348f36c6ca99521b5fc7"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_sparse",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 53,
+    "label": "primary-final-a-c053",
+    "process_returncode": 0,
+    "stdout_sha256": "bab8183dc2e0defb896b53843571e867835c7da3c34d05ffaf1d146f912f9eed"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_sparse",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 54,
+    "label": "primary-final-a-c054",
+    "process_returncode": 0,
+    "stdout_sha256": "a962ac02422bde3e7f9ff48db34d9f9aab637a01aee492d923517002a7fa01fd"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_sparse",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 55,
+    "label": "primary-final-a-c055",
+    "process_returncode": 0,
+    "stdout_sha256": "a54dc9c9aea0462c95bc977bb57fc21dc7ab747f31e32d5a7e6d2b8e07221876"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "two_fe_sparse",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 56,
+    "label": "primary-final-a-c056",
+    "process_returncode": 0,
+    "stdout_sha256": "fa9f2dede7bb1b3b2ae6baa1a29b35bb2e993e1170e5b60e9a36e1ce8fbb5d79"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 57,
+    "label": "primary-final-a-c057",
+    "process_returncode": 0,
+    "stdout_sha256": "e6aec7f3a1dc524f5863380bc88583a44ba676c7473b6935eec8658272985a15"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 58,
+    "label": "primary-final-a-c058",
+    "process_returncode": 0,
+    "stdout_sha256": "88bd840eea0d981965a5a1a3d6b80120af61663b77bab39922a205221c6fa167"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 59,
+    "label": "primary-final-a-c059",
+    "process_returncode": 0,
+    "stdout_sha256": "53e9e5782c31ca1a03458e934ecac6a334b122d91b8171e47f6a9b3e91bd0d5c"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "unbalanced",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 60,
+    "label": "primary-final-a-c060",
+    "process_returncode": 0,
+    "stdout_sha256": "a588d7b0beb5509bd4b0c96db75d8b51b9020e89dae4d88bdeedb5ea2c0a68eb"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "disconnected_blocks",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 61,
+    "label": "primary-final-a-c061",
+    "process_returncode": 0,
+    "stdout_sha256": "66e9866ea95030695659bb30ce1ab7665584493c0d8e51555e14a125bfdd3268"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "disconnected_blocks",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 62,
+    "label": "primary-final-a-c062",
+    "process_returncode": 0,
+    "stdout_sha256": "17cecf3f4ec11b3e3f572442d671ad9bee0ab9516743c9d04baa7217d4261de2"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "disconnected_blocks",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 63,
+    "label": "primary-final-a-c063",
+    "process_returncode": 0,
+    "stdout_sha256": "0d07c2083aea2f1aa079bc0b1bbeabd21162a454300801cccf3beae29931b3a7"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "disconnected_blocks",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 64,
+    "label": "primary-final-a-c064",
+    "process_returncode": 0,
+    "stdout_sha256": "0fd548fe0c223fc35e94d7c6adf650554af8a966ed775de762165cd51120a44e"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 65,
+    "label": "primary-final-a-c065",
+    "process_returncode": 0,
+    "stdout_sha256": "c6a6d566ec6fbb3235015dd177a9abe868062c75078200aa566a0cd536fea778"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 66,
+    "label": "primary-final-a-c066",
+    "process_returncode": 0,
+    "stdout_sha256": "c11d1e8899f135c4669790bb5cbdb525f12697d16374448fae3461b0dc5bcd7e"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "pass",
+    "index": 67,
+    "label": "primary-final-a-c067",
+    "process_returncode": 0,
+    "stdout_sha256": "702194907a081bbab6fddb1e789d0144cf67072c13652530b39c23b0f7c87db8"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "weak_d3",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "pass",
+    "index": 68,
+    "label": "primary-final-a-c068",
+    "process_returncode": 0,
+    "stdout_sha256": "be0913e625e60a0c1e1bcce73d3dc2b75daa06b9da86809c40eb40c14ba3833a"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "bottleneck_ring",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 69,
+    "label": "primary-final-a-c069",
+    "process_returncode": 0,
+    "stdout_sha256": "6428159882ad46d95a03e4b916485c98b224a6bac95060c1635e6cc1467df1f1"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "bottleneck_ring",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 70,
+    "label": "primary-final-a-c070",
+    "process_returncode": 0,
+    "stdout_sha256": "fd8f2abcca338294352c4fd35dcb51b07b298e032b305301d4dffd3faba022a7"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "bottleneck_ring",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 71,
+    "label": "primary-final-a-c071",
+    "process_returncode": 0,
+    "stdout_sha256": "93a0c400ba47c83534a05082608eca3ce95e97730200915512f3c48611e16ce0"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "bottleneck_ring",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 72,
+    "label": "primary-final-a-c072",
+    "process_returncode": 0,
+    "stdout_sha256": "a9a7bc51eb62d7de452f05d7e103afd44e7070e1825be6dd454e939312438c93"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "cycle",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 73,
+    "label": "primary-final-a-c073",
+    "process_returncode": 0,
+    "stdout_sha256": "bd21f88c7283328332300d2b282fb327a40b738ea807a83abdeebab866954144"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "cycle",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 6,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 74,
+    "label": "primary-final-a-c074",
+    "process_returncode": 0,
+    "stdout_sha256": "d594cc509aaeda2265065a40f291192711afb27ab832a5a84df492bd98bd7606"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "cycle",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "none",
+      "weight_kind": "none"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 75,
+    "label": "primary-final-a-c075",
+    "process_returncode": 0,
+    "stdout_sha256": "990e2a4e337eab978aee7cbce0843e6556e16c01a8ca274664c0dee8380a5104"
+  },
+  {
+    "cell": {
+      "case": "iid",
+      "design": "cycle",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "group": "other-graphs",
+      "k": 50,
+      "memory": "fast",
+      "n": 245760,
+      "seed": 8675309,
+      "shuffled": false,
+      "solver": "auto",
+      "threads": 16,
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "comparison_status": "reference_science_mismatch",
+    "index": 76,
+    "label": "primary-final-a-c076",
+    "process_returncode": 0,
+    "stdout_sha256": "330baa783e4ffce5e5b91baddc81ce21e8a3f1ef7d7b7c6ccd07d3ee148fbfa0"
+  }
+]

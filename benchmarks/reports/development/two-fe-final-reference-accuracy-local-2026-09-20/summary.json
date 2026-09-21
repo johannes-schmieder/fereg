@@ -1,0 +1,85 @@
+[
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_saved",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "memory(fast)",
+      "fixest_recovery_tolerance": 1e-11,
+      "fixest_tolerance": 1e-11,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "saved",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "final-precision-c000",
+    "variants": {
+      "fixest": {
+        "calls": 1,
+        "fixest_wins": 0,
+        "maximum_seconds": 1.048,
+        "median_paired_fixest_ratio": 1.0,
+        "minimum_seconds": 1.048,
+        "peak_rss_gib": 0.6179656982421875,
+        "seconds": 1.048
+      },
+      "usefulpilot": {
+        "calls": 1,
+        "fixest_wins": 1,
+        "input_seconds": 0.041443209,
+        "maximum_seconds": 0.356,
+        "median_paired_fixest_ratio": 0.3396946564885496,
+        "minimum_seconds": 0.356,
+        "native_allocation_peak_bytes": 227956853,
+        "native_seconds": 0.290946791,
+        "outer_seconds": 0.023457708999999993,
+        "peak_rss_gib": 0.3824005126953125,
+        "seconds": 0.356
+      }
+    }
+  },
+  {
+    "cell": {
+      "absorb": "out_fe1=g1 out_fe2=g2",
+      "case": "iid_outputs",
+      "design": "two_fe_dense",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "exact_dof": false,
+      "fit_options": "residuals(out_resid) memory(fast)",
+      "fixest_recovery_tolerance": 1e-11,
+      "fixest_tolerance": 1e-11,
+      "k": 6,
+      "model": "ols",
+      "n": 983040,
+      "outputs": "all",
+      "r_vce": "iid",
+      "reference_fixef_dof": "nonnested",
+      "seed": 8675309,
+      "shuffled": false,
+      "threads": 16,
+      "vce": "",
+      "weight": "[aw=w]",
+      "weight_design": "moderate",
+      "weight_kind": "aw"
+    },
+    "series": "final-precision-c001",
+    "variants": {}
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "attempted": 77,
+  "comparisons": {
+    "pass": 53,
+    "reference_output_mismatch": 8,
+    "reference_science_mismatch": 16
+  },
+  "plan_sha256": "261447b0d4a4aa7a596ac52d918a09eda53ac959cf949520bbc0cc6fd1e65f2e",
+  "planned": 77,
+  "process_failures": 0,
+  "progress_sha256": "745d27f4cdfaabb1fe17ee689540cf3a947f201f528bb6401bc6b79f1ca75293",
+  "status": "attempts_complete"
+}

@@ -1,0 +1,19 @@
+{
+  "candidate": "usefulpilot",
+  "candidate_plugin": "79141637b5252f27d6f86a721fb04cf5648df6b8d0d82ee26ea7e39b9b94de14",
+  "command_repetitions": 1,
+  "controller_sha256": "4abbb3e4a2f97c6548e1b96a8ffb2d25431cd8b735e029a9e2ab5ceabb1e6125",
+  "labels": [
+    "primary-final-a",
+    "primary-final-b"
+  ],
+  "manifest_sha256": "0ad9a893ee17be38787a359057d56570f6a85aebc1b736e08b63a7bfa508452b",
+  "pairs_per_cell": 5,
+  "per_block_cells": 77,
+  "phases": [
+    "block-a",
+    "block-b"
+  ],
+  "runner_sha256": "1a4bd628fe52833eac7d2916ae19187d3c74b6cb204c813ae42706bea3e4e7f3",
+  "schema": "two-fe-final-primary-dispatch-v1"
+}

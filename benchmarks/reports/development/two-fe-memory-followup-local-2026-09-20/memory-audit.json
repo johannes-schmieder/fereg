@@ -1,0 +1,2850 @@
+{
+  "all_prior_science_files_exact": true,
+  "all_requested_prior_outputs_exact": true,
+  "calls": 42,
+  "cells": 21,
+  "complete_memory_proof": false,
+  "gap_bits": [
+    125,
+    381
+  ],
+  "max_observed_over_whole_action_forecast": 1.058272123924185,
+  "no_estimator_or_model_change": true,
+  "peak_deltas_match_prior": true,
+  "records": [
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.8792449716617428,
+          "early_selected_estimate_bytes": 133693472,
+          "input_sha256": "68c58e83c207cccae5d03f23b4347606e09b476a96d265be27bc3a7f2028ba96",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 117549313,
+          "observed_over_forecast": 0.4495011183351094,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 67330046,
+            "4": 108093472,
+            "5": 195496,
+            "6": 261510613,
+            "7": 72784,
+            "8": 369799581,
+            "9": 261510613,
+            "10": 25640570060,
+            "11": 125
+          },
+          "result_sha256": "d5c2767d81e8a00c3385f671bb588f80345b26430ca6e0e288b429892368d3b7",
+          "run": "memory-report-c000-iid-n983040-k1-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 261510613
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.9174806156578834,
+          "early_selected_estimate_bytes": 133693472,
+          "input_sha256": "68c58e83c207cccae5d03f23b4347606e09b476a96d265be27bc3a7f2028ba96",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 122661169,
+          "observed_over_forecast": 0.43023371369674135,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 67330073,
+            "4": 108093499,
+            "5": 195496,
+            "6": 285103573,
+            "7": 72784,
+            "8": 393392568,
+            "9": 285103573,
+            "10": 25631100108,
+            "11": 125
+          },
+          "result_sha256": "c4873b5416fe8274a9fb8faf5b6cffdffa3d7832bc6cad9aef43331e7b01fc8d",
+          "run": "memory-report-c000-iid-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 285103573
+        }
+      },
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "frequency",
+        "k": 1,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "fw"
+      },
+      "index": 0,
+      "peak_delta_candidate_minus_baseline": 5111856,
+      "prior_observation": {
+        "estimated_selected_baseline": 133693472.0,
+        "estimated_selected_candidate": 133693472.0,
+        "modeled_ratio_baseline": 0.8792449716617428,
+        "modeled_ratio_candidate": 0.9174806156578834,
+        "peak_baseline": 117549313.0,
+        "peak_candidate": 122661169.0
+      },
+      "reasons": [
+        "observed_peak_increase"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.8792447323082462,
+          "early_selected_estimate_bytes": 133693472,
+          "input_sha256": "68c58e83c207cccae5d03f23b4347606e09b476a96d265be27bc3a7f2028ba96",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 117549281,
+          "observed_over_forecast": 0.44950098909368563,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 67332155,
+            "4": 108095581,
+            "5": 195496,
+            "6": 261510617,
+            "7": 72784,
+            "8": 369801694,
+            "9": 261510617,
+            "10": 25628531097,
+            "11": 125
+          },
+          "result_sha256": "0c833bd164fff6d7bfc2269fa3cf8859e6c48676fae607871336ef3663828c3f",
+          "run": "memory-report-c001-robust-n983040-k1-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 261510617
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.9174803763043868,
+          "early_selected_estimate_bytes": 133693472,
+          "input_sha256": "68c58e83c207cccae5d03f23b4347606e09b476a96d265be27bc3a7f2028ba96",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 122661137,
+          "observed_over_forecast": 0.43023359542065653,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 67332182,
+            "4": 108095608,
+            "5": 193192,
+            "6": 285103577,
+            "7": 72784,
+            "8": 393392377,
+            "9": 285103577,
+            "10": 25630441472,
+            "11": 125
+          },
+          "result_sha256": "0261194e46b2ee1903b0b16c1feab475756537ee75148d4d12a757882640d6af",
+          "run": "memory-report-c001-robust-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 285103577
+        }
+      },
+      "cell": {
+        "case": "robust",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "frequency",
+        "k": 1,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "fw"
+      },
+      "index": 1,
+      "peak_delta_candidate_minus_baseline": 5111856,
+      "prior_observation": {
+        "estimated_selected_baseline": 133693472.0,
+        "estimated_selected_candidate": 133693472.0,
+        "modeled_ratio_baseline": 0.8792447323082462,
+        "modeled_ratio_candidate": 0.9174803763043868,
+        "peak_baseline": 117549281.0,
+        "peak_candidate": 122661137.0
+      },
+      "reasons": [
+        "observed_peak_increase"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.8541244773357335,
+          "early_selected_estimate_bytes": 137625632,
+          "input_sha256": "68c58e83c207cccae5d03f23b4347606e09b476a96d265be27bc3a7f2028ba96",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 117549421,
+          "observed_over_forecast": 0.44284261710644546,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 67333528,
+            "4": 108096954,
+            "5": 195496,
+            "6": 265442883,
+            "7": 72784,
+            "8": 373735333,
+            "9": 265442883,
+            "10": 25625195315,
+            "11": 125
+          },
+          "result_sha256": "613e5ee9ac82d134b86a3b79faa7d26b236c5451b0a266331fb4ea5ec111a76c",
+          "run": "memory-report-c002-cluster_fe-n983040-k1-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 265442883
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.891267674614566,
+          "early_selected_estimate_bytes": 137625632,
+          "input_sha256": "68c58e83c207cccae5d03f23b4347606e09b476a96d265be27bc3a7f2028ba96",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 122661277,
+          "observed_over_forecast": 0.4243808509244302,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 67333555,
+            "4": 108096981,
+            "5": 195496,
+            "6": 289035843,
+            "7": 72784,
+            "8": 397328320,
+            "9": 289035843,
+            "10": 25624739840,
+            "11": 125
+          },
+          "result_sha256": "653c93f28031cb16b0cad3737e7740596a37b44fafda54ce9aab69bcb017d2f6",
+          "run": "memory-report-c002-cluster_fe-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 289035843
+        }
+      },
+      "cell": {
+        "case": "cluster_fe",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "frequency",
+        "k": 1,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "fw"
+      },
+      "index": 2,
+      "peak_delta_candidate_minus_baseline": 5111856,
+      "prior_observation": {
+        "estimated_selected_baseline": 137625632.0,
+        "estimated_selected_candidate": 137625632.0,
+        "modeled_ratio_baseline": 0.8541244773357335,
+        "modeled_ratio_candidate": 0.891267674614566,
+        "peak_baseline": 117549421.0,
+        "peak_candidate": 122661277.0
+      },
+      "reasons": [
+        "observed_peak_increase"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.8974266578823531,
+          "early_selected_estimate_bytes": 157286432,
+          "input_sha256": "68c58e83c207cccae5d03f23b4347606e09b476a96d265be27bc3a7f2028ba96",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 141153037,
+          "observed_over_forecast": 0.4350837857480604,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 67344502,
+            "4": 108107928,
+            "5": 195496,
+            "6": 324427252,
+            "7": 73072,
+            "8": 432730676,
+            "9": 324427252,
+            "10": 25621839872,
+            "11": 125
+          },
+          "result_sha256": "c94c4f9f51a78dbd907f09a252f84220335e79981d8d28645951c6a427819777",
+          "run": "memory-report-c003-cluster2_cross-n983040-k1-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 324427252
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.9299269564459317,
+          "early_selected_estimate_bytes": 157286432,
+          "input_sha256": "68c58e83c207cccae5d03f23b4347606e09b476a96d265be27bc3a7f2028ba96",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 146264893,
+          "observed_over_forecast": 0.4202770067848818,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 67344529,
+            "4": 108107955,
+            "5": 195496,
+            "6": 348020212,
+            "7": 73072,
+            "8": 456323663,
+            "9": 348020212,
+            "10": 25621407334,
+            "11": 125
+          },
+          "result_sha256": "024b3ea3f70a38aabd908086d5122e3d415b7b42ddfa4544f55cda39cbacb7a1",
+          "run": "memory-report-c003-cluster2_cross-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 348020212
+        }
+      },
+      "cell": {
+        "case": "cluster2_cross",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "frequency",
+        "k": 1,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "fw"
+      },
+      "index": 3,
+      "peak_delta_candidate_minus_baseline": 5111856,
+      "prior_observation": {
+        "estimated_selected_baseline": 157286432.0,
+        "estimated_selected_candidate": 157286432.0,
+        "modeled_ratio_baseline": 0.8974266578823531,
+        "modeled_ratio_candidate": 0.9299269564459317,
+        "peak_baseline": 141153037.0,
+        "peak_candidate": 146264893.0
+      },
+      "reasons": [
+        "observed_peak_increase"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.642675314843483,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "87e51a3808905740385067bbb5e0cf46b0608be4f25264228d3bcd8a346eaf24",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 119496994,
+          "observed_over_forecast": 1.038642966573134,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184804,
+            "4": 73603363,
+            "5": 177528,
+            "6": 115051079,
+            "7": 75664,
+            "8": 188831970,
+            "9": 115051079,
+            "10": 25626217676,
+            "11": 381
+          },
+          "result_sha256": "55af1afcb9c80ad63071359915e93e458f14b410b2e35828c37b79da019a4659",
+          "run": "memory-report-c016-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 115051079
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.642675314843483,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "87e51a3808905740385067bbb5e0cf46b0608be4f25264228d3bcd8a346eaf24",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 119496994,
+          "observed_over_forecast": 0.9137272576644702,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184831,
+            "4": 73603390,
+            "5": 190888,
+            "6": 130779719,
+            "7": 75664,
+            "8": 204573997,
+            "9": 130779719,
+            "10": 25613955891,
+            "11": 381
+          },
+          "result_sha256": "4d4b14c7d1187de2b07cc432fe9d6fff886ec20c0ec5d2fda61e479946e6903f",
+          "run": "memory-report-c016-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 130779719
+        }
+      },
+      "cell": {
+        "case": "robust_saved",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "weight-distribution",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "dispersed",
+        "weight_kind": "aw"
+      },
+      "index": 16,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 72745352.0,
+        "estimated_selected_candidate": 72745352.0,
+        "modeled_ratio_baseline": 1.642675314843483,
+        "modeled_ratio_candidate": 1.642675314843483,
+        "peak_baseline": 119496994.0,
+        "peak_candidate": 119496994.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.6207375833441564,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "764dc6c174b54f456e77cdcd0f727607067eef213243801aa6a2504ece85a983",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 117901126,
+          "observed_over_forecast": 1.024772014524088,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184867,
+            "4": 73603426,
+            "5": 195496,
+            "6": 115051079,
+            "7": 75664,
+            "8": 188850001,
+            "9": 115051079,
+            "10": 25611983257,
+            "11": 381
+          },
+          "result_sha256": "02c16ed7cae0a65f638ac3eca1c5c851d9d1eb057c00ba2fab345b20744b6c67",
+          "run": "memory-report-c017-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 115051079
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.6207375833441564,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "764dc6c174b54f456e77cdcd0f727607067eef213243801aa6a2504ece85a983",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 117901126,
+          "observed_over_forecast": 0.9015245399020929,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184894,
+            "4": 73603453,
+            "5": 190888,
+            "6": 130779719,
+            "7": 75664,
+            "8": 204574060,
+            "9": 130779719,
+            "10": 25593269452,
+            "11": 381
+          },
+          "result_sha256": "aa98381b648e50ec5d7abc8360d54651cdaa084e37e2fd06602add31fdc8cb79",
+          "run": "memory-report-c017-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 130779719
+        }
+      },
+      "cell": {
+        "case": "robust_saved",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "weight-distribution",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "group_concentrated",
+        "weight_kind": "aw"
+      },
+      "index": 17,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 72745352.0,
+        "estimated_selected_candidate": 72745352.0,
+        "modeled_ratio_baseline": 1.6207375833441564,
+        "modeled_ratio_candidate": 1.6207375833441564,
+        "peak_baseline": 117901126.0,
+        "peak_candidate": 117901126.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.642675314843483,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "87e51a3808905740385067bbb5e0cf46b0608be4f25264228d3bcd8a346eaf24",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 119496994,
+          "observed_over_forecast": 1.038642966573134,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184804,
+            "4": 73603363,
+            "5": 175224,
+            "6": 115051079,
+            "7": 75664,
+            "8": 188829666,
+            "9": 115051079,
+            "10": 25584363110,
+            "11": 381
+          },
+          "result_sha256": "97fd2f6fae276a6f6f824911ea8270269c0f9f5b2f3d544fbb362fb63ecc65d6",
+          "run": "memory-report-c019-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 115051079
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.642675314843483,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "87e51a3808905740385067bbb5e0cf46b0608be4f25264228d3bcd8a346eaf24",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 119496994,
+          "observed_over_forecast": 0.9137272576644702,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184831,
+            "4": 73603390,
+            "5": 195496,
+            "6": 130779719,
+            "7": 75664,
+            "8": 204578605,
+            "9": 130779719,
+            "10": 25578104422,
+            "11": 381
+          },
+          "result_sha256": "487c45d154e97a81046772bc7c50206bd1eb4dd7db9923d11284da4b41dbe301",
+          "run": "memory-report-c019-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 130779719
+        }
+      },
+      "cell": {
+        "case": "robust_saved",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "weight-distribution",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "dispersed",
+        "weight_kind": "pw"
+      },
+      "index": 19,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 72745352.0,
+        "estimated_selected_candidate": 72745352.0,
+        "modeled_ratio_baseline": 1.642675314843483,
+        "modeled_ratio_candidate": 1.642675314843483,
+        "peak_baseline": 119496994.0,
+        "peak_candidate": 119496994.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.6207375833441564,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "764dc6c174b54f456e77cdcd0f727607067eef213243801aa6a2504ece85a983",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 117901126,
+          "observed_over_forecast": 1.024772014524088,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184867,
+            "4": 73603426,
+            "5": 195496,
+            "6": 115051079,
+            "7": 75664,
+            "8": 188850001,
+            "9": 115051079,
+            "10": 25567235276,
+            "11": 381
+          },
+          "result_sha256": "c3a5fada6474ed64f94e5ab4c84a497aad59fa9778099c94bae32a590f02344b",
+          "run": "memory-report-c020-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 115051079
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.6207375833441564,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "764dc6c174b54f456e77cdcd0f727607067eef213243801aa6a2504ece85a983",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 117901126,
+          "observed_over_forecast": 0.9015245399020929,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184894,
+            "4": 73603453,
+            "5": 173616,
+            "6": 130779719,
+            "7": 75664,
+            "8": 204556788,
+            "9": 130779719,
+            "10": 25635189555,
+            "11": 381
+          },
+          "result_sha256": "b0a6411da50563af03761d5658ce44fb45f976d9485ff15d87e89ceab332ffaa",
+          "run": "memory-report-c020-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 130779719
+        }
+      },
+      "cell": {
+        "case": "robust_saved",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "weight-distribution",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "group_concentrated",
+        "weight_kind": "pw"
+      },
+      "index": 20,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 72745352.0,
+        "estimated_selected_candidate": 72745352.0,
+        "modeled_ratio_baseline": 1.6207375833441564,
+        "modeled_ratio_candidate": 1.6207375833441564,
+        "peak_baseline": 117901126.0,
+        "peak_candidate": 117901126.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.809203232668391,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "36090576f229d3ac60cbec0d6221fd17387c398bb4c1d8e528088b7c2c1c045d",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 131611126,
+          "observed_over_forecast": 1.0312532245976573,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184832,
+            "4": 73603391,
+            "5": 195496,
+            "6": 127622511,
+            "7": 75664,
+            "8": 201421398,
+            "9": 127622511,
+            "10": 25594911129,
+            "11": 381
+          },
+          "result_sha256": "7a2b66645b38be473922910057fa5b3f78c79b953aafae7e12ed45c7d1dc73c9",
+          "run": "memory-report-c027-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 127622511
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.809203232668391,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "36090576f229d3ac60cbec0d6221fd17387c398bb4c1d8e528088b7c2c1c045d",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 131611126,
+          "observed_over_forecast": 1.006357308352987,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184859,
+            "4": 73603418,
+            "5": 193192,
+            "6": 130779719,
+            "7": 75664,
+            "8": 204576329,
+            "9": 130779719,
+            "10": 25574621184,
+            "11": 381
+          },
+          "result_sha256": "a24c45cf473ca4501a12614b38c877451a815db7d86873ae9ffd46832c399ebc",
+          "run": "memory-report-c027-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 130779719
+        }
+      },
+      "cell": {
+        "case": "robust_saved",
+        "design": "weighted_bridge",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "weighted-bridges",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "bridge_cut",
+        "weight_kind": "aw"
+      },
+      "index": 27,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 72745352.0,
+        "estimated_selected_candidate": 72745352.0,
+        "modeled_ratio_baseline": 1.809203232668391,
+        "modeled_ratio_candidate": 1.809203232668391,
+        "peak_baseline": 131611126.0,
+        "peak_candidate": 131611126.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.809203232668391,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "36090576f229d3ac60cbec0d6221fd17387c398bb4c1d8e528088b7c2c1c045d",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 131611126,
+          "observed_over_forecast": 1.0312532245976573,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184832,
+            "4": 73603391,
+            "5": 190888,
+            "6": 127622511,
+            "7": 75664,
+            "8": 201416790,
+            "9": 127622511,
+            "10": 25609800908,
+            "11": 381
+          },
+          "result_sha256": "49cb23d55aaf7db7c4eb79144227783eafc7cb37c94b5b018fc36cd4a1b72d5b",
+          "run": "memory-report-c028-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 127622511
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.809203232668391,
+          "early_selected_estimate_bytes": 72745352,
+          "input_sha256": "36090576f229d3ac60cbec0d6221fd17387c398bb4c1d8e528088b7c2c1c045d",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 131611126,
+          "observed_over_forecast": 1.006357308352987,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 35184859,
+            "4": 73603418,
+            "5": 195496,
+            "6": 130779719,
+            "7": 75664,
+            "8": 204578633,
+            "9": 130779719,
+            "10": 25615751577,
+            "11": 381
+          },
+          "result_sha256": "bb63986ac93ca6c04faab58a957f33c7c67aa7f92784cc1d2e2626023c875e2c",
+          "run": "memory-report-c028-robust_saved-n245760-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 130779719
+        }
+      },
+      "cell": {
+        "case": "robust_saved",
+        "design": "weighted_bridge",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "weighted-bridges",
+        "k": 6,
+        "memory": "fast",
+        "n": 245760,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "bridge_cut",
+        "weight_kind": "pw"
+      },
+      "index": 28,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 72745352.0,
+        "estimated_selected_candidate": 72745352.0,
+        "modeled_ratio_baseline": 1.809203232668391,
+        "modeled_ratio_candidate": 1.809203232668391,
+        "peak_baseline": 131611126.0,
+        "peak_candidate": 131611126.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 3.204546706547092,
+          "early_selected_estimate_bytes": 6389768,
+          "input_sha256": "5041006bd77a81606f67a3e5ffae26edad5b9a915ae36f8e3a70b32d1578d027",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 20476310,
+          "observed_over_forecast": 1.0010295155996864,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 9065155,
+            "4": 73475479,
+            "5": 186280,
+            "6": 20455251,
+            "7": 72496,
+            "8": 94117010,
+            "9": 20455251,
+            "10": 25706433740,
+            "11": 125
+          },
+          "result_sha256": "ab33be390ffd946636d781ab47b50e2f64d12cf498630bbe47dfb5fe5b27fc1b",
+          "run": "memory-report-c043-iid-n61440-k0-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 20455251
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 3.204546706547092,
+          "early_selected_estimate_bytes": 6389768,
+          "input_sha256": "5041006bd77a81606f67a3e5ffae26edad5b9a915ae36f8e3a70b32d1578d027",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 20476310,
+          "observed_over_forecast": 1.0010295155996864,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 9065182,
+            "4": 73475506,
+            "5": 195496,
+            "6": 20455251,
+            "7": 72496,
+            "8": 94126253,
+            "9": 20455251,
+            "10": 25706433740,
+            "11": 125
+          },
+          "result_sha256": "ebc26aff5865514e080c55f728e71b5a04535cfddcfa9897edf8961fb7e9bd38",
+          "run": "memory-report-c043-iid-n61440-k0-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 20455251
+        }
+      },
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "width-boundaries",
+        "k": 0,
+        "memory": "fast",
+        "n": 61440,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 43,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 6389768.0,
+        "estimated_selected_candidate": 6389768.0,
+        "modeled_ratio_baseline": 3.204546706547092,
+        "modeled_ratio_candidate": 3.204546706547092,
+        "peak_baseline": 20476310.0,
+        "peak_candidate": 20476310.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 3.281436509118954,
+          "early_selected_estimate_bytes": 6389768,
+          "input_sha256": "c79258236ecbd44d162ad1dc8eeccf6011d2bba1d922f4860af44ea960fc5e17",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 20967618,
+          "observed_over_forecast": 1.0010057503022813,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 9560062,
+            "4": 73478525,
+            "5": 177064,
+            "6": 20946551,
+            "7": 72496,
+            "8": 94602140,
+            "9": 20946551,
+            "10": 25709120716,
+            "11": 125
+          },
+          "result_sha256": "6889d11775b7e0b64affbbec3f1b1a57b6f4c397eb096430b706a9ff8a3cbb84",
+          "run": "memory-report-c044-iid-n61440-k0-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 20946551
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 3.281436509118954,
+          "early_selected_estimate_bytes": 6389768,
+          "input_sha256": "c79258236ecbd44d162ad1dc8eeccf6011d2bba1d922f4860af44ea960fc5e17",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 20967618,
+          "observed_over_forecast": 1.0010053679938553,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 9560089,
+            "4": 73478552,
+            "5": 195496,
+            "6": 20946559,
+            "7": 72496,
+            "8": 94620607,
+            "9": 20946559,
+            "10": 25707711692,
+            "11": 125
+          },
+          "result_sha256": "3f38f8d7d662f8487afc220e79d9cbb0d2dbf81ec5f9311a4df49366b2a467ad",
+          "run": "memory-report-c044-iid-n61440-k0-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 20946559
+        }
+      },
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "width-boundaries",
+        "k": 0,
+        "memory": "fast",
+        "n": 61440,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 44,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 6389768.0,
+        "estimated_selected_candidate": 6389768.0,
+        "modeled_ratio_baseline": 3.281436509118954,
+        "modeled_ratio_candidate": 3.281436509118954,
+        "peak_baseline": 20967618.0,
+        "peak_candidate": 20967618.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.879431494402978,
+          "early_selected_estimate_bytes": 8355872,
+          "input_sha256": "600ed2d8049d277674392439b7d2fd5930f71b55a6e8415678c994f8a4fa22bb",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 7348417,
+          "observed_over_forecast": 0.4490322340163556,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 10063853,
+            "4": 73490455,
+            "5": 195496,
+            "6": 16365010,
+            "7": 72784,
+            "8": 90050961,
+            "9": 16365010,
+            "10": 25709373030,
+            "11": 125
+          },
+          "result_sha256": "aceac1fa2263555a37e2fbe35d6a936f11d41f3417b6d34043e3c596aa5d2f72",
+          "run": "memory-report-c046-iid-n61440-k1-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 16365010
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.917672386556424,
+          "early_selected_estimate_bytes": 8355872,
+          "input_sha256": "600ed2d8049d277674392439b7d2fd5930f71b55a6e8415678c994f8a4fa22bb",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 7667953,
+          "observed_over_forecast": 0.4298283534860986,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 10063880,
+            "4": 73490482,
+            "5": 195496,
+            "6": 17839570,
+            "7": 72784,
+            "8": 91525548,
+            "9": 17839570,
+            "10": 25709373030,
+            "11": 125
+          },
+          "result_sha256": "95f212703c5c0445d2e8f748f6ca32747dc2977fee0ef6e0b07cf364970f5d96",
+          "run": "memory-report-c046-iid-n61440-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 17839570
+        }
+      },
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "width-boundaries",
+        "k": 1,
+        "memory": "fast",
+        "n": 61440,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 46,
+      "peak_delta_candidate_minus_baseline": 319536,
+      "prior_observation": {
+        "estimated_selected_baseline": 8355872.0,
+        "estimated_selected_candidate": 8355872.0,
+        "modeled_ratio_baseline": 0.879431494402978,
+        "modeled_ratio_candidate": 0.917672386556424,
+        "peak_baseline": 7348417.0,
+        "peak_candidate": 7667953.0
+      },
+      "reasons": [
+        "observed_peak_increase"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.4575277348711688,
+          "early_selected_estimate_bytes": 2273672,
+          "input_sha256": "9fd093bd0ef67551fa6c09f385ca99bc01016cb2a070cd43adf65c501760dde7",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 3313940,
+          "observed_over_forecast": 1.058272123924185,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 7101138,
+            "4": 73559976,
+            "5": 180064,
+            "6": 3131463,
+            "7": 75664,
+            "8": 76871503,
+            "9": 3131463,
+            "10": 25708147507,
+            "11": 125
+          },
+          "result_sha256": "1eadf6ad15301636954f18a1878e7cdfea7ff1fff26433fc3743069fcf231236",
+          "run": "memory-report-c055-iid-n7680-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 3131463
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.4575277348711688,
+          "early_selected_estimate_bytes": 2273672,
+          "input_sha256": "9fd093bd0ef67551fa6c09f385ca99bc01016cb2a070cd43adf65c501760dde7",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 3313940,
+          "observed_over_forecast": 1.0582694203459013,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 7101165,
+            "4": 73560003,
+            "5": 195496,
+            "6": 3131471,
+            "7": 75664,
+            "8": 76886970,
+            "9": 3131471,
+            "10": 25708147507,
+            "11": 125
+          },
+          "result_sha256": "9d73dea1c5596679a9c76916e28ef892a46abb2cc635403b7d9ffd6834233c68",
+          "run": "memory-report-c055-iid-n7680-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 3131471
+        }
+      },
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "sample-boundaries",
+        "k": 6,
+        "memory": "fast",
+        "n": 7680,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 55,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 2273672.0,
+        "estimated_selected_candidate": 2273672.0,
+        "modeled_ratio_baseline": 1.4575277348711688,
+        "modeled_ratio_candidate": 1.4575277348711688,
+        "peak_baseline": 3313940.0,
+        "peak_candidate": 3313940.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.4845835283189484,
+          "early_selected_estimate_bytes": 2273672,
+          "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 3375456,
+          "observed_over_forecast": 1.0571468032910876,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 7165965,
+            "4": 73563022,
+            "5": 182136,
+            "6": 3192987,
+            "7": 75664,
+            "8": 76938145,
+            "9": 3192987,
+            "10": 25705689907,
+            "11": 125
+          },
+          "result_sha256": "2311d97eb8d5fc959baf3e801fca721e290bc84dd0ce2e879e3aee13a27cdbc7",
+          "run": "memory-report-c056-iid-n7680-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 3192987
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.4845835283189484,
+          "early_selected_estimate_bytes": 2273672,
+          "input_sha256": "4c91265464e26b32fa30481ccdc3b1a189c2a6b4d20acfa22c48930b9eb61fbb",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 3375456,
+          "observed_over_forecast": 1.0571468032910876,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 7165992,
+            "4": 73563049,
+            "5": 191120,
+            "6": 3192987,
+            "7": 75664,
+            "8": 76947156,
+            "9": 3192987,
+            "10": 25705748889,
+            "11": 125
+          },
+          "result_sha256": "b06309ba249fc6b3dd1b25bbf1cfa43a77fdb3dc6d436a7e007b1f429adcb65b",
+          "run": "memory-report-c056-iid-n7680-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 3192987
+        }
+      },
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "sample-boundaries",
+        "k": 6,
+        "memory": "fast",
+        "n": 7680,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 56,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 2273672.0,
+        "estimated_selected_candidate": 2273672.0,
+        "modeled_ratio_baseline": 1.4845835283189484,
+        "modeled_ratio_candidate": 1.4845835283189484,
+        "peak_baseline": 3375456.0,
+        "peak_candidate": 3375456.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.4304928491306785,
+          "early_selected_estimate_bytes": 4849760,
+          "input_sha256": "11171b577b3ae47d6b8e63b95d14a82831101f02ac14cbf8e06e534e2dbcc70a",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 6937547,
+          "observed_over_forecast": 1.0377076859701675,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 7910524,
+            "4": 73559983,
+            "5": 195496,
+            "6": 6685454,
+            "7": 75664,
+            "8": 80440933,
+            "9": 6685454,
+            "10": 25705470361,
+            "11": 125
+          },
+          "result_sha256": "0496266787ba6426becbc1d10817039035c5918019a88bdc6e45604405a8646a",
+          "run": "memory-report-c057-iid-n16383-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 6685454
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.4304928491306785,
+          "early_selected_estimate_bytes": 4849760,
+          "input_sha256": "11171b577b3ae47d6b8e63b95d14a82831101f02ac14cbf8e06e534e2dbcc70a",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 6937547,
+          "observed_over_forecast": 1.0377076859701675,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 7910551,
+            "4": 73560010,
+            "5": 190888,
+            "6": 6685454,
+            "7": 75664,
+            "8": 80436352,
+            "9": 6685454,
+            "10": 25705470361,
+            "11": 125
+          },
+          "result_sha256": "dab359097f084991c239a58a5535c44c271f3cb67dc3b7af11e21cc109d6c9f5",
+          "run": "memory-report-c057-iid-n16383-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 6685454
+        }
+      },
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "sample-boundaries",
+        "k": 6,
+        "memory": "fast",
+        "n": 16383,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 57,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 4849760.0,
+        "estimated_selected_candidate": 4849760.0,
+        "modeled_ratio_baseline": 1.4304928491306785,
+        "modeled_ratio_candidate": 1.4304928491306785,
+        "peak_baseline": 6937547.0,
+        "peak_candidate": 6937547.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.457536661607997,
+          "early_selected_estimate_bytes": 4849760,
+          "input_sha256": "4a85533113fe735644058c920272051eccae5bc4aa6157f972433622a81d3b40",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 7068703,
+          "observed_over_forecast": 1.0369821656219147,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 8044975,
+            "4": 73563029,
+            "5": 186280,
+            "6": 6816610,
+            "7": 75664,
+            "8": 80565919,
+            "9": 6816610,
+            "10": 25706283008,
+            "11": 125
+          },
+          "result_sha256": "1f79d002fe4e81a6dc9b4412e0b07252118a0782a875b076b0d7b91d65a2549c",
+          "run": "memory-report-c058-iid-n16383-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 6816610
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 1.457536661607997,
+          "early_selected_estimate_bytes": 4849760,
+          "input_sha256": "4a85533113fe735644058c920272051eccae5bc4aa6157f972433622a81d3b40",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 7068703,
+          "observed_over_forecast": 1.0369821656219147,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 8045002,
+            "4": 73563056,
+            "5": 181672,
+            "6": 6816610,
+            "7": 75664,
+            "8": 80561338,
+            "9": 6816610,
+            "10": 25706283008,
+            "11": 125
+          },
+          "result_sha256": "2dd2cf18d30609f0b7d8deb24ffb1541459b9fcec8335077311bbc78a0d0c4cd",
+          "run": "memory-report-c058-iid-n16383-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 6816610
+        }
+      },
+      "cell": {
+        "case": "iid",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "sample-boundaries",
+        "k": 6,
+        "memory": "fast",
+        "n": 16383,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 58,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 4849760.0,
+        "estimated_selected_candidate": 4849760.0,
+        "modeled_ratio_baseline": 1.457536661607997,
+        "modeled_ratio_candidate": 1.457536661607997,
+        "peak_baseline": 7068703.0,
+        "peak_candidate": 7068703.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 46,
+          "early_estimate_ratio": 1.518484996122428,
+          "early_selected_estimate_bytes": 18743688,
+          "input_sha256": "b1658f34f35b34dc87e56d5dd53ec316dc02da2230dcd5efb1f71d5d4b575521",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 28462009,
+          "observed_over_forecast": 0.7969287258051135,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 13615792,
+            "4": 73600003,
+            "5": 193192,
+            "6": 35714623,
+            "7": 75664,
+            "8": 109507818,
+            "9": 35714623,
+            "10": 25706692608,
+            "11": 381
+          },
+          "result_sha256": "86ddd0ac5acc40ac07edb52c2699e6f3b04b5b7e2fdeaacb8d162323ee2c2a5f",
+          "run": "memory-report-c063-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 35714623
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 46,
+          "early_estimate_ratio": 1.518484996122428,
+          "early_selected_estimate_bytes": 18743688,
+          "input_sha256": "b1658f34f35b34dc87e56d5dd53ec316dc02da2230dcd5efb1f71d5d4b575521",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 28462009,
+          "observed_over_forecast": 0.7969287258051135,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 13615819,
+            "4": 73600030,
+            "5": 195496,
+            "6": 35714623,
+            "7": 75664,
+            "8": 109510149,
+            "9": 35714623,
+            "10": 25706692608,
+            "11": 381
+          },
+          "result_sha256": "5e0922cdf40fbf499de008d0e7c877d6d8d1c1ccf3f135c3cfea35d35d0fefd8",
+          "run": "memory-report-c063-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 35714623
+        }
+      },
+      "cell": {
+        "case": "iid_outputs",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "low-memory",
+        "k": 6,
+        "memory": "low",
+        "n": 61440,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 63,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 18743688.0,
+        "estimated_selected_candidate": 18743688.0,
+        "modeled_ratio_baseline": 1.5184825419629264,
+        "modeled_ratio_candidate": 1.5184825419629264,
+        "peak_baseline": 28461963.0,
+        "peak_candidate": 28461963.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 46,
+          "early_estimate_ratio": 1.5446969134356057,
+          "early_selected_estimate_bytes": 18743688,
+          "input_sha256": "a946450fbe694a212beed8933cec74426967a5614d0d605a2889e4344cb27e92",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 28953317,
+          "observed_over_forecast": 0.7996843666304286,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 14110699,
+            "4": 73603049,
+            "5": 171080,
+            "6": 36205931,
+            "7": 75664,
+            "8": 109980060,
+            "9": 36205931,
+            "10": 25704510259,
+            "11": 381
+          },
+          "result_sha256": "d71ac31c5f8650ab928f526e796a2977ed43f48545b6117bf46929cffb675ecb",
+          "run": "memory-report-c064-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 36205931
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 46,
+          "early_estimate_ratio": 1.5446969134356057,
+          "early_selected_estimate_bytes": 18743688,
+          "input_sha256": "a946450fbe694a212beed8933cec74426967a5614d0d605a2889e4344cb27e92",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 28953317,
+          "observed_over_forecast": 0.7996843666304286,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 14110726,
+            "4": 73603076,
+            "5": 195496,
+            "6": 36205931,
+            "7": 75664,
+            "8": 110004503,
+            "9": 36205931,
+            "10": 25704565964,
+            "11": 381
+          },
+          "result_sha256": "1a729a3af572d907790afef585738e143e46f82cf61492a9584a5a7020043fee",
+          "run": "memory-report-c064-iid_outputs-n61440-k6-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 36205931
+        }
+      },
+      "cell": {
+        "case": "iid_outputs",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "group": "low-memory",
+        "k": 6,
+        "memory": "low",
+        "n": 61440,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "moderate",
+        "weight_kind": "aw"
+      },
+      "index": 64,
+      "peak_delta_candidate_minus_baseline": 0,
+      "prior_observation": {
+        "estimated_selected_baseline": 18743688.0,
+        "estimated_selected_candidate": 18743688.0,
+        "modeled_ratio_baseline": 1.544694459276104,
+        "modeled_ratio_candidate": 1.544694459276104,
+        "peak_baseline": 28953271.0,
+        "peak_candidate": 28953271.0
+      },
+      "reasons": [
+        "early_estimate_ratio_above_1_25"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.73723249052774,
+          "early_selected_estimate_bytes": 121896992,
+          "input_sha256": "681f7624e6dc4b21d46fcc58344f4463a0996f8e8497bc353de45eee3206a803",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 89866423,
+          "observed_over_forecast": 0.46165958941967056,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 59457988,
+            "4": 108086075,
+            "5": 125480,
+            "6": 194659496,
+            "7": 72592,
+            "8": 302871051,
+            "9": 194659496,
+            "10": 25698307276,
+            "11": 125
+          },
+          "result_sha256": "b8220896301f35a2f603081e93cc76366babd20d3166a8804c53532dac9b5d1c",
+          "run": "memory-report-c067-robust-n983040-k1-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 194659496
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.7372330811903873,
+          "early_selected_estimate_bytes": 121896992,
+          "input_sha256": "681f7624e6dc4b21d46fcc58344f4463a0996f8e8497bc353de45eee3206a803",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 89866495,
+          "observed_over_forecast": 0.41174650794920303,
+          "previous_output_exact": null,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 59458015,
+            "4": 108086102,
+            "5": 125480,
+            "6": 218256848,
+            "7": 72592,
+            "8": 326468430,
+            "9": 218256848,
+            "10": 25697537228,
+            "11": 125
+          },
+          "result_sha256": "fa0b44c8c1e9c9fd58cc2a2c3b8f2098f91dad1a6e2b4c9b516933f010d42988",
+          "run": "memory-report-c067-robust-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 125,
+          "whole_action_forecast_bytes": 218256848
+        }
+      },
+      "cell": {
+        "case": "robust",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1"
+        ],
+        "group": "protected-one-fe",
+        "k": 1,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 67,
+      "peak_delta_candidate_minus_baseline": 72,
+      "prior_observation": {
+        "estimated_selected_baseline": 121896992.0,
+        "estimated_selected_candidate": 121896992.0,
+        "modeled_ratio_baseline": 0.73723249052774,
+        "modeled_ratio_candidate": 0.7372330811903873,
+        "peak_baseline": 89866423.0,
+        "peak_candidate": 89866495.0
+      },
+      "reasons": [
+        "observed_peak_increase"
+      ]
+    },
+    {
+      "arms": {
+        "baseline": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.8285676663086672,
+          "early_selected_estimate_bytes": 145489952,
+          "input_sha256": "681f7624e6dc4b21d46fcc58344f4463a0996f8e8497bc353de45eee3206a803",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 120548270,
+          "observed_over_forecast": 0.3112228377403012,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 67372560,
+            "4": 108136198,
+            "5": 125480,
+            "6": 387337481,
+            "7": 72880,
+            "8": 495599159,
+            "9": 387337481,
+            "10": 25705394995,
+            "11": 381
+          },
+          "result_sha256": "5ac0fed90a73f3836dba69fcfa368e051c908889ac91ac4065dda77f01c02ef7",
+          "run": "memory-report-c068-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r1-baseline",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 387337481
+        },
+        "candidate": {
+          "defined": {
+            "1": true,
+            "2": true,
+            "3": true,
+            "4": true,
+            "5": true,
+            "6": true,
+            "7": true,
+            "8": true,
+            "9": true,
+            "10": true,
+            "11": true
+          },
+          "delta_from_prior_observation": 0,
+          "early_estimate_ratio": 0.8285681611882035,
+          "early_selected_estimate_bytes": 145489952,
+          "input_sha256": "681f7624e6dc4b21d46fcc58344f4463a0996f8e8497bc353de45eee3206a803",
+          "memory_schema": 2,
+          "method": "phase-capacity-calibrated-v2",
+          "observed_native_peak_bytes": 120548342,
+          "observed_over_forecast": 0.29335148135276234,
+          "previous_output_exact": true,
+          "previous_six_science_files_exact": {
+            "V.csv": true,
+            "b.csv": true,
+            "fereg_certificate.csv": true,
+            "fereg_dof.csv": true,
+            "fereg_fit.csv": true,
+            "fereg_status.csv": true
+          },
+          "report_status": 2,
+          "report_values": {
+            "1": 2,
+            "2": 2,
+            "3": 67372587,
+            "4": 108136225,
+            "5": 125480,
+            "6": 410934833,
+            "7": 72880,
+            "8": 519196538,
+            "9": 410934833,
+            "10": 25685590016,
+            "11": 381
+          },
+          "result_sha256": "858afcebc8ba2185ec7714e6af6be34f8119ffe108f5c8a1922a873dc0ff4818",
+          "run": "memory-report-c068-cluster2_saved-n983040-k1-s8675309-shuffle0-t16-r1-usefulpilot",
+          "strict_and_coverage_gap_bits": 381,
+          "whole_action_forecast_bytes": 410934833
+        }
+      },
+      "cell": {
+        "case": "cluster2_saved",
+        "design": "two_fe_dense",
+        "effects": [
+          "g1"
+        ],
+        "group": "protected-one-fe",
+        "k": 1,
+        "memory": "fast",
+        "n": 983040,
+        "seed": 8675309,
+        "shuffled": false,
+        "solver": "auto",
+        "threads": 16,
+        "weight_design": "none",
+        "weight_kind": "none"
+      },
+      "index": 68,
+      "peak_delta_candidate_minus_baseline": 72,
+      "prior_observation": {
+        "estimated_selected_baseline": 145489952.0,
+        "estimated_selected_candidate": 145489952.0,
+        "modeled_ratio_baseline": 0.8285676663086672,
+        "modeled_ratio_candidate": 0.8285681611882035,
+        "peak_baseline": 120548270.0,
+        "peak_candidate": 120548342.0
+      },
+      "reasons": [
+        "observed_peak_increase"
+      ]
+    }
+  ],
+  "status": "pass_with_explicit_strict_proof_gaps"
+}

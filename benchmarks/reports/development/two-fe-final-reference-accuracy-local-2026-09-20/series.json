@@ -1,0 +1,44 @@
+{
+  "final-precision-c000": {
+    "checks": {
+      "checks": [
+        {
+          "case": "iid_saved",
+          "k": 6,
+          "n": 983040,
+          "outputs": {
+            "max_abs_errors": [
+              1.5178835965912185e-10,
+              1.5174611567303486e-10
+            ],
+            "mismatched_values": [
+              0,
+              0
+            ],
+            "names": [
+              "fe1",
+              "fe2"
+            ],
+            "status": "pass"
+          },
+          "rep": 1,
+          "science": {
+            "errors": {
+              "coefficients.csv:se": 1.0007186052041206e-16,
+              "coefficients.csv:value": 1.892930256985892e-14,
+              "covariance.csv:value": 2.3081647812679684e-20
+            },
+            "sample_exact": true
+          },
+          "variant": "fixest"
+        }
+      ],
+      "status": "pass"
+    },
+    "complete": true
+  },
+  "final-precision-c001": {
+    "checks": null,
+    "complete": false
+  }
+}

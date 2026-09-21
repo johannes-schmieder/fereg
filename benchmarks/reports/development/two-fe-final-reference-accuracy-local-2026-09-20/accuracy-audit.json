@@ -1,0 +1,1248 @@
+{
+  "all_native_science_identical_to_headline": true,
+  "all_requested_native_outputs_identical_to_headline": true,
+  "attempted_calls": 57,
+  "distinct_cells": 28,
+  "graph_oracle_checks": 26,
+  "reference_identity": "d18a66a3641fa4535d81de6787d4386a853d12521e67c025596647227c1cfc2a",
+  "reference_nonconvergence": 10,
+  "reference_successes": 18,
+  "rows": [
+    {
+      "comparison": "pass",
+      "index": 0,
+      "input_sha256": "f5a31068f7781f7c6aa9c5e0eb89fa77d36986a3340578bc28ab97141a05fd91",
+      "native_outputs_identical_to_headline": true,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.356,
+      "reference_seconds": 1.048,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "745eef80b339754677a1339f5119ee27f5aaa6b6eec2976f771adcd015cca6fe",
+        "usefulpilot": "c7b11edc1ba6734b62bd3c6486ba78731b405fc53b97222001c05a7e9e6b99ca"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid_saved",
+          "design": "two_fe_dense",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "dense-aw-requests",
+          "k": 6,
+          "memory": "fast",
+          "n": 983040,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 17,
+        "observed_comparison": "reference_output_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 1,
+      "input_sha256": "f5a31068f7781f7c6aa9c5e0eb89fa77d36986a3340578bc28ab97141a05fd91",
+      "native_outputs_identical_to_headline": true,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.406,
+      "reference_seconds": 1.051,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "f878025257d6b684073ee47d817dd7277e7dd6c89290feeb98d3552b626f6d42",
+        "usefulpilot": "c128a627170eb82dd301de5980ec0f34a98ebd52a2d2c326fafd77cb0e9a79f8"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid_outputs",
+          "design": "two_fe_dense",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "dense-aw-requests",
+          "k": 6,
+          "memory": "fast",
+          "n": 983040,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 18,
+        "observed_comparison": "reference_output_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 2,
+      "input_sha256": "885650f9cefa79377500a8686a1f6a1d88f71c1ddfcc28f4b83fbd26b71f6f9a",
+      "native_outputs_identical_to_headline": true,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.868,
+      "reference_seconds": 3.689,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "beb4d95cb994c8feb8d64828a93adc1a1299d500ea1fe76831c4fd791da2f86d",
+        "usefulpilot": "ecd0edf61dbc79473585762b6b8651dfd55decf9af1e58e23cce470bcd86dc1a"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid_saved",
+          "design": "two_fe_dense",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "dense-aw-requests",
+          "k": 50,
+          "memory": "fast",
+          "n": 983040,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 24,
+        "observed_comparison": "reference_output_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 3,
+      "input_sha256": "885650f9cefa79377500a8686a1f6a1d88f71c1ddfcc28f4b83fbd26b71f6f9a",
+      "native_outputs_identical_to_headline": true,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.921,
+      "reference_seconds": 3.687,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "666343526fd60380d1455ac6a061d7b138e4a17766da0730d57a14d887960e8d",
+        "usefulpilot": "d1fc8df7252106ea1ebef8d4f9555846053ec0d28624e27208336f54bdbed1f6"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid_outputs",
+          "design": "two_fe_dense",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "dense-aw-requests",
+          "k": 50,
+          "memory": "fast",
+          "n": 983040,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 25,
+        "observed_comparison": "reference_output_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 4,
+      "input_sha256": "f5a31068f7781f7c6aa9c5e0eb89fa77d36986a3340578bc28ab97141a05fd91",
+      "native_outputs_identical_to_headline": true,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.5640000000000001,
+      "reference_seconds": 1.096,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "ad4f5ff4a7c8753a31d9ecef16764ebc81cd95f1480234f3606655d364976c4c",
+        "usefulpilot": "b64cff845b3822692977eef5487cf366fe22f32fa912c334a39d02fd8d02fb24"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "cluster2_saved",
+          "design": "two_fe_dense",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "dense-pw-requests",
+          "k": 6,
+          "memory": "fast",
+          "n": 983040,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "pw"
+        },
+        "index": 29,
+        "observed_comparison": "reference_output_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 5,
+      "input_sha256": "885650f9cefa79377500a8686a1f6a1d88f71c1ddfcc28f4b83fbd26b71f6f9a",
+      "native_outputs_identical_to_headline": true,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 1.062,
+      "reference_seconds": 4.587,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "7519013be9aa58c7860aef59fcb96497d0871b42b66b1e1c152e5f12d234e34d",
+        "usefulpilot": "b4a121b59c4dd24ee7c17c7f1cea31529edbcdc66da308d233910f82aa5c7bfe"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "cluster2_saved",
+          "design": "two_fe_dense",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "dense-pw-requests",
+          "k": 50,
+          "memory": "fast",
+          "n": 983040,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "pw"
+        },
+        "index": 33,
+        "observed_comparison": "reference_output_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 6,
+      "input_sha256": "563a0eda1ff0a0eb6b849e3b084fdd04a6b44f7bf7e303cc91a7e13c931b264d",
+      "native_outputs_identical_to_headline": true,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.439,
+      "reference_seconds": 0.733,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "bf32b872cdaee407289625a0a1d9f5661dce99872984dd2c34ed97ec8070ff48",
+        "usefulpilot": "61d0ad565f2384253e3531eb535a2b86df849e35d005a60c363c7b5e5679ec91"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid_outputs",
+          "design": "two_fe_dense",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "shuffled-aw",
+          "k": 6,
+          "memory": "fast",
+          "n": 983040,
+          "seed": 31415927,
+          "shuffled": true,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 38,
+        "observed_comparison": "reference_output_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 7,
+      "input_sha256": "c8c9a165a94493bcd84e5a541a7547c8f4492b46d4dedafc1a921fe8c61a5015",
+      "native_outputs_identical_to_headline": true,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.969,
+      "reference_seconds": 2.479,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "30af5386a056c6af61c9eddd6b25e3d1f118ad8d9c4f3a41ef7aba76abe6fb73",
+        "usefulpilot": "5d791e43b2f63bde7bcc19077d296c74220fe245daac0a2f17962da1fdc6b998"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid_outputs",
+          "design": "two_fe_dense",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "shuffled-aw",
+          "k": 50,
+          "memory": "fast",
+          "n": 983040,
+          "seed": 31415927,
+          "shuffled": true,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 40,
+        "observed_comparison": "reference_output_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 8,
+      "input_sha256": "c9c46037b9dbfca8055d15645109da8cd7625a17b15c54d515f68db537b02d50",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.213,
+      "reference_seconds": 1.408,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "ed3c59d16d9a8f7ca1d6a93a7ff8420e446cdabf4e439f7c5065ebee2f0de66d",
+        "usefulpilot": "51265e98e4ead73c0bb6e99e7fe34205ce9dc829ad1e0626329f1135eea886f7"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "strong_d2",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 6,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "none",
+          "weight_kind": "none"
+        },
+        "index": 41,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 9,
+      "input_sha256": "af6a391b05c48d4ce2b0b6b00eb479ff3fac627012fe30beb5cab2c47e9f2490",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.231,
+      "reference_seconds": 2.003,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "31050a3f36cc9e3812693a898f8d342bdf65869ddc07dac0d11f69b3d36c1550",
+        "usefulpilot": "88f005d6383158e0725967ae92f70c40b1b584bf45363955e7e1ce0d231fb744"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "strong_d2",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 6,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 42,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 10,
+      "input_sha256": "8c1150c6b2ef09a9b51b3d263894e390f2706c71fe657c16129652dca3f9dd33",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.656,
+      "reference_seconds": 5.533,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "6e929c08bdf97db1184b733b2b00e02c56519141378c29049383c25f88caf79f",
+        "usefulpilot": "e38e614ed3a2b17144311dbbf7f184c7bed5be75e4221d31a910920d16aebafc"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "strong_d2",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 50,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "none",
+          "weight_kind": "none"
+        },
+        "index": 43,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 11,
+      "input_sha256": "0d8910d8363f88e8f6a09b1ef6e764a60649da53d7e35819451cd36b47084ab6",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.6839999999999999,
+      "reference_seconds": 7.395,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "8e26b2da0acea53eb83f56636d2e25602882bcecfe1b38e9d93f8741b3ab25a8",
+        "usefulpilot": "080cec876c6fee682867d77563168e952d4a868e297897249155414f8daa1438"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "strong_d2",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 50,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 44,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 12,
+      "input_sha256": "e820874167c79aeb001ea25267125b5aada95fa21f03235d8d0aa38c1550b29e",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.109,
+      "reference_seconds": 4.164,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "2d66da02b5bd11b5520e0d6017d8fc7d0d8391f2e43a7ee96f1dc595d3889ed0",
+        "usefulpilot": "0def929cbb20a64e736df4689a8fd5e7fc7d581a46af9ae7a4f78b7dffd1dc12"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "two_fe_sparse",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 6,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "none",
+          "weight_kind": "none"
+        },
+        "index": 53,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 13,
+      "input_sha256": "db39fcded603950da1c3c2cb89cd959b5ed9913fc68144adab1b22c99377e1d6",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.125,
+      "reference_seconds": 16.354,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "c4414da19298bab537e3c4310ef8ac9ee0cda064f597addd12985e0ef0b90ef5",
+        "usefulpilot": "6759a7044db81877649b90441a521f49f09976dad597c2c15d59a42a05afa299"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "two_fe_sparse",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 6,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 54,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 14,
+      "input_sha256": "8a5b36bdcadd476ac45af1a5cc94d80209fbca7183764578feca4b84256af266",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.5,
+      "reference_seconds": 13.666,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "cc4ed48c6c758829e688981122e513120106f5b66b25f3951d5945e5db97de40",
+        "usefulpilot": "36d91bec506aebabb97a240d97d7a96c83039ab839a7251418d1ecca04e43a25"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "two_fe_sparse",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 50,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "none",
+          "weight_kind": "none"
+        },
+        "index": 55,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 15,
+      "input_sha256": "1e4df56f345f77e1c63e8445d78082bfb3989b63bb0f1cc66947d9fcb7be84fa",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.5449999999999999,
+      "reference_seconds": 50.2,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "32049e4698d1be0f7e083a64b54e3a7ea99cde6ee937ef5973b16a2cec7422fa",
+        "usefulpilot": "52da00e748b5a68088b4a53872498e51c866e2092620cec9aef3f76886fd25f0"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "two_fe_sparse",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 50,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 56,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "incomplete",
+      "index": 16,
+      "input_sha256": "59b36b1d5cc5773778d1f01b8ba15af8d60cc13eec1088201f4882165648cc54",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 1.248,
+      "reference_seconds": 38.303,
+      "reference_status": "nonconvergence",
+      "result_sha256": {
+        "fixest": "e3c268e82fd0316fa9558adfc139a1b8d852eb5ef1d4493b594d8485e05063df",
+        "usefulpilot": "d3661bea54e50d6f1d0c47d498e237c52ccde4473fe3c436491ba3e058981fa4"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "bottleneck_ring",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 6,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "none",
+          "weight_kind": "none"
+        },
+        "index": 69,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "incomplete",
+      "index": 17,
+      "input_sha256": "cc4ebb0ad232f1b555186a9c690179f2e5747b809c28273d26616a8942e7aac2",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.1929999999999999,
+      "reference_seconds": 38.024,
+      "reference_status": "nonconvergence",
+      "result_sha256": {
+        "fixest": "15d006fabbf507cb0e8acef985b959e3aabcc1040c59df895d3b636d930242a9",
+        "usefulpilot": "2fa3b253cbd0d085fd52fbd890ee67936ee639c97e9705ba7183a7a592cbd2bd"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "bottleneck_ring",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 6,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 70,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "incomplete",
+      "index": 18,
+      "input_sha256": "e99eb12413f7379e186b2ff0bee7eee9f4c1fc52d2cbe4dc0590143d67c2d9eb",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 3.82,
+      "reference_seconds": 153.373,
+      "reference_status": "nonconvergence",
+      "result_sha256": {
+        "fixest": "432940de776ddbc3382e8b9862002ee4d122a2cafdf8cca37626120260f340ef",
+        "usefulpilot": "2528d50916a796a06f9ea58f2b1a9f382c8f45822aa05e52ddb67882d0c328c0"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "bottleneck_ring",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 50,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "none",
+          "weight_kind": "none"
+        },
+        "index": 71,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "incomplete",
+      "index": 19,
+      "input_sha256": "0a3603546e60e0c311152ce6d907ce03cfc97cbf3af2f951448a9e569db64285",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.921,
+      "reference_seconds": 138.913,
+      "reference_status": "nonconvergence",
+      "result_sha256": {
+        "fixest": "d919490ea162d3d481ccaa8b09ec90d8a2bca10e0698f592871c9fbc19a332f4",
+        "usefulpilot": "7178841a9a8d5e8391aa024b337eff6fb575bfd88e895a01d7207eef1fa6d561"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "bottleneck_ring",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 50,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 72,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "incomplete",
+      "index": 20,
+      "input_sha256": "1f9f5ad791c55ee602d8133c11bdf8dc2fb6bc5d3d2e4ab688637e5d85329e51",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.149,
+      "reference_seconds": 38.462,
+      "reference_status": "nonconvergence",
+      "result_sha256": {
+        "fixest": "db8de5ee0e3bf3e4a1ca77f7dfb717ff671f62c93313dd4df9911201d05ddd0c",
+        "usefulpilot": "af263ae9b4984f69d976826a02af68a5e589764fa271b362dfdb1b83f212e275"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "cycle",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 6,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "none",
+          "weight_kind": "none"
+        },
+        "index": 73,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "incomplete",
+      "index": 21,
+      "input_sha256": "09b81ec488014c5d56a2e77295fcada309160eff74496b7369cca6e76fa94086",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.204,
+      "reference_seconds": 38.698,
+      "reference_status": "nonconvergence",
+      "result_sha256": {
+        "fixest": "18a28d152ff8e57916bbba516a69ea9e5f42ab89ff57faba0b936312268faa7b",
+        "usefulpilot": "9f724642941d68f61ba6f24d72d3a1892103010a17b4a7678854b9122d8989a9"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "cycle",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 6,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 74,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "incomplete",
+      "index": 22,
+      "input_sha256": "e4c43e5e5bacae50813d78e8b59a92c884c1502dbd7a712df7a00fdfdde4a32c",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.633,
+      "reference_seconds": 154.098,
+      "reference_status": "nonconvergence",
+      "result_sha256": {
+        "fixest": "292caed4ba0198330ee4004385b77d97d94d5d52873f185507184c8bd7025254",
+        "usefulpilot": "3dfdcd092c1bfa81e7551cc939b537077e427d71c6076b6b1d3d92aef7161229"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "cycle",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 50,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "none",
+          "weight_kind": "none"
+        },
+        "index": 75,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "incomplete",
+      "index": 23,
+      "input_sha256": "32131aaf0213a779f4e52ec147a554190514a3a2cffd0cc36bd73bd03fe43bf8",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.737,
+      "reference_seconds": 156.446,
+      "reference_status": "nonconvergence",
+      "result_sha256": {
+        "fixest": "99ec5d33291d5b572de3f078b7d35f1e65ba75df8354ef535bb890314cac9d0c",
+        "usefulpilot": "9fa77988612d153d04c2dfe8795d50a4cf91987b505af3a1afa482c59042bfea"
+      },
+      "source": {
+        "block": "primary-final-a",
+        "cell": {
+          "case": "iid",
+          "design": "cycle",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "other-graphs",
+          "k": 50,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 8675309,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 76,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 24,
+      "input_sha256": "86c9786fd7d16728f94462ad809fcd9476fed279c57f7ae648d7bf4620bb3df3",
+      "native_outputs_identical_to_headline": true,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.434,
+      "reference_seconds": 0.734,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "07362f084195fef066161088fff9465e22a1f9e02e0b7a3712244aedc8573eb7",
+        "usefulpilot": "bce43e34ca18c48293a27162581fa11cff0379221544c46230ea36c1c546fc80"
+      },
+      "source": {
+        "block": "fresh-holdout-a",
+        "cell": {
+          "case": "iid_outputs",
+          "design": "two_fe_dense",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "fresh-shuffled-aw",
+          "k": 6,
+          "memory": "fast",
+          "n": 983040,
+          "seed": 104729,
+          "shuffled": true,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 4,
+        "observed_comparison": "reference_output_mismatch"
+      }
+    },
+    {
+      "comparison": "pass",
+      "index": 25,
+      "input_sha256": "746a95fb12d0bb54a6fc7642d7d249825aca92af96708cc531a57c41593fb83a",
+      "native_outputs_identical_to_headline": true,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.993,
+      "reference_seconds": 2.32,
+      "reference_status": "pass",
+      "result_sha256": {
+        "fixest": "dfa048c78d9a041e13a7f92009cd8bdc895b344b793593436d9e4026f6d2448f",
+        "usefulpilot": "4bdcc2207760714708622643dc754bac94848b9695c906e0e61f544ae59c8ce8"
+      },
+      "source": {
+        "block": "fresh-holdout-a",
+        "cell": {
+          "case": "iid_outputs",
+          "design": "two_fe_dense",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "fresh-shuffled-aw",
+          "k": 50,
+          "memory": "fast",
+          "n": 983040,
+          "seed": 104729,
+          "shuffled": true,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 6,
+        "observed_comparison": "reference_output_mismatch"
+      }
+    },
+    {
+      "comparison": "incomplete",
+      "index": 26,
+      "input_sha256": "14f6fc21bed945b9dff46661fac515e0f5f55e4f6600f8633a55f23577f9a544",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.197,
+      "reference_seconds": 37.776,
+      "reference_status": "nonconvergence",
+      "result_sha256": {
+        "fixest": "fdfaabd036fd6524130302430c963257a8a5492f9c9b4f67f080f24007d8c4b9",
+        "usefulpilot": "699fbcc3faabbad30d122e9d6afdd74c6872a715ed47ee1b6b794179db4d8e16"
+      },
+      "source": {
+        "block": "fresh-holdout-a",
+        "cell": {
+          "case": "iid",
+          "design": "bottleneck_ring",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "fresh-weak",
+          "k": 6,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 104729,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 14,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    },
+    {
+      "comparison": "incomplete",
+      "index": 27,
+      "input_sha256": "e911f1c3cc1bbb25e13ceef797e0e2fbb73479d44eca1d0317a41741ad8fae31",
+      "native_outputs_identical_to_headline": null,
+      "native_science_identical_to_headline": {
+        "V.csv": true,
+        "b.csv": true,
+        "fereg_certificate.csv": true,
+        "fereg_dof.csv": true,
+        "fereg_fit.csv": true,
+        "fereg_status.csv": true
+      },
+      "native_seconds": 0.198,
+      "reference_seconds": 39.025,
+      "reference_status": "nonconvergence",
+      "result_sha256": {
+        "fixest": "67c4e94cac8f175de4d906012019007b5628ee9cdab5120826a7b77bee3cf101",
+        "usefulpilot": "8f855c0de99263c4ca6b04404151e2480d2e9b3670220402edf1870627d3bde3"
+      },
+      "source": {
+        "block": "fresh-holdout-a",
+        "cell": {
+          "case": "iid",
+          "design": "cycle",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "group": "fresh-weak",
+          "k": 6,
+          "memory": "fast",
+          "n": 245760,
+          "seed": 104729,
+          "shuffled": false,
+          "solver": "auto",
+          "threads": 16,
+          "weight_design": "moderate",
+          "weight_kind": "aw"
+        },
+        "index": 15,
+        "observed_comparison": "reference_science_mismatch"
+      }
+    }
+  ],
+  "startup_failure_preserved": true,
+  "status": "adjudicated_with_explicit_reference_nonconvergence",
+  "successful_native_calls": 28,
+  "tighter_reference_times_replace_headlines": false
+}

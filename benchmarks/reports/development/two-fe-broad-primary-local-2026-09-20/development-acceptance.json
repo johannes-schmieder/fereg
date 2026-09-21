@@ -1,0 +1,61 @@
+{
+  "all_primary_and_holdout_cell_medians_below_one": true,
+  "candidate_plugin": "79141637b5252f27d6f86a721fb04cf5648df6b8d0d82ee26ea7e39b9b94de14",
+  "fixtures": [
+    {
+      "checks": 3,
+      "path": "benchmarks/reports/development/two-fe-useful-pilot-local-2026-09-20/fixtures-usefulpilot.json",
+      "sha256": "d48a1e6e0d8ad02ebea8c46f6df6de2fe9ccdcdeaeeb07a2efd856a073ff506a"
+    },
+    {
+      "checks": 2,
+      "path": "benchmarks/reports/development/two-fe-broad-native-controls-local-2026-09-20/fixtures-usefulpilot-broad.json",
+      "sha256": "1ff45e1fc747d44e018750cf5d058492cfc282ab9e1cabce3798161a24e5fa7b"
+    }
+  ],
+  "holdout_cells": 16,
+  "limitations": [
+    "Default reference output/science mismatches remain; separate tighter accuracy calls include explicit nonconvergence.",
+    "Frequency weights use native baseline and independent literal expansion; ordinary fixest weights are not a frequency-inference comparator.",
+    "The aspirational ten-percent margin is not reached in every cell.",
+    "Seven native control peaks increased within existing forecasts; strict memory proof gaps remain.",
+    "Earlier failed timer checks, exporter attempts and Stata startup crash remain archived.",
+    "The result is local development evidence, not universal, platform or release qualification."
+  ],
+  "native_control_cells": 111,
+  "pairs_per_cell_per_block": 5,
+  "primary_cells": 77,
+  "release_qualification": false,
+  "schema": "broad-two-way-ols-local-development-acceptance-v1",
+  "scope": "Predeclared local Mac ordinary categorical two-FE OLS milestone",
+  "source_evidence": {
+    "holdouts": {
+      "path": "benchmarks/reports/development/two-fe-fresh-holdouts-local-2026-09-20/holdout-audit.json",
+      "sha256": "2d3fa1e46a03a5d907a3c829e8a172e51e405e48ce5919a4616ede2beaa225c6"
+    },
+    "memory_followup": {
+      "path": "benchmarks/reports/development/two-fe-memory-followup-local-2026-09-20/memory-audit.json",
+      "sha256": "a26565c39d576bbc50f0a44a395576efb8111f8bfd64426d3cf09c9d2dddfcf0"
+    },
+    "native_controls": {
+      "path": "benchmarks/reports/development/two-fe-broad-native-controls-local-2026-09-20/control-disposition.json",
+      "sha256": "03d44b642645f9bb3358497c100a4941fe206185de5a4742d277a1280d271b4d"
+    },
+    "primary": {
+      "path": "benchmarks/reports/development/two-fe-broad-primary-local-2026-09-20/primary-audit.json",
+      "sha256": "17686ca16e71e1876116775b1443a8c5cf658e6bdffecdd32b3d4c40f438d8b0"
+    },
+    "reference_accuracy": {
+      "path": "benchmarks/reports/development/two-fe-final-reference-accuracy-local-2026-09-20/accuracy-audit.json",
+      "sha256": "ec2fe7b8abe884f6485525cbd1a109cba4904c3f69d5fdf01294559be1a92e86"
+    },
+    "small_precision": {
+      "path": "benchmarks/reports/development/two-fe-single-command-clock-local-2026-09-20/precision-audit.json",
+      "sha256": "b26bcd48a13d91b49d36cb14c9e70ff945de2ae074b35f62934448554bf4c432"
+    }
+  },
+  "source_files_verified": 516,
+  "status": "complete",
+  "timing_blocks": 2,
+  "universal_performance_claim": false
+}
