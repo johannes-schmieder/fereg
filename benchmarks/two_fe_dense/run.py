@@ -27,7 +27,12 @@ def load(name, path):
 
 breadth = load("dense_breadth", REPO / "benchmarks/one_fe_breadth/run.py")
 profile = load("dense_profile", REPO / "benchmarks/one_fe_profile/run.py")
-CASES = breadth.CASES
+CASES = dict(breadth.CASES)
+# Add the complete inference/output product without changing frozen case names.
+for inference in ('iid', 'robust', 'cluster_fe', 'cluster_cross', 'cluster2_cross', 'cluster2_nested'):
+    vce, r_vce, _ = breadth.CASES[inference]
+    for output in ('none', 'saved', 'all'):
+        CASES[inference + '_' + output] = (vce, r_vce, output)
 GRAPH_DESIGNS = ('two_fe_dense', 'two_fe_sparse', 'strong_d2', 'strong_d3', 'strong_d6',
                  'weak_d3', 'bottleneck_ring', 'cycle', 'disconnected_blocks', 'unbalanced',
                  'weighted_bridge')
@@ -42,7 +47,7 @@ CONTROLLER_FILES = ("common.py", "measure.py", "r_worker.R", "stata_worker.do")
 
 def controller_manifest(folder):
     sources = [Path(__file__).resolve(), REPO / "benchmarks/one_fe_breadth/run.py",
-               REPO / "benchmarks/one_fe_profile/run.py"]
+               REPO / "benchmarks/one_fe_profile/run.py", REPO / "benchmarks/two_fe_dense/small_sparse_oracle.py"]
     sources.extend(REPO / "benchmarks/local_fixest_gap" / name for name in CONTROLLER_FILES)
     return dict(schema="two-fe-controller-v1",
                 sources={str(p.relative_to(REPO)): breadth.sha(p) for p in sources},
@@ -240,6 +245,9 @@ def compare_outputs(a, b, n, mode, record_disagreement=False, effect_count=2):
 
 
 def oracle(data, output, cell):
+    if cell['n'] > 3840:
+        sparse_oracle = load('two_fe_small_sparse_oracle', REPO / 'benchmarks/two_fe_dense/small_sparse_oracle.py')
+        return sparse_oracle.oracle(data, output, cell)
     frame = pd.read_stata(data)
     k,n = cell['k'],len(frame)
     X = frame[[f'x{j}' for j in range(1,k+1)]].to_numpy()
@@ -422,7 +430,13 @@ def main(a):
                     assert result['status']=='pass',output
                     outputs[variant]=output
                     if a.oracle:
-                        checks.append(dict(run=output.name,oracle=oracle(data,output,cell)))
+                        try:
+                            oracle_check = oracle(data,output,cell)
+                        except AssertionError as error:
+                            if not (a.record_reference_science_disagreement and variant == 'fixest'):
+                                raise
+                            oracle_check = dict(status='mismatch', detail=str(error))
+                        checks.append(dict(run=output.name, oracle=oracle_check))
                 for variant in a.variants[1:]:
                     reference,actual=outputs[a.variants[0]],outputs[variant]
                     try:
@@ -439,7 +453,7 @@ def main(a):
                                            a.record_reference_output_disagreement and variant=='fixest', len(a.effects))))
                 write(root/(a.label+'-progress.json'),checks)
     status = 'reference_output_mismatch' if any(c.get('outputs',{}).get('status')=='mismatch' for c in checks) else 'pass'
-    if any(c.get('science',{}).get('status')=='mismatch' for c in checks):
+    if any(c.get('science',{}).get('status')=='mismatch' or c.get('oracle',{}).get('status')=='mismatch' for c in checks):
         status = 'reference_science_mismatch'
     write(root/(a.label+'-complete.json'),dict(status=status,checks=checks))
     print('TWO_FE_DENSE_COMPLETE',a.label,status,flush=True)
@@ -473,7 +487,7 @@ if __name__=='__main__':
     a=p.parse_args()
     if a.effects not in (['g1'], ['g1','g2']):p.error('supported effect controls are g1 or g1 g2')
     if a.oracle and a.effects!=['g1','g2']:p.error('explicit dummy oracle requires two effects')
-    if a.oracle and a.n>3840:p.error('explicit dummy oracle is bounded to small inputs')
+    if a.oracle and a.n>7680:p.error('explicit dummy oracle is bounded to small inputs')
     if (a.weight_kind=='none') != (a.weight_design=='none'):p.error('weight kind and design must both be supplied')
     if a.weight_kind=='fw' and ('fixest' in a.variants or a.weight_design not in ('constant','moderate')):
         p.error('FW uses native comparisons and independent literal-expansion checks; fixest weights are not frequency semantics')

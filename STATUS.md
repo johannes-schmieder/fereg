@@ -69,6 +69,9 @@ audits and four final-artifact licensed fixtures. The [allocation refresh](bench
 binds OLS v39/action v24 to `12de1adb`; repository and source-pin checks pass.
 Constrained whole-fit memory, final blocks and Linux confirmation remain open.
 
+The [archived graph pilots](benchmarks/reports/development/two-fe-science-pilots-local-2026-09-21/README.md)
+retain 231 application calls, both controller versions and all failed attempts.
+Archive integrity, source-hash reconstruction and portable-path checks pass.
 The expanded graph pilot has attempted 44 small clustered/full-output cells at
 `target/g21`, using candidate recovery2 and the unchanged milestone baseline.
 Forty cells complete native oracle/comparison checks; four weak_d3 inputs fail
