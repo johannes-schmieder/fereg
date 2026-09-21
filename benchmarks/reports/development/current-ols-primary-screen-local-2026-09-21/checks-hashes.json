@@ -1,0 +1,30 @@
+{
+  "current-primary-score1.json": {
+    "original_sha256": "25dd3bca311f406000a6e4e8b822c2cde443ad2b0e073c246ef93da6704b337e",
+    "portable_sha256": "25dd3bca311f406000a6e4e8b822c2cde443ad2b0e073c246ef93da6704b337e"
+  },
+  "current-primary-score1.txt": {
+    "original_sha256": "e9616d8607fd6ae085584c3678e42f900522f56504b353c1d4af515eb6c30695",
+    "portable_sha256": "e9616d8607fd6ae085584c3678e42f900522f56504b353c1d4af515eb6c30695"
+  },
+  "current-primary-inference1.json": {
+    "original_sha256": "5f59c855b6489e12e602ef78e718e02ba1c085e5eb95c687ae52698d1caadc67",
+    "portable_sha256": "5f59c855b6489e12e602ef78e718e02ba1c085e5eb95c687ae52698d1caadc67"
+  },
+  "current-primary-inference1.txt": {
+    "original_sha256": "cd6056c6848337e680da024b346f0c49406594c6922837d71e72bf31982e9793",
+    "portable_sha256": "cd6056c6848337e680da024b346f0c49406594c6922837d71e72bf31982e9793"
+  },
+  "current-primary-outputs1.txt": {
+    "original_sha256": "cedb2a521bdf60e9656e803ccf9690c8b426e670f64cb3485b965f484d496f65",
+    "portable_sha256": "cedb2a521bdf60e9656e803ccf9690c8b426e670f64cb3485b965f484d496f65"
+  },
+  "current-primary-screen1.txt": {
+    "original_sha256": "ea6f7d5eb80631493f3912ae847ec6527715f05660f00eb34b2a88ff00d9a579",
+    "portable_sha256": "ea6f7d5eb80631493f3912ae847ec6527715f05660f00eb34b2a88ff00d9a579"
+  },
+  "current-primary-auditor-tests1.txt": {
+    "original_sha256": "58a56a5b7845f391e41f3b158de5dfbcddc894dfe65f2fb3805d7927d5ab98a0",
+    "portable_sha256": "58a56a5b7845f391e41f3b158de5dfbcddc894dfe65f2fb3805d7927d5ab98a0"
+  }
+}

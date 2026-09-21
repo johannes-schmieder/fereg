@@ -368,11 +368,75 @@ fresh validation and Linux evidence remain required before adoption.
 The archive verifies 8,505 stored entries, 192 omitted local output arrays
 and both complete source reconstructions, including the added detector module.
 
-Current resume point: measure the unchanged 77 primary cells against fixest on
-the current in1 kernel before final candidate freeze. Complete current-candidate science,
+The [current in1 primary screen](benchmarks/reports/development/current-ols-primary-screen-local-2026-09-21/README.md)
+at `target/g21pri1` completes all 77 unchanged
+cells and 462 applications, with three pairs per cell and clean isolation.
+`current-primary-score1.json` reports 77 wins; 75 meet the ten-percent target.
+The two narrower margins are unbalanced K6/AW (0.92208) and shuffled K5/unit
+(0.91892). All 77 independent native inference checks, 231 exact within-arm
+repeat checks and 24 candidate output audits pass. The reference audit gives
+61 passes and sixteen discrepancies, all preserved. The captured controller is
+`target/ols-next-20260921/current-primary-screen1.py`; these are training
+screens, not either final five-pair block. The portable archive verifies
+8,457 stored entries, 48 omitted local arrays and the complete in1 source;
+the separate privacy scan passes 8,467 members. Two earlier archive-checker
+failures involving the checker's own path-pattern literals remain preserved in
+`failed-current-primary-archive1` and `failed-current-primary-archive2`.
+
+The graph auditor now supports one-native primary and two-native paired
+inventories, preserving separate reference discrepancies. It also checks
+per-arm repeat completeness so a missing native run cannot be offset by an
+extra run in the other arm. Two focused fixtures pass, including missing,
+extra, failed and altered native exports. Earlier auditor sources are archived.
+
+ADR 0095 proposes a narrower implementation of the serial LSMR window: only
+the original-input wide public serial Schur fallback with retained products
+selects it. The same private policy reaches admission and transport, including
+preconditioner fallback. Generic, shared, explicit and out-of-envelope calls
+retain their default policy. The first `ow1` build failed on two legacy
+memory-estimator callers; its source hashes and build errors are preserved in
+`failed-ow1-source1.json` and the original logs. The corrected `ow2` build keeps
+their original interface. Its build and four transport fixtures pass, but the
+new memory fixture incorrectly required a strict peak decrease even when
+unchanged preconditioner construction dominates. That failed assertion is
+preserved. The corrected fixture checks exact construction cost in that case;
+it changes no production memory estimate.
+
+A further narrow-residual draft reuses existing tiled numeric subtraction only
+for public automatic one-/two-FE overlap with six or seven model columns.
+The earlier per-column residual streaming remains elsewhere. The combined
+`nrt2` plugin is
+`f57e1a4b50aa905c54759d452db211cec5db3288c0d3cdce5075b2e83cb5c28a`.
+Its build/ABI, three narrow arithmetic/full-fit fixtures, four transport
+fixtures, corrected memory fixture and forced-cap independent MAP fixture pass.
+The captured ow2 source predates the narrow patch. A rejected `nr1` artifact-name
+collision and all earlier build/test failures remain preserved.
+
+The six-call constrained diagnostic `target/g21owmem1` completes. At 1 GB
+usable, nrt2's unit ring K50/T1/full-output fit passes, with 523,613,047 tracked
+allocation bytes and passing independent inference/output checks; the in1
+comparison rejects with r(909). Both weighted 1 GB calls and both nrt2 300 MB
+calls reject with r(909). These are admission diagnostics, not timing evidence
+or a failure-transaction proof. The visible-error follow-up at `g21owmem3`
+identifies the existing joint automatic memory preflight for the 1 GB weighted
+rejection. Its preceding controller-only assertion failure at `g21owmem2`
+is preserved. Both weighted 1.5 GB calls time out at ninety seconds. The
+follow-up completes all four attempts; this scoped change does not resolve
+the weighted constrained case.
+
+The thirteen-cell `ols-window-screen2.py` and fourteen-cell
+`narrow-residual-screen1.py` controllers are prepared, not executed. They
+separate the serial memory change from narrow numeric subtraction using
+out-of-envelope controls and distinct captured artifacts.
+
+Current resume point: run the two isolated paired screens now that independent
+auditing, builds and constrained diagnostics have finished.
+Complete current-candidate science,
 primary/holdout final blocks, constrained whole-fit checks and focused Linux
 runs before closing the milestone. The initial norm handoff is committed at
-`4708834b`; four earlier core graph/fit drafts remain modified and unaccepted. Keep old
+`4708834b`; cycle experiment evidence is committed at `9e4daec9`. Six core files
+remain modified, including the tested but unaccepted window draft and earlier unaccepted
+graph kernels. Keep old
 routes where cross-platform confirmation is missing; do not inspect fresh
 routing seeds while choosing thresholds. Serial weighted slope losses remain.
 

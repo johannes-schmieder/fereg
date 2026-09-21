@@ -14,18 +14,27 @@ def audit(root, label, output):
     assert not output.exists()
     plan_path = root / (label + '-plan.json'); plan = read(plan_path)
     progress_path = root / (label + '-progress.json'); progress = read(progress_path)
+    repetitions = plan['repeats'] if 'repeats' in plan else plan['repetitions']
+    assert repetitions > 0
+    planned_variants = plan.get('variants')
+    if planned_variants is None:
+        planned_variants = [plan['baseline'], plan['candidate'], 'fixest']
+    assert len(set(planned_variants)) == len(planned_variants)
+    native_variants = [v for v in planned_variants if v != 'fixest']
+    assert native_variants
     records, oracles = [], {}
     for index, cell in enumerate(plan['cells']):
         attempt = progress[index] if index < len(progress) else None
-        record = dict(index=index, cell=cell, attempts=[], repeated_native_exports=[], status='not_attempted')
+        record = dict(index=index, cell=cell, attempts=[], application_counts={},
+                      repeated_native_exports=[], status='not_attempted')
         if not attempt:
             records.append(record); continue
         assert attempt['cell'] == cell and attempt['index'] == index
-        reference_planned = cell['weight_kind'] != 'fw' and ('variants' not in plan or 'fixest' in plan['variants'])
-        variants = [plan['baseline'], plan['candidate']] + (['fixest'] if reference_planned else [])
+        variants = [v for v in planned_variants if v != 'fixest' or cell['weight_kind'] != 'fw']
         for variant in variants:
             runs = sorted((root / 'runs').glob(f"{attempt['label']}-*-{variant}/result.json"))
             passing = [p for p in runs if read(p)['status'] == 'pass']
+            record['application_counts'][variant] = dict(planned=repetitions, attempted=len(runs), passing=len(passing))
             if not passing:
                 record['attempts'].append(dict(variant=variant, status='no_successful_application'))
                 continue
@@ -45,14 +54,17 @@ def audit(root, label, output):
                     record['repeated_native_exports'].append(dict(run=path.parent.name, reference=first.parent.name,
                         checks=equal, status='pass' if all(equal.values()) else 'mismatch'))
         native = [r for r in record['attempts'] if r['variant'] != 'fixest']
-        record['status'] = 'native_pass' if len(native) == 2 and all(r['status'] == 'pass' for r in native) \
-            and len(record['repeated_native_exports']) == 2 * plan['repeats'] \
+        record['status'] = 'native_pass' if len(native) == len(native_variants) and all(r['status'] == 'pass' for r in native) \
+            and all(record['application_counts'][v]['attempted'] == record['application_counts'][v]['passing'] == repetitions
+                    for v in native_variants) \
+            and len(record['repeated_native_exports']) == len(native_variants) * repetitions \
             and all(r['status'] == 'pass' for r in record['repeated_native_exports']) else 'native_incomplete_or_mismatch'
         records.append(record)
         print(index, record['status'], [r['status'] for r in record['attempts']], flush=True)
-        output.write_text(json.dumps(dict(schema='expanded-graph-independent-audit-v1',
+        output.write_text(json.dumps(dict(schema='expanded-graph-independent-audit-v2',
             plan_sha256=sha(plan_path), progress_sha256=sha(progress_path),
             oracle_source_sha256=sha(Path(graph_oracle.__file__)), controller_sha256=sha(Path(__file__)),
+            native_variants=native_variants, repetitions=repetitions,
             complete=False, records=records), indent=2, sort_keys=True) + '\n')
     receipt = read(output); receipt.update(complete=True, records=records,
         planned=len(plan['cells']), native_complete=sum(r['status'] == 'native_pass' for r in records))
