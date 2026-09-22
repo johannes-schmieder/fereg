@@ -10,7 +10,43 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Local continuation closed: single-residual PPML checkpoint accepted — 2026-09-22
+## Narrow PPML checkpoints accepted; broader work continues — 2026-09-22
+
+The [narrow-batch milestone](benchmarks/reports/development/ppml-narrow-batch-local-2026-09-22/README.md)
+and ADR 0107 extend admitted two-FE checkpoint Schur to 2–15 actual RHSs.
+Tiny batches probe all available columns; OLS retains its original selection.
+Current weights and numerical state are freshly rebuilt, and initial/residual,
+score and final-Hessian certificates remain mandatory. There is no persistent
+cache or new memory bank. `batch1` is `af38bce7` plus the archived borrowed-map
+patch and new oracle fixture; all 527 captured inputs match the working source.
+Plugin SHA-256:
+`a191585c5a156809f8a572bbce37d948b2ede1e0ca8579a85f15e4cb32547d14`.
+
+Selected dense/weak/disconnected/unbalanced PPML paired gains are about 10–34%;
+serial and PW/cluster controls gain 37% and 19%. Screen degree-six improves
+296→232 ms, dense K4 228→197 ms. Fresh sparse loses about 1.4%; excluded paths
+are mostly flat with small losses retained. Seven of nine pairwise-comparable
+rows still lose to stock fixest. All 129 headline attempts, 51 native scientific
+pairs and 27 direct candidate/stock checks pass; 18 native pairs are byte-identical.
+Max beta/V differences are 2.10e−16/1.01e−17. Validation passes 391 distinct Rust
+tests, actual-plugin ABI containment and four licensed fixtures. The new cutoff
+fixture proves actual narrow admissions and independent dummy-Poisson/Hessian
+sandwich agreement for K1/2/6/12, unit/FW/PW, T1/T4 and saved means.
+
+Tracked peak differences span −15.92 to +4.93 MB, with unchanged admission;
+sampled RSS and its limitations are recorded. Static allocation-source drift
+still fails and was not regenerated. The 4,367-entry evidence archive verifies
+all hashes; an initial archive failure on Finder metadata is recorded separately.
+
+This bounded narrow-checkpoint experiment is accepted and closed. Broader work
+continues with the remaining three-FE upstream solve; do not chase the small
+sparse probe loss or tune around a near-null tiny-batch RHS. Generated/factor,
+broad saved-output and constrained-memory performance coverage remains
+incomplete. All deferred issues below stay open; SCC authentication must not
+be retried without renewed access. No qualification, historical win transfer,
+stopped campaign, push or release is claimed.
+
+## Single-residual PPML checkpoint accepted — 2026-09-22
 
 The [single-residual milestone](benchmarks/reports/development/ppml-single-residual-local-2026-09-22/README.md)
 and ADR 0106 extend the existing current-weight Schur probe to one actual RHS
@@ -41,7 +77,8 @@ historical aggregate transfer, push or release is claimed. All deferred issues
 below remain open, including static allocation-source drift, and serial-slope
 tuning remains closed.
 
-**Recommended next subsystem:** narrow multi-RHS PPML canonical checkpoints.
+The later narrow-batch milestone above supersedes this recommendation:
+narrow multi-RHS PPML canonical checkpoints.
 The degree-six diagnostic still spends about 38 ms on the initial 12-RHS frame
 and 45 ms on the strict 11-RHS frame. Study current-weight batch geometry and
 assembly separately before considering their guard; do not reopen the accepted

@@ -1876,18 +1876,22 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         if !self.checkpoint_lsmr_enabled
             || self.two_fe_pcg.is_none()
             || self.design.nobs() < PARALLEL_PROJECTION_MIN_ROWS
-            || !(values.ncols() == 1 || (16..=64).contains(&values.ncols()))
+            || !(1..=64).contains(&values.ncols())
             || config.max_iterations <= OLS_SCHUR_PROBE_ITERATIONS
         {
             return Ok((None, cost));
         }
         let started = Instant::now();
+        // Tiny batches probe every RHS. Keep the established three-column
+        // selection for larger batches and the separate OLS entry point.
+        let columns = [0, 1, if values.ncols() == 3 { 2 } else { values.ncols() / 2 }];
         cost.contraction = schur_probe_reusing(
             &self.design,
             weights,
             values,
             self.two_fe_pcg.as_mut().unwrap(),
             self.max_rhs,
+            &columns[..values.ncols().min(3)],
         )?;
         cost.probe_iterations = OLS_SCHUR_PROBE_ITERATIONS;
         cost.setup_seconds = started.elapsed().as_secs_f64();
@@ -9122,7 +9126,8 @@ pub(crate) fn schur_ols_probe_with_workspace(
     let mut reservation = SystemWorkspaceReservation;
     let mut graph = TwoFePcgWorkspace::new(design, 3, &mut reservation)?;
     let peak = SolverWorkspacePeak::from_bytes(graph.capacity_elements() as u128 * 8)?;
-    let contraction = schur_probe_reusing(design, weights, values, &mut graph, 3)?;
+    let columns = [0, 1, values.ncols() / 2];
+    let contraction = schur_probe_reusing(design, weights, values, &mut graph, 3, &columns)?;
     Ok((contraction, peak))
 }
 
@@ -9132,13 +9137,13 @@ fn schur_probe_reusing(
     values: &DenseMatrix,
     graph: &mut TwoFePcgWorkspace,
     stride: usize,
+    columns: &[usize],
 ) -> Result<f64> {
-    // A checkpoint residual has one actual RHS. Probe only available columns;
-    // wider OLS/checkpoint callers retain the same three-column arithmetic.
-    let probe_rhs = values.ncols().min(3);
+    let probe_rhs = columns.len();
     if design.effects().len() != 2
         || design.nobs() != values.nrows()
-        || probe_rhs == 0
+        || !(1..=3).contains(&probe_rhs)
+        || columns.iter().any(|&column| column >= values.ncols())
         || stride < probe_rhs
         || graph.left_rhs.len() != graph.left_weights.len().saturating_mul(stride)
         || graph.residual.len() != graph.right_weights.len().saturating_mul(stride)
@@ -9152,7 +9157,6 @@ fn schur_probe_reusing(
     graph.operator.fill(0.0);
     let left = &design.effects()[graph.left_effect];
     let right = &design.effects()[graph.right_effect];
-    let columns = [0, 1.min(values.ncols() - 1), values.ncols() / 2];
     graph
         .left_rhs
         .par_chunks_mut(stride)
@@ -9164,7 +9168,7 @@ fn schur_probe_reusing(
             for &row in left.level_index().checked_members(level)? {
                 let weight = weights.normalized(row);
                 *total += weight;
-                for (rhs, &column) in columns[..probe_rhs].iter().enumerate() {
+                for (rhs, &column) in columns.iter().enumerate() {
                     sum[rhs] += weight * values[(row, column)];
                 }
             }
@@ -9186,7 +9190,7 @@ fn schur_probe_reusing(
             for &row in members {
                 let weight = weights.normalized(row);
                 *total += weight;
-                for (rhs, &column) in columns[..probe_rhs].iter().enumerate() {
+                for (rhs, &column) in columns.iter().enumerate() {
                     sum[rhs] += weight * values[(row, column)];
                 }
             }
@@ -9919,7 +9923,7 @@ mod tests {
         assert_eq!(copy, values);
         assert_ne!(copy.as_slice().as_ptr(), values.as_slice().as_ptr());
         for rows in [16384, 122880, 983040] {
-            for rhs in [1, 16, 17, 51, 64] {
+            for rhs in [1, 2, 3, 8, 15, 16, 17, 51, 64] {
                 for threads in [1, 4, 16] {
                     let estimate =
                         estimate_fe_solver_memory(rows, rhs, &[rows / 4, 128], threads, Some(4))
@@ -9932,7 +9936,7 @@ mod tests {
 
     #[test]
     fn checkpoint_schur_reuses_probe_and_falls_back_on_untouched_inputs() {
-        for width in [1, 17] {
+        for width in [1, 2, 3, 8, 15, 16, 17] {
             check_checkpoint_schur_width(width);
         }
     }
@@ -9985,8 +9989,14 @@ mod tests {
                         BorrowedMapWeights::Provided(&scaled),
                     ] {
                         let weights = validate_weights(raw, rows).unwrap();
-                        let probe_values = if width == 1 {
-                            DenseMatrix::from_columns(&[columns[0].clone(), columns[0].clone(), columns[0].clone()]).unwrap()
+                        let probe_columns = [0, 1, if width == 3 { 2 } else { width / 2 }];
+                        // The original OLS four-column entry probes 0, 1, 2.
+                        // Duplicated final columns independently represent a
+                        // complete tiny checkpoint batch without missing RHS 2.
+                        let probe_values = if width <= 3 {
+                            DenseMatrix::from_columns(&[columns[0].clone(),
+                                columns[1.min(width-1)].clone(), columns[width-1].clone(),
+                                columns[0].clone()]).unwrap()
                         } else { values.clone() };
                         let expected_probe = schur_ols_probe(&design(), raw, &probe_values).unwrap();
                         let graph = reusable.two_fe_pcg.as_mut().unwrap();
@@ -10000,9 +10010,14 @@ mod tests {
                         ] {
                             storage.fill(f64::NAN);
                         }
+                        for invalid in [&[][..], &[width][..], &[0, 1, 2, 3][..]] {
+                            assert!(schur_probe_reusing(&design(), weights, &values, graph, 64, invalid).is_err());
+                            assert!(graph.operator.iter().all(|value| value.is_nan()));
+                        }
                         for _ in 0..2 {
                             assert_eq!(
-                                schur_probe_reusing(&design(), weights, &values, graph, 64)
+                                schur_probe_reusing(&design(), weights, &values, graph, 64,
+                                    &probe_columns[..width.min(3)])
                                     .unwrap(),
                                 expected_probe
                             );
@@ -10146,18 +10161,21 @@ mod tests {
         assert_eq!(cost.solve_seconds, 0.0);
         assert!(!cost.rejected);
         assert_eq!(reusable.capacities(), capacities);
-        let single = DenseMatrix::from_columns(&[(0..rows)
-            .map(|row| values[(row, 0)]).collect::<Vec<_>>()]).unwrap();
-        let (result, cost) = reusable.try_checkpoint_schur(
-            validate_weights(BorrowedMapWeights::Provided(&weights), rows).unwrap(),
-            &single, config(),
-        ).unwrap();
-        assert!(result.is_none());
-        assert!(cost.contraction > OLS_SCHUR_MAX_CONTRACTION);
-        assert_eq!(cost.iterations, 0);
-        assert_eq!(cost.solve_seconds, 0.0);
-        assert_eq!(reusable.capacities(), capacities);
-        for width in [2, 15] {
+        for width in [1, 2, 3, 8, 15] {
+            let narrow = DenseMatrix::from_columns(&(0..width).map(|column|
+                (0..rows).map(|row| values[(row, column)]).collect::<Vec<_>>()
+            ).collect::<Vec<_>>()).unwrap();
+            let (result, cost) = reusable.try_checkpoint_schur(
+                validate_weights(BorrowedMapWeights::Provided(&weights), rows).unwrap(),
+                &narrow, config(),
+            ).unwrap();
+            assert!(result.is_none());
+            assert!(cost.contraction > OLS_SCHUR_MAX_CONTRACTION);
+            assert_eq!(cost.iterations, 0);
+            assert_eq!(cost.solve_seconds, 0.0);
+            assert_eq!(reusable.capacities(), capacities);
+        }
+        for width in [0, 65] {
             let narrow = DenseMatrix::zeros(rows, width).unwrap();
             let (result, cost) = reusable
                 .try_checkpoint_schur(

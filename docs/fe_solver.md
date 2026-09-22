@@ -357,13 +357,15 @@ normalization coordinate cannot force another IRLS frame, and the canonical
 strict state replaces it before publication.
 
 On already admitted two-FE checkpoint-LSMR sessions, the retained Schur
-workspace may accelerate one or 16–64 actual RHSs at N>=16,384. The eight-step
-current-weight probe uses up to three available columns and requires
+workspace may accelerate 1–64 actual RHSs at N>=16,384. The eight-step
+current-weight probe uses every column for batches of up to three RHSs and
+the established three-column selection for larger batches. It requires
 contraction at most 0.01. A bounded candidate must pass the unchanged fresh
 canonical certificate; rejection resumes LSMR on untouched inputs. The
-single-RHS extension adds no persistent state or changing-weight cache, and
-2–15 RHSs retain their prior route. See
-[ADR 0106](adr/0106-single-rhs-ppml-schur-checkpoint.md).
+single- and narrow-batch extensions add no persistent state or changing-weight
+cache. Public OLS retains its original probe selection. See
+[ADR 0106](adr/0106-single-rhs-ppml-schur-checkpoint.md) and
+[ADR 0107](adr/0107-narrow-ppml-schur-checkpoints.md).
 
 The reusable categorical MAP CG accelerator forms its symmetric `I-S` action
 by summing weighted FE group contributions. It does not obtain that action
