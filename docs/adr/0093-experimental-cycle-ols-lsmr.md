@@ -34,6 +34,15 @@ uses automatic LSMR's existing recurrence tolerance, memory admission, budgeted
 continuation and fresh numerical certificates. Selecting this first route is
 not reported as a solver failure or fallback.
 
+Descriptor construction must reserve its source, validation and effect tables
+against the same joint budget and charge their actual capacities. The retained
+descriptor is deducted before checking the existing direct-LSMR envelope and
+before allocating the graph probe. A selected fit reuses that descriptor and
+charges its retained bytes during each projection. Descriptor allocation or
+LSMR admission rejection preserves the old route. Restrict this experiment to
+ordinary sources without interaction partitions and matching requested and
+installed worker counts; do not infer broader admission from the graph alone.
+
 ## Motivation and evidence boundary
 
 The [direct-LSMR diagnostic](../../benchmarks/reports/development/direct-ols-lsmr-local-2026-09-21/README.md)
@@ -53,3 +62,14 @@ controls; freeze the candidate; then run untouched routing validation seeds
 and the planned Linux confirmations. Preserve the old route wherever the
 required cross-platform evidence is missing. This proposal does not accept
 the rule, close the broader optimization milestone, or change public syntax.
+
+The [memory and training checkpoint](../../benchmarks/reports/development/cycle-routing-memory-local-2026-09-21/README.md)
+implements this accounting in captured cy2 source. Six focused release tests,
+414 training calls and 168 automatic/explicit route calls pass. Selected-cycle
+paired ratios versus the current candidate are 0.5017–0.7325; excluded controls
+remain within 1.05 with exact scientific results. Automatic routing is within
+4.05% of the faster valid explicit route in every measured training cell.
+Eighteen constrained attempts include eight independently accepted fits, two
+allocation rejections and eight timeouts. The latter remain failures. Both
+fresh validation seeds and Linux confirmation are still required; these
+results do not adopt the route.

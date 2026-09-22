@@ -522,8 +522,29 @@ privacy passes 2,120 members. This remains an experiment. The two changed slope
 files are restored exactly to owf1, verified against both captured identities;
 `srp1-checkout-restoration1.json` records the local hashes. Serial losses remain.
 
-Current resume point: strengthen the experimental cycle route's joint descriptor
-and LSMR memory admission, then freeze it before fresh routing validation.
+The [cycle memory and routing checkpoint](benchmarks/reports/development/cycle-routing-memory-local-2026-09-21/README.md)
+captures cy2 plugin `8a16cb9c4157f1f0dc2de60b6fcfb2a95e0c7794d81f1e1b914dc3b28369dff6`.
+It budgets descriptor construction, checks LSMR admission before selection and
+reuses the validated descriptor with retained-byte accounting. Six focused
+release tests and the ABI fixture pass. The 46-cell three-pair screen completes
+414 clean calls, 138 independent inference checks, 414 exact within-arm repeats,
+288 saved-output audits and 138 routing comparisons. All 28 selected cells
+improve, with paired cy2/owf1 ratios 0.5017–0.7325. All 18 excluded controls
+retain exact science and solver reports and stay within 1.05; worst 1.0254.
+The 28-cell auto/explicit LSMR comparison completes 168 clean, independently
+accepted calls. Auto is fastest in 23 cells and within 4.05% in the other five.
+The 18 constrained attempts preserve two allocation rejections and eight
+60-second timeouts. All eight completed fits pass independent inference;
+four saved-output fits pass reconstruction. Two tight-budget no-output pairs
+retain the old route with exact numerical exports. The selected cycle route
+is admitted for unit/T1 saved effects at 3 GB and AW/T16 at 12 GB. The existing
+conservative threaded memory model still excludes it at 3 GB; it is unchanged.
+The 600-attempt archive verifies 18,722 entries, 376 omitted arrays and three
+source trees; privacy passes 18,743 members. A verifier-only privacy failure
+and its correction are preserved. No source, tolerance or measurement was
+changed during these comparisons. The production core still excludes cy2.
+
+Current resume point: freeze cy2 before the two fresh routing validation blocks.
 Focused Linux confirmation remains blocked on SSH renewal. The final primary/holdout
 archive is committed at `f8610cee` and current controls at `1439c23c`. Focused Linux confirmation
 and routing validation remain required before closing the milestone. The

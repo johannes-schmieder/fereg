@@ -1,0 +1,63 @@
+[
+  {
+    "completion": {
+      "attempted": 46,
+      "plan_sha256": "414510586d4c6bfb5626583a8ca5da4112163ece6703e13c5cfa82c29d5e2a6b",
+      "planned": 46,
+      "progress_sha256": "15bcb46d9108b634657071be562e19dc10d78f27f456abf56fa0d43fd0cead12",
+      "status": "attempts_complete"
+    },
+    "label": "screen",
+    "plan_sha256": "414510586d4c6bfb5626583a8ca5da4112163ece6703e13c5cfa82c29d5e2a6b",
+    "root": "g21cy2"
+  },
+  {
+    "completion": {
+      "attempted": 8,
+      "plan_sha256": "bee4d989bc7ce63be10832b7a830d8708d8109d617e6be64e7a871a2b09e77f3",
+      "planned": 8,
+      "progress_sha256": "d9b182a5c54c0ba017437edb371ab9249747d564e26d7c4e95dd3fd868e1110a",
+      "status": "attempts_complete"
+    },
+    "label": "diagnostic",
+    "plan_sha256": "bee4d989bc7ce63be10832b7a830d8708d8109d617e6be64e7a871a2b09e77f3",
+    "root": "g21cymem1"
+  },
+  {
+    "completion": {
+      "attempted": 8,
+      "plan_sha256": "9afa6893dd1e615709139d8b2dbf81ae4ad8636e2f9bc2366b4f1744c913cc65",
+      "planned": 8,
+      "progress_sha256": "bf3d1ac88b5d283f8dc0e76900911ab736cc9472c19c8b82c6923c95a4da5eb8",
+      "status": "attempts_complete"
+    },
+    "label": "diagnostic",
+    "plan_sha256": "9afa6893dd1e615709139d8b2dbf81ae4ad8636e2f9bc2366b4f1744c913cc65",
+    "root": "g21cymem2"
+  },
+  {
+    "completion": {
+      "attempted": 2,
+      "plan_sha256": "96d49b51855a5daeb28dd86e577341d3a807c928533fcad62006a0cc382d622f",
+      "planned": 2,
+      "progress_sha256": "546b754b6a1b6860a49010ad370cec72788e54eac30cac46d9a4eeb39b097130",
+      "status": "attempts_complete"
+    },
+    "label": "diagnostic",
+    "plan_sha256": "96d49b51855a5daeb28dd86e577341d3a807c928533fcad62006a0cc382d622f",
+    "root": "g21cymem3"
+  },
+  {
+    "completion": {
+      "attempted": 168,
+      "plan_sha256": "7d81523aa5c903a72532915ea7d193d6952868c25e707d6929f4e5e26848f7b9",
+      "planned": 168,
+      "process_failures": 0,
+      "progress_sha256": "4d4ad8e139db86199a9aa7cbbb576a2292d012d7ba8d5d578614bdbe8b7dce81",
+      "status": "attempts_complete"
+    },
+    "label": "route",
+    "plan_sha256": "7d81523aa5c903a72532915ea7d193d6952868c25e707d6929f4e5e26848f7b9",
+    "root": "g21cyfast1"
+  }
+]

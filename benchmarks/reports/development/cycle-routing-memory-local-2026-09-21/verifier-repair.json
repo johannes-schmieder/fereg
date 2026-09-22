@@ -1,0 +1,16 @@
+{
+  "reason": "The first privacy scan matched literal personal home paths in the verifier negative assertions. Replace them with generic home-root checks; keep the initial integrity receipt and preserve the failed checker evidence.",
+  "files": {
+    "original-verifier.py.txt": {
+      "original_sha256": "c4e7fe7b15636935f5934e245cfd1619d824f16e4cf596206ff9f47e14e5fec6",
+      "portable_sha256": "72b2c9f44b4d479dc831d4e9f407a1522da1121843e8c6d0c4261b26d158a870"
+    },
+    "original-privacy-failure.txt": {
+      "original_sha256": "457eef49831e0a04e134208e6d3ea3476083348320ceb07ae92f81ff649f9778",
+      "portable_sha256": "8f2dba5e9308927f8618a612228ac37f2cddf74365f8c5aeacdbb1e0f4ed2145"
+    }
+  },
+  "corrected_verifier_sha256": "43f9fdc109a96c34c160f9944cc525c38ba15a150e7850d5bdb411562b4de2ba",
+  "archive_sha256": "c1337af63a9c2d061f41dfe7dddfd3b0cdbe332dba8d47a2d585cfd85cd1a942",
+  "current_integrity_receipt": "integrity2.json"
+}
