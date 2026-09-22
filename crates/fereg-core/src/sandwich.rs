@@ -516,10 +516,17 @@ where
                 for left in 0..dimension {
                     let production_left = production_score[left];
                     let certificate_left = certificate_score[left];
-                    for right in left..dimension {
-                        let position = left * dimension + right;
-                        production_meat[position] += production_left * production_score[right];
-                        certificate_meat[position] += certificate_score[right] * certificate_left;
+                    let range = left * dimension + left..(left + 1) * dimension;
+                    // Contiguous triangle rows expose independent coordinates to
+                    // vectorization while preserving each sum's observation order.
+                    for (((production, certificate), &production_right), &certificate_right) in
+                        production_meat[range.clone()].iter_mut()
+                            .zip(&mut certificate_meat[range])
+                            .zip(&production_score[left..])
+                            .zip(&certificate_score[left..])
+                    {
+                        *production += production_left * production_right;
+                        *certificate += certificate_right * certificate_left;
                     }
                 }
             }
@@ -1952,6 +1959,47 @@ mod tests {
             .expect("shared meats");
         assert_eq!(shared.production, legacy_production);
         assert_eq!(shared.certificate, legacy_certificate);
+    }
+
+    #[test]
+    fn dense_triangle_rows_preserve_both_independent_meats_across_widths_and_teams() {
+        for threads in [1, 4] {
+            let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+            pool.install(|| {
+                for dimension in [1, 2, 3, 6, 7, 10, 11, 16, 31, 50, 65] {
+                    let nrows = 257;
+                    let values: Vec<f64> = (0..nrows * dimension).map(|index| {
+                        ((index * 37 % 101) as f64 - 50.0) / 17.0
+                            * 2.0_f64.powi((index % 13) as i32 - 6)
+                    }).collect();
+                    let production: Vec<f64> = (0..nrows).map(|row| {
+                        ((row * 19 % 97) as f64 - 48.0) / 13.0
+                    }).collect();
+                    let certificate: Vec<f64> = (0..nrows).map(|row| {
+                        ((row * 23 % 89) as f64 - 44.0) / 11.0
+                    }).collect();
+                    for rows_per_block in [1, 32, 512] {
+                        let policy = FixedBlockReductionPolicy {
+                            rows_per_block,
+                            maximum_blocks: 16,
+                            partial_budget_bytes: 1 << 20,
+                        };
+                        let expected = legacy_dense_fixed_block_meats(
+                            &values, nrows, dimension, &production, &certificate, policy,
+                        );
+                        let actual = reduce_dense_score_meats(
+                            RowMajorSandwichDesign::new(&values, nrows, dimension).unwrap(),
+                            SliceSandwichScoreMultiplier::new(&production, &certificate).unwrap(),
+                            policy, &mut Reservation,
+                        ).unwrap();
+                        assert_eq!(actual.production, expected.0,
+                            "production dimension={dimension} threads={threads} block={rows_per_block}");
+                        assert_eq!(actual.certificate, expected.1,
+                            "certificate dimension={dimension} threads={threads} block={rows_per_block}");
+                    }
+                }
+            });
+        }
     }
 
     #[test]

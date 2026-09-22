@@ -2257,7 +2257,13 @@ fn fit_with_controls_internal_mode_with_frame<
         None
     };
     if retain_fast_score_cache && raw_moments.is_none() {
-        reference_norms
+        if cmg.single_slope.is_some() && rayon::current_num_threads() == 1
+            && generated_columns <= 64
+        {
+            fill_serial_reference_norms_and_maxima(&raw, weights,
+                &mut reference_norms, &mut reference_mean_scales)?;
+        } else {
+            reference_norms
             .par_iter_mut()
             .zip(reference_mean_scales.par_iter_mut())
             .enumerate()
@@ -2268,6 +2274,7 @@ fn fit_with_controls_internal_mode_with_frame<
                 }
                 Ok(())
             })?;
+        }
     } else if raw_moments.is_none() {
         reference_norms.par_iter_mut().enumerate().try_for_each(
             |(column, norm)| -> Result<()> {
@@ -6763,6 +6770,35 @@ fn parallel_reflector_moments(
     Ok((norm + norm_correction, dot + dot_correction))
 }
 
+/// Preserve each regressor's scalar norm recurrence and maximum while sharing
+/// row loads and normalized weight roots across the serial slope fit.
+fn fill_serial_reference_norms_and_maxima(
+    matrix: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    norms: &mut [f64],
+    maxima: &mut [f64],
+) -> Result<()> {
+    if matrix.ncols() != norms.len() + 1 || norms.len() != maxima.len() || norms.len() > 64 {
+        return Err(invalid_argument("serial reference norm dimensions are inconsistent"));
+    }
+    norms.fill(0.0);
+    maxima.fill(0.0);
+    let mut sums = [1.0_f64; 64];
+    for (row, values) in matrix.as_slice().chunks_exact(matrix.ncols()).enumerate() {
+        let root = weights.root(row)?;
+        for (((&value, scale), maximum), sum) in values[1..].iter()
+            .zip(norms.iter_mut()).zip(maxima.iter_mut()).zip(sums.iter_mut())
+        {
+            update_scaled_sum_of_squares(root * value, scale, sum)?;
+            *maximum = maximum.max(value.abs());
+        }
+    }
+    for (norm, sum) in norms.iter_mut().zip(sums) {
+        *norm = checked_norm(*norm, sum)?;
+    }
+    Ok(())
+}
+
 fn weighted_matrix_column_norm(
     matrix: &DenseMatrix,
     column: usize,
@@ -9939,6 +9975,49 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn serial_reference_norms_and_maxima_preserve_scalar_bits_and_errors() {
+        let rows = 1031;
+        for columns in [1, 2, 6, 11, 50, 64] {
+            let mut matrix = DenseMatrix::zeros(rows, columns + 1).unwrap();
+            for row in 0..rows {
+                for column in 0..=columns {
+                    matrix[(row, column)] = match column % 7 {
+                        0 => 0.0,
+                        1 => -0.0,
+                        2 => ((row * 37 % 101) as f64 - 50.0) * 1e150,
+                        3 => ((row * 19 % 97) as f64 - 48.0) * 1e-150,
+                        4 => 1.0,
+                        5 => [1e16, 1.0, -1e16][row % 3],
+                        _ => (row as f64 * 0.173).sin(),
+                    };
+                }
+            }
+            for kind in [None, Some(WeightKind::Analytic), Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
+                for scale in [1e-100, 1.0, 1e100] {
+                    let raw: Vec<f64> = (0..rows).map(|row| (1.0 + (row % 17) as f64) * scale).collect();
+                    let weights = NormalizedWeights { values: kind.map(|_| raw.as_slice()), raw_scale: 17.0 * scale, kind };
+                    let mut norms = vec![0.0; columns];
+                    let mut maxima = vec![0.0; columns];
+                    fill_serial_reference_norms_and_maxima(&matrix, weights, &mut norms, &mut maxima).unwrap();
+                    for column in 0..columns {
+                        let expected = weighted_matrix_column_norm(&matrix, column + 1, weights).unwrap();
+                        let maximum = (0..rows).map(|row| matrix[(row, column + 1)].abs()).fold(0.0, f64::max);
+                        assert_eq!(norms[column].to_bits(), expected.to_bits());
+                        assert_eq!(maxima[column].to_bits(), maximum.to_bits());
+                    }
+                }
+            }
+        }
+        let weights = NormalizedWeights { values: None, raw_scale: 1.0, kind: None };
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, f64::MAX] {
+            let matrix = DenseMatrix::from_row_major(2, 2, vec![0.0, bad, 0.0, bad]).unwrap();
+            assert!(fill_serial_reference_norms_and_maxima(&matrix, weights, &mut [0.0], &mut [0.0]).is_err());
+        }
+        let matrix = DenseMatrix::zeros(3, 3).unwrap();
+        assert!(fill_serial_reference_norms_and_maxima(&matrix, weights, &mut [0.0], &mut [0.0]).is_err());
     }
 
     #[test]

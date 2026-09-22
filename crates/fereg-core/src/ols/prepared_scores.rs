@@ -1203,8 +1203,11 @@ fn certify_dense_score_gram<R: PreparedInferenceReservation>(
                 let score = &values[row * rank..(row + 1) * rank];
                 for left in 0..rank {
                     let scaled_left = weight * score[left];
-                    for right in left..rank {
-                        partial[left * rank + right] += scaled_left * score[right];
+                    for (destination, &right_value) in
+                        partial[left * rank + left..(left + 1) * rank]
+                            .iter_mut().zip(&score[left..])
+                    {
+                        *destination += scaled_left * right_value;
                     }
                 }
             }

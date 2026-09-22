@@ -21,8 +21,10 @@ new large coverage and two independent five-pair blocks before declaring the
 milestone complete. Routing seeds 202609211 and 202609212 are now reserved to
 the frozen cy2 validation described below; do not use them to tune the rule.
 The local primary/holdout, control, graph-coverage and fresh cycle-validation
-blocks are complete. Required Linux confirmation remains blocked on SSH
-renewal; the milestone and production routing adoption are not complete.
+blocks are complete for their captured sources. The subsequent data-pass
+refinement has separate focused evidence below. Serial weighted-slope losses
+remain open, and required Linux confirmation is blocked on SSH renewal. The
+milestone and production routing adoption are not complete.
 
 ### Committed checkpoints
 
@@ -609,10 +611,53 @@ kernels. Keep old routes where cross-platform confirmation is missing;
 never tune thresholds from the completed validation seeds. Serial weighted
 slope losses remain.
 
-Current resume point: wait for Johannes's pending SSH-renewal response.
-Do not repeat the same failed authentication probe without changed access.
-Once access is restored, inspect
-SCC state and use the existing OLS development smoke before the planned focused
+### Serial slope data-pass checkpoint — 2026-09-22
+
+The current-command `ssdiag1` profile completes twelve applications with four
+exact native pairs. It locates the AW K10 serial robust costs at about 111 ms
+in fitting, 40 ms in inference and 22 ms in outputs. PW three-slope recovery
+alone takes about 35 ms. The pinned instrumented fixest phases are captured;
+these are diagnostic traces, not headline comparisons.
+
+ADR 0096 retains two exact-arithmetic refinements for local development.
+`st1` traverses contiguous dense sandwich and OLS score-Gram triangle rows;
+`rn1` adds one serial cached-slope traversal for reference norms and maxima.
+Their two eight-cell three-pair screens complete 138 calls. Two frozen
+seven-cell five-pair confirmation blocks add 200 calls. All timing isolation
+checks pass, and all 118 native pairs have exact numerical exports, samples
+and saved vectors with unchanged tracked allocation peaks. The candidate's
+four focused release fixtures and ABI pass; st1 also passes thirteen sandwich
+fixtures and four OLS/PPML fixtures. No solver-selection rule changes.
+
+The combined plugin is
+`28b1b049b15347256829e384ef725f3a1752f454fc2e6dd6b0beaa1836ec7281`.
+AW K50 robust/full-output paired ratios are 0.8694/0.8520; medians are
+894/858 ms against owf1 1,012/1,005 and fixest 1,990/1,963. AW K10 robust
+ratios are 0.9768/0.9847, clustered 0.9467/0.9764. PW K6 robust remains a
+small native regression, 1.0043/1.0090, and roughly 1.6 times fixest's time;
+its cluster ratios are 0.9962/0.9624. This is a useful refinement, not closure
+of the serial losses. Six final diagnostic calls add three exact native pairs:
+AW/PW reference passes fall from 14.2/6.9 to 6.4/3.7 ms, and wide covariance
+construction from 307.6 to 174.7 ms.
+
+The [356-call archive](benchmarks/reports/development/serial-slope-data-passes-local-2026-09-22/README.md)
+verifies 8,465 stored entries, 356 omitted local arrays and four reconstructed
+source trees. Privacy checks pass 8,534 members. Measurements include the six
+preceding graph/window drafts; old final blocks retain their original source
+scope. The normalized-norm handoff rejected at `42d7f5ad` remains rejected.
+
+Current resume point: continue the serial PW saved-output pipeline, starting
+from the complete captured rn1 source. Direct recovery still rebuilds group
+geometry and fresh finishing checks. Investigate reusing fixed-weight geometry
+across fit and recovery without retaining every initial RHS product; preserve
+fresh residual checks and jointly admit the longer cache lifetime. This is a
+hypothesis requiring measurement, not an approved bypass or a promised gain.
+Broader integration checks must attach to the chosen final source.
+
+The fresh read-only SCC probe again returned permission denied; its local log
+is `target/ols-next-20260921/scc-auth-current-20260922-1.txt`. Do not repeat the
+same failed probe without changed access. Once Johannes renews access, inspect
+SCC state and use the existing OLS development smoke before the focused
 same-node T1/8/16 comparisons and constrained-memory checks. Do not launch a
 qualification matrix, push, install or adopt the cycle route. All local
 benchmark processes and audit sessions are finished.
