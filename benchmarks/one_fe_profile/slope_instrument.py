@@ -101,17 +101,23 @@ def instrument(source):
         first = text.index(marker)
         last = text.index("/// Recover normalized categorical effects", first)
         section = text[first:last]
+        cached_geometry = 'geometry.as_deref()' in section
+        group_marker = ('    if let Some(geometry) = geometry.as_mut() {' if cached_geometry
+                        else "    group_coefficients\n        .par_chunks_mut(")
+        finish_name = ('finish_channel_major_recovery_with_geometry' if cached_geometry
+                       else 'finish_channel_major_recovery')
         markers = [
             ("    validate_recovery_inputs(", "let recovery_started = Instant::now();"),
-            ("    group_coefficients\n        .par_chunks_mut(", "let recovery_groups = Instant::now();"),
+            (group_marker, "let recovery_groups = Instant::now();"),
             ("    for channel in 0..channels {", "let recovery_scatter = Instant::now();"),
-            ("    finish_channel_major_recovery(", "let recovery_finish = Instant::now();"),
+            ("    " + finish_name + "(", "let recovery_finish = Instant::now();"),
         ]
         for needle, code in markers:
             assert section.count(needle) == 1, needle
             section = section.replace(needle, "    " + code + "\n" + needle)
-        section = section.replace("    finish_channel_major_recovery(", "    let recovered = finish_channel_major_recovery(")
-        needle = "        CategoricalRecoveryMethod::Direct,\n        materialize_absorbed_sum,\n    )"
+        section = section.replace("    " + finish_name + "(", "    let recovered = " + finish_name + "(")
+        needle = ("        CategoricalRecoveryMethod::Direct,\n        materialize_absorbed_sum,\n"
+                  + ("        geometry.as_deref(),\n" if cached_geometry else "") + "    )")
         assert section.count(needle) == 1, needle
         section = section.replace(needle, needle + ";\n    eprintln!(\"SLOPE_PROFILE|direct_recovery|setup={:.9}|groups={:.9}|transpose={:.9}|finish={:.9}\", recovery_groups.duration_since(recovery_started).as_secs_f64(), recovery_scatter.duration_since(recovery_groups).as_secs_f64(), recovery_finish.duration_since(recovery_scatter).as_secs_f64(), recovery_finish.elapsed().as_secs_f64());\n    recovered")
         text = text[:first] + section + text[last:]

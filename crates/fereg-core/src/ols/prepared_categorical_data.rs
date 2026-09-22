@@ -615,10 +615,16 @@ impl PreparedCategoricalOlsData {
             let extra = crate::fe::single_slope_recovery_extra_bytes(target.len(), levels,
                 effects[0].channels(), rayon::current_num_threads())?;
             let direct_bytes = recovery_memory.and_then(|memory| memory.retained_peak_bytes.checked_add(extra)).ok_or_else(|| allocation("single slope recovery envelope overflows"))?;
-            if fits(direct_bytes) {
-                record_attempt(&mut attempted_peak, Some(direct_bytes))?;
+            for cache_geometry in [true, false] {
+                if cache_geometry && rayon::current_num_threads() != 1 { continue; }
+                let bytes = if cache_geometry {
+                    direct_bytes.checked_add(crate::fe::single_slope_recovery_geometry_bytes(levels, effects[0].channels())?)
+                        .ok_or_else(|| allocation("cached recovery geometry envelope overflows"))?
+                } else { direct_bytes };
+                if !fits(bytes) { continue; }
+                record_attempt(&mut attempted_peak, Some(bytes))?;
                 match crate::fe::recover_finalized_single_slope_direct_certified(&self.fe_topology,
-                    &effects, weights, target, requested_channels, map.tolerance, materialize_absorbed_sum)
+                    &effects, weights, target, requested_channels, map.tolerance, materialize_absorbed_sum, cache_geometry)
                 {
                     Ok(recovered) => return Ok(recovered.with_solver_workspace_peak(attempted_peak)),
                     Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => return Err(error),

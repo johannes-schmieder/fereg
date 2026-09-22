@@ -646,12 +646,39 @@ source trees. Privacy checks pass 8,534 members. Measurements include the six
 preceding graph/window drafts; old final blocks retain their original source
 scope. The normalized-norm handoff rejected at `42d7f5ad` remains rejected.
 
-Current resume point: continue the serial PW saved-output pipeline, starting
-from the complete captured rn1 source. Direct recovery still rebuilds group
-geometry and fresh finishing checks. Investigate reusing fixed-weight geometry
-across fit and recovery without retaining every initial RHS product; preserve
-fresh residual checks and jointly admit the longer cache lifetime. This is a
-hypothesis requiring measurement, not an approved bypass or a promised gain.
+### Serial slope recovery geometry checkpoint — 2026-09-22
+
+ADR 0097 retains a bounded cache within serial direct recovery. Fit geometry
+cannot simply be handed across: its raw Gram/QR rank policy differs from the
+scaled, compensated recovery elimination. Instead, recovery retains its own
+scaled Gram and channel scales for the same call's fresh residual certificate.
+Residual scales, cross moments, rank solve and all finishing checks stay fresh.
+Exact joint-budget admission preserves uncached direct recovery and MAP fallback.
+PPML and threaded recovery remain unchanged; automatic routing is unchanged.
+
+The `rgc1` plugin is
+`eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef`.
+Its twelve-cell screen completes 105 calls and two independent seven-cell,
+five-pair native confirmations add 140. All pass with clean isolation; all 106
+native pairs have exact numerical exports, samples and requested saved arrays
+with unchanged tracked peak allocation. PW full-output robust paired ratios
+are 0.9871/0.9731, clustered 0.9762/0.9838 and saved-only 0.9571/0.9671.
+FW robust ratios are 0.9724/0.9636; AW robust is neutral at 0.9922/1.0123.
+This is a modest improvement, not closure of the serial reference gap.
+
+Five focused release fixtures and normal/instrumented ABI checks pass. They
+cover ranks, extreme scales, exact fresh certificates, threaded rejection,
+budget fallback and protected PPML allocation/atomicity. Six diagnostics add
+four exact native comparisons: PW recovery falls from 34.5 to 26.7 ms and AW
+from 20.5 to 16.8 ms. The [251-call archive](benchmarks/reports/development/serial-slope-recovery-geometry-local-2026-09-22/README.md)
+verifies 6,978 stored entries, 233 omitted local arrays and three complete source
+reconstructions; privacy checks pass 7,018 members. The six preceding graph/window drafts remain separately
+unaccepted; old final blocks do not transfer to this new source.
+
+Current resume point: measure removal of repeated normalized slope divisions
+within each group-moment row. A fixed four-value stack cache may preserve the
+exact compensated arithmetic without a new heap lifetime or rank policy. The
+current PW diagnostic still spends 13.6 ms in group solves and 11.4 ms finishing.
 Broader integration checks must attach to the chosen final source.
 
 The fresh read-only SCC probe again returned permission denied; its local log

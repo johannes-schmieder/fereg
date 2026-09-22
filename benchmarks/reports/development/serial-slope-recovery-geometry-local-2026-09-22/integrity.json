@@ -1,0 +1,35 @@
+{
+  "schema": "recovery-geometry-archive-integrity-v1",
+  "status": "pass",
+  "stored_entries_verified": 6978,
+  "local_output_arrays_omitted": 233,
+  "content_addressed_objects_verified": 31,
+  "sources": [
+    {
+      "variant": "rn1",
+      "base_commit": "42d7f5ade221eae77fb535706dfe17166988b73b",
+      "plugin": "28b1b049b15347256829e384ef725f3a1752f454fc2e6dd6b0beaa1836ec7281",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "rgc1",
+      "base_commit": "28bf8ee41baa398e8f7bcc67a8b6c1b236086c08",
+      "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "rgcd1",
+      "base_commit": "28bf8ee41baa398e8f7bcc67a8b6c1b236086c08",
+      "plugin": "eb099a67389624c3309e4adbf165e6e8d6f50d25e208eb7d3d3796fd0e99bb39",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    }
+  ],
+  "machine_home_path_scans": [
+    "sources",
+    "checks"
+  ],
+  "verifier_sha256": "e174db0e263980e0f23cd1519a45e27a3b3cbfda0120d3e7d843967b3e0a4ecb"
+}

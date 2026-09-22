@@ -129,6 +129,7 @@ pub(crate) use topology_slope_map::{
     recover_finalized_categorical_effects_lsmr_certified,
     recover_finalized_categorical_effects_sd_lsmr_certified, slope_map_workspace_bytes,
     recover_finalized_single_slope_direct_certified, single_slope_recovery_extra_bytes,
+    single_slope_recovery_geometry_bytes,
 };
 pub use topology_source::CategoricalTopologySource;
 

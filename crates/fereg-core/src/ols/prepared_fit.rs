@@ -8599,8 +8599,20 @@ mod tests {
                         let ample = run(memory.lsmr_peak_bytes.max(direct_bytes)).unwrap();
                         if n >= 16_384 {
                             assert_eq!(ample.recovery_method(), crate::fe::CategoricalRecoveryMethod::Direct);
-                            assert_eq!(ample.solver_workspace_peak().bytes(), Some(direct_bytes as u64));
-                            assert_eq!(run(direct_bytes).unwrap().recovery_method(), crate::fe::CategoricalRecoveryMethod::Direct);
+                            let cached_bytes = direct_bytes + crate::fe::single_slope_recovery_geometry_bytes(2, 2).unwrap();
+                            let expected = if workers == 1 && memory.lsmr_peak_bytes.max(direct_bytes) >= cached_bytes {
+                                cached_bytes
+                            } else { direct_bytes };
+                            assert_eq!(ample.solver_workspace_peak().bytes(), Some(expected as u64));
+                            let uncached = run(direct_bytes).unwrap();
+                            assert_eq!(uncached.recovery_method(), crate::fe::CategoricalRecoveryMethod::Direct);
+                            assert_eq!(uncached.solver_workspace_peak().bytes(), Some(direct_bytes as u64));
+                            if workers == 1 {
+                                let cached = run(cached_bytes).unwrap();
+                                assert_eq!(cached.solver_workspace_peak().bytes(), Some(cached_bytes as u64));
+                                assert_eq!(cached.channels(), uncached.channels());
+                                assert_eq!(run(cached_bytes - 1).unwrap().solver_workspace_peak().bytes(), Some(direct_bytes as u64));
+                            }
                             assert_eq!(run(direct_bytes - 1).unwrap().recovery_method(), crate::fe::CategoricalRecoveryMethod::Map);
                         } else {
                             assert_eq!(ample.solver_workspace_peak().bytes(), Some(memory.lsmr_peak_bytes as u64));
