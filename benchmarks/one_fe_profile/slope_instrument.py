@@ -92,6 +92,33 @@ def instrument(source):
                 profile_norms.duration_since(profile_reconstruction).as_secs_f64(),
                 profile_checks.duration_since(profile_norms).as_secs_f64(), profile_checks.elapsed().as_secs_f64());
     ''' + marker)
+        first = text.index("fn build_groups(")
+        last = text.index("fn subtract_projection(", first)
+        section = text[first:last]
+        needle = "    let start = groups[0].start;"
+        assert section.count(needle) == 1
+        section = section.replace(needle, '''    let geometry_started = Instant::now();
+    let (mut gram_seconds, mut scale_seconds, mut qr_seconds) = (0.0_f64, 0.0_f64, 0.0_f64);
+''' + needle)
+        markers = [
+            ("        for &row in members {", "        let gram_started = Instant::now();\n"),
+            ("        let mut active = 0;", "        let scale_started = Instant::now();\n        gram_seconds += scale_started.duration_since(gram_started).as_secs_f64();\n"),
+            ("        let threshold = f64::EPSILON", "        let qr_started = Instant::now();\n        scale_seconds += qr_started.duration_since(scale_started).as_secs_f64();\n"),
+        ]
+        for needle, insertion in markers:
+            assert section.count(needle) == 1, needle
+            section = section.replace(needle, insertion + needle)
+        needle = "            group.rank += 1;\n        }\n    }\n    Ok(())"
+        assert section.count(needle) == 1
+        section = section.replace(needle, '''            group.rank += 1;
+        }
+        qr_seconds += qr_started.elapsed().as_secs_f64();
+    }
+    eprintln!("SLOPE_PROFILE|slope_geometry|n={}|levels={}|channels={}|gram={:.9}|scale={:.9}|qr={:.9}|total={:.9}",
+        partition.codes().len(), groups.len(), channels, gram_seconds, scale_seconds, qr_seconds,
+        geometry_started.elapsed().as_secs_f64());
+    Ok(())''')
+        text = text[:first] + section + text[last:]
         path.write_text(text)
 
     path = source / "crates/fereg-core/src/fe/topology_slope_map.rs"

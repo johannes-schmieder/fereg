@@ -707,17 +707,43 @@ Audit 2 explicitly separates observation counts; the original audit is retained.
 The archive verifies 270 stored entries, six omitted arrays and two full sources;
 privacy checks pass 284 members.
 
-Current resume point: isolate serial geometry construction's raw Gram and
-independent QR costs before changing them. The raw Gram repeatedly reads the
-same row basis; a bounded row cache could preserve its FMA order. At the first
-QR pivot, no prior directions exist and the candidate is unchanged by swapping,
-so the already-computed pivot norm may remove a duplicate norm evaluation;
-prove exact geometry/rank/certificate equality before accepting either change.
-Packed score-cache lookup is a smaller alternative: reuse the existing bounded
-numeric binding while preserving scaling and fixed-block means. Do not assume
-raw-moment means are interchangeable. Continue from the complete captured rrc1
-source. Broader integration checks must attach to the chosen final source;
-previous final blocks still do not transfer.
+### Serial slope geometry experiments — 2026-09-22
+
+The `sgp1` diagnostic completes four calls with two exact native comparisons.
+At N=245,760 and 49,152 groups, AW/PW QR costs about 7.62/18.09 ms, compared
+with 1.50/3.05 ms for the raw Gram and 3.99/6.56 ms for normalization. Per-group
+clock overhead raises total setup; these are diagnostic values, not headlines.
+
+The combined raw-row-basis cache and first-pivot norm reuse (`sgn1`) passes
+science and improves setup, but unit robust paired ratios are 1.0136/1.0220
+in two five-pair blocks. Norm reuse alone (`snp1`) removes the raw cache and
+still saves roughly one millisecond of setup; PW robust ratios remain
+1.0136/1.0090. Other clustered/FW cells improve modestly, but neither experiment
+consistently improves the remaining serial targets. Both are rejected and
+removed from the working computational source, which exactly matches the full
+captured rrc1 source again. Do not reintroduce a weight/VCE-specific guard from
+these timings or describe either experiment as accepted.
+
+The two twelve-cell screens and four frozen seven-cell confirmation blocks
+complete 490 successful calls with clean isolation. All 212 native pairs have
+exact numerical exports, samples and requested saved arrays with equal peaks.
+All 28 non-timing solver fields match in every pair. Each candidate passes
+three focused release runs containing five Rust fixtures; all three new plugins
+pass ABI. The [494-call archive](benchmarks/reports/development/serial-slope-geometry-refinement-local-2026-09-22/README.md)
+preserves both rejected patches and verifies 13,642 stored entries, 458 omitted
+arrays and four complete source reconstructions; privacy checks pass 13,705
+members. Nothing is promoted across
+source revisions, and the preceding six graph/window drafts remain unaccepted.
+
+Current resume point: try reducing the packed score-cache raw-column mean
+lookup cost (about 10.13 ms AW K10 and 5.64 ms PW K6 in the preceding trace).
+Reuse the existing bounded NumericOlsColumns representation without widening
+unrelated predictor/RHS guards. Preserve each mean's scaling, multiplication,
+row order and fixed-block reduction; do not substitute differently rounded raw
+moment means or weaken the independent score certificate. Measure before
+widening beyond the serial cached-slope path. Continue from captured rrc1;
+broader integration checks must attach to the chosen final source, and prior
+final blocks still do not transfer.
 
 The fresh read-only SCC probe again returned permission denied; its local log
 is `target/ols-next-20260921/scc-auth-current-20260922-1.txt`. Do not repeat the
