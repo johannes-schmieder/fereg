@@ -920,9 +920,42 @@ original 766 reference failures are not reclassified. The six graph/window
 drafts remain untouched. The six small sparse discrepancies are now explained,
 not converted into reference passes.
 
-Current resume point: continue performance work from dtk1. The small-matrix
-and cache/norm fusion experiments remain rejected. Do not substitute the
-earlier rejected raw/normalized norm handoff.
+### Batched fresh slope-check experiment — 2026-09-22
+
+`sbf1` checks newly projected residuals in batches of 256 row-ordered groups,
+using existing buffers, exact QR/raw-moment arithmetic and ordered reduction.
+An enlarged final residual norm or invalid provisional check triggers the
+ordinary complete certificate. Other errors remain fatal. The 513-group
+fallback fixture covers RHS1/12/52, 1e200 inputs and zero/tiny reference norms;
+all residuals, fresh final certificates and peaks match the ordinary path.
+Six focused release fixtures pass in three source-bound runs, and ABI passes.
+
+The sixteen-cell three-pair screen completes 141 clean calls. All 48 native
+pairs have exact numerical exports, samples, saved vectors and 28 non-timing
+solver fields, with equal allocation peaks. Reject the draft: AW robust/full
+is 237/237 ms, paired ratio 1.0000; PW 212/211 ms, ratio 0.9953. Clustered
+ratios are 1.0071/1.0203 and FW is 1.0090. Unit-weight robust/IID screen ratios
+of 0.9659/0.9664 do not establish a general target gain. No weight-specific
+guard or confirmation campaign is adopted.
+
+Six diagnostic calls preserve exact outputs. Initial absorption, including
+fresh checks, changes 26.172 to 25.529 ms for AW K10, 26.130 to 26.737 ms for
+PW K6, and 83.076 to 85.336 ms for AW K50. Cache locality alone has not shown
+a consistent phase improvement. The [147-call archive](benchmarks/reports/development/batched-fresh-slope-check-experiment-local-2026-09-22/README.md)
+verifies 3,488 entries, 129 omitted local arrays and two complete source trees.
+The failed initial edit and preliminary runs remain recorded. All 523 current
+computational source hashes are restored to dtk1; the six old drafts are intact.
+
+Current resume point: continue performance work from dtk1. Target repeated
+geometry/norm arithmetic rather than rearranging the same fresh checks. A
+possible next experiment is to compute each active QR column's fresh norm in
+its last mutation pass and reuse it only until that column next changes. Keep
+the scaled norm recurrence, pivot ties, twice-reorthogonalized directions,
+rank cutoff and final residual certificate intact, and compare basis/rank
+bits before benchmarking. This is a hypothesis, not an accepted optimization.
+The small-matrix, cache/norm fusion and batched-check experiments remain
+rejected; do not restore the earlier raw/normalized norm handoff or first-pivot
+norm reuse alone.
 Remaining serial reference losses include AW K10 robust/full at 226 versus
 188 ms and PW K6 robust/full at 209 versus 152 ms in the screen. Initial slope
 projection, fresh checks and PW setup/recovery remain costly. Reuse the preserved

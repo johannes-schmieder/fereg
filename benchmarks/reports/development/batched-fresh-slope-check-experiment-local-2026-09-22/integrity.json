@@ -1,0 +1,28 @@
+{
+  "schema": "batched-fresh-slope-check-experiment-experiment-archive-integrity-v1",
+  "status": "pass",
+  "stored_entries_verified": 3488,
+  "local_output_arrays_omitted": 129,
+  "content_addressed_objects_verified": 32,
+  "sources": [
+    {
+      "variant": "dtk1",
+      "base_commit": "c52a59e3008b638153cfb1ada905f29becab1e06",
+      "plugin": "77b2b35764ae216267503b34a9965834bd3a6c8ef60e0f307bdf62c379f5b151",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "sbf1",
+      "base_commit": "f978df0f77a1cdcf638e818a7e2e8266c9fd9e7b",
+      "plugin": "86a44b3b012ca15f953e776eaecdada1c1841682248d16bb79d47aa81707f7ef",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    }
+  ],
+  "machine_home_path_scans": [
+    "sources",
+    "checks"
+  ],
+  "verifier_sha256": "a35e2f5b58cfd7bca267c56b135cea5c6a3e2cbc2feee89a954c076192a27ce3"
+}
