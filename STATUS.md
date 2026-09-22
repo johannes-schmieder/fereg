@@ -506,8 +506,25 @@ source and failure are preserved. The 1,046-call archive verifies 22,594 stored
 entries, 525 omitted arrays and three complete source trees; privacy passes
 22,608 members. No new routing seed was used.
 
-Current resume point: investigate serial weighted-slope coefficient reuse,
-then finish routing validation and focused Linux confirmation. The final primary/holdout
+The [serial slope-product experiment](benchmarks/reports/development/serial-slope-products-local-2026-09-21/README.md)
+retains computed products for serial, ordered, full-rank narrow saved fits.
+The captured srp1 plugin passes ABI and three focused release tests, including
+weighted full-fit MAP parity and the retention admission boundary. Initial
+compile and test-fixture errors remain preserved. Its nine-cell screen completes
+78 clean calls: 27 native pairs have exact numerical exports/samples, and 24
+saved-output pairs pass the original tolerances. PW three-slope robust/clustered
+medians improve 234/263 to 219/255 ms, versus fixest 148/164 ms. AW/FW and unit
+one-slope cases change little. Targeted peaks rise by 8.3–9.4 MB; excluded
+controls have exact outputs and equal peaks. Six exact profiling diagnostics
+show recovery savings partly offset by recording/combining products. The
+84-call archive verifies 2,088 entries, 75 omitted arrays and three source trees;
+privacy passes 2,120 members. This remains an experiment. The two changed slope
+files are restored exactly to owf1, verified against both captured identities;
+`srp1-checkout-restoration1.json` records the local hashes. Serial losses remain.
+
+Current resume point: strengthen the experimental cycle route's joint descriptor
+and LSMR memory admission, then freeze it before fresh routing validation.
+Focused Linux confirmation remains blocked on SSH renewal. The final primary/holdout
 archive is committed at `f8610cee` and current controls at `1439c23c`. Focused Linux confirmation
 and routing validation remain required before closing the milestone. The
 initial norm handoff is committed at `4708834b`, cycle experiment evidence at

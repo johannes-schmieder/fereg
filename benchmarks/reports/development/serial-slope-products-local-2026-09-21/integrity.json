@@ -1,0 +1,35 @@
+{
+  "schema": "serial-slope-products-archive-integrity-v1",
+  "status": "pass",
+  "stored_entries_verified": 2088,
+  "local_output_arrays_omitted": 75,
+  "content_addressed_objects_verified": 23,
+  "sources": [
+    {
+      "variant": "owf1",
+      "base_commit": "d764894f93cfdc07b0e8f2e07d5897fa909a5140",
+      "plugin": "a2d0e6bd836c3f9af8992b9d49adcfaf669e3bac326e36ecc2f9deb12479ccb0",
+      "source_files": 522,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "srp1",
+      "base_commit": "38b5a0f5473b5dd28eec3ebfbed23de4284cf3ed",
+      "plugin": "33504ef9c8cbf6e360a74971e404696d1b8ba4b97c5297c3e13952fa331cecc4",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "srp1-profile",
+      "base_commit": "38b5a0f5473b5dd28eec3ebfbed23de4284cf3ed",
+      "plugin": "cd994afb0562abf5a419eea5eceea72d1e9b627693b4a298747470d86649c76b",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    }
+  ],
+  "supplement_hash_scans": [
+    "sources",
+    "checks"
+  ],
+  "verifier_sha256": "9d6815b25aa4bc44b15a765c558dfb6c2b1a0d7f82c01e8d91e87c34c3f9f795"
+}
