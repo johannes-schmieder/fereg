@@ -763,12 +763,37 @@ packed trace is excluded. The [254-call archive](benchmarks/reports/development/
 verifies 7,103 stored entries, 236 omitted arrays and four complete source trees;
 privacy checks pass 7,146 members. Both new plugins pass ABI.
 
-Current resume point: continue from captured scb1. The latest traces still show
-costly initial slope projection/fresh checks, PW setup/recovery, and AW covariance
-construction. Profile those remaining costs before choosing another kernel;
-do not restore the rejected geometry experiments or widen numeric binding from
-these serial results. Broader integration checks must attach to the chosen
-final source, and prior final blocks still do not transfer. The six earlier
+### Fresh slope certificate traversal experiment — 2026-09-22
+
+The score-cache binding checkpoint is committed at `a7f67b55`. A subsequent
+contiguous-slice rewrite of cached slope checks (`sct1`) preserves arithmetic
+but does not establish a consistent benefit. Its sixteen-cell three-pair
+screen has AW K10/T1 robust ratio 1.0172, PW K6/T1 clustered 1.0247 and AW
+K10/T16 robust 1.0270, alongside favorable FW and unit cases. These are mixed
+screening ratios, not confirmed regressions. Single diagnostic fresh-check
+times fall from 10.414 to 8.331 ms for AW K10 but rise from 8.834 to 9.988 ms
+for PW K6. K50 is slightly faster. The rewrite is rejected; no width/weight/VCE
+guard is fitted and no five-pair confirmation controller is executed.
+
+All 141 screen calls pass with clean isolation. All 48 native pairs preserve
+exact numerical exports, samples, requested saved arrays and all 28 non-timing
+solver fields, with equal allocation peaks. Nine diagnostic calls have exact
+outputs across prior/candidate/diagnostic artifacts. Five independent/budget/
+eligibility Rust fixtures pass in three release invocations; both new plugins
+pass ABI. The [150-call archive](benchmarks/reports/development/slope-certificate-traversal-local-2026-09-22/README.md)
+preserves the rejected source and verifies 3,612 stored entries, 132 omitted
+arrays and four complete source trees; privacy checks pass 3,656 members.
+The working computational source again exactly matches captured scb1.
+
+Current resume point: continue from scb1 and separate score-row construction,
+weight scaling and triangle accumulation within robust covariance. The current
+AW K10/PW K6 diagnostic covariance phases are about 23/11 ms; the reported-row
+helper still evaluates coordinate mappings and storage choices for each row.
+Measure before changing that broader OLS inference boundary. Initial slope
+projection, fresh checks and PW setup/recovery also remain costly. Do not
+restore either rejected geometry or traversal experiments, or widen numeric
+binding based on serial results. Broader integration checks must attach to
+the chosen final source; prior final blocks do not transfer. The six earlier
 graph/window drafts and Linux routing acceptance remain separately open.
 
 The fresh read-only SCC probe again returned permission denied; its local log
