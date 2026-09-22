@@ -1696,9 +1696,30 @@ program define _fereg_eppml_validate, rclass
                  `separation_sequence'[`sequence_row',7] < 1 | ///
                  `separation_sequence'[`sequence_row',11] > ///
                     `separation_sequence'[`sequence_row',12] | ///
-                 `separation_sequence'[`sequence_row',12] > `receipt'[1,24] | ///
-                 `separation_sequence'[`sequence_row',13] != 1)) {
+                 `separation_sequence'[`sequence_row',12] > `receipt'[1,24])) {
             di as error "PPML separation execution bounds are inconsistent"
+            exit 3499
+        }
+        // ADR 0017 permits unresolved simplex attempts followed by certified
+        // comprehensive IR. The per-method flag honestly remains false; the
+        // native seal validates the complete same-generation execution chain.
+        local status_mask = `separation_sequence'[`sequence_row',7]
+        local unresolved_status = mod(floor(`status_mask'/8),2) | ///
+            mod(floor(`status_mask'/16),2) | mod(floor(`status_mask'/64),2)
+        if (`executions' == 0 & `status_mask' != 0) | ///
+           mod(floor(`status_mask'/32),2) | ///
+           (`unresolved_status' & `sequence_row' != 3) | ///
+           `separation_sequence'[`sequence_row',13] != !`unresolved_status' {
+            di as error "PPML separation certificate states are inconsistent"
+            exit 3499
+        }
+        if `unresolved_status' & ///
+                (`separation_sequence'[4,2] != 1 | ///
+                 `separation_sequence'[4,4] < 1 | ///
+                 `separation_sequence'[4,6] <= `separation_sequence'[3,6] | ///
+                 `separation_sequence'[4,12] != `receipt'[1,24] | ///
+                 `separation_sequence'[4,13] != 1) {
+            di as error "PPML unresolved simplex lacks terminal comprehensive IR evidence"
             exit 3499
         }
         if `executions' > 0 {

@@ -32,6 +32,8 @@ def load(name, path):
 
 
 def main(args):
+    # Captured controllers are immutable source receipts, not import caches.
+    sys.dont_write_bytecode = True
     root = args.root.resolve()
     root.mkdir(parents=True, exist_ok=False)
     controller = root / "controller"

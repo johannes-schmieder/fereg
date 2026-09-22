@@ -10,6 +10,32 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## PPML simplex/IR publication repaired locally — 2026-09-22
+
+The [publication repair](benchmarks/reports/development/ppml-simplex-publication-local-2026-09-22/README.md)
+and ADR 0104 resolve the zero-outcome r(3499) discovered at `cc6e40fa`.
+Stata had rejected a truthful false certificate flag for a memory-skipped
+simplex attempt despite later certified IR on the same generation. The
+validator now checks the accepted status/closure semantics; native detectors,
+sample decisions, weights and certificates are unchanged. Unresolved simplex
+without terminal certified IR and simplex-only over-budget requests still
+fail closed.
+
+`separation1` reuses the exact `reference1` plugin, with the archived ado/test
+overlay on `cc6e40fa`. Two licensed fixtures and 21 focused Rust tests pass.
+The new public fixture covers independent dummy Poisson, current-Hessian V,
+positive-interior rank, unit/FW/PW, T1/T4 and atomic simplex-only failure. The
+original benchmark now matches stock on sample/beta/V/objective in all three
+repetitions; a fresh-seed small case independently proves exactly 50 zero-only
+FE drops and passes explicit-design inference. Original-artifact failures,
+two failed setup attempts and all distributions remain archived.
+
+The repaired zero target takes 115 ms versus stock 37 ms; the positive control
+is 146→147 ms with identical scientific exports and native tracked peak.
+No speedup is claimed for this correctness repair. The current objective
+remains active: continue with strict-checkpoint assembly and residual projection,
+profiling fresh raw predictor/mean passes before changing weighted reuse.
+
 ## Broader optimization: transport and PPML refresh accepted locally — 2026-09-22
 
 The [current-source inventory](benchmarks/reports/development/next-subsystem-inventory-local-2026-09-22/README.md)
@@ -36,7 +62,7 @@ The [PPML refresh milestone](benchmarks/reports/development/ppml-reference-refre
 and ADR 0103 retain numeric source binding and independent-column scheduling
 for fresh current-weight reference statistics. `reference1` is `87b21d4c` plus
 the archived `ols/linear_session.rs` patch; all 523 computational inputs match
-the final source. Its plugin SHA-256 is
+`cc6e40fa`. Its plugin SHA-256 is
 `357118cece7f4eaf1813e5e7ab25458ca999ae20fb0bed8afc7dd4d6354d58ea`.
 One-FE screen/fresh confirmation medians improve 179→162 and 158→143 ms;
 sparse two-FE improves 359→347 ms. Other gains are small and the narrow control
@@ -55,14 +81,10 @@ inference, saved means and T1/T4. Full distributions, failures, exact source
 identities and immutable receipts are archived. No qualification campaign,
 push or release was performed.
 
-**Next bounded subsystem:** PPML separation/publication accounting on the
-zero-outcome case in the refresh report. Its 7,680-row warmup fails with
-r(3499), “PPML separation execution bounds are inconsistent.” Direct replay
-also fails on original `7189e57a`/`dtk1`, so this predates both accepted changes.
-The precise invalid sequence/receipt field is not yet localized. Start from
-the archived reproduction and establish the sample/separation invariant before
-another positive-outcome timing cycle. Strict checkpoint residual projection
-and assembly remain the subsequent performance opportunity.
+The zero-outcome failure recorded in that exact-artifact report predates both
+optimizations and is repaired by the newer publication milestone above. The
+historical failed receipts remain unchanged. Strict checkpoint residual
+projection and assembly remain the subsequent performance opportunity.
 
 Both bounded performance experiments are closed. Diagnostic instrumentation
 remains isolated. Historical serial-slope tuning remains closed; the 77

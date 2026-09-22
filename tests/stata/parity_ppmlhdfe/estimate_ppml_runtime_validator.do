@@ -127,7 +127,7 @@ forvalues row = 83/95 {
 matrix `receipt' = J(1,33,0)
 matrix `receipt'[1,1] = 5354602
 matrix `receipt'[1,2] = 1
-matrix `receipt'[1,3] = 2
+matrix `receipt'[1,3] = 3
 matrix `receipt'[1,4] = 2
 matrix `receipt'[1,5] = 2
 matrix `receipt'[1,6] = 2
@@ -450,6 +450,43 @@ capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
     `separation_sequence' `certificate' `solver' `bad' `receipt', ///
     capacity(2) `validator_options'
 assert _rc == 3499
+
+* An unresolved simplex aggregate truthfully has certificate flag zero.
+* The certified core trace closes each such generation through IR; the
+* bounded public evidence must still show a later, certified terminal IR.
+tempname sequence_ir separation_ir receipt_ir mutated_sequence
+matrix `receipt_ir' = `receipt'
+matrix `receipt_ir'[1,17] = 3
+matrix `receipt_ir'[1,23] = 3
+matrix `sequence_ir' = `separation_sequence'
+matrix `sequence_ir'[1,1] = (1,1,0,1,1,1,2,1,0,0,0,0,1)
+matrix `sequence_ir'[4,1] = (4,1,3,1,3,3,2,1,0,0,0,0,1)
+local ir_options `"clusters(0) ferows(0) subsets(0) separations(3) residual(0) saved(0) adjustment(0) vcecode(2) requestedvcecode(2) weightcode(0) memorycode(0) requestedthreads(0) feterms(0) sources(0) methodcodes("1 3 4") dropsingletons(1) requestedsolvercode(1)"'
+foreach simplex_status in 4 5 7 {
+    local mask = 2^(`simplex_status'-1)
+    matrix `sequence_ir'[3,1] = (3,1,2,1,2,2,`mask',0,0,0,0,0,0)
+    matrix `separation_ir' = (1,2,1,0,1,0,0,1,.,.,.,.,0,0 \ ///
+        3,`simplex_status',1,0,0,0,0,0,.,.,.,.,0,0 \ ///
+        4,2,1,0,1,0,0,1,0,0,0,0,0,0)
+    _fereg_eppml_validate `b' `V' `status' `fit' `dof' `fe' `cluster' ///
+        `subset' `separation_ir' `inference' `drop_counts' `sequence_ir' ///
+        `certificate' `solver' `runtime' `receipt_ir', capacity(2) `ir_options'
+    foreach mutation in false_success no_ir unexecuted_ir uncertified_ir earlier_ir stale_ir exhausted_simplex {
+        matrix `mutated_sequence' = `sequence_ir'
+        if "`mutation'" == "false_success" matrix `mutated_sequence'[3,13] = 1
+        if "`mutation'" == "no_ir" matrix `mutated_sequence'[4,2] = 0
+        if "`mutation'" == "unexecuted_ir" matrix `mutated_sequence'[4,4] = 0
+        if "`mutation'" == "uncertified_ir" matrix `mutated_sequence'[4,13] = 0
+        if "`mutation'" == "earlier_ir" matrix `mutated_sequence'[4,6] = 2
+        if "`mutation'" == "stale_ir" matrix `mutated_sequence'[4,12] = 1
+        if "`mutation'" == "exhausted_simplex" matrix `mutated_sequence'[3,7] = 32
+        capture quietly _fereg_eppml_validate `b' `V' `status' `fit' `dof' ///
+            `fe' `cluster' `subset' `separation_ir' `inference' `drop_counts' ///
+            `mutated_sequence' `certificate' `solver' `runtime' `receipt_ir', ///
+            capacity(2) `ir_options'
+        assert _rc == 3499
+    }
+}
 
 scalar drop __fereg_ppml_finite_result
 mata: mata drop __fereg_ppml_fit
