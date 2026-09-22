@@ -1,0 +1,14 @@
+[
+  {
+    "completion": {
+      "attempted": 6,
+      "plan_sha256": "e9901e631ac5ac0b61ce41c2b6a928e84751a85eef73590d01d8cc75bcb3b89d",
+      "planned": 6,
+      "progress_sha256": "192925d95c8740641caa63c0ec8da229d771f520ebf15019e3c766d2c4775bdf",
+      "status": "attempts_complete"
+    },
+    "label": "reproduction",
+    "plan_sha256": "e9901e631ac5ac0b61ce41c2b6a928e84751a85eef73590d01d8cc75bcb3b89d",
+    "root": "spr1-current"
+  }
+]

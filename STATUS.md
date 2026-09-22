@@ -889,17 +889,40 @@ trees; privacy checks pass 7,975 members. Every computational source hash is
 restored to dtk1, the instrument adapter matches its prior version, and all six
 pre-existing graph/window drafts are unchanged.
 
-Current resume point: continue from dtk1 and investigate the six unresolved
-small sparse-graph reference discrepancies. The supported-floor records are
-indices 704/722/737 (K1 unit/AW/PW) and 773/791/806 (K6 unit/AW/PW), N=1920,
-seed 8675309, cluster2_cross_all. Local roots g21f0..g21f3 and the immutable
-two-fe-full-science report retain them. All six have saved-effect/derived-output
-disagreements; index 773 also fails the covariance envelope. Native oracle
-checks passed on their captured source. Recheck current dtk1, inspect the pinned
-reference's fit/recovery behavior and use independent numerical evidence to
-adjudicate; do not relax tolerances or rewrite the 766 original reference failures.
-The small-matrix and cache/norm fusion experiments remain rejected. Do not
-substitute the earlier rejected raw/normalized norm handoff.
+### Sparse reference stopping diagnosis — 2026-09-22
+
+The [six-case diagnosis](benchmarks/reports/development/sparse-reference-stopping-local-2026-09-22/README.md)
+reproduces indices 704/722/737 and 773/791/806 on current dtk1: K1/K6,
+unit/AW/PW, N1920, seed 8675309, crossed clustering and all outputs. All six
+native grounded-SVD checks pass. A separately formed joint-design QR and
+cluster sandwich also pass, with maximum native output error 2.621e-13.
+The graph has 19 components and FE rank 415. The six stock reference
+comparisons remain failures; index 773 additionally fails two covariance cells.
+
+An isolated clone of the pinned fixest archive records that all 27 projected
+columns exit at its forty-iteration SSR-change check. Instrumentation leaves
+all exported numerical arrays byte-identical to stock. Disabling SSR stopping
+removes the covariance failure and lowers maximum output error from 7.654e-5
+to at most 8.383e-9, but near-zero outputs still miss the unchanged envelope.
+With SSR stopping disabled and an explicitly diagnostic internal tolerance of
+1e-14, all six reference fits pass the existing envelopes; maximum output error
+is 2.209e-11. Tightening alone leaves the two unit-weight cases failing. Saved
+recovery reconstructs the fitted contribution to below 7e-16: the discrepancy
+originates in projection, not harness normalization or a second recovery solve.
+The internal tolerance bypass is not a supported stock comparator invocation.
+
+Twelve ordinary worker calls and thirty reference diagnostic fits complete.
+All timings are diagnostic only. The archive verifies 560 entries, all 523
+dtk1 computational source hashes, exact trace/stock arrays and input/artifact
+bindings. Initial preparation and verifier failures remain recorded. No fereg
+production code, tolerance, reference pin or historical outcome changed; the
+original 766 reference failures are not reclassified. The six graph/window
+drafts remain untouched. The six small sparse discrepancies are now explained,
+not converted into reference passes.
+
+Current resume point: continue performance work from dtk1. The small-matrix
+and cache/norm fusion experiments remain rejected. Do not substitute the
+earlier rejected raw/normalized norm handoff.
 Remaining serial reference losses include AW K10 robust/full at 226 versus
 188 ms and PW K6 robust/full at 209 versus 152 ms in the screen. Initial slope
 projection, fresh checks and PW setup/recovery remain costly. Reuse the preserved

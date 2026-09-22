@@ -1,0 +1,1 @@
+{"status":"failed","stage":"source-reconstruction","detail":"git archive pathspecs were resolved relative to the report directory. Corrected invocation uses the repository root; no evidence changed."}
