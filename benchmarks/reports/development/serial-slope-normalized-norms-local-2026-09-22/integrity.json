@@ -1,0 +1,28 @@
+{
+  "schema": "slope-normalized-norm-archive-integrity-v1",
+  "status": "pass",
+  "stored_entries_verified": 4584,
+  "local_output_arrays_omitted": 135,
+  "content_addressed_objects_verified": 31,
+  "sources": [
+    {
+      "variant": "owf1",
+      "base_commit": "d764894f93cfdc07b0e8f2e07d5897fa909a5140",
+      "plugin": "a2d0e6bd836c3f9af8992b9d49adcfaf669e3bac326e36ecc2f9deb12479ccb0",
+      "source_files": 522,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "sn1",
+      "base_commit": "c9962b38087426f3b76e145bf6c2f8b145949f54",
+      "plugin": "9a491b4f6192d8233780673d8c1a3a1ca768946acccb9a7e76feb963f1c27cda",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    }
+  ],
+  "machine_home_path_scans": [
+    "sources",
+    "checks"
+  ],
+  "verifier_sha256": "cad461f77a24ad2c0b93a6c5f0172acb89906728c8bace1627617a701fdb5931"
+}

@@ -20,6 +20,9 @@ Protect the prior 77 primary, 16 holdout and 111 native-control cells. Complete
 new large coverage and two independent five-pair blocks before declaring the
 milestone complete. Routing seeds 202609211 and 202609212 are now reserved to
 the frozen cy2 validation described below; do not use them to tune the rule.
+The local primary/holdout, control, graph-coverage and fresh cycle-validation
+blocks are complete. Required Linux confirmation remains blocked on SSH
+renewal; the milestone and production routing adoption are not complete.
 
 ### Committed checkpoints
 
@@ -567,9 +570,8 @@ preserved; the corrected receipt is `integrity2.json`. The joined adjudication
 accepts local validation only. Never retune the guard from these seeds;
 production adoption still requires Linux confirmation.
 
-Current resume point: commit the verified cycle checkpoint, then measure
-the independently tested slope norm experiment below. All headline cycle
-timing is finished; master session 85414 exited successfully.
+The verified fresh cycle checkpoint is committed locally at `d2057e39`.
+All headline cycle timing and audits are finished.
 
 During the timing wait, source-only review identified a separate serial slope
 experiment: accumulate OLS's max-normalized weight norms during the existing
@@ -579,13 +581,24 @@ The captured `sn1` plugin
 builds and passes its ABI check and all five focused release tests in
 `target/ols-next-20260921/sn1-tests1.json`: fresh normalized norms, exact budget,
 actual worker-pool exclusion, existing independent slope oracle and ordered
-serial fusion. `benchmarks/one_fe_optimization/slope_ols_norms.py`, its Rust
-fixtures and the builder's new `--slope-ols-norms` flag remain uncommitted.
-No slope core file or captured cycle source is changed. The unexecuted
-`sn1-screen1.py` and `audit-sn1-screen1.py` drafts reuse the prior nine-cell serial-slope screen;
-the wide weighted serial case is now a target, with unit/threaded controls.
-Do not rescale an already computed raw norm: the draft computes each normalized
-weighted residual from the unchanged value to preserve underflow and rounding.
+serial fusion. The nine-cell three-pair screen completes 78 clean calls with
+27 exact native science/output pairs. Two further four-cell five-pair native
+confirmations complete 80 clean calls with 40 exact pairs. AW K10 paired ratios
+are 0.9849 in both confirmations; AW K50 is 0.9701/0.9810. Three-slope-only PW
+K6 instead regresses to 1.0308/1.0044. Unit-control ratios vary from 0.9583 to
+1.0261. Six diagnostic calls retain exact results and confirm the norm scan
+shrinks while absorption takes more work. The AW K10 phase saves about 6.6 ms
+but adds 1.2 ms to absorption; wide AW saves 28.2 ms but adds 14.3 ms.
+
+This broad norm handoff is not adopted. The [164-call archive](benchmarks/reports/development/serial-slope-normalized-norms-local-2026-09-22/README.md)
+preserves both complete source trees, all five tests, the screen, confirmations,
+filtered profiles and exact native audits. Integrity verifies 4,584 entries,
+135 omitted arrays and two sources; privacy passes all 4,626 members. Its
+source-disposition receipt records
+restoring the builder and removing the active experiment files only after
+archiving their exact bytes. The native slope source and six earlier core
+drafts remain unchanged. Do not infer a broad optimization from removing one
+pass: the measured multiple-slope whole-command result is worse.
 Focused Linux confirmation remains blocked on SSH renewal. The final primary/holdout
 archive is committed at `f8610cee` and current controls at `1439c23c`. Focused Linux confirmation
 remains required before closing the milestone. The
@@ -595,6 +608,14 @@ modified, including the tested but unaccepted window and earlier graph
 kernels. Keep old routes where cross-platform confirmation is missing;
 never tune thresholds from the completed validation seeds. Serial weighted
 slope losses remain.
+
+Current resume point: wait for Johannes's pending SSH-renewal response.
+Do not repeat the same failed authentication probe without changed access.
+Once access is restored, inspect
+SCC state and use the existing OLS development smoke before the planned focused
+same-node T1/8/16 comparisons and constrained-memory checks. Do not launch a
+qualification matrix, push, install or adopt the cycle route. All local
+benchmark processes and audit sessions are finished.
 
 ## Repository cleanup and development push — 2026-09-21
 
