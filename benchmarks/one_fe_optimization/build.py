@@ -16,7 +16,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None, serial_lsmr_window=False, direct_ols_lsmr=False, cycle_ols_lsmr=False, profile_lsmr_transport=False):
+def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None, serial_lsmr_window=False, direct_ols_lsmr=False, cycle_ols_lsmr=False, profile_lsmr_transport=False, profile_ppml_session=False):
     assert not (direct_ols_lsmr and cycle_ols_lsmr), 'Choose one isolated routing experiment.'
     root = root.resolve()
     source = root / name
@@ -86,12 +86,15 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         probes = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probes)
         probes.instrument(source)
-    if profile_lsmr_transport:
+    if profile_lsmr_transport or profile_ppml_session:
         import importlib.util
         spec = importlib.util.spec_from_file_location("lsmr_transport_probes", REPO / "benchmarks/next_subsystem/profile.py")
         probes = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probes)
-        probes.instrument(source)
+        if profile_lsmr_transport:
+            probes.instrument(source)
+        if profile_ppml_session:
+            probes.instrument_ppml(source)
     hashes = {str(p.relative_to(source)): sha(p) for p in sorted(source.rglob("*")) if p.is_file()}
     target = root / ("cargo-" + name)
     env = dict(os.environ, DEVELOPER_DIR="/Library/Developer/CommandLineTools",
@@ -149,6 +152,8 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         identity.setdefault("diagnostics", []).append("schur_pilot_steps")
     if profile_lsmr_transport:
         identity.setdefault("diagnostics", []).append("lsmr_transport")
+    if profile_ppml_session:
+        identity.setdefault("diagnostics", []).append("ppml_session")
     (root / ("identity-" + name + ".json")).write_text(json.dumps(identity, indent=2) + "\n")
     print("BUILD_PASS", name, identity["plugin"], flush=True)
 
@@ -168,6 +173,7 @@ if __name__ == "__main__":
     p.add_argument("--profile-recovery", action="store_true")
     p.add_argument("--profile-schur", action="store_true")
     p.add_argument("--profile-lsmr-transport", action="store_true")
+    p.add_argument("--profile-ppml-session", action="store_true")
     p.add_argument("--schur-narrow-cap", type=int, choices=range(1, 65),
                    help="isolated narrow OLS cap experiment; never modifies the checkout")
     p.add_argument("--serial-lsmr-window", action="store_true",
@@ -177,4 +183,4 @@ if __name__ == "__main__":
     p.add_argument("--cycle-ols-lsmr", action="store_true",
                    help="isolated exact-cycle routing experiment; never modifies production source")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap, a.serial_lsmr_window, a.direct_ols_lsmr, a.cycle_ols_lsmr, a.profile_lsmr_transport)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap, a.serial_lsmr_window, a.direct_ols_lsmr, a.cycle_ols_lsmr, a.profile_lsmr_transport, a.profile_ppml_session)

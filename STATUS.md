@@ -10,7 +10,7 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Broader optimization: LSMR transport accepted locally — 2026-09-22
+## Broader optimization: transport and PPML refresh accepted locally — 2026-09-22
 
 The [current-source inventory](benchmarks/reports/development/next-subsystem-inventory-local-2026-09-22/README.md)
 binds all 523 computational inputs at `7189e57a` to `dtk1` and records 57
@@ -23,7 +23,7 @@ with r(459); all other calls complete without detected competing fits/builds.
 This is bounded development evidence, not PPML/F0 or release qualification.
 
 The [transport milestone](benchmarks/reports/development/lsmr-transport-local-2026-09-22/README.md)
-and ADR 0102 retain tiled input/output copies in owned and borrowed LSMR,
+at `87b21d4c` and ADR 0102 retain tiled input/output copies in owned and borrowed LSMR,
 with existing buffers and unchanged numerical policy. All 150 application
 calls complete; 55 native pairs pass science, four new small-design oracles
 pass for both artifacts, 76 focused Rust tests and three licensed fixtures
@@ -32,10 +32,45 @@ change in narrow, serial, four-FE or PPML controls. The source adds no matrix
 bank; threaded upstream allocation peaks fluctuate, including positive
 paired differences, so exact peak neutrality is not claimed.
 
-PPML strict checkpoints/current-weight reference passes are now the next
-bounded subsystem. Diagnostic instrumentation remains isolated. Historical
-serial-slope tuning remains closed, frozen definitions/seeds remain preserved,
-and the allocation-inventory, constrained-fit and Linux limitations stay open.
+The [PPML refresh milestone](benchmarks/reports/development/ppml-reference-refresh-local-2026-09-22/README.md)
+and ADR 0103 retain numeric source binding and independent-column scheduling
+for fresh current-weight reference statistics. `reference1` is `87b21d4c` plus
+the archived `ols/linear_session.rs` patch; all 523 computational inputs match
+the final source. Its plugin SHA-256 is
+`357118cece7f4eaf1813e5e7ab25458ca999ae20fb0bed8afc7dd4d6354d58ea`.
+One-FE screen/fresh confirmation medians improve 179→162 and 158→143 ms;
+sparse two-FE improves 359→347 ms. Other gains are small and the narrow control
+loses about 1.7%. Six of seven successful stock-comparable PPML rows still lose
+to fixest. No new heap buffer, weighted cache, rank policy or certificate
+relaxation is introduced. Threaded PPML tracked peaks vary by −2.51 to +3.49 MB;
+no exact peak-neutrality claim is made.
+
+All 39 completed native pairs have identical scientific exports. Of 108
+application attempts, 102 complete and six native zero-outcome warmups fail;
+there are no timeouts or detected overlaps. The final source passes 375
+distinct focused Rust tests, the actual-plugin ABI harness and four licensed
+fixtures. The new fixture uses independent dummy Poisson and current-Hessian
+sandwiches across one/two/three FE, unit/FW/PW, offsets, robust/clustered
+inference, saved means and T1/T4. Full distributions, failures, exact source
+identities and immutable receipts are archived. No qualification campaign,
+push or release was performed.
+
+**Next bounded subsystem:** PPML separation/publication accounting on the
+zero-outcome case in the refresh report. Its 7,680-row warmup fails with
+r(3499), “PPML separation execution bounds are inconsistent.” Direct replay
+also fails on original `7189e57a`/`dtk1`, so this predates both accepted changes.
+The precise invalid sequence/receipt field is not yet localized. Start from
+the archived reproduction and establish the sample/separation invariant before
+another positive-outcome timing cycle. Strict checkpoint residual projection
+and assembly remain the subsequent performance opportunity.
+
+Both bounded performance experiments are closed. Diagnostic instrumentation
+remains isolated. Historical serial-slope tuning remains closed; the 77
+primary, 16 holdout and 111 native controls and reserved validation seeds stay
+unchanged. The allocation-source inventory still fails and was not refreshed;
+weighted constrained-fit failures, nonretaining CG instability and deferred
+Linux/constrained-memory confirmation remain open. Do not restart stopped
+campaigns or repeat the known SCC authentication failure.
 
 ## OLS optimization round closed locally — 2026-09-22
 

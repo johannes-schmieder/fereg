@@ -4482,13 +4482,22 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             let mut weight_sum = 0.0_f64;
             let mut weight_correction = 0.0_f64;
             let rows = self.response.len();
-            let parallel_columns = rows >= 65_536
-                && columns >= 8
+            let numeric = super::prepared_rhs::NumericOlsColumns::bind(
+                self.prepared.fit_model(), self.prepared.fit_sample(),
+            )?;
+            // Raw numeric sources are immutable for this sample/topology.
+            // Bind them once, but recompute every statistic with this frame's
+            // weights. Column ownership preserves row order and needs no new
+            // bank; its work depends on N*K, not the number of absorbed effects.
+            let numeric_parallel_work = numeric.is_some() && rows >= 16_384
+                && rows.saturating_mul(columns) >= 65_536 * 8;
+            let parallel_columns = columns >= 8
                 && self.config.execution.mode == PreparedOlsExecutionMode::Fast
                 && matches!(
                     self.fe_projector.as_ref(),
                     Some(ReusableLinearMapProjector::PpmlCategorical { score_design, .. })
-                        if score_design.effects().len() == 1
+                        if numeric_parallel_work
+                            || rows >= 65_536 && score_design.effects().len() == 1
                 )
                 && rayon::current_thread_index().is_some()
                 && rayon::current_num_threads() > 1;
@@ -4517,7 +4526,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             let generated = generated_columns[column];
                             for row in 0..rows {
                                 let weight = normalized_solver_weight(weights, weight_scale, row)?;
-                                let raw_value = prepared.fit_column_value(generated, row)?;
+                                let raw_value = if let Some(numeric) = numeric.as_ref() {
+                                    numeric.raw_columns()[generated].map_or(1.0, |values| values[row])
+                                } else {
+                                    prepared.fit_column_value(generated, row)?
+                                };
                                 update_scaled_square(weight.sqrt() * raw_value, scale, sum)?;
                                 compensated_add(weight * raw_value, mean, correction)?;
                             }
@@ -4535,7 +4548,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         .copied()
                         .enumerate()
                     {
-                        let raw_value = self.prepared.fit_column_value(generated, row)?;
+                        let raw_value = if let Some(numeric) = numeric.as_ref() {
+                            numeric.raw_columns()[generated].map_or(1.0, |values| values[row])
+                        } else {
+                            self.prepared.fit_column_value(generated, row)?
+                        };
                         update_scaled_square(
                             root * raw_value,
                             &mut self.frozen_workspace.scores[column],

@@ -25,3 +25,42 @@ def instrument(root):
         assert body.count(before) == 1, before
         body = body.replace(before, after)
     path.write_text(text[:start] + body + text[end:])
+
+
+def instrument_ppml(root):
+    path = root / "crates/fereg-core/src/ols/linear_session.rs"
+    text = path.read_text()
+    text += '''
+struct DevelopmentSessionLap(&'static str, usize, std::time::Instant);
+impl Drop for DevelopmentSessionLap {
+    fn drop(&mut self) {
+        if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+            eprintln!("FEREG_PHASE|linear_session|name={}|rows={}|seconds={:.9}",
+                self.0, self.1, self.2.elapsed().as_secs_f64());
+        }
+    }
+}
+'''
+    for name in ("strict_candidate", "prepare_retained_solve", "solve_full_retained_rank",
+                 "build_full_retained_design", "weighted_dense_column_norms",
+                 "weighted_dense_column_means", "refresh_retained_norms",
+                 "reproject_retained_within_in_place", "reproject_retained_with_response_in_place"):
+        needle = f"fn {name}("
+        assert text.count(needle) == 1, name
+        start = text.index("{", text.index(needle)) + 1
+        text = text[:start] + f'\n        let _development_lap = DevelopmentSessionLap("{name}", self.response.len(), Instant::now());' + text[start:]
+    start = text.index("fn solve_full_retained_rank(")
+    end = text.index("fn full_retained_generated_columns(", start)
+    body = text[start:end]
+    body = body.replace("        let rows = self.response.len();", "        let mut profile_rank_lap = Instant::now();\n        let rows = self.response.len();", 1)
+    for before, label in [("        let residual_absorbed =", "rank_before_residual_projection"),
+                          ("        let draft = RetainedFiniteFitDraft", "rank_residual_projection"),
+                          ("        Ok(RetainedRankSolveDraft", "rank_assembly")]:
+        assert body.count(before) == 1
+        body = body.replace(before, f'''        if std::env::var_os("FEREG_PHASE_TIMING").is_some() {{
+            eprintln!("FEREG_PHASE|linear_session|name={label}|rows={{rows}}|seconds={{:.9}}", profile_rank_lap.elapsed().as_secs_f64());
+        }}
+        profile_rank_lap = Instant::now();
+''' + before)
+    text = text[:start] + body + text[end:]
+    path.write_text(text)
