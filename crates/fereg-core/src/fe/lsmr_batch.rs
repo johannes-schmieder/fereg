@@ -1,6 +1,9 @@
 //! Bounded transport around the pinned independent-RHS solver.
 use std::time::Instant;
 
+use rayon::prelude::*;
+
+use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError};
 use crate::memory::LsmrBatchPolicy;
 use within::{BatchSolveResult, Effect, LsmrOptions, PreconditionerConfig, Solver, WithinError};
@@ -44,6 +47,61 @@ fn cells(rows: usize, columns: usize) -> Result<usize, BatchError> {
             "bounded LSMR transport dimensions overflow",
         ))
     })
+}
+
+// Keep a small row/column tile in cache while crossing the row-major public
+// matrix and the independent-RHS solver's column-major transport. Workers own
+// disjoint destinations; these are bitwise copies, with no reduction order.
+const TRANSPORT_ROWS: usize = 32;
+const TRANSPORT_COLUMNS: usize = 8;
+
+pub(super) fn rhs_columns(values: &DenseMatrix) -> crate::error::Result<Vec<Vec<f64>>> {
+    let mut columns = Vec::new();
+    reserve(&mut columns, values.ncols()).map_err(|e| e.into_fereg("LSMR RHS transport"))?;
+    for _ in 0..values.ncols() {
+        let mut column = Vec::new();
+        reserve(&mut column, values.nrows()).map_err(|e| e.into_fereg("LSMR RHS transport"))?;
+        column.resize(values.nrows(), 0.0);
+        columns.push(column);
+    }
+    columns
+        .par_chunks_mut(TRANSPORT_COLUMNS)
+        .enumerate()
+        .for_each(|(tile, columns)| {
+            for start in (0..values.nrows()).step_by(TRANSPORT_ROWS) {
+                let end = (start + TRANSPORT_ROWS).min(values.nrows());
+                for (offset, column) in columns.iter_mut().enumerate() {
+                    let c = tile * TRANSPORT_COLUMNS + offset;
+                    for (row, destination) in column[start..end].iter_mut().enumerate() {
+                        *destination = values[(start + row, c)];
+                    }
+                }
+            }
+        });
+    Ok(columns)
+}
+
+pub(super) fn copy_demeaned(columns: &[f64], values: &mut DenseMatrix) {
+    let rows = values.nrows();
+    let width = values.ncols();
+    assert_eq!(columns.len(), values.as_slice().len());
+    if width == 0 {
+        return;
+    }
+    values
+        .as_mut_slice()
+        .par_chunks_mut(TRANSPORT_ROWS * width)
+        .enumerate()
+        .for_each(|(tile, destination)| {
+            let start = tile * TRANSPORT_ROWS;
+            for column in 0..width {
+                let source = &columns
+                    [column * rows + start..column * rows + start + destination.len() / width];
+                for (row, value) in source.iter().enumerate() {
+                    destination[row * width + column] = *value;
+                }
+            }
+        });
 }
 
 pub(super) fn solve_batch<'a>(
@@ -137,6 +195,61 @@ pub(super) fn solve_prepared_batch(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn transport_preserves_bits_at_tile_edges_and_across_threads() {
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for rows in [0, 1, 31, 32, 33, 257] {
+                        for width in [0, 1, 7, 8, 9, 52, 67] {
+                            let patterns = [
+                                0,
+                                1 << 63,
+                                1,
+                                u64::MAX,
+                                f64::INFINITY.to_bits(),
+                                1.25_f64.to_bits(),
+                            ];
+                            let bits: Vec<u64> = (0..rows * width)
+                                .map(|i| {
+                                    patterns[i % patterns.len()]
+                                        ^ (i as u64 / patterns.len() as u64)
+                                })
+                                .collect();
+                            let source = DenseMatrix::from_row_major(
+                                rows,
+                                width,
+                                bits.iter().copied().map(f64::from_bits).collect(),
+                            )
+                            .unwrap();
+                            let columns = rhs_columns(&source).unwrap();
+                            assert_eq!(columns.len(), width);
+                            for (column, values) in columns.iter().enumerate() {
+                                assert_eq!(values.len(), rows);
+                                for (row, value) in values.iter().enumerate() {
+                                    assert_eq!(value.to_bits(), bits[row * width + column]);
+                                }
+                            }
+                            let bank: Vec<f64> = columns.into_iter().flatten().collect();
+                            let mut restored = DenseMatrix::zeros(rows, width).unwrap();
+                            copy_demeaned(&bank, &mut restored);
+                            assert_eq!(
+                                restored
+                                    .as_slice()
+                                    .iter()
+                                    .map(|x| x.to_bits())
+                                    .collect::<Vec<_>>(),
+                                bits
+                            );
+                        }
+                    }
+                });
+        }
+    }
 
     #[test]
     fn windows_preserve_all_outputs_against_the_upstream_full_batch() {

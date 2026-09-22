@@ -133,10 +133,7 @@ pub fn absorb_lsmr(
     }
 
     let effects = build_effects(design)?;
-    let mut rhs = reserved_empty(values.ncols(), "unable to reserve LSMR right-hand sides")?;
-    for column in 0..values.ncols() {
-        rhs.push(values.column(column)?);
-    }
+    let rhs = super::lsmr_batch::rhs_columns(values)?;
     let mut rhs_views = reserved_empty(
         rhs.len(),
         "unable to reserve borrowed LSMR right-hand-side views",
@@ -181,12 +178,7 @@ pub fn absorb_lsmr(
         }
     };
 
-    for column in 0..values.ncols() {
-        let demeaned = solved.demeaned(column);
-        for (row, value) in demeaned.iter().copied().enumerate() {
-            values[(row, column)] = value;
-        }
-    }
+    super::lsmr_batch::copy_demeaned(&solved.demeaned, values);
     let certificate = certify_residuals_with_reference_norms(
         design,
         weights,

@@ -37,6 +37,7 @@ def main(args):
     controller = root / "controller"
     controller.mkdir()
     shutil.copyfile(Path(__file__), controller / "screen.py")
+    shutil.copyfile(Path(__file__).with_name("designs.py"), controller / "designs.py")
     for name in ("common.py", "measure.py", "stata_worker.do", "r_worker.R"):
         shutil.copyfile(REPO / "benchmarks/local_fixest_gap" / name, controller / name)
     shutil.copyfile(REPO / "benchmarks/systematic/generate.py", controller / "generate.py")
@@ -44,6 +45,16 @@ def main(args):
     from common import read_json, write_json, sha256
     from measure import measure
     from generate import generate
+    from designs import augment
+    worker = controller / "stata_worker.do"
+    text = worker.read_text()
+    before = '''if `dimensions' >= 1 local effects g1
+if `dimensions' >= 2 local effects `effects' g2
+if `dimensions' == 3 local effects `effects' g3'''
+    assert text.count(before) == 1
+    worker.write_text(text.replace(before, '''forvalues dimension = 1/`dimensions' {
+    local effects `effects' g`dimension'
+}'''))
     sys.path.insert(0, str(REPO / "benchmarks/two_fe_dense"))
     import route_development as isolation
 
@@ -63,7 +74,7 @@ def main(args):
     # Native-only diagnostic controls may use the existing Stata options.
     if "fixest" in args.variants:
         for cell in cells:
-            if len(cell["effects"]) > 3 or any(cell.get(key) for key in
+            if any(cell.get(key) for key in
                     ("weight", "vce", "absorb", "restriction", "fit_options", "string_columns")):
                 raise ValueError("Stock comparison worker does not implement this cell's options")
     identities = {}
@@ -94,6 +105,7 @@ def main(args):
         for role, size in [("full", cell["n"]), ("warm", min(7680, cell["n"]))]:
             path = root / "data" / f"c{index}-{role}.dta"
             generate(dict(cell, n=size), args.seed, path, manifest)
+            augment(cell, path)
             frame = pd.read_stata(path, convert_categoricals=False)
             with path.with_suffix(".bin").open("wb") as stream:
                 for column in frame:

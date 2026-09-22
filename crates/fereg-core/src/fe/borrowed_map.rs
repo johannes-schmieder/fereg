@@ -5525,9 +5525,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         ));
     }
     let lsmr_setup_started = Instant::now();
-    let rhs = (0..values.ncols())
-        .map(|column| values.column(column))
-        .collect::<Result<Vec<_>>>()?;
+    let rhs = super::lsmr_batch::rhs_columns(values)?;
     let rhs_views = rhs.iter().map(Vec::as_slice).collect::<Vec<_>>();
     let options = LsmrOptions {
         tol: tolerance,
@@ -5607,11 +5605,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             + solved.x.capacity() as u128)
             * 8,
     )?;
-    for column in 0..lsmr_values.ncols() {
-        for (row, value) in solved.demeaned(column).iter().copied().enumerate() {
-            lsmr_values[(row, column)] = value;
-        }
-    }
+    super::lsmr_batch::copy_demeaned(&solved.demeaned, &mut lsmr_values);
     drop(std::mem::take(&mut solved.demeaned));
     if !retain_coefficients {
         drop(std::mem::take(&mut solved.x));

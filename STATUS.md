@@ -10,7 +10,7 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Broader optimization: remaining-gap inventory — 2026-09-22
+## Broader optimization: LSMR transport accepted locally — 2026-09-22
 
 The [current-source inventory](benchmarks/reports/development/next-subsystem-inventory-local-2026-09-22/README.md)
 binds all 523 computational inputs at `7189e57a` to `dtk1` and records 57
@@ -22,14 +22,20 @@ discrepancies remain unranked. One explicit-LSMR diagnostic fails its warmup
 with r(459); all other calls complete without detected competing fits/builds.
 This is bounded development evidence, not PPML/F0 or release qualification.
 
-The first implementation milestone targets measured LSMR matrix transport
-(about 88 ms on wide three-FE); no routing or numerical-policy change is
-proposed. The draft uses existing admitted buffers and bit-preserving tiled
-copies. Its 76 focused LSMR Rust tests pass. Uninstrumented paired measurements
-are in progress; the draft is not yet accepted. PPML strict checkpoints and
-current-weight projection are the next subsystem. Historical serial-slope
-tuning remains closed, frozen definitions/seeds remain preserved, and the
-known allocation-inventory, constrained-fit and Linux limitations remain open.
+The [transport milestone](benchmarks/reports/development/lsmr-transport-local-2026-09-22/README.md)
+and ADR 0102 retain tiled input/output copies in owned and borrowed LSMR,
+with existing buffers and unchanged numerical policy. All 150 application
+calls complete; 55 native pairs pass science, four new small-design oracles
+pass for both artifacts, 76 focused Rust tests and three licensed fixtures
+pass. Threaded wide three-FE gains are about 4–8% by medians, with little
+change in narrow, serial, four-FE or PPML controls. The source adds no matrix
+bank; threaded upstream allocation peaks fluctuate, including positive
+paired differences, so exact peak neutrality is not claimed.
+
+PPML strict checkpoints/current-weight reference passes are now the next
+bounded subsystem. Diagnostic instrumentation remains isolated. Historical
+serial-slope tuning remains closed, frozen definitions/seeds remain preserved,
+and the allocation-inventory, constrained-fit and Linux limitations stay open.
 
 ## OLS optimization round closed locally — 2026-09-22
 

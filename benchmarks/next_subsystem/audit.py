@@ -51,6 +51,16 @@ def compare(a, b, model):
     return checks
 
 
+def exact_exports(a, b):
+    # Solver/runtime matrices contain clocks; scientific matrices do not.
+    checks = {}
+    names = [p.name for p in a.glob("*.csv") if "runtime" not in p.name and "solver" not in p.name]
+    for name in names:
+        other = b / name
+        checks[name] = other.exists() and (a / name).read_bytes() == other.read_bytes()
+    return dict(passed=bool(checks) and all(checks.values()), files=checks)
+
+
 def runtime(path, model):
     if model == "ols":
         return read(path / "result.json")["metadata"]
@@ -82,8 +92,11 @@ def audit(root):
             paths = {r["variant"]: root / r["result"] for r in attempts if r["repetition"] == repetition}
             for variant, path in paths.items():
                 if variant != baseline and baseline in paths:
-                    comparisons.append(dict(repetition=repetition, variant=variant,
-                        checks=compare(paths[baseline], path, cell["model"])))
+                    comparison = dict(repetition=repetition, variant=variant,
+                        checks=compare(paths[baseline], path, cell["model"]))
+                    if variant != "fixest":
+                        comparison["exact_exports"] = exact_exports(paths[baseline], path)
+                    comparisons.append(comparison)
         records.append(dict(cell=cell, timings=timings, comparisons=comparisons, runtime=runtimes))
     return dict(schema="next-subsystem-audit-v1", scope="Pairwise exports only; independent oracles are separate", records=records)
 
