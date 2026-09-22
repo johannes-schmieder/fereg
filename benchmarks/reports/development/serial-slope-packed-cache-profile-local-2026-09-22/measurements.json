@@ -1,0 +1,216 @@
+[
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "sp2d-profile-aw-k10-1",
+    "run": "c000-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "a49872fe6346345b8857bc3d3d35afb5a8b5f42c98854fef11e11403b19adbb0",
+    "process_returncode": 0,
+    "root": "sp2d-profile-aw-k10-1",
+    "run": "c000-r0-sp2d",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "sp2d-profile-pw-k6-1",
+    "run": "c000-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "a49872fe6346345b8857bc3d3d35afb5a8b5f42c98854fef11e11403b19adbb0",
+    "process_returncode": 0,
+    "root": "sp2d-profile-pw-k6-1",
+    "run": "c000-r0-sp2d",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 50,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "2e7a87b00bd6828bd50d5b783e0f5a794047a1129433b941649ff765d602be86",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "sp2d-profile-aw-k50-1",
+    "run": "c000-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 50,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "2e7a87b00bd6828bd50d5b783e0f5a794047a1129433b941649ff765d602be86",
+    "plugin": "a49872fe6346345b8857bc3d3d35afb5a8b5f42c98854fef11e11403b19adbb0",
+    "process_returncode": 0,
+    "root": "sp2d-profile-aw-k50-1",
+    "run": "c000-r0-sp2d",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  }
+]

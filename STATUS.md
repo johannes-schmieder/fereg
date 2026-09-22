@@ -696,14 +696,28 @@ gap closure. The [163-call archive](benchmarks/reports/development/serial-slope-
 verifies 4,515 stored entries, 154 omitted local arrays and two full sources;
 privacy checks pass 4,537 members.
 
-Current resume point: prioritize the larger serial fitting/inference passes.
-The existing profile's `within_norms` timer includes packed score-cache creation,
-whose raw-column mean scan repeatedly calls the generic generated-column getter.
-Separate that cost from fresh norm work before changing it. Reuse of any earlier
-mean must preserve its exact scaling, block reductions and certificate boundary;
-do not assume raw-moment means are interchangeable. Continue from the complete
-captured rrc1 source. Broader integration checks must attach to the chosen final
-source; previous final blocks still do not transfer.
+The row-cache checkpoint is committed at `d74d262d`. The subsequent [packed-cache
+diagnostic](benchmarks/reports/development/serial-slope-packed-cache-profile-local-2026-09-22/README.md)
+completes six calls with three exact native comparisons and an instrumented ABI
+pass. The added timer finds AW K10/PW K6 packed-cache row passes of 10.13/5.64 ms.
+Initial solver reports reveal a larger PW cost: geometry setup is 25.80 ms
+(AW K10 is 12.63 ms). That setup is already included in the coarse `rhs` phase.
+The K50 packed-cache event is warm-up-only; its actual fit uses the strided cache.
+Audit 2 explicitly separates observation counts; the original audit is retained.
+The archive verifies 270 stored entries, six omitted arrays and two full sources;
+privacy checks pass 284 members.
+
+Current resume point: isolate serial geometry construction's raw Gram and
+independent QR costs before changing them. The raw Gram repeatedly reads the
+same row basis; a bounded row cache could preserve its FMA order. At the first
+QR pivot, no prior directions exist and the candidate is unchanged by swapping,
+so the already-computed pivot norm may remove a duplicate norm evaluation;
+prove exact geometry/rank/certificate equality before accepting either change.
+Packed score-cache lookup is a smaller alternative: reuse the existing bounded
+numeric binding while preserving scaling and fixed-block means. Do not assume
+raw-moment means are interchangeable. Continue from the complete captured rrc1
+source. Broader integration checks must attach to the chosen final source;
+previous final blocks still do not transfer.
 
 The fresh read-only SCC probe again returned permission denied; its local log
 is `target/ols-next-20260921/scc-auth-current-20260922-1.txt`. Do not repeat the

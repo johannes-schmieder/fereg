@@ -122,3 +122,25 @@ def instrument(source):
         section = section.replace(needle, needle + ";\n    eprintln!(\"SLOPE_PROFILE|direct_recovery|setup={:.9}|groups={:.9}|transpose={:.9}|finish={:.9}\", recovery_groups.duration_since(recovery_started).as_secs_f64(), recovery_scatter.duration_since(recovery_groups).as_secs_f64(), recovery_finish.duration_since(recovery_scatter).as_secs_f64(), recovery_finish.elapsed().as_secs_f64());\n    recovered")
         text = text[:first] + section + text[last:]
         path.write_text(text)
+
+    path = source / "crates/fereg-core/src/ols/prepared_fit.rs"
+    text = path.read_text()
+    first = text.index("fn build_fast_score_cache<")
+    last = text.index("fn build_strided_fast_score_cache<", first)
+    section = text[first:last]
+    markers = [
+        ("    let nrows = prepared.fit_sample().n_active();", "let score_cache_started = std::time::Instant::now();"),
+        ("    values\n        .par_chunks_mut(value_chunk_elements)", "let score_cache_rows = std::time::Instant::now();"),
+        ("    let mut denominator = 0.0_f64;", "let score_cache_reduce = std::time::Instant::now();"),
+    ]
+    for needle, code in markers:
+        assert section.count(needle) == 1, needle
+        section = section.replace(needle, "    " + code + "\n" + needle)
+    needle = "    let within = DenseMatrix::from_row_major(nrows, generated_columns.len(), values)?;"
+    assert section.count(needle) == 1
+    section = section.replace(needle, '''    eprintln!("SLOPE_PROFILE|packed_score_cache|n={}|k={}|allocation={:.9}|rows={:.9}|merge={:.9}",
+        nrows, generated_columns.len(), score_cache_rows.duration_since(score_cache_started).as_secs_f64(),
+        score_cache_reduce.duration_since(score_cache_rows).as_secs_f64(), score_cache_reduce.elapsed().as_secs_f64());
+''' + needle)
+    text = text[:first] + section + text[last:]
+    path.write_text(text)

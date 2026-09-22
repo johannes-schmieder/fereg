@@ -1,0 +1,28 @@
+{
+  "schema": "packed-score-cache-profile-integrity-v1",
+  "status": "pass",
+  "stored_entries_verified": 270,
+  "local_output_arrays_omitted": 6,
+  "content_addressed_objects_verified": 6,
+  "sources": [
+    {
+      "variant": "rrc1",
+      "base_commit": "8779f21900beed869c1ab39cc16c9d76ec0baeff",
+      "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "sp2d",
+      "base_commit": "d74d262d7c2809ebdc8ae23523df328319b96f3d",
+      "plugin": "a49872fe6346345b8857bc3d3d35afb5a8b5f42c98854fef11e11403b19adbb0",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    }
+  ],
+  "machine_home_path_scans": [
+    "sources",
+    "checks"
+  ],
+  "verifier_sha256": "0187d8a413ddc1cdc3371a3df5fbb5f5b9de989c12fc5bae6fe2d92f5f58ace9"
+}
