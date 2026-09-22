@@ -21,8 +21,8 @@ new large coverage and two independent five-pair blocks before declaring the
 milestone complete. Routing seeds 202609211 and 202609212 are now reserved to
 the frozen cy2 validation described below; do not use them to tune the rule.
 The local primary/holdout, control, graph-coverage and fresh cycle-validation
-blocks are complete for their captured sources. The subsequent data-pass
-refinement has separate focused evidence below. Serial weighted-slope losses
+blocks are complete for their captured sources. The subsequent data-pass and
+recovery refinements have separate focused evidence below. Serial weighted-slope losses
 remain open, and required Linux confirmation is blocked on SSH renewal. The
 milestone and production routing adoption are not complete.
 
@@ -675,11 +675,35 @@ verifies 6,978 stored entries, 233 omitted local arrays and three complete sourc
 reconstructions; privacy checks pass 7,018 members. The six preceding graph/window drafts remain separately
 unaccepted; old final blocks do not transfer to this new source.
 
-Current resume point: measure removal of repeated normalized slope divisions
-within each group-moment row. A fixed four-value stack cache may preserve the
-exact compensated arithmetic without a new heap lifetime or rank policy. The
-current PW diagnostic still spends 13.6 ms in group solves and 11.4 ms finishing.
-Broader integration checks must attach to the chosen final source.
+### Serial recovery row-cache checkpoint — 2026-09-22
+
+The geometry checkpoint is committed at `8779f219`. ADR 0098 retains a subsequent
+fixed four-double row cache within that admitted serial recovery. It removes
+repeated slope/target divisions while preserving each compensated entry's
+multiplication and row order. Generic MAP, uncached/threaded recovery and PPML
+retain the old loop; no heap owner, admission or routing change is introduced.
+
+`rrc1` plugin
+`481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2`
+passes the ABI check and five focused release fixtures. The seven-cell screen
+and two frozen five-cell five-pair confirmations complete 163 successful calls
+with clean isolation. All 71 native pairs have exact numerical exports, samples
+and requested saved arrays, with unchanged allocation peaks. PW robust/full
+paired ratios are 0.9825/0.9784, clustered 0.9960/0.9883. AW robust ratios are
+0.9878/0.9959. Saved-effects-only remains mixed at 1.0204/0.9898. The original
+AW screen regression is preserved. This is a small refinement, not reference
+gap closure. The [163-call archive](benchmarks/reports/development/serial-slope-recovery-row-cache-local-2026-09-22/README.md)
+verifies 4,515 stored entries, 154 omitted local arrays and two full sources;
+privacy checks pass 4,537 members.
+
+Current resume point: prioritize the larger serial fitting/inference passes.
+The existing profile's `within_norms` timer includes packed score-cache creation,
+whose raw-column mean scan repeatedly calls the generic generated-column getter.
+Separate that cost from fresh norm work before changing it. Reuse of any earlier
+mean must preserve its exact scaling, block reductions and certificate boundary;
+do not assume raw-moment means are interchangeable. Continue from the complete
+captured rrc1 source. Broader integration checks must attach to the chosen final
+source; previous final blocks still do not transfer.
 
 The fresh read-only SCC probe again returned permission denied; its local log
 is `target/ols-next-20260921/scc-auth-current-20260922-1.txt`. Do not repeat the

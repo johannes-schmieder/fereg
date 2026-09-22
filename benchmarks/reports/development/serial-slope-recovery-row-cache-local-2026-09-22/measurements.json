@@ -1,0 +1,5899 @@
+[
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c000-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c000-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c000-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c000-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c000-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c000-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c000-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c000-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c000-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c001-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c001-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c001-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c001-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c001-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c001-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c001-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c001-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c001-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "robust",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c002-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "robust",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c002-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "robust",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c002-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "robust",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c002-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "robust",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c002-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "robust",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c002-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "robust",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c002-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "robust",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c002-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "g1##c.(z)",
+      "case": "robust",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "none",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-aw-k10-t1",
+    "run": "c002-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c000-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c000-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c000-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c000-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c000-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c000-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c000-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c000-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c000-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c001-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c001-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c001-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c001-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c001-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c001-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c001-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c001-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c001-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c002-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c002-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c002-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c002-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c002-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c002-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c002-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c002-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t1",
+    "run": "c002-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t16",
+    "run": "c000-r0-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t16",
+    "run": "c000-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t16",
+    "run": "c000-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t16",
+    "run": "c000-r1-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t16",
+    "run": "c000-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t16",
+    "run": "c000-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fixest",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": null,
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t16",
+    "run": "c000-r2-fixest",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t16",
+    "run": "c000-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 16,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-pw-k6-t16",
+    "run": "c000-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c000-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c000-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c000-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c000-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c000-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c000-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c000-r3-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c000-r3-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c000-r4-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c000-r4-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c001-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c001-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c001-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c001-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c001-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c001-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c001-r3-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c001-r3-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c001-r4-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-aw-k10-t1",
+    "run": "c001-r4-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c000-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c000-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c000-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c000-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c000-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c000-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c000-r3-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c000-r3-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c000-r4-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c000-r4-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c001-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c001-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c001-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c001-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c001-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c001-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c001-r3-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c001-r3-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c001-r4-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c001-r4-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c002-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c002-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c002-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c002-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c002-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c002-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c002-r3-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c002-r3-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c002-r4-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm1-pw-k6-t1",
+    "run": "c002-r4-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c000-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c000-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c000-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c000-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c000-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c000-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c000-r3-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c000-r3-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c000-r4-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c000-r4-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c001-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c001-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c001-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c001-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c001-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c001-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c001-r3-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c001-r3-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c001-r4-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1##c.(z)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": true,
+      "k": 10,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[aw=w]",
+      "weight_kind": "aw"
+    },
+    "input_sha256": "132ee5ee32b93b375358a17afa86efb5ba9fd3699411875b33a8d8faf7434f07",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-aw-k10-t1",
+    "run": "c001-r4-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c000-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c000-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c000-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c000-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c000-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c000-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c000-r3-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c000-r3-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c000-r4-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c000-r4-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c001-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c001-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c001-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c001-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c001-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c001-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c001-r3-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c001-r3-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c001-r4-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "cluster2_outputs",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "residuals(out_resid)",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "all",
+      "r_vce": "~c1+c2",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "cluster c1 c2",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c001-r4-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c002-r0-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c002-r0-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c002-r1-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c002-r1-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c002-r2-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c002-r2-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c002-r3-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c002-r3-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "eaaafa92105a11c5fc93335aead00f9b9931994c95ce7cc07cb19b82a21719ef",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c002-r4-rgc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  },
+  {
+    "arm": "fereg",
+    "cell": {
+      "absorb": "out_fe=g1#c.(z z2 z3)",
+      "case": "robust_saved",
+      "design": "one_fe",
+      "effects": [
+        "g1"
+      ],
+      "fit_options": "",
+      "intercept": false,
+      "k": 6,
+      "model": "ols",
+      "n": 245760,
+      "outputs": "saved",
+      "r_vce": "hetero",
+      "section": "width",
+      "seed": 104729,
+      "slope_names": [
+        "z",
+        "z2",
+        "z3"
+      ],
+      "threads": 1,
+      "vce": "robust",
+      "weight": "[pw=w]",
+      "weight_kind": "pw"
+    },
+    "input_sha256": "fcc5e95180cbe9069583f16830c1a18a88d05239cb4b40c125a7f5a5ac559e53",
+    "plugin": "481f2aecc4a86f77925fc383ab5d0cfa71f7a58aa1b250bceb98f774a532e2f2",
+    "process_returncode": 0,
+    "root": "rrc1-confirm2-pw-k6-t1",
+    "run": "c002-r4-rrc1",
+    "sample_sha256": "914a8573d6a7be16a2df7f3f70f026fd977e5aa117d0d40aa36e785cc85a9b42",
+    "sentinel": true,
+    "status": "pass"
+  }
+]

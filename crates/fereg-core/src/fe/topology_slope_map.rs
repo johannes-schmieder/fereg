@@ -578,7 +578,7 @@ pub(crate) fn recover_finalized_single_slope_direct_certified(
         for (level, (destination, cached)) in group_coefficients.chunks_mut(channels)
             .zip(geometry.chunks_mut(stride)).enumerate()
         {
-            group_moments(source.members(level)?, effect, weights, &values, workspace)?;
+            group_moments_with_row_cache(source.members(level)?, effect, weights, &values, workspace, true)?;
             cached[..channels * channels].copy_from_slice(&workspace.gram[..channels * channels]);
             cached[channels * channels..].copy_from_slice(&workspace.channel_scales[..channels]);
             solve_group(channels, 1, workspace)?;
@@ -2992,6 +2992,17 @@ fn group_moments(
     values: &DenseMatrix,
     workspace: &mut SlopeWorkspace,
 ) -> Result<()> {
+    group_moments_with_row_cache(members, effect, weights, values, workspace, false)
+}
+
+fn group_moments_with_row_cache(
+    members: &[usize],
+    effect: &CategoricalAbsorbedEffectView<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    workspace: &mut SlopeWorkspace,
+    cache_row_basis: bool,
+) -> Result<()> {
     if members.is_empty() {
         return Err(invalid_argument(
             "categorical slope MAP contains an empty final level",
@@ -2999,6 +3010,9 @@ fn group_moments(
     }
     let channels = effect.channels();
     let rhs_count = values.ncols();
+    if cache_row_basis && (!(1..=4).contains(&channels) || rhs_count != 1) {
+        return Err(invalid_argument("recovery row cache requires bounded channels and one RHS"));
+    }
     let gram_elements = channels * channels;
     let cross_elements = channels * rhs_count;
     workspace.gram[..gram_elements].fill(0.0);
@@ -3031,25 +3045,50 @@ fn group_moments(
             workspace.value_scales[rhs] = workspace.value_scales[rhs].max(values[(row, rhs)].abs());
         }
     }
-    for &row in members {
-        let weight = weights.value(row);
-        for left in 0..channels {
-            let left_basis = effect.basis_value(left, row, &workspace.channel_scales);
-            for right in 0..channels {
-                compensated_add(
-                    weight * left_basis * effect.basis_value(right, row, &workspace.channel_scales),
-                    &mut workspace.gram[left * channels + right],
-                    &mut workspace.gram_corrections[left * channels + right],
-                )?;
+    if cache_row_basis {
+        let scale = workspace.value_scales[0];
+        for &row in members {
+            let weight = weights.value(row);
+            let mut basis = [0.0_f64; 4];
+            for (channel, value) in basis[..channels].iter_mut().enumerate() {
+                *value = effect.basis_value(channel, row, &workspace.channel_scales);
             }
-            for rhs in 0..rhs_count {
-                let scale = workspace.value_scales[rhs];
+            let value = if scale != 0.0 { values[(row, 0)] / scale } else { 0.0 };
+            // Retain each compensated entry's row and multiplication order;
+            // only repeated divisions of immutable row values are removed.
+            for (left, &left_basis) in basis[..channels].iter().enumerate() {
+                for (right, &right_basis) in basis[..channels].iter().enumerate() {
+                    compensated_add(weight * left_basis * right_basis,
+                        &mut workspace.gram[left * channels + right],
+                        &mut workspace.gram_corrections[left * channels + right])?;
+                }
                 if scale != 0.0 {
+                    compensated_add(weight * left_basis * value,
+                        &mut workspace.cross[left], &mut workspace.cross_corrections[left])?;
+                }
+            }
+        }
+    } else {
+        for &row in members {
+            let weight = weights.value(row);
+            for left in 0..channels {
+                let left_basis = effect.basis_value(left, row, &workspace.channel_scales);
+                for right in 0..channels {
                     compensated_add(
-                        weight * left_basis * (values[(row, rhs)] / scale),
-                        &mut workspace.cross[left * rhs_count + rhs],
-                        &mut workspace.cross_corrections[left * rhs_count + rhs],
+                        weight * left_basis * effect.basis_value(right, row, &workspace.channel_scales),
+                        &mut workspace.gram[left * channels + right],
+                        &mut workspace.gram_corrections[left * channels + right],
                     )?;
+                }
+                for rhs in 0..rhs_count {
+                    let scale = workspace.value_scales[rhs];
+                    if scale != 0.0 {
+                        compensated_add(
+                            weight * left_basis * (values[(row, rhs)] / scale),
+                            &mut workspace.cross[left * rhs_count + rhs],
+                            &mut workspace.cross_corrections[left * rhs_count + rhs],
+                        )?;
+                    }
                 }
             }
         }
@@ -4046,6 +4085,44 @@ mod tests {
     }
 
     #[test]
+    fn direct_recovery_row_cache_preserves_bounded_moments() {
+        let n = 31;
+        let members: Vec<_> = (0..n).map(|r| (r * 7) % n).collect();
+        let raw_weights: Vec<_> = (0..n).map(|r| (r % 7 + 1) as f64 * 1e80).collect();
+        let slopes: Vec<Vec<_>> = (0..4).map(|c| (0..n).map(|r| {
+            if c == 1 { 0.0 } else { ((r * (c + 1)) as f64).sin() * 10.0_f64.powi(c as i32 * 80 - 120) }
+        }).collect()).collect();
+        for intercept in [false, true] { for channels in 1..=4 {
+            let effect = CategoricalAbsorbedEffectView::new(intercept,
+                slopes[..channels - usize::from(intercept)].iter().map(Vec::as_slice).collect()).unwrap();
+            for zero_rhs in [false, true] {
+                let values = DenseMatrix::from_row_major(n, 1, (0..n).map(|r|
+                    if zero_rhs { 0.0 } else { (r as f64).cos() * 1e-120 }).collect()).unwrap();
+                for weights in [BorrowedMapWeights::Unit, BorrowedMapWeights::Provided(&raw_weights)] {
+                    let validated = validate_weights(weights, n).unwrap();
+                    let mut prior = SlopeWorkspace::new(channels, 1, &mut SystemSlopeWorkspaceReservation).unwrap();
+                    let mut cached = SlopeWorkspace::new(channels, 1, &mut SystemSlopeWorkspaceReservation).unwrap();
+                    group_moments(&members, &effect, validated, &values, &mut prior).unwrap();
+                    group_moments_with_row_cache(&members, &effect, validated, &values, &mut cached, true).unwrap();
+                    for (a, b) in [(&prior.gram, &cached.gram), (&prior.cross, &cached.cross),
+                        (&prior.gram_corrections, &cached.gram_corrections),
+                        (&prior.cross_corrections, &cached.cross_corrections),
+                        (&prior.channel_scales, &cached.channel_scales), (&prior.value_scales, &cached.value_scales)] {
+                        assert!(a.iter().zip(b).all(|(x, y)| x.to_bits() == y.to_bits()));
+                    }
+                }
+            }
+        }}
+        let effect = CategoricalAbsorbedEffectView::new(true, slopes.iter().map(Vec::as_slice).collect()).unwrap();
+        let mut workspace = SlopeWorkspace::new(5, 2, &mut SystemSlopeWorkspaceReservation).unwrap();
+        for rhs in [1, 2] {
+            let values = DenseMatrix::from_row_major(n, rhs, vec![0.0; n * rhs]).unwrap();
+            assert_eq!(group_moments_with_row_cache(&members, &effect, validate_weights(BorrowedMapWeights::Unit, n).unwrap(),
+                &values, &mut workspace, true).unwrap_err().code, ErrorCode::InvalidArgument);
+        }
+    }
+
+    #[test]
     fn direct_single_slope_recovery_preserves_rank_weights_and_rejection() {
         let n = 4099;
         let codes: Vec<_> = (0..n).map(|r| (r % 257) as u32).collect();
@@ -4087,9 +4164,18 @@ mod tests {
                     let source = topology.registry().source(topology.effect_to_topology()[0]).unwrap();
                     let mut geometry = vec![0.0; source.n_levels() * stride];
                     let target_matrix = DenseMatrix::from_row_major(n, 1, target.clone()).unwrap();
+                    let mut row_cached = SlopeWorkspace::new(effects[0].channels(), 1, &mut SystemSlopeWorkspaceReservation).unwrap();
                     for (level, cached) in geometry.chunks_mut(stride).enumerate() {
                         group_moments(source.members(level).unwrap(), &effects[0], validated,
                             &target_matrix, &mut workspace).unwrap();
+                        group_moments_with_row_cache(source.members(level).unwrap(), &effects[0], validated,
+                            &target_matrix, &mut row_cached, true).unwrap();
+                        assert_eq!(workspace.gram, row_cached.gram);
+                        assert_eq!(workspace.cross, row_cached.cross);
+                        assert_eq!(workspace.gram_corrections, row_cached.gram_corrections);
+                        assert_eq!(workspace.cross_corrections, row_cached.cross_corrections);
+                        assert_eq!(workspace.channel_scales, row_cached.channel_scales);
+                        assert_eq!(workspace.value_scales, row_cached.value_scales);
                         cached[..channels * channels].copy_from_slice(&workspace.gram[..channels * channels]);
                         cached[channels * channels..].copy_from_slice(&workspace.channel_scales[..channels]);
                     }
