@@ -64,3 +64,36 @@ impl Drop for DevelopmentSessionLap {
 ''' + before)
     text = text[:start] + body + text[end:]
     path.write_text(text)
+
+    path = root / "crates/fereg-core/src/ols/prepared_fit.rs"
+    text = path.read_text()
+    start = text.index("pub(super) fn assemble_retained_weighted_linear_fit")
+    end = text.index("/// Canonical finite-plus-FE projection", start)
+    body = text[start:end]
+    body = body.replace("    let weights = frame.weights();", "    let mut development_lap = std::time::Instant::now();\n    let weights = frame.weights();", 1)
+    for before, label in [("    let bread = finalize_reported_bread_and_intercept(", "raw_residual"),
+                          ("    let initial_absorbed_outcome_sum_of_squares", "bread"),
+                          ("    let coefficients = build_coefficient_slots", "score_certificate")]:
+        assert body.count(before) == 1
+        body = body.replace(before, f'''    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {{
+        eprintln!("FEREG_PHASE|retained_assembly|name={label}|rows={{}}|seconds={{:.9}}", prepared.fit_sample().n_active(), development_lap.elapsed().as_secs_f64());
+    }}
+    development_lap = std::time::Instant::now();
+''' + before)
+    text = text[:start] + body + text[end:]
+    start = text.index("fn finalize_reported_bread_and_intercept<")
+    end = text.index("fn reported_inverse_relative_infinity_norm(", start)
+    body = text[start:end]
+    before = "        let mut means = reserved_filled("
+    assert body.count(before) == 1
+    body = body.replace(before, "        let mut development_lap = std::time::Instant::now();\n" + before, 1)
+    for before, label in [("        // Fast mode already owns", "raw_means"),
+                          ("        let mut reported_intercept = raw_residual_mean;", "residual_mean"),
+                          ("        let mut finite_mean_fit =", "outcome_mean")]:
+        assert body.count(before) == 1
+        body = body.replace(before, f'''        if std::env::var_os("FEREG_PHASE_TIMING").is_some() {{
+            eprintln!("FEREG_PHASE|retained_bread|name={label}|rows={{}}|seconds={{:.9}}", prepared.fit_sample().n_active(), development_lap.elapsed().as_secs_f64());
+        }}
+        development_lap = std::time::Instant::now();
+''' + before)
+    path.write_text(text[:start] + body + text[end:])

@@ -5690,18 +5690,32 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             0.0_f64,
             "unable to reserve prepared OLS reported-intercept means",
         )?;
-        for (position, generated) in finite.generated_columns.iter().copied().enumerate() {
-            means[position] = if let Some(mean) =
-                raw_moments.and_then(|cache| cache.means.get(generated + 1))
-            {
-                *mean
-            } else if let Some(mean) = fast_score_cache.and_then(|cache| cache.mean(generated)) {
-                mean
-            } else {
-                weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
-                    prepared.fit_column_value(generated, row)
-                })?
-            };
+        let numeric = if raw_moments.is_none() && fast_score_cache.is_none() {
+            super::prepared_rhs::NumericOlsColumns::bind_score_means(
+                prepared.fit_model(), prepared.fit_sample(),
+            )?
+        } else {
+            None
+        };
+        if let Some(numeric) = numeric.as_ref() {
+            fill_bound_weighted_column_means(
+                prepared.fit_sample().n_active(), numeric.raw_columns(),
+                &finite.generated_columns, weights, &mut means,
+            )?;
+        } else {
+            for (position, generated) in finite.generated_columns.iter().copied().enumerate() {
+                means[position] = if let Some(mean) =
+                    raw_moments.and_then(|cache| cache.means.get(generated + 1))
+                {
+                    *mean
+                } else if let Some(mean) = fast_score_cache.and_then(|cache| cache.mean(generated)) {
+                    mean
+                } else {
+                    weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
+                        prepared.fit_column_value(generated, row)
+                    })?
+                };
+            }
         }
 
         // Fast mode already owns the reconstructed within residual from the QR
@@ -6049,6 +6063,42 @@ fn weighted_mean_slice(values: &[f64], weights: NormalizedWeights<'_>) -> Result
             .copied()
             .ok_or_else(|| invalid_argument("prepared OLS weighted-mean row is out of range"))
     })
+}
+
+fn fill_bound_weighted_column_means(
+    nrows: usize,
+    raw_columns: &[Option<&[f64]>],
+    generated_columns: &[usize],
+    weights: NormalizedWeights<'_>,
+    means: &mut [f64],
+) -> Result<()> {
+    if means.len() != generated_columns.len()
+        || generated_columns.iter().any(|&column| column >= raw_columns.len())
+        || raw_columns.iter().flatten().any(|source| source.len() != nrows)
+    {
+        return Err(invalid_argument("bound weighted-mean columns are not aligned"));
+    }
+    // Only immutable source binding is reused. Each column freshly runs the
+    // original maximum-scaled, compensated mean under this weight frame, in
+    // row order; disjoint destinations need no reduction or partial bank.
+    let mean = |generated: usize| {
+        let source = raw_columns[generated];
+        weighted_mean_by(nrows, weights, |row| Ok(source.map_or(1.0, |values| values[row])))
+    };
+    if nrows >= 16_384 && means.len() >= 8
+        && nrows.saturating_mul(means.len()) >= 524_288
+        && rayon::current_thread_index().is_some() && rayon::current_num_threads() > 1
+    {
+        means.par_iter_mut().zip(generated_columns.par_iter()).try_for_each(|(target, &generated)| {
+            *target = mean(generated)?;
+            Ok(())
+        })
+    } else {
+        for (target, &generated) in means.iter_mut().zip(generated_columns) {
+            *target = mean(generated)?;
+        }
+        Ok(())
+    }
 }
 
 fn build_raw_moment_cache<R: FitReservation>(
@@ -10428,6 +10478,63 @@ mod tests {
         for (actual, expected) in gram.iter().zip(reference_gram) {
             assert_close(*actual, expected, 2e-12);
         }
+    }
+
+    #[test]
+    fn bound_weighted_column_means_preserve_current_weight_bits() {
+        for (rows, width) in [(1, 1), (4096, 9), (16383, 33), (16384, 32),
+                              (32771, 17), (65537, 8)] {
+            let columns: Vec<Vec<f64>> = (0..width).map(|column| (0..rows).map(|row| {
+                match column % 6 {
+                    0 => [1e300, 1e-300, -1e300][row % 3],
+                    1 => ((row % 17) as f64 - 8.0) * 1e-300,
+                    2 => -0.0,
+                    3 => [1e16, 1.0, -1e16][row % 3],
+                    _ => (row as f64 / 17.0).sin(),
+                }
+            }).collect()).collect();
+            let raw: Vec<_> = columns.iter().map(|v| Some(v.as_slice())).chain([None]).collect();
+            let generated: Vec<_> = (0..=width).rev().filter(|c| *c != 2).collect();
+            let first: Vec<_> = (0..rows).map(|row| (row % 5 + 1) as f64).collect();
+            let second: Vec<_> = (0..rows).map(|row| if row % 7 == 0 { 1e-250 } else { (row % 13 + 1) as f64 }).collect();
+            for weights in [NormalizedWeights { values: None, kind: None, raw_scale: 1.0 },
+                NormalizedWeights { values: Some(&first), kind: Some(WeightKind::Frequency), raw_scale: 1.0 },
+                NormalizedWeights { values: Some(&second), kind: Some(WeightKind::Probability), raw_scale: 32.0 }] {
+                let expected: Vec<_> = generated.iter().map(|&column| {
+                    weighted_mean_by(rows, weights, |row| Ok(raw[column].map_or(1.0, |v| v[row])))
+                        .unwrap().to_bits()
+                }).collect();
+                for threads in [1, 4] {
+                    rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                        let mut means = vec![0.0; generated.len()];
+                        super::fill_bound_weighted_column_means(rows, &raw, &generated, weights, &mut means).unwrap();
+                        assert_eq!(means.iter().map(|v| v.to_bits()).collect::<Vec<_>>(), expected,
+                            "rows={rows}, width={width}, threads={threads}");
+                    });
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn bound_weighted_column_means_reject_bad_axes_and_nonfinite_inputs() {
+        let values = [1.0, 2.0];
+        let unit = NormalizedWeights { values: None, kind: None, raw_scale: 1.0 };
+        let mut means = [19.0];
+        for (rows, generated) in [(1, 0), (2, 1)] {
+            assert!(super::fill_bound_weighted_column_means(rows, &[Some(&values)], &[generated], unit, &mut means).is_err());
+            assert_eq!(means, [19.0]);
+        }
+        assert!(super::fill_bound_weighted_column_means(2, &[Some(&values)], &[], unit, &mut means).is_err());
+        assert!(super::fill_bound_weighted_column_means(0, &[None], &[0], unit, &mut means).is_err());
+        super::fill_bound_weighted_column_means(0, &[], &[], unit, &mut []).unwrap();
+        for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let bad = [1.0, invalid];
+            assert!(super::fill_bound_weighted_column_means(2, &[Some(&bad)], &[0], unit, &mut means).is_err());
+        }
+        let invalid_weights = [1.0, 0.0];
+        let weights = NormalizedWeights { values: Some(&invalid_weights), kind: Some(WeightKind::Probability), raw_scale: 1.0 };
+        assert!(super::fill_bound_weighted_column_means(2, &[Some(&values)], &[0], weights, &mut means).is_err());
     }
 
     #[test]

@@ -10,6 +10,34 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Fresh PPML means accepted locally — 2026-09-22
+
+The [fresh-means milestone](benchmarks/reports/development/ppml-fresh-means-local-2026-09-22/README.md)
+and ADR 0105 bind immutable numeric sources during uncached reported-intercept
+assembly and schedule independent fresh weighted means. There is no weighted
+cache, new heap buffer, matrix owner or changed certificate. `means1` is
+`346d80e4` plus the archived `ols/prepared_fit.rs` patch; all 525 captured inputs
+match the working source. Plugin SHA-256:
+`52c3996f5936486cb423f5c904f7275d42504d76735e436370f063af6eae5e9e`.
+
+One-FE screen/fresh medians improve 163→144 and 441→388 ms; wider two-FE improves
+491→440 ms. Three-FE is flat, K65/slope controls have small losses, and all six
+stock-comparable PPML rows still lose to fixest. Disconnected large PPML stock
+coefficients exceed the frozen tolerance and remain unranked. All 111 headline
+attempts complete; 45 native pairs have byte-identical scientific exports.
+The artifact passes 382 distinct focused Rust tests, ABI validation and four
+licensed fixtures. Fresh explicit-design checks pass after independently
+pruning and verifying singleton sample IDs; the original oracle sample mismatch
+and setup failure remain archived. Tracked peak differences span −0.71 to
++3.79 MB; the static allocation inventory still fails and was not regenerated.
+
+Close this mean experiment. The objective remains active: next inspect the
+single-residual strict PPML checkpoint, whose two-FE diagnostic costs about
+40 ms. Initial fresh certification already exists. The wide checkpoint Schur
+guard excludes this RHS; any generalization must earn current-weight probe,
+fresh certificate, fallback and admission evidence. All deferred items below
+remain open, and serial-slope tuning stays closed.
+
 ## PPML simplex/IR publication repaired locally — 2026-09-22
 
 The [publication repair](benchmarks/reports/development/ppml-simplex-publication-local-2026-09-22/README.md)
