@@ -1,0 +1,42 @@
+{
+  "schema": "score-cache-norm-fusion-archive-integrity-v1",
+  "status": "pass",
+  "stored_entries_verified": 7923,
+  "local_output_arrays_omitted": 272,
+  "content_addressed_objects_verified": 43,
+  "sources": [
+    {
+      "variant": "dtk1",
+      "base_commit": "c52a59e3008b638153cfb1ada905f29becab1e06",
+      "plugin": "77b2b35764ae216267503b34a9965834bd3a6c8ef60e0f307bdf62c379f5b151",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "scn1",
+      "base_commit": "28f3f47dea712445cb63e1721297e40c51aa6360",
+      "plugin": "f1567fd907312b754ffd6173f89cd66d1aaaa8a42c8ec9546041c30e86de28c0",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "dtk1d",
+      "base_commit": "c52a59e3008b638153cfb1ada905f29becab1e06",
+      "plugin": "12161eee6e6cc37c8920183f63fe2be34812e590f26cbb5652b27a1f0401b769",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    },
+    {
+      "variant": "scn1d",
+      "base_commit": "28f3f47dea712445cb63e1721297e40c51aa6360",
+      "plugin": "7ebab9d0024cb4af3407cb327eba98d5e730557ed163e910aa60bcd96234eb89",
+      "source_files": 523,
+      "source_reconstruction": "all_captured_hashes_match"
+    }
+  ],
+  "machine_home_path_scans": [
+    "sources",
+    "checks"
+  ],
+  "verifier_sha256": "80a4cf899de2d3d3998db04ea21e66c3cc4953578598f2255e59ef3f2c6532a9"
+}

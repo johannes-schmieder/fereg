@@ -857,13 +857,49 @@ The solver rewrite is reverted and its experiment-only tests are removed;
 every computational source hash again matches captured dtk1. The six earlier
 graph/window drafts are unchanged.
 
-Current resume point: continue from dtk1. Investigate fusing the serial packed
-score-cache copy/mean pass with the subsequent freshly normalized within-norm
-pass. Both currently traverse the same absorbed matrix. Any experiment must
-preserve each normalized norm's recurrence/row order and fixed mean blocks,
-including outcome and excluded absorbed-intercept coordinates; prove exact
-arithmetic and admission/failure behavior before timing. Do not substitute
-the rejected raw/normalized norm handoff or rescale a cached raw norm.
+The rejected small-matrix experiment is committed at `28f3f47d`.
+
+### Score-cache and normalized-norm fusion experiment — 2026-09-22
+
+`scn1` computes fresh max-normalized within norms during the existing serial
+packed score copy/mean loop. It preserves every norm's recurrence and row
+order, including outcome and the excluded absorbed intercept, plus fixed mean
+blocks and their compensated merge. Cache budget rejection and other guards
+remain unchanged. It adds no heap owner and never rescales raw absorption norms.
+
+The sixteen-cell screen, two unchanged seven-cell five-pair confirmations and
+nine separate diagnostics complete 290 successful calls. All 118 timed native
+pairs have exact six exports, samples, saved arrays and all 28 non-timing solver
+fields, with equal allocation peaks. Seven focused release fixtures pass in
+five invocations; both new plugins pass actual ABI checks. Diagnostic triples
+also preserve exact exports and saved arrays.
+
+Reject the candidate: AW robust/full paired ratios are 0.9866/1.0088, PW
+robust/full 1.0144/0.9860, PW robust/saved 0.9896/1.0266 and FW robust/full
+1.0263/1.0087. The screen's PW gains do not hold consistently. The combined
+cache/norm diagnostic phase is 14.523 versus 14.486 ms for AW K10 and 8.431
+versus 7.897 ms for PW K6. The new copy timer includes norm work, so its value
+cannot be compared directly with the old copy/mean-only subphase. K50 remains
+strided. No weight/VCE-specific guard or broad pass-fusion claim is accepted.
+
+The [290-call archive](benchmarks/reports/development/score-cache-norm-fusion-experiment-local-2026-09-22/README.md)
+preserves rejected source, tests, instrumentation and all evidence. It verifies
+7,923 stored entries, 272 local-only arrays and four complete 523-file source
+trees; privacy checks pass 7,975 members. Every computational source hash is
+restored to dtk1, the instrument adapter matches its prior version, and all six
+pre-existing graph/window drafts are unchanged.
+
+Current resume point: continue from dtk1 and investigate the six unresolved
+small sparse-graph reference discrepancies. The supported-floor records are
+indices 704/722/737 (K1 unit/AW/PW) and 773/791/806 (K6 unit/AW/PW), N=1920,
+seed 8675309, cluster2_cross_all. Local roots g21f0..g21f3 and the immutable
+two-fe-full-science report retain them. All six have saved-effect/derived-output
+disagreements; index 773 also fails the covariance envelope. Native oracle
+checks passed on their captured source. Recheck current dtk1, inspect the pinned
+reference's fit/recovery behavior and use independent numerical evidence to
+adjudicate; do not relax tolerances or rewrite the 766 original reference failures.
+The small-matrix and cache/norm fusion experiments remain rejected. Do not
+substitute the earlier rejected raw/normalized norm handoff.
 Remaining serial reference losses include AW K10 robust/full at 226 versus
 188 ms and PW K6 robust/full at 209 versus 152 ms in the screen. Initial slope
 projection, fresh checks and PW setup/recovery remain costly. Reuse the preserved
