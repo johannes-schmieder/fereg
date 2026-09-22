@@ -10,6 +10,27 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Broader optimization: remaining-gap inventory — 2026-09-22
+
+The [current-source inventory](benchmarks/reports/development/next-subsystem-inventory-local-2026-09-22/README.md)
+binds all 523 computational inputs at `7189e57a` to `dtk1` and records 57
+application attempts. Dense three-FE OLS loses to stock fixest by 28% at K10/T4
+and 54% at K50/T16. Public PPML one-FE and degree-six two-FE take 3.43×/3.56×
+the comparable stock command time. These cells pass pairwise checks and their
+small independent-oracle counterparts pass. Current sparse three-FE reference
+discrepancies remain unranked. One explicit-LSMR diagnostic fails its warmup
+with r(459); all other calls complete without detected competing fits/builds.
+This is bounded development evidence, not PPML/F0 or release qualification.
+
+The first implementation milestone targets measured LSMR matrix transport
+(about 88 ms on wide three-FE); no routing or numerical-policy change is
+proposed. The draft uses existing admitted buffers and bit-preserving tiled
+copies. Its 76 focused LSMR Rust tests pass. Uninstrumented paired measurements
+are in progress; the draft is not yet accepted. PPML strict checkpoints and
+current-weight projection are the next subsystem. Historical serial-slope
+tuning remains closed, frozen definitions/seeds remain preserved, and the
+known allocation-inventory, constrained-fit and Linux limitations remain open.
+
 ## OLS optimization round closed locally — 2026-09-22
 
 Johannes requested finishing this round and moving to other optimization work,
