@@ -783,17 +783,55 @@ eligibility Rust fixtures pass in three release invocations; both new plugins
 pass ABI. The [150-call archive](benchmarks/reports/development/slope-certificate-traversal-local-2026-09-22/README.md)
 preserves the rejected source and verifies 3,612 stored entries, 132 omitted
 arrays and four complete source trees; privacy checks pass 3,656 members.
-The working computational source again exactly matches captured scb1.
+After rejection, the computational source matched captured scb1. The rejected
+experiment and its archive are committed at `c52a59e3`.
 
-Current resume point: continue from scb1 and separate score-row construction,
-weight scaling and triangle accumulation within robust covariance. The current
-AW K10/PW K6 diagnostic covariance phases are about 23/11 ms; the reported-row
-helper still evaluates coordinate mappings and storage choices for each row.
-Measure before changing that broader OLS inference boundary. Initial slope
-projection, fresh checks and PW setup/recovery also remain costly. Do not
-restore either rejected geometry or traversal experiments, or widen numeric
-binding based on serial results. Broader integration checks must attach to
-the chosen final source; prior final blocks do not transfer. The six earlier
+### Fixed small covariance triangles checkpoint — 2026-09-22
+
+Statistical sampling of owned Stata workers localizes about 80%/74% of prior
+AW K10/PW K6 covariance samples to reduction, scaling and traversal, versus
+16%/19% to row construction and 4%/7% to multiplier/reference-weight helpers.
+These are stack-sample shares, not isolated triangle phase times. Two controls
+and two sampled workers complete 162 target fits with exact final exports and
+non-timing solver fields. Corrected audit v2 includes tail-called weight frames;
+v1 remains preserved. Repeated-fit durations are diagnostic only.
+
+ADR 0100 retains a fixed-array update for every reported dense sandwich
+dimension 1..16. It borrows existing arrays, checks all shapes before mutation,
+and preserves both meats' operand/observation order, separate multipliers,
+finite checks, block partitions and forward/reverse compensated reductions.
+Wider designs retain the generic loop. Shared OLS/PPML arithmetic and tracked
+allocations remain unchanged; no solver policy or public surface changes.
+
+`dtk1` plugin
+`77b2b35764ae216267503b34a9965834bd3a6c8ef60e0f307bdf62c379f5b151`
+passes nineteen focused release Rust fixtures in six invocations and the actual
+ABI check. The sixteen-cell screen, two unchanged seven-cell five-pair blocks
+and sixteen ordinary-FE controls complete 377 timed calls with clean isolation.
+All 166 native pairs have exact six numerical exports, samples, requested saved
+arrays and all 28 non-timing solver fields, with equal allocation peaks.
+Confirmation AW K10 robust/full paired ratios are 0.9556/0.9667; PW K6
+robust/full 0.9543/0.9821; unit K10 robust/full 0.9340/0.9358. Clustered changes
+remain small/mixed, with AW ratios 1.0142/1.0253. All ordinary one-/two-FE
+K1/5/15/16, T1/16 controls remain below the 1.05 limit (maximum 1.0333).
+
+Nine separate diagnostic calls have exact outputs across all three artifacts.
+AW K10 covariance falls from 24.031 to 11.511 ms; PW K6 from 11.285 to 6.327 ms.
+Wide K50 remains about 171 ms. Both new plugins pass ABI. The
+[local archive](benchmarks/reports/development/fixed-dense-triangle-local-2026-09-22/README.md)
+contains 390 successful worker results and 548 target fits excluding warm-ups,
+including the repeated profiling fits. It verifies 11,089 stored entries,
+272 local-only arrays and four complete 523-file source trees; privacy checks
+pass 11,149 members. Two failed archive verifier versions are preserved.
+
+Current resume point: the working computational source exactly matches dtk1.
+Remaining serial reference losses include AW K10 robust/full at 226 versus
+188 ms and PW K6 robust/full at 209 versus 152 ms in the screen. Initial slope
+projection, fresh checks and PW setup/recovery remain costly. Reuse the preserved
+native stack samples and current diagnostic traces to select the next bounded
+experiment. Do not restore rejected geometry/traversal experiments or widen
+numeric binding based on serial results. Broader integration checks must attach
+to the chosen final source; prior final blocks do not transfer. The six earlier
 graph/window drafts and Linux routing acceptance remain separately open.
 
 The fresh read-only SCC probe again returned permission denied; its local log

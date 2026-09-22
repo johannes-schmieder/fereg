@@ -489,6 +489,7 @@ where
         0.0_f64,
         "unable to reserve dense sandwich partials",
     )?;
+    let fixed_triangle = fixed_dense_triangle_update(dimension);
     partials
         .par_chunks_mut(partial_stride)
         .enumerate()
@@ -513,20 +514,24 @@ where
                         return Err(invalid_data("dense sandwich scaled score is not finite"));
                     }
                 }
-                for left in 0..dimension {
-                    let production_left = production_score[left];
-                    let certificate_left = certificate_score[left];
-                    let range = left * dimension + left..(left + 1) * dimension;
-                    // Contiguous triangle rows expose independent coordinates to
-                    // vectorization while preserving each sum's observation order.
-                    for (((production, certificate), &production_right), &certificate_right) in
-                        production_meat[range.clone()].iter_mut()
-                            .zip(&mut certificate_meat[range])
-                            .zip(&production_score[left..])
-                            .zip(&certificate_score[left..])
-                    {
-                        *production += production_left * production_right;
-                        *certificate += certificate_right * certificate_left;
+                if let Some(update) = fixed_triangle {
+                    update(production_meat, certificate_meat, production_score, certificate_score)?;
+                } else {
+                    for left in 0..dimension {
+                        let production_left = production_score[left];
+                        let certificate_left = certificate_score[left];
+                        let range = left * dimension + left..(left + 1) * dimension;
+                        // Contiguous triangle rows expose independent coordinates to
+                        // vectorization while preserving each sum's observation order.
+                        for (((production, certificate), &production_right), &certificate_right) in
+                            production_meat[range.clone()].iter_mut()
+                                .zip(&mut certificate_meat[range])
+                                .zip(&production_score[left..])
+                                .zip(&certificate_score[left..])
+                        {
+                            *production += production_left * production_right;
+                            *certificate += certificate_right * certificate_left;
+                        }
                     }
                 }
             }
@@ -595,6 +600,52 @@ where
         production,
         certificate,
     })
+}
+
+type DenseTriangleUpdate = fn(&mut [f64], &mut [f64], &[f64], &[f64]) -> Result<()>;
+
+fn fixed_dense_triangle_update(dimension: usize) -> Option<DenseTriangleUpdate> {
+    // Fixed small widths eliminate repeated triangle-offset and slice-bound
+    // bookkeeping. Bound specialization size; wider designs retain their loop.
+    Some(match dimension {
+        1 => update_fixed_dense_triangle::<1, 1>,
+        2 => update_fixed_dense_triangle::<2, 4>,
+        3 => update_fixed_dense_triangle::<3, 9>,
+        4 => update_fixed_dense_triangle::<4, 16>,
+        5 => update_fixed_dense_triangle::<5, 25>,
+        6 => update_fixed_dense_triangle::<6, 36>,
+        7 => update_fixed_dense_triangle::<7, 49>,
+        8 => update_fixed_dense_triangle::<8, 64>,
+        9 => update_fixed_dense_triangle::<9, 81>,
+        10 => update_fixed_dense_triangle::<10, 100>,
+        11 => update_fixed_dense_triangle::<11, 121>,
+        12 => update_fixed_dense_triangle::<12, 144>,
+        13 => update_fixed_dense_triangle::<13, 169>,
+        14 => update_fixed_dense_triangle::<14, 196>,
+        15 => update_fixed_dense_triangle::<15, 225>,
+        16 => update_fixed_dense_triangle::<16, 256>,
+        _ => return None,
+    })
+}
+
+fn update_fixed_dense_triangle<const DIMENSION: usize, const SQUARE: usize>(
+    production: &mut [f64],
+    certificate: &mut [f64],
+    production_score: &[f64],
+    certificate_score: &[f64],
+) -> Result<()> {
+    let shape_error = || invalid_argument("fixed dense sandwich triangle dimensions are inconsistent");
+    let production: &mut [f64; SQUARE] = production.try_into().map_err(|_| shape_error())?;
+    let certificate: &mut [f64; SQUARE] = certificate.try_into().map_err(|_| shape_error())?;
+    let production_score: &[f64; DIMENSION] = production_score.try_into().map_err(|_| shape_error())?;
+    let certificate_score: &[f64; DIMENSION] = certificate_score.try_into().map_err(|_| shape_error())?;
+    for left in 0..DIMENSION {
+        for right in left..DIMENSION {
+            production[left * DIMENSION + right] += production_score[left] * production_score[right];
+            certificate[left * DIMENSION + right] += certificate_score[right] * certificate_score[left];
+        }
+    }
+    Ok(())
 }
 
 /// Serial observation-influence covariance for a scratch-backed design.
@@ -1966,7 +2017,7 @@ mod tests {
         for threads in [1, 4] {
             let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
             pool.install(|| {
-                for dimension in [1, 2, 3, 6, 7, 10, 11, 16, 31, 50, 65] {
+                for dimension in (1..=17).chain([31, 50, 65]) {
                     let nrows = 257;
                     let values: Vec<f64> = (0..nrows * dimension).map(|index| {
                         ((index * 37 % 101) as f64 - 50.0) / 17.0
@@ -1999,6 +2050,25 @@ mod tests {
                     }
                 }
             });
+        }
+    }
+
+    #[test]
+    fn fixed_dense_triangle_rejects_shapes_before_modifying_either_meat() {
+        assert!(fixed_dense_triangle_update(0).is_none());
+        assert!(fixed_dense_triangle_update(17).is_none());
+        let update = fixed_dense_triangle_update(3).unwrap();
+        for malformed in 0..4 {
+            let mut production = vec![2.0; if malformed == 0 { 8 } else { 9 }];
+            let mut certificate = vec![3.0; if malformed == 1 { 8 } else { 9 }];
+            let production_score = vec![5.0; if malformed == 2 { 2 } else { 3 }];
+            let certificate_score = vec![7.0; if malformed == 3 { 2 } else { 3 }];
+            let prior_production = production.clone();
+            let prior_certificate = certificate.clone();
+            assert!(update(&mut production, &mut certificate,
+                &production_score, &certificate_score).is_err());
+            assert_eq!(production, prior_production);
+            assert_eq!(certificate, prior_certificate);
         }
     }
 
