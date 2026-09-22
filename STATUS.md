@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-21
+**Last updated:** 2026-09-22
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -18,7 +18,8 @@ and focused Linux confirmation. Local checkpoint commits on main are approved;
 no new push, installation or release is authorized. The baseline is `0efa78bd`.
 Protect the prior 77 primary, 16 holdout and 111 native-control cells. Complete
 new large coverage and two independent five-pair blocks before declaring the
-milestone complete. Fresh routing seeds 202609211 and 202609212 remain untouched.
+milestone complete. Routing seeds 202609211 and 202609212 are now reserved to
+the frozen cy2 validation described below; do not use them to tune the rule.
 
 ### Committed checkpoints
 
@@ -544,16 +545,56 @@ source trees; privacy passes 18,743 members. A verifier-only privacy failure
 and its correction are preserved. No source, tolerance or measurement was
 changed during these comparisons. The production core still excludes cy2.
 
-Current resume point: freeze cy2 before the two fresh routing validation blocks.
+The cycle-memory checkpoint is committed locally at `c9962b38`. The candidate
+is frozen in `target/ols-next-20260921/cycle-candidate-freeze1.json`, which binds
+both plugin identities, the controller, scientific sources, guard sources,
+training evidence, two seeds and thresholds. `cycle-validation-queue1.py`
+completed two five-pair blocks: each has 46 current/candidate/reference cells
+(FW omits fixest) and 28 automatic/explicit LSMR comparisons. Planned roots
+are `target/g21cyval1`, `g21cyroute1`, `g21cyval2` and `g21cyroute2`. Their
+per-phase logs are under `target/ols-next-20260921/cycle-validation-block*`.
+All 1,920 application calls complete with clean isolation. Both blocks pass
+independent native inference, saved outputs, route behavior and every frozen
+timing criterion. Selected cy2/owf1 ratios are 0.5138–0.7610 and 0.5330–0.7628;
+excluded-control maxima are 1.0383 and 1.0233. All 44 comparable reference
+timings lose to cy2 in each block, but 34 default-reference scientific
+disagreements remain failures in each. Worst automatic/fastest-valid ratios
+are 1.0455 and 1.0412. The [validation archive](benchmarks/reports/development/cycle-routing-validation-local-2026-09-22/README.md)
+verifies 49,181 entries, 1,230 omitted arrays and two complete source trees;
+privacy passes all 49,199 scanned members.
+The initial verifier's wrong field name, failed log and correction are
+preserved; the corrected receipt is `integrity2.json`. The joined adjudication
+accepts local validation only. Never retune the guard from these seeds;
+production adoption still requires Linux confirmation.
+
+Current resume point: commit the verified cycle checkpoint, then measure
+the independently tested slope norm experiment below. All headline cycle
+timing is finished; master session 85414 exited successfully.
+
+During the timing wait, source-only review identified a separate serial slope
+experiment: accumulate OLS's max-normalized weight norms during the existing
+ordered reconstruction, keeping raw-weight projection and QR certificates.
+The captured `sn1` plugin
+`9a491b4f6192d8233780673d8c1a3a1ca768946acccb9a7e76feb963f1c27cda`
+builds and passes its ABI check and all five focused release tests in
+`target/ols-next-20260921/sn1-tests1.json`: fresh normalized norms, exact budget,
+actual worker-pool exclusion, existing independent slope oracle and ordered
+serial fusion. `benchmarks/one_fe_optimization/slope_ols_norms.py`, its Rust
+fixtures and the builder's new `--slope-ols-norms` flag remain uncommitted.
+No slope core file or captured cycle source is changed. The unexecuted
+`sn1-screen1.py` and `audit-sn1-screen1.py` drafts reuse the prior nine-cell serial-slope screen;
+the wide weighted serial case is now a target, with unit/threaded controls.
+Do not rescale an already computed raw norm: the draft computes each normalized
+weighted residual from the unchanged value to preserve underflow and rounding.
 Focused Linux confirmation remains blocked on SSH renewal. The final primary/holdout
 archive is committed at `f8610cee` and current controls at `1439c23c`. Focused Linux confirmation
-and routing validation remain required before closing the milestone. The
+remains required before closing the milestone. The
 initial norm handoff is committed at `4708834b`, cycle experiment evidence at
 `9e4daec9`, and the primary training screen at `d764894f`. Six core files remain
 modified, including the tested but unaccepted window and earlier graph
-kernels. Keep old
-routes where cross-platform confirmation is missing; do not inspect fresh
-routing seeds while choosing thresholds. Serial weighted slope losses remain.
+kernels. Keep old routes where cross-platform confirmation is missing;
+never tune thresholds from the completed validation seeds. Serial weighted
+slope losses remain.
 
 ## Repository cleanup and development push — 2026-09-21
 

@@ -70,6 +70,16 @@ paired ratios versus the current candidate are 0.5017–0.7325; excluded control
 remain within 1.05 with exact scientific results. Automatic routing is within
 4.05% of the faster valid explicit route in every measured training cell.
 Eighteen constrained attempts include eight independently accepted fits, two
-allocation rejections and eight timeouts. The latter remain failures. Both
-fresh validation seeds and Linux confirmation are still required; these
-results do not adopt the route.
+allocation rejections and eight timeouts. The latter remain failures. These
+training results do not adopt the route.
+
+The [frozen fresh Mac validation](../../benchmarks/reports/development/cycle-routing-validation-local-2026-09-22/README.md)
+passes both independent five-pair blocks, with 1,920 completed calls and clean
+timing isolation. All 28 selected cycle cells improve on the prior candidate
+in each block; paired ratios range from 0.5138 to 0.7628. Excluded controls
+remain within 1.05. Independent native inference, saved outputs and route
+checks pass. Automatic routing is within 4.55% of the faster valid explicit
+route in every cell. All 44 comparable default-reference commands are slower
+in each block, but 34 have independent scientific disagreements that remain
+failures. The guard and thresholds were frozen before measuring these seeds.
+Linux confirmation is still required before production adoption.
