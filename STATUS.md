@@ -481,15 +481,34 @@ cells, at most 25,772,088 bytes; no memory-neutrality claim follows. The
 686-call archive verifies 21,120 entries, 258 omitted arrays and both complete
 native source trees; its privacy check passes 21,132 members.
 
-`current-graph-coverage1.py --dry-run` verifies all 168
-unchanged large cells and native identities: 126 candidate/fixest cells and
-42 FW candidate/baseline cells, each with three pairs. The original three-arm
-measurements and failures remain unchanged. Its manifest projection only
-renames the existing thresholds for the broad scorer. No new routing seed is
-used, and the coverage controller has not dispatched applications.
+The [current expanded graph coverage](benchmarks/reports/development/current-two-fe-coverage-local-2026-09-21/README.md)
+accounts for all 168 unchanged candidate cells. Original attempts total 996:
+994 pass and two baseline FW ring calls time out. Two FW cycle saved-output
+comparisons stop after their first pair. Fifty fresh confirmation calls pass
+with clean isolation. All 168 candidate inference checks and original or fresh
+per-arm repeats pass; saved-output normal-equation checks pass. All 126 ordinary
+fixest comparisons win using one fresh confirmation: the original unbalanced
+AW K6 nested ratio 1.37398 becomes 0.68852 (83/121 ms). The FW degree-two
+original ratio 1.14758 becomes 0.91358 (369/404 ms). Forty FW cells have complete
+native pairs within 1.05; the two baseline ring timeouts remain unranked.
 
-Current resume point: run and audit current-candidate expanded graph coverage.
-The final primary/holdout archive is committed at `f8610cee`. Focused Linux confirmation
+A new independent Decimal cycle oracle resolves the FW saved-effect mismatch
+in the candidate's favor. It uses original inputs and independent finite
+coefficients, solves the grounded cycle equations at fifty and eighty digits,
+and requires bit-identical float arrays. Both focused oracle tests pass against
+dense weighted and literal-expansion equations. All ten fresh candidate fits
+pass the original effect tolerances with maximum errors below 4e-11; all ten
+baseline effect checks fail near 5.8e-8. Both arms pass inference and residual
+checks. K6/K50 candidate medians are 312/920 ms versus baseline 4896/5563 ms.
+All original failures, missing repeats and fresh paired mismatches remain.
+The first joiner failed on an absent timing field in incomplete cells; its
+source and failure are preserved. The 1,046-call archive verifies 22,594 stored
+entries, 525 omitted arrays and three complete source trees; privacy passes
+22,608 members. No new routing seed was used.
+
+Current resume point: investigate serial weighted-slope coefficient reuse,
+then finish routing validation and focused Linux confirmation. The final primary/holdout
+archive is committed at `f8610cee` and current controls at `1439c23c`. Focused Linux confirmation
 and routing validation remain required before closing the milestone. The
 initial norm handoff is committed at `4708834b`, cycle experiment evidence at
 `9e4daec9`, and the primary training screen at `d764894f`. Six core files remain
