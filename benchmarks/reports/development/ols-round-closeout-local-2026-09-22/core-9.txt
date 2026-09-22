@@ -1,0 +1,10 @@
+    Finished `release` profile [optimized] target(s) in 0.03s
+     Running unittests src/lib.rs (<repository>/target/ols-next-20260921/cargo-dtk1/aarch64-apple-darwin/release/deps/fereg_core-a65d2ed157bb29f4)
+
+running 3 tests
+test fe::single_slope::tests::budget_and_strict_certificate_rejections_preserve_original_input ... ok
+test fe::single_slope::tests::cached_basis_matches_independent_reference_and_reuses_fresh_residual_checks ... ok
+test fe::single_slope::tests::ordered_serial_fusion_preserves_projection_norms_and_fresh_certificates ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 984 filtered out; finished in 0.20s
+

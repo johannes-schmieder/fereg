@@ -2,6 +2,7 @@
 use std::time::Instant;
 
 use crate::error::{ErrorCode, FeregError};
+use crate::memory::LsmrBatchPolicy;
 use within::{BatchSolveResult, Effect, LsmrOptions, PreconditionerConfig, Solver, WithinError};
 
 #[derive(Debug)]
@@ -52,9 +53,20 @@ pub(super) fn solve_batch<'a>(
     options: &LsmrOptions,
     preconditioner: PreconditionerConfig,
 ) -> Result<BatchSolveResult, BatchError> {
+    solve_batch_with_policy(effects, rhs, weights, options, preconditioner, LsmrBatchPolicy::Default)
+}
+
+pub(super) fn solve_batch_with_policy<'a>(
+    effects: Vec<Effect<'a>>,
+    rhs: &[&[f64]],
+    weights: Option<&[f64]>,
+    options: &LsmrOptions,
+    preconditioner: PreconditionerConfig,
+    batch_policy: LsmrBatchPolicy,
+) -> Result<BatchSolveResult, BatchError> {
     // Keep the upstream construction/transport lifetime for narrow batches.
     // Only a windowed batch needs to retain its solver across several calls.
-    if rhs.len() <= crate::memory::lsmr_rhs_window(rhs.len(), rayon::current_num_threads()) {
+    if rhs.len() <= batch_policy.rhs_window(rhs.len(), rayon::current_num_threads()) {
         return within::solve_batch(effects, rhs, weights, options, preconditioner)
             .map_err(BatchError::Upstream);
     }
@@ -70,7 +82,7 @@ pub(super) fn solve_batch<'a>(
     let solver = Solver::new(effects, weights, preconditioner)
         .map_err(|error| BatchError::Upstream(error.into()))?;
     let setup = started.elapsed().as_secs_f64();
-    let mut result = solve_prepared_batch(&solver, rhs, options)?;
+    let mut result = solve_prepared_batch(&solver, rhs, options, batch_policy)?;
     result.time_setup += setup;
     result.time_total = started.elapsed().as_secs_f64();
     Ok(result)
@@ -80,11 +92,12 @@ pub(super) fn solve_prepared_batch(
     solver: &Solver<'_>,
     rhs: &[&[f64]],
     options: &LsmrOptions,
+    batch_policy: LsmrBatchPolicy,
 ) -> Result<BatchSolveResult, BatchError> {
     // An explicit outer window bounds live recurrences even when nested Rayon
     // suspends one RHS and starts another. Use the installed team, including
     // checkpoints whose LsmrConfig retains the machine-default thread setting.
-    let window = crate::memory::lsmr_rhs_window(rhs.len(), rayon::current_num_threads());
+    let window = batch_policy.rhs_window(rhs.len(), rayon::current_num_threads());
     if rhs.len() <= window {
         return solver
             .solve_batch(rhs, options)
@@ -168,7 +181,7 @@ mod tests {
                         .unwrap();
                         let oracle = solver.solve_batch(&rhs, &options).unwrap();
                         assert!(oracle.converged.iter().all(|&converged| converged));
-                        let result = solve_prepared_batch(&solver, &rhs, &options).unwrap();
+                        let result = solve_prepared_batch(&solver, &rhs, &options, LsmrBatchPolicy::Default).unwrap();
                         assert_eq!(result.x, oracle.x);
                         assert_eq!(result.demeaned, oracle.demeaned);
                         assert_eq!(result.unidentified, oracle.unidentified);
@@ -178,6 +191,61 @@ mod tests {
                         assert_eq!((result.n_dofs, result.n_obs), (oracle.n_dofs, oracle.n_obs));
                     }
                 });
+        }
+    }
+
+    #[test]
+    fn retained_serial_ols_windows_match_full_batches_and_fail_atomically() {
+        let rows = 512;
+        let left: Vec<u32> = (0..rows).map(|r| (r % 32) as u32).collect();
+        let right: Vec<u32> = (0..rows).map(|r| ((r / 7) % 19) as u32).collect();
+        let weights: Vec<f64> = (0..rows).map(|r| 0.5 + (r % 13) as f64 / 13.0).collect();
+        let columns: Vec<Vec<f64>> = (0..64).map(|c| (0..rows)
+            .map(|r| ((r * 17 + c * 31) as f64 * 0.0031).sin()).collect()).collect();
+        let views: Vec<&[f64]> = columns.iter().map(Vec::as_slice).collect();
+        let options = LsmrOptions { tol: 1e-10, maxiter: 500, local_size: Some(4) };
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                for weighted in [false, true] {
+                    for preconditioner in [PreconditionerConfig::Off, PreconditionerConfig::Diagonal,
+                        PreconditionerConfig::default()]
+                    {
+                        let effects = || vec![Effect::new(&left, true, []).unwrap(),
+                            Effect::new(&right, true, []).unwrap()];
+                        let w = weighted.then_some(weights.as_slice());
+                        let solver = Solver::new(effects(), w.map(<[f64]>::to_vec), preconditioner.clone()).unwrap();
+                        for width in [16, 52, 64] {
+                            let rhs = &views[..width];
+                            let expected = solver.solve_batch(rhs, &options).unwrap();
+                            assert!(expected.converged.iter().all(|&v| v));
+                            for actual in [
+                                solve_prepared_batch(&solver, rhs, &options, LsmrBatchPolicy::RetainedSerialOls).unwrap(),
+                                solve_batch_with_policy(effects(), rhs, w, &options, preconditioner.clone(),
+                                    LsmrBatchPolicy::RetainedSerialOls).unwrap(),
+                            ] {
+                                assert_eq!(actual.x, expected.x);
+                                assert_eq!(actual.demeaned, expected.demeaned);
+                                assert_eq!(actual.unidentified, expected.unidentified);
+                                assert_eq!(actual.converged, expected.converged);
+                                assert_eq!(actual.iterations, expected.iterations);
+                                assert_eq!(actual.residual, expected.residual);
+                                assert_eq!((actual.n_dofs, actual.n_obs), (expected.n_dofs, expected.n_obs));
+                            }
+                        }
+                        if threads == 1 {
+                            let mut malformed = views[..16].to_vec();
+                            malformed[15] = &columns[15][..rows - 1];
+                            for attempt in [
+                                solve_prepared_batch(&solver, &malformed, &options, LsmrBatchPolicy::RetainedSerialOls),
+                                solve_batch_with_policy(effects(), &malformed, w, &options, preconditioner.clone(),
+                                    LsmrBatchPolicy::RetainedSerialOls),
+                            ] {
+                                assert!(matches!(attempt, Err(BatchError::Upstream(_))));
+                            }
+                        }
+                    }
+                }
+            });
         }
     }
 
@@ -197,7 +265,7 @@ mod tests {
             .num_threads(2)
             .build()
             .unwrap()
-            .install(|| solve_prepared_batch(&solver, &batch, &LsmrOptions::default()))
+            .install(|| solve_prepared_batch(&solver, &batch, &LsmrOptions::default(), LsmrBatchPolicy::Default))
             .unwrap_err();
         assert!(matches!(
             &error,

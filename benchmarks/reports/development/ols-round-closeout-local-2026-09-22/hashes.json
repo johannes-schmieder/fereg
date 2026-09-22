@@ -1,0 +1,21 @@
+{
+  "README.md": "dc6a4d02cf83ec880da4712d1c6f6241ed4083e7900cbc55eabda4cd4f0fe39f",
+  "allocation-audit.txt": "55c2870ad118e4e1046afbd61ffe810019675adfeffb723bc307640bbaad090e",
+  "captured-controller.py": "65123f807ac492972252a9fc7b31fcf692abc7a2d5eed3771b51ff7995ab30ec",
+  "changes.patch": "220343183a47708f0f4b710eda24205ed919c68864341f35e0e12f713bdbc46e",
+  "checks.json": "bdb0adf679fe0b8b30f5a6043c9ecafecceb3191c39ac2daa04abeb4ddb4e4c6",
+  "core-1.txt": "22eb500a2c6bb958480a4b7b4cbe1d69c7bcc9f99696989e5e19cf70cc12130a",
+  "core-10.txt": "1665cee2285933520c4b2d5da53ad3f78e67e7694ac4f4727a3c951d2854ac85",
+  "core-11.txt": "5d73a95a9f4314117a19274d528b6f03d478749d5561daac6811cc4ac9dcd651",
+  "core-2.txt": "048912a705d044b1e17ff9bdfc7cf1fa4cc624a66fcdc0fe52ed93064c50dea9",
+  "core-3.txt": "dc2fb4b128b24e9200fa91424fff4f0fae3dda06be8ae01ef108ec93cdeb5970",
+  "core-4.txt": "be085ab0770b133f72a83857d07c7a6b505f5cc8936a6b082a1d5ce585b03b99",
+  "core-5.txt": "d162fa5be04bc1cce1572fa46a457dc26315217c8a0a210f85c821ee5a709ddf",
+  "core-6.txt": "98ab05abbd423d53eb540a52d64d5f6f66f7521e26a740af457585e2532036c5",
+  "core-7.txt": "d275121864b96c9c62bde3956bbaf94f08f9ad71b7856ccdbfe14255c0b155eb",
+  "core-8.txt": "472ca4dfee843a2f51fb6ace16b0ddc851cee90325c3ce7a2423f926cbd7d73d",
+  "core-9.txt": "b214d5e671983f70a1b67695c908c23dea51997624ef600ed0915debca27189d",
+  "core-tests.json": "c691343f3bc9396da32edba084cfe70f1035b7f44e8dce9b4c46700ca2495d86",
+  "source.json": "5cbac733753270ea303f6fca4a2d632a331ff55da3db7259e22a1bf2ddc2b53d",
+  "stata-summary.json": "3e55791c8c4ca2949f9cde12631e4dccaa3415e8d278a8d6b19e8ae1349c5c67"
+}

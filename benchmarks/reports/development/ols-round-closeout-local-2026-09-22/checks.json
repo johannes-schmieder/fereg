@@ -1,0 +1,54 @@
+{
+  "schema": "ols-round-closeout-checks-v1",
+  "source_sha256": "5cbac733753270ea303f6fca4a2d632a331ff55da3db7259e22a1bf2ddc2b53d",
+  "plugin_sha256": "77b2b35764ae216267503b34a9965834bd3a6c8ef60e0f307bdf62c379f5b151",
+  "core_test_executions": 71,
+  "distinct_core_tests": 70,
+  "core_status": "pass",
+  "stata_status": "pass",
+  "fixtures": [
+    {
+      "fixture": "tests/stata/development/ols_narrow_weighted_schur.do",
+      "fixture_sha256": "255ebb7da58a0d21fb4c18ecd09e3e640d055634951489989b57741b3e03ff76",
+      "sentinel": "END_FIXTURE|ols_narrow_weighted_schur|rc=0",
+      "local_files": {
+        ".log": "9e3091d253868b5009458abec13558ec4b80cdefcb51b5141a35c24f0514610d",
+        ".status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6",
+        ".wrapper.do": "ebb68465f1fe09192d2b5fc8a08d436f1a3cd263712d9a51f02dedba1b9046e8",
+        ".invocation.json": "0fc4720825ef30cbba516f4a29c61228aebc02c7e86a0b9d8f4644c3954a4abd"
+      }
+    },
+    {
+      "fixture": "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+      "fixture_sha256": "d4c6c5f59b9b86c57634b893bcad5e25309c3c4226143c5188e823591e9f38b3",
+      "sentinel": "END_FIXTURE|estimate_ols_saved_outputs_parity|rc=0",
+      "local_files": {
+        ".log": "a8a05c351381a998ba5acf9bbf9509b205773408ed2a82f46a893ce4f15ac8f7",
+        ".status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6",
+        ".wrapper.do": "db7edeb56fde0186c963c25d299bc105c5f277180484f220d53f1828e546a13a",
+        ".invocation.json": "ad0bc40e073c2f07e2353e269942d529680447ec3cbb7be79664623bd96a4695"
+      }
+    },
+    {
+      "fixture": "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
+      "fixture_sha256": "e0424c2114c7d3208b9874891f626cac6f9499d2a2ec131c63a2fd5246ac0e63",
+      "sentinel": "END_FIXTURE|estimate_ols_slope_only_multiple_parity|rc=0",
+      "local_files": {
+        ".log": "1ee6f1fc503abaa9d71de67f055c16c91a3d2d9c6d7877b7c7c67521b626a140",
+        ".status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6",
+        ".wrapper.do": "24831578d0f170e6c1dcfb5132279afd2b7244216ef2f60e250cc231b822704a",
+        ".invocation.json": "ef8510752555c1666ee24a0705dde2b3742709929a1cfcc22657706d963a874b"
+      }
+    }
+  ],
+  "stata_runner_sha256": "b62835b9bb9b1d12f0a9430d23dcdb586a74fd97f4fe81772fbd90edcb485b01",
+  "allocation_audit": {
+    "status": "fail",
+    "returncode": 1,
+    "log_sha256": "55c2870ad118e4e1046afbd61ffe810019675adfeffb723bc307640bbaad090e",
+    "runner_sha256": "8790da7dbeb9acc7664ff9e14d825ce2bad0adac897e21e6fa8251fc9f0a5dcf",
+    "scope": "Existing frozen inventory drift remains open; no inventory refresh.",
+    "first_invocation": "System Python lacked tomllib; rerun with project Python."
+  },
+  "scope": "Focused local integration; not qualification or new performance evidence."
+}

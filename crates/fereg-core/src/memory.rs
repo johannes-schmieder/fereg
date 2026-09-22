@@ -258,6 +258,24 @@ pub(crate) fn lsmr_rhs_window(rhs: usize, threads: usize) -> usize {
     }
 }
 
+/// The estimator that owns a serial retained fallback opts into one live RHS.
+/// Legacy/shared callers keep their existing transport and admission envelope.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LsmrBatchPolicy {
+    Default,
+    RetainedSerialOls,
+}
+
+impl LsmrBatchPolicy {
+    pub(crate) fn rhs_window(self, rhs: usize, threads: usize) -> usize {
+        if self == Self::RetainedSerialOls && threads == 1 && (16..=64).contains(&rhs) {
+            1
+        } else {
+            lsmr_rhs_window(rhs, threads)
+        }
+    }
+}
+
 /// Estimate the complete incremental solver workspace after topology is known.
 ///
 /// The model deliberately separates CG, LSMR recurrence, Schwarz topology,
@@ -272,13 +290,23 @@ pub fn estimate_fe_solver_memory(
     threads: usize,
     local_reorthogonalization_size: Option<usize>,
 ) -> Result<FeSolverMemoryEstimate> {
-    estimate_fe_solver_memory_for_channels(
-        observations,
-        rhs_columns,
-        effect_level_counts,
-        threads,
-        local_reorthogonalization_size,
-        false,
+    estimate_fe_solver_memory_with_batch_policy(
+        observations, rhs_columns, effect_level_counts, threads,
+        local_reorthogonalization_size, LsmrBatchPolicy::Default,
+    )
+}
+
+pub(crate) fn estimate_fe_solver_memory_with_batch_policy(
+    observations: usize,
+    rhs_columns: usize,
+    effect_level_counts: &[usize],
+    threads: usize,
+    local_reorthogonalization_size: Option<usize>,
+    batch_policy: LsmrBatchPolicy,
+) -> Result<FeSolverMemoryEstimate> {
+    estimate_fe_solver_memory_for_channels_with_batch_policy(
+        observations, rhs_columns, effect_level_counts, threads,
+        local_reorthogonalization_size, false, batch_policy,
     )
 }
 
@@ -289,6 +317,22 @@ fn estimate_fe_solver_memory_for_channels(
     threads: usize,
     local_reorthogonalization_size: Option<usize>,
     signed_cover: bool,
+) -> Result<FeSolverMemoryEstimate> {
+    estimate_fe_solver_memory_for_channels_with_batch_policy(
+        observations, rhs_columns, effect_level_counts, threads,
+        local_reorthogonalization_size, signed_cover, LsmrBatchPolicy::Default,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn estimate_fe_solver_memory_for_channels_with_batch_policy(
+    observations: usize,
+    rhs_columns: usize,
+    effect_level_counts: &[usize],
+    threads: usize,
+    local_reorthogonalization_size: Option<usize>,
+    signed_cover: bool,
+    batch_policy: LsmrBatchPolicy,
 ) -> Result<FeSolverMemoryEstimate> {
     if observations == 0 || rhs_columns == 0 {
         return Err(FeregError::new(
@@ -365,7 +409,7 @@ fn estimate_fe_solver_memory_for_channels(
     // Wide adapters explicitly window calls to the installed team's width.
     // Small batches remain unwindowed and must charge their full RHS count:
     // nested Rayon can suspend outer solves beyond the number of workers.
-    let active_rhs = lsmr_rhs_window(rhs_columns, threads) as u128;
+    let active_rhs = batch_policy.rhs_window(rhs_columns, threads) as u128;
     let active_matrix_bytes = checked_mul(n, active_rhs, "LSMR window observation values")?
         .checked_mul(8)
         .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "LSMR window bytes overflow"))?;
@@ -916,6 +960,44 @@ mod tests {
         assert!(estimate.lsmr_schwarz_bytes >= estimate.topology_bytes);
         assert!(estimate.cg_bytes < 327_680);
         assert!(estimate.lsmr_schwarz_bytes > 327_680);
+    }
+
+    #[test]
+    fn retained_serial_ols_window_model_preserves_other_admission_envelopes() {
+        for threads in [1, 4, 16] {
+            for rhs in [1, 7, 15, 16, 17, 52, 64, 65] {
+                let ordinary = estimate_fe_solver_memory(16_384, rhs, &[4096, 1024], threads, Some(4)).unwrap();
+                let default = estimate_fe_solver_memory_with_batch_policy(16_384, rhs, &[4096, 1024],
+                    threads, Some(4), LsmrBatchPolicy::Default).unwrap();
+                assert_eq!(ordinary, default);
+                let windowed = estimate_fe_solver_memory_with_batch_policy(16_384, rhs, &[4096, 1024],
+                    threads, Some(4), LsmrBatchPolicy::RetainedSerialOls).unwrap();
+                if threads == 1 && (16..=64).contains(&rhs) {
+                    assert_eq!(LsmrBatchPolicy::RetainedSerialOls.rhs_window(rhs, threads), 1);
+                    let one = estimate_fe_solver_memory(16_384, 1, &[4096, 1024], 1, Some(4)).unwrap();
+                    assert_eq!(windowed.krylov_bytes, one.krylov_bytes);
+                    assert_eq!(ordinary.krylov_bytes, rhs as u128 * one.krylov_bytes);
+                    assert_eq!(windowed.cg_bytes, ordinary.cg_bytes);
+                    assert_eq!(windowed.coefficient_batch_bytes, ordinary.coefficient_batch_bytes);
+                    assert_eq!(windowed.rhs_copy_bytes, ordinary.rhs_copy_bytes);
+                    assert_eq!(windowed.topology_bytes, ordinary.topology_bytes);
+                    assert_eq!(windowed.lsmr_schwarz_retained_bytes, ordinary.lsmr_schwarz_retained_bytes);
+                    assert!(windowed.lsmr_off_bytes < ordinary.lsmr_off_bytes);
+                    assert!(windowed.lsmr_diagonal_bytes < ordinary.lsmr_diagonal_bytes);
+                    assert!(windowed.lsmr_schwarz_bytes <= ordinary.lsmr_schwarz_bytes);
+                    if windowed.lsmr_schwarz_bytes == ordinary.lsmr_schwarz_bytes {
+                        // Windowing reduces live recurrences, but cannot
+                        // reduce an unchanged preconditioner-construction peak.
+                        let construction = ordinary.rhs_copy_bytes + ordinary.topology_bytes
+                            + ordinary.lsmr_result_metadata_bytes;
+                        assert_eq!(windowed.lsmr_schwarz_bytes, construction);
+                        eprintln!("SERIAL_WINDOW_CONSTRUCTION_DOMINATES rhs={rhs} bytes={construction}");
+                    }
+                } else {
+                    assert_eq!(ordinary, windowed);
+                }
+            }
+        }
     }
 
     #[test]

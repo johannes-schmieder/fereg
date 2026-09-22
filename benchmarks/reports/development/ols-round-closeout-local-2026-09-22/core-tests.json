@@ -1,0 +1,199 @@
+{
+  "controller_sha256": "65123f807ac492972252a9fc7b31fcf692abc7a2d5eed3771b51ff7995ab30ec",
+  "source_sha256": "5cbac733753270ea303f6fca4a2d632a331ff55da3db7259e22a1bf2ddc2b53d",
+  "status": "pass",
+  "runs": [
+    {
+      "filter": "schur",
+      "passed": true,
+      "count": 16,
+      "returncode": 0,
+      "log": "core-1.txt",
+      "log_sha256": "0f1f98e2a49209f8d398358b6105ea7bf23e659b141fc271528dbb5d4e899be1",
+      "tests": [
+        "fe::borrowed_map::tests::checkpoint_schur_copy_respects_exact_transient_admission",
+        "fe::borrowed_map::tests::ols_schur_readiness_includes_group_weight_certificate_scale",
+        "fe::borrowed_map::tests::large_two_fe_schur_operator_is_bit_stable_across_threads",
+        "fe::borrowed_map::tests::narrow_schur_unsafe_extra_column_preserves_probe_and_prior_failure",
+        "fe::borrowed_map::tests::checkpoint_schur_weighted_cut_rejects_before_copying",
+        "fe::borrowed_map::tests::counted_unit_schur_edges_match_observation_operator_and_budget",
+        "fe::borrowed_map::tests::ols_schur_probe_uses_weighted_cuts_and_preserves_common_scale",
+        "ols::prepared_fit::tests::wide_ols_schur_guard_preserves_ineligible_routes_and_cycle_reports",
+        "fe::borrowed_map::tests::schur_restoration_during_reconstruction_is_bit_exact",
+        "ols::prepared_fit::tests::narrow_ols_schur_admission_preserves_operator_and_thread_controls",
+        "ols::prepared_fit::tests::two_fe_schur_final_overlap_preserves_results_caches_and_error_order",
+        "fe::borrowed_map::tests::checkpoint_schur_reuses_probe_and_falls_back_on_untouched_inputs",
+        "fe::borrowed_map::tests::ols_schur_probe_solve_budget_and_order_match_independent_map",
+        "fe::borrowed_map::tests::weighted_schur_edge_scratch_matches_operator_projection_and_continuation",
+        "fe::borrowed_map::tests::counted_unit_schur_projection_matches_independent_map",
+        "fe::borrowed_map::tests::narrow_schur_continuation_preserves_admission_projection_and_budget"
+      ],
+      "sanitized_log_sha256": "22eb500a2c6bb958480a4b7b4cbe1d69c7bcc9f99696989e5e19cf70cc12130a"
+    },
+    {
+      "filter": "fe::cmg::tests::",
+      "passed": true,
+      "count": 41,
+      "returncode": 0,
+      "log": "core-2.txt",
+      "log_sha256": "e87d8929dae449a774c087bdc597e2b75e7bc44e8770fcb371d2b1cc4c6ca218",
+      "tests": [
+        "fe::cmg::tests::auto_direct_terminal_cg_guard_matches_locked_primary_boundaries",
+        "fe::cmg::tests::auto_hierarchy_guard_applies_only_to_costly_iterative_terminals",
+        "fe::cmg::tests::component_default_is_explicit_only_and_has_an_ordinary_comparison_seam",
+        "fe::cmg::tests::component_quantiles_use_stable_nearest_lower_order_statistic",
+        "fe::cmg::tests::hierarchy_work_counts_recursive_level_visits",
+        "fe::cmg::tests::cmg_workspace_preflight_rejection_does_not_charge_an_unallocated_attempt",
+        "fe::cmg::tests::auto_route_is_invariant_to_core_effect_order",
+        "fe::cmg::tests::auto_route_matches_calibrated_akm_shape_boundaries",
+        "fe::cmg::tests::auto_cmg_memory_preflight_rejects_before_graph_construction",
+        "fe::cmg::tests::control_seed_admission_consumes_only_finite_certified_evidence",
+        "fe::cmg::tests::prepared_cmg_seed_weight_boundary_and_memory_are_explicit",
+        "fe::cmg::tests::more_than_sixty_four_nuisance_columns_are_rejected",
+        "fe::cmg::tests::cmg_container_admission_accepts_exact_budget_and_rejects_one_byte_short",
+        "fe::cmg::tests::early_prepared_memory_bound_covers_exact_topology_and_frame",
+        "fe::cmg::tests::prepared_topology_rejects_a_different_design_with_the_same_profile",
+        "fe::cmg::tests::three_way_profile_uses_two_largest_effects_as_core_in_every_order",
+        "fe::cmg::tests::one_effect_uses_exact_direct_projection_but_retains_cmg_request",
+        "fe::cmg::tests::prepared_nuisance_grouping_preserves_memory_caps_and_zero_nuisance_policy",
+        "fe::cmg::tests::duplicate_matches_and_disconnected_components_are_supported",
+        "fe::cmg::tests::multiple_rhs_calls_reuse_one_hierarchy",
+        "fe::cmg::tests::multiple_nuisance_effects_agree_with_full_multi_effect_cg",
+        "fe::cmg::tests::nested_rank_deficient_nuisance_effect_is_handled",
+        "fe::cmg::tests::auto_requested_cmg_skips_map_pilot_and_certifies",
+        "fe::cmg::tests::absorbed_nuisance_effect_agrees_with_full_multi_effect_cg",
+        "fe::cmg::tests::swapping_cmg_bipartition_orientation_preserves_the_certified_projection",
+        "fe::cmg::tests::upstream_cmg_errors_have_an_explicit_fail_closed_public_class",
+        "fe::cmg::tests::weighted_two_way_projection_agrees_with_certified_cg",
+        "fe::cmg::tests::cmg_workspace_failed_nuisance_construction_retains_its_admitted_attempt",
+        "fe::cmg::tests::cmg_workspace_report_observes_fixed_pool_reuse",
+        "fe::cmg::tests::terminal_residual_correction_checks_its_cg_budget",
+        "fe::cmg::tests::admitted_components_and_ordinary_projection_share_the_independent_oracle",
+        "fe::cmg::tests::prepared_cmg_tracks_executor_width_across_one_four_one",
+        "fe::cmg::tests::cmg_workspace_retained_polish_and_released_final_correction_have_different_peaks",
+        "fe::cmg::tests::cmg_heap_forecast_uses_actual_small_component_storage_without_runtime_allowances",
+        "fe::cmg::tests::prepared_cmg_warm_seed_is_consumed_recertified_and_invalidated",
+        "fe::cmg::tests::automatic_two_fe_cmg_corrections_retain_requested_products_within_budget",
+        "fe::cmg::tests::auto_hierarchy_guard_rejects_mixed_cliff_but_retains_all_tiny_graph",
+        "fe::cmg::tests::prepared_nuisance_potentials_are_current_weight_and_remove_only_duplicate_solves",
+        "fe::cmg::tests::prepared_batches_align_with_the_admitted_pool_without_changing_solutions",
+        "fe::cmg::tests::core_batch_subtraction_preserves_bits_and_rejects_before_mutation",
+        "fe::cmg::tests::prepared_coarsening_certifies_large_permuted_weighted_three_fe_graphs"
+      ],
+      "sanitized_log_sha256": "048912a705d044b1e17ff9bdfc7cf1fa4cc624a66fcdc0fe52ed93064c50dea9"
+    },
+    {
+      "filter": "fe::lsmr_batch::tests::",
+      "passed": true,
+      "count": 4,
+      "returncode": 0,
+      "log": "core-3.txt",
+      "log_sha256": "654b79d71ff75b2afe4fec32d7c37bee8e6f949128c531e5389707f06743e650",
+      "tests": [
+        "fe::lsmr_batch::tests::transport_capacity_errors_keep_allocation_classification",
+        "fe::lsmr_batch::tests::a_later_window_failure_returns_no_partial_batch",
+        "fe::lsmr_batch::tests::windows_preserve_all_outputs_against_the_upstream_full_batch",
+        "fe::lsmr_batch::tests::retained_serial_ols_windows_match_full_batches_and_fail_atomically"
+      ],
+      "sanitized_log_sha256": "dc2fb4b128b24e9200fa91424fff4f0fae3dda06be8ae01ef108ec93cdeb5970"
+    },
+    {
+      "filter": "retained_serial_ols_window_model_preserves_other_admission_envelopes",
+      "passed": true,
+      "count": 1,
+      "returncode": 0,
+      "log": "core-4.txt",
+      "log_sha256": "763d096b1848263bf62b8576131351df859f9877d002f81661c0dcff6d9c97b2",
+      "tests": [
+        "memory::tests::retained_serial_ols_window_model_preserves_other_admission_envelopes"
+      ],
+      "sanitized_log_sha256": "be085ab0770b133f72a83857d07c7a6b505f5cc8936a6b082a1d5ce585b03b99"
+    },
+    {
+      "filter": "ols::prepared_fit::tests::narrow_weighted_final_overlap",
+      "passed": true,
+      "count": 1,
+      "returncode": 0,
+      "log": "core-5.txt",
+      "log_sha256": "9f42ae20c9b593c629012f5b77aafe574708755b9f880f2ae6e8b16a05f145c7",
+      "tests": [
+        "ols::prepared_fit::tests::narrow_weighted_final_overlap_preserves_fits_and_error_order"
+      ],
+      "sanitized_log_sha256": "d162fa5be04bc1cce1572fa46a457dc26315217c8a0a210f85c821ee5a709ddf"
+    },
+    {
+      "filter": "ols::prepared_fit::tests::two_fe_schur_final_overlap",
+      "passed": true,
+      "count": 1,
+      "returncode": 0,
+      "log": "core-6.txt",
+      "log_sha256": "9291b70c6daebd28afe8b8f7ef671760a4b939020c18b84f984e2fbcfe72d625",
+      "tests": [
+        "ols::prepared_fit::tests::two_fe_schur_final_overlap_preserves_results_caches_and_error_order"
+      ],
+      "sanitized_log_sha256": "98ab05abbd423d53eb540a52d64d5f6f66f7521e26a740af457585e2532036c5"
+    },
+    {
+      "filter": "ols::prepared_fit::tests::residual_mean_bound",
+      "passed": true,
+      "count": 1,
+      "returncode": 0,
+      "log": "core-7.txt",
+      "log_sha256": "880af09c4a1100921141ca774b28cbcedd5e521ea24d0d2d8f00c453cdc39613",
+      "tests": [
+        "ols::prepared_fit::tests::residual_mean_bound_retains_cancellation_and_extreme_scale_tails"
+      ],
+      "sanitized_log_sha256": "d275121864b96c9c62bde3956bbaf94f08f9ad71b7856ccdbfe14255c0b155eb"
+    },
+    {
+      "filter": "ols::prepared_fit::tests::residual_bound_requires",
+      "passed": true,
+      "count": 1,
+      "returncode": 0,
+      "log": "core-8.txt",
+      "log_sha256": "30dfb85a8f2b756cced3f9e2625f705beb3ace0aeb093909cdacda8d6e041ef8",
+      "tests": [
+        "ols::prepared_fit::tests::residual_bound_requires_weighted_underflow_fallback"
+      ],
+      "sanitized_log_sha256": "472ca4dfee843a2f51fb6ace16b0ddc851cee90325c3ce7a2423f926cbd7d73d"
+    },
+    {
+      "filter": "single_slope::tests::",
+      "passed": true,
+      "count": 3,
+      "returncode": 0,
+      "log": "core-9.txt",
+      "log_sha256": "9ff75a4f1944369fbf77a717241b74e546b10a866562c9ca2eb2095a1168bc63",
+      "tests": [
+        "fe::single_slope::tests::budget_and_strict_certificate_rejections_preserve_original_input",
+        "fe::single_slope::tests::cached_basis_matches_independent_reference_and_reuses_fresh_residual_checks",
+        "fe::single_slope::tests::ordered_serial_fusion_preserves_projection_norms_and_fresh_certificates"
+      ],
+      "sanitized_log_sha256": "b214d5e671983f70a1b67695c908c23dea51997624ef600ed0915debca27189d"
+    },
+    {
+      "filter": "single_slope_cache_is_ols_only_and_preserves_full_fit",
+      "passed": true,
+      "count": 1,
+      "returncode": 0,
+      "log": "core-10.txt",
+      "log_sha256": "ebd86ef5ab7589f30797ba2e2fa6de442bbc2af0f5742ebc59faf58cabe7a58e",
+      "tests": [
+        "ols::prepared_fit::tests::single_slope_cache_is_ols_only_and_preserves_full_fit"
+      ],
+      "sanitized_log_sha256": "1665cee2285933520c4b2d5da53ad3f78e67e7694ac4f4727a3c951d2854ac85"
+    },
+    {
+      "filter": "ppml_slope_only_topology_preserves_structural_constant",
+      "passed": true,
+      "count": 1,
+      "returncode": 0,
+      "log": "core-11.txt",
+      "log_sha256": "dadec6e4612b1c73bc49be91e152bb87420ab664dc8bac39d54614dae97ca5b0",
+      "tests": [
+        "ols::prepared_fit::tests::ppml_slope_only_topology_preserves_structural_constant"
+      ],
+      "sanitized_log_sha256": "5d73a95a9f4314117a19274d528b6f03d478749d5561daac6811cc4ac9dcd651"
+    }
+  ]
+}

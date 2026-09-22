@@ -34,6 +34,8 @@ pub struct PreparedOlsFitConfig {
     /// The one-shot OLS publisher can recover saved effects from the certified
     /// final target when a direct one-FE or accepted Schur solve omits its
     /// initial product.
+    /// This owner also permits same-weight graph reuse for the terminal OLS
+    /// residual; shared weighted-linear callers keep their existing policy.
     /// Other weighted-linear callers retain their coefficient requirement.
     pub allow_final_fe_recovery: bool,
     /// Optional tighter final projection for pointwise residual-derived outputs.
@@ -1202,6 +1204,7 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
         FitPerturbations::default(),
         None,
         None,
+        None,
     )?;
     let initial_absorbed_outcome_sum_of_squares = draft.normalized_initial_within_sum_of_squares
         * frame.bread_weight_scale().reference_weight_multiplier;
@@ -1762,7 +1765,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             one_fe: None,
             schur_config: None,
             schur_probe: None,
-            session: Some(session),
+            session: Some(session.with_ols_final_reuse(config.allow_final_fe_recovery)),
             lsmr: None,
             auto_direct_solver: None,
             auto_discarded_setup_seconds: 0.0,
@@ -1845,8 +1848,9 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
                 match crate::fe::try_absorb_ols_schur_narrow(
                     prepared.fit_borrowed_cmg_design()?, weights, values, config)? {
                     crate::fe::NarrowOlsSchurAttempt::Certified(result) => {
-                        cmg.auto_direct_solver = Some(FeSolverKind::Cg);
-                        cmg.schur_probe = Some(result.report().pilot_contraction);
+                        cmg.auto_direct_solver = Some(result.report().used_solver);
+                        cmg.schur_probe = (!result.report().fallback_used)
+                            .then_some(result.report().pilot_contraction);
                         return Ok(result);
                     }
                     crate::fe::NarrowOlsSchurAttempt::Rejected {
@@ -1867,23 +1871,26 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
                 (contraction, peak, seconds, Some(design))
             };
             if contraction <= crate::fe::OLS_SCHUR_MAX_CONTRACTION {
-                // A rejected probe still uses the original retained-product
-                // policy. Only accepted Schur calls defer coefficient recovery.
-                config.retain_coefficients = false;
-                if fit_config.execution.threads.resolved() >= 8 {
-                    // The immutable operator's accepted probe can be reused by
-                    // the final one-RHS projection, with a fresh certificate.
-                    cmg.auto_direct_solver = Some(FeSolverKind::Cg);
-                    cmg.schur_probe = Some(contraction);
-                }
-                return crate::fe::absorb_ols_schur_certified(
+                // Serial recovery benefits from the fallback's products. At
+                // higher thread counts the existing one-target recovery is
+                // faster and avoids retaining every wide RHS coefficient.
+                config.retain_coefficients &= fit_config.allow_final_fe_recovery
+                    && fit_config.execution.threads.resolved() == 1;
+                let result = crate::fe::absorb_ols_schur_certified(
                     design.ok_or_else(|| invalid_argument("accepted Schur probe lost its design"))?,
                     weights,
                     values,
                     config,
                     probe_seconds,
                     contraction,
-                );
+                )?;
+                if fit_config.execution.threads.resolved() >= 8 {
+                    cmg.auto_direct_solver = Some(result.report().used_solver);
+                    // A successful probe does not justify retrying a solver
+                    // that subsequently exhausted its full solve allowance.
+                    cmg.schur_probe = (!result.report().fallback_used).then_some(contraction);
+                }
+                return Ok(result);
             }
             config.map.max_iterations -= crate::fe::OLS_SCHUR_PROBE_ITERATIONS;
             fit_config.absorb.map.max_iterations = config.map.max_iterations;
@@ -2315,7 +2322,7 @@ fn fit_with_controls_internal_mode_with_frame<
     let cached_norms = absorbed.take_residual_norms();
     let (mut within, mut absorption_report, initial_fe_coefficients) = absorbed.into_full_parts();
     if config.allow_final_fe_recovery && initial_fe_coefficients.is_none()
-        && cmg.auto_direct_solver == Some(FeSolverKind::Cg)
+        && cmg.auto_direct_solver.is_some()
     {
         // Without initial products, a residual-only coefficient product cannot
         // form saved effects. The final-target recovery remains authoritative.
@@ -2405,12 +2412,13 @@ fn fit_with_controls_internal_mode_with_frame<
     let residual_overlap = !perturbations.residual_overlap_disabled
         && phase_probe.is_none() && !config.absorb.retain_coefficients
         && matches!(config.absorb.solver, FeSolverKind::Auto | FeSolverKind::Map)
-        && weights.values.is_none()
+        && (weights.values.is_none() || config.allow_final_fe_recovery
+            && config.absorb.solver == FeSolverKind::Auto && generated_columns <= 8)
         && (prepared.fit_has_one_ordinary_intercept_effect()
             || cmg.auto_direct_solver == Some(FeSolverKind::Cg)
                 && cmg.schur_probe.is_some_and(|ratio| ratio <= crate::fe::OLS_SCHUR_MAX_CONTRACTION))
         && prepared.fit_sample().n_active() >= 16_384
-        && (8..=RESIDUAL_OVERLAP_MAX_COLUMNS).contains(&generated_columns)
+        && (6..=RESIDUAL_OVERLAP_MAX_COLUMNS).contains(&generated_columns)
         && rayon::current_thread_index().is_some() && rayon::current_num_threads() >= 8;
     let needs_raw_residuals = prepared.fit_has_absorbed_intercept() && raw_moments.is_some()
         && qr.generated_coefficients.iter().any(Option::is_some);
@@ -2472,6 +2480,7 @@ fn fit_with_controls_internal_mode_with_frame<
         perturbations,
         fast_score_cache.as_ref(),
         raw_moments.as_ref(),
+        retain_fast_score_cache.then_some(reference_mean_scales.as_slice()),
         )
     };
     // A retained sandwich score cache is already live across both phases and
@@ -2496,7 +2505,7 @@ fn fit_with_controls_internal_mode_with_frame<
                         let score = || certify_scores(prepared, projected.residualized().as_slice(), weights,
                             &reference_norms, score_norms, finite_score, &anticipated_statuses[..generated_columns],
                             within_outcome_norm, config.score_tolerance);
-                        if !perturbations.residual_sums_overlap_disabled {
+                        if !perturbations.residual_sums_overlap_disabled && weights.values.is_none() {
                             let (score, sum) = rayon::join(score, || super::prepared_unadjusted::independent_unit_residual_sum(projected.residualized().as_slice()));
                             early_score = Some(score);
                             early_residual_sum = sum.ok();
@@ -2559,7 +2568,7 @@ fn fit_with_controls_internal_mode_with_frame<
     let reused_score = overlap_score && anticipated_statuses[..generated_columns] == qr.generated_statuses;
     let (score_certificate, independent_unit_residual_sum) = if let Some(early) = early_score.filter(|_| reused_score) {
         (early?, early_residual_sum)
-    } else if residual_overlap && !perturbations.residual_sums_overlap_disabled
+    } else if residual_overlap && !perturbations.residual_sums_overlap_disabled && weights.values.is_none()
     {
         let (score, sum) = rayon::join(score, || super::prepared_unadjusted::independent_unit_residual_sum(residuals.as_slice()));
         (score?, sum.ok())
@@ -3196,6 +3205,7 @@ fn fit_with_controls_low_internal_with_frame<
         config.bread_tolerance,
         reservation,
         perturbations,
+        None,
         None,
         None,
     )?;
@@ -5562,6 +5572,7 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
     perturbations: FitPerturbations,
     fast_score_cache: Option<&PreparedOlsFastScoreCache>,
     raw_moments: Option<&RawMomentCache>,
+    raw_column_scales: Option<&[f64]>,
 ) -> Result<PreparedOlsBread> {
     if response.len() != prepared.fit_sample().n_active()
         || raw_residuals
@@ -5701,7 +5712,23 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
         } else if let Some(cache) = raw_moments {
             cached_raw_residual_mean(prepared, qr, weights, cache)?
         } else {
-            weighted_mean_by(prepared.fit_sample().n_active(), weights, |row| {
+            let numeric = super::prepared_rhs::NumericOlsColumns::bind_residual_mean(
+                prepared.fit_model(), prepared.fit_sample())?;
+            // The already scanned raw column maxima bound the residual. As in
+            // the raw-moment cache route, this removes a residual maximum pass
+            // while retaining fresh rowwise residuals and compensated sums.
+            let bound = raw_column_scales.filter(|scales| numeric.is_some()
+                && scales.len() == qr.generated_coefficients.len()).map(|scales| {
+                    let mut scale = response.iter().copied().map(f64::abs).fold(0.0_f64, f64::max);
+                    for (coefficient, &column_scale) in qr.generated_coefficients.iter().zip(scales) {
+                        if let Some(coefficient) = coefficient { scale += coefficient.abs() * column_scale; }
+                    }
+                    scale
+                }).filter(|scale| scale.is_finite());
+            let residual = |row| {
+                if let Some(columns) = numeric.as_ref() {
+                    return columns.residual_at(&qr.generated_coefficients, row, response[row]);
+                }
                 let mut value = response[row];
                 for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
                     if let Some(coefficient) = coefficient {
@@ -5716,7 +5743,12 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
                         "prepared OLS raw regression residual is not finite",
                     ))
                 }
-            })?
+            };
+            if let Some(scale) = bound {
+                weighted_mean_with_bound(prepared.fit_sample().n_active(), weights, residual, scale)?
+            } else {
+                weighted_mean_by(prepared.fit_sample().n_active(), weights, residual)?
+            }
         };
         let mut reported_intercept = raw_residual_mean;
         if perturbations.reported_intercept {
@@ -6468,6 +6500,26 @@ where
         }
         value_scale = value_scale.max(current.abs());
     }
+    weighted_mean_with_scale(nrows, weights, value, value_scale, None)
+}
+
+fn weighted_mean_with_bound<F>(nrows: usize, weights: NormalizedWeights<'_>, mut value: F, bound: f64) -> Result<f64>
+where
+    F: FnMut(usize) -> Result<f64>,
+{
+    let mut needs_rescale = false;
+    let mean = weighted_mean_with_scale(nrows, weights, &mut value, bound, Some(&mut needs_rescale))?;
+    // Cancellation can make a valid upper bound much larger than the actual
+    // residual. Recover the original maximum scan if scaling loses precision
+    // to subnormal arithmetic; the optimization never just discards that tail.
+    if needs_rescale { weighted_mean_by(nrows, weights, value) } else { Ok(mean) }
+}
+
+fn weighted_mean_with_scale<F>(nrows: usize, weights: NormalizedWeights<'_>, mut value: F, value_scale: f64,
+    mut underflow: Option<&mut bool>) -> Result<f64>
+where
+    F: FnMut(usize) -> Result<f64>,
+{
     if value_scale == 0.0 {
         return Ok(0.0);
     }
@@ -6477,7 +6529,12 @@ where
     // scale, compensation and observation order unchanged.
     let denominator = if weights.values.is_none() && (nrows as u128) <= (1_u128 << 53) {
         for row in 0..nrows {
-            compensated_add(value(row)? / value_scale, &mut numerator, &mut numerator_correction)?;
+            let current = value(row)?;
+            let scaled = current / value_scale;
+            if let Some(flag) = underflow.as_deref_mut() {
+                *flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
+            }
+            compensated_add(scaled, &mut numerator, &mut numerator_correction)?;
         }
         nrows as f64
     } else {
@@ -6485,8 +6542,13 @@ where
         let mut denominator_correction = 0.0_f64;
         for row in 0..nrows {
             let weight = weights.value(row)?;
+            let current = value(row)?;
+            let scaled = weight * (current / value_scale);
+            if let Some(flag) = underflow.as_deref_mut() {
+                *flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
+            }
             compensated_add(
-                weight * (value(row)? / value_scale),
+                scaled,
                 &mut numerator,
                 &mut numerator_correction,
             )?;
@@ -6494,7 +6556,12 @@ where
         }
         denominator + denominator_correction
     };
-    let mean = value_scale * ((numerator + numerator_correction) / denominator);
+    let numerator = numerator + numerator_correction;
+    let scaled_mean = numerator / denominator;
+    if let Some(flag) = underflow {
+        *flag |= numerator != 0.0 && scaled_mean.abs() < f64::MIN_POSITIVE;
+    }
+    let mean = value_scale * scaled_mean;
     if mean.is_finite() && denominator.is_finite() && denominator > 0.0 {
         Ok(mean)
     } else {
@@ -8855,6 +8922,15 @@ mod tests {
         regressors: &[Vec<f64>],
         effects: &[Vec<f64>],
     ) -> crate::PreparedCategoricalOlsData {
+        prepared_multiway_categorical_weights(outcome, regressors, effects, TestWeights::Unit)
+    }
+
+    fn prepared_multiway_categorical_weights(
+        outcome: &[f64],
+        regressors: &[Vec<f64>],
+        effects: &[Vec<f64>],
+        weights: TestWeights<'_>,
+    ) -> crate::PreparedCategoricalOlsData {
         assert!((1..=3).contains(&effects.len()));
         assert!(regressors
             .iter()
@@ -8907,6 +8983,15 @@ mod tests {
             });
             sources.push(entry);
         }
+        let (role, analytic_weight, probability_weight, frequency_weight) = match weights {
+            TestWeights::Unit => (None, None, None, None),
+            TestWeights::Analytic(values) => (Some(OlsInputRole::AnalyticWeight), Some(loaded(values)), None, None),
+            TestWeights::Probability(values) => (Some(OlsInputRole::ProbabilityWeight), None, Some(loaded(values)), None),
+            TestWeights::Frequency(values) => (Some(OlsInputRole::FrequencyWeight), None, None, Some(loaded(values))),
+        };
+        if let Some(role) = role {
+            bindings.push(OlsInputBinding { stata_var_position: (bindings.len() + 1) as u32, role });
+        }
         crate::prepare_categorical_ols_data(
             &OlsRequestV1 {
                 model: CompiledTermGraph { sources, terms },
@@ -8919,9 +9004,9 @@ mod tests {
                 candidate: vec![true; outcome.len()],
                 outcome: loaded(outcome),
                 numeric_sources,
-                analytic_weight: None,
-                frequency_weight: None,
-                probability_weight: None,
+                analytic_weight,
+                frequency_weight,
+                probability_weight,
             },
         )
         .expect("prepared multiway categorical data")
@@ -9432,7 +9517,7 @@ mod tests {
     #[test]
     fn two_fe_schur_final_overlap_preserves_results_caches_and_error_order() {
         let n = 16_385;
-        for width in [10, 17] {
+        for width in [5, 6, 10, 17] {
             let columns = (0..width).map(|c| (0..n)
                 .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect::<Vec<_>>()).collect::<Vec<_>>();
             let effects = [
@@ -9460,6 +9545,47 @@ mod tests {
                         without_solve_timings(fit)
                     });
                     assert_eq!(run(false), run(true), "width={width} cache={cache} limit={limit} perturbation={perturbation:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn narrow_weighted_final_overlap_preserves_fits_and_error_order() {
+        let n = 16_385;
+        let weights = (0..n).map(|r| (1 + r % 7) as f64).collect::<Vec<_>>();
+        for width in [5, 6] {
+            let columns = (0..width).map(|c| (0..n)
+                .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect::<Vec<_>>()).collect::<Vec<_>>();
+            let effects = [
+                (0..n).map(|r| (r % 41) as f64).collect::<Vec<_>>(),
+                (0..n).map(|r| ((r / 41) % 37) as f64).collect::<Vec<_>>(),
+            ];
+            let response = (0..n).map(|r| columns[0][r] * 1.3 + effects[0][r]
+                + effects[1][r] + 0.1 * (r as f64).cos()).collect::<Vec<_>>();
+            for effects in [&effects[..1], &effects[..]] {
+                for weights in [TestWeights::Analytic(&weights), TestWeights::Probability(&weights), TestWeights::Frequency(&weights)] {
+                    let data = prepared_multiway_categorical_weights(&response, &columns, effects, weights);
+                    let mut config = PreparedOlsFitConfig::default();
+                    config.allow_final_fe_recovery = true;
+                    config.absorb.retain_coefficients = true;
+                    config.execution.threads = ThreadConfig::from_requested(8, true).unwrap();
+                    for (cache, limit) in [(false, 0), (true, 0), (true, MAX_FAST_SCORE_CACHE_BYTES)] {
+                        for perturbation in [FitPerturbations::default(),
+                            FitPerturbations { reported_bread_extension: true, reconstructed_within_residual_constant: true,
+                                ..FitPerturbations::default() },
+                            FitPerturbations { final_residual_constant: true, ..FitPerturbations::default() },
+                        ] {
+                            let run = |disabled| ThreadTeam::new(config.execution.threads).install(|| {
+                                fit_with_controls_internal_mode(&data, config, &mut SystemFitReservation,
+                                    FitPerturbations { residual_overlap_disabled: disabled, ..perturbation }, cache, limit)
+                            }).unwrap().map(|fit| {
+                                assert!(fit.independent_unit_residual_sum.is_none());
+                                without_solve_timings(fit)
+                            });
+                            assert_eq!(run(false), run(true), "width={width} effects={} cache={cache} limit={limit} perturbation={perturbation:?}", effects.len());
+                        }
+                    }
                 }
             }
         }
@@ -9567,7 +9693,7 @@ mod tests {
     #[test]
     fn numeric_tiles_preserve_rhs_and_raw_residual_bits_across_threads() {
         let rows = 4_103;
-        for width in [7, 15, 50, 63, 64] {
+        for width in [1, 5, 6, 7, 15, 50, 63, 64] {
             let columns = (0..width)
                 .map(|c| {
                     (0..rows)
@@ -9635,6 +9761,19 @@ mod tests {
                                 .map(|v| v.to_bits())
                                 .collect::<Vec<_>>()
                         );
+                        if let Some(bound) = crate::ols::NumericOlsColumns::bind_residual_mean(
+                            &prepared.model, &prepared.sample).unwrap()
+                        {
+                            for row in 0..rows {
+                                assert_eq!(bound.residual_at(&coefficients, row, response[row]).unwrap().to_bits(),
+                                    expected_residuals[row].to_bits());
+                            }
+                            assert!(bound.residual_at(&coefficients[..1], 0, response[0]).is_err());
+                            assert!(bound.residual_at(&coefficients, rows, response[0]).is_err());
+                            assert!(bound.residual_at(&coefficients, 0, f64::NAN).is_err());
+                        } else {
+                            assert!(width >= 64);
+                        }
                         let bound =
                             crate::ols::NumericOlsColumns::bind(&prepared.model, &prepared.sample)
                                 .unwrap();
@@ -9663,7 +9802,7 @@ mod tests {
                             invalid[0] = Some(f64::INFINITY);
                             assert!(bound.subtract_fitted(&invalid, &mut residuals).is_err());
                         } else {
-                            assert!(width >= 64);
+                            assert!(width < 7 || width >= 64);
                         }
                     });
             }
@@ -10307,6 +10446,55 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn residual_mean_bound_retains_cancellation_and_extreme_scale_tails() {
+        let supplied = [1.0, 0.25, 0.5, 0.125];
+        let tiny = [1e-300, 1.0, 1.0, 1.0];
+        for values in [
+            [1.0, 0.0, 0.0, 0.0],
+            [1.0, -1.0, 2.0, -2.0],
+            [1e-300, -1e-300, 2e-300, 4e-300],
+            [1e300, -1e300, 2e299, 4e299],
+            [f64::MIN_POSITIVE, -f64::MIN_POSITIVE, 2.0 * f64::MIN_POSITIVE, 0.0],
+        ] {
+            for weights in [NormalizedWeights { values: None, raw_scale: 1.0, kind: None },
+                NormalizedWeights { values: Some(&supplied), raw_scale: 1.0, kind: Some(WeightKind::Analytic) },
+                NormalizedWeights { values: Some(&tiny), raw_scale: 1.0, kind: Some(WeightKind::Analytic) }]
+            {
+                let expected = weighted_mean_by(4, weights, |r| Ok(values[r])).unwrap();
+                let maximum = values.iter().copied().map(f64::abs).fold(0.0, f64::max);
+                for bound in [maximum, maximum * 16.0, 1e308] {
+                    let actual = weighted_mean_with_bound(4, weights, |r| Ok(values[r]), bound).unwrap();
+                    assert!((actual - expected).abs() <= 1e-14 * expected.abs(),
+                        "values={values:?}, bound={bound}, actual={actual}, expected={expected}");
+                    if maximum < bound * f64::MIN_POSITIVE {
+                        assert_eq!(actual.to_bits(), expected.to_bits());
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn residual_bound_requires_weighted_underflow_fallback() {
+        let raw_weights = [1e-300, 1.0, 1.0, 1.0];
+        let values = [1.0, 0.0, 0.0, 0.0];
+        let weights = NormalizedWeights { values: Some(&raw_weights), raw_scale: 1.0,
+            kind: Some(WeightKind::Analytic) };
+        let expected = weighted_mean_by(4, weights, |r| Ok(values[r])).unwrap();
+        assert_eq!(expected, 1e-300 / 3.0);
+        assert_eq!(weighted_mean_with_scale(4, weights, |r| Ok(values[r]), 1e300, None).unwrap(), 0.0);
+        assert_eq!(weighted_mean_with_bound(4, weights, |r| Ok(values[r]), 1e300).unwrap().to_bits(), expected.to_bits());
+        let values = [1e-299, 0.0, 0.0, 0.0];
+        let weights = NormalizedWeights { values: None, raw_scale: 1.0, kind: None };
+        let mut underflow = false;
+        assert!(values[0] / 2e8 >= f64::MIN_POSITIVE);
+        weighted_mean_with_scale(4, weights, |r| Ok(values[r]), 2e8, Some(&mut underflow)).unwrap();
+        assert!(underflow, "division by total mass can also underflow the bounded mean");
+        let expected = weighted_mean_by(4, weights, |r| Ok(values[r])).unwrap();
+        assert_eq!(weighted_mean_with_bound(4, weights, |r| Ok(values[r]), 2e8).unwrap().to_bits(), expected.to_bits());
     }
 
     #[test]

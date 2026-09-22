@@ -325,6 +325,13 @@ impl<'a> NumericOlsColumns<'a> {
         Self::bind_with_minimum(model, sample, minimum)
     }
 
+    pub(crate) fn bind_residual_mean(
+        model: &super::PreparedOlsModel,
+        sample: &'a crate::data::PreparedNumericSample,
+    ) -> Result<Option<Self>> {
+        Self::bind_with_minimum(model, sample, 2)
+    }
+
     fn bind_with_minimum(
         model: &super::PreparedOlsModel,
         sample: &'a crate::data::PreparedNumericSample,
@@ -511,6 +518,30 @@ impl<'a> NumericOlsColumns<'a> {
                 }
                 Ok(())
             })
+    }
+
+    /// Preserve the scalar residual's coefficient/FMA order without repeating
+    /// model-recipe dispatch in both passes of the stable weighted mean.
+    pub(crate) fn residual_at(
+        &self,
+        coefficients: &[Option<f64>],
+        row: usize,
+        response: f64,
+    ) -> Result<f64> {
+        if coefficients.len() != self.width || row >= self.rows {
+            return Err(invalid_argument("numeric OLS residual mean is not aligned"));
+        }
+        let mut value = response;
+        for (source, coefficient) in self.columns[..self.width].iter().zip(coefficients) {
+            if let Some(coefficient) = coefficient {
+                value = (-coefficient).mul_add(source.map_or(1.0, |values| values[row]), value);
+            }
+        }
+        if value.is_finite() {
+            Ok(value)
+        } else {
+            Err(invalid_data("prepared OLS raw regression residual is not finite"))
+        }
     }
 }
 

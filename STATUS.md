@@ -10,21 +10,34 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Next OLS optimization milestone — active, 2026-09-21
+## OLS optimization round closed locally — 2026-09-22
 
-Johannes approved implementation: absorbed slopes, complete two-FE graph/weight/
-inference/output coverage, narrow wins, measured one-/two-FE automatic routing,
-and focused Linux confirmation. Local checkpoint commits on main are approved;
-no new push, installation or release is authorized. The baseline is `0efa78bd`.
-Protect the prior 77 primary, 16 holdout and 111 native-control cells. Complete
-new large coverage and two independent five-pair blocks before declaring the
-milestone complete. Routing seeds 202609211 and 202609212 are now reserved to
-the frozen cy2 validation described below; do not use them to tune the rule.
-The local primary/holdout, control, graph-coverage and fresh cycle-validation
-blocks are complete for their captured sources. The subsequent data-pass and
-recovery refinements have separate focused evidence below. Serial weighted-slope losses
-remain open, and required Linux confirmation is blocked on SSH renewal. The
-milestone and production routing adoption are not complete.
+Johannes requested finishing this round and moving to other optimization work,
+even with remaining serial-slope losses. The
+[closeout report](benchmarks/reports/development/ols-round-closeout-local-2026-09-22/README.md)
+and [ADR 0101](docs/adr/0101-ols-optimization-round-closeout.md) retain the six
+remaining graph/residual/window files as a local development checkpoint.
+All 523 computational inputs match the previously measured `dtk1` source;
+the closeout introduces no additional numerical change. Seventy distinct
+release-mode Rust tests pass in 71 executions. Three licensed Stata/MP 19
+fixtures pass with explicit return codes and terminal sentinels, covering
+weighted dummy inference, frequency expansion, saved outputs and multiple slopes.
+Rejected experiments remain reverted. No push, installation or release is
+authorized or performed.
+
+The original baseline is `0efa78bd`. Historical primary/holdout, control,
+graph-coverage and cycle-validation evidence below remains exact-artifact
+evidence. The original all-domain goal is not achieved: serial AW/PW slope
+losses remain, Linux confirmation is deferred pending SCC access, and cycle
+routing is not adopted. The existing static allocation-source audit still
+fails on frozen-inventory drift; the closeout preserves that failure and does
+not refresh the inventory. A reviewed successor remains qualification work.
+
+Resume with a different subsystem after Johannes selects it. Do not launch
+another serial-slope experiment or restart the original broad campaign merely
+because this historical plan remains here. Preserve the 77 primary, sixteen
+holdout and 111 native-control definitions. Seeds 202609211 and 202609212 are
+reserved to the completed frozen cy2 validation and must not be used for tuning.
 
 ### Committed checkpoints
 
@@ -946,32 +959,27 @@ verifies 3,488 entries, 129 omitted local arrays and two complete source trees.
 The failed initial edit and preliminary runs remain recorded. All 523 current
 computational source hashes are restored to dtk1; the six old drafts are intact.
 
-Current resume point: continue performance work from dtk1. Target repeated
-geometry/norm arithmetic rather than rearranging the same fresh checks. A
-possible next experiment is to compute each active QR column's fresh norm in
-its last mutation pass and reuse it only until that column next changes. Keep
-the scaled norm recurrence, pivot ties, twice-reorthogonalized directions,
-rank cutoff and final residual certificate intact, and compare basis/rank
-bits before benchmarking. This is a hypothesis, not an accepted optimization.
-The small-matrix, cache/norm fusion and batched-check experiments remain
-rejected; do not restore the earlier raw/normalized norm handoff or first-pivot
-norm reuse alone.
+The 2026-09-22 closeout supersedes the previous instruction to continue serial
+slope experiments. Computing each active QR column's norm in its last mutation
+pass remains an untested idea, not part of this checkpoint. The small-matrix,
+cache/norm fusion and batched-check experiments remain rejected; do not restore
+the earlier raw/normalized norm handoff or first-pivot norm reuse alone.
 Remaining serial reference losses include AW K10 robust/full at 226 versus
 188 ms and PW K6 robust/full at 209 versus 152 ms in the screen. Initial slope
-projection, fresh checks and PW setup/recovery remain costly. Reuse the preserved
-native stack samples and current diagnostic traces to select the next bounded
-experiment. Do not restore rejected geometry/traversal experiments or widen
-numeric binding based on serial results. Broader integration checks must attach
-to the chosen final source; prior final blocks do not transfer. The six earlier
-graph/window drafts and Linux routing acceptance remain separately open.
+projection, fresh checks and PW setup/recovery remain costly. The preserved
+native stack samples and diagnostic traces support a future, separately chosen
+task. Do not restore rejected experiments or widen numeric binding based on
+serial results. The six graph/window files are retained by the local closeout;
+Linux acceptance and any broader validation on the combined source remain
+deferred. Prior final timing blocks do not transfer to that source.
 
 The fresh read-only SCC probe again returned permission denied; its local log
 is `target/ols-next-20260921/scc-auth-current-20260922-1.txt`. Do not repeat the
-same failed probe without changed access. Once Johannes renews access, inspect
-SCC state and use the existing OLS development smoke before the focused
+same failed probe without changed access. If Johannes resumes Linux validation
+after renewing access, use the existing OLS development smoke before focused
 same-node T1/8/16 comparisons and constrained-memory checks. Do not launch a
 qualification matrix, push, install or adopt the cycle route. All local
-benchmark processes and audit sessions are finished.
+benchmark processes and closeout checks are finished.
 
 ## Repository cleanup and development push — 2026-09-21
 

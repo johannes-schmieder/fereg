@@ -1,10 +1,10 @@
 # ADR 0095: bound serial retained OLS LSMR transport
 
-**Status:** Proposed; focused local and paired checks pass, Linux validation pending
+**Status:** Implemented in local development checkpoint; Linux acceptance deferred
 **Date:** 2026-09-21
 **Decision owner:** Johannes Schmieder
 
-## Proposed decision
+## Scoped policy
 
 Process one RHS at a time inside the original-input LSMR fallback of a wide
 public serial two-FE OLS Schur attempt that requests retained coefficients.
@@ -68,3 +68,10 @@ unit ring K50/T1/all fit saves 121,868,720 tracked bytes with paired runtime
 ratio 0.9948; other peaks are unchanged. All paired runtime ratios are within
 0.9908–1.0171. Independent inference, repeated outputs and focused memory,
 transport and MAP checks pass. Final-block and Linux acceptance remain open.
+
+The 2026-09-22 closeout in [ADR 0101](0101-ols-optimization-round-closeout.md)
+commits this scoped implementation with the existing graph improvements as a
+local development checkpoint. Historical final Mac blocks cover their captured
+`owf1` artifact; they do not certify the later combined source. Linux acceptance
+remains deferred. No new transport guard or memory allowance is introduced by
+the closeout.

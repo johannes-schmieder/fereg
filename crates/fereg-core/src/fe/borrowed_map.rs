@@ -9,7 +9,10 @@ use crate::fe::{
     BorrowedInterceptFeDesign, FeCertificate, FeSolverKind, LsmrConfig, LsmrPreconditioner,
     MapConfig, SolveReport, SolveStopReason,
 };
-use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget, SolverWorkspacePeak};
+use crate::memory::{
+    estimate_fe_solver_memory, estimate_fe_solver_memory_with_batch_policy,
+    FeSolverMemoryBudget, LsmrBatchPolicy, SolverWorkspacePeak,
+};
 use rayon::prelude::*;
 use within::{Effect, LsmrOptions, PreconditionerConfig};
 
@@ -857,6 +860,7 @@ struct CgContinuation<'a> {
     reference_norms: Option<&'a [f64]>,
     refinement: CgRefinementPolicy,
     retain_coefficients: bool,
+    reconstruct_projection: bool,
     reconstruction_tolerance: Option<f64>,
 }
 
@@ -865,6 +869,7 @@ impl CgContinuation<'_> {
         reference_norms: None,
         refinement: CgRefinementPolicy::ORDINARY,
         retain_coefficients: false,
+        reconstruct_projection: false,
         reconstruction_tolerance: None,
     };
 }
@@ -880,6 +885,7 @@ struct AutoLsmrPlan {
     config: Option<LsmrConfig>,
     memory_budget: Option<FeSolverMemoryBudget>,
     skip_map_pilot: bool,
+    batch_policy: LsmrBatchPolicy,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -896,6 +902,7 @@ impl AutoLsmrPlan {
         config: None,
         memory_budget: None,
         skip_map_pilot: false,
+        batch_policy: LsmrBatchPolicy::Default,
     };
 
     const fn routed(config: LsmrConfig, memory_budget: Option<FeSolverMemoryBudget>) -> Self {
@@ -903,6 +910,7 @@ impl AutoLsmrPlan {
             config: Some(config),
             memory_budget,
             skip_map_pilot: false,
+            batch_policy: LsmrBatchPolicy::Default,
         }
     }
 
@@ -911,6 +919,7 @@ impl AutoLsmrPlan {
             config: Some(config),
             memory_budget,
             skip_map_pilot: true,
+            batch_policy: LsmrBatchPolicy::Default,
         }
     }
 }
@@ -4319,6 +4328,19 @@ pub(crate) fn polish_borrowed_intercept_cg_with_reference_norms_certified(
     config: MapConfig,
     reference_norms: &[f64],
 ) -> Result<CertifiedBorrowedMap> {
+    polish_borrowed_intercept_cg_with_products_certified(
+        design, weights, values, config, reference_norms, false,
+    )
+}
+
+pub(crate) fn polish_borrowed_intercept_cg_with_products_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+    reference_norms: &[f64],
+    retain_coefficients: bool,
+) -> Result<CertifiedBorrowedMap> {
     let mut reservation = SystemWorkspaceReservation;
     absorb_cg_with_reservation(
         design,
@@ -4329,7 +4351,8 @@ pub(crate) fn polish_borrowed_intercept_cg_with_reference_norms_certified(
         CgContinuation {
             reference_norms: Some(reference_norms),
             refinement: CgRefinementPolicy::ORDINARY,
-            retain_coefficients: false,
+            retain_coefficients,
+            reconstruct_projection: retain_coefficients,
             reconstruction_tolerance: None,
         },
         &mut reservation,
@@ -4511,6 +4534,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
         config: lsmr_config,
         memory_budget: solver_memory_budget,
         skip_map_pilot,
+        batch_policy,
     } = lsmr_plan;
     let solver_trace = std::env::var_os("FEREG_SOLVER_TRACE").is_some();
     validate_config(config)?;
@@ -4547,7 +4571,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
         .iter()
         .map(|effect| effect.n_levels())
         .collect::<Vec<_>>();
-    let solver_memory = estimate_fe_solver_memory(
+    let solver_memory = estimate_fe_solver_memory_with_batch_policy(
         values.nrows(),
         values.ncols(),
         &level_counts,
@@ -4555,6 +4579,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
             .map_or(rayon::current_num_threads(), |lsmr| lsmr.threads.resolved())
             .max(rayon::current_num_threads()),
         lsmr_config.and_then(|lsmr| lsmr.local_size),
+        batch_policy,
     )?;
     let pilot_coefficients = if retain_coefficients {
         solver_memory.coefficient_batch_bytes
@@ -4781,11 +4806,12 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
         } else {
             match route {
                 AutoLsmrRoute::Direct => {
-                    let mut memory = BorrowedLsmrCallMemory::new(
+                    let mut memory = BorrowedLsmrCallMemory::with_batch_policy(
                         solver_memory,
                         resolved_preconditioner,
                         solver_memory_budget,
                         retained_coefficient_bytes + original_norm_bytes,
+                        batch_policy,
                     )?;
                     let lsmr_tolerance = direct_lsmr_tolerance(config.tolerance);
                     let lsmr_started = solver_trace.then(Instant::now);
@@ -4944,6 +4970,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
                                     reference_norms: Some(&original_reference_norms),
                                     refinement: CgRefinementPolicy::ORDINARY,
                                     retain_coefficients: false,
+                                    reconstruct_projection: false,
                                     reconstruction_tolerance: None,
                                 },
                                 reservation,
@@ -5017,6 +5044,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
             reference_norms: Some(&original_reference_norms),
             refinement: CgRefinementPolicy::ORDINARY,
             retain_coefficients,
+            reconstruct_projection: false,
             reconstruction_tolerance: None,
         },
         reservation,
@@ -5196,6 +5224,7 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
 
 // Keep the maximum even if postprocessing fails and auto continues to CG.
 struct BorrowedLsmrCallMemory {
+    batch_policy: LsmrBatchPolicy,
     peak: SolverWorkspacePeak,
     metadata_bytes: u128,
     budget: Option<FeSolverMemoryBudget>,
@@ -5209,7 +5238,18 @@ impl BorrowedLsmrCallMemory {
         budget: Option<FeSolverMemoryBudget>,
         parent_bytes: u128,
     ) -> Result<Self> {
+        Self::with_batch_policy(estimate, preconditioner, budget, parent_bytes, LsmrBatchPolicy::Default)
+    }
+
+    fn with_batch_policy(
+        estimate: crate::memory::FeSolverMemoryEstimate,
+        preconditioner: LsmrPreconditioner,
+        budget: Option<FeSolverMemoryBudget>,
+        parent_bytes: u128,
+        batch_policy: LsmrBatchPolicy,
+    ) -> Result<Self> {
         let mut memory = Self {
+            batch_policy,
             peak: SolverWorkspacePeak::ZERO,
             metadata_bytes: estimate.lsmr_result_metadata_bytes,
             budget,
@@ -5259,6 +5299,7 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         self.disabled = true;
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn solve(
         &mut self,
         design: &BorrowedInterceptFeDesign<'a>,
@@ -5267,18 +5308,20 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         options: &LsmrOptions,
         requested: LsmrPreconditioner,
         preconditioner: PreconditionerConfig,
+        batch_policy: LsmrBatchPolicy,
     ) -> Result<(within::BatchSolveResult, bool)> {
         let levels = design
             .effects()
             .iter()
             .map(|effect| effect.n_levels())
             .collect::<Vec<_>>();
-        let memory = estimate_fe_solver_memory(
+        let memory = estimate_fe_solver_memory_with_batch_policy(
             design.nobs(),
             rhs.len(),
             &levels,
             rayon::current_num_threads(),
             options.local_size,
+            batch_policy,
         )?;
         let resolved = resolve_borrowed_lsmr_preconditioner(
             levels.len(),
@@ -5311,6 +5354,7 @@ impl<'a> BorrowedLsmrPrepared<'a> {
             self.solver.as_ref().expect("LSMR preparation exists"),
             rhs,
             options,
+            batch_policy,
         );
         let mut solved = match initial {
             Ok(solved) => solved,
@@ -5338,6 +5382,7 @@ impl<'a> BorrowedLsmrPrepared<'a> {
                         .expect("fallback LSMR preparation exists"),
                     rhs,
                     options,
+                    batch_policy,
                 )
                 .map_err(|error| {
                     error.into_fereg("borrowed modified LSMR failed after unpreconditioned fallback")
@@ -5506,15 +5551,17 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             &options,
             lsmr_config.preconditioner,
             preconditioner,
+            memory.batch_policy,
         )?
     } else {
         let effects = borrowed_lsmr_effects(design)?;
-        let initial = super::lsmr_batch::solve_batch(
+        let initial = super::lsmr_batch::solve_batch_with_policy(
             effects.clone(),
             &rhs_views,
             weights.values,
             &options,
             preconditioner,
+            memory.batch_policy,
         );
         match initial {
             Ok(solved) => (solved, false),
@@ -5522,12 +5569,13 @@ fn run_borrowed_lsmr_with_prepared<'a>(
                 if lsmr_config.preconditioner == LsmrPreconditioner::Auto
                     && error.preconditioner_breakdown() =>
             {
-                let solved = super::lsmr_batch::solve_batch(
+                let solved = super::lsmr_batch::solve_batch_with_policy(
                     effects,
                     &rhs_views,
                     weights.values,
                     &options,
                     PreconditionerConfig::Off,
+                    memory.batch_policy,
                 )
                 .map_err(|fallback_error| {
                     fallback_error
@@ -5827,6 +5875,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         reference_norms: continuation_reference_norms,
         refinement,
         retain_coefficients,
+        reconstruct_projection,
         reconstruction_tolerance,
     } = continuation;
     validate_config(config)?;
@@ -6045,6 +6094,10 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         &mut workspace,
         residual_coefficients.as_mut(),
     )?;
+    if reconstruct_projection {
+        reconstruct_intercept_product(design, residual_coefficients.as_ref()
+            .ok_or_else(|| invalid_argument("stable CG projection requires coefficient products"))?, &mut residual)?;
+    }
     let mut direction =
         fallible_matrix_copy(&residual, "unable to reserve borrowed CG direction matrix")?;
     let mut direction_coefficients = residual_coefficients
@@ -6099,6 +6152,10 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             &mut workspace,
             projection_coefficients.as_mut(),
         )?;
+        if reconstruct_projection {
+            reconstruct_intercept_product(design, projection_coefficients.as_ref()
+                .ok_or_else(|| invalid_argument("stable CG projection requires coefficient products"))?, &mut projection)?;
+        }
         weighted_dot_columns_into(
             &direction,
             &projection,
@@ -7870,6 +7927,38 @@ fn borrowed_symmetric_projection_from_group_means(
     Ok(())
 }
 
+fn reconstruct_intercept_product(
+    design: &BorrowedInterceptFeDesign<'_>,
+    coefficients: &FeCoefficientBatch,
+    values: &mut DenseMatrix,
+) -> Result<()> {
+    if coefficients.rhs_count() != values.ncols() || values.nrows() != design.nobs()
+        || coefficients.effect_channels().len() != design.effects().len()
+        || design.effects().iter().enumerate().any(|(effect, source)|
+            coefficients.effect_channels()[effect] != 1 || coefficients.level_counts()[effect] != source.n_levels()) {
+        return Err(invalid_argument("CG projection product layout differs from its design"));
+    }
+    // Near the within space, input - projected_input can amplify subtraction
+    // noise into a spurious CG direction. Reconstruct from the recorded group
+    // means, so the operator output stays in the intended FE span.
+    let width = values.ncols();
+    values.as_mut_slice().par_chunks_mut(4096 * width).enumerate()
+        .try_for_each(|(block, output)| -> Result<()> {
+            for (local, row) in output.chunks_exact_mut(width).enumerate() {
+                let observation = block * 4096 + local;
+                for (rhs, value) in row.iter_mut().enumerate() {
+                    let product = coefficients.rhs(rhs)?;
+                    *value = 0.0;
+                    for (effect, source) in design.effects().iter().enumerate() {
+                        *value += product[coefficients.effect_offsets[effect] + source.codes()[observation] as usize];
+                    }
+                    if !value.is_finite() { return Err(invalid_data("CG projection product is nonfinite")); }
+                }
+            }
+            Ok(())
+        })
+}
+
 fn borrowed_symmetric_projection_into_recording(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
@@ -8965,12 +9054,14 @@ fn try_absorb_ols_schur_narrow_at_cap(
     if contraction > OLS_SCHUR_MAX_CONTRACTION || !contraction.is_finite() {
         return Ok(NarrowOlsSchurAttempt::Rejected { values, contraction, probe_seconds, peak });
     }
+    let retain_fallback_coefficients = config.retain_coefficients;
     config.retain_coefficients = false;
     let Some(state) = state else {
         let empty = BorrowedInterceptFeDesign::new(absorber.design.nobs(), Vec::new())?;
         let design = std::mem::replace(&mut absorber.design, empty);
         drop(graph);
         drop(absorber);
+        config.retain_coefficients = retain_fallback_coefficients;
         return absorb_ols_schur_at_cap(design, weights, values, config, probe_seconds, contraction, cap)
             .map(NarrowOlsSchurAttempt::Certified);
     };
@@ -8983,7 +9074,8 @@ fn try_absorb_ols_schur_narrow_at_cap(
         &mut absorber.cg_ratio, Some(cap + OLS_SCHUR_PROBE_ITERATIONS),
         true, Some(&state))?;
     finish_ols_schur(absorber, graph, weights, config, map, peak, probe_seconds,
-        solve_started, 0.0, contraction, OLS_SCHUR_PROBE_ITERATIONS, 0, outcome)
+        solve_started, 0.0, contraction, OLS_SCHUR_PROBE_ITERATIONS, 0, outcome,
+        retain_fallback_coefficients)
         .map(NarrowOlsSchurAttempt::Certified)
 }
 
@@ -9424,7 +9516,7 @@ pub(crate) fn absorb_ols_schur_reusing_probe_certified(
     config: crate::fe::AbsorbConfig,
     contraction: f64,
 ) -> Result<CertifiedBorrowedMap> {
-    if values.ncols() != 1 || contraction > OLS_SCHUR_MAX_CONTRACTION {
+    if config.retain_coefficients || values.ncols() != 1 || contraction > OLS_SCHUR_MAX_CONTRACTION {
         return Err(invalid_argument("final Schur projection requires an accepted probe"));
     }
     absorb_ols_schur_with_probe_count(design, weights, values, config, 0.0,
@@ -9434,12 +9526,11 @@ pub(crate) fn absorb_ols_schur_reusing_probe_certified(
 #[allow(clippy::too_many_arguments)]
 fn absorb_ols_schur_with_probe_count(
     design: BorrowedInterceptFeDesign<'_>, weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix, config: crate::fe::AbsorbConfig,
+    values: DenseMatrix, mut config: crate::fe::AbsorbConfig,
     probe_seconds: f64, contraction: f64, cap: usize, probe_iterations: usize,
 ) -> Result<CertifiedBorrowedMap> {
     validate_config(config.map)?;
-    if config.retain_coefficients
-        || !probe_seconds.is_finite()
+    if !probe_seconds.is_finite()
         || probe_seconds < 0.0
         || !contraction.is_finite()
         || contraction < 0.0
@@ -9447,6 +9538,11 @@ fn absorb_ols_schur_with_probe_count(
     {
         return Err(invalid_argument("OLS Schur configuration is unsupported"));
     }
+    // Schur's observation-space projection has no coefficient products. Its
+    // original-input LSMR fallback can retain the requested products under its
+    // existing memory admission, avoiding a second saved-effect solve.
+    let retain_fallback_coefficients = config.retain_coefficients;
+    config.retain_coefficients = false;
     let planned = schur_ols_workspace_bytes(&design, values.ncols(), rayon::current_num_threads())?;
     if config
         .solver_memory_budget
@@ -9499,7 +9595,8 @@ fn absorb_ols_schur_with_probe_count(
         None,
     )?;
     finish_ols_schur(absorber, graph, weights, config, map, attempted_peak,
-        setup_seconds, solve_started, probe_seconds, contraction, probe_iterations, probe_iterations, outcome)
+        setup_seconds, solve_started, probe_seconds, contraction, probe_iterations, probe_iterations, outcome,
+        retain_fallback_coefficients)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -9508,6 +9605,7 @@ fn finish_ols_schur(
     weights: BorrowedMapWeights<'_>, config: crate::fe::AbsorbConfig, map: MapConfig,
     attempted_peak: SolverWorkspacePeak, setup_seconds: f64, solve_started: Instant,
     probe_seconds: f64, contraction: f64, probe_iterations: usize, iteration_offset: usize, outcome: SchurAttempt,
+    retain_fallback_coefficients: bool,
 ) -> Result<CertifiedBorrowedMap> {
     match outcome {
         SchurAttempt::Certified(mut result) => {
@@ -9539,7 +9637,7 @@ fn finish_ols_schur(
                 .ok_or_else(|| {
                     invalid_data("OLS Schur continuation exhausted the shared iteration budget")
                 })?;
-            if let Some(budget) = config.solver_memory_budget {
+            if let Some(budget) = config.solver_memory_budget.filter(|_| candidate) {
                 let levels = [
                     design.effects()[0].n_levels(),
                     design.effects()[1].n_levels(),
@@ -9557,25 +9655,50 @@ fn finish_ols_schur(
                     ));
                 }
             }
-            let mut reservation = SystemWorkspaceReservation;
-            let mut result = absorb_cg_with_reservation(
-                &design,
-                weights,
-                values,
-                remaining,
-                false,
-                CgContinuation {
-                    reference_norms: Some(&reference_norms),
-                    ..CgContinuation::ORDINARY
-                },
-                &mut reservation,
-            )?;
-            result.report.solver_workspace_peak = attempted_peak.max(
+            let mut result = if !candidate {
+                // A capped attempt has not changed these observations. Use
+                // coefficient-space LSMR before observation-space CG can
+                // accumulate span drift on a weak graph. The existing direct
+                // route admits its own workspace and retains certified CG as
+                // a constrained-memory or numerical fallback.
+                drop(reference_norms);
+                let mut plan = AutoLsmrPlan::direct_lsmr(config.lsmr, config.solver_memory_budget);
+                // Only public serial OLS asks this wide Schur fallback to
+                // retain products. Shared calls clear that request at their
+                // fit boundary; narrow, threaded and explicit routes keep
+                // their original transport and memory admission.
+                if retain_fallback_coefficients && design.effects().len() == 2
+                    && (16..=64).contains(&values.ncols())
+                    && config.lsmr.threads.resolved() == 1 && rayon::current_num_threads() == 1
+                {
+                    plan.batch_policy = LsmrBatchPolicy::RetainedSerialOls;
+                }
+                let mut reservation = SystemWorkspaceReservation;
+                absorb_auto_with_reservation(
+                    &design, weights, values, remaining, plan,
+                    AutoRunOptions { empty_design_is_structural_constant: false,
+                        retain_coefficients: retain_fallback_coefficients },
+                    &mut reservation,
+                )?
+            } else {
+                let mut reservation = SystemWorkspaceReservation;
+                let mut result = absorb_cg_with_reservation(
+                    &design,
+                    weights,
+                    values,
+                    remaining,
+                    false,
+                    CgContinuation {
+                        reference_norms: Some(&reference_norms),
+                        ..CgContinuation::ORDINARY
+                    },
+                    &mut reservation,
+                )?;
+                result.report.solver_workspace_peak = result.report.solver_workspace_peak
+                    .with_retained(reference_norms.capacity() as u128 * 8)?;
                 result
-                    .report
-                    .solver_workspace_peak
-                    .with_retained(reference_norms.capacity() as u128 * 8)?,
-            );
+            };
+            result.report.solver_workspace_peak = attempted_peak.max(result.report.solver_workspace_peak);
             result.report.requested_solver = FeSolverKind::Auto;
             result.report.iterations += iterations + iteration_offset;
             result.report.setup_seconds += setup_seconds + probe_seconds;
@@ -9583,7 +9706,7 @@ fn finish_ols_schur(
             result.report.pilot_iterations = probe_iterations;
             result.report.pilot_contraction = contraction;
             result.report.fallback_used = true;
-            result.report.warnings.insert(0, format!("automatic two-FE Schur CG continued with symmetric CG after {iterations} iterations (reconstructed candidate: {candidate})"));
+            result.report.warnings.insert(0, format!("automatic two-FE Schur CG continued with {:?} after {iterations} iterations (reconstructed candidate: {candidate})", result.report.used_solver));
             Ok(result)
         }
     }
@@ -10136,6 +10259,8 @@ mod tests {
                             + w.parallel_dot_sums.capacity();
                         assert!(planned >= actual as u128 * 8, "{planned} < {}", actual * 8);
                         drop(session);
+                        let mut config = config;
+                        config.lsmr.threads = crate::options::ThreadConfig::from_requested(threads, false).unwrap();
                         for (cap, fallback) in [(OLS_SCHUR_MAX_ITERATIONS, false), (1, true)] {
                             let mut result = absorb_ols_schur_at_cap(
                                 design(false),
@@ -10153,6 +10278,9 @@ mod tests {
                                 assert_eq!(peak, planned);
                             }
                             assert_eq!(result.report.fallback_used, fallback);
+                            if fallback && matches!(weights, BorrowedMapWeights::Unit) {
+                                assert_eq!(result.report.used_solver, FeSolverKind::Lsmr);
+                            }
                             assert_eq!(result.report.requested_solver, FeSolverKind::Auto);
                             assert!(result.report.iterations <= config.map.max_iterations);
                             assert!(result.report.setup_seconds >= 0.125);
@@ -10165,6 +10293,29 @@ mod tests {
                                 .zip(expected.residualized().as_slice())
                             {
                                 assert!((a - b).abs() < 2e-9, "{a} != {b}");
+                            }
+                            if fallback {
+                                let retained_config = crate::fe::AbsorbConfig {
+                                    retain_coefficients: true, ..config
+                                };
+                                let retained = absorb_ols_schur_at_cap(design(false), weights,
+                                    values(), retained_config, 0.125, contraction, cap).unwrap();
+                                let (residuals, report, coefficients) = retained.into_full_parts();
+                                assert!(report.certified() && report.fallback_used);
+                                assert_eq!(report.iterations, result.report.iterations);
+                                assert_eq!(report.certificate, result.report.certificate);
+                                assert_eq!(residuals, result.residualized);
+                                assert!(report.iterations <= config.map.max_iterations);
+                                let coefficients = coefficients.expect("original-input fallback retains requested products");
+                                for column in 0..17 {
+                                    let coefficient = coefficients.rhs(column).unwrap();
+                                    for row in 0..rows {
+                                        let fitted = coefficient[coefficients.effect_offsets()[0] + first_codes[row] as usize]
+                                            + coefficient[coefficients.effect_offsets()[1] + second_codes[row] as usize];
+                                        assert!((fitted - (columns[column][row] - residuals[(row, column)])).abs() <= 2e-9);
+                                        assert!((residuals[(row, column)] - expected.residualized()[(row, column)]).abs() <= 2e-9);
+                                    }
+                                }
                             }
                             if !fallback {
                                 if let Some(expected) = &serial_values {
@@ -10277,6 +10428,27 @@ mod tests {
                                     config, 0.0, expected_probe, cap).unwrap();
                                 assert_eq!(result.residualized(), baseline.residualized());
                                 assert_eq!(result.report.iterations, baseline.report.iterations);
+                                if rhs == 7 && threads == 8 {
+                                    let retained_config = crate::fe::AbsorbConfig { retain_coefficients: true, ..config };
+                                    let retained = match try_absorb_ols_schur_narrow_at_cap(design(), weights,
+                                        values.clone(), retained_config, cap).unwrap() {
+                                        NarrowOlsSchurAttempt::Certified(result) => result,
+                                        NarrowOlsSchurAttempt::Rejected { .. } => panic!("accepted retaining probe rejected"),
+                                    };
+                                    let (residuals, report, coefficients) = retained.into_full_parts();
+                                    assert!(report.certified() && report.fallback_used);
+                                    assert!(report.iterations <= config.map.max_iterations);
+                                    let coefficients = coefficients.expect("capped original-input LSMR retains requested products");
+                                    for column in 0..rhs {
+                                        let coefficient = coefficients.rhs(column).unwrap();
+                                        for row in 0..rows {
+                                            let fitted = coefficient[coefficients.effect_offsets()[0] + left_codes[row] as usize]
+                                                + coefficient[coefficients.effect_offsets()[1] + right_codes[row] as usize];
+                                            assert!((fitted - (values[(row, column)] - residuals[(row, column)])).abs() <= 2e-9);
+                                            assert!((residuals[(row, column)] - oracle.residualized()[(row, column)]).abs() <= 2e-9);
+                                        }
+                                    }
+                                }
                             } else {
                                 assert!(result.report.iterations <= OLS_SCHUR_PROBE_ITERATIONS + cap);
                             }
@@ -13992,6 +14164,7 @@ mod tests {
                     reference_norms: None,
                     refinement: CgRefinementPolicy::forced(forced_iterations),
                     retain_coefficients: false,
+                    reconstruct_projection: false,
                     reconstruction_tolerance: None,
                 },
                 &mut reservation,
