@@ -10,6 +10,46 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Local continuation closed: single-residual PPML checkpoint accepted — 2026-09-22
+
+The [single-residual milestone](benchmarks/reports/development/ppml-single-residual-local-2026-09-22/README.md)
+and ADR 0106 extend the existing current-weight Schur probe to one actual RHS
+on admitted two-FE checkpoint-LSMR sessions. Fresh initial/residual certificates,
+bounded attempts, untouched-input fallback and final-Hessian checks remain.
+No persistent buffer or changing-weight cache is added. The 2–15 RHS route
+stays closed. `residual2` is `55e9c48f` plus the archived borrowed-map patch;
+all 525 captured inputs match the final source, and the new public oracle
+fixture has a separate executed-file hash. Plugin SHA-256:
+`44090d1ab6db8a6a9afea8640c28e440de1eb4562010308bd22e3d604800c792`.
+
+Degree-six two-FE screen/fresh medians improve 324→292 and 346→287 ms; paired
+gains are about 10% and 17%. The PW/cluster control gains about 4%; dense,
+weak and excluded controls are mostly flat. Sparse two-FE has a small measured
+loss. Four of five pairwise-comparable rows still lose to stock fixest.
+All 93 headline attempts complete without detected overlap/timeouts; all 39
+native pairs pass science, 36 byte-identically. Other beta/V differences are
+at most 1.00e−16/7.62e−21. The final source passes 378 distinct Rust tests,
+ABI containment and five licensed fixtures. The new explicit-LSMR fixture
+proves six single-RHS Schur acceptances and checks unit/FW/PW, T1/T4, saved
+means and current-Hessian sandwiches against independent dummy Poisson.
+Tracked peak differences span −5.14 to +0.21 MB, with unchanged admission.
+
+This local continuation is complete and its experiments are closed. It adds
+the publication repair, fresh means and single-residual checkpoint improvements
+to the earlier transport/reference work. No universal win, qualification,
+historical aggregate transfer, push or release is claimed. All deferred issues
+below remain open, including static allocation-source drift, and serial-slope
+tuning remains closed.
+
+**Recommended next subsystem:** narrow multi-RHS PPML canonical checkpoints.
+The degree-six diagnostic still spends about 38 ms on the initial 12-RHS frame
+and 45 ms on the strict 11-RHS frame. Study current-weight batch geometry and
+assembly separately before considering their guard; do not reopen the accepted
+single-RHS experiment. Three-FE upstream solves remain a separate algorithmic
+opportunity. Large disconnected PPML/sparse three-FE OLS reference discrepancies
+remain unranked, and broader generated/output/constrained-memory coverage is
+incomplete. SCC authentication must not be retried without renewed access.
+
 ## Fresh PPML means accepted locally — 2026-09-22
 
 The [fresh-means milestone](benchmarks/reports/development/ppml-fresh-means-local-2026-09-22/README.md)
@@ -31,12 +71,9 @@ pruning and verifying singleton sample IDs; the original oracle sample mismatch
 and setup failure remain archived. Tracked peak differences span −0.71 to
 +3.79 MB; the static allocation inventory still fails and was not regenerated.
 
-Close this mean experiment. The objective remains active: next inspect the
-single-residual strict PPML checkpoint, whose two-FE diagnostic costs about
-40 ms. Initial fresh certification already exists. The wide checkpoint Schur
-guard excludes this RHS; any generalization must earn current-weight probe,
-fresh certificate, fallback and admission evidence. All deferred items below
-remain open, and serial-slope tuning stays closed.
+This mean experiment is closed. The later single-residual milestone above
+supersedes its next-step recommendation. All deferred items below remain open,
+and serial-slope tuning stays closed.
 
 ## PPML simplex/IR publication repaired locally — 2026-09-22
 
@@ -60,9 +97,8 @@ two failed setup attempts and all distributions remain archived.
 
 The repaired zero target takes 115 ms versus stock 37 ms; the positive control
 is 146→147 ms with identical scientific exports and native tracked peak.
-No speedup is claimed for this correctness repair. The current objective
-remains active: continue with strict-checkpoint assembly and residual projection,
-profiling fresh raw predictor/mean passes before changing weighted reuse.
+No speedup is claimed for this correctness repair. The later assembly and
+residual milestones above supersede its next-step recommendation.
 
 ## Broader optimization: transport and PPML refresh accepted locally — 2026-09-22
 

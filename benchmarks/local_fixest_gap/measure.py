@@ -63,6 +63,7 @@ def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None,
     environment.update(thread_environment(threads))
     if trace:
         environment["FEREG_PHASE_TIMING"] = "1"
+        environment["FEREG_SOLVER_TRACE"] = "1"
         environment["FEREG_LOCAL_TRACE"] = "1"
     environment["FEREG_LOCAL_BLOCK_WIDTH"] = os.environ.get("FEREG_LOCAL_BLOCK_WIDTH", "1")
     environment["FEREG_LOCAL_POOL"] = os.environ.get("FEREG_LOCAL_POOL", "10")

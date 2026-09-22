@@ -356,6 +356,15 @@ score, rank, basis, and all estimable coefficients must agree; an unidentified
 normalization coordinate cannot force another IRLS frame, and the canonical
 strict state replaces it before publication.
 
+On already admitted two-FE checkpoint-LSMR sessions, the retained Schur
+workspace may accelerate one or 16–64 actual RHSs at N>=16,384. The eight-step
+current-weight probe uses up to three available columns and requires
+contraction at most 0.01. A bounded candidate must pass the unchanged fresh
+canonical certificate; rejection resumes LSMR on untouched inputs. The
+single-RHS extension adds no persistent state or changing-weight cache, and
+2–15 RHSs retain their prior route. See
+[ADR 0106](adr/0106-single-rhs-ppml-schur-checkpoint.md).
+
 The reusable categorical MAP CG accelerator forms its symmetric `I-S` action
 by summing weighted FE group contributions. It does not obtain that action
 by subtracting nearly equal observation vectors: cancellation in that

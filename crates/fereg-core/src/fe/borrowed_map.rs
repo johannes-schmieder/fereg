@@ -1876,7 +1876,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         if !self.checkpoint_lsmr_enabled
             || self.two_fe_pcg.is_none()
             || self.design.nobs() < PARALLEL_PROJECTION_MIN_ROWS
-            || !(16..=64).contains(&values.ncols())
+            || !(values.ncols() == 1 || (16..=64).contains(&values.ncols()))
             || config.max_iterations <= OLS_SCHUR_PROBE_ITERATIONS
         {
             return Ok((None, cost));
@@ -9133,10 +9133,13 @@ fn schur_probe_reusing(
     graph: &mut TwoFePcgWorkspace,
     stride: usize,
 ) -> Result<f64> {
+    // A checkpoint residual has one actual RHS. Probe only available columns;
+    // wider OLS/checkpoint callers retain the same three-column arithmetic.
+    let probe_rhs = values.ncols().min(3);
     if design.effects().len() != 2
         || design.nobs() != values.nrows()
-        || values.ncols() < 3
-        || stride < 3
+        || probe_rhs == 0
+        || stride < probe_rhs
         || graph.left_rhs.len() != graph.left_weights.len().saturating_mul(stride)
         || graph.residual.len() != graph.right_weights.len().saturating_mul(stride)
     {
@@ -9149,23 +9152,23 @@ fn schur_probe_reusing(
     graph.operator.fill(0.0);
     let left = &design.effects()[graph.left_effect];
     let right = &design.effects()[graph.right_effect];
-    let columns = [0, 1, values.ncols() / 2];
+    let columns = [0, 1.min(values.ncols() - 1), values.ncols() / 2];
     graph
         .left_rhs
         .par_chunks_mut(stride)
         .zip(graph.left_weights.par_iter_mut())
         .enumerate()
         .try_for_each(|(level, (sum, total))| -> Result<()> {
-            sum[..3].fill(0.0);
+            sum[..probe_rhs].fill(0.0);
             *total = 0.0;
             for &row in left.level_index().checked_members(level)? {
                 let weight = weights.normalized(row);
                 *total += weight;
-                for (rhs, &column) in columns.iter().enumerate() {
+                for (rhs, &column) in columns[..probe_rhs].iter().enumerate() {
                     sum[rhs] += weight * values[(row, column)];
                 }
             }
-            for value in &mut sum[..3] {
+            for value in &mut sum[..probe_rhs] {
                 *value /= *total;
             }
             Ok(())
@@ -9178,19 +9181,19 @@ fn schur_probe_reusing(
         .enumerate()
         .try_for_each(|(level, (sum, total))| -> Result<()> {
             let members = right.level_index().checked_members(level)?;
-            sum[..3].fill(0.0);
+            sum[..probe_rhs].fill(0.0);
             *total = 0.0;
             for &row in members {
                 let weight = weights.normalized(row);
                 *total += weight;
-                for (rhs, &column) in columns.iter().enumerate() {
+                for (rhs, &column) in columns[..probe_rhs].iter().enumerate() {
                     sum[rhs] += weight * values[(row, column)];
                 }
             }
             for &row in members {
                 let weight = weights.normalized(row);
                 let a = left.codes()[row] as usize;
-                for rhs in 0..3 {
+                for rhs in 0..probe_rhs {
                     sum[rhs] -= weight * left_rhs[a * stride + rhs];
                 }
             }
@@ -9198,7 +9201,7 @@ fn schur_probe_reusing(
         })?;
     let mut square = [0.0; 3];
     for level in 0..right.n_levels() {
-        for rhs in 0..3 {
+        for rhs in 0..probe_rhs {
             let i = level * stride + rhs;
             graph.direction[i] = graph.residual[i] / graph.right_weights[level];
             square[rhs] = graph.residual[i].mul_add(graph.direction[i], square[rhs]);
@@ -9209,16 +9212,16 @@ fn schur_probe_reusing(
         return Ok(f64::INFINITY);
     }
     for _ in 0..OLS_SCHUR_PROBE_ITERATIONS {
-        graph.apply_schur(design, weights, 3, stride)?;
+        graph.apply_schur(design, weights, probe_rhs, stride)?;
         let mut projection = [0.0; 3];
         for level in 0..right.n_levels() {
-            for rhs in 0..3 {
+            for rhs in 0..probe_rhs {
                 let i = level * stride + rhs;
                 projection[rhs] = graph.direction[i].mul_add(graph.operator[i], projection[rhs]);
             }
         }
         let mut step = [0.0; 3];
-        for rhs in 0..3 {
+        for rhs in 0..probe_rhs {
             if square[rhs] <= initial[rhs] * 1e-24 || square[rhs] == 0.0 {
                 continue;
             }
@@ -9229,20 +9232,20 @@ fn schur_probe_reusing(
         }
         let mut next = [0.0; 3];
         for level in 0..right.n_levels() {
-            for rhs in 0..3 {
+            for rhs in 0..probe_rhs {
                 let i = level * stride + rhs;
                 graph.residual[i] = (-step[rhs]).mul_add(graph.operator[i], graph.residual[i]);
                 next[rhs] = graph.residual[i]
                     .mul_add(graph.residual[i] / graph.right_weights[level], next[rhs]);
             }
         }
-        for rhs in 0..3 {
+        for rhs in 0..probe_rhs {
             if !next[rhs].is_finite() || next[rhs] < 0.0 {
                 return Ok(f64::INFINITY);
             }
         }
         for level in 0..right.n_levels() {
-            for rhs in 0..3 {
+            for rhs in 0..probe_rhs {
                 let i = level * stride + rhs;
                 graph.direction[i] = if step[rhs] == 0.0 {
                     0.0
@@ -9254,7 +9257,7 @@ fn schur_probe_reusing(
         }
         square = next;
     }
-    Ok((0..3)
+    Ok((0..probe_rhs)
         .map(|rhs| {
             if initial[rhs] == 0.0 {
                 0.0
@@ -9916,7 +9919,7 @@ mod tests {
         assert_eq!(copy, values);
         assert_ne!(copy.as_slice().as_ptr(), values.as_slice().as_ptr());
         for rows in [16384, 122880, 983040] {
-            for rhs in [16, 17, 51, 64] {
+            for rhs in [1, 16, 17, 51, 64] {
                 for threads in [1, 4, 16] {
                     let estimate =
                         estimate_fe_solver_memory(rows, rhs, &[rows / 4, 128], threads, Some(4))
@@ -9929,6 +9932,12 @@ mod tests {
 
     #[test]
     fn checkpoint_schur_reuses_probe_and_falls_back_on_untouched_inputs() {
+        for width in [1, 17] {
+            check_checkpoint_schur_width(width);
+        }
+    }
+
+    fn check_checkpoint_schur_width(width: usize) {
         let rows = 16384;
         let first_codes = (0..rows).map(|r| (r % 257) as u32).collect::<Vec<_>>();
         let second_codes = (0..rows)
@@ -9952,7 +9961,7 @@ mod tests {
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
-        let values = DenseMatrix::from_columns(&columns).unwrap();
+        let values = DenseMatrix::from_columns(&columns[..width]).unwrap();
         let original = values.clone();
         let supplied = (0..rows).map(|r| 1.0 + (r % 7) as f64).collect::<Vec<_>>();
         let scaled = supplied.iter().map(|w| w * 1024.0).collect::<Vec<_>>();
@@ -9976,7 +9985,10 @@ mod tests {
                         BorrowedMapWeights::Provided(&scaled),
                     ] {
                         let weights = validate_weights(raw, rows).unwrap();
-                        let expected_probe = schur_ols_probe(&design(), raw, &values).unwrap();
+                        let probe_values = if width == 1 {
+                            DenseMatrix::from_columns(&[columns[0].clone(), columns[0].clone(), columns[0].clone()]).unwrap()
+                        } else { values.clone() };
+                        let expected_probe = schur_ols_probe(&design(), raw, &probe_values).unwrap();
                         let graph = reusable.two_fe_pcg.as_mut().unwrap();
                         for storage in [
                             &mut graph.left_rhs,
@@ -10020,7 +10032,7 @@ mod tests {
                             assert!((a - b).abs() < 2e-10, "{a} != {b}");
                         }
                         // A width-65 owner has no Schur graph and supplies the unchanged
-                        // checkpoint LSMR result for exactly these 17 authoritative RHSs.
+                        // checkpoint LSMR result for the same authoritative RHSs.
                         let mut baseline =
                             ReusableCategoricalMapAbsorber::new(design(), 65, threads).unwrap();
                         baseline.enable_checkpoint_lsmr();
@@ -10134,7 +10146,18 @@ mod tests {
         assert_eq!(cost.solve_seconds, 0.0);
         assert!(!cost.rejected);
         assert_eq!(reusable.capacities(), capacities);
-        for width in [1, 15] {
+        let single = DenseMatrix::from_columns(&[(0..rows)
+            .map(|row| values[(row, 0)]).collect::<Vec<_>>()]).unwrap();
+        let (result, cost) = reusable.try_checkpoint_schur(
+            validate_weights(BorrowedMapWeights::Provided(&weights), rows).unwrap(),
+            &single, config(),
+        ).unwrap();
+        assert!(result.is_none());
+        assert!(cost.contraction > OLS_SCHUR_MAX_CONTRACTION);
+        assert_eq!(cost.iterations, 0);
+        assert_eq!(cost.solve_seconds, 0.0);
+        assert_eq!(reusable.capacities(), capacities);
+        for width in [2, 15] {
             let narrow = DenseMatrix::zeros(rows, width).unwrap();
             let (result, cost) = reusable
                 .try_checkpoint_schur(
