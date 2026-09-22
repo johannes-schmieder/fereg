@@ -1,0 +1,322 @@
+{
+  "identity-dtk1.json": {
+    "original_sha256": "785937729f9ac85810f89e1769f1d256af35d7087cd691dc405d8668307aaf1e",
+    "portable_sha256": "785937729f9ac85810f89e1769f1d256af35d7087cd691dc405d8668307aaf1e"
+  },
+  "dtk1/crates/fereg-core/src/fe/borrowed_map.rs": {
+    "original_sha256": "bb6b07315e69abaeb852a277dc3cdc9d9cdb6feccf09ad10e6f842de36fd6910",
+    "portable_sha256": "bb6b07315e69abaeb852a277dc3cdc9d9cdb6feccf09ad10e6f842de36fd6910"
+  },
+  "dtk1/crates/fereg-core/src/fe/cmg.rs": {
+    "original_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461",
+    "portable_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461"
+  },
+  "dtk1/crates/fereg-core/src/fe/lsmr_batch.rs": {
+    "original_sha256": "1b18917dc0deb00169239e475840a14a8a992cfe56b1b2bebecee1560416628a",
+    "portable_sha256": "1b18917dc0deb00169239e475840a14a8a992cfe56b1b2bebecee1560416628a"
+  },
+  "dtk1/crates/fereg-core/src/memory.rs": {
+    "original_sha256": "f1d7e8a3029e3e06fd851bdedab5cdd40c171b8d1ac740fe90aa29be9f02a7d4",
+    "portable_sha256": "f1d7e8a3029e3e06fd851bdedab5cdd40c171b8d1ac740fe90aa29be9f02a7d4"
+  },
+  "dtk1/crates/fereg-core/src/ols/prepared_fit.rs": {
+    "original_sha256": "b4f764ba54f44295f17887c57e1e708e0b3ef74aacc10e47e3250d19904c6773",
+    "portable_sha256": "b4f764ba54f44295f17887c57e1e708e0b3ef74aacc10e47e3250d19904c6773"
+  },
+  "dtk1/crates/fereg-core/src/ols/prepared_rhs.rs": {
+    "original_sha256": "ce47fb3c95a0590a80808ed3c4b3fe1d9b9ff241b095ef4f6a13667744a9fabd",
+    "portable_sha256": "ce47fb3c95a0590a80808ed3c4b3fe1d9b9ff241b095ef4f6a13667744a9fabd"
+  },
+  "dtk1/crates/fereg-core/src/sandwich.rs": {
+    "original_sha256": "7a80e7231e29b422df221ee4a01907f6e0f47365e8866ab99c79edcc434cb069",
+    "portable_sha256": "7a80e7231e29b422df221ee4a01907f6e0f47365e8866ab99c79edcc434cb069"
+  },
+  "identity-sgk1.json": {
+    "original_sha256": "734bff2742382d850019add1d013496a694172c44f5f289bb229d0a0b954ef76",
+    "portable_sha256": "734bff2742382d850019add1d013496a694172c44f5f289bb229d0a0b954ef76"
+  },
+  "sgk1/crates/fereg-core/src/fe/borrowed_map.rs": {
+    "original_sha256": "bb6b07315e69abaeb852a277dc3cdc9d9cdb6feccf09ad10e6f842de36fd6910",
+    "portable_sha256": "bb6b07315e69abaeb852a277dc3cdc9d9cdb6feccf09ad10e6f842de36fd6910"
+  },
+  "sgk1/crates/fereg-core/src/fe/cmg.rs": {
+    "original_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461",
+    "portable_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461"
+  },
+  "sgk1/crates/fereg-core/src/fe/lsmr_batch.rs": {
+    "original_sha256": "1b18917dc0deb00169239e475840a14a8a992cfe56b1b2bebecee1560416628a",
+    "portable_sha256": "1b18917dc0deb00169239e475840a14a8a992cfe56b1b2bebecee1560416628a"
+  },
+  "sgk1/crates/fereg-core/src/linalg/solve.rs": {
+    "original_sha256": "74860a881cdbdf6e211e93b7c8e804b50902aa0f80e14ffe45ef23bbd24069f5",
+    "portable_sha256": "74860a881cdbdf6e211e93b7c8e804b50902aa0f80e14ffe45ef23bbd24069f5"
+  },
+  "sgk1/crates/fereg-core/src/linalg/solve_fixed_tests.rs": {
+    "original_sha256": "0781c97d23e696987fad57619e22451387c8e26718329eaac43d0dc977076446",
+    "portable_sha256": "0781c97d23e696987fad57619e22451387c8e26718329eaac43d0dc977076446"
+  },
+  "sgk1/crates/fereg-core/src/memory.rs": {
+    "original_sha256": "f1d7e8a3029e3e06fd851bdedab5cdd40c171b8d1ac740fe90aa29be9f02a7d4",
+    "portable_sha256": "f1d7e8a3029e3e06fd851bdedab5cdd40c171b8d1ac740fe90aa29be9f02a7d4"
+  },
+  "sgk1/crates/fereg-core/src/ols/prepared_fit.rs": {
+    "original_sha256": "b4f764ba54f44295f17887c57e1e708e0b3ef74aacc10e47e3250d19904c6773",
+    "portable_sha256": "b4f764ba54f44295f17887c57e1e708e0b3ef74aacc10e47e3250d19904c6773"
+  },
+  "sgk1/crates/fereg-core/src/ols/prepared_rhs.rs": {
+    "original_sha256": "ce47fb3c95a0590a80808ed3c4b3fe1d9b9ff241b095ef4f6a13667744a9fabd",
+    "portable_sha256": "ce47fb3c95a0590a80808ed3c4b3fe1d9b9ff241b095ef4f6a13667744a9fabd"
+  },
+  "identity-dtk1d.json": {
+    "original_sha256": "26b6fbe5189ba2a419a3ce41f76e1923f59937cd2a17fccc3f044ed995bc0b8f",
+    "portable_sha256": "26b6fbe5189ba2a419a3ce41f76e1923f59937cd2a17fccc3f044ed995bc0b8f"
+  },
+  "dtk1d/crates/fereg-core/src/fe/auto.rs": {
+    "original_sha256": "3873a540220943f023160ca584fc23f5684a71ddd2b54af09b66bb51f3a50b7c",
+    "portable_sha256": "3873a540220943f023160ca584fc23f5684a71ddd2b54af09b66bb51f3a50b7c"
+  },
+  "dtk1d/crates/fereg-core/src/fe/borrowed_map.rs": {
+    "original_sha256": "bb6b07315e69abaeb852a277dc3cdc9d9cdb6feccf09ad10e6f842de36fd6910",
+    "portable_sha256": "bb6b07315e69abaeb852a277dc3cdc9d9cdb6feccf09ad10e6f842de36fd6910"
+  },
+  "dtk1d/crates/fereg-core/src/fe/certificate.rs": {
+    "original_sha256": "0d89747ee579fe07caff543b31bdd80dafaa6003f6dcf5f8984f07e3cba66e0b",
+    "portable_sha256": "0d89747ee579fe07caff543b31bdd80dafaa6003f6dcf5f8984f07e3cba66e0b"
+  },
+  "dtk1d/crates/fereg-core/src/fe/cmg.rs": {
+    "original_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461",
+    "portable_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461"
+  },
+  "dtk1d/crates/fereg-core/src/fe/lsmr_batch.rs": {
+    "original_sha256": "1b18917dc0deb00169239e475840a14a8a992cfe56b1b2bebecee1560416628a",
+    "portable_sha256": "1b18917dc0deb00169239e475840a14a8a992cfe56b1b2bebecee1560416628a"
+  },
+  "dtk1d/crates/fereg-core/src/fe/map.rs": {
+    "original_sha256": "4cd34e281e611f5a8cc053a5c5b05fa93f063130b3b2273be20593efe3317dd7",
+    "portable_sha256": "4cd34e281e611f5a8cc053a5c5b05fa93f063130b3b2273be20593efe3317dd7"
+  },
+  "dtk1d/crates/fereg-core/src/fe/projection.rs": {
+    "original_sha256": "e2cf0ba88fabc58048154a483c1dd461f6ca36243deafadf9b02e2a9e39fd11e",
+    "portable_sha256": "e2cf0ba88fabc58048154a483c1dd461f6ca36243deafadf9b02e2a9e39fd11e"
+  },
+  "dtk1d/crates/fereg-core/src/fe/single_slope.rs": {
+    "original_sha256": "22c7cc99cff26a0c4525cdbb346308bfac37fa919b4049d555022af1ba6d3d1d",
+    "portable_sha256": "22c7cc99cff26a0c4525cdbb346308bfac37fa919b4049d555022af1ba6d3d1d"
+  },
+  "dtk1d/crates/fereg-core/src/fe/topology_slope_map.rs": {
+    "original_sha256": "cd6bf686ef4b4f81a061bbd5b09db1efa36ea078d0c7af453c9035a31b62a643",
+    "portable_sha256": "cd6bf686ef4b4f81a061bbd5b09db1efa36ea078d0c7af453c9035a31b62a643"
+  },
+  "dtk1d/crates/fereg-core/src/memory.rs": {
+    "original_sha256": "f1d7e8a3029e3e06fd851bdedab5cdd40c171b8d1ac740fe90aa29be9f02a7d4",
+    "portable_sha256": "f1d7e8a3029e3e06fd851bdedab5cdd40c171b8d1ac740fe90aa29be9f02a7d4"
+  },
+  "dtk1d/crates/fereg-core/src/ols/prepared_categorical_data.rs": {
+    "original_sha256": "3a6589d1c427f90c1db6fe77044a0855f35c21525087ef1a9a3c078491afd869",
+    "portable_sha256": "3a6589d1c427f90c1db6fe77044a0855f35c21525087ef1a9a3c078491afd869"
+  },
+  "dtk1d/crates/fereg-core/src/ols/prepared_fit.rs": {
+    "original_sha256": "70592ef961b9094757cf79974b0b2208bb07909511015bd9e7c8d0594e3a9f0c",
+    "portable_sha256": "70592ef961b9094757cf79974b0b2208bb07909511015bd9e7c8d0594e3a9f0c"
+  },
+  "dtk1d/crates/fereg-core/src/ols/prepared_fit_view.rs": {
+    "original_sha256": "fbe13734a1420d0b4dd74b02ab91b5e8b33dbdaca6cc11653d05375f42d5f226",
+    "portable_sha256": "fbe13734a1420d0b4dd74b02ab91b5e8b33dbdaca6cc11653d05375f42d5f226"
+  },
+  "dtk1d/crates/fereg-core/src/ols/prepared_rhs.rs": {
+    "original_sha256": "ce47fb3c95a0590a80808ed3c4b3fe1d9b9ff241b095ef4f6a13667744a9fabd",
+    "portable_sha256": "ce47fb3c95a0590a80808ed3c4b3fe1d9b9ff241b095ef4f6a13667744a9fabd"
+  },
+  "dtk1d/crates/fereg-core/src/sandwich.rs": {
+    "original_sha256": "7a80e7231e29b422df221ee4a01907f6e0f47365e8866ab99c79edcc434cb069",
+    "portable_sha256": "7a80e7231e29b422df221ee4a01907f6e0f47365e8866ab99c79edcc434cb069"
+  },
+  "dtk1d/crates/fereg-plugin/src/estimate.rs": {
+    "original_sha256": "408edc7d78d7a2294e64edbfaadf54aa29b7abb1e749bdc1c9cfc92e705e0681",
+    "portable_sha256": "408edc7d78d7a2294e64edbfaadf54aa29b7abb1e749bdc1c9cfc92e705e0681"
+  },
+  "dtk1d/stata/_fereg_estimate_ols.ado": {
+    "original_sha256": "740f384104eccee1f15f1813b8e0deae9bf76b5cd8df33a0088a125ab4e87246",
+    "portable_sha256": "740f384104eccee1f15f1813b8e0deae9bf76b5cd8df33a0088a125ab4e87246"
+  },
+  "identity-sgk1d.json": {
+    "original_sha256": "5a79097bb48b96edb9633567f1d9fd641584ff5c2249c19c8094800820270f7e",
+    "portable_sha256": "5a79097bb48b96edb9633567f1d9fd641584ff5c2249c19c8094800820270f7e"
+  },
+  "sgk1d/crates/fereg-core/src/fe/auto.rs": {
+    "original_sha256": "3873a540220943f023160ca584fc23f5684a71ddd2b54af09b66bb51f3a50b7c",
+    "portable_sha256": "3873a540220943f023160ca584fc23f5684a71ddd2b54af09b66bb51f3a50b7c"
+  },
+  "sgk1d/crates/fereg-core/src/fe/borrowed_map.rs": {
+    "original_sha256": "bb6b07315e69abaeb852a277dc3cdc9d9cdb6feccf09ad10e6f842de36fd6910",
+    "portable_sha256": "bb6b07315e69abaeb852a277dc3cdc9d9cdb6feccf09ad10e6f842de36fd6910"
+  },
+  "sgk1d/crates/fereg-core/src/fe/certificate.rs": {
+    "original_sha256": "0d89747ee579fe07caff543b31bdd80dafaa6003f6dcf5f8984f07e3cba66e0b",
+    "portable_sha256": "0d89747ee579fe07caff543b31bdd80dafaa6003f6dcf5f8984f07e3cba66e0b"
+  },
+  "sgk1d/crates/fereg-core/src/fe/cmg.rs": {
+    "original_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461",
+    "portable_sha256": "e80dcba3974d71041183592ebf75e81da80390c7c00cf4fdec9890ec08037461"
+  },
+  "sgk1d/crates/fereg-core/src/fe/lsmr_batch.rs": {
+    "original_sha256": "1b18917dc0deb00169239e475840a14a8a992cfe56b1b2bebecee1560416628a",
+    "portable_sha256": "1b18917dc0deb00169239e475840a14a8a992cfe56b1b2bebecee1560416628a"
+  },
+  "sgk1d/crates/fereg-core/src/fe/map.rs": {
+    "original_sha256": "4cd34e281e611f5a8cc053a5c5b05fa93f063130b3b2273be20593efe3317dd7",
+    "portable_sha256": "4cd34e281e611f5a8cc053a5c5b05fa93f063130b3b2273be20593efe3317dd7"
+  },
+  "sgk1d/crates/fereg-core/src/fe/projection.rs": {
+    "original_sha256": "e2cf0ba88fabc58048154a483c1dd461f6ca36243deafadf9b02e2a9e39fd11e",
+    "portable_sha256": "e2cf0ba88fabc58048154a483c1dd461f6ca36243deafadf9b02e2a9e39fd11e"
+  },
+  "sgk1d/crates/fereg-core/src/fe/single_slope.rs": {
+    "original_sha256": "22c7cc99cff26a0c4525cdbb346308bfac37fa919b4049d555022af1ba6d3d1d",
+    "portable_sha256": "22c7cc99cff26a0c4525cdbb346308bfac37fa919b4049d555022af1ba6d3d1d"
+  },
+  "sgk1d/crates/fereg-core/src/fe/topology_slope_map.rs": {
+    "original_sha256": "cd6bf686ef4b4f81a061bbd5b09db1efa36ea078d0c7af453c9035a31b62a643",
+    "portable_sha256": "cd6bf686ef4b4f81a061bbd5b09db1efa36ea078d0c7af453c9035a31b62a643"
+  },
+  "sgk1d/crates/fereg-core/src/linalg/solve.rs": {
+    "original_sha256": "74860a881cdbdf6e211e93b7c8e804b50902aa0f80e14ffe45ef23bbd24069f5",
+    "portable_sha256": "74860a881cdbdf6e211e93b7c8e804b50902aa0f80e14ffe45ef23bbd24069f5"
+  },
+  "sgk1d/crates/fereg-core/src/linalg/solve_fixed_tests.rs": {
+    "original_sha256": "0781c97d23e696987fad57619e22451387c8e26718329eaac43d0dc977076446",
+    "portable_sha256": "0781c97d23e696987fad57619e22451387c8e26718329eaac43d0dc977076446"
+  },
+  "sgk1d/crates/fereg-core/src/memory.rs": {
+    "original_sha256": "f1d7e8a3029e3e06fd851bdedab5cdd40c171b8d1ac740fe90aa29be9f02a7d4",
+    "portable_sha256": "f1d7e8a3029e3e06fd851bdedab5cdd40c171b8d1ac740fe90aa29be9f02a7d4"
+  },
+  "sgk1d/crates/fereg-core/src/ols/prepared_categorical_data.rs": {
+    "original_sha256": "3a6589d1c427f90c1db6fe77044a0855f35c21525087ef1a9a3c078491afd869",
+    "portable_sha256": "3a6589d1c427f90c1db6fe77044a0855f35c21525087ef1a9a3c078491afd869"
+  },
+  "sgk1d/crates/fereg-core/src/ols/prepared_fit.rs": {
+    "original_sha256": "70592ef961b9094757cf79974b0b2208bb07909511015bd9e7c8d0594e3a9f0c",
+    "portable_sha256": "70592ef961b9094757cf79974b0b2208bb07909511015bd9e7c8d0594e3a9f0c"
+  },
+  "sgk1d/crates/fereg-core/src/ols/prepared_fit_view.rs": {
+    "original_sha256": "fbe13734a1420d0b4dd74b02ab91b5e8b33dbdaca6cc11653d05375f42d5f226",
+    "portable_sha256": "fbe13734a1420d0b4dd74b02ab91b5e8b33dbdaca6cc11653d05375f42d5f226"
+  },
+  "sgk1d/crates/fereg-core/src/ols/prepared_rhs.rs": {
+    "original_sha256": "ce47fb3c95a0590a80808ed3c4b3fe1d9b9ff241b095ef4f6a13667744a9fabd",
+    "portable_sha256": "ce47fb3c95a0590a80808ed3c4b3fe1d9b9ff241b095ef4f6a13667744a9fabd"
+  },
+  "sgk1d/crates/fereg-plugin/src/estimate.rs": {
+    "original_sha256": "408edc7d78d7a2294e64edbfaadf54aa29b7abb1e749bdc1c9cfc92e705e0681",
+    "portable_sha256": "408edc7d78d7a2294e64edbfaadf54aa29b7abb1e749bdc1c9cfc92e705e0681"
+  },
+  "sgk1d/stata/_fereg_estimate_ols.ado": {
+    "original_sha256": "740f384104eccee1f15f1813b8e0deae9bf76b5cd8df33a0088a125ab4e87246",
+    "portable_sha256": "740f384104eccee1f15f1813b8e0deae9bf76b5cd8df33a0088a125ab4e87246"
+  },
+  "sgk1-tests1.py": {
+    "original_sha256": "d1b369596d44094d009b150587d892d9551c1a6003d22c85916a37cad8fbc169",
+    "portable_sha256": "d1b369596d44094d009b150587d892d9551c1a6003d22c85916a37cad8fbc169"
+  },
+  "sgk1-screen1.py": {
+    "original_sha256": "bf091422891a81a3b290700d00a8b10d6c7797b337d090990f3c93f0c6e6e05a",
+    "portable_sha256": "bf091422891a81a3b290700d00a8b10d6c7797b337d090990f3c93f0c6e6e05a"
+  },
+  "audit-sgk1-screen1.py": {
+    "original_sha256": "70d6ffac84a9e7c4db0fc36e857ad6cc1f11c69ccc72f34dacbb64c51b2ee174",
+    "portable_sha256": "70d6ffac84a9e7c4db0fc36e857ad6cc1f11c69ccc72f34dacbb64c51b2ee174"
+  },
+  "sgk1d-profile1.py": {
+    "original_sha256": "0163749efa67c74ba8e241acd0d2fdf2a3741a0a84d0cd1deb90301582223966",
+    "portable_sha256": "0163749efa67c74ba8e241acd0d2fdf2a3741a0a84d0cd1deb90301582223966"
+  },
+  "audit-sgk1d-profiles1.py": {
+    "original_sha256": "68bee0c067773d9eb6eb40bd8d3eedf699db9d86221f3b863cd08c76170e6d4f",
+    "portable_sha256": "68bee0c067773d9eb6eb40bd8d3eedf699db9d86221f3b863cd08c76170e6d4f"
+  },
+  "sgk1-solver-screen-check1.py": {
+    "original_sha256": "80b1b09ab62a0429e6f2945301acd37ee52fd56b07512abc0b264b3ef7072dcb",
+    "portable_sha256": "80b1b09ab62a0429e6f2945301acd37ee52fd56b07512abc0b264b3ef7072dcb"
+  },
+  "sgk1-projection-profile1.py": {
+    "original_sha256": "2358aba8670adb768466fa739a81a3b0cba19015b5b45f901ae58fde0d333bda",
+    "portable_sha256": "2358aba8670adb768466fa739a81a3b0cba19015b5b45f901ae58fde0d333bda"
+  },
+  "archive-sgk1.py": {
+    "original_sha256": "ee724b09f98b3a0eba426fbf53cac451115b1df94fcb9bbb9feb6635f0b1803a",
+    "portable_sha256": "ec7d60419da4e9b22da88ff65f39b67bdf1588b4b409be13a365f31168fb8e6b"
+  },
+  "one_fe_optimization/build.py": {
+    "original_sha256": "c19b859f27512043b6f9591899e42401306eef1612b4e7b2adc2af37e059a180",
+    "portable_sha256": "c19b859f27512043b6f9591899e42401306eef1612b4e7b2adc2af37e059a180"
+  },
+  "one_fe_optimization/prepare_profile.py": {
+    "original_sha256": "6d788856af86da58035dfcf6a13d1a419ddbf6b83fcc3b317f2ff1fb15993501",
+    "portable_sha256": "6d788856af86da58035dfcf6a13d1a419ddbf6b83fcc3b317f2ff1fb15993501"
+  },
+  "one_fe_optimization/completion_profile.py": {
+    "original_sha256": "54fd6beb4b2fcb73b946ebf9cd0153efcf5c90424d48c61d51c474ab82941930",
+    "portable_sha256": "54fd6beb4b2fcb73b946ebf9cd0153efcf5c90424d48c61d51c474ab82941930"
+  },
+  "one_fe_breadth/profile.py": {
+    "original_sha256": "3a3c6d1ba14db53b3698f7cc77f46591551d1bdccb31870561be75ad6fc12d23",
+    "portable_sha256": "3a3c6d1ba14db53b3698f7cc77f46591551d1bdccb31870561be75ad6fc12d23"
+  },
+  "one_fe_profile/slope_instrument.py": {
+    "original_sha256": "15e70814dff0dd897dc05a202c7fb0fe7439a67f1c75b35717052332cad98acf",
+    "portable_sha256": "15e70814dff0dd897dc05a202c7fb0fe7439a67f1c75b35717052332cad98acf"
+  },
+  "one_fe_profile/inference_instrument.py": {
+    "original_sha256": "c49bce7f298ad57868fc55937bc20496302b6a86dbb77aa88cb5a7c5ae6120ee",
+    "portable_sha256": "c49bce7f298ad57868fc55937bc20496302b6a86dbb77aa88cb5a7c5ae6120ee"
+  },
+  "one_fe_profile/recovery_instrument.py": {
+    "original_sha256": "435e14dbd75353fdb0c5e3428a7e01b2620136d55c769245dc0bee58ed582e8f",
+    "portable_sha256": "435e14dbd75353fdb0c5e3428a7e01b2620136d55c769245dc0bee58ed582e8f"
+  },
+  "one_fe_profile/slopes.py": {
+    "original_sha256": "255c3c97b3a9916cce6c488e1e28ffcba7f7bcd58a075ccbe0c4e382b899beab",
+    "portable_sha256": "255c3c97b3a9916cce6c488e1e28ffcba7f7bcd58a075ccbe0c4e382b899beab"
+  },
+  "one_fe_profile/slope_breadth.py": {
+    "original_sha256": "4ce14efad60e4faff318a4bacc94264a08189c05bc56b58ab75cd28faf7ef632",
+    "portable_sha256": "4ce14efad60e4faff318a4bacc94264a08189c05bc56b58ab75cd28faf7ef632"
+  },
+  "one_fe_profile/run.py": {
+    "original_sha256": "fd589742caead5a43765d39becf220cd5e80c3660fe1757c25c51e93e280af7b",
+    "portable_sha256": "fd589742caead5a43765d39becf220cd5e80c3660fe1757c25c51e93e280af7b"
+  },
+  "one_fe_breadth/run.py": {
+    "original_sha256": "f464cfa61063ecfb8cb0583244436e88c59cf0aa3b86b78ffd6d6a93dcf7b930",
+    "portable_sha256": "f464cfa61063ecfb8cb0583244436e88c59cf0aa3b86b78ffd6d6a93dcf7b930"
+  },
+  "systematic/generate.py": {
+    "original_sha256": "2c4459582f46a183202ccf4a92a248ce27319c07309d80bab31308d1b42530ab",
+    "portable_sha256": "2c4459582f46a183202ccf4a92a248ce27319c07309d80bab31308d1b42530ab"
+  },
+  "two_fe_dense/route_development.py": {
+    "original_sha256": "ec169fde36122d4b11a2ba62dc24f765469e55a9c43b5e7b85d15da5e20407f8",
+    "portable_sha256": "ec169fde36122d4b11a2ba62dc24f765469e55a9c43b5e7b85d15da5e20407f8"
+  },
+  "two_fe_dense/archive_science.py": {
+    "original_sha256": "8f2083ca7c55106c91af755b21b8988ffa6ecad61f78c5e88aa210a8ba3ffbcd",
+    "portable_sha256": "51f180c3ac323b76872e5ef309d6dd458c275d18a2f811c59ca6b14234ee067b"
+  },
+  "local_fixest_gap/common.py": {
+    "original_sha256": "dfb15d34b8df2d5899e14f4306fbc732f070ef219cd472fd4e3702f31daca09c",
+    "portable_sha256": "dfb15d34b8df2d5899e14f4306fbc732f070ef219cd472fd4e3702f31daca09c"
+  },
+  "local_fixest_gap/measure.py": {
+    "original_sha256": "6fc012df26a5dad7deda42659e91d67134aa82d4fd42f969311f6177b011488c",
+    "portable_sha256": "6fc012df26a5dad7deda42659e91d67134aa82d4fd42f969311f6177b011488c"
+  },
+  "local_fixest_gap/r_worker.R": {
+    "original_sha256": "7f22c2f0978d564dcc7c2b57a07dc2fd399df7d98da157435124d0a6b67cbab8",
+    "portable_sha256": "7f22c2f0978d564dcc7c2b57a07dc2fd399df7d98da157435124d0a6b67cbab8"
+  },
+  "local_fixest_gap/stata_worker.do": {
+    "original_sha256": "d7d38e0cd5a4f4e1b7e9fa65f5c4b39779fae81ceec80df1b76c9907c06efdfe",
+    "portable_sha256": "d7d38e0cd5a4f4e1b7e9fa65f5c4b39779fae81ceec80df1b76c9907c06efdfe"
+  }
+}

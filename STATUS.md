@@ -824,7 +824,46 @@ including the repeated profiling fits. It verifies 11,089 stored entries,
 272 local-only arrays and four complete 523-file source trees; privacy checks
 pass 11,149 members. Two failed archive verifier versions are preserved.
 
-Current resume point: the working computational source exactly matches dtk1.
+The accepted covariance checkpoint is committed at `e6ce7808`.
+
+### Small Gram solver specialization experiment — 2026-09-22
+
+`sgk1` specializes the existing Gaussian elimination loops for dimensions 1..4,
+preserving validation, pivot/rank thresholds, swap/FMA order and allocations.
+Prior stack samples attribute 25.4%/30.6% of AW/PW serial projection work to
+this helper; the relevant sampled and current-baseline sources match. This
+is historical statistical attribution, not new phase timing evidence.
+
+The sixteen-cell three-pair screen completes 141 calls with clean isolation.
+All 48 native pairs have exact six numerical exports, samples, saved arrays
+and 28 non-timing solver fields, with equal tracked allocation peaks. Ten
+focused release Rust fixtures pass in six invocations, including 5,400 exact
+legacy arithmetic combinations and shared projection/PPML guards. Both new
+plugins pass actual ABI checks. Nine separate diagnostic calls have exact
+outputs across all three artifacts.
+
+The screen is mixed: serial AW K10 robust/full ratio 1.0000, robust/no-output
+1.0335; PW K6 robust/full 0.9953 and robust/saved 1.0106; unit robust/full
+1.0147 and AW K50 robust/full 1.0224. PW clustering improves to 0.9297.
+Single diagnostic projection/reconstruction falls from 10.743 to 9.380 ms for
+AW K10 and 13.344 to 11.547 ms for PW K6, but the whole-command benefit is
+not established. Reject the candidate without fitting weight/VCE guards or
+running confirmation blocks. These screens are not confirmed regressions.
+
+The [150-call archive](benchmarks/reports/development/small-gram-kernel-experiment-local-2026-09-22/README.md)
+preserves the rejected code and verifies 3,624 stored entries, 132 local-only
+arrays and four complete source trees; privacy checks pass 3,668 members.
+The solver rewrite is reverted and its experiment-only tests are removed;
+every computational source hash again matches captured dtk1. The six earlier
+graph/window drafts are unchanged.
+
+Current resume point: continue from dtk1. Investigate fusing the serial packed
+score-cache copy/mean pass with the subsequent freshly normalized within-norm
+pass. Both currently traverse the same absorbed matrix. Any experiment must
+preserve each normalized norm's recurrence/row order and fixed mean blocks,
+including outcome and excluded absorbed-intercept coordinates; prove exact
+arithmetic and admission/failure behavior before timing. Do not substitute
+the rejected raw/normalized norm handoff or rescale a cached raw norm.
 Remaining serial reference losses include AW K10 robust/full at 226 versus
 188 ms and PW K6 robust/full at 209 versus 152 ms in the screen. Initial slope
 projection, fresh checks and PW setup/recovery remain costly. Reuse the preserved
