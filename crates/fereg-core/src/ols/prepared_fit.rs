@@ -2340,6 +2340,7 @@ fn fit_with_controls_internal_mode_with_frame<
             weights,
             reservation,
             max_fast_score_cache_bytes,
+            cmg.single_slope.is_some() && rayon::current_num_threads() == 1,
         )?
     } else {
         None
@@ -2686,6 +2687,7 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     weights: NormalizedWeights<'_>,
     reservation: &mut R,
     max_bytes: usize,
+    bind_numeric_means: bool,
 ) -> Result<Option<PreparedOlsFastScoreCache>> {
     let nrows = prepared.fit_sample().n_active();
     if within.nrows() != nrows
@@ -2743,6 +2745,16 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         }));
     }
 
+    let numeric = if bind_numeric_means {
+        super::prepared_rhs::NumericOlsColumns::bind_score_means(
+            prepared.fit_model(),
+            prepared.fit_sample(),
+        )?
+    } else {
+        None
+    };
+    let numeric_columns = numeric.as_ref().map(|columns| columns.raw_columns());
+
     // Cache construction is an O(NK) inference-path operation. Keep its hot
     // inner loop to ordinary additions and merge fixed row blocks with
     // compensation. This preserves deterministic, high-accuracy reference
@@ -2791,8 +2803,12 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                     value_chunk[local_row * generated_columns.len() + cached] = value;
                     let scale = reference_mean_scales[generated];
                     if scale > 0.0 {
-                        partial[cached + 1] +=
-                            weight * (prepared.fit_column_value(generated, row)? / scale);
+                        let raw_value = if let Some(columns) = numeric_columns {
+                            columns[generated].map_or(1.0, |source| source[row])
+                        } else {
+                            prepared.fit_column_value(generated, row)?
+                        };
+                        partial[cached + 1] += weight * (raw_value / scale);
                     }
                 }
             }
@@ -9011,6 +9027,93 @@ mod tests {
         assert!(actual.fit().score_certificate().passed);
         assert!(actual.fit().bread().certificate().passed);
         used_solver
+    }
+
+    #[test]
+    fn bound_score_means_preserve_cache_bits_and_reservations() {
+        for (rows, regressors, intercept, absorbed) in [
+            (4095, 6, false, false),
+            (4096, 1, true, false),
+            (32771, 10, true, true),
+            (4103, 63, true, false),
+            (4103, 64, true, true),
+            (32771, 6, false, true),
+            (4096, 0, true, true),
+        ] {
+            let x = (0..regressors).map(|column| (0..rows).map(|row| {
+                match column % 7 {
+                    0 => -0.0,
+                    1 => ((row * 37 % 101) as f64 - 50.0) * 1e150,
+                    2 => ((row * 19 % 97) as f64 - 48.0) * 1e-150,
+                    3 => [1e16, 1.0, -1e16][row % 3],
+                    4 => 1.0,
+                    _ => (row as f64 * 0.173).sin(),
+                }
+            }).collect::<Vec<_>>()).collect::<Vec<_>>();
+            let groups = (0..rows).map(|row| (row % 17) as f64).collect::<Vec<_>>();
+            let raw_weights = (0..rows).map(|row| (row % 13 + 1) as f64).collect::<Vec<_>>();
+            for weight in [TestWeights::Unit, TestWeights::Analytic(&raw_weights),
+                TestWeights::Probability(&raw_weights), TestWeights::Frequency(&raw_weights)] {
+                let data = prepared(&vec![1.0; rows], &x, &vec![false; regressors],
+                    absorbed.then_some(groups.as_slice()), intercept, weight);
+                let columns = data.model.columns.len();
+                let binding = super::super::prepared_rhs::NumericOlsColumns::bind_score_means(
+                    &data.model, &data.sample).unwrap();
+                assert_eq!(binding.is_some(), rows >= 4096 && (1..=64).contains(&columns));
+                let mut within = DenseMatrix::zeros(rows, columns + 1).unwrap();
+                let scales = (0..columns).map(|column| {
+                    for row in 0..rows {
+                        within[(row, column + 1)] = (row as f64 - 13.0) / (column + 1) as f64;
+                    }
+                    (0..rows).map(|row| data.column_value(column, row).unwrap().abs())
+                        .fold(0.0_f64, f64::max)
+                }).collect::<Vec<_>>();
+                let weights = normalized_weights(&data).unwrap();
+                for threads in [1, 4] {
+                    rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                        let run = |bound| {
+                            let mut reservation = InjectedReservation::default();
+                            let cache = build_fast_score_cache(&data, &within, &scales, weights,
+                                &mut reservation, usize::MAX, bound).unwrap().unwrap();
+                            let PreparedOlsFastScoreCache::Packed { generated_columns, within, means } = cache
+                                else { panic!("expected packed score cache") };
+                            (generated_columns,
+                                within.as_slice().iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                                means.iter().map(|v| v.to_bits()).collect::<Vec<_>>(), reservation.records)
+                        };
+                        assert_eq!(run(true), run(false),
+                            "rows={rows} columns={columns} absorbed={absorbed} threads={threads}");
+                    });
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn bound_score_means_preserve_budget_and_failure_checks() {
+        let rows = 4096;
+        let data = prepared(&vec![1.0; rows], &[vec![2.0; rows]], &[false], None,
+            true, TestWeights::Unit);
+        let weights = normalized_weights(&data).unwrap();
+        let mut within = DenseMatrix::zeros(rows, 3).unwrap();
+        for bound in [false, true] {
+            let mut reservation = InjectedReservation::default();
+            assert!(build_fast_score_cache(&data, &within, &[2.0, 1.0], weights,
+                &mut reservation, 0, bound).unwrap().is_none());
+            assert_eq!(reservation.calls, 1);
+            assert!(build_fast_score_cache(&data, &within, &[1.0], weights,
+                &mut SystemFitReservation, usize::MAX, bound).is_err());
+            for fail_at in 1..=4 {
+                let mut reservation = InjectedReservation { fail_at: Some(fail_at),
+                    ..InjectedReservation::default() };
+                assert!(build_fast_score_cache(&data, &within, &[2.0, 1.0], weights,
+                    &mut reservation, usize::MAX, bound).is_err());
+            }
+            within[(rows - 1, 1)] = f64::INFINITY;
+            assert!(build_fast_score_cache(&data, &within, &[2.0, 1.0], weights,
+                &mut SystemFitReservation, usize::MAX, bound).is_err());
+            within[(rows - 1, 1)] = 0.0;
+        }
     }
 
     fn assert_packed_and_strided_score_caches_match(prepared: &PreparedOlsData) {

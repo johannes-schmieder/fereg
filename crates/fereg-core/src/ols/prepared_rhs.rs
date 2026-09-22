@@ -296,6 +296,18 @@ pub(crate) struct NumericOlsColumns<'a> {
 }
 
 impl<'a> NumericOlsColumns<'a> {
+    pub(crate) fn bind_score_means(
+        model: &super::PreparedOlsModel,
+        sample: &'a crate::data::PreparedNumericSample,
+    ) -> Result<Option<Self>> {
+        Self::bind_with_minimum(model, sample, 1)
+    }
+
+    /// None is an explicit intercept; every borrowed source has the active row count.
+    pub(crate) fn raw_columns(&self) -> &[Option<&'a [f64]>] {
+        &self.columns[..self.width]
+    }
+
     pub(crate) fn bind(
         model: &super::PreparedOlsModel,
         sample: &'a crate::data::PreparedNumericSample,

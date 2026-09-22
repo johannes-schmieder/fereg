@@ -720,8 +720,8 @@ in two five-pair blocks. Norm reuse alone (`snp1`) removes the raw cache and
 still saves roughly one millisecond of setup; PW robust ratios remain
 1.0136/1.0090. Other clustered/FW cells improve modestly, but neither experiment
 consistently improves the remaining serial targets. Both are rejected and
-removed from the working computational source, which exactly matches the full
-captured rrc1 source again. Do not reintroduce a weight/VCE-specific guard from
+removed from the working computational source, restoring the full captured
+rrc1 source at that checkpoint. Do not reintroduce a weight/VCE-specific guard from
 these timings or describe either experiment as accepted.
 
 The two twelve-cell screens and four frozen seven-cell confirmation blocks
@@ -735,15 +735,41 @@ arrays and four complete source reconstructions; privacy checks pass 13,705
 members. Nothing is promoted across
 source revisions, and the preceding six graph/window drafts remain unaccepted.
 
-Current resume point: try reducing the packed score-cache raw-column mean
-lookup cost (about 10.13 ms AW K10 and 5.64 ms PW K6 in the preceding trace).
-Reuse the existing bounded NumericOlsColumns representation without widening
-unrelated predictor/RHS guards. Preserve each mean's scaling, multiplication,
-row order and fixed-block reduction; do not substitute differently rounded raw
-moment means or weaken the independent score certificate. Measure before
-widening beyond the serial cached-slope path. Continue from captured rrc1;
-broader integration checks must attach to the chosen final source, and prior
-final blocks still do not transfer.
+### Serial slope score-cache binding checkpoint — 2026-09-22
+
+ADR 0099 retains numeric-column binding for packed inference-cache means after
+successful serial cached-slope absorption. It reuses the existing bounded
+NumericOlsColumns representation, preserving each mean's scale, multiplication,
+row order and fixed-block compensated reduction. Cache layout, fresh checks,
+heap ownership and unrelated admission guards are unchanged. Unsupported
+recipes/widths retain the generic evaluator; threaded/strided and protected
+explicit/shared/PPML paths retain their previous eligibility and arithmetic.
+
+`scb1` plugin
+`c68c679ecb3790139ece883bfe93da422cae212e338d693891a631d8986e1dc9`
+passes four focused release fixtures in three invocations and the actual ABI
+check. The twelve-cell screen and two unchanged seven-cell five-pair blocks
+complete 245 successful calls with clean isolation. All 106 native pairs have
+exact numerical exports, samples, requested saved arrays and all 28 non-timing
+solver fields, with equal allocation peaks. AW robust/full paired ratios are
+0.9560/0.9710; PW robust/full 0.9721/0.9766; PW clustered/full 0.9919/0.9917.
+Unit robust/full is mixed at 1.0045/0.9679. The remaining serial reference
+losses remain open; this is a small local improvement.
+
+Nine diagnostic calls preserve exact outputs across prior/candidate/diagnostic
+artifacts. Actual-N cache row times fall from 9.860 to 5.435 ms for AW K10 and
+5.765 to 3.204 ms for PW K6. Actual K50 uses the strided cache; its warm-up
+packed trace is excluded. The [254-call archive](benchmarks/reports/development/serial-slope-score-binding-local-2026-09-22/README.md)
+verifies 7,103 stored entries, 236 omitted arrays and four complete source trees;
+privacy checks pass 7,146 members. Both new plugins pass ABI.
+
+Current resume point: continue from captured scb1. The latest traces still show
+costly initial slope projection/fresh checks, PW setup/recovery, and AW covariance
+construction. Profile those remaining costs before choosing another kernel;
+do not restore the rejected geometry experiments or widen numeric binding from
+these serial results. Broader integration checks must attach to the chosen
+final source, and prior final blocks still do not transfer. The six earlier
+graph/window drafts and Linux routing acceptance remain separately open.
 
 The fresh read-only SCC probe again returned permission denied; its local log
 is `target/ols-next-20260921/scc-auth-current-20260922-1.txt`. Do not repeat the
