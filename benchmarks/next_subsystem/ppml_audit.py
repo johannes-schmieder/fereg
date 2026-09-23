@@ -121,9 +121,15 @@ def check(root, independent=False):
                 c.update({k:distance([result['metadata'].get(k,result['metadata'].get('loglik'))],[expected[k]],1e-8) for k in ['ll','deviance']})
                 independent_checks[key]=dict(checks=c,passed=all(v['passed'] for v in c.values()))
         for rep in range(plan['repeats']):
-            by_variant={a['variant']:a for a in attempts if a['repetition']==rep};base=by_variant[plan['variants'][0]]
-            for v,a in by_variant.items():
-                if a is base:continue
+            by_variant={a['variant']:a for a in attempts if a['repetition']==rep}
+            base=by_variant.get(plan['variants'][0])
+            for v in plan['variants'][1:]:
+                a=by_variant.get(v)
+                if base is None or a is None:
+                    missing=[name for name in [plan['variants'][0],v] if name not in by_variant]
+                    pairs.append(dict(repetition=rep,variant=v,
+                                      checks=dict(passed=False,incomplete=True,missing_variants=missing)))
+                    continue
                 c=compare(root/base['result'],root/a['result'],'ppml')
                 if base['result'] in output and a['result'] in output:
                     c['means']=distance(output[base['result']],output[a['result']],1e-7,1e-9);c['passed'] &= c['means']['passed']

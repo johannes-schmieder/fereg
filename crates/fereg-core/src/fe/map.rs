@@ -187,6 +187,32 @@ pub(crate) struct ReusableMapAbsorber {
     group_corrections: Vec<f64>,
     certificate_columns: Vec<f64>,
     certificate_basis: Vec<f64>,
+    certificate_geometry: Option<ReusableCertificateGeometry>,
+}
+
+// Capacity belongs to the session; validity belongs only to an absorb stack frame.
+struct ReusableCertificateGeometry {
+    basis: Vec<f64>,
+    ranks: Vec<usize>,
+}
+
+fn reusable_certificate_dimensions(design: &FeDesign) -> Result<(usize, usize)> {
+    design
+        .effects()
+        .iter()
+        .try_fold((0_usize, 0_usize), |(basis, ranks), effect| {
+            let basis = design
+                .nobs()
+                .checked_mul(effect.channels())
+                .and_then(|n| basis.checked_add(n));
+            let ranks = ranks.checked_add(effect.n_levels());
+            basis.zip(ranks).ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Allocation,
+                    "reusable certificate geometry dimensions overflow",
+                )
+            })
+        })
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -206,6 +232,8 @@ pub(crate) struct ReusableMapCapacities {
     pub(crate) projection_workers: usize,
     pub(crate) certificate_columns: usize,
     pub(crate) certificate_basis: usize,
+    pub(crate) certificate_geometry: usize,
+    pub(crate) certificate_ranks: usize,
     pub(crate) accelerator_state: usize,
     pub(crate) topology_effects: usize,
     pub(crate) topology_codes: usize,
@@ -257,6 +285,7 @@ impl ReusableMapAbsorber {
                 certificate_elements,
                 "reusable MAP certificate columns",
             )?,
+            certificate_geometry: None,
             certificate_basis: reserved_zeroes(
                 certificate_elements,
                 "reusable MAP certificate basis",
@@ -271,6 +300,34 @@ impl ReusableMapAbsorber {
         plan: ParallelProjectionPlan,
     ) -> Result<()> {
         self.projection.enable_parallel(plan)
+    }
+
+    pub(crate) fn certificate_geometry_bytes(design: &FeDesign) -> Result<u128> {
+        let (basis, ranks) = reusable_certificate_dimensions(design)?;
+        Ok(basis as u128 * 8 + ranks as u128 * std::mem::size_of::<usize>() as u128)
+    }
+
+    /// The caller admits this optional bank for the entire session lifetime.
+    /// An allocation refusal retains the existing uncached certificate path.
+    pub(crate) fn enable_certificate_geometry(&mut self) -> Result<()> {
+        let (basis_len, rank_len) = reusable_certificate_dimensions(&self.design)?;
+        let basis = reserved_zeroes(basis_len, "reusable certificate geometry")?;
+        let mut ranks = Vec::new();
+        ranks.try_reserve_exact(rank_len).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve reusable certificate ranks",
+            )
+        })?;
+        ranks.resize(rank_len, 0);
+        if basis.capacity() > basis_len || ranks.capacity() > rank_len {
+            return Err(FeregError::new(
+                ErrorCode::Allocation,
+                "reusable certificate capacity exceeds admission",
+            ));
+        }
+        self.certificate_geometry = Some(ReusableCertificateGeometry { basis, ranks });
+        Ok(())
     }
 
     pub(crate) const fn max_rhs(&self) -> usize {
@@ -301,6 +358,14 @@ impl ReusableMapAbsorber {
             projection_workers,
             certificate_columns: self.certificate_columns.capacity(),
             certificate_basis: self.certificate_basis.capacity(),
+            certificate_geometry: self
+                .certificate_geometry
+                .as_ref()
+                .map_or(0, |g| g.basis.capacity()),
+            certificate_ranks: self
+                .certificate_geometry
+                .as_ref()
+                .map_or(0, |g| g.ranks.capacity()),
             accelerator_state: 0,
             topology_effects: topology.effects,
             topology_codes: topology.codes,
@@ -401,7 +466,10 @@ impl ReusableMapAbsorber {
             );
         }
 
-        let initial = self.certify(&values, weights, rhs, config.tolerance)?;
+        // Even an identical weight slice starts a new geometry lifetime. Neither
+        // an early return nor an error can authorize reuse in the next call.
+        let mut geometry_valid = false;
+        let initial = self.certify(&values, weights, rhs, config.tolerance, &mut geometry_valid)?;
         if initial.passed {
             return CertifiedBorrowedMap::from_certified_parts(
                 values,
@@ -427,7 +495,8 @@ impl ReusableMapAbsorber {
                 || iteration % config.check_every == 0
                 || iteration == config.max_iterations
             {
-                let certificate = self.certify(&values, weights, rhs, config.tolerance)?;
+                let certificate =
+                    self.certify(&values, weights, rhs, config.tolerance, &mut geometry_valid)?;
                 if certificate.passed {
                     return CertifiedBorrowedMap::from_certified_parts(
                         values,
@@ -543,6 +612,7 @@ impl ReusableMapAbsorber {
         weights: &[f64],
         rhs: usize,
         tolerance: f64,
+        geometry_valid: &mut bool,
     ) -> Result<FeCertificate> {
         reusable_weighted_norms(
             residuals,
@@ -558,118 +628,147 @@ impl ReusableMapAbsorber {
         let mut relative_max = 0.0_f64;
         let mut relative_square = 0.0_f64;
         let mut relative_count = 0_usize;
+        let mut geometry_offset = 0_usize;
+        let mut group_index = 0_usize;
         for effect in self.design.effects() {
             let channels = effect.channels();
             for level in 0..effect.n_levels() {
                 let members = effect.level_index().members(level);
                 let member_count = members.len();
                 debug_assert!(member_count <= self.max_level_members);
-                let mut active = 0_usize;
-                for channel in 0..channels {
-                    let target = active * self.max_level_members;
-                    let mut scale = 0.0_f64;
-                    for (local, &row) in members.iter().enumerate() {
-                        let value = weights[row].sqrt() * effect.basis_value(channel, row);
-                        self.certificate_columns[target + local] = value;
-                        scale = scale.max(value.abs());
-                    }
-                    if scale == 0.0 {
-                        continue;
-                    }
-                    for local in 0..member_count {
-                        self.certificate_columns[target + local] /= scale;
-                    }
-                    let norm =
-                        reusable_norm(&self.certificate_columns[target..target + member_count]);
-                    if norm == 0.0 || !norm.is_finite() {
-                        return Err(FeregError::new(
-                            ErrorCode::InvalidData,
-                            "reusable MAP basis normalization failed",
-                        ));
-                    }
-                    for local in 0..member_count {
-                        self.certificate_columns[target + local] /= norm;
-                    }
-                    active += 1;
-                }
-                let mut basis_count = 0_usize;
-                let rank_threshold = f64::EPSILON * member_count.max(active).max(1) as f64 * 8.0;
-                while active > 0 && basis_count < member_count {
-                    let mut pivot = 0_usize;
-                    let mut pivot_norm = 0.0_f64;
-                    for column in 0..active {
-                        let start = column * self.max_level_members;
-                        let norm =
-                            reusable_norm(&self.certificate_columns[start..start + member_count]);
-                        if norm > pivot_norm {
-                            pivot = column;
-                            pivot_norm = norm;
+                let basis_count = if *geometry_valid {
+                    self.certificate_geometry
+                        .as_ref()
+                        .expect("valid geometry has storage")
+                        .ranks[group_index]
+                } else {
+                    let mut active = 0_usize;
+                    for channel in 0..channels {
+                        let target = active * self.max_level_members;
+                        let mut scale = 0.0_f64;
+                        for (local, &row) in members.iter().enumerate() {
+                            let value = weights[row].sqrt() * effect.basis_value(channel, row);
+                            self.certificate_columns[target + local] = value;
+                            scale = scale.max(value.abs());
                         }
-                    }
-                    if pivot_norm <= rank_threshold {
-                        break;
-                    }
-                    let last = active - 1;
-                    if pivot != last {
+                        if scale == 0.0 {
+                            continue;
+                        }
                         for local in 0..member_count {
-                            self.certificate_columns.swap(
-                                pivot * self.max_level_members + local,
-                                last * self.max_level_members + local,
-                            );
+                            self.certificate_columns[target + local] /= scale;
                         }
-                    }
-                    let candidate_start = last * self.max_level_members;
-                    let basis_start = basis_count * self.max_level_members;
-                    for local in 0..member_count {
-                        self.certificate_basis[basis_start + local] =
-                            self.certificate_columns[candidate_start + local];
-                    }
-                    active -= 1;
-                    for _ in 0..2 {
-                        for prior in 0..basis_count {
-                            reusable_subtract_projection(
-                                &mut self.certificate_basis,
-                                basis_start,
-                                prior * self.max_level_members,
-                                member_count,
-                            );
+                        let norm =
+                            reusable_norm(&self.certificate_columns[target..target + member_count]);
+                        if norm == 0.0 || !norm.is_finite() {
+                            return Err(FeregError::new(
+                                ErrorCode::InvalidData,
+                                "reusable MAP basis normalization failed",
+                            ));
                         }
+                        for local in 0..member_count {
+                            self.certificate_columns[target + local] /= norm;
+                        }
+                        active += 1;
                     }
-                    let norm = reusable_norm(
-                        &self.certificate_basis[basis_start..basis_start + member_count],
-                    );
-                    if norm <= rank_threshold {
-                        continue;
-                    }
-                    for local in 0..member_count {
-                        self.certificate_basis[basis_start + local] /= norm;
-                    }
-                    for column in 0..active {
-                        let column_start = column * self.max_level_members;
+                    let mut basis_count = 0_usize;
+                    let rank_threshold =
+                        f64::EPSILON * member_count.max(active).max(1) as f64 * 8.0;
+                    while active > 0 && basis_count < member_count {
+                        let mut pivot = 0_usize;
+                        let mut pivot_norm = 0.0_f64;
+                        for column in 0..active {
+                            let start = column * self.max_level_members;
+                            let norm = reusable_norm(
+                                &self.certificate_columns[start..start + member_count],
+                            );
+                            if norm > pivot_norm {
+                                pivot = column;
+                                pivot_norm = norm;
+                            }
+                        }
+                        if pivot_norm <= rank_threshold {
+                            break;
+                        }
+                        let last = active - 1;
+                        if pivot != last {
+                            for local in 0..member_count {
+                                self.certificate_columns.swap(
+                                    pivot * self.max_level_members + local,
+                                    last * self.max_level_members + local,
+                                );
+                            }
+                        }
+                        let candidate_start = last * self.max_level_members;
+                        let basis_start = basis_count * self.max_level_members;
+                        for local in 0..member_count {
+                            self.certificate_basis[basis_start + local] =
+                                self.certificate_columns[candidate_start + local];
+                        }
+                        active -= 1;
                         for _ in 0..2 {
-                            reusable_subtract_cross_projection(
-                                &mut self.certificate_columns,
-                                column_start,
-                                &self.certificate_basis,
-                                basis_start,
-                                member_count,
+                            for prior in 0..basis_count {
+                                reusable_subtract_projection(
+                                    &mut self.certificate_basis,
+                                    basis_start,
+                                    prior * self.max_level_members,
+                                    member_count,
+                                );
+                            }
+                        }
+                        let norm = reusable_norm(
+                            &self.certificate_basis[basis_start..basis_start + member_count],
+                        );
+                        if norm <= rank_threshold {
+                            continue;
+                        }
+                        for local in 0..member_count {
+                            self.certificate_basis[basis_start + local] /= norm;
+                        }
+                        for column in 0..active {
+                            let column_start = column * self.max_level_members;
+                            for _ in 0..2 {
+                                reusable_subtract_cross_projection(
+                                    &mut self.certificate_columns,
+                                    column_start,
+                                    &self.certificate_basis,
+                                    basis_start,
+                                    member_count,
+                                );
+                            }
+                        }
+                        basis_count += 1;
+                    }
+                    if let Some(geometry) = self.certificate_geometry.as_mut() {
+                        geometry.ranks[group_index] = basis_count;
+                        for basis in 0..basis_count {
+                            let start = basis * self.max_level_members;
+                            let target = geometry_offset + basis * member_count;
+                            geometry.basis[target..target + member_count].copy_from_slice(
+                                &self.certificate_basis[start..start + member_count],
                             );
                         }
                     }
-                    basis_count += 1;
-                }
+                    basis_count
+                };
+                let (basis_values, basis_offset, basis_stride) = match self
+                    .certificate_geometry
+                    .as_ref()
+                {
+                    Some(geometry) => (geometry.basis.as_slice(), geometry_offset, member_count),
+                    None => (self.certificate_basis.as_slice(), 0, self.max_level_members),
+                };
                 for column in 0..rhs {
                     let denominator = self.rhs_scales[column];
                     let mut projected_square = 0.0_f64;
                     if denominator > 0.0 {
                         for basis in 0..basis_count {
-                            let start = basis * self.max_level_members;
+                            let start = basis_offset + basis * basis_stride;
                             let mut coefficient = 0.0_f64;
                             for (local, &row) in members.iter().enumerate() {
                                 let scaled =
                                     weights[row].sqrt() * residuals[(row, column)] / denominator;
-                                coefficient = self.certificate_basis[start + local]
-                                    .mul_add(scaled, coefficient);
+                                coefficient =
+                                    basis_values[start + local].mul_add(scaled, coefficient);
                             }
                             projected_square = coefficient.mul_add(coefficient, projected_square);
                         }
@@ -689,8 +788,11 @@ impl ReusableMapAbsorber {
                         absolute = absolute.max(moment.abs());
                     }
                 }
+                geometry_offset += channels * member_count;
+                group_index += 1;
             }
         }
+        *geometry_valid = self.certificate_geometry.is_some();
         let relative_two = if relative_count == 0 {
             0.0
         } else {
@@ -923,6 +1025,128 @@ mod tests {
     use crate::fe::EffectTerm;
 
     #[test]
+    fn reusable_certificate_geometry_is_exact_and_rebuilt_after_every_call() {
+        let rows = 120;
+        let z: Vec<_> = (0..rows).map(|i| (i % 7) as f64 - 3.0).collect();
+        let design = FeDesign::new(
+            rows,
+            vec![
+                EffectTerm::new(
+                    (0..rows).map(|i| (i % 5) as u32).collect(),
+                    6,
+                    true,
+                    vec![
+                        z.clone(),
+                        z.iter().map(|v| 2.0 * v).collect(),
+                        vec![0.0; rows],
+                    ],
+                )
+                .unwrap(),
+                EffectTerm::new(
+                    (0..rows).map(|i| ((i / 5) % 4) as u32).collect(),
+                    4,
+                    false,
+                    vec![(0..rows).map(|i| (i % 11) as f64 - 5.0).collect()],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        let mut plain = ReusableMapAbsorber::new(design.clone(), 7).unwrap();
+        let mut cached = ReusableMapAbsorber::new(design.clone(), 7).unwrap();
+        cached.enable_certificate_geometry().unwrap();
+        let capacities = cached.capacities();
+        assert_eq!(capacities.certificate_geometry, rows * 5);
+        assert_eq!(capacities.certificate_ranks, 10);
+        assert_eq!(
+            ReusableMapAbsorber::certificate_geometry_bytes(&design).unwrap(),
+            (rows * 5 * 8 + 10 * std::mem::size_of::<usize>()) as u128
+        );
+        for (generation, rhs) in [7, 1, 3, 7].into_iter().enumerate() {
+            let weights: Vec<_> = (0..rows)
+                .map(|i| 0.1 + ((i * (generation + 1)) % 13) as f64)
+                .collect();
+            let mut values = DenseMatrix::zeros(rows, rhs).unwrap();
+            for row in 0..rows {
+                for col in 0..rhs {
+                    values[(row, col)] = ((row * 19 + col * 11 + generation) % 97) as f64;
+                }
+            }
+            for limit in [1, 16000] {
+                let config = MapConfig {
+                    max_iterations: limit,
+                    ..MapConfig::default()
+                };
+                let expected = plain.absorb(&weights, values.clone(), config, false);
+                let actual = cached.absorb(&weights, values.clone(), config, false);
+                match (actual, expected) {
+                    (Ok(actual), Ok(expected)) => {
+                        assert_eq!(actual.residualized(), expected.residualized());
+                        assert_eq!(actual.report().certificate, expected.report().certificate);
+                        assert_eq!(actual.report().iterations, expected.report().iterations);
+                        let norms = weighted_column_norms(&values, &weights).unwrap();
+                        assert!(
+                            certify_residuals_with_reference_norms(
+                                &design,
+                                &weights,
+                                actual.residualized(),
+                                &norms,
+                                1e-8
+                            )
+                            .unwrap()
+                            .passed
+                        );
+                    }
+                    (Err(actual), Err(expected)) => assert_eq!(actual.code, expected.code),
+                    _ => panic!("cached and uncached outcomes differ"),
+                }
+                assert_eq!(cached.capacities(), capacities);
+            }
+        }
+        // Initial zero-residual success must rebuild even when the old basis is
+        // finite but has the wrong numerical rank under the new weights.
+        let design = FeDesign::new(
+            3,
+            vec![EffectTerm::new(
+                vec![0; 3],
+                2,
+                true,
+                vec![vec![1e150, 2e150, 3e150], vec![0.0; 3]],
+            )
+            .unwrap()],
+        )
+        .unwrap();
+        let mut cached = ReusableMapAbsorber::new(design, 1).unwrap();
+        cached.enable_certificate_geometry().unwrap();
+        for (weights, rank) in [
+            (vec![1.0; 3], 2),
+            (vec![1.0, 1e-60, 1e-60], 1),
+            (vec![1.0; 3], 2),
+        ] {
+            cached
+                .absorb(
+                    &weights,
+                    DenseMatrix::zeros(3, 1).unwrap(),
+                    MapConfig::default(),
+                    false,
+                )
+                .unwrap();
+            assert_eq!(
+                cached.certificate_geometry.as_ref().unwrap().ranks,
+                vec![rank, 0]
+            );
+            assert!(cached
+                .absorb(
+                    &[f64::NAN; 3],
+                    DenseMatrix::zeros(3, 1).unwrap(),
+                    MapConfig::default(),
+                    false
+                )
+                .is_err());
+        }
+    }
+
+    #[test]
     fn reusable_parallel_projection_refreshes_weights_rhs_and_capacity() {
         let rows = 16_384;
         let design = FeDesign::new(
@@ -951,6 +1175,7 @@ mod tests {
             .unwrap()
             .unwrap();
         parallel.enable_parallel_projection(plan).unwrap();
+        parallel.enable_certificate_geometry().unwrap();
         let before = parallel.capacities();
         assert_eq!(before.projection_workers, 4);
         assert_eq!(

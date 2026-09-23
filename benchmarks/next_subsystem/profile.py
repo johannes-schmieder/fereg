@@ -367,14 +367,25 @@ def instrument_reusable_certificate_parts(root):
             '        development_parts[0] = development_norm_start.elapsed().as_secs_f64();\n        for effect in self.design.effects() {')
     replace('                let members = effect.level_index().members(level);',
             '                let mut development_lap = std::time::Instant::now();\n                let members = effect.level_index().members(level);')
-    for index, marker in enumerate([
-        '                let mut basis_count = 0_usize;',
-        '                for column in 0..rhs {\n                    let denominator = self.rhs_scales[column];',
-        '                for channel in 0..channels {\n                    for column in 0..rhs {',
-    ], 1):
-        replace(marker, f'                development_parts[{index}] += development_lap.elapsed().as_secs_f64();\n                development_lap = std::time::Instant::now();\n' + marker)
-    replace('            }\n        }\n        let relative_two',
-            '                development_parts[4] += development_lap.elapsed().as_secs_f64();\n            }\n        }\n        let relative_two')
+    cached = 'let basis_count = if *geometry_valid {' in body
+    indent = '                    ' if cached else '                '
+    replace('\n' + indent + 'let mut basis_count = 0_usize;',
+            '\n' + indent + 'development_parts[1] += development_lap.elapsed().as_secs_f64();\n' + indent + 'development_lap = std::time::Instant::now();\n' + indent + 'let mut basis_count = 0_usize;')
+    project = '                for column in 0..rhs {\n                    let denominator = self.rhs_scales[column];'
+    if cached:
+        marker = '                    if let Some(geometry) = self.certificate_geometry.as_mut() {'
+        replace(marker, '                    development_parts[2] += development_lap.elapsed().as_secs_f64();\n' + marker)
+        replace(project, '                development_lap = std::time::Instant::now();\n' + project)
+    else:
+        replace(project, '                development_parts[2] += development_lap.elapsed().as_secs_f64();\n                development_lap = std::time::Instant::now();\n' + project)
+    raw = '                for channel in 0..channels {\n                    for column in 0..rhs {'
+    replace(raw, '                development_parts[3] += development_lap.elapsed().as_secs_f64();\n                development_lap = std::time::Instant::now();\n' + raw)
+    if cached:
+        marker = '                geometry_offset += channels * member_count;'
+        replace(marker, '                development_parts[4] += development_lap.elapsed().as_secs_f64();\n' + marker)
+    else:
+        replace('            }\n        }\n        let relative_two',
+                '                development_parts[4] += development_lap.elapsed().as_secs_f64();\n            }\n        }\n        let relative_two')
     replace('        Ok(FeCertificate {',
             '        eprintln!("FEREG_PHASE|reusable_certificate|rows={}|rhs={}|norms={:.9}|normalize={:.9}|qr={:.9}|project={:.9}|raw_moments={:.9}", residuals.nrows(), rhs, development_parts[0], development_parts[1], development_parts[2], development_parts[3], development_parts[4]);\n        Ok(FeCertificate {')
     path.write_text(text[:start] + body + text[end:])

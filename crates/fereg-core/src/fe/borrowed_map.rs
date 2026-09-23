@@ -1468,6 +1468,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             projection_workers: 0,
             certificate_columns: self.workspace.parallel_dot_sums.capacity(),
             certificate_basis: 0,
+            certificate_geometry: 0,
+            certificate_ranks: 0,
             accelerator_state: self
                 .two_fe_pcg
                 .as_ref()

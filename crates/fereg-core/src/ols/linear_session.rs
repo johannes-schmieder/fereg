@@ -361,6 +361,8 @@ pub(crate) struct LinearSessionWorkspaceCapacities {
     pub(crate) fe_projection_workers: usize,
     pub(crate) fe_certificate_column_elements: usize,
     pub(crate) fe_certificate_basis_elements: usize,
+    pub(crate) fe_certificate_geometry_elements: usize,
+    pub(crate) fe_certificate_rank_elements: usize,
     pub(crate) fe_accelerator_state_elements: usize,
     pub(crate) fe_topology_effect_elements: usize,
     pub(crate) fe_topology_code_elements: usize,
@@ -1734,6 +1736,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             fe_projection_workers: fe.projection_workers,
             fe_certificate_column_elements: fe.certificate_columns,
             fe_certificate_basis_elements: fe.certificate_basis,
+            fe_certificate_geometry_elements: fe.certificate_geometry,
+            fe_certificate_rank_elements: fe.certificate_ranks,
             fe_accelerator_state_elements: fe.accelerator_state,
             fe_topology_effect_elements: fe.topology_effects,
             fe_topology_code_elements: fe.topology_codes,
@@ -1766,6 +1770,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             }
             _ => Err(invalid_argument(
                 "parallel PPML projection requires the generic reusable MAP owner",
+            )),
+        }
+    }
+
+    pub(crate) fn enable_ppml_certificate_geometry(&mut self) -> Result<()> {
+        match self.fe_projector.as_mut() {
+            Some(ReusableLinearMapProjector::Generic(projector)) => {
+                match projector.enable_certificate_geometry() {
+                    Ok(()) => Ok(()),
+                    Err(error) if error.code == ErrorCode::Allocation => Ok(()),
+                    Err(error) => Err(error),
+                }
+            }
+            _ => Err(invalid_argument(
+                "PPML certificate geometry requires the generic reusable MAP owner",
             )),
         }
     }

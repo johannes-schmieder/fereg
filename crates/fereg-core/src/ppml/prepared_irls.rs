@@ -747,6 +747,8 @@ fn summarize_linear_workspace(
         capacity.fe_projection_workers,
         capacity.fe_certificate_column_elements,
         capacity.fe_certificate_basis_elements,
+        capacity.fe_certificate_geometry_elements,
+        capacity.fe_certificate_rank_elements,
         capacity.fe_accelerator_state_elements,
         capacity.fe_topology_effect_elements,
         capacity.fe_topology_code_elements,
@@ -983,10 +985,27 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         None
     };
+    let certificate_geometry = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+        && config.solver_plan.selected == super::PpmlSolverFamily::Map
+        && fe_design.effects().len() > 1
+        && fe_design
+            .effects()
+            .iter()
+            .any(|effect| !effect.slopes().is_empty())
+    {
+        match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(&fe_design) {
+            Ok(bytes) => memory_plan.admit_reusable_certificate(bytes),
+            Err(error) if error.code == ErrorCode::Allocation => false,
+            Err(error) => return Err(error),
+        }
+    } else {
+        false
+    };
     // The retained bank cannot consume slack promised to another solver call.
     let solver_memory_budget = FeSolverMemoryBudget {
         execution_bytes: solver_execution_bytes
             .checked_add(memory_plan.reusable_projection_bytes)
+            .and_then(|n| n.checked_add(memory_plan.reusable_certificate_bytes))
             .ok_or_else(|| allocation("PPML projection execution memory overflows"))?,
         ..solver_memory_budget
     };
@@ -1038,6 +1057,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     )?;
     if let Some(plan) = projection_plan {
         session.enable_ppml_parallel_projection(plan)?;
+    }
+    if certificate_geometry {
+        session.enable_ppml_certificate_geometry()?;
     }
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
     let initial_checkpoint_lsmr = use_initial_checkpoint_lsmr_accelerator(

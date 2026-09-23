@@ -25,8 +25,18 @@ rows, nonempty RHSs and more than one worker are required. Raw Gram accumulation
 pivot/rank rules and each entry's FMA/subtraction order remain unchanged. An
 optional admitted coefficient bank is reused within one solver invocation;
 every sweep recomputes its coefficients. Allocation refusal uses the serial
-workspace. Direct solvers and the separate changing-weight reusable MAP retain
-their existing execution. No state crosses a weight or sample generation.
+workspace. Direct solvers retain their execution. The reusable publication
+PPML MAP owner may admit the same projection storage under ADR 0119, refreshing
+all coefficients on every projection. No numerical state crosses a weight or
+sample generation.
+
+For multi-effect PPML MAP designs with slopes, an optional certificate bank
+retains the identical weighted QR bases only within one absorption call
+(ADR 0121). Validity starts false on each call's stack, even when weights
+appear unchanged. Residual norms, span projections and raw moments remain
+fresh at every check. Basis and rank capacity are admitted for the session
+lifetime; budget or allocation refusal keeps uncached certification. This
+does not change rank, convergence, final-Hessian or publication requirements.
 
 A solver recurrence is never sufficient evidence. For each effect-level
 block `B`, the final gate computes the projection of `sqrt(W) r` onto

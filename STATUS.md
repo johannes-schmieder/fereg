@@ -10,6 +10,75 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Current-call PPML certificate geometry accepted — 2026-09-23
+
+The [geometry milestone](benchmarks/reports/development/ppml-certificate-geometry-local-2026-09-23/README.md)
+and ADR 0121 retain identical weighted QR bases only within one reusable MAP
+absorption call. Validity starts false on the call stack every time. Capacity
+is optionally admitted for the complete linear-session lifetime, after the
+existing projection bank; refusal keeps uncached certification. All residual
+norms, moments, span checks, rank rules, iterations, final Hessian and public
+certificates remain fresh and unchanged. No weight-dependent authority crosses
+an invocation, including response-only and low-memory block calls.
+
+All 529 computational inputs match `ppmlgeom1`: `5cb0434a` plus the archived
+five core overlays, plugin SHA-256
+`895b2ae2ce57094a1290255d6e6f02ae15f7e374441e340caf5052d490003875`.
+Five successful slope rows gain 11.3–20.4% by paired medians: two FE
+905→723 ms, unbalanced three FE 594→513, fresh wider T8 1280→1137,
+serial 1478→1289 and low memory 859→762. Added tracked heap is 1.0–2.5 MB.
+Strict unmodified stock still wins all five. The categorical PPML control
+is 188 versus stock 234 ms on this artifact; its small baseline difference
+is not attributed to the excluded cache. The OLS categorical control loses
+2.3% at the paired median while both medians remain 43 ms. Distributions and
+all losses remain in the report; do not tune new guards to these rows.
+
+All 26 successful native pairs have exact scientific exports and non-clock
+solver fields; all 20 native mean pairs and 44 successful repeat checks are
+exact. Both independent Poisson/current-Hessian/rank pilots and all 18
+comparable headline stock comparisons pass. Sixty-four distinct Rust tests,
+ten harness tests, actual-plugin ABI/panic checks and three licensed fixtures
+pass. Changing weights/RHSs, numerical-rank changes, budget boundaries,
+strict rollback, saved slopes and independent FE/Poisson science are covered.
+
+**New remaining gap:** the disconnected three-FE/two-slope control exhausts
+MAP's iteration budget on both baseline and candidate (`r(459)`). Baseline
+takes 52.244 seconds; two candidate failures take 43.583/43.898 seconds.
+These are not ranked as successful-fit timings. Stock succeeds in 85.987
+seconds and passes public score, model-space and objective replay checks.
+A separate noisy diagnostic confirms the native error and no partial public
+mean or `e(cmd)`. This convergence failure is not repaired by the cache.
+
+The fresh timing block was stopped after the first failed native pair; a
+second candidate had completed and a second stock attempt was interrupted.
+Four declared arms remain unattempted. Overall screen receipts retain 76
+completed calls (73 successes, three application failures), the interrupted
+attempt, original plans and explicit missing comparisons. No completed call
+has a timeout, overlap or monitor error. Do not resume this failed timing block.
+
+Separate profiles keep 1320/1120 projections and 130/72 fresh certificates,
+while certificate time falls .516→.310 and .241→.169 seconds. Normalization
+plus QR falls .219→.034 and .090→.020 seconds. Eight diagnostic calls pass;
+they include a first fine-only block and a separate explicitly traced block.
+These clocks have overhead and are not headline evidence.
+
+**Next bounded investigation:** reduce and diagnose disconnected slope-MAP
+stagnation with a small independent explicit-design oracle, then investigate
+a certified remedy. Avoid repeating long failed fits or substituting unresolved
+nonretaining CG. Fresh raw-moment batching is a smaller subsequent opportunity.
+Close this geometry tuning. ADR 0120's extrapolation experiment stays closed;
+any later accelerator requires a separately declared experiment justified by
+the lower certificate cost. ADR 0122 is available.
+
+The 2,581-entry archive verifies SHA-256
+`741ea9e35ebd3dea38e461001aceda830a11b93d96cd4f85c3f38d932b1a3d87`.
+Seeds 202609299–304 are used; 202609305 onward remain unused here. Frozen
+77/16/111 definitions, static allocation drift, hidden PPML receipt assertion,
+factor-base provenance, constrained-fit/CG issues and SCC/Linux deferrals
+remain unchanged. No stopped historical campaign, qualification, push or
+release is resumed. The broad goal remains open; this opening supersedes
+older next steps.
+
 ## PPML slope extrapolation closed; certificate cost localized — 2026-09-23
 
 The [bounded probe](benchmarks/reports/development/ppml-slope-extrapolation-local-2026-09-23/README.md)
