@@ -142,6 +142,12 @@ reads while preserving observation/FMA order and selected stored-column identity
 Preflight covers every possible active rank; no resident N-by-K copy is added.
 See [ADR 0070](adr/0070-bounded-retained-scratch-moment-tiles.md).
 
+Retained scratch QR, its direct dropped-span check and residual reconstruction
+also use a bounded immutable positional-read cursor across rows. The cursor's
+8 KiB encoded page belongs to one scan, cannot coexist with owner mutation and
+changes no numerical operations or certificates. Dense paths and moment tiles
+retain their existing access; see [ADR 0129](adr/0129-retained-scratch-read-cursors.md).
+
 PPML covariance production and independent publication inspection use the same
 maximum-pivot Jacobi arithmetic. Above 64 identified dimensions, upper-row maxima
 reuse the eigenvalue vector within its existing modeled lifetime. Only affected

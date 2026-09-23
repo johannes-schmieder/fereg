@@ -15,7 +15,7 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::BorrowedMapWeights;
 
-use super::prepared_scratch::PreparedOlsScratch;
+use super::prepared_scratch::{PreparedOlsScratch, PreparedOlsScratchReader};
 
 /// One bounded positional read per narrow row tile. Wider rows retain their
 /// existing complete-row buffer and may span several scratch read chunks.
@@ -386,8 +386,18 @@ pub(super) fn factor_rank_revealing_retained_qr(
 
     // `trailing_norms` is the selected/standardized incoming row during the
     // streaming reduction. It is overwritten by actual trailing norms below.
+    let mut scratch_reader = match source {
+        FixedBlockMomentSource::RetainedScratch { values, .. } => Some(values.shared_reader()),
+        _ => None,
+    };
     for observation in 0..source.rows() {
-        let mut outcome = fill_retained_qr_row(source, observation, stored_row, trailing_norms)?;
+        let mut outcome = fill_retained_qr_row(
+            source,
+            observation,
+            stored_row,
+            trailing_norms,
+            scratch_reader.as_mut(),
+        )?;
         for step in 0..dimension {
             let diagonal = qr[step * dimension + step];
             let incoming = trailing_norms[step];
@@ -637,8 +647,18 @@ pub(super) fn certify_retained_qr_dropped_span(
     }
 
     residual_norms.fill(0.0);
+    let mut scratch_reader = match source {
+        FixedBlockMomentSource::RetainedScratch { values, .. } => Some(values.shared_reader()),
+        _ => None,
+    };
     for observation in 0..source.rows() {
-        let _ = fill_retained_qr_row(source, observation, stored_row, standardized_row)?;
+        let _ = fill_retained_qr_row(
+            source,
+            observation,
+            stored_row,
+            standardized_row,
+            scratch_reader.as_mut(),
+        )?;
         for dropped_position in 0..dropped {
             let mut residual = standardized_row[permutation[rank + dropped_position]];
             for selected in 0..rank {
@@ -802,6 +822,7 @@ fn fill_retained_qr_row(
     observation: usize,
     stored_row: &mut [f64],
     output: &mut [f64],
+    scratch_reader: Option<&mut PreparedOlsScratchReader<'_>>,
 ) -> Result<f64> {
     let (selected_columns, response, weights, divisor, scales) = match source {
         FixedBlockMomentSource::RetainedDense {
@@ -833,7 +854,9 @@ fn fill_retained_qr_row(
             solver_weight_divisor,
             column_scales,
         } => {
-            values.read_linear_shared(observation * values.columns(), stored_row)?;
+            scratch_reader
+                .expect("scratch QR scan owns its reader")
+                .read_linear(observation * values.columns(), stored_row)?;
             (
                 selected_columns,
                 response,
@@ -3083,6 +3106,79 @@ mod tests {
             &mut residual_norms,
         )?;
         Ok((report, certificate))
+    }
+
+    #[test]
+    fn scratch_qr_scan_matches_dense_weighted_rank_and_bounds_reads() {
+        let rows = 519;
+        let stored = 6;
+        let selected = [0, 2, 5];
+        let ids = [7, 2, 11];
+        let weights: Vec<_> = (0..rows).map(|r| 0.5 + (r % 13) as f64).collect();
+        let scales = [0.125, 3.0, 8.0];
+        for deficient in [false, true] {
+            let mut values = Vec::new();
+            let mut response = Vec::new();
+            for r in 0..rows {
+                let a = (r % 17) as f64 - 8.0;
+                let b = (r % 23) as f64 - 11.0;
+                let c = if deficient {
+                    2.0 * a - b
+                } else {
+                    (r % 31) as f64
+                };
+                values.extend([a, 99.0, b, -11.0, 12.0, c]);
+                response.push(a - 0.5 * b + 0.25 * c);
+            }
+            let mut scratch = PreparedOlsScratch::create_row_major(rows, stored).unwrap();
+            scratch.write_linear(0, &values).unwrap();
+            let sources = [
+                FixedBlockMomentSource::RetainedDense {
+                    values: &values,
+                    rows,
+                    stored_columns: stored,
+                    selected_columns: Some(&selected),
+                    response: &response,
+                    weights: BorrowedMapWeights::Provided(&weights),
+                    solver_weight_divisor: 7.0,
+                    column_scales: Some(&scales),
+                },
+                FixedBlockMomentSource::RetainedScratch {
+                    values: &scratch,
+                    selected_columns: Some(&selected),
+                    response: &response,
+                    weights: BorrowedMapWeights::Provided(&weights),
+                    solver_weight_divisor: 7.0,
+                    column_scales: Some(&scales),
+                },
+            ];
+            let mut results = Vec::new();
+            for source in sources {
+                let mut row = [0.0; 6];
+                let mut qr = [0.0; 9];
+                let mut rhs = [0.0; 3];
+                let mut trailing = [0.0; 3];
+                let mut permutation = [0; 3];
+                let report = factor_rank_revealing_retained_qr(
+                    source,
+                    &ids,
+                    1.0e-10,
+                    &mut row,
+                    &mut qr,
+                    &mut rhs,
+                    &mut trailing,
+                    &mut permutation,
+                )
+                .unwrap();
+                assert_eq!(report.rank, if deficient { 2 } else { 3 });
+                results.push((report, qr, rhs, permutation));
+            }
+            assert_eq!(results[0], results[1]);
+            assert_eq!(
+                scratch.shared_read_chunks_for_test(),
+                (rows * stored).div_ceil(1024) as u64
+            );
+        }
     }
 
     #[test]

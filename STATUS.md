@@ -10,6 +10,84 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Bounded low-memory reads accepted; joint finite-plus-FE solving is next — 2026-09-23
+
+The active objective remains public PPML at most **0.90 times scientifically
+comparable pinned stock fixest** wherever reasonably achievable, protecting OLS
+and all scientific/memory/transaction contracts. This milestone does not complete
+that objective. This opening supersedes historical next-step/unused-seed entries.
+
+Accept `scrread1`, based on `73c73dfc`, under [ADR 0129](docs/adr/0129-retained-scratch-read-cursors.md)
+and the [source-bound report](benchmarks/reports/development/ppml-scratch-reader-local-2026-09-23/README.md).
+All **534 computational inputs** match plugin
+`e6d3bd7035556bb77d501b4aa5de2a030002af10068c32b97ce0913e1ba46c4f`.
+The restored immutable container verifies **6,564 receipts**, SHA-256
+`00e2f4779eebc0723c2c10e1f8e74262794cb3305d587779d4aff2efdb561b75`.
+
+Retained finite QR/span and fresh/frozen residual reconstruction reuse one
+immutable 8 KiB encoded page across scratch rows. Existing moment tiles, numeric
+operations, rank, certificates and policies are unchanged. The borrow prevents
+mutation while bytes are live; failed page loads revoke authority. No extra heap
+or resident design bank. Stack lifetime is longer under existing headroom, with
+no claim of physical-cap qualification.
+
+Fresh seed328 low-memory baseline/candidate/strict-stock medians (ms):
+
+| Case | Baseline | Candidate | Stock | Candidate/stock |
+| --- | ---: | ---: | ---: | ---: |
+| Unbalanced slopes N23040 K6 T4 | 251 | 162 | 94 | 1.72 |
+| Wider slopes N46080 K12 T8 | 794 | 593 | 942 | 0.63 |
+| One FE N61440 K16 T4 | 467 | 325 | 110 | 2.95 |
+| Sparse categorical two FE N30720 K10 T1 | 477 | 359 | 193 | 1.86 |
+| Unbalanced categorical three FE N23040 K8 T4 | 330 | 242 | 90 | 2.69 |
+| Multiple slopes N7680 K6 T4 | 100 | 64 | 54 | 1.19* |
+
+Native gains span **24.7–36.0%** with identical tracked peaks. The wider cell
+clears the target, most still lose. Low native versus ordinary stock is not a
+matched-memory comparison. *A smaller independent multiple-slope stock pilot
+fails two covariance coordinates (maximum tolerance ratio 1.60028); disconnected
+stock fails convergence. Preserve both unranked; passing large pairs do not
+resolve those families or older discrepancies.
+
+**202 distinct Rust checks**, actual-plugin ABI/panic checks and **four licensed
+fixtures** pass, including a captured independent low-memory unit/FW/PW robust/
+cluster Poisson/Hessian oracle. All **69 native pairs** retain exact scientific
+exports. There are 184 public applications: 183 pass, one stock nonconvergence;
+no overlap/monitor errors. The dense categorical excluded loss 188/192 ms gets
+five identical-input pairs, 194/195 ms with overlapping ranges. Preserve that
+small residual loss. OLS controls all pass. An early formatting-cleanup compile
+failure was repaired before artifact creation and is preserved in the receipts.
+
+### Next bounded implementation sequence
+
+1. **Joint finite-plus-slope ordinary Newton solving.** Projection is now the
+   dominant wider low-memory cost: fresh K12 native median 312.32 ms, essentially
+   unchanged, while finite work falls 213.67 to 51.91 ms. Fast threaded slope
+   losses remain. Compare a joint coefficient-space finite/FE solve against
+   shared-pass batched Schur using identical frozen current-weight problems.
+   Preserve initial canonical rank and all independently fresh final acceptance.
+   Avoid simply lifting categorical guards: its joint LSMR representation and
+   offsets are intercept-only, whereas the slope Schur owner already holds
+   rank-aware geometry and symbolic coupling. Reuse that geometry deliberately.
+2. **Shared exact final-state construction and one-FE ownership.** Fresh one-FE
+   low strict-final still costs 85.67 ms and inference 54.74 ms. Its concentrated
+   fast owner remains excluded. Remove repeated same-state construction and the
+   extra finite-design copy where valid; final fresh certificates remain required.
+   Do not resume rejected ADR 0128 response-history tuning.
+3. **Inference/shared passes and categorical routing.** Inference still reads
+   scratch rows individually; a coherent per-scan adapter can use the new reader.
+   Measure this separately. Extend successful joint mechanisms to sparse and
+   unbalanced categorical cases while protecting dense three FE and public OLS.
+4. Continue predeclared fresh oracles/rotations/controls and coherent accepted
+   commits. Report distributions, memory and losses; do not declare broad success
+   from one winning cell or substitute reference agreement for independent science.
+
+Seeds **202609327/328 are consumed**. Use **202609329** for new development;
+declare fresh confirmation separately. Static allocation drift, constrained-fit/
+CG failures, obsolete receipt assertion, reference discrepancies and deferred
+Linux/SCC/physical caps remain open. Frozen 77/16/111 definitions are unchanged.
+No push, release, SCC authentication retry or stopped campaign restart occurred.
+
 ## Final-state probes rejected; proceed to substantial low-memory and joint solving — 2026-09-23
 
 The active objective remains public PPML at most **0.90 times scientifically

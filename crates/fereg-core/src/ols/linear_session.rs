@@ -37,7 +37,7 @@ use super::prepared_fit::{
     assemble_retained_weighted_linear_fit, merge_solve_report, LinearSolveFrame,
     RetainedFiniteFitDraft,
 };
-use super::prepared_scratch::PreparedOlsScratch;
+use super::prepared_scratch::{PreparedOlsScratch, PreparedOlsScratchReader};
 use super::{
     CertifiedPreparedOlsFit, PreparedOlsBreadCoordinateKind, PreparedOlsColumnKind,
     PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus,
@@ -644,7 +644,37 @@ enum RetainedWithinStorage {
     Scratch(PreparedOlsScratch),
 }
 
+struct RetainedWithinReader<'a> {
+    storage: &'a RetainedWithinStorage,
+    scratch: Option<PreparedOlsScratchReader<'a>>,
+}
+
+impl RetainedWithinReader<'_> {
+    fn fill_row(&mut self, row: usize, output: &mut [f64]) -> Result<()> {
+        if let Some(reader) = self.scratch.as_mut() {
+            if row >= self.storage.rows() || output.len() != self.storage.columns() {
+                return Err(invalid_argument(
+                    "weighted-linear within-design row dimensions are inconsistent",
+                ));
+            }
+            reader.read_linear(row * self.storage.columns(), output)
+        } else {
+            self.storage.fill_row(row, output)
+        }
+    }
+}
+
 impl RetainedWithinStorage {
+    fn reader(&self) -> RetainedWithinReader<'_> {
+        RetainedWithinReader {
+            storage: self,
+            scratch: match self {
+                Self::Scratch(values) => Some(values.shared_reader()),
+                Self::Dense(_) => None,
+            },
+        }
+    }
+
     fn rows(&self) -> usize {
         match self {
             Self::Dense(values) => values.nrows(),
@@ -3837,8 +3867,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .try_reserve(rows)
             .map_err(|_| allocation("unable to reserve retained within residuals"))?;
         workspace.residuals.resize(rows, 0.0);
+        let mut retained_reader = retained.storage.reader();
         for (row, &within_value) in within_response.iter().enumerate() {
-            retained.storage.fill_row(row, &mut workspace.row)?;
+            retained_reader.fill_row(row, &mut workspace.row)?;
             let root_weight =
                 normalized_solver_weight(self.weights.borrowed(), self.bread_weight_scale, row)?
                     .sqrt();
@@ -3896,7 +3927,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 ));
             }
             let centered_norm = stable_weighted_norm(rows, |row| {
-                retained.storage.fill_row(row, &mut workspace.row)?;
+                retained_reader.fill_row(row, &mut workspace.row)?;
                 Ok((
                     (-raw_mean).mul_add(workspace.row[storage_position], within_response[row]),
                     normalized_solver_weight(
@@ -5598,8 +5629,9 @@ fn stream_frozen_solve(
         .map_err(|_| allocation("unable to reserve frozen weighted-linear residuals"))?;
     workspace.residuals.extend_from_slice(within_response);
     let mut weighted_residual_square = 0.0_f64;
+    let mut retained_reader = storage.reader();
     for row in 0..rows {
-        storage.fill_row(row, &mut workspace.row)?;
+        retained_reader.fill_row(row, &mut workspace.row)?;
         let mut fitted = 0.0_f64;
         for (column, &active_position) in active_positions.iter().enumerate().take(rank) {
             fitted = workspace.coefficients[column].mul_add(workspace.row[active_position], fitted);

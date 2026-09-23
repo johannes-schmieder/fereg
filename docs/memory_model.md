@@ -248,6 +248,13 @@ shrinkage and does not create observation-sized preparation state or another
 retained design. Positional I/O keeps its existing bounded encoded stack buffer;
 see [ADR 0070](adr/0070-bounded-retained-scratch-moment-tiles.md).
 
+Retained scratch QR/span and residual scans keep an 8 KiB encoded page on the
+stack across row reads (ADR 0129). Each immutable cursor has its own page and
+small descriptor; no heap bank or resident design is added. The longer lifetime
+can overlap other stack frames under existing runtime/stack headroom. This
+does not claim a physical hard cap or complete stack accounting. Mutation ends
+the borrow before a new scan can start; no page survives a weight-frame update.
+
 PPML may tighten generation-zero FE cardinalities using tuple-run bounds and
 bounded exact integer counts over borrowed inputs. This uses a fixed 256 KiB
 stack bitmap, at most 128 passes per source, and no observation-sized pre-admission

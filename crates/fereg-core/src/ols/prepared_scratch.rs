@@ -41,7 +41,78 @@ pub(crate) struct PreparedOlsScratch {
     encoded_tile_writes: u64,
 }
 
+/// One immutable scan owns its encoded page. Borrowing the scratch prevents
+/// writes, compaction or weight-frame replacement while cached bytes are live.
+/// The page replaces the same-sized temporary used by each shared row read.
+pub(crate) struct PreparedOlsScratchReader<'a> {
+    scratch: &'a PreparedOlsScratch,
+    encoded: [u8; SHARED_READ_BUFFER_BYTES],
+    start: usize,
+    elements: usize,
+}
+
+impl PreparedOlsScratchReader<'_> {
+    pub(crate) fn read_linear(&mut self, offset: usize, values: &mut [f64]) -> Result<()> {
+        self.scratch.validate_linear_range(offset, values.len())?;
+        let page_elements = self.encoded.len() / 8;
+        let mut position = offset;
+        let mut remaining = values;
+        while !remaining.is_empty() {
+            if position < self.start || position - self.start >= self.elements {
+                // Revoke the previous page before fallible I/O. A failed read
+                // must not authorize its partially overwritten bytes.
+                self.elements = 0;
+                self.start = position / page_elements * page_elements;
+                let total = self.scratch.rows * self.scratch.columns;
+                let elements = (total - self.start).min(page_elements);
+                let byte_offset = u64::try_from(self.start)
+                    .ok()
+                    .and_then(|value| value.checked_mul(8))
+                    .ok_or_else(|| allocation("prepared OLS shared read offset overflows u64"))?;
+                #[cfg(test)]
+                self.scratch
+                    .shared_read_chunks
+                    .fetch_add(1, Ordering::Relaxed);
+                read_exact_at(
+                    self.scratch.file_ref(),
+                    &mut self.encoded[..elements * 8],
+                    byte_offset,
+                )
+                .map_err(|error| {
+                    io_error("unable to positionally read prepared OLS scratch", error)
+                })?;
+                self.elements = elements;
+            }
+            let local = position - self.start;
+            let count = remaining.len().min(self.elements - local);
+            for (value, bytes) in remaining[..count]
+                .iter_mut()
+                .zip(self.encoded[local * 8..(local + count) * 8].chunks_exact(8))
+            {
+                let mut value_bytes = [0_u8; 8];
+                value_bytes.copy_from_slice(bytes);
+                *value = f64::from_le_bytes(value_bytes);
+                if !value.is_finite() {
+                    return Err(invalid("prepared OLS scratch contains a nonfinite value"));
+                }
+            }
+            position += count;
+            remaining = &mut remaining[count..];
+        }
+        Ok(())
+    }
+}
+
 impl PreparedOlsScratch {
+    pub(crate) fn shared_reader(&self) -> PreparedOlsScratchReader<'_> {
+        PreparedOlsScratchReader {
+            scratch: self,
+            encoded: [0; SHARED_READ_BUFFER_BYTES],
+            start: 0,
+            elements: 0,
+        }
+    }
+
     pub(crate) fn create(rows: usize, columns: usize) -> Result<Self> {
         Self::create_with_layout(rows, columns, ScratchLayout::ColumnMajor)
     }
@@ -979,6 +1050,99 @@ mod tests {
             .read_linear_shared(0, &mut first)
             .expect("repeat shared read");
         assert_eq!(first, [1.0, 2.0]);
+    }
+
+    #[test]
+    fn shared_reader_batches_narrow_and_wide_rows_without_changing_bits() {
+        for columns in [1, 6, 1023, 1024, 1025, 2051] {
+            let rows = 37;
+            let input: Vec<_> = (0..rows * columns)
+                .map(|i| {
+                    if i % 19 == 0 {
+                        -0.0
+                    } else {
+                        (i as f64 - 700.0) / 17.0
+                    }
+                })
+                .collect();
+            let mut scratch = PreparedOlsScratch::create_row_major(rows, columns).unwrap();
+            scratch.write_linear(0, &input).unwrap();
+            let before = scratch.shared_read_chunks_for_test();
+            {
+                let mut reader = scratch.shared_reader();
+                let mut row = vec![0.0; columns];
+                for observation in 0..rows {
+                    reader.read_linear(observation * columns, &mut row).unwrap();
+                    assert!(row
+                        .iter()
+                        .zip(&input[observation * columns..])
+                        .all(|(actual, expected)| actual.to_bits() == expected.to_bits()));
+                }
+                assert_eq!(
+                    scratch.shared_read_chunks_for_test() - before,
+                    (input.len() as u64).div_ceil((SHARED_READ_BUFFER_BYTES / 8) as u64)
+                );
+                // Backward access and empty/out-of-range requests cannot
+                // mislabel the cached page or change the shared file cursor.
+                reader.read_linear(0, &mut row).unwrap();
+                assert_eq!(row, input[..columns]);
+                reader.read_linear(input.len(), &mut []).unwrap();
+                assert!(reader.read_linear(usize::MAX, &mut row).is_err());
+                reader.read_linear(columns, &mut row).unwrap();
+                assert_eq!(row, input[columns..2 * columns]);
+            }
+            // A new scan sees writes made after the immutable borrow ends.
+            scratch.write_linear(0, &[41.0]).unwrap();
+            let mut value = [0.0];
+            scratch.shared_reader().read_linear(0, &mut value).unwrap();
+            assert_eq!(value, [41.0]);
+        }
+    }
+
+    #[test]
+    fn shared_reader_rejects_corrupt_bytes_and_partial_reads() {
+        let mut scratch = PreparedOlsScratch::create_row_major(2049, 1).unwrap();
+        scratch.write_linear(0, &vec![3.0; 2049]).unwrap();
+        scratch.seek_element(1025).unwrap();
+        scratch
+            .file_mut()
+            .write_all(&f64::NAN.to_le_bytes())
+            .unwrap();
+        {
+            let mut reader = scratch.shared_reader();
+            let mut value = [0.0];
+            reader.read_linear(1024, &mut value).unwrap();
+            assert_eq!(value, [3.0]);
+            assert!(reader.read_linear(1025, &mut value).is_err());
+        }
+        scratch.file_ref().set_len(1024 * 8 + 1).unwrap();
+        let mut reader = scratch.shared_reader();
+        let mut value = [0.0];
+        reader.read_linear(0, &mut value).unwrap();
+        assert!(reader.read_linear(1024, &mut value).is_err());
+        assert_eq!(reader.elements, 0);
+        assert!(reader.read_linear(1024, &mut value).is_err());
+    }
+
+    #[test]
+    fn shared_readers_have_independent_worker_pages() {
+        let mut scratch = PreparedOlsScratch::create_row_major(2051, 6).unwrap();
+        let input: Vec<_> = (0..2051 * 6).map(|i| i as f64 / 7.0).collect();
+        scratch.write_linear(0, &input).unwrap();
+        std::thread::scope(|scope| {
+            for start in [0, 513, 1026, 1539] {
+                let scratch = &scratch;
+                let input = &input;
+                scope.spawn(move || {
+                    let mut reader = scratch.shared_reader();
+                    let mut row = [0.0; 6];
+                    for observation in start..(start + 513).min(2051) {
+                        reader.read_linear(observation * 6, &mut row).unwrap();
+                        assert_eq!(row, input[observation * 6..(observation + 1) * 6]);
+                    }
+                });
+            }
+        });
     }
 
     #[test]
