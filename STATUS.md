@@ -10,6 +10,52 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Compensated scratch certificate rows accepted — 2026-09-22
+
+The [scratch-certificate milestone](benchmarks/reports/development/low-memory-gram-local-2026-09-22/README.md)
+and ADR 0110 group independent compensated matrix updates into contiguous rows.
+The fresh scratch score Gram and robust covariance certificate retain each
+coordinate's products and observation order, full matrices and separate fresh
+traversals. Every nonfinite product/sum/correction still fails before publication.
+Production influence accumulation, rank/DoF/weights, dense kernels, PPML iteration
+state, memory admission and allocation ownership are unchanged.
+
+`gramrow2` is `38935943` plus the archived three-file overlay; all 529 captured
+inputs match. Plugin SHA-256:
+`812326ed980df16ff9b60df3e21359971fad4437a0fe25fb02c9645d8f501b6f`.
+Eligible low-memory paired median gains span 5.5–21.4%. Wide robust improves
+2088→1662 ms and fresh K40 improves 2680→2106 ms. AW/FW robust gain about 14%;
+PW clustered gains 5.5%. Fast/IID control paired medians are 1.00, with a +2 ms
+individual fast loss preserved. Eleven of twelve comparable stock rows still
+lose. Ordinary stock memory strategy is not an equal-budget comparison.
+
+All 135 headline attempts pass without detected overlap, timeout or monitor
+error. All 48 native scientific pairs and three saved-output binary pairs are
+identical. Direct candidate/stock checks pass 36/39. Five small pilot cases pass
+independent full-coefficient/covariance/sample/RSS checks on both artifacts.
+Twenty-seven distinct Rust tests, including optimized new bit/error tests,
+actual-plugin ABI containment and three licensed independent oracle/transaction
+fixtures pass. Original test-draft and incomplete-build failures remain archived;
+neither reached a timed fit. The 4,163-entry archive verifies every hash.
+
+**Comparator boundary:** the disconnected sparse three-FE stock covariance
+fails with native residual DoF 48061 versus stock 46560. Diagnostic rescaling
+by their ratio agrees within 3.06e−13, but does not independently adjudicate
+rank or alter the original comparison. This stock timing remains unranked.
+Tracked peaks are unchanged outside parallel multi-FE variation (−7.21 to
++6.91 MB); the implementation adds no buffers, and no tighter memory guarantee
+or constrained-budget claim follows.
+
+**Next bounded performance task:** profile low-memory finite fitting in detail.
+It still costs roughly one second of the 1.66-second wide command. Separate
+moment construction, QR updates and reconstruction before changing the solver
+or transport. Production covariance remains another 366 ms and must preserve
+its influence arithmetic. Do not reopen closed window/serial-slope experiments.
+Factor-base provenance, generated TS, multi-partition slopes, broader topology/
+memory coverage, earlier comparator discrepancies, static allocation drift,
+constrained-fit/CG failures and SCC deferrals remain open. This is a clean local
+development milestone, not completion of the broad goal or qualification.
+
 ## Low-memory QR norm reuse accepted — 2026-09-22
 
 The [low-memory milestone](benchmarks/reports/development/low-memory-qr-local-2026-09-22/README.md)

@@ -11,7 +11,9 @@ use std::time::Instant;
 
 use super::prepared_fit::PreparedOlsFastScoreCache;
 use super::prepared_scratch::PreparedOlsScratch;
-use super::prepared_unadjusted::{compensated_add, relative_difference, ReferenceWeightView};
+use super::prepared_unadjusted::{
+    compensated_add, compensated_add_scaled_row, relative_difference, ReferenceWeightView,
+};
 use super::{CertifiedPreparedOlsFit, PreparedOlsBreadCoordinateKind, PreparedOlsExecutionMode};
 pub(super) use crate::sandwich::{
     SandwichReservation as PreparedInferenceReservation,
@@ -1290,14 +1292,13 @@ fn certify_scratch_score_gram<R: PreparedInferenceReservation>(
         fill_score_storage_row(storage, nrows, rank, row, &mut score_row)?;
         let weight = weights.value(row)?;
         for left in 0..rank {
-            for right in 0..rank {
-                let position = left * rank + right;
-                compensated_add(
-                    weight * score_row[left] * score_row[right],
-                    &mut gram[position],
-                    &mut corrections[position],
-                )?;
-            }
+            let start = left * rank;
+            compensated_add_scaled_row(
+                weight * score_row[left],
+                &score_row,
+                &mut gram[start..start + rank],
+                &mut corrections[start..start + rank],
+            )?;
         }
     }
     for (value, correction) in gram.iter_mut().zip(corrections) {

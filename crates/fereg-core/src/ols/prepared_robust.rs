@@ -26,7 +26,8 @@ use super::prepared_unadjusted::build_reference_weight_report_view;
 use super::prepared_unadjusted::{
     build_reference_weight_report_with_outcome, build_residual_dof_view, build_statistics,
     checked_square, DeferredOutcome,
-    compensated_add, exact_integer_as_f64, relative_difference, validate_fit_and_absorbed_dof_view,
+    compensated_add, compensated_add_scaled_row, exact_integer_as_f64, relative_difference,
+    validate_fit_and_absorbed_dof_view,
     validate_sum_of_squares, fit_with_independent_outcome, independent_outcome_sum,
     independent_residual_sum, ReferenceWeightView,
 };
@@ -1151,14 +1152,13 @@ fn build_scratch_certificate_meat<R: PreparedInferenceReservation>(
             }
         }
         for left in 0..dimension {
-            for right in 0..dimension {
-                let position = left * dimension + right;
-                compensated_add(
-                    score[left] * score[right],
-                    &mut meat[position],
-                    &mut corrections[position],
-                )?;
-            }
+            let start = left * dimension;
+            compensated_add_scaled_row(
+                score[left],
+                &score,
+                &mut meat[start..start + dimension],
+                &mut corrections[start..start + dimension],
+            )?;
         }
     }
     for (value, correction) in meat.iter_mut().zip(corrections) {

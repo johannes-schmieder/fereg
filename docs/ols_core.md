@@ -107,6 +107,13 @@ requires `df_r > 0`. IID, HC1 robust, and one-/multiway clustered paths have
 independent score, correction, subset, PSD/repair, Wald, and statistic
 certificates.
 
+Scratch score-Gram and robust covariance certificates update independent
+matrix coordinates in contiguous compensated rows. Per-coordinate products
+and observation order remain unchanged; each private row rejects any nonfinite
+product, sum or correction before continuing. The two certificates retain
+separate fresh traversals and existing buffers. See
+[ADR 0110](adr/0110-compensated-scratch-certificate-rows.md).
+
 Eligible fast intercept-FE fits with at least 16,384 rows, at most 64 model
 columns and at least eight workers overlap independent source weight/outcome
 statistics with fitting. Reuse requires the same immutable sources and exact

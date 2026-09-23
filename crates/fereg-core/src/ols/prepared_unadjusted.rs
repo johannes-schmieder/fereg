@@ -2092,6 +2092,42 @@ pub(super) fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -
     }
 }
 
+pub(super) fn compensated_add_scaled_row(
+    scale: f64,
+    values: &[f64],
+    sums: &mut [f64],
+    corrections: &mut [f64],
+) -> Result<()> {
+    if values.len() != sums.len() || values.len() != corrections.len() {
+        return Err(invalid_argument(
+            "prepared compensated row dimensions are inconsistent",
+        ));
+    }
+    // Coordinates are independent. Check the whole private row before its
+    // caller continues so finite-value branches do not serialize each update.
+    // Each coordinate retains the scalar Neumaier operations and row order.
+    let mut finite = true;
+    for ((value, sum), correction) in values.iter().zip(sums).zip(corrections) {
+        let term = scale * value;
+        let updated = *sum + term;
+        let adjustment = if sum.abs() >= term.abs() {
+            (*sum - updated) + term
+        } else {
+            (term - updated) + *sum
+        };
+        *sum = updated;
+        *correction += adjustment;
+        finite &= term.is_finite() & sum.is_finite() & correction.is_finite();
+    }
+    if finite {
+        Ok(())
+    } else {
+        Err(invalid_data(
+            "prepared compensated row accumulation is not finite",
+        ))
+    }
+}
+
 pub(super) fn exact_integer_as_f64(value: u128) -> Result<f64> {
     const MAX_EXACT_F64_INTEGER: u128 = 1_u128 << 53;
     if value > MAX_EXACT_F64_INTEGER {
@@ -2163,6 +2199,106 @@ mod tests {
         Analytic(&'a [f64]),
         Probability(&'a [f64]),
         Frequency(&'a [u32]),
+    }
+
+    #[test]
+    fn compensated_scaled_rows_preserve_scalar_bits_and_cancellation() {
+        for width in [0, 1, 2, 3, 7, 8, 15, 16, 17, 31, 32, 63, 64, 65, 129] {
+            let mut sums = vec![0.0; width];
+            let mut corrections = vec![-0.0; width];
+            let mut expected = sums.clone();
+            let mut expected_corrections = corrections.clone();
+            for row in 0..127 {
+                let scale = [0.0, -0.0, 0.5, -1.0, 1e100, 1e-100][row % 6];
+                let values: Vec<_> = (0..width)
+                    .map(|column| {
+                        let magnitude = [0.0, 1e-150, 1e-16, 1.0, 1e16, 1e100][column % 6];
+                        magnitude * ((row * 13 + column * 7) as f64).sin()
+                    })
+                    .collect();
+                for column in 0..width {
+                    compensated_add(
+                        scale * values[column],
+                        &mut expected[column],
+                        &mut expected_corrections[column],
+                    )
+                    .unwrap();
+                }
+                compensated_add_scaled_row(scale, &values, &mut sums, &mut corrections).unwrap();
+                for column in 0..width {
+                    assert_eq!(sums[column].to_bits(), expected[column].to_bits());
+                    assert_eq!(
+                        corrections[column].to_bits(),
+                        expected_corrections[column].to_bits()
+                    );
+                }
+            }
+        }
+        let mut sums = [0.0; 3];
+        let mut corrections = [0.0; 3];
+        for value in [1e16, 1.0, -1e16] {
+            compensated_add_scaled_row(value, &[1.0, -1.0, 0.5], &mut sums, &mut corrections)
+                .unwrap();
+        }
+        assert_eq!(
+            sums.iter()
+                .zip(corrections)
+                .map(|(s, c)| s + c)
+                .collect::<Vec<_>>(),
+            [1.0, -1.0, 0.5]
+        );
+    }
+
+    #[test]
+    fn compensated_scaled_rows_reject_shapes_and_nonfinite_coordinates() {
+        let mut sums = [3.0, 4.0];
+        let mut corrections = [0.25, 0.5];
+        assert_eq!(
+            compensated_add_scaled_row(1.0, &[2.0], &mut sums, &mut corrections)
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidArgument
+        );
+        assert_eq!(
+            compensated_add_scaled_row(1.0, &[2.0, 3.0], &mut sums, &mut corrections[..1])
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidArgument
+        );
+        assert_eq!(sums, [3.0, 4.0]);
+        assert_eq!(corrections, [0.25, 0.5]);
+        for (scale, value, sum, correction) in [
+            (f64::NAN, 1.0, 0.0, 0.0),
+            (1.0, f64::INFINITY, 0.0, 0.0),
+            (f64::INFINITY, 0.0, 0.0, 0.0),
+            (2.0, f64::MAX, 0.0, 0.0),
+            (1.0, f64::MAX, f64::MAX, 0.0),
+            (1.0, 1.0, f64::NAN, 0.0),
+            (1.0, 1.0, 0.0, f64::INFINITY),
+            // Half an ULP leaves this even sum unchanged but overflows the correction.
+            (1.0, 2.0_f64.powi(970), 1e308, f64::MAX),
+        ] {
+            for position in [0, 1, 15, 31] {
+                let mut values = [1.0; 32];
+                let mut sums = [0.0; 32];
+                let mut corrections = [0.0; 32];
+                values[position] = value;
+                sums[position] = sum;
+                corrections[position] = correction;
+                let mut scalar_sum = sum;
+                let mut scalar_correction = correction;
+                assert!(
+                    compensated_add(scale * value, &mut scalar_sum, &mut scalar_correction)
+                        .is_err()
+                );
+                assert_eq!(
+                    compensated_add_scaled_row(scale, &values, &mut sums, &mut corrections)
+                        .unwrap_err()
+                        .code,
+                    ErrorCode::InvalidData
+                );
+            }
+        }
     }
 
     #[test]
