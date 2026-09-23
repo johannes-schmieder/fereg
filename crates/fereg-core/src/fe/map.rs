@@ -71,13 +71,27 @@ pub fn absorb_map(
         });
     }
     let mut workspace = ProjectionWorkspace::new(design.max_channels(), values.ncols())?;
-    let mut final_certificate = certify_residuals_with_reference_norms(
-        design,
-        weights,
-        values,
-        &reference_norms,
-        config.tolerance,
-    )?;
+    // MAP always performs a sweep before its first scheduled certificate.
+    // Validate the weighted basis before mutation, but do not construct an
+    // unused initial QR/span certificate. Every returned residual is freshly
+    // certified at a scheduled check or at the final allowed iteration.
+    if values.ncols() > 0 {
+        for effect in design.effects() {
+            for level in 0..effect.n_levels() {
+                for channel in 0..effect.channels() {
+                    for &row in effect.level_index().members(level) {
+                        if !(weights[row].sqrt() * effect.basis_value(channel, row)).is_finite() {
+                            return Err(FeregError::new(
+                                ErrorCode::InvalidData,
+                                "weighted fixed-effect basis is not finite",
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let mut final_certificate = None;
 
     for iteration in 1..=config.max_iterations {
         for effect in design.effects() {
@@ -89,14 +103,14 @@ pub fn absorb_map(
             }
         }
         if iteration % config.check_every == 0 || iteration == config.max_iterations {
-            final_certificate = certify_residuals_with_reference_norms(
+            let certificate = certify_residuals_with_reference_norms(
                 design,
                 weights,
                 values,
                 &reference_norms,
                 config.tolerance,
             )?;
-            if final_certificate.passed {
+            if certificate.passed {
                 return Ok(SolveReport {
                     checkpoint_retries: 0,
                     solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
@@ -104,8 +118,8 @@ pub fn absorb_map(
                     used_solver: FeSolverKind::Map,
                     iterations: iteration,
                     stop_reason: SolveStopReason::Certified,
-                    normal_equation_residual: final_certificate.relative_two_norm,
-                    certificate: final_certificate,
+                    normal_equation_residual: certificate.relative_two_norm,
+                    certificate,
                     setup_seconds: 0.0,
                     solve_seconds: started.elapsed().as_secs_f64(),
                     certification_seconds: 0.0,
@@ -117,8 +131,11 @@ pub fn absorb_map(
                     warnings: Vec::new(),
                 });
             }
+            final_certificate = Some(certificate);
         }
     }
+    let final_certificate =
+        final_certificate.expect("positive MAP budget always checks the final allowed iteration");
 
     Ok(SolveReport {
         checkpoint_retries: 0,
@@ -884,6 +901,207 @@ fn validate_config(config: MapConfig) -> Result<()> {
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
+
+    #[test]
+    fn map_preserves_scheduled_certificates_and_iteration_boundaries() {
+        let rows = 60;
+        let left = EffectTerm::new(
+            (0..rows).map(|i| (i % 5) as u32).collect(),
+            6,
+            true,
+            vec![(0..rows).map(|i| (i % 7) as f64 - 3.0).collect()],
+        )
+        .unwrap();
+        let right = EffectTerm::new(
+            (0..rows).map(|i| ((i / 5) % 4) as u32).collect(),
+            4,
+            true,
+            vec![(0..rows).map(|i| (i % 11) as f64 - 5.0).collect()],
+        )
+        .unwrap();
+        let design = FeDesign::new(rows, vec![left, right]).unwrap();
+        for rhs in [0, 1, 7] {
+            for weighted in [false, true] {
+                let weights: Vec<_> = (0..rows)
+                    .map(|i| if weighted { 0.5 + (i % 7) as f64 } else { 1.0 })
+                    .collect();
+                for max_iterations in [1, 3, 8, 100] {
+                    for check_every in [1, 4, 99] {
+                        for symmetric in [false, true] {
+                            let mut actual = DenseMatrix::zeros(rows, rhs).unwrap();
+                            for row in 0..rows {
+                                for col in 0..rhs {
+                                    actual[(row, col)] = ((row * 13 + col * 5) % 37) as f64 - 18.0;
+                                }
+                            }
+                            let mut expected = actual.clone();
+                            let config = MapConfig {
+                                max_iterations,
+                                check_every,
+                                symmetric,
+                                ..MapConfig::default()
+                            };
+                            let a = absorb_map(&design, &weights, &mut actual, config).unwrap();
+                            let b = baseline_absorb_map(&design, &weights, &mut expected, config)
+                                .unwrap();
+                            assert_eq!(a.iterations, b.iterations);
+                            assert_eq!(a.stop_reason, b.stop_reason);
+                            assert_eq!(a.certificate, b.certificate);
+                            for (x, y) in actual.as_slice().iter().zip(expected.as_slice()) {
+                                assert_eq!(x.to_bits(), y.to_bits());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for check_every in [1, 4, 99] {
+            let mut zeros = DenseMatrix::zeros(rows, 1).unwrap();
+            let report = absorb_map(
+                &design,
+                &vec![1.0; rows],
+                &mut zeros,
+                MapConfig {
+                    max_iterations: 8,
+                    check_every,
+                    ..MapConfig::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(report.iterations, check_every.min(8));
+            assert!(report.certified());
+        }
+    }
+
+    #[test]
+    fn map_rejects_weighted_basis_overflow_before_mutation() {
+        let effect = EffectTerm::new(vec![0; 4], 1, true, vec![vec![f64::MAX / 2.0; 4]]).unwrap();
+        let design = FeDesign::new(4, vec![effect]).unwrap();
+        let original = DenseMatrix::from_columns(&[vec![0.0, 1.0, -1.0, 0.0]]).unwrap();
+        let mut actual = original.clone();
+        let mut expected = original.clone();
+        let a = absorb_map(&design, &[16.0; 4], &mut actual, MapConfig::default()).unwrap_err();
+        let b = baseline_absorb_map(&design, &[16.0; 4], &mut expected, MapConfig::default())
+            .unwrap_err();
+        assert_eq!(a, b);
+        assert_eq!(a.code, ErrorCode::InvalidData);
+        assert_eq!(actual, original);
+        assert_eq!(expected, original);
+    }
+
+    fn baseline_absorb_map(
+        design: &FeDesign,
+        weights: &[f64],
+        values: &mut DenseMatrix,
+        config: MapConfig,
+    ) -> Result<SolveReport> {
+        validate_config(config)?;
+        let started = Instant::now();
+        if design.nobs() != values.nrows() || weights.len() != values.nrows() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "MAP inputs have inconsistent observation counts",
+            ));
+        }
+        let reference_norms = weighted_column_norms(values, weights)?;
+        if design.effects().is_empty() {
+            let certificate = certify_residuals_with_reference_norms(
+                design,
+                weights,
+                values,
+                &reference_norms,
+                config.tolerance,
+            )?;
+            return Ok(SolveReport {
+                checkpoint_retries: 0,
+                solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
+                requested_solver: FeSolverKind::Map,
+                used_solver: FeSolverKind::Map,
+                iterations: 0,
+                stop_reason: SolveStopReason::NoFixedEffects,
+                certificate,
+                normal_equation_residual: 0.0,
+                setup_seconds: 0.0,
+                solve_seconds: started.elapsed().as_secs_f64(),
+                certification_seconds: 0.0,
+                fallback_used: false,
+                requested_preconditioner: None,
+                used_preconditioner: None,
+                pilot_iterations: 0,
+                pilot_contraction: 0.0,
+                warnings: Vec::new(),
+            });
+        }
+        let mut workspace = ProjectionWorkspace::new(design.max_channels(), values.ncols())?;
+        let mut final_certificate = certify_residuals_with_reference_norms(
+            design,
+            weights,
+            values,
+            &reference_norms,
+            config.tolerance,
+        )?;
+
+        for iteration in 1..=config.max_iterations {
+            for effect in design.effects() {
+                project_effect_in_place(effect, weights, values, &mut workspace)?;
+            }
+            if config.symmetric && design.effects().len() > 1 {
+                for effect in design.effects().iter().rev().skip(1) {
+                    project_effect_in_place(effect, weights, values, &mut workspace)?;
+                }
+            }
+            if iteration % config.check_every == 0 || iteration == config.max_iterations {
+                final_certificate = certify_residuals_with_reference_norms(
+                    design,
+                    weights,
+                    values,
+                    &reference_norms,
+                    config.tolerance,
+                )?;
+                if final_certificate.passed {
+                    return Ok(SolveReport {
+                        checkpoint_retries: 0,
+                        solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
+                        requested_solver: FeSolverKind::Map,
+                        used_solver: FeSolverKind::Map,
+                        iterations: iteration,
+                        stop_reason: SolveStopReason::Certified,
+                        normal_equation_residual: final_certificate.relative_two_norm,
+                        certificate: final_certificate,
+                        setup_seconds: 0.0,
+                        solve_seconds: started.elapsed().as_secs_f64(),
+                        certification_seconds: 0.0,
+                        fallback_used: false,
+                        requested_preconditioner: None,
+                        used_preconditioner: None,
+                        pilot_iterations: 0,
+                        pilot_contraction: 0.0,
+                        warnings: Vec::new(),
+                    });
+                }
+            }
+        }
+
+        Ok(SolveReport {
+            checkpoint_retries: 0,
+            solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
+            requested_solver: FeSolverKind::Map,
+            used_solver: FeSolverKind::Map,
+            iterations: config.max_iterations,
+            stop_reason: SolveStopReason::MaximumIterations,
+            normal_equation_residual: final_certificate.relative_two_norm,
+            certificate: final_certificate,
+            setup_seconds: 0.0,
+            solve_seconds: started.elapsed().as_secs_f64(),
+            certification_seconds: 0.0,
+            fallback_used: false,
+            requested_preconditioner: None,
+            used_preconditioner: None,
+            pilot_iterations: 0,
+            pilot_contraction: 0.0,
+            warnings: Vec::new(),
+        })
+    }
 
     #[test]
     fn absorbs_two_way_intercepts_and_certifies() {

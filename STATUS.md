@@ -10,6 +10,59 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Unused MAP initialization certificate removed — 2026-09-22
+
+The [MAP initialization milestone](benchmarks/reports/development/map-initial-certificate-local-2026-09-22/README.md)
+and ADR 0115 remove a full initial QR/span certificate that generic one-shot
+MAP always overwrote without using. Weighted RHS norms and pre-mutation
+weighted-basis validation remain. Every scheduled/final-iteration certificate,
+returned residual, iteration count, automatic contraction/routing, tolerance,
+rank, DoF and publication rule is unchanged. The router's used initial
+certificate and the separate changing-weight reusable MAP implementation stay
+intact. There is no new buffer, cache, worker team or memory-admission rule.
+
+`mapinit1` is `7ef711a8` plus the archived `map.rs` overlay; all 529 captured
+inputs match. Plugin SHA-256:
+`97271f6c7980a31b3601bf32a419469c10f3c721e51a286257d07854af0a63d8`.
+Eight slope rows gain 5.6–8.3% by paired medians, including wide, weak,
+low-memory, AW robust and PW clustered execution. Original command medians
+improve 333→310 and 386→361 ms; fresh wide 780→725 ms and low-memory
+381→360 ms. All five comparable stock timing rows still favor fixest.
+Categorical/PPML controls are small and mixed, including a +2 ms one-FE loss.
+
+All 81 headline calls pass without timeout, detected overlap or monitor error.
+All 33 native pairs and 44 repeat checks pass; scientific exports and every
+non-clock solver field are exact. All paired tracked heap peaks match. Fifteen
+direct stock comparisons, three independent explicit-design pilots on all
+three artifacts, 31 Rust tests, actual-plugin ABI/panic containment and four
+licensed OLS/PPML/transaction fixtures pass. Boundary tests preserve scheduled
+checks on initially orthogonal inputs, final-budget checks, zero RHSs and
+weighted-basis-overflow rejection before mutation. The earlier weak-reference
+precision discrepancy and documented exact-rank/conservative-DoF distinction
+remain visible; no stopped campaign is restarted.
+
+Native diagnostics confirm certificate calls fall 10→9 for initial absorption
+and 3→2 for final residuals, with unchanged projection counts. An isolated,
+pinned fixest diagnostic matches stock b/V/sample/DoF/RSS exactly. It spends
+only 1–2 ms on FE setup and most absorption time in coefficient iteration;
+its different stopping policy is not authority to weaken native certificates.
+Its failed header-path build and interrupted standalone-handshake attempt are
+preserved, followed by successful runs with verified thread settings.
+
+Close the initialization experiment. **Next bounded subsystem:** remaining
+generic owned-FE certificate geometry and scheduling. A cache must own an
+immutable design/current-weight scope, admit construction and solve peaks,
+and preserve affordable fallback routes; measure it before acceptance.
+Parallel work must preserve deterministic reduction and routing. Retain fresh
+residual/span checks and checkpoint frequency. No cache is implemented here.
+
+The archive verifies 2,996 entries, SHA-256
+`8c110b6a45f0135f6bd58c28d89eea30dd0a0640a4569b10046ca8248382c1df`.
+Static allocation source drift, weighted constrained fits, nonretaining CG
+span instability, factor-base provenance and SCC/Linux deferrals remain open.
+Frozen 77/16/111 definitions and reserved seeds are untouched. This is a local
+implementation checkpoint, not broad goal completion, qualification or release.
+
 ## Owned-FE projection RHS arithmetic accepted — 2026-09-22
 
 The [projection milestone](benchmarks/reports/development/owned-fe-projection-local-2026-09-22/README.md)
