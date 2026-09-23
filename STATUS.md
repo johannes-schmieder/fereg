@@ -10,6 +10,44 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## PPML slope extrapolation closed; certificate cost localized — 2026-09-23
+
+The [bounded probe](benchmarks/reports/development/ppml-slope-extrapolation-local-2026-09-23/README.md)
+and ADR 0120 reject direct per-RHS Irons–Tuck extrapolation for reusable slope
+MAP. Production remains `1de0b1bb`; all 529 computational inputs still match
+`ppmlproj1`. Only useful isolated certificate instrumentation is retained.
+The experiment is archived, not a selectable native route.
+
+At N30720/K6/T4, robust inference and timed saved means, paired medians show
+a 0.7% loss for two slope partitions (901→908 ms) and a 2.8% gain for
+unbalanced three FE (604→586 ms). Strict stock remains 118/117 ms. Tracked
+peak grows about 2.46 MB. Small single-run pilot gains do not justify a fitted
+size guard. Do not tune this probe further. All 28 application calls pass,
+including two independent Poisson/current-Hessian/rank pilots, fresh public
+score/model-space checks and all 12 exact within-variant repeat comparisons.
+Cross-recurrence mean differences reach 1.11e-10; bitwise parity is not claimed.
+No new Rust or licensed-fixture campaign is claimed for unchanged production.
+
+Isolated profiles show projection work falling, but extra fresh certificates
+consume nearly all the savings. Baseline weighted basis normalization and QR
+cost about .224/.091 seconds; raw moments cost .132/.092 seconds. Fine clocks
+add overhead and are diagnostic only. The next bounded implementation is
+**weighted certificate geometry valid within one absorption invocation**:
+admit its capacity for the owner lifetime, rebuild/invalidate on every new
+call, retain an affordable uncached fallback, and keep residual norms, moments,
+span projections and all final certificates fresh. Establish changing-weight/
+rank tests before adoption. Do not reuse OLS geometry across IRLS generations
+or substitute generic CG with its unresolved nonretaining span boundary.
+
+The 909-entry archive verifies SHA-256
+`676aa97c426306a204a928e7b667090c7a40845fba856ca5b29c0d8667cd0daa`.
+Seeds 202609297/298 are used; 202609299 onward remain unused here. ADR 0121
+is available. Frozen 77/16/111 definitions, static allocation drift, stale
+hidden-PPML receipt assertion, factor-base provenance, constrained-fit/CG
+issues and SCC/Linux deferrals remain unchanged. No stopped campaign, push,
+release or qualification is resumed. The broad goal remains open; this opening
+supersedes older next steps.
+
 ## Reusable PPML slope projection accepted — 2026-09-23
 
 The [PPML projection milestone](benchmarks/reports/development/reusable-ppml-projection-local-2026-09-23/README.md)

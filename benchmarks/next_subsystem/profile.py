@@ -118,6 +118,7 @@ impl Drop for DevelopmentSessionLap {
         let _map_timer = PpmlMapTimer(std::time::Instant::now(), {values}.nrows(), {values}.ncols());
 ''' + text[body:]
     path.write_text(text)
+    instrument_reusable_certificate_parts(root)
 
 
 def instrument_low_qr(root):
@@ -347,3 +348,33 @@ def instrument_owned_fe(root):
 }
 ''')
     path.write_text(text + '\n#[cfg(test)]' + tests)
+
+
+def instrument_reusable_certificate_parts(root):
+    """Separate current-weight geometry, projection and raw moments diagnostically."""
+    path = root / 'crates/fereg-core/src/fe/map.rs'
+    text = path.read_text()
+    start = text.index('    fn certify(', text.index('impl ReusableMapAbsorber'))
+    end = text.index('\nfn reusable_map_report(', start)
+    body = text[start:end]
+    def replace(before, after):
+        nonlocal body
+        assert body.count(before) == 1, before
+        body = body.replace(before, after)
+    replace('        reusable_weighted_norms(\n',
+            '        let mut development_parts = [0.0_f64; 5];\n        let development_norm_start = std::time::Instant::now();\n        reusable_weighted_norms(\n')
+    replace('        for effect in self.design.effects() {',
+            '        development_parts[0] = development_norm_start.elapsed().as_secs_f64();\n        for effect in self.design.effects() {')
+    replace('                let members = effect.level_index().members(level);',
+            '                let mut development_lap = std::time::Instant::now();\n                let members = effect.level_index().members(level);')
+    for index, marker in enumerate([
+        '                let mut basis_count = 0_usize;',
+        '                for column in 0..rhs {\n                    let denominator = self.rhs_scales[column];',
+        '                for channel in 0..channels {\n                    for column in 0..rhs {',
+    ], 1):
+        replace(marker, f'                development_parts[{index}] += development_lap.elapsed().as_secs_f64();\n                development_lap = std::time::Instant::now();\n' + marker)
+    replace('            }\n        }\n        let relative_two',
+            '                development_parts[4] += development_lap.elapsed().as_secs_f64();\n            }\n        }\n        let relative_two')
+    replace('        Ok(FeCertificate {',
+            '        eprintln!("FEREG_PHASE|reusable_certificate|rows={}|rhs={}|norms={:.9}|normalize={:.9}|qr={:.9}|project={:.9}|raw_moments={:.9}", residuals.nrows(), rhs, development_parts[0], development_parts[1], development_parts[2], development_parts[3], development_parts[4]);\n        Ok(FeCertificate {')
+    path.write_text(text[:start] + body + text[end:])
