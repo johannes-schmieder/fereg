@@ -10,19 +10,74 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Absorbed-slope solver redesign authorized — 2026-09-23
+## Absorbed-slope solver replacement accepted — 2026-09-23
 
-The user has resumed and broadened this work to replace inefficient slope
-solver organization, including current-weight geometry, coefficient-space
-iteration, batching, warm starts and verification scheduling. A modest cache
-gain or preparatory diagnosis is not completion. Compare identical frozen
-linear frames, implement a coherent replacement, validate independent WLS and
-Poisson/Hessian science, measure fresh public-command rotations, and protect
-OLS/categorical paths. Preserve the existing scientific acceptance conditions;
-bitwise equality with the prior recurrence is not required. The completed
-diagnosis below remains evidence, while its pause is superseded by this request.
-No redesign candidate has yet been measured or accepted. Seed 202609306 is the
-next unused development seed; the previous failed timing block stays stopped.
+The [source-bound replacement report](benchmarks/reports/development/ppml-coefficient-schur-local-2026-09-23/README.md)
+and ADR 0123 close the implementation milestone. All **531 computational inputs**
+match accepted `slschur3`, plugin SHA-256
+`ed5e7855efbea24863d6ab9d6c0dcecf260459339be75563d19feaa0bd689467`.
+The 6,905 logical receipt files verify in the deduplicated immutable container,
+SHA-256 `7d41ec832b8c5961acf037a3416f008fb12a5359d81ed37cdabeeb903ba1b899`.
+Earlier geometry, diagnosis and rejected-probe evidence remains unchanged.
+
+Adopt current-weight rank-aware coefficient Schur/CG for admitted publication
+PPML with multipartition slopes. Prepare local QR once per absorption, eliminate
+one partition exactly, stop columns independently, balance RHS work, and fuse
+dense response/control warm starts. Reconstruct from the original RHS and run
+the full fresh acceptance certificate; remove only the redundant full input
+certificate used for early return. Every call rebuilds weighted geometry.
+Insufficient optional workspace retains bounded generic MAP. The public MAP
+owner includes this kernel; reported Krylov counts are not symmetric sweep counts.
+Categorical, one-effect, mu separation, non-MAP families and public OLS routing
+remain unchanged. No tolerances, rank/weight/DoF policy or final-Hessian gates
+were relaxed; no unrelated generic nonretaining-CG repair is claimed.
+
+Established robust/mean-output medians against the preserved current baseline
+and strict pinned stock (ms) are two-FE N30720/K6/T4 **727 → 213 / 120**, and
+unbalanced three-FE **524 → 193 / 117**. Fresh seed310 results are two-FE T4
+**768 → 216 / 120**, wide N61440/K10/T8 **1661 → 447 / 231**, serial two-FE
+**1347 → 312 / 325**, low memory **689 → 355 / 117**, and multiple slopes
+**633 → 74 / 52**. Fresh reductions range 48.5–88.3%; stock losses remain,
+particularly low memory. The report contains distributions, not pooled win claims.
+
+The old captured 935-row disconnected warmup that exhausted 16000 MAP sweeps
+now passes strict projection and independent WLS/model-space checks in 257
+Schur steps. Fresh small weak/disconnected public pilots pass independent
+Poisson/Hessian checks for both implementations; single observations are
+15/39 ms native versus 23/356 ms stock. The earlier larger stock covariance
+failure remains unresolved and is not reclassified by these different cases.
+
+54 distinct focused Rust tests and three licensed fixtures pass on the final
+source, including independent multipartition unit/FW/PW Poisson/Hessian and
+robust/cluster inference, saved slopes and separation. All 225 completed
+application attempts pass without timeout/overlap/monitor error; final scientific
+comparisons and explicit oracles pass separately. OLS and categorical PPML
+controls preserve scientific exports exactly. Small initial 2-ms OLS losses
+were checked once more: multipartition OLS 68/69 ms and generated-factor OLS
+51/50 ms over five pairs, with overlapping ranges. Do not claim universal
+absence of performance regressions from these bounded controls.
+
+Added tracked peak is 1.41–11.29 MB across fresh cases, explicitly admitted
+through the linear-session lifetime. Static allocation inventory drift remains
+an unresolved failure; this is not a whole-action proof or constrained-memory
+qualification. Prototype normal-CG and coefficient-IT evidence, discarded
+Python near-zero-RHS failure, and excluded accidental T1 reference clocks are
+preserved. Only unmodified pinned stock supplies headline timings.
+
+**Next bounded target:** fresh certificate scans (128 ms in the wide diagnostic),
+then low-memory finite solving and repeated response-only projections. Use the
+existing tiling/group-parallel mechanisms as candidates while preserving fresh
+acceptance. Same-frame geometry reuse needs explicit generation authority.
+Frozen WLS replays also support adapting the same kernel to public OLS through
+a borrowed owner and full-fit admission, without a second solver implementation.
+No such OLS speed claim or automatic routing change is made at this checkpoint.
+
+Seeds 202609306–202609310 are consumed; 202609311 is next unused. Frozen
+77/16/111 definitions, Linux/SCC/physical-memory deferrals, allocation drift,
+hidden PPML receipt assertion, factor-base provenance, constrained-fit and CG
+issues remain open. No push, release, qualification, SCC authentication retry
+or stopped campaign was initiated. The requested production solver milestone
+is complete; further subsystem work requires a new bounded milestone.
 
 ## Disconnected PPML diagnosis complete — 2026-09-23
 

@@ -291,7 +291,13 @@ partitions and merge order for the same platform, route, and thread count.
 categorical intercept effects when fast-memory execution and the complete
 specialized workspace fit the native memory plan; otherwise it selects MAP.
 Absorbed slopes and low-memory execution select MAP. Auto does not select CMG.
-{cmd:solver(map)} requests MAP explicitly.
+{cmd:solver(map)} requests the canonical MAP-owned projection family explicitly.
+For multiple effects with absorbed slopes, this family uses a current-weight
+coefficient-space Schur/CG kernel when its workspace fits. It prepares weighted
+group bases once per absorption call, stops columns independently, and accepts
+only freshly reconstructed and certified residuals. Its reported iterations
+count Krylov steps; they are not directly comparable to symmetric MAP sweeps.
+Insufficient optional workspace retains generic MAP.
 {cmd:solver(lsmr)} selects one native joint-incremental LSMR engine. Its
 concrete identity is {cmd:lsmr_fused} with no active finite controls and
 {cmd:lsmr_joint} otherwise. {cmd:solver(cmg)} selects only prepared fused-FWL

@@ -968,8 +968,25 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             .max(1)
             .min(memory_plan.dimensions.finite_columns.max(1)),
     };
+    let slope_coefficients = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+        && config.solver_plan.selected == super::PpmlSolverFamily::Map
+        && fe_design.effects().len() > 1
+        && fe_design.effects().iter().any(|effect| !effect.slopes().is_empty())
+    {
+        let mut candidate = memory_plan;
+        match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(&fe_design)
+            .and_then(|geometry| crate::fe::ReusableMapAbsorber::coefficient_solver_bytes(
+                &fe_design, projection_rhs, effective_threads).map(|workspace| (geometry, workspace + 8 * fe_design.nobs() as u128)))
+        {
+            Ok((geometry, workspace)) if candidate.admit_reusable_certificate(geometry)
+                && candidate.admit_reusable_slope(workspace) => { memory_plan = candidate; true }
+            Ok(_) => false,
+            Err(error) if error.code == ErrorCode::Allocation => false,
+            Err(error) => return Err(error),
+        }
+    } else { false };
     // Mu exploration has a separate parent separation-phase envelope.
-    let projection_plan = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+    let projection_plan = if !slope_coefficients && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && config.solver_plan.selected == super::PpmlSolverFamily::Map
     {
         match crate::fe::ParallelProjectionPlan::for_design_and_threads(
@@ -985,7 +1002,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         None
     };
-    let certificate_geometry = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+    let certificate_geometry = if slope_coefficients { true } else if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && config.solver_plan.selected == super::PpmlSolverFamily::Map
         && fe_design.effects().len() > 1
         && fe_design
@@ -1006,6 +1023,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         execution_bytes: solver_execution_bytes
             .checked_add(memory_plan.reusable_projection_bytes)
             .and_then(|n| n.checked_add(memory_plan.reusable_certificate_bytes))
+            .and_then(|n| n.checked_add(memory_plan.reusable_slope_bytes))
             .ok_or_else(|| allocation("PPML projection execution memory overflows"))?,
         ..solver_memory_budget
     };
@@ -1060,6 +1078,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     }
     if certificate_geometry {
         session.enable_ppml_certificate_geometry()?;
+    }
+    if slope_coefficients {
+        session.enable_ppml_slope_coefficients(effective_threads)?;
     }
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
     let initial_checkpoint_lsmr = use_initial_checkpoint_lsmr_accelerator(

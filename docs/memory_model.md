@@ -716,3 +716,23 @@ capacities to its established finishing envelope. Construction owners are
 released before certification; actual capacities and rejected-attempt peaks
 remain checked. A tighter budget can retain the existing MAP fallback. See
 [ADR 0088](adr/0088-direct-single-partition-slope-recovery.md).
+
+## PPML multipartition slope workspace
+
+ADR 0123 admits a coefficient-space Schur solver instead of the optional repeated
+projection bank. In addition to current-call QR geometry, it reserves an N-by-RHS
+normalized input bank, N square-root weights, and per worker four coefficient
+vectors and one N-vector. The number of workers is bounded by requested RHSs
+and effective threads. Group descriptors, worker descriptors and the boxed owner
+are charged explicitly. Dense response fusion adds one N-vector for the prior
+working response. Coefficient and QR reservations are fallible and checked against actual
+capacities. Prior-response storage uses the existing fallible exact-reservation
+session helper and enters its capacity fingerprint. No Krylov step grows storage.
+
+The PPML plan charges this optional storage throughout the linear session,
+including refresh, ordinary solves, line search and strict checkpoints, and
+re-admits it after fresh telemetry. It is released before inference/recovery.
+Failure to admit it preserves the existing generic route. Explicit low-memory
+execution still uses bounded blocks, with the coefficient workspace sized to
+its admitted RHS width. This development change does not repair the documented
+static-allocation inventory drift or establish a whole-action allocation proof.

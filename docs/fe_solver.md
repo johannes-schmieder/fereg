@@ -38,6 +38,18 @@ fresh at every check. Basis and rank capacity are admitted for the session
 lifetime; budget or allocation refusal keeps uncached certification. This
 does not change rank, convergence, final-Hessian or publication requirements.
 
+Publication PPML with multiple effects and absorbed slopes may instead admit
+one coefficient-space Schur workspace (ADR 0123). It shares the current-call
+rank-aware QR bank, eliminates the largest partition exactly, and solves the
+remaining normal operator with independent per-column conjugate gradients.
+Fresh reconstruction and the full residual certificate remain acceptance gates;
+cheap coefficient moments only schedule them. Dense response/control warm starts
+share a single absorption call. No weighted basis or coefficient solution is
+trusted across calls. Admission refusal retains the bounded generic MAP path.
+The public MAP-owned engine identity includes this slope kernel; its iteration
+count is the maximum column Krylov count, not a symmetric-MAP sweep count.
+Categorical, one-effect, mu-separation and public OLS routing are unchanged.
+
 A solver recurrence is never sufficient evidence. For each effect-level
 block `B`, the final gate computes the projection of `sqrt(W) r` onto
 `col(sqrt(W) B)` with scaled, reorthogonalized rank-aware QR and measures it

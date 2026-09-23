@@ -700,6 +700,8 @@ pub struct PpmlMemoryPlan {
     pub reusable_projection_bytes: u128,
     /// Optional current-call certificate geometry; capacity shares the linear session lifetime.
     pub reusable_certificate_bytes: u128,
+    /// Optional coefficient-space slope workspace, sharing the linear-session lifetime.
+    pub reusable_slope_bytes: u128,
 }
 
 impl PpmlMemoryPlan {
@@ -738,6 +740,7 @@ impl PpmlMemoryPlan {
             .saturating_add(self.solver_workspace_bytes)
             .saturating_add(self.reusable_projection_bytes)
             .saturating_add(self.reusable_certificate_bytes)
+            .saturating_add(self.reusable_slope_bytes)
     }
 
     /// Optional storage must never make an otherwise affordable fit fail.
@@ -747,6 +750,7 @@ impl PpmlMemoryPlan {
             .peak_bytes
             .checked_add(self.solver_workspace_bytes)
             .and_then(|n| n.checked_add(self.reusable_certificate_bytes))
+            .and_then(|n| n.checked_add(self.reusable_slope_bytes))
             .and_then(|n| n.checked_add(bytes))
         else {
             return false;
@@ -764,6 +768,7 @@ impl PpmlMemoryPlan {
             .peak_bytes
             .checked_add(self.solver_workspace_bytes)
             .and_then(|n| n.checked_add(self.reusable_projection_bytes))
+            .and_then(|n| n.checked_add(self.reusable_slope_bytes))
             .and_then(|n| n.checked_add(bytes))
         else {
             return false;
@@ -775,6 +780,24 @@ impl PpmlMemoryPlan {
         true
     }
 
+    pub(crate) fn admit_reusable_slope(&mut self, bytes: u128) -> bool {
+        let Some(peak) = self
+            .selected_inventory()
+            .peak_bytes
+            .checked_add(self.solver_workspace_bytes)
+            .and_then(|n| n.checked_add(self.reusable_projection_bytes))
+            .and_then(|n| n.checked_add(self.reusable_certificate_bytes))
+            .and_then(|n| n.checked_add(bytes))
+        else {
+            return false;
+        };
+        if self.usable_bytes.is_some_and(|usable| peak > usable) {
+            return false;
+        }
+        self.reusable_slope_bytes = bytes;
+        true
+    }
+
     pub(crate) fn with_solver_workspace(mut self, bytes: u128) -> Result<Self> {
         let peak = self
             .selected_inventory()
@@ -782,6 +805,7 @@ impl PpmlMemoryPlan {
             .checked_add(bytes)
             .and_then(|n| n.checked_add(self.reusable_projection_bytes))
             .and_then(|n| n.checked_add(self.reusable_certificate_bytes))
+            .and_then(|n| n.checked_add(self.reusable_slope_bytes))
             .ok_or_else(|| allocation("PPML solver workspace peak overflows"))?;
         if self.usable_bytes.is_some_and(|usable| peak > usable) {
             return Err(allocation(format!(
@@ -826,10 +850,12 @@ impl PpmlMemoryPlan {
             | PpmlPhase::StrictFinalSolve => base
                 .saturating_add(self.solver_workspace_bytes)
                 .saturating_add(self.reusable_projection_bytes)
-                .saturating_add(self.reusable_certificate_bytes),
+                .saturating_add(self.reusable_certificate_bytes)
+            .saturating_add(self.reusable_slope_bytes),
             PpmlPhase::Preparation => base
                 .saturating_add(self.reusable_projection_bytes)
-                .saturating_add(self.reusable_certificate_bytes),
+                .saturating_add(self.reusable_certificate_bytes)
+            .saturating_add(self.reusable_slope_bytes),
             PpmlPhase::SeparationFe
             | PpmlPhase::SeparationSimplex
             | PpmlPhase::SeparationIr
@@ -943,6 +969,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
         solver_workspace_bytes: 0,
         reusable_projection_bytes: 0,
         reusable_certificate_bytes: 0,
+        reusable_slope_bytes: 0,
     })
 }
 
@@ -3423,6 +3450,7 @@ impl PpmlMemoryTelemetry {
         .with_solver_workspace(self.plan.solver_workspace_bytes)?;
         if !reconstructed.admit_reusable_projection(self.plan.reusable_projection_bytes)
             || !reconstructed.admit_reusable_certificate(self.plan.reusable_certificate_bytes)
+            || !reconstructed.admit_reusable_slope(self.plan.reusable_slope_bytes)
             || reconstructed != self.plan
         {
             return Err(invalid_argument(
@@ -5209,6 +5237,62 @@ mod tests {
         telemetry.observe_scratch(0);
         telemetry.validate().unwrap();
         telemetry.plan.reusable_certificate_bytes += 1;
+        // Re-admission verifies a real budget, rather than trusting prior telemetry.
+        telemetry.plan.usable_bytes = Some(1);
+        assert!(telemetry.validate().is_err());
+    }
+
+    #[test]
+    fn optional_reusable_slope_accounts_for_geometry_and_phase_lifetime() {
+        let mut base = plan_ppml_memory(dimensions(), PpmlMemoryConfig::default())
+            .unwrap()
+            .with_solver_workspace(1024)
+            .unwrap();
+        assert!(base.admit_reusable_projection(1024));
+        assert!(base.admit_reusable_certificate(1024));
+        let mut plan = base;
+        plan.usable_bytes = Some(base.selected_bytes() + 4095);
+        let before = plan;
+        assert!(!plan.admit_reusable_slope(4096));
+        assert_eq!(plan, before);
+        plan.usable_bytes = Some(base.selected_bytes() + 4096);
+        assert!(plan.admit_reusable_slope(4096));
+        assert_eq!(plan.selected_bytes(), base.selected_bytes() + 4096);
+        assert!(plan.with_solver_workspace(1025).is_err());
+        assert!(!plan.admit_reusable_projection(1025));
+        assert!(!plan.admit_reusable_slope(u128::MAX));
+        for phase in [
+            PpmlPhase::Preparation,
+            PpmlPhase::WeightResponseRefresh,
+            PpmlPhase::FeProjection,
+            PpmlPhase::FiniteSolve,
+            PpmlPhase::ObjectiveLineSearch,
+            PpmlPhase::StrictFinalSolve,
+        ] {
+            assert_eq!(
+                plan.modeled_phase_peak_bytes(phase),
+                base.modeled_phase_peak_bytes(phase) + 4096
+            );
+        }
+        for phase in [
+            PpmlPhase::SeparationFe,
+            PpmlPhase::SeparationMu,
+            PpmlPhase::Inference,
+            PpmlPhase::FeRecovery,
+            PpmlPhase::Publication,
+        ] {
+            assert_eq!(
+                plan.modeled_phase_peak_bytes(phase),
+                base.modeled_phase_peak_bytes(phase)
+            );
+        }
+        assert!(base.admit_reusable_slope(4096));
+        let mut telemetry =
+            PpmlMemoryTelemetry::new(base, dimensions().threads, dimensions().threads).unwrap();
+        telemetry.observe_linear_route(FeSolverKind::Map);
+        telemetry.observe_scratch(0);
+        telemetry.validate().unwrap();
+        telemetry.plan.reusable_slope_bytes += 1;
         // Re-admission verifies a real budget, rather than trusting prior telemetry.
         telemetry.plan.usable_bytes = Some(1);
         assert!(telemetry.validate().is_err());
