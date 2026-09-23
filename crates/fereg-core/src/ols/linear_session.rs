@@ -2602,6 +2602,60 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         })
     }
 
+    /// These are FE-equivalent representatives, not a current-weight within
+    /// certificate. One-group Poisson profiling is invariant to the removed
+    /// group constants; its original-input scores and canonical checks remain.
+    pub(crate) fn one_fe_representatives(
+        &self,
+        active: &[usize],
+    ) -> Result<(&DenseMatrix, &[usize])> {
+        let design = self.fe_design();
+        let within = self
+            .within
+            .as_ref()
+            .ok_or_else(|| invalid_argument("profile design is absent"))?;
+        if design.effects().len() != 1
+            || !design.effects()[0].has_intercept()
+            || !design.effects()[0].slopes().is_empty()
+            || within.generations.sample != self.generations.sample
+            || within.generations.topology != self.generations.topology
+            || within.active_positions.len() != active.len()
+            || within
+                .active_positions
+                .iter()
+                .zip(active)
+                .any(|(&position, &column)| {
+                    within.stored_generated_columns.get(position) != Some(&column)
+                })
+            || self
+                .frozen_basis
+                .as_ref()
+                .is_none_or(|basis| basis.kept_generated_columns() != active)
+        {
+            return Err(invalid_argument(
+                "profile representatives have incompatible topology or basis",
+            ));
+        }
+        let RetainedWithinStorage::Dense(values) = &within.storage else {
+            return Err(invalid_argument(
+                "profile representatives require dense storage",
+            ));
+        };
+        Ok((values, &within.active_positions))
+    }
+
+    pub(crate) fn current_hessian_products_match(
+        &self,
+        weights: BorrowedMapWeights<'_>,
+        scale: super::PreparedOlsBreadWeightScale,
+        generation: u64,
+    ) -> Result<bool> {
+        Ok(self.generations.response == generation
+            && self.generations.weights == generation
+            && self.weights_exactly_match(weights, scale)
+            && self.output()?.certified())
+    }
+
     fn validated_output(&self) -> CertifiedLinearSessionOutput<'_> {
         CertifiedLinearSessionOutput {
             fit: self

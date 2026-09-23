@@ -40,7 +40,7 @@ use super::family::{means_from_eta, poisson_objective_from_eta, CompensatedSum};
 #[cfg(test)]
 use super::memory::DIAGNOSTIC_RECORD_BYTES;
 use super::memory::{begin_phase_allocation, end_phase_allocation};
-use super::one_fe_profile::ProfiledOneFe;
+use super::one_fe_profile::{ProfiledColumns, ProfiledOneFe};
 #[cfg(test)]
 use super::plan_ppml_memory;
 use super::prepared_estimator::PpmlInterruptPoint;
@@ -137,6 +137,8 @@ fn use_initial_checkpoint_lsmr_accelerator(
 
 #[cfg(test)]
 thread_local! {
+    static PROFILE_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
+    static PROFILE_FINAL_ACCEPTED: Cell<usize> = const { Cell::new(0) };
     static JOINT_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
     static JOINT_FINAL_TEST_COUNTS: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
     static STRICT_RESUME_INJECTION: Cell<u8> = const { Cell::new(0) };
@@ -207,6 +209,12 @@ fn inject_candidate_profile_movement(workspace: &mut PpmlIterationWorkspace) {
     if let Some(value) = workspace.candidate_coefficients_mut().last_mut() {
         *value += DELTA;
     }
+}
+
+#[cfg(test)]
+pub(super) fn profile_final_test_mode(mode: u8) -> usize {
+    PROFILE_FINAL_TEST_MODE.set(mode);
+    PROFILE_FINAL_ACCEPTED.replace(0)
 }
 
 /// PPML-owned policy for calls into the shared linear engine.
@@ -991,7 +999,19 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             fe_design.effects()[0].n_levels(),
         )
         .ok()
-        .and_then(|bytes| bytes.checked_mul(1 + u128::from(config.allocation_snapshot_probe.is_some())))
+        .and_then(|bytes| {
+            if config.allocation_snapshot_probe.is_some() {
+                ProfiledOneFe::audit_bytes(
+                    fe_design.nobs(),
+                    prepared.fit_model().columns.len(),
+                    fe_design.effects()[0].n_levels(),
+                )
+                .ok()
+                .and_then(|audit| bytes.checked_add(audit))
+            } else {
+                Some(bytes)
+            }
+        })
         .and_then(|bytes| {
             memory_plan
                 .solver_workspace_bytes
@@ -1240,6 +1260,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let mut previous_inner_tolerance = initial_tolerance;
     let mut previous_outer_progress = None;
     let mut converged = false;
+    let mut final_checkpoint_recorded = false;
     let mut two_consecutive_convergence = false;
     let mut rank_frozen = false;
     let mut completed_iterations = 0_usize;
@@ -1293,7 +1314,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         if iteration > 1 {
             if let Some(profile) = profiled_one_fe.as_mut() {
                 let started = Instant::now();
+                let (values, positions) =
+                    session.one_fe_representatives(profile.active_columns())?;
+                let data = ProfiledColumns::selected(values, positions)?;
                 match profile.prepare_direction(
+                    data,
                     session.fe_design(),
                     outcome,
                     prior_weights,
@@ -1792,19 +1817,20 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         let accepted = {
             let mut poll_line_search = || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
             let attempt = if profiled_step.is_some() {
-                profiled_one_fe
-                    .as_mut()
-                    .expect("prepared profile step")
-                    .accept(
-                        session.fe_design(),
-                        outcome,
-                        prior_weights,
-                        offset,
-                        &mut workspace,
-                        objective,
-                        config.ppml,
-                        &mut poll_line_search,
-                    )
+                let profile = profiled_one_fe.as_mut().expect("prepared profile step");
+                let (values, positions) =
+                    session.one_fe_representatives(profile.active_columns())?;
+                profile.accept(
+                    ProfiledColumns::selected(values, positions)?,
+                    session.fe_design(),
+                    outcome,
+                    prior_weights,
+                    offset,
+                    &mut workspace,
+                    objective,
+                    config.ppml,
+                    &mut poll_line_search,
+                )
             } else {
                 workspace.accept_candidate_interruptible(
                     outcome,
@@ -2116,8 +2142,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             if strict_consistent {
                 // A profiled point already satisfies the independently checked
                 // outer conditions. If strict WLS confirms that same point,
-                // retaining it keeps the current Hessian exact for final
-                // reconstruction; the final response is still freshly solved.
+                // retaining it keeps the strict canonical products on the exact
+                // accepted Hessian frame for independently checked final reuse.
                 if profiled_one_fe.is_none() {
                     workspace.fill_line_search_trial(1.0, config.ppml.bounds)?;
                     workspace.accept_trial()?;
@@ -2234,20 +2260,34 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             )?;
             if strict_consistent && final_score.passed {
                 interrupt(PpmlInterruptPoint::StrictFinalSolve)?;
-                let synchronized = synchronize_final_hessian_frame(
-                    &mut session,
-                    &mut workspace,
-                    outcome,
-                    prior_weights,
-                    offset,
-                    config,
-                    checkpoint_tolerance,
-                    &mut frame_generation,
-                    &mut total_inner_iterations,
-                    finite_rank,
-                    objective,
-                    profiled_one_fe.as_ref().map(ProfiledOneFe::active_slots),
-                )?;
+                let synchronized = if profiled_one_fe.is_some()
+                    && strict_basis_unchanged
+                    && reuse_profiled_final_products(
+                        &session,
+                        &workspace,
+                        prior_weights,
+                        offset,
+                        config,
+                        frame_generation,
+                    )? {
+                    final_checkpoint_recorded = true;
+                    FinalHessianSynchronization::Certified
+                } else {
+                    synchronize_final_hessian_frame(
+                        &mut session,
+                        &mut workspace,
+                        outcome,
+                        prior_weights,
+                        offset,
+                        config,
+                        checkpoint_tolerance,
+                        &mut frame_generation,
+                        &mut total_inner_iterations,
+                        finite_rank,
+                        objective,
+                        profiled_one_fe.as_ref().map(ProfiledOneFe::active_slots),
+                    )?
+                };
                 if synchronized == FinalHessianSynchronization::Certified {
                     two_consecutive_convergence = consecutive_converged >= 2;
                     converged = true;
@@ -2453,13 +2493,15 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         ));
     }
     let final_output = session.output()?;
-    record_checkpoint_solver_observation(
-        solver_report
-            .as_mut()
-            .ok_or_else(|| internal("PPML final Hessian lacks solver diagnostics"))?,
-        final_output.fit().absorption_report(),
-        false,
-    )?;
+    if !final_checkpoint_recorded {
+        record_checkpoint_solver_observation(
+            solver_report
+                .as_mut()
+                .ok_or_else(|| internal("PPML final Hessian lacks solver diagnostics"))?,
+            final_output.fit().absorption_report(),
+            false,
+        )?;
+    }
     let coefficients = final_coefficients(final_output.fit(), workspace.coefficients())?;
     let retained_memory = final_output.retained_within_memory();
     memory.observe_scratch(retained_memory.scratch_bytes);
@@ -3158,6 +3200,78 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         ));
     }
     Ok(accepted)
+}
+
+/// Rank, within rows and inverse from the strict Newton WLS depend on its
+/// exact weights, not on whether its RHS was the working response or predictor.
+/// Recheck the accepted predictor against that canonical decomposition before
+/// allowing those products to serve final inference without a second WLS.
+fn reuse_profiled_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
+    session: &CertifiedLinearSession<'_, P>,
+    workspace: &PpmlIterationWorkspace,
+    prior_weights: &[f64],
+    offset: &[f64],
+    config: PreparedPpmlIrlsConfig,
+    generation: u64,
+) -> Result<bool> {
+    #[cfg(test)]
+    if PROFILE_FINAL_TEST_MODE.get() == 1 {
+        return Ok(false);
+    }
+    #[cfg(test)]
+    let generation = if PROFILE_FINAL_TEST_MODE.get() == 2 {
+        generation + 1
+    } else {
+        generation
+    };
+    let weights = workspace.hessian_weights();
+    if !session.current_hessian_products_match(
+        BorrowedMapWeights::Provided(weights),
+        ppml_bread_weight_scale(weights)?,
+        generation,
+    )? {
+        return Ok(false);
+    }
+    validate_final_hessian_frame(
+        BorrowedMapWeights::Provided(weights),
+        prior_weights,
+        workspace.mean(),
+    )?;
+    let output = session.output()?;
+    let tolerance = config
+        .ppml
+        .tolerance
+        .min(config.ppml.score_tolerance)
+        .min(1e-8);
+    if offset.len() != workspace.eta().len()
+        || output.finite_predictor().len() != offset.len()
+        || output.absorbed_predictor().len() != offset.len()
+    {
+        return Err(internal("profile final predictor is misaligned"));
+    }
+    for row in 0..offset.len() {
+        let candidate =
+            offset[row] + (output.finite_predictor()[row] + output.absorbed_predictor()[row]);
+        #[cfg(test)]
+        let candidate = if PROFILE_FINAL_TEST_MODE.get() == 3 && row == 0 {
+            candidate + 0.01
+        } else {
+            candidate
+        };
+        if !candidate.is_finite()
+            || relative_scalar_difference(workspace.eta()[row], candidate) > tolerance
+        {
+            return Ok(false);
+        }
+    }
+    #[cfg(test)]
+    PROFILE_FINAL_ACCEPTED.set(PROFILE_FINAL_ACCEPTED.get() + 1);
+    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        super::categorical_lsmr::emit_solver_trace_line(
+            "FEREG_SOLVER_TRACE|phase=profile_final_products|accepted=1",
+        );
+    }
+    Ok(true)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -6180,6 +6294,26 @@ mod tests {
         )
         .expect("identical-weight session");
         assert!(session.solve_fresh().expect("initial solve").certified());
+        assert!(session
+            .current_hessian_products_match(BorrowedMapWeights::Provided(&weights), weight_scale, 1)
+            .unwrap());
+        assert!(!session
+            .current_hessian_products_match(BorrowedMapWeights::Provided(&weights), weight_scale, 2)
+            .unwrap());
+        let mut changed = weights.clone();
+        changed[0] = f64::from_bits(changed[0].to_bits() + 1);
+        assert!(!session
+            .current_hessian_products_match(BorrowedMapWeights::Provided(&changed), weight_scale, 1)
+            .unwrap());
+        let mut changed_scale = weight_scale;
+        changed_scale.reference_weight_multiplier *= 2.0;
+        assert!(!session
+            .current_hessian_products_match(
+                BorrowedMapWeights::Provided(&weights),
+                changed_scale,
+                1
+            )
+            .unwrap());
         assert!(session
             .refresh_frame(
                 &response,

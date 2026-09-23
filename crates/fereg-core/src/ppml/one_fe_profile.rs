@@ -3,6 +3,7 @@
 //! still supplies independent outer and canonical strict/final certificates.
 use super::family::{means_from_eta, poisson_objective_from_eta, CompensatedSum};
 use super::{PoissonObjective, PpmlConfig, PpmlIterationWorkspace, PpmlLineSearchAcceptance};
+use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
 use crate::linalg::solve_linear_system;
@@ -20,10 +21,36 @@ struct Moments {
     hessian: Vec<f64>,
 }
 
+/// A short immutable borrow; no weight-frame or final-Hessian authority.
+#[derive(Clone, Copy)]
+pub(super) struct ProfiledColumns<'a> {
+    values: &'a DenseMatrix,
+    positions: Option<&'a [usize]>,
+}
+
+impl<'a> ProfiledColumns<'a> {
+    pub(super) fn selected(values: &'a DenseMatrix, positions: &'a [usize]) -> Result<Self> {
+        if positions.iter().any(|&j| j >= values.ncols()) {
+            return Err(numerical());
+        }
+        let all =
+            positions.len() == values.ncols() && positions.iter().enumerate().all(|(j, &p)| j == p);
+        Ok(Self {
+            values,
+            positions: if all { None } else { Some(positions) },
+        })
+    }
+    fn value(self, row: usize, column: usize) -> f64 {
+        self.values[(row, self.positions.map_or(column, |p| p[column]))]
+    }
+    fn columns(self) -> usize {
+        self.positions.map_or(self.values.ncols(), |p| p.len())
+    }
+}
+
 pub(super) struct ProfiledOneFe {
     team: InstalledThreadTeam,
     columns: usize,
-    data: Vec<f64>,
     active: Vec<usize>,
     slots: Vec<usize>,
     log_weights: Vec<f64>,
@@ -65,17 +92,27 @@ fn filled<T: Clone>(n: usize, value: T) -> Result<Vec<T>> {
 impl ProfiledOneFe {
     pub(super) fn bytes(n: usize, k: usize, g: usize) -> Result<u128> {
         let square = k.checked_mul(k).ok_or_else(allocation)?;
-        let data = n.checked_mul(k).ok_or_else(allocation)?;
         let blocks = g.checked_add(GROUPS_PER_BLOCK - 1).ok_or_else(allocation)? / GROUPS_PER_BLOCK;
         Ok(std::mem::size_of::<Self>() as u128
             + 2 * std::mem::size_of::<usize>() as u128 * k as u128
             + blocks as u128 * std::mem::size_of::<Moments>() as u128
-            + 8 * (data as u128
-                + 3 * n as u128
+            + 8 * (3 * n as u128
                 + 2 * g as u128
                 + 4 * k as u128
                 + 2 * square as u128
                 + blocks as u128 * (3 * k as u128 + square as u128)))
+    }
+
+    pub(super) fn audit_bytes(n: usize, k: usize, g: usize) -> Result<u128> {
+        let data = n.checked_mul(k).ok_or_else(allocation)?;
+        Self::bytes(n, k, g)?
+            .checked_add(std::mem::size_of::<DenseMatrix>() as u128)
+            .and_then(|v| v.checked_add(8 * data as u128))
+            .ok_or_else(allocation)
+    }
+
+    pub(super) fn active_columns(&self) -> &[usize] {
+        &self.active
     }
 
     pub(super) fn new<P: PreparedOlsFitView + ?Sized>(
@@ -102,18 +139,6 @@ impl ProfiledOneFe {
         let g = design.effects()[0].n_levels();
         let mut result = Self::reserve(n, k, g, threads)?;
         result.active.copy_from_slice(active);
-        result.team.install(|| {
-            result
-                .data
-                .par_chunks_mut(k.max(1))
-                .enumerate()
-                .try_for_each(|(row, values)| -> Result<()> {
-                    for (j, &column) in active.iter().enumerate() {
-                        values[j] = prepared.fit_column_value(column, row)?;
-                    }
-                    Ok(())
-                })
-        })?;
         for (j, &column) in active.iter().enumerate() {
             result.slots[j] = prepared
                 .fit_model()
@@ -153,7 +178,6 @@ impl ProfiledOneFe {
         Ok(Self {
             team: ThreadTeam::new(threads).acquire()?,
             columns: k,
-            data: filled(n * k, 0.)?,
             active: filled(k, 0)?,
             slots: filled(k, 0)?,
             log_weights: filled(n, 0.)?,
@@ -218,8 +242,7 @@ impl ProfiledOneFe {
         let n = self.eta.len();
         let g = self.shifts.len();
         let exact = |v: &Vec<f64>, length| v.len() == length && v.capacity() == length;
-        exact(&self.data, n * k)
-            && self.active.len() == k
+        self.active.len() == k
             && self.active.capacity() == k
             && self.slots.len() == k
             && self.slots.capacity() == k
@@ -261,7 +284,24 @@ impl ProfiledOneFe {
         tolerance: f64,
     ) -> Result<bool> {
         let mut fresh = Self::new(prepared, &self.active, design, y, q, threads)?;
-        fresh.prepare_direction(design, y, q, offset, coefficients, config)?;
+        let mut data = DenseMatrix::zeros(y.len(), self.columns)?;
+        for row in 0..y.len() {
+            for (j, &column) in self.active.iter().enumerate() {
+                data[(row, j)] = prepared.fit_column_value(column, row)?;
+            }
+        }
+        fresh.prepare_direction(
+            ProfiledColumns {
+                values: &data,
+                positions: None,
+            },
+            design,
+            y,
+            q,
+            offset,
+            coefficients,
+            config,
+        )?;
         Ok(self.capacities_unchanged()
             && self.slots == fresh.slots
             && [
@@ -291,31 +331,33 @@ impl ProfiledOneFe {
 
     fn profile(
         &mut self,
+        data: ProfiledColumns<'_>,
         design: &FeDesign,
         offset: &[f64],
         step: f64,
         config: PpmlConfig,
     ) -> Result<()> {
         let team = self.team.clone();
-        team.install(|| self.profile_in_team(design, offset, step, config))
+        team.install(|| self.profile_in_team(data, design, offset, step, config))
     }
 
     fn profile_in_team(
         &mut self,
+        data: ProfiledColumns<'_>,
         design: &FeDesign,
         offset: &[f64],
         step: f64,
         config: PpmlConfig,
     ) -> Result<()> {
         let k = self.columns;
-        let data = &self.data;
         let base = &self.base;
         let direction = &self.direction;
         self.team.install(|| {
             self.eta.par_iter_mut().enumerate().for_each(|(row, eta)| {
                 let mut value = offset[row];
                 for j in 0..k {
-                    value = (step.mul_add(direction[j], base[j])).mul_add(data[row * k + j], value);
+                    value =
+                        (step.mul_add(direction[j], base[j])).mul_add(data.value(row, j), value);
                 }
                 *eta = value;
             })
@@ -359,6 +401,7 @@ impl ProfiledOneFe {
     /// large raw cross-products. Partitioned reductions have fixed boundaries.
     pub(super) fn prepare_direction(
         &mut self,
+        data: ProfiledColumns<'_>,
         design: &FeDesign,
         y: &[f64],
         q: &[f64],
@@ -371,12 +414,21 @@ impl ProfiledOneFe {
         // injection queue. Interrupt/SPI polling stays on the caller thread.
         let team = self.team.clone();
         team.install(|| {
-            self.prepare_direction_in_team(design, y, q, offset, accepted_coefficients, config)
+            self.prepare_direction_in_team(
+                data,
+                design,
+                y,
+                q,
+                offset,
+                accepted_coefficients,
+                config,
+            )
         })
     }
 
     fn prepare_direction_in_team(
         &mut self,
+        data: ProfiledColumns<'_>,
         design: &FeDesign,
         y: &[f64],
         q: &[f64],
@@ -384,11 +436,14 @@ impl ProfiledOneFe {
         accepted_coefficients: &[f64],
         config: PpmlConfig,
     ) -> Result<f64> {
+        if data.values.nrows() != y.len() || data.columns() != self.columns {
+            return Err(numerical());
+        }
         for (j, &slot) in self.slots.iter().enumerate() {
             self.base[j] = accepted_coefficients[slot];
         }
         self.direction.fill(0.);
-        self.profile(design, offset, 0., config)?;
+        self.profile(data, design, offset, 0., config)?;
         let maximum = q
             .iter()
             .zip(&self.mean)
@@ -398,7 +453,6 @@ impl ProfiledOneFe {
             return Err(numerical());
         }
         let k = self.columns;
-        let data = &self.data;
         let mu = &self.mean;
         self.team.install(|| {
             self.partials.par_iter_mut().enumerate().try_for_each(
@@ -419,7 +473,7 @@ impl ProfiledOneFe {
                             total.add(w);
                             for j in 0..k {
                                 partial.mean[j] = w.mul_add(
-                                    data[row * k + j] - data[first * k + j],
+                                    data.value(row, j) - data.value(first, j),
                                     partial.mean[j],
                                 );
                             }
@@ -432,7 +486,7 @@ impl ProfiledOneFe {
                             let score = (q[row] / maximum) * (y[row] - mu[row]);
                             for j in 0..k {
                                 partial.centered[j] =
-                                    (data[row * k + j] - data[first * k + j]) - partial.mean[j];
+                                    (data.value(row, j) - data.value(first, j)) - partial.mean[j];
                             }
                             for j in 0..k {
                                 let x = partial.centered[j];
@@ -509,6 +563,7 @@ impl ProfiledOneFe {
 
     pub(super) fn accept(
         &mut self,
+        data: ProfiledColumns<'_>,
         design: &FeDesign,
         y: &[f64],
         q: &[f64],
@@ -525,7 +580,7 @@ impl ProfiledOneFe {
             if step < config.minimum_step {
                 break;
             }
-            match self.profile(design, offset, step, config) {
+            match self.profile(data, design, offset, step, config) {
                 Ok(()) => {}
                 Err(e) if e.code == ErrorCode::NonConvergence => {
                     step *= 0.5;
@@ -571,6 +626,100 @@ mod tests {
     use crate::fe::EffectTerm;
 
     #[test]
+    fn borrowed_group_representatives_preserve_profile_across_weight_frames() {
+        let n = 80;
+        let groups = 8;
+        let design = FeDesign::new(
+            n,
+            vec![EffectTerm::new(
+                (0..n).map(|r| (r % groups) as u32).collect(),
+                groups,
+                true,
+                vec![],
+            )
+            .unwrap()],
+        )
+        .unwrap();
+        let mut raw = DenseMatrix::zeros(n, 2).unwrap();
+        let mut shifted = DenseMatrix::zeros(n, 3).unwrap();
+        for row in 0..n {
+            raw[(row, 0)] = (row as f64 / 7.).sin();
+            raw[(row, 1)] = (row as f64 / 13.).cos();
+            shifted[(row, 2)] = raw[(row, 0)] - (row % groups) as f64 * 0.3;
+            shifted[(row, 0)] = raw[(row, 1)] + (row % groups) as f64 * 0.7;
+            shifted[(row, 1)] = 42.;
+        }
+        let y: Vec<_> = (0..n).map(|r| 0.3 + (r % 11) as f64).collect();
+        let offset: Vec<_> = (0..n).map(|r| (r as f64 / 19.).sin()).collect();
+        for threads in [1, 4] {
+            let threads = ThreadConfig::from_requested(threads, true).unwrap();
+            let mut original = ProfiledOneFe::reserve(n, 2, groups, threads).unwrap();
+            let mut borrowed = ProfiledOneFe::reserve(n, 2, groups, threads).unwrap();
+            original.slots.copy_from_slice(&[0, 1]);
+            borrowed.slots.copy_from_slice(&[0, 1]);
+            for frame in 0..4 {
+                let q: Vec<_> = (0..n)
+                    .map(|r| 0.2 + ((r * (frame + 1)) % 17) as f64 / 5.)
+                    .collect();
+                original.initialize_groups(&design, &y, &q).unwrap();
+                borrowed.initialize_groups(&design, &y, &q).unwrap();
+                original
+                    .prepare_direction(
+                        ProfiledColumns {
+                            values: &raw,
+                            positions: None,
+                        },
+                        &design,
+                        &y,
+                        &q,
+                        &offset,
+                        &[0.3, -0.2],
+                        PpmlConfig::default(),
+                    )
+                    .unwrap();
+                borrowed
+                    .prepare_direction(
+                        ProfiledColumns::selected(&shifted, &[2, 0]).unwrap(),
+                        &design,
+                        &y,
+                        &q,
+                        &offset,
+                        &[0.3, -0.2],
+                        PpmlConfig::default(),
+                    )
+                    .unwrap();
+                for (a, b) in [
+                    &original.eta,
+                    &original.mean,
+                    &original.gradient,
+                    &original.hessian,
+                    &original.direction,
+                ]
+                .into_iter()
+                .zip([
+                    &borrowed.eta,
+                    &borrowed.mean,
+                    &borrowed.gradient,
+                    &borrowed.hessian,
+                    &borrowed.direction,
+                ]) {
+                    assert!(a
+                        .iter()
+                        .zip(b)
+                        .all(|(x, y)| (x - y).abs() < 1e-11 * x.abs().max(y.abs()).max(1.)));
+                }
+                assert!(original.capacities_unchanged() && borrowed.capacities_unchanged());
+            }
+        }
+        assert!(ProfiledColumns::selected(&shifted, &[3]).is_err());
+        assert_eq!(
+            ProfiledOneFe::audit_bytes(n, 2, groups).unwrap()
+                - ProfiledOneFe::bytes(n, 2, groups).unwrap(),
+            (n * 2 * 8 + std::mem::size_of::<DenseMatrix>()) as u128
+        );
+    }
+
+    #[test]
     fn concentrated_direction_matches_full_dummy_weighted_normal_equations() {
         let groups = 129;
         let n = groups * 8;
@@ -591,6 +740,7 @@ mod tests {
                     ThreadConfig::from_requested(threads, true).unwrap(),
                 )
                 .unwrap();
+                let mut data = DenseMatrix::zeros(n, k).unwrap();
                 p.slots.copy_from_slice(&[0, 1]);
                 let q: Vec<_> = (0..n).map(|r| common * (0.5 + (r % 5) as f64)).collect();
                 let y: Vec<_> = (0..n)
@@ -604,18 +754,21 @@ mod tests {
                     .collect();
                 let offset: Vec<_> = (0..n).map(|r| 0.1 * (r as f64).sin()).collect();
                 for r in 0..n {
-                    p.data[r * k] = (r % 8) as f64 / 4. - 0.7;
-                    p.data[r * k + 1] = ((r % 8) as f64).cos() + 0.2 * (r / 8) as f64;
+                    data[(r, 0)] = (r % 8) as f64 / 4. - 0.7;
+                    data[(r, 1)] = ((r % 8) as f64).cos() + 0.2 * (r / 8) as f64;
                 }
                 p.initialize_groups(&design, &y, &q).unwrap();
                 let capacities = (
-                    p.data.capacity(),
                     p.eta.capacity(),
                     p.mean.capacity(),
                     p.factor.capacity(),
                     p.partials.capacity(),
                 );
                 p.prepare_direction(
+                    ProfiledColumns {
+                        values: &data,
+                        positions: None,
+                    },
                     &design,
                     &y,
                     &q,
@@ -632,7 +785,7 @@ mod tests {
                 let mut d = vec![0.; width];
                 for r in 0..n {
                     d.fill(0.);
-                    d[..k].copy_from_slice(&p.data[r * k..(r + 1) * k]);
+                    d[..k].copy_from_slice(&data.as_slice()[r * k..(r + 1) * k]);
                     d[k + r / 8] = 1.;
                     let weight = q[r] / common;
                     for j in 0..width {
@@ -666,7 +819,6 @@ mod tests {
                 assert_eq!(
                     capacities,
                     (
-                        p.data.capacity(),
                         p.eta.capacity(),
                         p.mean.capacity(),
                         p.factor.capacity(),
@@ -696,14 +848,19 @@ mod tests {
         .unwrap();
         let mut p = ProfiledOneFe::reserve(8, 2, 2, ThreadConfig::from_requested(1, true).unwrap())
             .unwrap();
+        let mut data = DenseMatrix::zeros(8, 2).unwrap();
         p.slots.copy_from_slice(&[0, 1]);
         for r in 0..8 {
-            p.data[r * 2] = (r % 4) as f64;
-            p.data[r * 2 + 1] = p.data[r * 2];
+            data[(r, 0)] = (r % 4) as f64;
+            data[(r, 1)] = data[(r, 0)];
         }
         p.initialize_groups(&design, &[1.; 8], &[1.; 8]).unwrap();
         assert_eq!(
             p.prepare_direction(
+                ProfiledColumns {
+                    values: &data,
+                    positions: None
+                },
                 &design,
                 &[1.; 8],
                 &[1.; 8],

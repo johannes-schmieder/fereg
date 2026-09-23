@@ -10,6 +10,83 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Shared one-FE products accepted; whole-path construction next — 2026-09-23
+
+The active goal remains whole public PPML **<= 0.90 times comparable pinned
+stock fixest** wherever achievable. This is a completed bounded implementation
+milestone, not completion of that goal. It supersedes the next-step and unused-seed
+entries below. Historical artifact timings and discrepancies retain their scope.
+
+Accept `onefeshare2`, based on `19ab5cab`, under
+[ADR 0132](docs/adr/0132-shared-one-fe-ppml-products.md) and its
+[source-bound report](benchmarks/reports/development/ppml-one-fe-shared-products-local-2026-09-23/README.md).
+All **536 computational inputs** match plugin
+`26cef3ff3c30a727c34437c81025cf2d104c2807c391e4d1f637f51dce687316`.
+The restored immutable archive verifies **7,255 receipts**, SHA-256
+`486a9aa90c3f38a16f18e1a94eb1533f098d647472c9565a1f8fd60ae3ce8d9f`.
+
+Concentrated one-FE PPML borrows the retained FE-equivalent finite columns,
+removing its selected N-by-K copy. Original-input scores and fresh canonical
+checks remain independent. Once strict canonical WLS confirms the unchanged
+accepted point, its current-weight within design, rank and inverse supply final
+inference directly. Every weight bit/scale, current generation, q*mu identity
+and predictor decomposition must agree; otherwise canonical final solving remains.
+No tolerance, sample, inference, separation or transactional policy changes.
+No extra state bank. Only the existing fast one-intercept-FE MAP-owned route changes.
+
+Fresh seed332 public medians, baseline/candidate/strict stock (ms), robust plus mu:
+
+| One-FE case | Baseline | Candidate | Stock | Candidate/stock |
+| --- | ---: | ---: | ---: | ---: |
+| N76800 K10 T4 | 159 | 139 | 83 | 1.675 |
+| N61440 K10 T1 | 171 | 150 | 96 | 1.562 |
+| N38400 K24 T4 | 149 | 134 | 100 | 1.340 |
+| Unbalanced N76800 K6 T8 | 138 | 122 | 42 | 2.905 |
+| Small N3840 K3 T1 | 22 | 22 | 11 | 2.000 |
+| Larger N184320 K6 T8 | 311 | 270 | 126 | 2.143 |
+
+Larger native gains are **10.1–13.2%**; all their individual pairs improve.
+The small fit ties and has one 29.4% paired loss. Five identical-input follow-up
+pairs give 23/19 ms with wide overlapping ranges; retain both blocks. Tracked
+peak reductions equal 8*N*K, **0.092–8.847 MB** across fresh cases. Outer counts
+stay unchanged; one fewer reported inner checkpoint reflects the removed solve.
+
+**350 distinct final-source Rust tests**, actual-plugin ABI/panic checks and
+**five licensed fixtures** pass. Across prototype and final blocks all **175
+applications**, **129 PPML public states**, **49 native pairs**, **31 stock pairs**
+and **12 small independent Poisson/Hessian checks** pass. Final artifact alone
+has 142 applications, 96 states, 38 native pairs, 20 stock pairs and six independent
+checks. All headline isolation checks pass. Real T1/T4 warmed allocation audits
+remain zero-event/zero-growth; their raw-input cold witness is separately admitted.
+
+Excluded PPML has **13 exact scientific-export pairs**; OLS has **23**. Dense
+categorical follow-up retains a 2-ms loss (201/203) with overlapping ranges.
+One-FE OLS's initial 17/18 becomes 18/17 on five follow-up pairs. Low three-FE OLS
+has an initial 64.5/65.5, then 64/68 with within-block candidate decline, then
+66/65. Across all **12 identical-input pairs**, medians are **65.5/65** with ranges
+[63,69]/[63,70]. Preserve every block; no universal non-regression claim.
+
+Fresh N76800/K10 strict/final time falls **44.234 -> 27.018 ms**. The larger fit
+falls **100.828 -> 61.319 ms**, with preparation **40.305**, publication **29.231**
+and line search/profile work **38.303 ms**. It still needs **156.6 ms** to reach
+0.90*126 = 113.4 ms. Eliminating final checks entirely would be insufficient.
+Do not continue polishing the accepted reuse predicate or small-fit noise.
+
+**Next bounded implementation:** initial rank/fit and shared accepted-state
+construction across the whole PPML path. Investigate avoiding unused initial
+inference products while preserving the exact canonical initial rank decision;
+measure repeated original-column scans and predictor/mean/moment construction.
+Retain fresh original-input, current-weight and final-Hessian witnesses. Confirm
+with one-FE, categorical multi-FE, slope and low-memory controls. Historical
+single-frame slope gains remain accepted; do not reopen closed serial weighted-
+slope tuning. No generic claim that stronger certificates explain the remaining gap.
+
+Seed **202609332 is consumed**; **202609333** is reserved and unused, with fresh
+case declarations still required. Static allocation drift, constrained-fit/CG
+failures, previous comparator discrepancies and platform/physical-cap deferrals
+remain open. Frozen 77/16/111 definitions are unchanged. No push, release, SCC
+retry, qualification or stopped-campaign restart.
+
 ## Single-frame slope finalization accepted; one-FE whole-path redesign next — 2026-09-23
 
 The active objective remains whole public PPML time <= **0.90 times comparable

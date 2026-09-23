@@ -2476,6 +2476,50 @@ mod tests {
     }
 
     #[test]
+    fn profiled_final_products_match_canonical_and_reject_stale_authority() {
+        use super::super::prepared_irls::profile_final_test_mode;
+        for threads in [1, 4] {
+            for weighted in [false, true] {
+                let run = |mode| {
+                    profile_final_test_mode(mode);
+                    let (mut request, loaded) = fixture(1, true, true, weighted, true, false);
+                    request.linear.execution.threads =
+                        crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                    let result = fit_prepared_ppml(request, loaded);
+                    let accepted = profile_final_test_mode(0);
+                    (result.expect("one-FE final products"), accepted)
+                };
+                let (baseline, count) = run(1);
+                assert_eq!(count, 0);
+                for mode in [0, 2, 3] {
+                    let (candidate, count) = run(mode);
+                    assert_eq!(count, usize::from(mode == 0));
+                    assert_ppml_results_close(&candidate, &baseline);
+                    for (left, right) in candidate
+                        .inference()
+                        .vce
+                        .covariance
+                        .iter()
+                        .zip(&baseline.inference().vce.covariance)
+                    {
+                        assert!(
+                            (left - right).abs() <= 1e-8 * left.abs().max(right.abs()).max(1.0)
+                        );
+                    }
+                    assert!(candidate.inference().vce.certificate.passed);
+                    assert!(
+                        candidate
+                            .output()
+                            .saved_effects()
+                            .unwrap()
+                            .full_decomposition_certified
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
     fn explicit_public_map_matches_one_effect_auto_bitwise() {
         let (mut baseline_request, baseline_loaded) = fixture(1, false, false, false, false, false);
         baseline_request.solver = PpmlSolverFamily::Auto;
