@@ -184,6 +184,7 @@ pub fn poisson_null_objective(
 /// Evaluate the objective against the accepted predictor rather than taking
 /// `log(exp(eta))` again. This is the production IRLS path; the public
 /// mean-only helper above remains as a small mathematical convenience.
+#[cfg(test)]
 pub(crate) fn poisson_objective_from_eta(
     outcome: &[f64],
     eta: &[f64],
@@ -193,11 +194,57 @@ pub(crate) fn poisson_objective_from_eta(
     poisson_objective_impl(outcome, Some(eta), mean, prior_weights)
 }
 
+/// Immutable outcome/prior-weight/offset frame for one finalized PPML sample.
+/// Rust borrows prevent mutation while cached transcendental terms are used;
+/// changing Hessian weights and predictors are never retained here.
+pub(crate) struct PreparedPoissonInputs<'a> {
+    outcome: &'a [f64],
+    prior_weights: &'a [f64],
+    offset: &'a [f64],
+    terms: Vec<[f64; 2]>,
+}
+
+impl<'a> PreparedPoissonInputs<'a> {
+    pub(crate) fn new(outcome: &'a [f64], prior_weights: &'a [f64], offset: &'a [f64]) -> Result<Self> {
+        if outcome.len() != prior_weights.len() || outcome.len() != offset.len() {
+            return Err(FeregError::new(ErrorCode::InvalidArgument, "Poisson immutable inputs are misaligned"));
+        }
+        let mut terms = fallible_output(outcome.len(), "unable to reserve Poisson immutable terms")?;
+        for (row, ((&y, &q), &o)) in outcome.iter().zip(prior_weights).zip(offset).enumerate() {
+            if !y.is_finite() || y < 0. || !q.is_finite() || q <= 0. || !o.is_finite() {
+                return Err(FeregError::new(ErrorCode::InvalidData, format!("invalid Poisson immutable input at observation {row}")));
+            }
+            // Zero keeps its existing exact working-response branch. A
+            // nonfinite log-Gamma still fails at objective evaluation, with
+            // the same finite-domain rule as the independent implementation.
+            terms.push([if y == 0. { 0. } else { y.ln() }, log_gamma(y + 1.)]);
+        }
+        Ok(Self { outcome, prior_weights, offset, terms })
+    }
+
+    pub(crate) fn outcome(&self) -> &[f64] { self.outcome }
+
+    pub(crate) fn evaluate(&self, eta: &[f64], mean: &[f64]) -> Result<PoissonObjective> {
+        poisson_objective_with_terms(self.outcome, Some(eta), mean, self.prior_weights, Some(&self.terms))
+    }
+
+    pub(crate) fn fill_working_state(&self, mean: &[f64], eta: &[f64], weights: &mut [f64], response: &mut [f64]) -> Result<()> {
+        fill_poisson_working_state_with_terms(self.outcome, mean, self.prior_weights, eta, self.offset, weights, response, Some(&self.terms))
+    }
+}
+
 fn poisson_objective_impl(
     outcome: &[f64],
     eta: Option<&[f64]>,
     mean: &[f64],
     prior_weights: &[f64],
+) -> Result<PoissonObjective> {
+    poisson_objective_with_terms(outcome, eta, mean, prior_weights, None)
+}
+
+fn poisson_objective_with_terms(
+    outcome: &[f64], eta: Option<&[f64]>, mean: &[f64], prior_weights: &[f64],
+    terms: Option<&[[f64; 2]]>,
 ) -> Result<PoissonObjective> {
     if outcome.len() != mean.len() || outcome.len() != prior_weights.len() {
         return Err(FeregError::new(
@@ -242,7 +289,7 @@ fn poisson_objective_impl(
         }
         let half_deviance = poisson_half_deviance_with_log_mean(y, mu, log_mean)?;
         let deviance_term = 2.0 * weight * half_deviance;
-        let log_likelihood_term = weight * (y * log_mean - mu - log_gamma(y + 1.0));
+        let log_likelihood_term = weight * (y * log_mean - mu - terms.map_or_else(|| log_gamma(y + 1.0), |values| values[row][1]));
         if !deviance_term.is_finite() || !log_likelihood_term.is_finite() {
             return Err(numerical_nonconvergence(format!(
                 "Poisson objective overflowed at observation {row}"
@@ -267,6 +314,7 @@ fn poisson_objective_impl(
 /// `prior_weights` are the estimator's prior weights.  Consequently frequency
 /// weights reproduce literal row replication and probability weights enter the
 /// estimating equations multiplicatively; neither changes the working response.
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn fill_poisson_working_state(
     outcome: &[f64],
@@ -276,6 +324,14 @@ pub(crate) fn fill_poisson_working_state(
     offset: &[f64],
     working_weights: &mut [f64],
     working_response: &mut [f64],
+) -> Result<()> {
+    fill_poisson_working_state_with_terms(outcome, mean, prior_weights, eta, offset, working_weights, working_response, None)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn fill_poisson_working_state_with_terms(
+    outcome: &[f64], mean: &[f64], prior_weights: &[f64], eta: &[f64], offset: &[f64],
+    working_weights: &mut [f64], working_response: &mut [f64], terms: Option<&[[f64; 2]]>,
 ) -> Result<()> {
     let nrows = outcome.len();
     if mean.len() != nrows
@@ -325,7 +381,7 @@ pub(crate) fn fill_poisson_working_state(
         } else {
             // Form y/mu in log space so a representable ratio is not lost to
             // premature division under extreme but otherwise valid offsets.
-            (y.ln() - linear_predictor).exp() - 1.0
+            (terms.map_or_else(|| y.ln(), |values| values[row][0]) - linear_predictor).exp() - 1.0
         };
         let response = linear_predictor - row_offset + score_adjustment;
         if !weight.is_finite() || weight <= 0.0 || !response.is_finite() {
@@ -475,6 +531,55 @@ fn log_gamma(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prepared_inputs_preserve_objective_and_working_bits_across_frames() {
+        let outcome = [0., 1e-100, 0.25, 1., 5., 100., 1e6, 1e100];
+        let prior = [2., 0.3, 1., 0.01, 7., 2., 1e-4, 1e-80];
+        let offset = [-3., 0., 10., -2., 0.5, 1., 100., -100.];
+        let inputs = PreparedPoissonInputs::new(&outcome, &prior, &offset).unwrap();
+        assert_eq!(inputs.terms.len(), outcome.len());
+        assert_eq!(std::mem::size_of::<[f64; 2]>(), 16);
+        for shift in [-0.4_f64, 0., 0.3, 1.] {
+            let eta: Vec<_> = outcome.iter().map(|&y| (y + 0.7).ln() + shift).collect();
+            let mean: Vec<_> = eta.iter().map(|&v| v.exp()).collect();
+            let direct = poisson_objective_from_eta(&outcome, &eta, &mean, &prior).unwrap();
+            let prepared = inputs.evaluate(&eta, &mean).unwrap();
+            assert_eq!(direct.deviance.to_bits(), prepared.deviance.to_bits());
+            assert_eq!(direct.log_likelihood.to_bits(), prepared.log_likelihood.to_bits());
+            let (mut w, mut z, mut pw, mut pz) = ([0.; 8], [0.; 8], [0.; 8], [0.; 8]);
+            fill_poisson_working_state(&outcome, &mean, &prior, &eta, &offset, &mut w, &mut z).unwrap();
+            inputs.fill_working_state(&mean, &eta, &mut pw, &mut pz).unwrap();
+            assert_eq!(w.map(f64::to_bits), pw.map(f64::to_bits));
+            assert_eq!(z.map(f64::to_bits), pz.map(f64::to_bits));
+        }
+        // A changed sample/prior frame constructs a separate immutable owner.
+        let q = [3.; 8];
+        let other = PreparedPoissonInputs::new(&outcome, &q, &offset).unwrap();
+        let eta = [0.; 8];
+        let mean = [1.; 8];
+        assert_eq!(other.evaluate(&eta, &mean).unwrap(), poisson_objective_from_eta(&outcome, &eta, &mean, &q).unwrap());
+        assert_ne!(other.evaluate(&eta, &mean).unwrap(), inputs.evaluate(&eta, &mean).unwrap());
+    }
+
+    #[test]
+    fn prepared_inputs_retain_domain_and_alignment_failures() {
+        assert!(PreparedPoissonInputs::new(&[1.], &[], &[0.]).is_err());
+        assert!(PreparedPoissonInputs::new(&[-1.], &[1.], &[0.]).is_err());
+        assert!(PreparedPoissonInputs::new(&[1.], &[0.], &[0.]).is_err());
+        assert!(PreparedPoissonInputs::new(&[1.], &[1.], &[f64::NAN]).is_err());
+        let y = [0., 1., 1e308];
+        let q = [1.; 3];
+        let offset = [0.; 3];
+        let inputs = PreparedPoissonInputs::new(&y, &q, &offset).unwrap();
+        for mean in [[1., 1., 1.], [1., 0., 1.], [1., f64::INFINITY, 1.]] {
+            let eta = mean.map(f64::ln);
+            let direct = poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap_err();
+            assert_eq!(inputs.evaluate(&eta, &mean).unwrap_err().code, direct.code);
+        }
+        assert!(inputs.evaluate(&[0.], &[1.]).is_err());
+        assert!(inputs.fill_working_state(&[1.; 3], &[0.; 3], &mut [0.; 2], &mut [0.; 3]).is_err());
+    }
 
     #[test]
     fn defaults_are_self_consistent() {

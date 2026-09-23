@@ -3301,8 +3301,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 ));
             }
         }
-        let predictor_workspace_reused = self.finite_predictor.capacity() >= self.response.len()
-            && self.absorbed_predictor.capacity() >= self.response.len();
+        // The canonical draft owns the one original-input predictor used by
+        // the intercept check. Move it through publication instead of scanning
+        // every original column a second time. Strict rollback owns the prior
+        // predictor separately; no speculative product mutates that state.
+        self.finite_predictor = candidate.finite_predictor;
+        let predictor_workspace_reused = false;
         let reconstruction = self.rebuild_predictors(&candidate.fit)?;
         let within = self
             .within
@@ -4475,26 +4479,51 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .try_reserve(rows)
             .map_err(|_| allocation("unable to reserve retained within residuals"))?;
         workspace.residuals.resize(rows, 0.0);
-        let mut retained_reader = retained.storage.reader();
-        for (row, &within_value) in within_response.iter().enumerate() {
-            retained_reader.fill_row(row, &mut workspace.row)?;
+        let weights = self.weights.borrowed();
+        let scale = self.bread_weight_scale;
+        let reference_norms = &retained.reference_norms;
+        let coefficients = &workspace.coefficients;
+        let residual_at = |row: usize, value: &mut dyn FnMut(usize) -> Result<f64>| -> Result<f64> {
+            let within_value = within_response[row];
             let root_weight =
-                normalized_solver_weight(self.weights.borrowed(), self.bread_weight_scale, row)?
+                normalized_solver_weight(weights, scale, row)?
                     .sqrt();
             let mut weighted_residual = root_weight * within_value;
             for (selected, storage_position) in active_positions.iter().copied().enumerate() {
-                let standardized_value = root_weight * workspace.row[storage_position]
-                    / retained.reference_norms[storage_position];
-                weighted_residual = (-workspace.coefficients[selected])
+                let standardized_value = root_weight * value(storage_position)?
+                    / reference_norms[storage_position];
+                weighted_residual = (-coefficients[selected])
                     .mul_add(standardized_value, weighted_residual);
             }
-            workspace.residuals[row] = weighted_residual / root_weight;
-            if !workspace.residuals[row].is_finite() {
-                return Err(invalid_data(
-                    "retained weighted-linear residual is not finite",
-                ));
+            let residual = weighted_residual / root_weight;
+            if !residual.is_finite() { return Err(invalid_data("retained weighted-linear residual is not finite")); }
+            Ok(residual)
+        };
+        match &retained.storage {
+            RetainedWithinStorage::Dense(values) => {
+                workspace.residuals.par_iter_mut().enumerate().try_for_each(|(row, target)| -> Result<()> {
+                    *target = residual_at(row, &mut |column| Ok(values[(row, column)]))?;
+                    Ok(())
+                })?;
+            }
+            RetainedWithinStorage::Implicit(values) => {
+                let view = values.view()?;
+                let bound = view.bind_columns()?;
+                workspace.residuals.par_iter_mut().enumerate().try_for_each(|(row, target)| -> Result<()> {
+                    let group = view.codes()[row] as usize;
+                    *target = residual_at(row, &mut |column| Ok(bound[column].value(row)? - view.center(column, group)))?;
+                    Ok(())
+                })?;
+            }
+            RetainedWithinStorage::Scratch(_) => {
+                let mut reader = retained.storage.reader();
+                for (row, target) in workspace.residuals.iter_mut().enumerate() {
+                    reader.fill_row(row, &mut workspace.row)?;
+                    *target = residual_at(row, &mut |column| Ok(workspace.row[column]))?;
+                }
             }
         }
+        let mut retained_reader = retained.storage.reader();
         let within_outcome_norm = stable_weighted_norm(rows, |row| {
             Ok((
                 within_response[row],
@@ -4800,7 +4829,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             absorption_report,
             scratch_bytes,
         };
-        let fit = assemble_retained_weighted_linear_fit(
+        let (fit, finite_predictor) = assemble_retained_weighted_linear_fit(
             self.prepared,
             LinearSolveFrame::from_parts(
                 &self.response,
@@ -4812,6 +4841,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         )?;
         Ok(RetainedRankSolveDraft {
             fit,
+            finite_predictor,
             active_positions,
             within_certificate,
             prior_basis_certificate,
@@ -5876,61 +5906,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         fit: &CertifiedPreparedOlsFit,
     ) -> Result<LinearReconstructionCertificate> {
         let rows = self.response.len();
-        resize_zeroed(
-            &mut self.finite_predictor,
-            rows,
-            "unable to reserve weighted-linear finite predictor",
-        )?;
-        resize_zeroed(
-            &mut self.absorbed_predictor,
-            rows,
-            "unable to reserve weighted-linear absorbed predictor",
-        )?;
-        let numeric = super::prepared_rhs::NumericOlsColumns::bind(
-            self.prepared.fit_model(),
-            self.prepared.fit_sample(),
-        )?;
-        if numeric.is_some()
-            || !crate::prepared_fit_view::add_generated_predictor(
-                self.prepared,
-                fit.coefficients(),
-                &mut self.finite_predictor,
-            )?
-        {
-            let mut selected = [(0_usize, 0.0_f64); super::prepared_rhs::MAX_BOUND_NUMERIC_COLUMNS];
-            let mut selected_count = 0;
-            for coefficient in fit.coefficients() {
-                if coefficient.status != PreparedOlsFitStatus::Kept {
-                    continue;
-                }
-                let generated = coefficient.generated_column_index.ok_or_else(|| {
-                    invalid_argument("kept weighted-linear coefficient has no generated column")
-                })?;
-                let value = coefficient.value.ok_or_else(|| {
-                    invalid_argument("kept weighted-linear coefficient has no value")
-                })?;
-                if numeric.is_some() {
-                    let target = selected.get_mut(selected_count).ok_or_else(|| {
-                        invalid_argument("numeric predictor selection exceeds its bound")
-                    })?;
-                    *target = (generated, value);
-                    selected_count += 1;
-                } else {
-                    for row in 0..rows {
-                        self.finite_predictor[row] = value.mul_add(
-                            self.prepared.fit_column_value(generated, row)?,
-                            self.finite_predictor[row],
-                        );
-                    }
-                }
-            }
-            if let Some(numeric) = numeric {
-                numeric.add_selected_columns(
-                    &selected[..selected_count],
-                    &mut self.finite_predictor,
-                )?;
-            }
+        if self.finite_predictor.len() != rows {
+            return Err(invalid_argument("canonical finite predictor is misaligned"));
         }
+        resize_zeroed(&mut self.absorbed_predictor, rows, "unable to reserve weighted-linear absorbed predictor")?;
         let mut certificate = LinearReconstructionCertificate::new();
         for row in 0..rows {
             self.absorbed_predictor[row] =
@@ -5969,6 +5948,7 @@ struct FrozenSolveDraft {
 
 struct RetainedRankSolveDraft {
     fit: CertifiedPreparedOlsFit,
+    finite_predictor: Vec<f64>,
     active_positions: Vec<usize>,
     within_certificate: LinearWithinDesignCertificate,
     prior_basis_certificate: Option<LinearWithinDesignCertificate>,

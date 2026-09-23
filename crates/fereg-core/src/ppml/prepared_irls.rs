@@ -36,7 +36,9 @@ use super::categorical_lsmr::{
     estimate_checkpoint_lsmr_workspace_bytes, estimate_joint_lsmr_workspace_bytes,
     joint_lsmr_policy, JointLsmrFrameDiagnostic, JointLsmrReport, ReusableCategoricalJointLsmr,
 };
-use super::family::{means_from_eta, poisson_objective_from_eta, CompensatedSum};
+use super::family::{means_from_eta, CompensatedSum, PreparedPoissonInputs};
+#[cfg(test)]
+use super::family::poisson_objective_from_eta;
 #[cfg(test)]
 use super::memory::DIAGNOSTIC_RECORD_BYTES;
 use super::memory::{begin_phase_allocation, end_phase_allocation};
@@ -1264,11 +1266,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         start,
         purpose,
     )?;
+    let objective_inputs = PreparedPoissonInputs::new(outcome, prior_weights, offset)?;
     let mut workspace =
         PpmlIterationWorkspace::from_initial_state(memory_plan, eta, coefficient_values)?;
-    workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
+    workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
     let mut objective =
-        poisson_objective_from_eta(outcome, workspace.eta(), workspace.mean(), prior_weights)?;
+        objective_inputs.evaluate(workspace.eta(), workspace.mean())?;
     let mut score_workspace = PpmlScoreWorkspace::new(&fe_design, config.linear.execution.threads)?;
     let initial_tolerance =
         scheduled_inner_tolerance(config.ppml, 1, config.ppml.inner_tolerance_initial, None);
@@ -1808,8 +1811,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     (frozen_rank, frozen_reuse, frozen_route)
                 } else {
                     let frozen_objective = workspace.evaluate_candidate_objective(
-                        outcome,
-                        prior_weights,
+                        &objective_inputs,
                         config.ppml.bounds,
                     )?;
                     record_linear_phase_timings(&mut memory, frozen_reuse)?;
@@ -1852,8 +1854,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         workspace.candidate_coefficients_mut(),
                     )?;
                     let canonical_objective = workspace.evaluate_candidate_objective(
-                        outcome,
-                        prior_weights,
+                        &objective_inputs,
                         config.ppml.bounds,
                     )?;
                     equivalent &= relative_scalar_difference(
@@ -1928,21 +1929,20 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     let columns = session.one_fe_original_columns(profile.active_columns())?;
                     let data = ProfiledRawColumns::new(prepared, columns)?;
                     profile.accept(
-                        &data, session.fe_design(), outcome, prior_weights, offset,
+                        &data, session.fe_design(), &objective_inputs, offset,
                         &mut workspace, objective, config.ppml, &mut poll_line_search,
                     )
                 } else {
                     let (values, positions) = session.one_fe_representatives(profile.active_columns())?;
                     profile.accept(
                         ProfiledColumns::selected(values, positions)?, session.fe_design(),
-                        outcome, prior_weights, offset, &mut workspace, objective,
+                        &objective_inputs, offset, &mut workspace, objective,
                         config.ppml, &mut poll_line_search,
                     )
                 }
             } else {
                 workspace.accept_candidate_interruptible(
-                    outcome,
-                    prior_weights,
+                    &objective_inputs,
                     objective,
                     config.ppml,
                     &mut poll_line_search,
@@ -2059,8 +2059,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 && try_joint_strict_final_frame(
                     &mut session,
                     &mut workspace,
-                    outcome,
-                    prior_weights,
+                    &objective_inputs,
                     offset,
                     config,
                     checkpoint_tolerance,
@@ -2085,7 +2084,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             }
             // The strict solve must be constructed from the newly accepted
             // eta, never from the pre-step working frame still in the session.
-            workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
+            workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
             frame_generation = next_frame_generation(frame_generation)?;
             refresh_linear_frame(&mut session, &workspace, frame_generation)?;
             let strict_tolerance = checkpoint_tolerance;
@@ -2151,8 +2150,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 inject_candidate_profile_movement(&mut workspace);
             }
             let strict_objective = match workspace.evaluate_candidate_objective(
-                outcome,
-                prior_weights,
+                &objective_inputs,
                 config.ppml.bounds,
             ) {
                 Ok(objective) => Some(objective),
@@ -2267,8 +2265,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     let mut poll_line_search =
                         || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
                     workspace.accept_candidate_interruptible(
-                        outcome,
-                        prior_weights,
+                        &objective_inputs,
                         objective,
                         config.ppml,
                         &mut poll_line_search,
@@ -2384,8 +2381,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     synchronize_final_hessian_frame(
                         &mut session,
                         &mut workspace,
-                        outcome,
-                        prior_weights,
+                        &objective_inputs,
                         offset,
                         config,
                         checkpoint_tolerance,
@@ -2402,8 +2398,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 } else if synchronized == FinalHessianSynchronization::ResumeWithCandidate {
                     profile_rejected = true;
                     let candidate_objective = workspace.evaluate_candidate_objective(
-                        outcome,
-                        prior_weights,
+                        &objective_inputs,
                         config.ppml.bounds,
                     )?;
                     profile_difference = strict_profile_difference(
@@ -2418,8 +2413,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     let mut poll_line_search =
                         || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
                     match workspace.accept_candidate_interruptible(
-                        outcome,
-                        prior_weights,
+                        &objective_inputs,
                         objective,
                         config.ppml,
                         &mut poll_line_search,
@@ -2522,7 +2516,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             PpmlPhase::WeightResponseRefresh,
         );
         let working_refresh_clock = PpmlPhaseClock::start();
-        workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
+        workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
         memory.record_phase(
             PpmlPhase::WeightResponseRefresh,
             working_refresh_clock.elapsed(),
@@ -3152,8 +3146,7 @@ enum FinalHessianSynchronization {
 fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     session: &mut CertifiedLinearSession<'_, P>,
     workspace: &mut PpmlIterationWorkspace,
-    outcome: &[f64],
-    prior_weights: &[f64],
+    objective_inputs: &PreparedPoissonInputs<'_>,
     offset: &[f64],
     config: PreparedPpmlIrlsConfig,
     checkpoint_tolerance: f64,
@@ -3172,7 +3165,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         JOINT_FINAL_TEST_COUNTS.get().0 + 1,
         JOINT_FINAL_TEST_COUNTS.get().1,
     ));
-    workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
+    workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
     *frame_generation = next_frame_generation(*frame_generation)?;
     refresh_linear_frame(session, workspace, *frame_generation)?;
     session.set_config(ppml_linear_config(config, checkpoint_tolerance)?)?;
@@ -3205,7 +3198,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         inject_candidate_profile_movement(workspace);
     }
     let objective =
-        match workspace.evaluate_candidate_objective(outcome, prior_weights, config.ppml.bounds) {
+        match workspace.evaluate_candidate_objective(&objective_inputs, config.ppml.bounds) {
             Ok(value) => Some(value),
             Err(error) if error.code == ErrorCode::NonConvergence => None,
             Err(error) => return Err(error),
@@ -3258,7 +3251,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         workspace.candidate_coefficients_mut(),
     )?;
     let objective =
-        match workspace.evaluate_candidate_objective(outcome, prior_weights, config.ppml.bounds) {
+        match workspace.evaluate_candidate_objective(&objective_inputs, config.ppml.bounds) {
             Ok(value) => Some(value),
             Err(error) if error.code == ErrorCode::NonConvergence => None,
             Err(error) => return Err(error),
@@ -3386,8 +3379,7 @@ fn reuse_profiled_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
 fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     session: &mut CertifiedLinearSession<'_, P>,
     workspace: &mut PpmlIterationWorkspace,
-    outcome: &[f64],
-    prior_weights: &[f64],
+    objective_inputs: &PreparedPoissonInputs<'_>,
     offset: &[f64],
     config: PreparedPpmlIrlsConfig,
     checkpoint_tolerance: f64,
@@ -3397,7 +3389,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     accepted_objective: PoissonObjective,
     coefficient_slots: Option<&[usize]>,
 ) -> Result<FinalHessianSynchronization> {
-    workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
+    workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
     workspace.prepare_final_hessian_response(offset)?;
     *frame_generation = next_frame_generation(*frame_generation)?;
     // The accepted strict point usually changes the Hessian. Only a bitwise
@@ -3460,7 +3452,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         inject_candidate_profile_movement(workspace);
     }
     let candidate_objective =
-        match workspace.evaluate_candidate_objective(outcome, prior_weights, config.ppml.bounds) {
+        match workspace.evaluate_candidate_objective(&objective_inputs, config.ppml.bounds) {
             Ok(objective) => objective,
             Err(error) if error.code == ErrorCode::NonConvergence => {
                 synchronized_transaction.rollback();

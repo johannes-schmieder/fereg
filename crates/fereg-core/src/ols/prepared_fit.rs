@@ -1138,7 +1138,7 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
     frame: LinearSolveFrame<'a>,
     config: PreparedOlsFitConfig,
     draft: RetainedFiniteFitDraft<'_>,
-) -> Result<CertifiedPreparedOlsFit> {
+) -> Result<(CertifiedPreparedOlsFit, Vec<f64>)> {
     frame.validate_for(prepared)?;
     validate_config(prepared, config)?;
     let generated_columns = prepared.fit_model().columns.len();
@@ -1199,38 +1199,45 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
         within_residuals: Some(draft.residuals),
         standardized_within_is_reusable: false,
     };
+    let mut coefficients = build_coefficient_slots(prepared, &qr, &mut SystemFitReservation)?;
     let weights = frame.weights();
-    let mut raw_residuals = reserved_filled(
+    let mut finite_predictor = reserved_filled(
         &mut SystemFitReservation,
         prepared.fit_sample().n_active(),
         0.0_f64,
-        "unable to reserve retained weighted-linear raw residual",
+        "unable to reserve retained weighted-linear finite predictor",
     )?;
-    raw_residuals
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(row, residual)| -> Result<()> {
-            let mut value = frame.response()[row];
+    let numeric = super::prepared_rhs::NumericOlsColumns::bind_score_means(
+        prepared.fit_model(), prepared.fit_sample(),
+    )?;
+    if let Some(numeric) = numeric {
+        let mut selected = [(0, 0.); super::prepared_rhs::MAX_BOUND_NUMERIC_COLUMNS];
+        let mut count = 0;
+        for (generated, coefficient) in qr.generated_coefficients.iter().enumerate() {
+            if let Some(coefficient) = coefficient {
+                selected[count] = (generated, *coefficient);
+                count += 1;
+            }
+        }
+        numeric.add_selected_columns(&selected[..count], &mut finite_predictor)?;
+    } else if !crate::prepared_fit_view::add_generated_predictor(prepared, &coefficients, &mut finite_predictor)? {
+        finite_predictor.par_iter_mut().enumerate().try_for_each(|(row, target)| -> Result<()> {
+            let mut value = 0.;
             for (generated, coefficient) in qr.generated_coefficients.iter().enumerate() {
                 if let Some(coefficient) = coefficient {
-                    value =
-                        (-*coefficient).mul_add(prepared.fit_column_value(generated, row)?, value);
+                    value = coefficient.mul_add(prepared.fit_column_value(generated, row)?, value);
                 }
             }
-            if value.is_finite() {
-                *residual = value;
-                Ok(())
-            } else {
-                Err(invalid_data(
-                    "retained weighted-linear raw residual is not finite",
-                ))
-            }
+            if !value.is_finite() { return Err(invalid_data("retained finite predictor is not finite")); }
+            *target = value;
+            Ok(())
         })?;
+    }
     let bread = finalize_reported_bread_and_intercept(
         prepared,
         frame.response(),
         &mut qr,
-        Some(&mut raw_residuals),
+        None,
         weights,
         config.bread_tolerance,
         &mut SystemFitReservation,
@@ -1239,6 +1246,7 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
         None,
         None,
         Some(draft.raw_column_means),
+        Some(&finite_predictor),
     )?;
     let initial_absorbed_outcome_sum_of_squares = draft.normalized_initial_within_sum_of_squares
         * frame.bread_weight_scale().reference_weight_multiplier;
@@ -1284,10 +1292,17 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
             "retained weighted-linear score certificate did not pass",
         ));
     }
-    let coefficients = build_coefficient_slots(prepared, &qr, &mut SystemFitReservation)?;
+    // Bread installs only the deferred absorbed-intercept normalization.
+    // Preserve the already-built slot owner and refresh its reported fields.
+    for coefficient in &mut coefficients {
+        if let Some(generated) = coefficient.generated_column_index {
+            coefficient.status = qr.generated_statuses[generated];
+            coefficient.value = qr.generated_coefficients[generated];
+        }
+    }
     qr.kept.sort_unstable();
     qr.dropped.sort_unstable();
-    Ok(CertifiedPreparedOlsFit {
+    Ok((CertifiedPreparedOlsFit {
         independent_unit_residual_sum: None,
         additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
         coefficients,
@@ -1315,7 +1330,7 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
             effective_threads: config.execution.threads.resolved(),
             deterministic: config.execution.threads.deterministic,
         },
-    })
+    }, finite_predictor))
 }
 
 /// Canonical finite-plus-FE projection without covariance/report publication.
@@ -2516,6 +2531,7 @@ fn fit_with_controls_internal_mode_with_frame<
             raw_moments.as_ref(),
             retain_fast_score_cache.then_some(reference_mean_scales.as_slice()),
             None,
+            None,
         )
     };
     // A retained sandwich score cache is already live across both phases and
@@ -3240,6 +3256,7 @@ fn fit_with_controls_low_internal_with_frame<
         config.bread_tolerance,
         reservation,
         perturbations,
+        None,
         None,
         None,
         None,
@@ -5637,8 +5654,10 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
     raw_moments: Option<&RawMomentCache>,
     raw_column_scales: Option<&[f64]>,
     current_frame_means: Option<CurrentFrameColumnMeans<'_>>,
+    current_frame_predictor: Option<&[f64]>,
 ) -> Result<PreparedOlsBread> {
     if response.len() != prepared.fit_sample().n_active()
+        || current_frame_predictor.is_some_and(|values| values.len() != response.len())
         || raw_residuals
             .as_ref()
             .is_some_and(|residuals| residuals.len() != prepared.fit_sample().n_active())
@@ -5795,6 +5814,8 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
         // allocating and retaining a second observation-scale residual vector.
         let raw_residual_mean = if let Some(residuals) = raw_residuals.as_deref() {
             weighted_mean_slice(residuals, weights)?
+        } else if let Some(predictor) = current_frame_predictor {
+            weighted_mean_by(response.len(), weights, |row| Ok(response[row] - predictor[row]))?
         } else if let Some(cache) = raw_moments {
             cached_raw_residual_mean(prepared, qr, weights, cache)?
         } else {

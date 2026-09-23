@@ -1,7 +1,7 @@
 //! Concentrated Poisson steps after the canonical one-intercept-FE rank decision.
 //! Group effects are optimized analytically at every beta trial; the PPML owner
 //! still supplies independent outer and canonical strict/final certificates.
-use super::family::{means_from_eta, poisson_objective_from_eta, CompensatedSum};
+use super::family::{means_from_eta, CompensatedSum, PreparedPoissonInputs};
 use super::{PoissonObjective, PpmlConfig, PpmlIterationWorkspace, PpmlLineSearchAcceptance};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
@@ -632,8 +632,7 @@ impl ProfiledOneFe {
         &mut self,
         data: impl ProfiledDesign,
         design: &FeDesign,
-        y: &[f64],
-        q: &[f64],
+        inputs: &PreparedPoissonInputs<'_>,
         offset: &[f64],
         workspace: &mut PpmlIterationWorkspace,
         current: PoissonObjective,
@@ -655,7 +654,7 @@ impl ProfiledOneFe {
                 }
                 Err(e) => return Err(e),
             }
-            let objective = match poisson_objective_from_eta(y, &self.eta, &self.mean, q) {
+            let objective = match inputs.evaluate(&self.eta, &self.mean) {
                 Ok(value) => value,
                 Err(e) if e.code == ErrorCode::NonConvergence => {
                     step *= 0.5;

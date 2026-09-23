@@ -10,6 +10,119 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## PPML accepted-state products adopted; wide finite/inference work next — 2026-09-23
+
+The active objective remains **whole public PPML <=0.90 times scientifically
+comparable pinned stock fixest wherever practical**. This is a completed bounded
+implementation milestone, not completion of that objective. This opening
+supersedes the earlier next-step orders below.
+
+Adopt `acceptstate2`, based on `2c23a7ba`, under
+[ADR 0140](docs/adr/0140-ppml-accepted-state-products.md) and the
+[source-bound report](benchmarks/reports/development/ppml-accepted-state-local-2026-09-23/README.md).
+All **541 computational inputs** match plugin
+`aa3cbf99c229b7d7780c01a871225ff6684476dd8bf5b2251b2f127ab283fd11`.
+The archive was restored and **8,837 logical receipts** verified, SHA-256
+`87a2232119929a59fa0b810be1e06063dd838be825afa04303e4d1fdf8f3d0ba`.
+Builds, tests, diagnostics, benchmarks, audits and archive operations are terminal.
+No push or release. Earlier OLS, categorical and absorbed-slope algorithms remain.
+
+### Adopted mechanism, science and memory
+
+Each finalized PPML run borrows immutable outcome/prior/offset inputs and prepares
+log-outcome/log-Gamma terms once. Current means, Hessian weights, working responses
+and weighted geometry remain fresh. The composite final objective replay and null
+likelihood retain direct calculations. Canonical construction moves one original
+finite predictor from draft through session installation; its independent raw-
+residual mean and weighted-column-mean formula preserve intercept normalization.
+Implicit residual columns bind once per scan, and dense/implicit residual rows
+use disjoint parallel writes with unchanged scaled FMA order. Scratch stays
+sequential. Numeric and generated-term binding survive the move. No required
+check is removed or rescheduled, no tolerance changes, and one-shot OLS keeps its
+existing numerical route.
+
+The immutable terms cost **16*N bytes**, charged before allocation. The large low
+tracked peak rises 29,789,542 -> 30,773,022 bytes; modeled peak
+44,342,215 -> 45,325,255. The moved predictor replaces the old canonical raw-
+residual owner; it adds no projected N-by-K matrix. A one-byte optional-storage
+refusal changes scratch 0 -> 65,536 and passes its independent Poisson oracle.
+This is not physical-cap qualification or repair of historical memory failures.
+
+**495 distinct Rust tests**, ABI/panic containment, **14 licensed runs of 11
+fixtures**, nine small independent Python oracles, 180 PPML state checks, 60
+native pairs, 60 baseline/stock plus 60 direct candidate/stock checks and 13
+exact OLS comparisons pass. There are **206 passing benchmark applications**,
+plus six separate diagnostic fits. Three fixed-process warmed allocation audit
+configurations retain zero events/growth, stable capacities and cold/warm
+agreement. FW/PW, offsets, robust/cluster, generated/interactions, separation,
+slopes and OLS have focused oracle/control coverage.
+
+### Current opportunity scorecard
+
+Whole-command milliseconds, robust inference plus means. Five rotations for
+one-FE; three for PPML controls. Exact distributions and losses are in the report.
+
+| Case | Baseline | Current | Stock | Current/stock | 0.90 target |
+|---|---:|---:|---:|---:|---:|
+| Low one-FE N30720 K6 T4 | 51 | 46 | 26 | 1.769 | 23.4 |
+| Low one-FE N61440 K10 T4 | 105 | 94 | 54 | 1.741 | 48.6 |
+| Low one-FE N30720 K32 T4 | 127 | 116 | 120 | 0.967 | 108 |
+| Fast one-FE N61440 K10 T4 | 105 | 98 | 54 | 1.815 | 48.6 |
+| Fresh low N49152 K12 T4 | 96 | 85 | 53 | 1.604 | 47.7 |
+| Fresh low N16384 K48 T4 | 138 | 124 | 108 | 1.148 | 97.2 |
+| Fresh unbalanced low N49152 K10 T1 | 123 | 117 | 77 | 1.519 | 69.3 |
+| Fresh fast N49152 K12 T4 | 94 | 89 | 54 | 1.648 | 48.6 |
+| Fresh dense three-FE fast N30720 K6 T4 | 198 | 192 | 238 | 0.807 | 214.2 |
+| Fresh dense three-FE low, same shape | 356 | 337 | 235 | 1.434 | 211.5 |
+| Fresh two slope partitions low, same shape | 163 | 154 | 130 | 1.185 | 117 |
+| Fresh two slope partitions fast, same shape | 136 | 129 | 130 | 0.992 | 117 |
+
+All 30 larger multithread screen/fresh-low pairs improve. Fresh serial has four
+gains and a tie; fresh fast has one 1 ms loss. Small one-FE has two paired losses
+of 4/5 ms. All twelve PPML control pairs improve, but three rotations do not
+establish a family-wide lead. The generated-factor OLS control has an unexplained
++79 ms paired loss followed by -3 ms. Preserve it. Its separately declared five-
+pair unchanged-source recheck is 67/66 ms, with +1,+3,-6,0,-2 ms differences.
+Do not claim universal timing non-regression or discard the initial spike.
+
+### Next bounded implementation milestones
+
+1. **Share compatible current-weight finite products and improve wide PPML
+   inference.** K32 needs another 6.9% reduction to reach 108 ms. Its separate
+   candidate diagnostic still spends 16.420 ms in concentrated direction work
+   outside child spans, 11.081 in group refresh, 10.470 in canonical finite
+   moments and 9.313 in inference. The fresh K48 production inference marginal
+   is 25.629 ms, with 10.039 ms publication. Investigate a common centered finite
+   moment kernel for concentrated directions/canonical construction, and the
+   sandwich/inverse-publication work at these widths. Reuse only products with
+   valid current sample/weight/basis identity; retain independent final-Hessian,
+   score, objective, rank and reconstruction witnesses. Do not start another
+   likelihood-cache or grouped-row threshold-tuning loop.
+2. **Close low multi-FE and remaining slope checkpoint costs.** Use identical
+   frozen current-weight frames and whole-command spans on this artifact. Trace
+   duplicate canonical construction against the existing coefficient/Schur/joint
+   owners before introducing any new solver. Fast two-slope is now near stock
+   in this screen but still needs about 9.3% off current time to meet the target;
+   low three-FE remains a large loss. Protect multi-partition OLS and extend
+   fresh sparse, weak/disconnected, unbalanced, multi-slope, T8 and output controls.
+3. **Reduce public preparation/publication and small-fit overhead.** Narrow
+   large low still needs 48.3% off current whole-command time. Canonical work
+   alone will not close it. Current large-low phase marginals are plugin 77.500
+   ms, preparation 13.683, finite solve 12.529, strict/final 15.521 and publication
+   10.015; these are nested and must not be added. Profile uninstrumented public
+   work and matched stock phases before choosing the next ownership/pass change.
+4. **Confirm each family on fresh evidence.** Use >=5 rotations where margins
+   matter, independent oracles, explicit tails/losses and matched outputs/threads.
+   Keep scientific discrepancies unranked. At most two materially different
+   candidates per cost center before moving on. A useful smaller gain is not
+   completion while substantial measured opportunities remain.
+
+Seeds **202609342–343** are now consumed, in addition to 202609335–341. Preserve
+protected cycle seeds 202609211/212 and frozen 77/16/111 definitions. Static
+allocation drift, mixed-thread pool retirement, weighted constrained/nonretaining-
+CG failures, unresolved comparisons and SCC/Linux/Windows/physical-cap deferrals
+remain open. No SCC retry, stopped-campaign restart, qualification or release.
+
 ## Low one-FE grouped products adopted; accepted-state pipeline next — 2026-09-23
 
 The active objective remains **whole public PPML <=0.90 times scientifically

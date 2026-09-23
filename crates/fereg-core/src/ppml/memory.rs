@@ -10,7 +10,9 @@
 use std::mem::size_of;
 use std::time::{Duration, Instant};
 
-use super::family::{fill_poisson_working_state, means_from_eta, poisson_objective_from_eta};
+use super::family::{means_from_eta, PreparedPoissonInputs};
+#[cfg(test)]
+use super::family::{fill_poisson_working_state, poisson_objective_from_eta};
 use super::{
     PoissonBounds, PoissonObjective, PpmlCoefficientStatus, PpmlConfig, PpmlIterationReport,
 };
@@ -1397,7 +1399,8 @@ fn estimate_route(
     };
     let iteration_buffer_bytes = bytes_f64(checked_mul(
         n,
-        ITERATION_VECTOR_COUNT,
+        // Two immutable outcome terms live beside the eight mutable buffers.
+        ITERATION_VECTOR_COUNT + 2,
         "PPML reusable iteration vectors",
     )?)?;
     let coefficient_buffer_bytes = bytes_f64(checked_mul(
@@ -2773,6 +2776,7 @@ impl PpmlIterationWorkspace {
 
     /// Fill mean, Hessian weights, working response, and raw public score
     /// residuals without allocating.
+    #[cfg(test)]
     pub(crate) fn refresh_working_state(
         &mut self,
         outcome: &[f64],
@@ -2807,6 +2811,16 @@ impl PpmlIterationWorkspace {
             }
         }
         self.certify_steady_state_capacity()
+    }
+
+    pub(crate) fn refresh_prepared_working_state(
+        &mut self, inputs: &PreparedPoissonInputs<'_>, bounds: PoissonBounds,
+    ) -> Result<()> {
+        let outcome = inputs.outcome();
+        require_observation_lengths(self.eta.len(), &[outcome.len()], "PPML working state")?;
+        means_from_eta(&self.eta, bounds, &mut self.mean)?;
+        inputs.fill_working_state(&self.mean, &self.eta, &mut self.hessian_weights, &mut self.working_response)?;
+        self.refresh_score_residuals(outcome)
     }
 
     /// Reuse the working-response buffer for a Hessian-only final
@@ -2874,23 +2888,10 @@ impl PpmlIterationWorkspace {
     /// Evaluate the strict candidate directly in the reusable mean buffer
     /// without changing the accepted eta or coefficient state.
     pub(crate) fn evaluate_candidate_objective(
-        &mut self,
-        outcome: &[f64],
-        prior_weights: &[f64],
-        bounds: PoissonBounds,
+        &mut self, inputs: &PreparedPoissonInputs<'_>, bounds: PoissonBounds,
     ) -> Result<PoissonObjective> {
-        require_observation_lengths(
-            self.candidate_eta.len(),
-            &[outcome.len(), prior_weights.len()],
-            "PPML strict candidate objective",
-        )?;
         means_from_eta(&self.candidate_eta, bounds, &mut self.trial_mean)?;
-        let objective = poisson_objective_from_eta(
-            outcome,
-            &self.candidate_eta,
-            &self.trial_mean,
-            prior_weights,
-        )?;
+        let objective = inputs.evaluate(&self.candidate_eta, &self.trial_mean)?;
         self.certify_steady_state_capacity()?;
         Ok(objective)
     }
@@ -2915,9 +2916,10 @@ impl PpmlIterationWorkspace {
         current_objective: PoissonObjective,
         config: PpmlConfig,
     ) -> Result<PpmlLineSearchAcceptance> {
+        let offset = vec![0.; outcome.len()];
+        let inputs = PreparedPoissonInputs::new(outcome, prior_weights, &offset)?;
         self.accept_candidate_interruptible(
-            outcome,
-            prior_weights,
+            &inputs,
             current_objective,
             config,
             &mut || Ok(()),
@@ -2928,17 +2930,11 @@ impl PpmlIterationWorkspace {
     /// entry. The callback is invoked once before every backtracking trial.
     pub(crate) fn accept_candidate_interruptible(
         &mut self,
-        outcome: &[f64],
-        prior_weights: &[f64],
+        inputs: &PreparedPoissonInputs<'_>,
         current_objective: PoissonObjective,
         config: PpmlConfig,
         interrupt: &mut dyn FnMut() -> Result<()>,
     ) -> Result<PpmlLineSearchAcceptance> {
-        require_observation_lengths(
-            self.eta.len(),
-            &[outcome.len(), prior_weights.len()],
-            "PPML line search",
-        )?;
         let allowed = current_objective.deviance
             + config.objective_slack * current_objective.deviance.abs().max(1.0);
         let mut step = 1.0_f64;
@@ -2955,12 +2951,7 @@ impl PpmlIterationWorkspace {
                 }
                 Err(error) => return Err(error),
             }
-            match poisson_objective_from_eta(
-                outcome,
-                &self.trial_eta,
-                &self.trial_mean,
-                prior_weights,
-            ) {
+            match inputs.evaluate(&self.trial_eta, &self.trial_mean) {
                 Ok(objective) if objective.deviance <= allowed => {
                     self.accept_trial()?;
                     return Ok(PpmlLineSearchAcceptance {
