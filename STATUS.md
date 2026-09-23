@@ -10,6 +10,169 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Scratch inference accepted; plan to reach 0.90 times stock PPML — 2026-09-23
+
+The active objective is whole public PPML **at least 10% faster than comparable
+pinned stock fixest per case wherever achievable**. This checkpoint completes
+the running inference experiment and sets the next implementation milestones.
+It does not complete the objective. This opening supersedes older implementation
+orders, proposed mechanisms already adopted, and unused-seed entries below.
+
+Accept `infscan1`, based on `3295603f`, under
+[ADR 0135](docs/adr/0135-immutable-ppml-inference-scans.md) and the
+[source-bound report](benchmarks/reports/development/ppml-inference-scan-local-2026-09-23/README.md).
+All **537 computational inputs** match plugin
+`b4af5b56185bcd6e13d544e58e1ed90b75db3e71f3ca3c87e98d7a8bdcd5803c`.
+The immutable archive was restored and all **6,228 receipts** verified, SHA-256
+`d0915422b0c529d867a04ba6f32e695ded9d96f940ba40e7edea2cbfa45a7f1a`.
+
+Robust PPML inference now reads retained scratch through one immutable cursor
+per fixed row block. On N61440/K10, the isolated actual-meat kernel reduces
+positional reads **61440 -> 600** and T8 time **32.314 -> 1.378 ms**, preserving
+both meat matrices exactly. Public inference on larger development slopes falls
+**51.860 -> 1.574 ms**, whole-command time **403 -> 354 ms**. Fresh gains are
+**4.9–13.0%** in five low-mode cases; a sixth categorical case retains a **0.8%
+median loss** despite cheaper inference. Stop cursor tuning here.
+
+No new heap bank, N-by-K design, file or worker; each active block retains one
+8 KiB stack page under the existing runtime headroom. All changed low-mode
+tracked/modelled peaks match baseline. One excluded fast categorical attempt
+has a **463,312-byte** tracked peak increase; the model is unchanged and five
+identical-input follow-up pairs have matching peaks. No physical-cap claim.
+Row arithmetic, independent production/certificate meats, scientific policies,
+all final certificates and failure atomicity are unchanged. Clustered PPML and
+one-shot OLS keep their existing access paths.
+
+**390 distinct Rust tests**, actual-plugin ABI/panic checks and **11 licensed
+runs of eight fixtures** pass. Public evidence: **152 passing applications**,
+**136 PPML states**, **50 exact native PPML pairs**, **36 stock pairs**, **nine
+independent Poisson/Hessian checks**, and **eight exact OLS pairs**. No public
+failure, timeout, scientific discrepancy or detected timing contention.
+Fast one-FE's initial **102/105 ms** loss becomes **105/103** on five identical-
+input pairs; fast categorical **190/196.5** becomes **195/191**. Individual losses
+remain in both follow-ups. Preserve initial and follow-up distributions, and do
+not combine later native medians with earlier stock medians. No universal timing
+non-regression claim. OLS controls cover slopes, low categorical, generated
+factors and robust/full-output one-FE; licensed oracles cover unit/AW/FW/PW.
+
+### Current budgets and coverage
+
+Robust inference plus fitted means, three alternating rotations. Times are ms.
+The first five rows use development seed334, the rest fresh seed335. These are
+budgets on this artifact, not forecasts. Low versus ordinary stock is not a
+physical-memory-matched comparison. Full ranges and all losses are in the report.
+
+| Case | fereg | Stock | 0.90*stock | Further native reduction |
+| --- | ---: | ---: | ---: | ---: |
+| Low one FE N30720 K6 T4 | 87 | 26 | 23.4 | 73.1% |
+| Low two slope partitions N30720 K6 T4 | 169 | 120 | 108.0 | 36.1% |
+| Low unbalanced three-FE slopes N61440 K10 T8 | 354 | 230 | 207.0 | 41.5% |
+| Low three categorical FE N30720 K6 T4 | 556 | 243 | 218.7 | 60.7% |
+| Fast one FE N61440 K10 T4 | 105 | 55 | 49.5 | 52.9% |
+| Low one FE N61440 K10 T1 | 225 | 95 | 85.5 | 62.0% |
+| Low multiple slopes N23040 K6 T4 | 145 | 130 | 117.0 | 19.3% |
+| Low three categorical FE N46080 K8 T8 | 3112 | 10973 | 9875.7 | Target met here |
+| Low wider three-FE slopes N46080 K16 T8 | 448 | 1359 | 1223.1 | Target met here |
+| Low weak barbell slopes N7680 K4 T4 | 37 | 209 | 188.1 | Target met here |
+| Small low one FE N3840 K3 T1 | 20 | 11 | 9.9 | 50.5% |
+
+Current comparable losses above are established. Fresh hard categorical, wide
+slopes and weak connectivity already clear the target and are protection cases.
+Fast slope and sparse categorical stock gaps from prior reports need matched
+remeasurement on this artifact; current excluded native controls alone cannot
+refresh their stock ratios. Weighted, generated/no-FE, multiway inference and
+output-heavy PPML have partial science coverage but no broad current-source
+performance conclusion. Reference accuracy/separation/sample disagreements stay
+unranked. Prior OLS wins retain their original source scope.
+
+### Ambitious implementation plan
+
+1. **Joint categorical directions, with a bounded low-memory implementation.**
+   First refresh a small fast/low sparse and dense stock screen, then freeze a
+   representative ordinary and strict weight frame for each measured loss.
+   The low dense case spends 333.1 ms in projection and 164.9 ms in strict/final
+   work (partly nested), against a 337.3-ms public deficit. Compare two complete
+   candidates: direct finite-block elimination coupled to the categorical FE
+   operator, and the existing augmented LSMR with a full finite-block
+   preconditioner replacing its diagonal finite action. Reuse immutable graph
+   structure, rebuild current-weight numerical factors, and avoid projecting
+   every control independently in every ordinary step. Share the admitted dense
+   and streamed owners instead of removing fast-only guards. Extend the strict
+   Newton-witness/one-canonical-final pattern only after independently proving
+   the same current-weight acceptance. Protect disconnected/weak graphs and
+   current fast categorical wins. Choose one coherent engine and retire any
+   superseded path; do not accumulate another collection of benchmark guards.
+   This is the **next implementation milestone**, not another inference pass.
+
+2. **Carry one-FE concentration through the whole command and into low mode.**
+   Analytic profiling, borrowed design, strict/final product sharing and parallel
+   original-input scores already exist. They are the starting point. Build a
+   non-overlapping ledger of loading, initial rank, ordinary profiled steps,
+   accepted-state checks, final Hessian and publication. The fast screen still
+   needs 55.5 ms; even eliminating its 19.7-ms strict/final phase cannot suffice.
+   Use one accepted-state owner for compatible means, predictors, group totals
+   and moment consumers, with explicit sample/weight generations. Implement a
+   bounded streamed profiled route for low mode, avoiding a hidden N-by-K copy.
+   Redesign initial/final interfaces where they repeat construction; retain
+   independent original-input score, rank, reconstruction and Hessian witnesses.
+   Audit repeated objective work too: current family functions evaluate
+   log_gamma(y+1) per row per objective call. Measure before caching any immutable
+   outcome/prior-weight contribution; preserve independent final objective
+   replay and invalidate on sample or prior-weight changes. This is a hypothesis,
+   not measured attribution. Target a roughly twofold whole-command improvement
+   where the budgets require it, not another isolated inverse optimization.
+
+3. **Finish slope setup, warm starts and canonical boundaries.**
+   The coefficient Schur/PCG engine, current-weight group factors, symbolic
+   coupling, joint finite directions and low-memory tiles are already adopted.
+   Reprofile full public fast/low commands and identical frozen frames; count
+   geometry refreshes, observation scans, Krylov actions, reconstruction and
+   independent checks. Compare coherent coefficient warm starts/recycled
+   preconditioning with shared current-weight FE/finite product preparation.
+   A prior solution is only a guess. Retain fresh acceptance under changed
+   weights and a canonical rank/bread/Hessian boundary. Larger low slopes still
+   need 147 ms with inference only 1.6 ms, so setup and projection/finalization
+   must supply the next gain. Evaluate carryover to multi-partition OLS with
+   focused controls; do not restart closed serial weighted-slope tuning or the
+   rejected residual-extrapolation probe.
+
+4. **Close coverage and make automatic selection follow measured work.**
+   Use small adaptive screens for no-FE/small fits, wider/generated regressors,
+   multiple slopes, unbalanced/weak/disconnected groups, weight changes, rank
+   deficiency, T1/T4/T8, memory budgets, robust/clustered inference and requested
+   outputs. Include loading/setup and output costs explicitly. Match samples,
+   separation, objectives, inference, outputs and threads before ranking stock;
+   ordinary fixest weights are not a Stata FW inference oracle. Select routes
+   from topology, width, conditioning and admitted memory, supported by fresh
+   cases. Expand only around measured losses. Preserve the 77 primary, 16
+   holdout and 111 native-control definitions unchanged.
+
+5. **Turn promising wins into a defensible per-case 10% margin.**
+   A family is closed only when the target survives fresh baseline/candidate/
+   stock rotations and the relevant excluded-path controls, or when a concrete
+   measured cost explains the remaining limit. Use at least five decision pairs
+   when timing spread or timer resolution could change the 10% conclusion;
+   retain all distributions, failures and losses. Keep stock unmodified and
+   diagnostic instrumentation separate. Measure unavoidable independent-check
+   cost only after the computational path is efficient. Do not label unexplained
+   deficits as certification overhead or use aggregate wins to hide a loss.
+
+Each milestone admits at most two materially different initial designs, one
+public decision screen and predeclared fresh confirmation, followed by a coherent
+commit or documented rejection. Keep a cost budget: a 3-ms kernel cannot close a
+100-ms deficit. Move to a different mechanism when two candidates fail rather
+than extending threshold tuning. Smaller improvements remain acceptable when
+broad, reliable and cheap, but are not completion of this plan. Every change
+protects OLS, categorical PPML, weights, inference, saved outputs, allocation
+failure and transactional publication with proportionate independent checks.
+
+Seed **202609335 is consumed**; **202609336** is unused/reserved, not yet a
+predeclared case matrix. The mixed-thread allocation audit failure remains open;
+fixed-process successes do not repair it. Static allocation source drift,
+weighted constrained-fit/nonretaining-CG failures, historical comparator issues
+and SCC/platform/physical-cap deferrals remain unchanged. No push, release,
+qualification, SCC retry or stopped-campaign restart is authorized.
+
 ## Bounded low-memory joint slopes accepted; scratch inference next — 2026-09-23
 
 The active objective remains whole public PPML **<=0.90 times scientifically

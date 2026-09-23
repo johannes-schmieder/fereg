@@ -255,6 +255,12 @@ can overlap other stack frames under existing runtime/stack headroom. This
 does not claim a physical hard cap or complete stack accounting. Mutation ends
 the borrow before a new scan can start; no page survives a weight-frame update.
 
+Robust PPML inference uses the same immutable cursor per active fixed row block
+under [ADR 0135](adr/0135-immutable-ppml-inference-scans.md). Each block retains
+one 8 KiB stack page and its already reserved row buffer; production and
+certificate meats remain separate. There is no new heap bank or resident design.
+Dense sources, clustered PPML and one-shot OLS retain their prior row access.
+
 PPML may tighten generation-zero FE cardinalities using tuple-run bounds and
 bounded exact integer counts over borrowed inputs. This uses a fixed 256 KiB
 stack bitmap, at most 128 passes per source, and no observation-sized pre-admission

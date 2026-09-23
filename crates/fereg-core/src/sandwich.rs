@@ -50,11 +50,29 @@ impl SandwichReservation for SystemSandwichReservation {
 ///
 /// Implementations may borrow packed rows, reconstruct strided rows, or stream
 /// bounded scratch storage.  Parallel reducers additionally require `Copy +
-/// Sync`, which deliberately excludes mutable scratch-backed views.
+/// Sync`; each reduction block may still own an immutable scan cursor.
 pub(crate) trait SandwichDesign {
     fn nrows(&self) -> usize;
     fn dimension(&self) -> usize;
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()>;
+
+    /// A reducer owns its row buffer and order; a source may retain a bounded
+    /// reader for this immutable scan without sharing cursor state with workers.
+    fn visit_range(
+        &self,
+        rows: std::ops::Range<usize>,
+        output: &mut [f64],
+        mut visit: impl FnMut(usize, &mut [f64]) -> Result<()>,
+    ) -> Result<()>
+    where
+        Self: Sized,
+    {
+        for row in rows {
+            self.fill_row(row, output)?;
+            visit(row, output)?;
+        }
+        Ok(())
+    }
 }
 
 /// Estimator-provided scalar multiplying one final-design row.
@@ -501,8 +519,7 @@ where
             let remainder = nrows % chunks;
             let start = chunk * rows_per_chunk + chunk.min(remainder);
             let end = start + rows_per_chunk + usize::from(chunk < remainder);
-            for row in start..end {
-                design.fill_row(row, production_score)?;
+            design.visit_range(start..end, production_score, |row, production_score| {
                 let score = multipliers.score_pair(row)?;
                 for coordinate in 0..dimension {
                     let raw = production_score[coordinate];
@@ -534,7 +551,8 @@ where
                         }
                     }
                 }
-            }
+                Ok(())
+            })?;
             if production_meat.iter().all(|value| value.is_finite())
                 && certificate_meat.iter().all(|value| value.is_finite())
             {

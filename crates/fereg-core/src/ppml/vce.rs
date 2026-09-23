@@ -164,6 +164,25 @@ pub trait PpmlInferenceDesign {
     fn nrows(&self) -> usize;
     fn dimension(&self) -> usize;
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()>;
+
+    /// Visit an immutable contiguous block using caller-owned row storage.
+    /// Sources may keep bounded reader state local to this call; the callback
+    /// may overwrite the row after consuming its unscaled values.
+    fn visit_range(
+        &self,
+        rows: std::ops::Range<usize>,
+        output: &mut [f64],
+        mut visit: impl FnMut(usize, &mut [f64]) -> Result<()>,
+    ) -> Result<()>
+    where
+        Self: Sized,
+    {
+        for row in rows {
+            self.fill_row(row, output)?;
+            visit(row, output)?;
+        }
+        Ok(())
+    }
 }
 
 impl PpmlInferenceDesign for &DenseMatrix {
@@ -204,6 +223,16 @@ impl PpmlInferenceDesign for CertifiedLinearWithinDesign<'_> {
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
         SandwichDesign::fill_row(self, row, output)
     }
+
+    fn visit_range(
+        &self,
+        rows: std::ops::Range<usize>,
+        output: &mut [f64],
+        visit: impl FnMut(usize, &mut [f64]) -> Result<()>,
+    ) -> Result<()> {
+        SandwichDesign::visit_range(self, rows, output, visit)
+    }
+
 }
 
 /// Final strict-state inputs for PPML inference.
@@ -611,6 +640,16 @@ where
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
         self.source.fill_row(row, output)
     }
+
+    fn visit_range(
+        &self,
+        rows: std::ops::Range<usize>,
+        output: &mut [f64],
+        visit: impl FnMut(usize, &mut [f64]) -> Result<()>,
+    ) -> Result<()> {
+        self.source.visit_range(rows, output, visit)
+    }
+
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

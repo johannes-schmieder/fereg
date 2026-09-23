@@ -115,6 +115,11 @@ memory mode; a declined witness
 retains canonical checkpoint/retry. Fresh final acceptance remains mandatory.
 Other slope calls retain their existing projector. See [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md)
 and [ADR 0069](adr/0069-low-memory-ppml-categorical-projection.md).
+Final robust PPML inference borrows its certified design through fixed row-block
+visitors. Scratch-backed blocks own immutable scan cursors under
+[ADR 0135](adr/0135-immutable-ppml-inference-scans.md); numerical reductions and
+independent certificate storage remain unchanged. Clustered inference and
+one-shot OLS retain their existing access paths.
 After a fused response/design projection, retained within-column norms must
 also use the current weight frame. Strict rank and score checks consume those
 norms even when the preceding frozen-basis solve did not need them; advancing
