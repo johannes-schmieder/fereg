@@ -1,0 +1,13 @@
+{
+  "schema": "fereg-receipt-container-verification-v1",
+  "sha256": "2a008189fbe88c83557c0a072933e339eb13cf9725f04874fc313ad4121e8705",
+  "logical_files": 7794,
+  "distinct_payloads": 2064,
+  "bytes": 19744276,
+  "raw_licensed_logs_included": false,
+  "correction": "The original sealing guard rejected sanitized final-science/ licensed result JSON and controller status log names because they contain /licensed-. Reviewed those two exact names, validated every payload/hash, and finalized the already-created immutable container without rewriting it.",
+  "reviewed_paths": [
+    "final-science/licensed-candidate-results.json",
+    "final-science/licensed-controller.log"
+  ]
+}

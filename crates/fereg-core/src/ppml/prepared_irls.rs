@@ -1028,6 +1028,17 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             Err(error) => return Err(error),
         }
     } else { false };
+    // Prepared operators are independently optional after the numerical solver
+    // and its certificate bank. Refusal cannot evict either admitted mechanism.
+    let slope_coupling = if slope_coefficients {
+        match crate::fe::ReusableMapAbsorber::coefficient_coupling_bytes(&fe_design, projection_rhs) {
+            Ok(Some(bytes)) => memory_plan.reusable_slope_bytes.checked_add(bytes)
+                .is_some_and(|total| memory_plan.admit_reusable_slope(total)),
+            Ok(None) => false,
+            Err(error) if error.code == ErrorCode::Allocation => false,
+            Err(error) => return Err(error),
+        }
+    } else { false };
     // The retained bank cannot consume slack promised to another solver call.
     let solver_memory_budget = FeSolverMemoryBudget {
         execution_bytes: solver_execution_bytes
@@ -1090,7 +1101,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         session.enable_ppml_certificate_geometry()?;
     }
     if slope_coefficients {
-        session.enable_ppml_slope_coefficients(effective_threads, slope_certificate)?;
+        session.enable_ppml_slope_coefficients(effective_threads, slope_certificate, slope_coupling)?;
     }
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
     let initial_checkpoint_lsmr = use_initial_checkpoint_lsmr_accelerator(

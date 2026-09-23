@@ -7,10 +7,12 @@
 //! Iteration
 //! residuals only schedule reconstruction: acceptance uses freshly reconstructed
 //! observation residuals, followed by the caller's independent full certificate.
+mod coupling;
 use super::map::ReusableCertificateGeometry;
 use super::{FeCertificate, FeDesign, MapConfig};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
+use coupling::PreparedCoupling;
 use rayon::prelude::*;
 
 #[derive(Clone, Copy)]
@@ -28,6 +30,8 @@ struct Worker {
     direction: Vec<f64>,
     product: Vec<f64>,
     observations: Vec<f64>,
+    eliminated_scratch: Vec<f64>,
+    projection_max: f64,
     iterations: usize,
     checks: usize,
 }
@@ -38,6 +42,7 @@ pub(super) struct SlopeCoefficientWorkspace {
     columns: Vec<f64>,
     roots: Vec<f64>,
     certificate_groups: Vec<f64>,
+    coupling: Option<Box<PreparedCoupling>>,
     max_rhs: usize,
     coefficients: usize,
 }
@@ -63,6 +68,15 @@ fn filled<T: Clone>(n: usize, value: T) -> Result<Vec<T>> {
     result.resize(n, value);
     Ok(result)
 }
+fn eliminated_effect(design: &FeDesign) -> usize {
+    design
+        .effects()
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, effect)| effect.n_levels().saturating_mul(effect.channels()))
+        .map_or(0, |(i, _)| i)
+}
+
 fn dimensions(
     design: &FeDesign,
     rhs: usize,
@@ -73,15 +87,18 @@ fn dimensions(
     }
     let mut groups = 0_usize;
     let mut coefficients = 0_usize;
-    for effect in design.effects() {
+    let eliminated = eliminated_effect(design);
+    for (index, effect) in design.effects().iter().enumerate() {
         groups = groups
             .checked_add(effect.n_levels())
             .ok_or_else(allocation)?;
-        coefficients = effect
-            .n_levels()
-            .checked_mul(effect.channels())
-            .and_then(|n| coefficients.checked_add(n))
-            .ok_or_else(allocation)?;
+        if index != eliminated {
+            coefficients = effect
+                .n_levels()
+                .checked_mul(effect.channels())
+                .and_then(|n| coefficients.checked_add(n))
+                .ok_or_else(allocation)?;
+        }
     }
     let columns = design.nobs().checked_mul(rhs).ok_or_else(allocation)?;
     Ok((groups, coefficients, columns, threads.max(1).min(rhs)))
@@ -102,7 +119,13 @@ impl SlopeCoefficientWorkspace {
             + workers as u128 * std::mem::size_of::<Worker>() as u128
             + 8 * (columns as u128
                 + design.nobs() as u128
-                + workers as u128 * (4 * coefficients as u128 + design.nobs() as u128)))
+                + workers as u128
+                    * (4 * coefficients as u128
+                        + design.nobs() as u128
+                        + design
+                            .effects()
+                            .get(eliminated_effect(design))
+                            .map_or(0, |e| e.channels()) as u128)))
     }
 
     pub(super) fn new(design: &FeDesign, max_rhs: usize, threads: usize) -> Result<Self> {
@@ -115,6 +138,7 @@ impl SlopeCoefficientWorkspace {
         if groups.capacity() > group_count {
             return Err(allocation());
         }
+        let eliminated = eliminated_effect(design);
         let mut basis_start = 0;
         let mut coefficient_start = 0;
         for (effect_id, effect) in design.effects().iter().enumerate() {
@@ -127,7 +151,9 @@ impl SlopeCoefficientWorkspace {
                     channels: effect.channels(),
                 });
                 basis_start += effect.channels() * effect.level_index().members(level).len();
-                coefficient_start += effect.channels();
+                if effect_id != eliminated {
+                    coefficient_start += effect.channels();
+                }
             }
         }
         let mut workspaces = Vec::new();
@@ -144,6 +170,11 @@ impl SlopeCoefficientWorkspace {
                 direction: filled(coefficients, 0.)?,
                 product: filled(coefficients, 0.)?,
                 observations: filled(design.nobs(), 0.)?,
+                eliminated_scratch: filled(
+                    design.effects().get(eliminated).map_or(0, |e| e.channels()),
+                    0.,
+                )?,
+                projection_max: 0.,
                 iterations: 0,
                 checks: 0,
             });
@@ -154,6 +185,7 @@ impl SlopeCoefficientWorkspace {
             columns: filled(column_count, 0.)?,
             roots: filled(design.nobs(), 0.)?,
             certificate_groups: Vec::new(),
+            coupling: None,
             max_rhs,
             coefficients,
         })
@@ -163,6 +195,7 @@ impl SlopeCoefficientWorkspace {
         self.columns.capacity()
             + self.roots.capacity()
             + self.certificate_groups.capacity()
+            + self.coupling.as_ref().map_or(0, |c| c.elements())
             + self
                 .workers
                 .iter()
@@ -172,8 +205,74 @@ impl SlopeCoefficientWorkspace {
                         + w.direction.capacity()
                         + w.product.capacity()
                         + w.observations.capacity()
+                        + w.eliminated_scratch.capacity()
                 })
                 .sum::<usize>()
+    }
+
+    #[cfg(test)]
+    pub(super) fn coupling_preparations(&self) -> Option<usize> {
+        self.coupling.as_ref().map(|c| c.preparations)
+    }
+
+    #[cfg(test)]
+    pub(super) fn check_coupling_products(
+        &self,
+        design: &FeDesign,
+        geometry: &ReusableCertificateGeometry,
+    ) {
+        let coupling = self.coupling.as_ref().unwrap();
+        let eliminated = design
+            .effects()
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, e)| e.n_levels() * e.channels())
+            .unwrap()
+            .0;
+        let operator = Operator {
+            design,
+            geometry,
+            groups: &self.groups,
+            coefficients: self.coefficients,
+            eliminated,
+            coupling: None,
+        };
+        let mut values = vec![0.; design.nobs()];
+        let mut expected = vec![0.; self.coefficients];
+        let mut actual = vec![0.; self.coefficients];
+        let mut work = vec![0.; design.effects()[eliminated].channels()];
+        let mut used = 0;
+        for phase in 0..4 {
+            let direction: Vec<_> = (0..self.coefficients)
+                .map(|i| ((i * 19 + phase * 7) as f64).sin())
+                .collect();
+            operator.forward(&direction, &mut values);
+            operator.project_eliminated(&mut values, &mut work);
+            let curvature = dot(&values, &values);
+            operator.transpose(&values, &mut expected, false);
+            if let Some(candidate) = coupling.apply(&direction, &mut actual, &mut work) {
+                used += 1;
+                assert!((candidate - curvature).abs() < 1e-10 * curvature.max(1.));
+                let scale = norm(&expected).max(1.);
+                for (a, b) in actual.iter().zip(&expected) {
+                    assert!((a - b).abs() < 1e-11 * scale, "prepared product {a} != {b}");
+                }
+            }
+        }
+        assert!(used > 0, "test must exercise a prepared numerical operator");
+        let extra = Self::coupling_bytes(design, self.max_rhs).unwrap().unwrap();
+        assert!(extra >= coupling.allocated_bytes());
+    }
+
+    pub(super) fn coupling_bytes(design: &FeDesign, rhs: usize) -> Result<Option<u128>> {
+        PreparedCoupling::bytes(design, rhs)
+    }
+
+    pub(super) fn enable_coupling(&mut self, design: &FeDesign) -> Result<()> {
+        if let Some(coupling) = PreparedCoupling::new(design, &self.groups, self.max_rhs)? {
+            self.coupling = Some(Box::new(coupling));
+        }
+        Ok(())
     }
 
     pub(super) fn certificate_bytes(design: &FeDesign, rhs: usize) -> Result<u128> {
@@ -257,6 +356,7 @@ impl SlopeCoefficientWorkspace {
         values: &mut DenseMatrix,
         norms: &[f64],
         config: MapConfig,
+        reusable_geometry: bool,
     ) -> Result<usize> {
         let n = design.nobs();
         let rhs = values.ncols();
@@ -286,13 +386,14 @@ impl SlopeCoefficientWorkspace {
         let width = rhs / active_workers;
         let longer_blocks = rhs % active_workers;
         let split = n * (width + 1) * longer_blocks;
-        let eliminated = design
-            .effects()
-            .iter()
-            .enumerate()
-            .max_by_key(|(_, effect)| effect.n_levels() * effect.channels())
-            .map_or(0, |(i, _)| i);
+        let eliminated = eliminated_effect(design);
+        if !reusable_geometry {
+            if let Some(coupling) = self.coupling.as_mut() {
+                coupling.prepare(design, geometry, &self.groups);
+            }
+        }
         let operator = Operator {
+            coupling: self.coupling.as_deref(),
             design,
             geometry,
             groups: &self.groups,
@@ -330,6 +431,7 @@ impl SlopeCoefficientWorkspace {
 }
 
 struct Operator<'a> {
+    coupling: Option<&'a PreparedCoupling>,
     design: &'a FeDesign,
     geometry: &'a ReusableCertificateGeometry,
     groups: &'a [Group],
@@ -357,8 +459,9 @@ impl Operator<'_> {
             }
         }
     }
-    fn transpose(&self, values: &[f64], output: &mut [f64], all: bool) {
+    fn transpose(&self, values: &[f64], output: &mut [f64], all: bool) -> f64 {
         output.fill(0.);
+        let mut maximum = 0.0_f64;
         for (index, group) in self.groups.iter().enumerate() {
             if !all && group.effect == self.eliminated {
                 continue;
@@ -366,6 +469,7 @@ impl Operator<'_> {
             let rows = self.design.effects()[group.effect]
                 .level_index()
                 .members(group.level);
+            let mut square = 0.0_f64;
             for basis in 0..self.geometry.ranks[index] {
                 let q =
                     &self.geometry.basis[group.basis_start + basis * rows.len()..][..rows.len()];
@@ -373,9 +477,24 @@ impl Operator<'_> {
                 for (&row, &q) in rows.iter().zip(q) {
                     value = q.mul_add(values[row], value);
                 }
-                output[group.coefficient_start + basis] = value;
+                if group.effect != self.eliminated {
+                    output[group.coefficient_start + basis] = value;
+                }
+                if all {
+                    square = value.mul_add(value, square);
+                }
+            }
+            if all {
+                // Nonfinite eliminated moments must fail even though they no
+                // longer occupy the remaining-coordinate residual vector.
+                maximum = maximum.max(if square.is_finite() {
+                    square.sqrt()
+                } else {
+                    f64::INFINITY
+                });
             }
         }
+        maximum
     }
     fn project_eliminated(&self, values: &mut [f64], scratch: &mut [f64]) {
         for (index, group) in self.groups.iter().enumerate() {
@@ -392,30 +511,17 @@ impl Operator<'_> {
                 for (&row, &q) in rows.iter().zip(q) {
                     value = q.mul_add(values[row], value);
                 }
-                scratch[group.coefficient_start + basis] = value;
+                scratch[basis] = value;
             }
             for (local, &row) in rows.iter().enumerate() {
                 let mut value = 0.;
                 for basis in 0..self.geometry.ranks[index] {
                     value = self.geometry.basis[group.basis_start + basis * rows.len() + local]
-                        .mul_add(scratch[group.coefficient_start + basis], value);
+                        .mul_add(scratch[basis], value);
                 }
                 values[row] -= value;
             }
         }
-    }
-    fn zero_eliminated(&self, values: &mut [f64]) {
-        for group in self.groups {
-            if group.effect == self.eliminated {
-                values[group.coefficient_start..group.coefficient_start + group.channels].fill(0.);
-            }
-        }
-    }
-    fn local_max(&self, coefficients: &[f64]) -> f64 {
-        self.groups
-            .iter()
-            .map(|g| norm(&coefficients[g.coefficient_start..g.coefficient_start + g.channels]))
-            .fold(0., f64::max)
     }
 }
 fn dot(left: &[f64], right: &[f64]) -> f64 {
@@ -423,6 +529,7 @@ fn dot(left: &[f64], right: &[f64]) -> f64 {
         .zip(right)
         .fold(0., |sum, (&a, &b)| a.mul_add(b, sum))
 }
+#[cfg(test)]
 fn norm(values: &[f64]) -> f64 {
     dot(values, values).sqrt()
 }
@@ -433,16 +540,17 @@ impl Worker {
         for (residual, &original) in self.observations.iter_mut().zip(original) {
             *residual = original - *residual;
         }
-        op.project_eliminated(&mut self.observations, &mut self.product);
-        op.transpose(&self.observations, &mut self.residual, true);
+        op.project_eliminated(&mut self.observations, &mut self.eliminated_scratch);
+        self.projection_max = op.transpose(&self.observations, &mut self.residual, true);
         self.checks += 1;
         self.observations.iter().all(|x| x.is_finite())
             && self.residual.iter().all(|x| x.is_finite())
+            && self.projection_max.is_finite()
     }
     fn solve(&mut self, op: &Operator<'_>, original: &mut [f64], config: MapConfig) -> Result<()> {
         self.coefficients.fill(0.);
         self.observations.copy_from_slice(original);
-        op.project_eliminated(&mut self.observations, &mut self.product);
+        op.project_eliminated(&mut self.observations, &mut self.eliminated_scratch);
         op.transpose(&self.observations, &mut self.residual, false);
         self.direction.copy_from_slice(&self.residual);
         let mut square = dot(&self.residual, &self.residual);
@@ -451,27 +559,38 @@ impl Worker {
                 if !self.reconstruct(op, original) {
                     return Err(invalid());
                 }
-                if op.local_max(&self.residual) <= config.tolerance * 0.5 {
+                if self.projection_max <= config.tolerance * 0.5 {
                     original.copy_from_slice(&self.observations);
                     self.iterations = self.iterations.max(iteration);
                     return Ok(());
                 }
                 // A recurrence diagnostic never certifies. Replace drifted
                 // moments with the fresh residual and restart the direction.
-                op.zero_eliminated(&mut self.residual);
                 self.direction.copy_from_slice(&self.residual);
                 square = dot(&self.residual, &self.residual);
             }
             if iteration == config.max_iterations {
                 break;
             }
-            op.forward(&self.direction, &mut self.observations);
-            op.project_eliminated(&mut self.observations, &mut self.product);
-            let curvature = dot(&self.observations, &self.observations);
+            let curvature = match op.coupling.and_then(|c| {
+                c.apply(
+                    &self.direction,
+                    &mut self.product,
+                    &mut self.eliminated_scratch,
+                )
+            }) {
+                Some(curvature) => curvature,
+                None => {
+                    op.forward(&self.direction, &mut self.observations);
+                    op.project_eliminated(&mut self.observations, &mut self.eliminated_scratch);
+                    let curvature = dot(&self.observations, &self.observations);
+                    op.transpose(&self.observations, &mut self.product, false);
+                    curvature
+                }
+            };
             if !curvature.is_finite() || curvature <= 0. || !square.is_finite() {
                 return Err(invalid());
             }
-            op.transpose(&self.observations, &mut self.product, false);
             let step = square / curvature;
             for j in 0..op.coefficients {
                 self.coefficients[j] = step.mul_add(self.direction[j], self.coefficients[j]);

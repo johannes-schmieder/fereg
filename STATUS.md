@@ -10,6 +10,117 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Symbolic PPML coupling accepted; broader target remains active — 2026-09-23
+
+The active objective remains public PPML runtime at most **0.90 times scientifically
+comparable pinned stock fixest** wherever reasonably achievable, while protecting
+OLS and scientific/transaction/memory contracts. This checkpoint completes the
+prepared-operator successor, not that broader objective. The current implementation
+sequence below supersedes older historical next-step entries.
+
+The [source-bound report](benchmarks/reports/development/ppml-symbolic-coupling-local-2026-09-23/README.md)
+and [ADR 0126](docs/adr/0126-ppml-symbolic-coupling.md) accept `slsymbol2`, based on
+`a2147baf`. All **532 computational inputs** match plugin
+`f86fd3e0b9864874df5a5700233e7e5a1b9bce347181d4772e07982db6159740`.
+The restored immutable container verifies **7,794 logical files**, SHA-256
+`2a008189fbe88c83557c0a072933e339eb13cf9725f04874fc313ad4121e8705`.
+
+Prepare symbolic group-pair topology and observation mappings once; refill only
+current-weight numeric blocks. Compact execution avoids the rejected dense D
+bank; small systems may form explicit Schur under the unchanged predeclared
+structural work margin. Four CG vectors now store only remaining coordinates,
+with one eliminated-group scratch bank per worker. Original-RHS reconstruction,
+all-partition moments and full fresh acceptance remain authoritative. Existing
+sample/topology/weight generations govern reuse; errors revoke it. The operator
+is optional after numerical-solver/certificate admission. No public OLS or
+categorical PPML routing, rank/tolerance/weight/sample/DoF/separation policy changes.
+
+Fresh seed319 baseline/candidate/strict-stock medians (ms):
+
+| PPML case | Baseline | Candidate | Stock | Candidate/stock |
+| --- | ---: | ---: | ---: | ---: |
+| Two slope partitions N30720 K6 T4 | 189 | 161 | 118 | 1.36 |
+| Unbalanced three FE N30720 K6 T4 | 191 | 178 | 113 | 1.58 |
+| Larger unbalanced N61440 K10 T8 | 376 | 367 | 226 | 1.62 |
+| Two slope partitions N30720 K6 T1 | 292 | 208 | 319 | 0.65 |
+| Unbalanced native low memory | 393 | 358 | 119 | 3.01 |
+| Multiple slopes N7680 K6 T4 | 61 | 55 | 55 | 1.00 |
+| Four FE N7680 K6 T4 | 99 | 67 | 207 | 0.32 |
+
+All large-cell public-state/pair checks pass. Native gains span **2.4–32.3%**,
+with **0.19–4.30 MB** extra tracked peak. Serial and four-FE cell medians clear
+the target; the others do not. Native low versus ordinary stock is not budget
+matched. A fresh smaller two-partition stock pilot fails four independent
+covariance coordinates (maximum tolerance ratio 1.33073) and stays unranked;
+this limits family-level claims despite the passing large pairs. Earlier stock
+multiple-slope discrepancies are not resolved by another seed's success.
+
+**36 distinct Rust tests**, actual-plugin ABI/panic checks, six frozen T1/T4
+independent WLS/span checks, all six final native Poisson/Hessian pilots and three
+licensed fixtures pass. Across the two symbolic candidates, all **193 public
+applications** pass with no timeout/overlap/monitor error; the stock scientific
+failure remains visible. All **29 excluded native OLS/categorical pairs** retain
+exact exports. Small categorical median losses remain recorded. A 51/54-ms factor
+OLS loss did not reproduce in five further pairs, 53/51 ms. Original and corrected
+controller/sealing failures are preserved. The report gives distributions and
+memory/validation limits; no full qualification was run.
+
+On the identical wide diagnostic input, numeric preparation falls from the
+rejected operator's **48.62 to 11.28 ms**, plus **2.01 ms** once for topology.
+All 540 products use the prepared operator. Absorption still costs about 150 ms,
+including 19.7 QR, 19.3 fresh certificates and 11.3 prepared products setup.
+A final fresh low-memory call spends **114.8 ms finite solving** and **70.6 ms
+strict-final work**. These measured costs, rather than another cache threshold,
+should drive the next changes.
+
+### Next bounded implementation sequence
+
+1. **Dedicated one-categorical-FE profiled Poisson.** Current fresh control is
+   149/56 ms candidate/stock; the 0.90 target is about 50 ms, requiring roughly
+   66% less native public time. Verify the group-intercept elimination route in
+   exact current source, then prototype analytic group normalization for each
+   finite-beta iterate, centered gradient/Hessian accumulation and a safeguarded
+   finite-dimensional Newton solve. Retain the canonical sample/separation/rank
+   boundary and independent current-state strict/final-Hessian acceptance.
+   Compare complete preparation, iteration, verification and output costs. This
+   is the next subsystem; do not resume tuning the prepared work selector.
+2. **Low-memory finite and strict solving.** Profile scratch reads, QR/moments,
+   standardization and repeated scans on the new baseline. Implement a bounded
+   streamed/block finite solve and reuse valid same-frame work without a hidden
+   resident N-by-K copy. The present 358/119-ms gap needs about 70% reduction to
+   clear 0.90; reducing projection alone cannot deliver it.
+3. **Outer/strict/final work sharing and slope RHS execution.** Separate required
+   independent certificates from duplicate construction or loading. Preserve
+   fresh final state/Hessian authority while sharing generation-valid products.
+   For remaining slope costs, test RHS block application with individual stopping
+   and cheaper reconstruction organization. The current T4/T8 losses still need
+   roughly 34–45% reduction for 0.90, so demand a whole-command cost budget before
+   another implementation. Do not recycle rejected residual extrapolation.
+4. **Categorical multi-FE routing.** Degree-six two FE is 233/138 ms; unbalanced
+   three FE is 183/115. Compare coefficient/Schur and current LSMR organization on
+   frozen weights; retain the already competitive dense-three-FE control (192/249).
+   Use topology/RHS/memory evidence, not design labels, for any route change.
+5. **Broaden practical coverage and protect shared work.** Extend bounded cases
+   adaptively to larger N, wider/generated controls, weights, cluster inference,
+   saved effects, difficult connectivity/rank and tight budgets. Decompose
+   fit-only/inference/output/loading costs and remove remaining repeated passes.
+   A shared multipartition OLS adapter is allowed only after independent OLS
+   oracles and current controls demonstrate benefit; preserve closed serial
+   weighted-slope tuning and the frozen 77/16/111 definitions.
+
+Each milestone must freeze current baseline science/timing, set an operation and
+memory hypothesis, implement one coherent change, pass independent/boundary tests,
+measure alternating baseline/candidate/stock rotations, confirm on predeclared
+fresh inputs, then commit or explicitly reject. Publish every loss/discrepancy and
+move subsystems when remaining gains are small or inconsistent. Target 0.90 per
+comparable cell, with distributions; no pooled win rate substitutes for it.
+
+Seeds **202609318–202609320 are consumed**; **202609321 is next unused**.
+Static allocation inventory drift, weighted constrained-fit failures, generic
+nonretaining-CG instability, earlier comparator discrepancies, hidden receipt/
+factor provenance issues and Linux/SCC/physical-cap deferrals remain open.
+No push, release, SCC authentication retry or stopped campaign restart occurred.
+
 ## Prepared PPML coupling integration rejected — 2026-09-23
 
 The full implementation goal remains active: public PPML at most **0.90 times

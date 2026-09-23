@@ -1817,7 +1817,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
     }
 
-    pub(crate) fn enable_ppml_slope_coefficients(&mut self, threads: usize, parallel_certificate: bool) -> Result<()> {
+    pub(crate) fn enable_ppml_slope_coefficients(&mut self, threads: usize, parallel_certificate: bool, prepared_coupling: bool) -> Result<()> {
         let Some(ReusableLinearMapProjector::Generic(projector)) = self.fe_projector.as_mut()
         else {
             return Err(invalid_argument(
@@ -1834,6 +1834,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         if parallel_certificate {
             match projector.enable_coefficient_certificates() {
+                Ok(()) => {}
+                Err(error) if error.code == ErrorCode::Allocation => {}
+                Err(error) => return Err(error),
+            }
+        }
+        if prepared_coupling {
+            match projector.enable_coefficient_coupling() {
                 Ok(()) => {}
                 Err(error) if error.code == ErrorCode::Allocation => {}
                 Err(error) => return Err(error),

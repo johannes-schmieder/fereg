@@ -380,6 +380,20 @@ impl ReusableMapAbsorber {
         self.certificate_geometry.is_some()
     }
 
+    pub(crate) fn coefficient_coupling_bytes(design: &FeDesign, rhs: usize) -> Result<Option<u128>> {
+        super::slope_coefficients::SlopeCoefficientWorkspace::coupling_bytes(design, rhs)
+    }
+
+    pub(crate) fn enable_coefficient_coupling(&mut self) -> Result<()> {
+        if let Some(solver) = self.coefficient_solver.as_mut() {
+            solver.enable_coupling(&self.design)?;
+            if let Some(geometry) = self.certificate_geometry.as_mut() {
+                geometry.generation = None;
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn coefficient_certificate_bytes(design: &FeDesign, rhs: usize) -> Result<u128> {
         super::slope_coefficients::SlopeCoefficientWorkspace::certificate_bytes(design, rhs)
     }
@@ -564,6 +578,7 @@ impl ReusableMapAbsorber {
                 &mut values,
                 &self.reference_norms[..rhs],
                 config,
+                reusable_geometry,
             )?;
             let certificate =
                 self.certify(&values, weights, rhs, config.tolerance, &mut geometry_valid)?;
@@ -1328,111 +1343,126 @@ mod tests {
                     effects.push(EffectTerm::new(g3, 4, true, vec![]).unwrap());
                 }
                 let design = FeDesign::new(rows, effects).unwrap();
-                let mut reference: Option<DenseMatrix> = None;
-                for threads in [1, 4] {
-                    let pool = rayon::ThreadPoolBuilder::new()
-                        .num_threads(threads)
-                        .build()
-                        .unwrap();
-                    let mut solver = ReusableMapAbsorber::new(design.clone(), 7).unwrap();
-                    solver.enable_certificate_geometry().unwrap();
-                    solver.enable_coefficient_solver(threads).unwrap();
-                    let capacity = solver.capacities();
-                    assert!(ReusableMapAbsorber::coefficient_solver_bytes(
-                        &design,
-                        usize::MAX,
-                        threads
-                    )
-                    .is_err());
-                    for (generation, rhs) in [7, 1, 3, 7].into_iter().enumerate() {
-                        let mut values = DenseMatrix::zeros(rows, rhs).unwrap();
-                        let mut expected = DenseMatrix::zeros(rows, rhs).unwrap();
-                        let mut weights = Vec::new();
-                        let jw: Vec<_> = (0..6)
-                            .map(|j| 0.4 + j as f64 * 0.3 + generation as f64)
-                            .collect();
-                        let mean = jw
-                            .iter()
-                            .enumerate()
-                            .map(|(j, w)| j as f64 * w)
-                            .sum::<f64>()
-                            / jw.iter().sum::<f64>();
-                        let scale = [1., 1., 1e-60, 1e60][generation];
-                        let mut row = 0;
-                        for component in 0..2 {
-                            for i in 0..8 {
-                                for j in 0..6 {
-                                    for t in 0..2 {
-                                        let sign = if t == 0 { -1. } else { 1. };
-                                        let tw = if t == 0 { 0.5 } else { 2. };
-                                        weights.push(
-                                            scale
-                                                * (0.2 + i as f64 + generation as f64)
-                                                * jw[j]
-                                                * tw,
-                                        );
-                                        let remainder =
-                                            (i as f64 + 1.).sin() * (j as f64 - mean) * sign / tw;
-                                        let fitted = if intercept {
-                                            (i * i + component) as f64
-                                        } else {
-                                            0.
-                                        } + (i as f64).sin() * sign
-                                            + (j as f64).cos()
-                                            + j as f64 * i as f64 / 8.
-                                            + if third { t as f64 * 0.31 } else { 0. };
-                                        for col in 0..rhs {
-                                            let c = (col + 1) as f64;
-                                            expected[(row, col)] = remainder / c;
-                                            values[(row, col)] = fitted * c + remainder / c;
+                for prepared_coupling in [false, true] {
+                    let mut reference: Option<DenseMatrix> = None;
+                    for threads in [1, 4] {
+                        let pool = rayon::ThreadPoolBuilder::new()
+                            .num_threads(threads)
+                            .build()
+                            .unwrap();
+                        let mut solver = ReusableMapAbsorber::new(design.clone(), 7).unwrap();
+                        solver.enable_certificate_geometry().unwrap();
+                        solver.enable_coefficient_solver(threads).unwrap();
+                        if prepared_coupling {
+                            solver.enable_coefficient_coupling().unwrap();
+                        }
+                        let capacity = solver.capacities();
+                        assert!(ReusableMapAbsorber::coefficient_solver_bytes(
+                            &design,
+                            usize::MAX,
+                            threads
+                        )
+                        .is_err());
+                        for (generation, rhs) in [7, 1, 3, 7].into_iter().enumerate() {
+                            let mut values = DenseMatrix::zeros(rows, rhs).unwrap();
+                            let mut expected = DenseMatrix::zeros(rows, rhs).unwrap();
+                            let mut weights = Vec::new();
+                            let jw: Vec<_> = (0..6)
+                                .map(|j| 0.4 + j as f64 * 0.3 + generation as f64)
+                                .collect();
+                            let mean = jw
+                                .iter()
+                                .enumerate()
+                                .map(|(j, w)| j as f64 * w)
+                                .sum::<f64>()
+                                / jw.iter().sum::<f64>();
+                            let scale = [1., 1., 1e-60, 1e60][generation];
+                            let mut row = 0;
+                            for component in 0..2 {
+                                for i in 0..8 {
+                                    for j in 0..6 {
+                                        for t in 0..2 {
+                                            let sign = if t == 0 { -1. } else { 1. };
+                                            let tw = if t == 0 { 0.5 } else { 2. };
+                                            weights.push(
+                                                scale
+                                                    * (0.2 + i as f64 + generation as f64)
+                                                    * jw[j]
+                                                    * tw,
+                                            );
+                                            let remainder =
+                                                (i as f64 + 1.).sin() * (j as f64 - mean) * sign / tw;
+                                            let fitted = if intercept {
+                                                (i * i + component) as f64
+                                            } else {
+                                                0.
+                                            } + (i as f64).sin() * sign
+                                                + (j as f64).cos()
+                                                + j as f64 * i as f64 / 8.
+                                                + if third { t as f64 * 0.31 } else { 0. };
+                                            for col in 0..rhs {
+                                                let c = (col + 1) as f64;
+                                                expected[(row, col)] = remainder / c;
+                                                values[(row, col)] = fitted * c + remainder / c;
+                                            }
+                                            row += 1;
                                         }
-                                        row += 1;
                                     }
                                 }
                             }
-                        }
-                        let norms = weighted_column_norms(&values, &weights).unwrap();
-                        let result = pool
-                            .install(|| {
-                                solver.absorb(
-                                    &weights,
-                                    values,
-                                    MapConfig {
-                                        tolerance: 1e-12,
-                                        ..MapConfig::default()
-                                    },
-                                    false,
-                                )
-                            })
-                            .unwrap();
-                        for (&a, &e) in result
-                            .residualized()
-                            .as_slice()
-                            .iter()
-                            .zip(expected.as_slice())
-                        {
+                            let norms = weighted_column_norms(&values, &weights).unwrap();
+                            let result = pool
+                                .install(|| {
+                                    solver.absorb(
+                                        &weights,
+                                        values,
+                                        MapConfig {
+                                            tolerance: 1e-12,
+                                            ..MapConfig::default()
+                                        },
+                                        false,
+                                    )
+                                })
+                                .unwrap();
+                            for (&a, &e) in result
+                                .residualized()
+                                .as_slice()
+                                .iter()
+                                .zip(expected.as_slice())
+                            {
+                                assert!(
+                                    (a - e).abs() < 2e-8,
+                                    "generation={generation}, threads={threads}: {a} != {e}"
+                                );
+                            }
                             assert!(
-                                (a - e).abs() < 2e-8,
-                                "generation={generation}, threads={threads}: {a} != {e}"
+                                certify_residuals_with_reference_norms(
+                                    &design,
+                                    &weights,
+                                    result.residualized(),
+                                    &norms,
+                                    1e-12
+                                )
+                                .unwrap()
+                                .passed
                             );
-                        }
-                        assert!(
-                            certify_residuals_with_reference_norms(
-                                &design,
-                                &weights,
-                                result.residualized(),
-                                &norms,
-                                1e-12
-                            )
-                            .unwrap()
-                            .passed
-                        );
-                        assert_eq!(capacity, solver.capacities());
-                        if generation == 3 {
-                            if let Some(prior) = &reference {
-                                assert_eq!(prior, result.residualized());
-                            } else {
-                                reference = Some(result.residualized().clone());
+                            assert_eq!(capacity, solver.capacities());
+                            if prepared_coupling {
+                                solver
+                                    .coefficient_solver
+                                    .as_ref()
+                                    .unwrap()
+                                    .check_coupling_products(
+                                        solver.design(),
+                                        solver.certificate_geometry.as_ref().unwrap(),
+                                    );
+                            }
+                            if generation == 3 {
+                                if let Some(prior) = &reference {
+                                    assert_eq!(prior, result.residualized());
+                                } else {
+                                    reference = Some(result.residualized().clone());
+                                }
                             }
                         }
                     }
@@ -1475,6 +1505,7 @@ mod tests {
         assert!(owner.enable_coefficient_solver(2).is_err());
         owner.enable_certificate_geometry().unwrap();
         owner.enable_coefficient_solver(2).unwrap();
+        owner.enable_coefficient_coupling().unwrap();
         let capacity = owner.capacities();
         assert!(owner
             .absorb(
@@ -1588,6 +1619,10 @@ mod tests {
             }
         } else {
             absorber.enable_coefficient_solver(threads).unwrap();
+            absorber.enable_coefficient_certificates().unwrap();
+            if std::env::var_os("FEREG_SLOPE_COUPLING").is_some() {
+                absorber.enable_coefficient_coupling().unwrap();
+            }
         }
         let construction = started.elapsed().as_secs_f64();
         let started = Instant::now();
@@ -1652,9 +1687,11 @@ mod tests {
         cached.enable_certificate_geometry().unwrap();
         cached.enable_coefficient_solver(1).unwrap();
         cached.enable_coefficient_certificates().unwrap();
+        cached.enable_coefficient_coupling().unwrap();
         let mut fresh = ReusableMapAbsorber::new(design, 3).unwrap();
         fresh.enable_certificate_geometry().unwrap();
         fresh.enable_coefficient_solver(1).unwrap();
+        fresh.enable_coefficient_coupling().unwrap();
         let capacities = cached.capacities();
         let mut generation = MapGeometryGeneration {
             sample: 1,
@@ -1696,6 +1733,7 @@ mod tests {
             let geometry = cached.certificate_geometry.as_ref().unwrap();
             assert_eq!(geometry.generation, Some(generation));
             assert_eq!(geometry.preparations, step / 2 + 1);
+            assert_eq!(cached.coefficient_solver.as_ref().unwrap().coupling_preparations(), Some(step / 2 + 1));
             if step == 5 {
                 values[(0, 0)] = f64::NAN;
                 assert!(cached
@@ -1725,6 +1763,7 @@ mod tests {
                     cached.certificate_geometry.as_ref().unwrap().preparations,
                     4
                 );
+                assert_eq!(cached.coefficient_solver.as_ref().unwrap().coupling_preparations(), Some(4));
                 cached
                     .absorb(&weights, zeros, MapConfig::default(), false)
                     .unwrap();
@@ -1736,6 +1775,7 @@ mod tests {
                     cached.certificate_geometry.as_ref().unwrap().preparations,
                     5
                 );
+                assert_eq!(cached.coefficient_solver.as_ref().unwrap().coupling_preparations(), Some(5));
             }
         }
     }

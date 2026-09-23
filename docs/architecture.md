@@ -89,8 +89,13 @@ PPML with one through three categorical intercept effects can reuse the
 categorical projector in both memory modes. Fast storage fuses changing-response
 and retained-design projection; low storage projects bounded scratch blocks and
 the response separately. One FE needs no accelerator matrices. Current-weight
-reference scales and independent certificates remain authoritative; slope routes
-retain their generic projector. See [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md)
+reference scales and independent certificates remain authoritative. Publication
+PPML multipartition slopes in the MAP family may instead use the independently
+certified coefficient Schur owner, with generation-bound weighted QR and optional
+symbolic group-pair coupling under [ADR 0123](adr/0123-ppml-coefficient-schur-slopes.md),
+[ADR 0124](adr/0124-ppml-frame-geometry-and-parallel-certificates.md), and
+[ADR 0126](adr/0126-ppml-symbolic-coupling.md). Other slope calls retain their
+existing projector. See [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md)
 and [ADR 0069](adr/0069-low-memory-ppml-categorical-projection.md).
 After a fused response/design projection, retained within-column norms must
 also use the current weight frame. Strict rank and score checks consume those
