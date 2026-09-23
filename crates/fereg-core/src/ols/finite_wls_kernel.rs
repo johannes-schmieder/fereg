@@ -15,6 +15,7 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::BorrowedMapWeights;
 
+use super::implicit_centered::ImplicitCenteredView;
 use super::prepared_scratch::{PreparedOlsScratch, PreparedOlsScratchReader};
 
 /// One bounded positional read per narrow row tile. Wider rows retain their
@@ -55,6 +56,15 @@ pub(super) enum FixedBlockMomentSource<'a> {
         solver_weight_divisor: f64,
         column_scales: Option<&'a [f64]>,
     },
+    RetainedImplicit {
+        values: ImplicitCenteredView<'a>,
+        selected_columns: Option<&'a [usize]>,
+        response: &'a [f64],
+        weights: BorrowedMapWeights<'a>,
+        solver_weight_divisor: f64,
+        column_scales: Option<&'a [f64]>,
+    },
+
 }
 
 impl FixedBlockMomentSource<'_> {
@@ -63,6 +73,7 @@ impl FixedBlockMomentSource<'_> {
             Self::PreparedStandardized { within, .. } => within.nrows(),
             Self::RetainedDense { rows, .. } => rows,
             Self::RetainedScratch { values, .. } => values.rows(),
+            Self::RetainedImplicit { values, .. } => values.rows(),
         }
     }
 
@@ -82,6 +93,7 @@ impl FixedBlockMomentSource<'_> {
                 selected_columns,
                 ..
             } => selected_columns.map_or(values.columns(), <[usize]>::len),
+            Self::RetainedImplicit { values, selected_columns, .. } => selected_columns.map_or(values.columns(), <[usize]>::len),
         }
     }
 
@@ -99,6 +111,7 @@ impl FixedBlockMomentSource<'_> {
                             .min((RETAINED_MOMENT_TILE_ELEMENTS / columns).max(1))
                 }
             }
+            Self::RetainedImplicit { values, .. } => values.columns(),
             Self::PreparedStandardized { .. } | Self::RetainedDense { .. } => 0,
         }
     }
@@ -167,6 +180,10 @@ impl FixedBlockMomentSource<'_> {
                 solver_weight_divisor,
                 column_scales,
             )?,
+            Self::RetainedImplicit { values, selected_columns, response, weights, solver_weight_divisor, column_scales } => validate_retained_source(
+                values.rows().checked_mul(values.columns()).ok_or_else(|| allocation("implicit moment dimensions overflow"))?,
+                values.rows(), values.columns(), selected_columns, response, weights, solver_weight_divisor, column_scales,
+            )?,
         }
         Ok(())
     }
@@ -221,7 +238,8 @@ pub(super) fn finite_wls_moment_layout(
         }
         FixedBlockMomentSource::PreparedStandardized { .. }
         | FixedBlockMomentSource::RetainedDense { .. }
-        | FixedBlockMomentSource::RetainedScratch { .. } => {
+        | FixedBlockMomentSource::RetainedScratch { .. }
+        | FixedBlockMomentSource::RetainedImplicit { .. } => {
             // A block bank of `chunks * K^2` is intentionally forbidden for
             // reusable sessions. Disjoint left-column partitions each scan
             // rows in canonical order and write separate Gram rows. Dense
@@ -352,6 +370,7 @@ pub(super) fn factor_rank_revealing_retained_qr(
         source,
         FixedBlockMomentSource::RetainedDense { .. }
             | FixedBlockMomentSource::RetainedScratch { .. }
+            | FixedBlockMomentSource::RetainedImplicit { .. }
     ) || canonical_generated_ids.len() != dimension
         || qr.len() != square
         || transformed_rhs.len() != dimension
@@ -369,6 +388,7 @@ pub(super) fn factor_rank_revealing_retained_qr(
     let stored_columns = match source {
         FixedBlockMomentSource::RetainedDense { stored_columns, .. } => stored_columns,
         FixedBlockMomentSource::RetainedScratch { values, .. } => values.columns(),
+                FixedBlockMomentSource::RetainedImplicit { values, .. } => values.columns(),
         FixedBlockMomentSource::PreparedStandardized { .. } => unreachable!(),
     };
     if stored_row.len() != stored_columns {
@@ -598,6 +618,7 @@ pub(super) fn certify_retained_qr_dropped_span(
             != match source {
                 FixedBlockMomentSource::RetainedDense { stored_columns, .. } => stored_columns,
                 FixedBlockMomentSource::RetainedScratch { values, .. } => values.columns(),
+                FixedBlockMomentSource::RetainedImplicit { values, .. } => values.columns(),
                 FixedBlockMomentSource::PreparedStandardized { .. } => 0,
             }
         || standardized_row.len() != dimension
@@ -864,6 +885,10 @@ fn fill_retained_qr_row(
                 solver_weight_divisor,
                 column_scales,
             )
+        }
+        FixedBlockMomentSource::RetainedImplicit { values, selected_columns, response, weights, solver_weight_divisor, column_scales } => {
+            values.fill_row(observation, stored_row)?;
+            (selected_columns, response, weights, solver_weight_divisor, column_scales)
         }
         FixedBlockMomentSource::PreparedStandardized { .. } => {
             return Err(invalid_argument(
@@ -2067,6 +2092,34 @@ fn fill_retained_partitioned(
             rhs,
             gram,
         ),
+        FixedBlockMomentSource::RetainedImplicit { values, selected_columns, response, weights, solver_weight_divisor, column_scales } => {
+            let bound = values.bind_columns()?;
+            let dimension = rhs.len();
+            let fill = |(part, ((a, b), row)): (usize, ((&mut [f64], &mut [f64]), &mut [f64]))| -> Result<()> {
+                let first = part * layout.columns_per_partition;
+                for observation in 0..values.rows() {
+                    let group = values.codes()[observation] as usize;
+                    let weight = normalized_weight(weights, solver_weight_divisor, observation)?;
+                    for j in first..dimension {
+                        let column = selected_columns.map_or(j, |ids| ids[j]);
+                        row[j] = (bound[column].value(observation)? - values.center(column, group)) / column_scales.map_or(1.0, |scales| scales[j]);
+                    }
+                    for (local, target) in b.iter_mut().enumerate() {
+                        let j = first + local;
+                        let left = weight * row[j];
+                        *target = left.mul_add(response[observation], *target);
+                        for (entry, &right) in a[local * dimension + j..(local + 1) * dimension].iter_mut().zip(&row[j..dimension]) {
+                            *entry = left.mul_add(right, *entry);
+                        }
+                    }
+                }
+                Ok(())
+            };
+            gram.par_chunks_mut(dimension * layout.columns_per_partition)
+                .zip(rhs.par_chunks_mut(layout.columns_per_partition))
+                .zip(partials.par_chunks_mut(layout.partial_stride))
+                .enumerate().try_for_each(fill)
+        },
         FixedBlockMomentSource::PreparedStandardized { .. } => Err(invalid_argument(
             "finite-WLS retained partition mode requires a retained source",
         )),

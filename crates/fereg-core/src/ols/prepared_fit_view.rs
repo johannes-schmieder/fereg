@@ -37,6 +37,37 @@ use rayon::prelude::*;
 use super::{PreparedOlsData, PreparedOlsModel};
 use crate::ols::build_prepared_ols_rhs_with_response;
 
+/// Shared immutable prepared storage for iterative estimators whose certified
+/// products outlive the borrowed solving session. One-shot OLS has no Arc.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum SharedPreparedOlsData {
+    Categorical(std::sync::Arc<PreparedCategoricalOlsData>),
+    CategoricalClustered(std::sync::Arc<super::PreparedCategoricalOlsClusteredData>),
+}
+
+impl SharedPreparedOlsData {
+    pub(crate) fn fit_view(&self) -> &PreparedCategoricalOlsData {
+        match self {
+            Self::Categorical(prepared) => prepared,
+            Self::CategoricalClustered(prepared) => prepared.ols(),
+        }
+    }
+
+    // Charge the Arc header and the inline object moved off the generation's
+    // stack. Its nested buffers remain charged once to the prepared generation.
+    pub(crate) const fn allocation_bytes(clustered: bool) -> u128 {
+        if clustered {
+            std::mem::size_of::<(usize, usize, super::PreparedCategoricalOlsClusteredData)>() as u128
+        } else {
+            std::mem::size_of::<(usize, usize, PreparedCategoricalOlsData)>() as u128
+        }
+    }
+
+    pub(crate) fn shared_allocation_bytes(&self) -> u128 {
+        Self::allocation_bytes(matches!(self, Self::CategoricalClustered(_)))
+    }
+}
+
 /// Accumulate generated finite predictors without per-cell recipe lookup.
 /// Each row keeps coefficient-slot FMA order, including multiplication by zero
 /// for absent indicators. Ordinary OLS subtraction has different zero handling

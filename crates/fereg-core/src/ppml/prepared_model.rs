@@ -21,7 +21,7 @@ use crate::data::{
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::ols::{
     prepare_ppml_categorical_ols_clustered_data, LoadedNumericColumn, LoadedOlsInput,
-    OlsClusterTermV1, OlsClusteredRequestV1, OlsRequestV1, PreparedCategoricalOlsClusteredData,
+    OlsClusterTermV1, OlsClusteredRequestV1, OlsRequestV1,
     PreparedOlsClusterDesign, PreparedOlsModel, PreparedOlsSingletons,
 };
 use crate::ppml_separation::{PreparedSeparationRebuilder, SeparationDropReason};
@@ -31,30 +31,9 @@ use crate::prepared_categorical_data::{
 
 const MAX_PPML_CLUSTER_DIMENSIONS: usize = 5;
 
-/// One immutable, sample-bound finite/FE/cluster artifact.
-///
-/// Both variants use the categorical prepared-data seam, including the empty
-/// topology used by no-FE PPML, and differ only in whether cluster metadata is
-/// owned beside the fit view. No variant converts topology to `FeDesign`.
-#[derive(Debug, PartialEq)]
-pub(crate) enum PreparedPpmlModel {
-    Categorical(PreparedCategoricalOlsData),
-    CategoricalClustered(PreparedCategoricalOlsClusteredData),
-}
+pub(crate) use crate::prepared_fit_view::SharedPreparedOlsData as PreparedPpmlModel;
 
 impl PreparedPpmlModel {
-    /// Resolve the PPML model variant once to the one concrete prepared
-    /// layout used by every production generation. Keeping this return type
-    /// concrete is performance-critical: the shared linear session then
-    /// monomorphizes its observation loops instead of calling the prepared
-    /// view through a vtable.
-    pub(crate) fn fit_view(&self) -> &PreparedCategoricalOlsData {
-        match self {
-            Self::Categorical(prepared) => prepared,
-            Self::CategoricalClustered(prepared) => prepared.ols(),
-        }
-    }
-
     pub(crate) fn model(&self) -> &PreparedOlsModel {
         match self {
             Self::Categorical(prepared) => prepared.model(),
@@ -130,7 +109,7 @@ impl PreparedPpmlModelGeneration {
     /// All generation-owned heap capacities. The shared initial-drop-reason
     /// Arc belongs to the immutable raw owner and is counted there exactly once.
     pub(super) fn owned_buffer_bytes(&self) -> u128 {
-        let prepared = self.fit_view().owned_buffer_bytes()
+        let prepared = self.prepared.shared_allocation_bytes() + self.fit_view().owned_buffer_bytes()
             + self.cluster_design().map_or(0, PreparedOlsClusterDesign::owned_buffer_bytes);
         prepared + crate::memory::vec_capacity_bytes(&self.offset)
             + self.unit_prior_weights.as_ref().map_or(0, crate::memory::vec_capacity_bytes)
@@ -413,13 +392,13 @@ impl PreparedPpmlModelOwner {
         // categorical topology instead leaves `_cons` in the finite design,
         // while using the identical production view once effects are present.
         if self.request.clusters.is_empty() {
-            Ok(PreparedPpmlModel::Categorical(
+            Ok(PreparedPpmlModel::Categorical(Arc::new(
                 prepare_ppml_categorical_ols_data(&self.request.ols, &self.loaded, &[])?,
-            ))
+            )))
         } else {
-            Ok(PreparedPpmlModel::CategoricalClustered(
+            Ok(PreparedPpmlModel::CategoricalClustered(Arc::new(
                 prepare_ppml_categorical_ols_clustered_data(&self.request, &self.loaded)?,
-            ))
+            )))
         }
     }
 

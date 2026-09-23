@@ -1,0 +1,366 @@
+use super::*;
+use crate::metadata::*;
+use crate::ols::*;
+use std::sync::Arc;
+
+fn fixture(rank_deficient: bool) -> SharedPreparedOlsData {
+    fixture_partition(rank_deficient, false)
+}
+
+fn fixture_partition(rank_deficient: bool, interaction: bool) -> SharedPreparedOlsData {
+    let n = 96;
+    let x: Vec<_> = (0..n).map(|i| (i as f64 * 0.71).sin()).collect();
+    let z: Vec<_> = (0..n).map(|i| (i as f64 * 0.47).cos()).collect();
+    let groups: Vec<_> = (0..n).map(|i| ((i * 7 + i / 8) % 8) as f64).collect();
+    let y: Vec<_> = (0..n)
+        .map(|i| 0.7 * x[i] - 0.2 * z[i] + groups[i] / 3.)
+        .collect();
+    let mut columns = vec![x.clone(), z];
+    if rank_deficient {
+        columns.extend([
+            x.iter().map(|v| 2. * v).collect(),
+            groups.clone(),
+            vec![0.; n],
+        ]);
+    }
+    let k = columns.len();
+    columns.push(groups);
+    if interaction {
+        columns.push((0..n).map(|i| (i % 3) as f64).collect());
+    }
+    let sources: Vec<_> = (0..columns.len())
+        .map(|j| SourceEntry {
+            id: SourceId::new(j as u32 + 1).unwrap(),
+            canonical_name: format!("x{j}"),
+        })
+        .collect();
+    let terms = (0..k)
+        .map(|j| ExpandedTerm {
+            id: TermId::new(j as u32 + 1).unwrap(),
+            order: TermOrder::new(j as u32 + 1).unwrap(),
+            coefficient_slot: CoefficientSlot::new(j as u32 + 1).unwrap(),
+            raw_kind: RawTermKind::Variable,
+            whole_column_omitted: false,
+            canonical_token: format!("c.x{j}"),
+            components: vec![TermComponent {
+                order: ComponentOrder::new(1).unwrap(),
+                source: sources[j].id,
+                kind: ComponentKind::Continuous,
+                level_state: LevelState::Absent,
+                level_value: 0.,
+                base: MetadataFlag::False,
+                omitted: MetadataFlag::Unavailable,
+                raw_operator: "c".into(),
+                time_series_state: TimeSeriesState::None,
+                raw_time_series_operator: String::new(),
+            }],
+        })
+        .collect();
+    let mut bindings = vec![
+        OlsInputBinding {
+            stata_var_position: 1,
+            role: OlsInputRole::Candidate,
+        },
+        OlsInputBinding {
+            stata_var_position: 2,
+            role: OlsInputRole::Outcome,
+        },
+    ];
+    for (j, s) in sources.iter().enumerate() {
+        bindings.push(OlsInputBinding {
+            stata_var_position: j as u32 + 3,
+            role: OlsInputRole::NumericSource(s.id),
+        });
+    }
+    let loaded = |values: Vec<f64>| LoadedNumericColumn {
+        missing: vec![false; values.len()],
+        values,
+    };
+    let input = LoadedOlsInput {
+        candidate: vec![true; n],
+        outcome: loaded(y),
+        numeric_sources: sources
+            .iter()
+            .zip(columns)
+            .map(|(s, c)| (s.id, loaded(c)))
+            .collect(),
+        analytic_weight: None,
+        frequency_weight: None,
+        probability_weight: None,
+    };
+    let request = OlsRequestV1 {
+        model: CompiledTermGraph {
+            sources: sources.clone(),
+            terms,
+        },
+        absorbed_terms: vec![AbsorbedTerm {
+            id: AbsorbTermId::new(1).unwrap(),
+            intercept: true,
+            categorical_sources: sources[k..].iter().map(|s| s.id).collect(),
+            slope_sources: Vec::new(),
+            label: "g".into(),
+            saved_name: String::new(),
+        }],
+        bindings,
+        include_intercept: true,
+        keep_singletons: true,
+    };
+    SharedPreparedOlsData::Categorical(Arc::new(
+        crate::prepare_categorical_ols_data(&request, &input).unwrap(),
+    ))
+}
+
+#[test]
+fn implicit_refresh_matches_independent_group_sums_and_revokes_failed_frames() {
+    for threads in [1, 4] {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap()
+            .install(|| {
+                let source = fixture(true);
+                let prepared = source.fit_view();
+                let ids: Vec<_> = (0..prepared.model().columns.len() - 1).collect();
+                let response = prepared.sample().outcome.clone();
+                let mut frame = ImplicitCenteredDesign::new(
+                    source.clone(),
+                    &ids,
+                    PreparedOlsExecutionMode::Low,
+                )
+                .unwrap();
+                let mut norms = vec![0.; ids.len()];
+                let mut means = norms.clone();
+                let mut within = norms.clone();
+                assert!(frame.view().is_err());
+                for generation in 0..3 {
+                    for scale in [1e-200, 1., 1e200] {
+                        let w: Vec<_> = (0..response.len())
+                            .map(|i| scale * (0.25 + ((i * 13 + generation * 11) % 19) as f64))
+                            .collect();
+                        let divisor = w.iter().copied().fold(0., f64::max);
+                        let (_, report) = frame
+                            .refresh(
+                                &response,
+                                BorrowedMapWeights::Provided(&w),
+                                divisor,
+                                1e-14,
+                                &mut norms,
+                                &mut means,
+                                &mut within,
+                            )
+                            .unwrap();
+                        assert!(report.certified());
+                        let view = frame.view().unwrap();
+                        let mut row = vec![0.; ids.len()];
+                        for observation in 0..response.len() {
+                            view.fill_row(observation, &mut row).unwrap();
+                            let members = view
+                                .effect
+                                .level_index()
+                                .members(view.codes()[observation] as usize);
+                            let total: f64 = members.iter().map(|&i| w[i] / divisor).sum();
+                            for (column, &value) in row.iter().enumerate() {
+                                let mean: f64 = members
+                                    .iter()
+                                    .map(|&i| {
+                                        w[i] / divisor
+                                            * prepared.fit_column_value(ids[column], i).unwrap()
+                                    })
+                                    .sum::<f64>()
+                                    / total;
+                                let expected =
+                                    prepared.fit_column_value(ids[column], observation).unwrap()
+                                        - mean;
+                                assert!((value - expected).abs() < 1e-12);
+                                assert!(value.is_finite());
+                            }
+                        }
+                    }
+                }
+                let mut bad = vec![1.; response.len()];
+                bad[3] = f64::NAN;
+                assert!(frame
+                    .refresh(
+                        &response,
+                        BorrowedMapWeights::Provided(&bad),
+                        1.,
+                        1e-14,
+                        &mut norms,
+                        &mut means,
+                        &mut within
+                    )
+                    .is_err());
+                assert!(frame.view().is_err());
+                frame
+                    .refresh(
+                        &response,
+                        BorrowedMapWeights::Unit,
+                        1.,
+                        1e-14,
+                        &mut norms,
+                        &mut means,
+                        &mut within,
+                    )
+                    .unwrap();
+                let expected = {
+                    let mut row = vec![0.; ids.len()];
+                    frame.view().unwrap().fill_row(7, &mut row).unwrap();
+                    row
+                };
+                frame.compact(&[0, 2]).unwrap();
+                let mut actual = vec![0.; 2];
+                frame.view().unwrap().fill_row(7, &mut actual).unwrap();
+                assert_eq!(actual, vec![expected[0], expected[2]]);
+                assert!(
+                    frame.resident_bytes()
+                        <= ImplicitCenteredDesign::bytes(8, ids.len(), threads).unwrap()
+                );
+            });
+    }
+}
+
+#[test]
+fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution() {
+    for mode in [
+        PreparedOlsExecutionMode::Fast,
+        PreparedOlsExecutionMode::Low,
+    ] {
+        let source = fixture(true);
+        let prepared = source.fit_view();
+        let y = &prepared.sample().outcome;
+        let w: Vec<_> = (0..y.len()).map(|i| 0.25 + (i % 11) as f64).collect();
+        let divisor = w.iter().copied().fold(0., f64::max);
+        let frame = LinearSolveFrame::from_parts(
+            y,
+            BorrowedMapWeights::Provided(&w),
+            PreparedOlsBreadWeightScale {
+                weight_kind: None,
+                solver_weight_divisor: divisor,
+                reference_weight_multiplier: divisor,
+                reference_weight_sum: w.iter().sum(),
+            },
+        )
+        .unwrap();
+        let mut config = PreparedOlsFitConfig::default();
+        config.absorb.solver = FeSolverKind::Map;
+        config.absorb.map.tolerance = 1e-12;
+        config.execution.mode = mode;
+        config.execution.poolsize = 1;
+        let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+            prepared,
+            frame,
+            config,
+            LinearSessionGenerations::new(1, 1, 1, 1, 1),
+            prepared.fit_owned_fe_design().unwrap(),
+        )
+        .unwrap();
+        let other = fixture(true);
+        assert!(session.enable_implicit_one_fe(other).is_err());
+        session.enable_implicit_one_fe(source.clone()).unwrap();
+        let output = session.solve_fresh().unwrap();
+        assert!(output.certified());
+        assert_eq!(output.fit().kept_generated_columns().len(), 2);
+        assert_eq!(
+            output
+                .fit()
+                .coefficients()
+                .iter()
+                .filter(|c| {
+                    c.generated_column_index.is_some_and(|i| i < 3)
+                        && c.status == PreparedOlsFitStatus::NumericallyRankDeficient
+                })
+                .count(),
+            1,
+            "exact duplicate loses one finite rank direction"
+        );
+        let products = session.into_current_products().unwrap();
+        assert!(products.fit().residuals().iter().all(|r| r.abs() < 1e-10));
+        let SharedPreparedOlsData::Categorical(arc) = &source else {
+            unreachable!()
+        };
+        let weak = Arc::downgrade(arc);
+        drop(source);
+        assert!(
+            weak.upgrade().is_some(),
+            "certified product must retain its input owner"
+        );
+        let design = products.finite_within_design();
+        use crate::sandwich::SandwichDesign;
+        let mut row = vec![0.; design.dimension()];
+        let mut count = 0;
+        design
+            .visit_range(0..design.nrows(), &mut row, |_, values| {
+                assert!(values.iter().all(|x| x.is_finite()));
+                count += 1;
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(count, 96);
+        drop(products);
+        assert!(weak.upgrade().is_none());
+    }
+}
+
+#[test]
+fn implicit_interaction_partition_and_zero_controls_match_closed_form_projection() {
+    let source = fixture_partition(false, true);
+    let prepared = source.fit_view();
+    assert!(prepared.validated_single_topology().unwrap().is_none());
+    assert!(prepared.fit_has_one_ordinary_intercept_effect());
+    let y = &prepared.sample().outcome;
+    let weights: Vec<_> = (0..y.len()).map(|i| 0.5 + (i % 7) as f64).collect();
+    for ids in [vec![0, 1], vec![]] {
+        let mut frame =
+            ImplicitCenteredDesign::new(source.clone(), &ids, PreparedOlsExecutionMode::Low)
+                .unwrap();
+        let mut raw = vec![0.; ids.len()];
+        let mut means = raw.clone();
+        let mut within = raw.clone();
+        let (residual, report) = frame
+            .refresh(
+                y,
+                BorrowedMapWeights::Provided(&weights),
+                6.5,
+                1e-14,
+                &mut raw,
+                &mut means,
+                &mut within,
+            )
+            .unwrap();
+        assert!(report.certified());
+        let view = frame.view().unwrap();
+        let groups: std::collections::BTreeSet<_> =
+            (0..y.len()).map(|i| ((i * 7 + i / 8) % 8, i % 3)).collect();
+        assert_eq!(view.groups(), groups.len());
+        let mut row = vec![0.; ids.len()];
+        for i in 0..y.len() {
+            // Independently rebuild interaction membership from the input design,
+            // without using the retained codes or membership index.
+            let same = |j: usize| (i * 7 + i / 8) % 8 == (j * 7 + j / 8) % 8 && i % 3 == j % 3;
+            let total: f64 = (0..y.len()).filter(|&j| same(j)).map(|j| weights[j]).sum();
+            let mean: f64 = (0..y.len())
+                .filter(|&j| same(j))
+                .map(|j| weights[j] * y[j])
+                .sum::<f64>()
+                / total;
+            assert!((residual[i] - (y[i] - mean)).abs() < 1e-12);
+            view.fill_row(i, &mut row).unwrap();
+            for (column, value) in row.iter().enumerate() {
+                let mean: f64 = (0..y.len())
+                    .filter(|&j| same(j))
+                    .map(|j| weights[j] * prepared.fit_column_value(ids[column], j).unwrap())
+                    .sum::<f64>()
+                    / total;
+                assert!(
+                    (*value - (prepared.fit_column_value(ids[column], i).unwrap() - mean)).abs()
+                        < 1e-12
+                );
+            }
+        }
+        assert!(
+            frame.resident_bytes()
+                <= ImplicitCenteredDesign::bytes(view.groups(), ids.len(), 4).unwrap()
+        );
+    }
+    assert!(ImplicitCenteredDesign::bytes(usize::MAX, usize::MAX, usize::MAX).is_err());
+}

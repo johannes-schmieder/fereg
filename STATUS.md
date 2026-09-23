@@ -10,6 +10,137 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Low one-FE grouped products adopted; accepted-state pipeline next — 2026-09-23
+
+The active objective remains **whole public PPML <=0.90 times scientifically
+comparable pinned stock fixest wherever practical**. This checkpoint completes
+the grouped-product integration milestone, not the larger objective. This
+opening supersedes the earlier next-step orders below.
+
+Accept `groupcanon3`, based on `1da01cec`, under
+[ADR 0139](docs/adr/0139-implicit-one-fe-ppml-products.md) and the
+[source-bound report](benchmarks/reports/development/ppml-implicit-one-fe-local-2026-09-23/README.md).
+All **541 computational inputs** match plugin
+`ba667b523455f10fa47be89e1385e928d810797467973d750c42a0749eaddb3e`.
+The archive was restored and **13,321 logical receipts** verified, SHA-256
+`bc9f2939ed78b28b9b0dc5598fcc7cd808fe6c25478a26ebdcb3d53edaf8087e`.
+All builds, tests, fits, audits and archive operations are terminal. No push or
+release. Earlier OLS, categorical and absorbed-slope algorithms remain.
+
+### Adopted mechanism and limits
+
+Low one-intercept-FE publication PPML optionally owns fresh weighted group centers
+and immutable shared prepared inputs through final inference. Canonical moments,
+rank/QR fallback and inference stream original-minus-center rows. There is no
+retained projected scratch matrix on this admitted route. Genuine interaction
+partitions and generated columns use the same mechanism. Every refresh revokes
+old authority, recomputes current-weight statistics and independently replays
+residual group moments. All rank, score, objective, reconstruction, Hessian,
+weight, separation and publication requirements remain unchanged.
+
+The dual-mode prototype `groupcanon2` increased narrow fast finite-moment cost;
+fast adoption is rejected. Production fast retains its contiguous dense design.
+This is an execution-mode decision, not a benchmark/seed/shape threshold. Group
+state, bindings, workers and shared-owner allocation are charged before use;
+optional refusal keeps the certified scratch route. G-by-K geometry can be large
+when G approaches N. The existing conservative scratch/projection allowance is
+not credited back, so modeled peak can rise despite a smaller tracked peak.
+
+**422 distinct Rust tests**, production-plugin ABI/panic containment and **14
+licensed runs of 11 fixtures** pass on the final source. Independent closed-form
+projection/WLS and full-dummy Poisson/Hessian/sandwich checks include changing and
+extreme weights, rank deficiency, zero controls, generated terms, interactions,
+FW/PW, offsets and robust/clustered inference. Three fixed-process allocation
+audits retain zero events/growth and warm/cold equivalence. A one-byte optional
+budget refusal changes actual scratch 0 -> 65,536 bytes and still passes its
+independent Poisson oracle.
+
+The adopted source has **160 passing applications**, 144 passing PPML states,
+48 native PPML pairs, 48 baseline/stock and 48 additional direct stock checks.
+Eight excluded PPML and eight OLS pairs have exact scientific exports. The report
+separates prototype evidence and nine prototype-only small Python oracles. Two
+previous blocks stopped on unrelated Stata overlaps; their 54 attempts and two
+flagged overlaps are preserved and excluded from the clean timing tables.
+
+### Current opportunity scorecard
+
+All times below are whole-command medians, robust inference plus fitted means.
+Five rotations for one-FE; only two for the excluded family screen.
+
+| Case | Previous | Current | Stock | Current/stock | 10% target |
+|---|---:|---:|---:|---:|---:|
+| Low one-FE N30720 K6 T4 | 57 | 51 | 26 | 1.962 | 23.4 |
+| Low one-FE N61440 K10 T4 | 120 | 108 | 53 | 2.038 | 47.7 |
+| Low one-FE N30720 K32 T4 | 151 | 126 | 119 | 1.059 | 107.1 |
+| Fast one-FE N61440 K10 T4 | 103 | 104 | 53 | 1.962 | 47.7 |
+| Fresh low N49152 K12 T4 | 117 | 101 | 52 | 1.942 | 46.8 |
+| Fresh low N16384 K48 T4 | 157 | 133 | 107 | 1.243 | 96.3 |
+| Fresh unbalanced low N49152 K10 T1 | 128 | 124 | 75 | 1.653 | 67.5 |
+| Dense three-FE fast N30720 K6 T4 | 183 | 187 | 246.5 | 0.759 | 221.85 |
+| Dense three-FE low, same shape | 343 | 350.5 | 247 | 1.419 | 222.3 |
+| Two slope partitions low, same shape | 156 | 157.5 | 120 | 1.313 | 108 |
+| Two slope partitions fast, same shape | 129.5 | 130 | 116 | 1.121 | 104.4 |
+
+All 25 larger multithread low decision/confirmation pairs improve. Serial fresh
+has two losses despite a 3.1% median gain. Small-fit timings remain noisy: the
+prototype lost 18/21 ms, while final adoption is 23/21 with one 5 ms paired loss.
+All one-FE cases still lose stock. Seven of eight excluded PPML timing pairs lose
+slightly; OLS controls are mixed, including a repeated 1 ms small-fit loss.
+Do not claim universal timing non-regression or a fresh family-wide 10% win.
+The fast three-FE lead is a promising screen result requiring broader confirmation.
+
+Large-low tracked peak delta is **34,603,573 -> 29,789,542 bytes**; actual scratch
+**4,915,200 -> 0**. Modeled peak rises **43,061,399 -> 44,342,215**. These are
+allocator/model observations, not a physical-cap qualification.
+
+### Ambitious next milestones
+
+1. **Redesign accepted-state construction through canonical reconstruction and
+   publication in both fast and low PPML.** Start with exclusive full-command
+   spans and observation-pass counts on the current artifact. Existing large-low
+   phase medians are plugin 90.054 ms, preparation 13.956, FE projection 4.092,
+   finite solve 16.308, strict/final 20.903, objective/line-search 9.372 and
+   publication 10.113. They have nested scopes and must not be added. The narrow
+   case still needs a 55.8% reduction to reach 47.7; the K32 case needs another
+   15.0%. Preserve initial/final canonical rank policy while sharing compatible
+   current-frame group, predictor and finite products; avoid repeated original-
+   column and residual reconstruction passes. Bind immutable outcome/prior
+   terms once, retain an independent final objective replay, and justify any
+   removed intermediate duplicate in a successor ADR. A likelihood-constant
+   cache alone is not completion of this milestone or the objective.
+2. **Close the remaining multi-FE/slopes construction gap.** Use the updated
+   scorecard, identical frozen current-weight frames and whole-command costs.
+   Generalize useful product ownership into the existing Schur/PCG and joint
+   direction engines; do not add a redundant solver layer. Investigate valid
+   coefficient warm starts/preconditioning and canonical FE/finite construction
+   when the ledger identifies them. Weighted geometry must refresh when its
+   dependencies change, and fresh residual/score/final-Hessian witnesses remain.
+   Protect multi-partition OLS with focused controls. Do not reopen residual
+   extrapolation, serial-slope window tuning or rejected local-stop probes.
+3. **Reduce public-command overhead and cover neglected surfaces.** Small-fit
+   losses and remaining preparation/publication costs warrant matched whole-
+   command profiling. Address repeated loading/metadata/output assembly while
+   keeping main-thread SPI, one guarded substantive plugin call and atomic
+   publication. Screen no-FE/small, generated/factor, wide, multiple-slope,
+   clustered/saved-output and memory-bound cases adaptively; keep scientifically
+   incomparable weights and unresolved states unranked.
+4. **Close each family on fresh evidence.** Require the <=0.90 margin to survive
+   predeclared fresh cases and timing variation, not an aggregate win rate.
+   Use five or more rotations when a margin is in question, independent WLS and
+   Poisson/Hessian/sandwich oracles, and explicit tails/losses. Confirm promising
+   fast three-FE cells across sparse, weak/disconnected and unbalanced controls.
+   At most two materially different candidates per measured cost center before
+   moving on. Smaller broad wins may be retained, but never declared completion
+   while substantial measured opportunities remain.
+
+Seeds 202609335–341 are consumed; do not relabel them fresh. Preserve frozen
+77 primary/16 holdout/111 native-control definitions and protected cycle seeds
+202609211/202609212. Static allocation inventory drift, mixed-thread pool
+retirement, constrained weighted/nonretaining-CG failures, unresolved reference
+comparisons and Linux/SCC/Windows/physical-cap deferrals remain open. No SCC
+retry or restart of stopped campaigns. The next action is milestone 1's coherent
+accepted-state redesign, not another grouped-row micro-tuning round.
+
 ## Implicit one-FE frame verified; whole-command redesign plan — 2026-09-23
 
 The objective remains **whole public PPML <=0.90 times scientifically comparable

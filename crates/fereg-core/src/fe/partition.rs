@@ -61,6 +61,11 @@ impl CategoricalPartition {
         Self::interaction_with_reservation(categorical_source_indices, sources, &mut reservation)
     }
 
+    /// Only immutable finalized-owner receipts may bypass component rescans.
+    pub(super) fn owned_interaction_codes(&self) -> Option<&[u32]> {
+        self.owned_interaction.as_ref().map(EncodedInteraction::codes)
+    }
+
     #[must_use]
     pub const fn nobs(&self) -> usize {
         self.nobs

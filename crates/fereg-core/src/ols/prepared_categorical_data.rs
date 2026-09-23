@@ -183,6 +183,13 @@ impl PreparedCategoricalOlsData {
         self.fe_topology.get()
     }
 
+    /// Borrow one already validated partition, including categorical interactions.
+    /// The immutable owner binds its codes and membership for this entire borrow.
+    pub(crate) fn validated_single_effect(&self) -> Option<crate::fe::BorrowedInterceptEffect<'_>> {
+        crate::fe::ValidatedBorrowedInterceptSource::from_finalized_single_effect(&self.fe_topology)
+            .map(|source| source.effect())
+    }
+
     pub(crate) fn validated_single_topology(
         &self,
     ) -> Result<Option<crate::fe::ValidatedSingleTopology<'_>>> {

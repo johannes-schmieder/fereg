@@ -15,7 +15,8 @@ use crate::fe::{
 };
 use crate::metadata::CoefficientSlot;
 use crate::parallel::ThreadTeam;
-use crate::prepared_fit_view::PreparedOlsFitView;
+use crate::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
+use super::implicit_centered::ImplicitCenteredDesign;
 use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
 #[cfg(test)]
@@ -639,6 +640,7 @@ impl WithinGenerations {
 
 #[derive(Debug)]
 enum RetainedWithinStorage {
+    Implicit(ImplicitCenteredDesign),
     Dense(DenseMatrix),
     /// The scratch file is row-major so a complete inference row is one read.
     Scratch(PreparedOlsScratch),
@@ -697,7 +699,7 @@ impl RetainedWithinStorage {
             storage: self,
             scratch: match self {
                 Self::Scratch(values) => Some(values.shared_reader()),
-                Self::Dense(_) => None,
+                Self::Dense(_) | Self::Implicit(_) => None,
             },
         }
     }
@@ -706,6 +708,7 @@ impl RetainedWithinStorage {
         match self {
             Self::Dense(values) => values.nrows(),
             Self::Scratch(values) => values.rows(),
+            Self::Implicit(values) => values.rows(),
         }
     }
 
@@ -713,6 +716,7 @@ impl RetainedWithinStorage {
         match self {
             Self::Dense(values) => values.ncols(),
             Self::Scratch(values) => values.columns(),
+            Self::Implicit(values) => values.columns(),
         }
     }
 
@@ -732,6 +736,7 @@ impl RetainedWithinStorage {
                 output.copy_from_slice(&values.as_slice()[start..start + columns]);
                 Ok(())
             }
+            Self::Implicit(values) => values.view()?.fill_row(row, output),
             Self::Scratch(values) => {
                 let start = row
                     .checked_mul(columns)
@@ -743,7 +748,7 @@ impl RetainedWithinStorage {
 
     fn scratch_bytes(&self) -> u64 {
         match self {
-            Self::Dense(_) => 0,
+            Self::Dense(_) | Self::Implicit(_) => 0,
             Self::Scratch(values) => values.bytes(),
         }
     }
@@ -763,6 +768,9 @@ impl RetainedWithinStorage {
                 rows,
                 columns,
                 mode: PreparedOlsExecutionMode::Fast,
+            },
+            Self::Implicit(values) => LinearWithinMemoryReport {
+                resident_bytes: values.resident_bytes(), scratch_bytes: 0, rows, columns, mode: values.mode(),
             },
             Self::Scratch(values) => LinearWithinMemoryReport {
                 resident_bytes: 0,
@@ -864,6 +872,10 @@ impl RetainedWithinDesign {
                     row_major,
                 )?)
             }
+            RetainedWithinStorage::Implicit(mut values) => {
+                values.compact(&active_positions)?;
+                RetainedWithinStorage::Implicit(values)
+            }
             RetainedWithinStorage::Scratch(mut values) => {
                 values.compact_row_major_columns_forward(&active_positions)?;
                 RetainedWithinStorage::Scratch(values)
@@ -924,6 +936,7 @@ impl SandwichDesign for CertifiedLinearWithinDesign<'_> {
                 }
                 Ok(())
             }
+            RetainedWithinStorage::Implicit(values) => values.view()?.fill_selected_row(row, self.active_positions, output),
             RetainedWithinStorage::Scratch(values) => {
                 if self
                     .active_positions
@@ -952,6 +965,20 @@ impl SandwichDesign for CertifiedLinearWithinDesign<'_> {
             RetainedWithinStorage::Dense(_) => {
                 for row in rows {
                     self.fill_row(row, output)?;
+                    visit(row, output)?;
+                }
+            }
+            RetainedWithinStorage::Implicit(values) => {
+                let view = values.view()?;
+                if rows.start > rows.end || rows.end > view.rows() || output.len() != self.active_positions.len() {
+                    return Err(invalid_argument("implicit inference range is invalid"));
+                }
+                let bound = view.bind_columns()?;
+                for row in rows {
+                    let group = view.codes()[row] as usize;
+                    for (target, &column) in output.iter_mut().zip(self.active_positions) {
+                        *target = bound[column].value(row)? - view.center(column, group);
+                    }
                     visit(row, output)?;
                 }
             }
@@ -1347,6 +1374,7 @@ impl CertifiedLinearSessionProducts {
 /// topology.  Sample or topology changes require a new session by design.
 pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Sized> {
     prepared: &'a P,
+    implicit_source: Option<SharedPreparedOlsData>,
     config: PreparedOlsFitConfig,
     response: Vec<f64>,
     weights: OwnedLinearWeights,
@@ -1705,6 +1733,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         };
         Ok(Self {
             prepared,
+            implicit_source: None,
             config,
             response,
             weights,
@@ -1733,6 +1762,23 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             #[cfg(test)]
             fresh_rank_failure_injection: 0,
         })
+    }
+
+    /// The caller admits all extra group/binding/worker storage before sharing
+    /// the prepared owner. Object identity proves the immutable sample/model axis.
+    pub(crate) fn enable_implicit_one_fe(&mut self, source: SharedPreparedOlsData) -> Result<()> {
+        if self.within.is_some() || self.config.absorb.solver != FeSolverKind::Map
+            || !self.prepared.fit_has_one_ordinary_intercept_effect()
+            || !std::ptr::eq(self.prepared.fit_sample(), source.fit_view().sample())
+            || !std::ptr::eq(self.prepared.fit_model(), source.fit_view().model()) {
+            return Err(invalid_argument("implicit prepared owner does not match the linear session"));
+        }
+        self.implicit_source = Some(source);
+        Ok(())
+    }
+
+    pub(crate) fn has_implicit_one_fe(&self) -> bool {
+        self.implicit_source.is_some()
     }
 
     pub(crate) const fn fe_design(&self) -> &FeDesign {
@@ -1809,11 +1855,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let storage = self.dense_from_fast_cache(cache, kept)?;
         let pointer_preserved = match &storage {
             RetainedWithinStorage::Dense(within) => within.as_slice().as_ptr() == source_pointer,
-            RetainedWithinStorage::Scratch(_) => false,
+            RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => false,
         };
         let retained_values = match &storage {
             RetainedWithinStorage::Dense(within) => within.as_slice().to_vec(),
-            RetainedWithinStorage::Scratch(_) => Vec::new(),
+            RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => Vec::new(),
         };
         Ok((storage.memory_report(), pointer_preserved, retained_values))
     }
@@ -1821,7 +1867,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     #[cfg(test)]
     pub(crate) fn retained_scratch_identity(&self) -> Option<&std::path::Path> {
         match &self.within.as_ref()?.storage {
-            RetainedWithinStorage::Dense(_) => None,
+            RetainedWithinStorage::Dense(_) | RetainedWithinStorage::Implicit(_) => None,
             RetainedWithinStorage::Scratch(scratch) => Some(scratch.identity_path()),
         }
     }
@@ -1830,7 +1876,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     pub(crate) fn retained_dense_identity(&self) -> Option<*const f64> {
         match &self.within.as_ref()?.storage {
             RetainedWithinStorage::Dense(values) => Some(values.as_slice().as_ptr()),
-            RetainedWithinStorage::Scratch(_) => None,
+            RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => None,
         }
     }
 
@@ -1846,6 +1892,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .as_ref()
             .map_or((0, 0, 0), |within| match &within.storage {
                 RetainedWithinStorage::Dense(values) => (values.storage_capacity(), 0, 0),
+                RetainedWithinStorage::Implicit(values) => ((values.resident_bytes() / 8) as usize, 0, 0),
                 RetainedWithinStorage::Scratch(scratch) => {
                     (0, scratch.bytes(), scratch.io_buffer_capacity())
                 }
@@ -2276,7 +2323,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 self.config.absorb.map,
                 self.generations.map_geometry(),
             )?,
-            RetainedWithinStorage::Scratch(_) => projector.solve_joint_slopes_streamed(
+            RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => projector.solve_joint_slopes_streamed(
                 &self.map_weights,
                 &within.storage,
                 &within.active_positions,
@@ -2474,6 +2521,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let within = self.within.as_mut().ok_or_else(|| {
             invalid_argument("canonical profile rebuild requires a retained design")
         })?;
+        if let RetainedWithinStorage::Implicit(values) = &mut within.storage {
+            interrupt()?;
+            values.invalidate();
+            self.projection_refresh_required = true;
+            return Ok(());
+        }
         let generated = &within.stored_generated_columns;
         let columns = generated.len();
         let rows = self.response.len();
@@ -2495,6 +2548,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         };
         if columns > 0 {
             match &mut within.storage {
+                RetainedWithinStorage::Implicit(_) => unreachable!("implicit originals require no materialization"),
                 RetainedWithinStorage::Dense(values) => {
                     let tile_rows = (65_536 / columns).max(1);
                     for (tile, values) in values
@@ -3096,7 +3150,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         );
         #[cfg(test)]
         let mut response_fused_with_design = false;
-        let (within_response, absorption_report) = if self.within.is_none() {
+        let (within_response, absorption_report) = if self.within.as_ref().is_some_and(|w| matches!(w.storage, RetainedWithinStorage::Implicit(_))) {
+            report.warm_projection_attempted = true;
+            let refreshed = self.refresh_implicit_design()?;
+            report.warm_projection_certified = true;
+            report.within_design_reused = true;
+            refreshed
+        } else if self.within.is_none() {
             let (within, response, absorption_report) = self.build_full_retained_design()?;
             self.within = Some(within);
             (response, absorption_report)
@@ -3377,7 +3437,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .as_ref()
             .map_or(rank, |within| within.storage.columns());
         let retained_moment_elements = self.within.as_ref().map_or(0, |within| {
-            if matches!(within.storage, RetainedWithinStorage::Scratch(_)) {
+            if matches!(within.storage, RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_)) {
                 if rank == 0 {
                     return 0;
                 }
@@ -4051,6 +4111,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             (0, 0.0, 1.0)
         } else {
             let source = match &retained.storage {
+                RetainedWithinStorage::Implicit(values) => FixedBlockMomentSource::RetainedImplicit {
+                    values: values.view()?, selected_columns: Some(&workspace.candidate_positions), response: within_response,
+                    weights: self.weights.borrowed(), solver_weight_divisor: self.bread_weight_scale.solver_weight_divisor, column_scales: Some(&workspace.candidate_scales),
+                },
                 RetainedWithinStorage::Dense(values) => FixedBlockMomentSource::RetainedDense {
                     values: values.as_slice(),
                     rows,
@@ -4771,11 +4835,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(columns)
     }
 
-    /// Build the complete projected candidate design exactly once. Fast mode
-    /// consumes the combined N-by-(K+1) absorbed matrix and compacts it
-    /// forward in the same allocation; Low mode projects the complete design
-    /// into one row-readable scratch artifact.
+    /// Own one complete current-weight projected representation. Admitted
+    /// one-FE sessions retain group centers; other fast/low sessions retain
+    /// their existing dense bank or row-readable scratch artifact.
     fn build_full_retained_design(&mut self) -> Result<(RetainedWithinDesign, Vec<f64>, SolveReport)> {
+        if self.has_implicit_one_fe() && (self.config.absorb.map.max_iterations == 0 || self.config.absorb.map.check_every == 0) {
+            return Err(invalid_argument("implicit MAP iteration and check budgets must be positive"));
+        }
         let rows = self.response.len();
         let stored_generated_columns = self.full_retained_generated_columns()?;
         let stored_columns = stored_generated_columns.len();
@@ -4795,7 +4861,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             "unable to reserve weighted-linear retained within norms",
         )?;
 
-        let (storage, within_response, absorption_report) = match self.config.execution.mode {
+        let (storage, within_response, absorption_report) = if let Some(source) = &self.implicit_source {
+            let mut values = ImplicitCenteredDesign::new(source.clone(), &stored_generated_columns, self.config.execution.mode)?;
+            let (response, report) = values.refresh(&self.response, self.weights.borrowed(), self.bread_weight_scale.solver_weight_divisor,
+                self.config.absorb.map.tolerance, &mut reference_norms, &mut reference_means, &mut within_norms)?;
+            (RetainedWithinStorage::Implicit(values), response, report)
+        } else { match self.config.execution.mode {
             PreparedOlsExecutionMode::Fast => {
                 let raw = self.prepared.fit_build_rhs_with_response(&self.response)?;
                 let expected_columns = self
@@ -4996,7 +5067,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     report,
                 )
             }
-        };
+        }};
         Ok((
             RetainedWithinDesign {
                 storage,
@@ -5015,6 +5086,25 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             within_response,
             absorption_report,
         ))
+    }
+
+    fn refresh_implicit_design(&mut self) -> Result<(Vec<f64>, SolveReport)> {
+        if self.config.absorb.map.max_iterations == 0 || self.config.absorb.map.check_every == 0 {
+            return Err(invalid_argument("implicit MAP iteration and check budgets must be positive"));
+        }
+        let mut retained = self.within.take().ok_or_else(|| invalid_argument("implicit within design is absent"))?;
+        if retained.generations.sample != self.generations.sample || retained.generations.topology != self.generations.topology {
+            return Err(invalid_argument("implicit within sample or topology is stale"));
+        }
+        let RetainedWithinStorage::Implicit(values) = &mut retained.storage else {
+            return Err(invalid_argument("implicit refresh requires its owned representation"));
+        };
+        let refreshed = values.refresh(&self.response, self.weights.borrowed(), self.bread_weight_scale.solver_weight_divisor,
+            self.config.absorb.map.tolerance, &mut retained.reference_norms, &mut retained.reference_means, &mut retained.within_norms)?;
+        retained.generations = WithinGenerations::from_session(self.generations);
+        retained.certificate.passed = false;
+        self.within = Some(retained);
+        Ok(refreshed)
     }
 
     fn weighted_dense_column_norms(&self, values: &DenseMatrix) -> Result<Vec<f64>> {
@@ -5145,6 +5235,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     fn refresh_retained_norms(&mut self) -> Result<()> {
+        if self.has_implicit_one_fe() {
+            let retained = self.within.as_ref().ok_or_else(|| invalid_argument("implicit norms are absent"))?;
+            if !retained.generations.same_design(self.generations) { return Err(invalid_argument("implicit norms are stale")); }
+            return Ok(());
+        }
         let mut retained = self
             .within
             .take()
@@ -5487,6 +5582,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// yields exactly the same within coordinate as projecting raw `X`, while
     /// preserving the already-owned dense buffer or scratch-file identity.
     fn reproject_retained_within_in_place(&mut self) -> Result<bool> {
+        if self.has_implicit_one_fe() {
+            self.refresh_implicit_design()?;
+            // The group buffers are retained, but refresh allocates a response.
+            return Ok(false);
+        }
         let prior = self.within.take().ok_or_else(|| {
             invalid_argument("weighted-linear reusable MAP projection has no retained design")
         })?;
@@ -5517,6 +5617,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         within_norms.fill(0.0);
         let storage = match prior_storage {
+            RetainedWithinStorage::Implicit(_) => unreachable!("implicit refresh handled above"),
             RetainedWithinStorage::Dense(values) => {
                 if columns == 0 {
                     RetainedWithinStorage::Dense(values)
@@ -5632,6 +5733,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// and compacted in place, so warmed PPML iterations need no second
     /// observation-sized projection matrix.
     fn reproject_retained_with_response_in_place(&mut self) -> Result<(bool, SolveReport)> {
+        if self.has_implicit_one_fe() {
+            let (response, report) = self.refresh_implicit_design()?;
+            self.frozen_workspace.response = response;
+            return Ok((false, report));
+        }
         if !self
             .fe_projector
             .as_ref()
@@ -5952,6 +6058,10 @@ fn stream_frozen_solve(
         workspace.candidate_scales.push(scale);
     }
     let source = match storage {
+        RetainedWithinStorage::Implicit(values) => FixedBlockMomentSource::RetainedImplicit {
+                    values: values.view()?, selected_columns: Some(active_positions), response: within_response,
+                    weights: weights, solver_weight_divisor: bread_weight_scale.solver_weight_divisor, column_scales: Some(&workspace.candidate_scales),
+                },
         RetainedWithinStorage::Dense(values) => FixedBlockMomentSource::RetainedDense {
             values: values.as_slice(),
             rows,
@@ -6434,7 +6544,7 @@ where
     stable_norm(scale, scaled_square_sum)
 }
 
-fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
+pub(super) fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
     if !value.is_finite() || !sum.is_finite() || !correction.is_finite() {
         return Err(invalid_data(
             "weighted-linear compensated sum input is not finite",
@@ -6456,7 +6566,7 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
     }
 }
 
-fn update_scaled_square(value: f64, scale: &mut f64, sum: &mut f64) -> Result<()> {
+pub(super) fn update_scaled_square(value: f64, scale: &mut f64, sum: &mut f64) -> Result<()> {
     let absolute = value.abs();
     if !absolute.is_finite() {
         return Err(invalid_data("weighted-linear norm value is not finite"));
@@ -6480,7 +6590,7 @@ fn update_scaled_square(value: f64, scale: &mut f64, sum: &mut f64) -> Result<()
     }
 }
 
-fn stable_norm(scale: f64, scaled_square_sum: f64) -> Result<f64> {
+pub(super) fn stable_norm(scale: f64, scaled_square_sum: f64) -> Result<f64> {
     let norm = if scale == 0.0 {
         0.0
     } else {

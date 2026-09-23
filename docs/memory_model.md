@@ -26,6 +26,15 @@ strict solving and released before inference. Refusing its optional workspace
 preserves the canonical route at its previous budget. Explicit allocation
 audits additionally admit cold equivalence storage outside the measured window.
 
+Admitted low one-FE publication PPML can additionally retain G-by-K current-weight
+group centers and stream implicit original-minus-center rows through rank solving
+and inference (ADR 0139). The immutable prepared owner is shared without copying
+its buffers. Group, binding and worker state is charged before allocation,
+including G near N, without crediting the replaced scratch/projection budget.
+Optional refusal retains the existing certified route. This conservative plan
+can rise even when tracked peak allocation and actual scratch fall; it does not
+claim a universal memory reduction or physical-cap qualification.
+
 On macOS, automatic availability uses free plus inactive pages from
 `HOST_VM_INFO64`. Mach's free count already includes speculative pages.
 The original statistics prefix supports older kernel revisions, and each

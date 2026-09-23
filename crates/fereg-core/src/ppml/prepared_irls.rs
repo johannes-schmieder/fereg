@@ -841,6 +841,7 @@ pub(crate) fn fit_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     )
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn fit_prepared_ppml_irls_interruptible<P: PreparedOlsFitView + Sync + ?Sized>(
     prepared: &P,
@@ -854,6 +855,38 @@ pub(crate) fn fit_prepared_ppml_irls_interruptible<P: PreparedOlsFitView + Sync 
 ) -> Result<PreparedPpmlIrlsFit> {
     match run_prepared_ppml_irls(
         prepared,
+        None,
+        outcome,
+        prior_weights,
+        offset,
+        config,
+        memory_plan,
+        start,
+        PreparedPpmlIrlsPurpose::Publication,
+        interrupt,
+    )? {
+        PreparedPpmlIrlsRun::Publication(fit) => Ok(*fit),
+        PreparedPpmlIrlsRun::MuExploration(_) => Err(FeregError::new(
+            ErrorCode::Internal,
+            "publication PPML run returned an exploratory state",
+        )),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn fit_shared_prepared_ppml_irls_interruptible(
+    prepared: &crate::prepared_fit_view::SharedPreparedOlsData,
+    outcome: &[f64],
+    prior_weights: &[f64],
+    offset: &[f64],
+    config: PreparedPpmlIrlsConfig,
+    memory_plan: PpmlMemoryPlan,
+    start: Option<&PreparedPpmlStart>,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<PreparedPpmlIrlsFit> {
+    match run_prepared_ppml_irls(
+        prepared.fit_view(),
+        Some(prepared.clone()),
         outcome,
         prior_weights,
         offset,
@@ -885,6 +918,7 @@ pub(crate) fn explore_prepared_ppml_mu_interruptible<P: PreparedOlsFitView + Syn
 ) -> Result<PreparedPpmlMuExploration> {
     match run_prepared_ppml_irls(
         prepared,
+        None,
         outcome,
         prior_weights,
         offset,
@@ -905,6 +939,7 @@ pub(crate) fn explore_prepared_ppml_mu_interruptible<P: PreparedOlsFitView + Syn
 #[allow(clippy::too_many_arguments)]
 fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     prepared: &P,
+    shared_prepared: Option<crate::prepared_fit_view::SharedPreparedOlsData>,
     outcome: &[f64],
     prior_weights: &[f64],
     offset: &[f64],
@@ -1026,6 +1061,42 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     solver_execution_bytes = solver_execution_bytes
                         .checked_add(bytes)
                         .ok_or_else(|| allocation("one-FE profile workspace size overflows"))?;
+                    memory_plan = plan;
+                    true
+                }
+                Err(error) if error.code == ErrorCode::Allocation => false,
+                Err(error) => return Err(error),
+            },
+            None => false,
+        }
+    } else {
+        false
+    };
+    // Group centers remove the low route's projected scratch artifact. The
+    // dense route's contiguous finite moments remain faster on measured narrow
+    // designs, so it retains its existing representation.
+    let implicit_one_fe_admitted = if one_fe_profile_admitted
+        && config.linear.execution.mode == PreparedOlsExecutionMode::Low
+        && shared_prepared.is_some()
+    {
+        let bytes = crate::ols::ImplicitCenteredDesign::bytes(
+            fe_design.effects()[0].n_levels(),
+            prepared.fit_model().columns.len(),
+            effective_threads,
+        )
+        .ok()
+        .and_then(|bytes| {
+            memory_plan
+                .solver_workspace_bytes
+                .checked_add(bytes)
+                .map(|total| (bytes, total))
+        });
+        match bytes {
+            Some((bytes, total)) => match memory_plan.with_solver_workspace(total) {
+                Ok(plan) => {
+                    solver_execution_bytes = solver_execution_bytes
+                        .checked_add(bytes)
+                        .ok_or_else(|| allocation("implicit one-FE workspace size overflows"))?;
                     memory_plan = plan;
                     true
                 }
@@ -1227,6 +1298,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             fe_design,
         )?
     };
+    if implicit_one_fe_admitted {
+        session.enable_implicit_one_fe(
+            shared_prepared.ok_or_else(|| invalid_argument("implicit prepared owner is absent"))?,
+        )?;
+    }
     if let Some(plan) = projection_plan {
         session.enable_ppml_parallel_projection(plan)?;
     }
@@ -1341,7 +1417,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         if iteration > 1 {
             if let Some(profile) = profiled_one_fe.as_mut() {
                 let started = Instant::now();
-                let direction = if config.linear.execution.mode == PreparedOlsExecutionMode::Low {
+                let direction = if config.linear.execution.mode == PreparedOlsExecutionMode::Low || session.has_implicit_one_fe() {
                     let columns = session.one_fe_original_columns(profile.active_columns())?;
                     let data = ProfiledRawColumns::new(prepared, columns)?;
                     profile.prepare_direction(
@@ -1848,7 +1924,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             let mut poll_line_search = || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
             let attempt = if profiled_step.is_some() {
                 let profile = profiled_one_fe.as_mut().expect("prepared profile step");
-                if config.linear.execution.mode == PreparedOlsExecutionMode::Low {
+                if config.linear.execution.mode == PreparedOlsExecutionMode::Low || session.has_implicit_one_fe() {
                     let columns = session.one_fe_original_columns(profile.active_columns())?;
                     let data = ProfiledRawColumns::new(prepared, columns)?;
                     profile.accept(

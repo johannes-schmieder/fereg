@@ -190,6 +190,7 @@ fn generation_storage(
         effects.checked_mul(2).ok_or_else(overflow)?.max(4)
     };
     let mut fixed = sum(&[
+        crate::prepared_fit_view::SharedPreparedOlsData::allocation_bytes(!clusters.is_empty()),
         bytes::<CompactedCategoricalSource>(compacted)?,
         bytes::<PreparedCategoricalModelSource>(ordinary)?,
         bytes::<Option<usize>>(categories)?,

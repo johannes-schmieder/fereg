@@ -92,6 +92,13 @@ matching weight normalization. Low control tiles use their own column axis.
 Other cases retain explicit norm scans; no later generation borrows these norms.
 See [ADR 0138](adr/0138-retained-scratch-standardization-and-norms.md).
 
+Under ADR 0139, admitted low one-FE PPML canonical products use immutable
+original columns minus freshly computed current-weight group centers. A separate
+original-input residual-moment replay certifies the projection; finite moments,
+rank/QR fallback and inference stream the same implicit rows. No group geometry
+is authoritative after a weight change until refreshed. Fast execution retains
+its dense representation, and optional-memory refusal retains scratch execution.
+
 A solver recurrence is never sufficient evidence. For each effect-level
 block `B`, the final gate computes the projection of `sqrt(W) r` onto
 `col(sqrt(W) B)` with scaled, reorthogonalized rank-aware QR and measures it

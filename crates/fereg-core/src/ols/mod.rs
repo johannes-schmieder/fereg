@@ -4,6 +4,7 @@ mod dof;
 mod finite_wls_kernel;
 mod fit;
 mod linear_session;
+mod implicit_centered;
 mod prepared;
 mod prepared_categorical_clusters;
 mod prepared_clustered;
@@ -23,6 +24,7 @@ mod vce;
 pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};
 pub use fit::FitStatistics;
 pub(crate) use finite_wls_kernel::RETAINED_MOMENT_TILE_ELEMENTS;
+pub(crate) use implicit_centered::ImplicitCenteredDesign;
 #[cfg(test)]
 pub(crate) use linear_session::{
     begin_frozen_qr_fallback_observation, finish_frozen_qr_fallback_observation,

@@ -26,7 +26,7 @@ use super::prepared::{
     PpmlNumericPreparationInput, PreparedPpmlAdjustmentKind,
 };
 use super::prepared_irls::{
-    explore_prepared_ppml_mu_interruptible, fit_prepared_ppml_irls_interruptible,
+    explore_prepared_ppml_mu_interruptible, fit_shared_prepared_ppml_irls_interruptible,
     PreparedPpmlIrlsConfig, PreparedPpmlIrlsFit,
 };
 use super::prepared_model::{
@@ -393,8 +393,8 @@ pub fn fit_prepared_ppml_interruptible(
                 preliminary_plan.preflight_dimensions.metadata,
             )?;
             let final_plan = (*preliminary_plan).with_final_dimensions(dimensions)?;
-            let fit = fit_prepared_ppml_irls_interruptible(
-                generation.fit_view(),
+            let fit = fit_shared_prepared_ppml_irls_interruptible(
+                generation.prepared(),
                 generation.outcome(),
                 generation.prior_weights(),
                 generation.offset(),
