@@ -16,7 +16,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None, serial_lsmr_window=False, direct_ols_lsmr=False, cycle_ols_lsmr=False, profile_lsmr_transport=False, profile_ppml_session=False):
+def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None, serial_lsmr_window=False, direct_ols_lsmr=False, cycle_ols_lsmr=False, profile_lsmr_transport=False, profile_ppml_session=False, threaded_lsmr_window=False):
     assert not (direct_ols_lsmr and cycle_ols_lsmr), 'Choose one isolated routing experiment.'
     root = root.resolve()
     source = root / name
@@ -33,6 +33,13 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
     if serial_lsmr_window:
         from serial_lsmr_window import instrument
         instrument(source)
+    if threaded_lsmr_window:
+        assert not serial_lsmr_window, 'Choose one isolated window experiment.'
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("threaded_window", REPO / "benchmarks/next_subsystem/threaded_lsmr_window.py")
+        probes = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probes)
+        probes.instrument(source)
     if direct_ols_lsmr:
         from direct_ols_lsmr import instrument
         instrument(source)
@@ -125,6 +132,10 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         identity.setdefault('experiment', {})['serial_lsmr_window'] = dict(
             active_rhs=1, scope='Captured-source generic serial transport/admission experiment; no production or shared-routing acceptance.',
             instrument_sha256=sha(REPO / 'benchmarks/one_fe_optimization/serial_lsmr_window.py'))
+    if threaded_lsmr_window:
+        identity.setdefault('experiment', {})['threaded_lsmr_window'] = dict(
+            scope='Captured-source medium threaded RHS transport/admission experiment; no production acceptance.',
+            instrument_sha256=sha(REPO / 'benchmarks/next_subsystem/threaded_lsmr_window.py'))
     if direct_ols_lsmr:
         identity.setdefault('experiment', {})['direct_ols_lsmr'] = dict(
             scope='Captured-source public fast two-intercept OLS diagnostic; automatic LSMR tolerances and admission unchanged.',
@@ -178,9 +189,11 @@ if __name__ == "__main__":
                    help="isolated narrow OLS cap experiment; never modifies the checkout")
     p.add_argument("--serial-lsmr-window", action="store_true",
                    help="isolated serial RHS-window experiment; never modifies production source")
+    p.add_argument("--threaded-lsmr-window", action="store_true",
+                   help="isolated medium threaded RHS-window experiment; never modifies production source")
     p.add_argument("--direct-ols-lsmr", action="store_true",
                    help="isolated automatic-LSMR route diagnostic; never modifies production source")
     p.add_argument("--cycle-ols-lsmr", action="store_true",
                    help="isolated exact-cycle routing experiment; never modifies production source")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap, a.serial_lsmr_window, a.direct_ols_lsmr, a.cycle_ols_lsmr, a.profile_lsmr_transport, a.profile_ppml_session)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap, a.serial_lsmr_window, a.direct_ols_lsmr, a.cycle_ols_lsmr, a.profile_lsmr_transport, a.profile_ppml_session, a.threaded_lsmr_window)

@@ -38,6 +38,12 @@ laps are injected exclusively into isolated builds by `profile.py` and the
 build script's diagnostic flags. Capture those source deltas; their clocks
 must never enter stock-reference headline medians.
 
+The isolated `--threaded-lsmr-window` build option reproduces the rejected
+medium-batch scheduling experiment in `threaded_lsmr_window.py`. It modifies
+only the captured build's transport/admission policy, never the working native
+source. Its mixed dense-case screen does not authorize production adoption or
+another window-size search; see the three-FE window report dated 2026-09-22.
+
 `archive.py ROOT OUTPUT.zip --screens ... --extras ...` seals numerical exports,
 plans, captured controllers and original/portable hashes, omitting data,
 binaries and licensed log contents. Review the archive and attach source

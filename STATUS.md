@@ -10,7 +10,35 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Narrow PPML checkpoints accepted; broader work continues — 2026-09-22
+## Three-FE scheduling experiment closed; native checkpoint retained — 2026-09-22
+
+The [three-FE window screen](benchmarks/reports/development/three-fe-window-local-2026-09-22/README.md)
+remeasures `37af7d82`/`batch1` against stock and rejects an isolated generic
+threaded-window experiment under its predeclared mixed-gain stop rule. Dense
+K50/T16 improves only 4.3% by paired median; dense K31/T4 loses 1.1%. Sparse
+K31/T8 improves 8.6% natively, but its stock beta/V discrepancy stays unranked.
+The current production dense medians still lose to stock: 765/605 and 624/568 ms
+in the paired block. All 45 baseline/screen attempts complete cleanly; all nine
+native pairs are byte-identical scientifically. Tracked peaks fall 2.54–161.44 MB
+in the experiment, without a constrained-memory acceptance claim.
+
+No production native source or memory policy changed. The isolated instrumenter
+and build option are retained solely to reproduce the rejected experiment.
+Five focused Rust transport tests and ABI containment pass. A new independent
+three-FE explicit-LSMR oracle passes on production and experiment for unit/AW,
+robust inference and T1/T4/T16. The 1,100-entry evidence archive verifies all
+hashes and preserves the unrun fresh confirmation declarations. Do not restart
+window-size tuning or fit a guard to the favorable cells.
+
+**Recommended next subsystem:** generated/factor-term command cost and requested
+outputs, with a small matched current-source screen first. Their performance
+coverage remains incomplete. Three-FE upstream operator/preconditioner work
+needs a separate algorithmic investigation; the bounded transport/scheduling
+experiments are closed. The accepted narrow PPML native checkpoint and all
+deferred issues below remain unchanged. No qualification, stopped campaign,
+push, release or SCC authentication retry was performed.
+
+## Narrow PPML checkpoints accepted — 2026-09-22
 
 The [narrow-batch milestone](benchmarks/reports/development/ppml-narrow-batch-local-2026-09-22/README.md)
 and ADR 0107 extend admitted two-FE checkpoint Schur to 2–15 actual RHSs.
@@ -38,9 +66,9 @@ sampled RSS and its limitations are recorded. Static allocation-source drift
 still fails and was not regenerated. The 4,367-entry evidence archive verifies
 all hashes; an initial archive failure on Finder metadata is recorded separately.
 
-This bounded narrow-checkpoint experiment is accepted and closed. Broader work
-continues with the remaining three-FE upstream solve; do not chase the small
-sparse probe loss or tune around a near-null tiny-batch RHS. Generated/factor,
+This bounded narrow-checkpoint experiment is accepted and closed. The later
+three-FE screen above supersedes its next step; do not chase the small sparse
+probe loss or tune around a near-null tiny-batch RHS. Generated/factor,
 broad saved-output and constrained-memory performance coverage remains
 incomplete. All deferred issues below stay open; SCC authentication must not
 be retried without renewed access. No qualification, historical win transfer,
