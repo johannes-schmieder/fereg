@@ -10,6 +10,60 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Owned-FE raw moments accepted; breadth gaps verified — 2026-09-22
+
+The [generated-term/multi-partition milestone](benchmarks/reports/development/owned-fe-certificate-local-2026-09-22/README.md)
+and ADR 0113 batch fresh owned-FE raw diagnostic moments across 32 RHSs.
+Per-entry scaling, compensated arithmetic, observation order and overflow
+saturation remain exact. Weighted rank-aware QR, relative certificates,
+solver routing, weights, DoF and publication rules are unchanged. Three fixed
+arrays add 768 bytes of stack payload; no heap or cross-call/PPML cache is added.
+
+`rawtile1` is `cd599498` plus the archived `certificate.rs` overlay; all 529
+captured inputs match. Plugin SHA-256:
+`016f3fb22bbf2b50f81b5b900a4c90d0e82997507686aefb57e41382cb9ab343`.
+Six eligible multi-partition slope rows gain 10.6–19.8% by paired medians.
+Two original slope command medians improve 421→362 and 519→428 ms; fresh
+K33 improves 1360→1091 ms. AW robust and PW clustered controls gain about
+14–15%. Diagnostic raw moments improve 120→55 and 176→76 ms. TS and
+categorical/PPML control changes are small and mixed; individual losses remain.
+
+All 42 successful native pairs and 56 repeat checks pass unchanged envelopes.
+Thirty-nine native pairs and six saved-output binaries are exact. Three
+parallel disconnected pairs show at most 1.01e−16 coefficient and 3.19e−17
+covariance differences; both artifacts also vary across their own repeats.
+Five independent keyed-TS/explicit-slope pilots, 32 distinct Rust tests, two
+optimized tile tests, actual-plugin ABI containment, four harness tests and
+four licensed OLS/PPML/transaction fixtures pass.
+
+**Comparison limits stay visible.** Direct stock checks pass 24/28. The three
+disconnected slope comparisons disagree in coefficients, V and RSS and remain
+unranked; this is not just a DoF rescaling question. A weak multi-slope design
+fails native warmup with r(459) on both artifacts and stock reports nonconvergence
+and more parameters than observations. One further baseline attempt was
+interrupted and remaining weak repetitions stopped; the other fresh cases
+completed unchanged in a separate root. No native error localization or
+independent rank adjudication is claimed. Seven of eight comparable stock rows
+still favor fixest. Wide TS launches originally exceeded Stata's argument buffer;
+captured per-run includes fix the harness, and the corrected comparisons pass.
+
+The acceptance blocks retain 114 completed attempts (111 successes, one stock
+nonconvergence, two native warmup failures), plus one interrupted attempt. The
+initial screen's three startup crashes remain additional visible failures.
+There are no completed-call timeouts, detected overlaps or monitor errors.
+Native tracked peaks are unchanged outside parallel disconnected variation
+(−19.16 to +22.28 MB); there is no tighter whole-action memory claim. Static
+allocation source drift, weighted constrained fits, nonretaining CG span
+instability, factor-base provenance and SCC/Linux deferrals remain open.
+
+**Next bounded task:** investigate the generic owned-FE projection/certificate
+lifecycle and reusable local geometry, where strong/unbalanced multi-partition
+slopes still lose substantially. Establish a positive-residual-DoF weak-design
+pilot first and keep the disconnected stock discrepancy separate. Close this
+raw-tile experiment; do not tune its width, chase narrow TS noise, or reopen
+closed serial-slope/window work. This is a clean local implementation milestone,
+not completion of the broad goal, qualification, push or release.
+
 ## Scratch influence rows accepted; low-memory tuning bounded — 2026-09-22
 
 The [scratch robust covariance milestone](benchmarks/reports/development/low-covariance-local-2026-09-22/README.md)

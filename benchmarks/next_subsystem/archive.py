@@ -36,7 +36,7 @@ def archive(root, output, screens, extras):
                     continue
                 relative = path.relative_to(directory)
                 data = path.read_bytes() if path.suffix not in (".dta", ".bin") else None
-                if relative.parts[0] == "controller" or path.suffix in (".json", ".csv", ".tsv"):
+                if relative.parts[0] == "controller" or path.suffix in (".json", ".csv", ".tsv") or path.name == "surface-args.do":
                     add(f"{screen}/{relative}", data)
                 elif path.name in ("stdout.txt", "stderr.txt") or path.suffix == ".log":
                     # Keep only native trace lines and worker protocol sentinels.

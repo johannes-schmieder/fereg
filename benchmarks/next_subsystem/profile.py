@@ -187,3 +187,54 @@ def instrument_serial_sandwich(root):
     eprintln!("FEREG_PHASE|serial_sandwich|rows={nrows}|columns={dimension}|scores={:.9}|bread={:.9}|outer={:.9}", development_parts[0], development_parts[1], development_parts[2]);
     finalize_symmetric_triangle''')
     path.write_text(text[:start] + body + text[end:])
+
+
+def instrument_owned_fe(root):
+    for file, function, values in (
+        ("projection.rs", "pub fn project_effect_in_place(", "values"),
+        ("certificate.rs", "pub(crate) fn certify_residuals_with_reference_norms(", "residuals"),
+    ):
+        path = root / "crates/fereg-core/src/fe" / file
+        text = path.read_text()
+        start = text.index(function)
+        body = text.index(" {\n", start) + 3
+        label = file.removesuffix(".rs")
+        text = text[:body] + f'''    struct OwnedFeTimer(std::time::Instant, usize, usize);
+    impl Drop for OwnedFeTimer {{
+        fn drop(&mut self) {{
+            if std::env::var_os("FEREG_PHASE_TIMING").is_some() {{
+                eprintln!("FEREG_PHASE|owned_fe|phase={label}|rows={{}}|rhs={{}}|seconds={{:.9}}",
+                    self.1, self.2, self.0.elapsed().as_secs_f64());
+            }}
+        }}
+    }}
+    let _profile_timer = OwnedFeTimer(std::time::Instant::now(), {values}.nrows(), {values}.ncols());
+''' + text[body:]
+        path.write_text(text)
+
+    path = root / "crates/fereg-core/src/fe/certificate.rs"
+    text = path.read_text()
+    def replace(before, after):
+        nonlocal text
+        assert text.count(before) == 1, before
+        text = text.replace(before, after)
+    replace("    let mut absolute_infinity_norm = 0.0_f64;",
+            "    let mut development_parts = [0.0_f64; 4];\n    let mut absolute_infinity_norm = 0.0_f64;")
+    replace("            let mut normalized_columns = fallible_empty(",
+            "            let mut development_lap = std::time::Instant::now();\n            let mut normalized_columns = fallible_empty(")
+    for index, marker in enumerate((
+        "            let orthonormal_basis = pivoted_reorthogonalized_qr(normalized_columns)?;",
+        "            for rhs in 0..residuals.ncols() {\n                let denominator = rhs_scales[rhs];",
+        ("            absolute_infinity_norm = absolute_infinity_norm.max(raw_moment_maximum("
+         if "raw_moment_maximum(" in text else
+         "            for channel in 0..channels {\n                for rhs in 0..residuals.ncols() {"),
+        "    let relative_two_norm = if relative_count == 0 {",
+    )):
+        if index == 3:
+            # The final group accumulator belongs inside both loops.
+            replace("        }\n    }\n\n" + marker,
+                "            development_parts[3] += development_lap.elapsed().as_secs_f64();\n        }\n    }\n"
+                '    eprintln!("FEREG_PHASE|owned_certificate|rows={}|rhs={}|normalize={:.9}|qr={:.9}|project={:.9}|raw_moments={:.9}", residuals.nrows(), residuals.ncols(), development_parts[0], development_parts[1], development_parts[2], development_parts[3]);\n\n' + marker)
+        else:
+            replace(marker, f"            development_parts[{index}] += development_lap.elapsed().as_secs_f64();\n            development_lap = std::time::Instant::now();\n" + marker)
+    path.write_text(text)

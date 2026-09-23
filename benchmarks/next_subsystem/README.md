@@ -37,6 +37,27 @@ for large paired comparisons. Original failed attempts must remain visible.
 keeps the public OLS default. Stock fixest uses its ordinary memory strategy,
 so these timings do not establish performance under an equal memory budget.
 
+`terms: "time_series"` replaces each numeric regressor with the first lag,
+lead or difference selected cyclically by `ts_operators` (`L`, `F`, `D`).
+Thirty-row panels have integer time; `time_gaps: true` inserts two gaps.
+Stata `xtset` and stock fixest `panel(..., time.step=1)` run before timing;
+the public estimators generate their terms inside the timer. The independent
+oracle uses original-row keyed lookups before availability and singleton
+deletion. Saved-output comparisons certify retained observation IDs before
+aligning Stata's physical-row export with fixest's retained-row output.
+
+`slope_partitions: {"g1": ["z1"], "g2": ["z2", "z3"]}` adds intercept-plus-
+slope channels to declared partitions. This surface currently requires numeric
+finite regressors and no saved outputs. Both estimators receive matching
+varying-slope specifications; bounded pilots use explicit indicator-by-slope
+columns and an independent matrix-rank calculation. It does not change DoF
+policy or adjudicate large disconnected rank discrepancies.
+
+Surface metadata lives in each run's captured `surface-args.do`, avoiding
+Stata startup argument limits for wide generated models. The regular fit
+options still use the existing worker. Run `test_surface.py` for the keyed
+operator, slope-span and wide-metadata boundary checks.
+
 `factor_rebase_probe.do` is a diagnostic reproducer for the ordinary one-FE
 factor-level deletion defect. It verifies that candidate metadata cannot
 distinguish `i.f` from `ib1.f`, checks their different final-sample expansion,
@@ -63,6 +84,9 @@ Use `--trace` only in a separate diagnostic root. Additional transport/session
 laps are injected exclusively into isolated builds by `profile.py` and the
 build script's diagnostic flags. Capture those source deltas; their clocks
 must never enter stock-reference headline medians.
+`--profile-owned-fe` separates generic owned-FE projections and fresh
+certification, including normalization, QR, span projection and raw moments.
+Per-level clocks are diagnostic overhead, not headline performance evidence.
 
 The isolated `--threaded-lsmr-window` build option reproduces the rejected
 medium-batch scheduling experiment in `threaded_lsmr_window.py`. It modifies

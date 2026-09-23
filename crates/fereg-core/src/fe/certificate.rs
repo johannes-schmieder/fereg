@@ -223,18 +223,12 @@ pub(crate) fn certify_residuals_with_reference_norms(
                 relative_count += 1;
             }
 
-            for channel in 0..channels {
-                for rhs in 0..residuals.ncols() {
-                    let moment = scaled_raw_moment(
-                        observations,
-                        |observation| {
-                            weights[observation].sqrt() * effect.basis_value(channel, observation)
-                        },
-                        |observation| weights[observation].sqrt() * residuals[(observation, rhs)],
-                    );
-                    absolute_infinity_norm = absolute_infinity_norm.max(moment.abs());
-                }
-            }
+            absolute_infinity_norm = absolute_infinity_norm.max(raw_moment_maximum(
+                observations,
+                effect,
+                weights,
+                residuals,
+            ));
         }
     }
 
@@ -327,7 +321,11 @@ pub(super) fn euclidean_norm(values: &[f64]) -> f64 {
     }
 }
 
-pub(super) fn update_scaled_sum_of_squares(value: f64, scale: &mut f64, scaled_square_sum: &mut f64) {
+pub(super) fn update_scaled_sum_of_squares(
+    value: f64,
+    scale: &mut f64,
+    scaled_square_sum: &mut f64,
+) {
     let absolute = value.abs();
     if absolute == 0.0 {
         return;
@@ -347,6 +345,7 @@ pub(super) fn update_scaled_sum_of_squares(value: f64, scale: &mut f64, scaled_s
 /// The certificate gate never consumes this value. A true nonzero result that
 /// exceeds the `f64` range saturates to infinity instead of turning a valid
 /// basis-invariant projection certificate into an error.
+#[cfg(test)]
 fn scaled_raw_moment(
     observations: &[usize],
     left: impl Fn(usize) -> f64,
@@ -374,7 +373,10 @@ fn scaled_raw_moment(
         };
         sum = updated;
     }
-    let normalized = sum + correction;
+    rescale_raw_moment(sum + correction, left_scale, right_scale)
+}
+
+fn rescale_raw_moment(normalized: f64, left_scale: f64, right_scale: f64) -> f64 {
     if normalized == 0.0 {
         return 0.0;
     }
@@ -387,6 +389,70 @@ fn scaled_raw_moment(
     } else {
         normalized.signum() * f64::INFINITY
     }
+}
+
+/// Fresh raw diagnostics, with independent RHS entries in bounded row tiles.
+/// Each entry retains its observation order, two divisions, compensated sum
+/// and final scale order. Geometry and residuals are never cached across calls.
+fn raw_moment_maximum(
+    observations: &[usize],
+    effect: &crate::fe::EffectTerm,
+    weights: &[f64],
+    residuals: &DenseMatrix,
+) -> f64 {
+    const TILE: usize = 32;
+    let rhs_count = residuals.ncols();
+    let mut maximum = 0.0_f64;
+    for first in (0..rhs_count).step_by(TILE) {
+        let width = (rhs_count - first).min(TILE);
+        let mut right_scales = [0.0_f64; TILE];
+        for &observation in observations {
+            let root = weights[observation].sqrt();
+            let offset = observation * rhs_count + first;
+            let row = &residuals.as_slice()[offset..offset + width];
+            for (scale, &value) in right_scales[..width].iter_mut().zip(row) {
+                *scale = scale.max((root * value).abs());
+            }
+        }
+        for channel in 0..effect.channels() {
+            let mut left_scale = 0.0_f64;
+            for &observation in observations {
+                let left = weights[observation].sqrt() * effect.basis_value(channel, observation);
+                left_scale = left_scale.max(left.abs());
+            }
+            if left_scale == 0.0 {
+                continue;
+            }
+            let mut sums = [0.0_f64; TILE];
+            let mut corrections = [0.0_f64; TILE];
+            for &observation in observations {
+                let root = weights[observation].sqrt();
+                let left = root * effect.basis_value(channel, observation) / left_scale;
+                let offset = observation * rhs_count + first;
+                let row = &residuals.as_slice()[offset..offset + width];
+                for rhs in 0..width {
+                    if right_scales[rhs] == 0.0 {
+                        continue;
+                    }
+                    let product = left * ((root * row[rhs]) / right_scales[rhs]);
+                    let sum = sums[rhs];
+                    let updated = sum + product;
+                    corrections[rhs] += if sum.abs() >= product.abs() {
+                        (sum - updated) + product
+                    } else {
+                        (product - updated) + sum
+                    };
+                    sums[rhs] = updated;
+                }
+            }
+            for rhs in 0..width {
+                let moment =
+                    rescale_raw_moment(sums[rhs] + corrections[rhs], left_scale, right_scales[rhs]);
+                maximum = maximum.max(moment.abs());
+            }
+        }
+    }
+    maximum
 }
 
 fn validate_common(values: &DenseMatrix, weights: &[f64]) -> Result<()> {
@@ -418,6 +484,79 @@ fn validate_common(values: &DenseMatrix, weights: &[f64]) -> Result<()> {
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
+
+    #[test]
+    fn raw_moment_tiles_match_scalar_entries_across_widths_and_scales() {
+        let observations = [6, 0, 8, 3, 2, 5, 1, 7, 4];
+        let weights: [f64; 9] = [0.25, 1.0, 4.0, 0.5, 2.0, 16.0, 0.0625, 8.0, 1.0];
+        for width in [1, 2, 7, 31, 32, 33, 63, 64, 65, 129] {
+            for scale in [0.0, 1e-200, 1.0, 1e200] {
+                let slope: Vec<_> = (0..9).map(|i| scale * ((i as f64) - 4.0)).collect();
+                let effect = EffectTerm::new(vec![0; 9], 1, false, vec![slope]).unwrap();
+                for selected in 0..width {
+                    let mut residuals = DenseMatrix::zeros(9, width).unwrap();
+                    for row in 0..9 {
+                        residuals[(row, selected)] = scale * ((row * 7 % 11) as f64 - 5.0);
+                    }
+                    // Isolate each entry, so a larger neighboring moment cannot
+                    // hide a mistake in a full or partial tile.
+                    let expected = scaled_raw_moment(
+                        &observations,
+                        |row| weights[row].sqrt() * effect.basis_value(0, row),
+                        |row| weights[row].sqrt() * residuals[(row, selected)],
+                    )
+                    .abs();
+                    let actual = raw_moment_maximum(&observations, &effect, &weights, &residuals);
+                    assert_eq!(
+                        actual.to_bits(),
+                        expected.to_bits(),
+                        "width={width}, rhs={selected}, scale={scale}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn raw_moment_tiles_preserve_cancellation_and_multiple_channels() {
+        let weights: Vec<f64> = (0..73).map(|i| 0.1 + (i % 11) as f64).collect();
+        let effect = EffectTerm::new(
+            vec![0; 73],
+            1,
+            true,
+            vec![(0..73).map(|i| (i as f64).sin()).collect(), vec![0.0; 73]],
+        )
+        .unwrap();
+        let observations: Vec<_> = (0..73).rev().collect();
+        let mut values = DenseMatrix::zeros(73, 67).unwrap();
+        for row in 0..73 {
+            for rhs in 0..67 {
+                values[(row, rhs)] = if rhs == 0 {
+                    -0.0
+                } else {
+                    (((row * 23 + rhs * 17) % 137) as f64 - 68.0) * 1e70
+                };
+            }
+        }
+        let mut expected = 0.0_f64;
+        for channel in 0..effect.channels() {
+            for rhs in 0..values.ncols() {
+                expected = expected.max(
+                    scaled_raw_moment(
+                        &observations,
+                        |row| weights[row].sqrt() * effect.basis_value(channel, row),
+                        |row| weights[row].sqrt() * values[(row, rhs)],
+                    )
+                    .abs(),
+                );
+            }
+        }
+        assert_eq!(
+            raw_moment_maximum(&observations, &effect, &weights, &values).to_bits(),
+            expected.to_bits()
+        );
+        assert_eq!(raw_moment_maximum(&[], &effect, &weights, &values), 0.0);
+    }
 
     #[test]
     fn certificate_capacity_overflow_is_an_allocation_error() {

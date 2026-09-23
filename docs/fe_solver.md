@@ -25,6 +25,12 @@ block `B`, the final gate computes the projection of `sqrt(W) r` onto
 relative to the outcome/residual scale. Columns are normalized before this
 check, making the certificate invariant to absorbed-channel units.
 
+The generic owned-FE certificate computes its raw-moment diagnostic in bounded
+32-RHS row tiles (ADR 0113). Each entry keeps its scaled compensated arithmetic,
+observation order and overflow saturation. Three fixed arrays contain 768 bytes
+of stack payload; no heap or cross-call geometry/weight cache is added. Fresh
+weighted QR, relative span checks and solver stopping remain unchanged.
+
 Hitting an iteration limit or failing the fresh certificate is fatal. Solver
 threads operate only on Rust-owned storage; no Stata SPI call occurs off the
 calling thread. Independent explicit-dummy fits validate small designs,

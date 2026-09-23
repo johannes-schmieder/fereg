@@ -15,7 +15,15 @@ def summarize(root, baseline, candidate):
     for index, cell in enumerate(plan["cells"]):
         pairs, repeats = [], []
         for repetition in range(plan["repeats"]):
-            attempts = {v: next(r for r in progress if r["case"] == index and r["repetition"] == repetition and r["variant"] == v) for v in [baseline, candidate]}
+            attempts = {r["variant"]: r for r in progress
+                        if r["case"] == index and r["repetition"] == repetition
+                        and r["variant"] in (baseline, candidate)}
+            missing = [v for v in (baseline, candidate) if v not in attempts]
+            if missing:
+                pairs.append(dict(repetition=repetition, clean=False, ratio=None,
+                    missing_variants=missing, checks=dict(passed=False, incomplete=True),
+                    exact=None, tracked_peak_bytes={}))
+                continue
             paths = {v: root / r["result"] for v, r in attempts.items()}
             clean = all(r["status"] == "pass" and not r["overlaps"] and not r["monitor_errors"] for r in attempts.values())
             peaks = {}

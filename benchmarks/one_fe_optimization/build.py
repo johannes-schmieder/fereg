@@ -16,7 +16,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None, serial_lsmr_window=False, direct_ols_lsmr=False, cycle_ols_lsmr=False, profile_lsmr_transport=False, profile_ppml_session=False, threaded_lsmr_window=False, profile_low_qr=False, profile_serial_sandwich=False):
+def build(root, name, revision, overlays, profile_preparation=False, profile_completion=False, profile_breadth=False, profile_statistics=False, profile_slopes=False, profile_inference=False, profile_recovery=False, profile_schur=False, schur_narrow_cap=None, serial_lsmr_window=False, direct_ols_lsmr=False, cycle_ols_lsmr=False, profile_lsmr_transport=False, profile_ppml_session=False, threaded_lsmr_window=False, profile_low_qr=False, profile_serial_sandwich=False, profile_owned_fe=False):
     assert not (direct_ols_lsmr and cycle_ols_lsmr), 'Choose one isolated routing experiment.'
     root = root.resolve()
     source = root / name
@@ -93,7 +93,7 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         probes = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probes)
         probes.instrument(source)
-    if profile_lsmr_transport or profile_ppml_session or profile_low_qr or profile_serial_sandwich:
+    if profile_lsmr_transport or profile_ppml_session or profile_low_qr or profile_serial_sandwich or profile_owned_fe:
         import importlib.util
         spec = importlib.util.spec_from_file_location("lsmr_transport_probes", REPO / "benchmarks/next_subsystem/profile.py")
         probes = importlib.util.module_from_spec(spec)
@@ -104,6 +104,8 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
             probes.instrument_ppml(source)
         if profile_low_qr:
             probes.instrument_low_qr(source)
+        if profile_owned_fe:
+            probes.instrument_owned_fe(source)
         if profile_serial_sandwich:
             probes.instrument_serial_sandwich(source)
     hashes = {str(p.relative_to(source)): sha(p) for p in sorted(source.rglob("*")) if p.is_file()}
@@ -171,6 +173,8 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         identity.setdefault("diagnostics", []).append("ppml_session")
     if profile_low_qr:
         identity.setdefault("diagnostics", []).append("low_qr_phases")
+    if profile_owned_fe:
+        identity.setdefault("diagnostics", []).append("owned_fe_phases")
     if profile_serial_sandwich:
         identity.setdefault("diagnostics", []).append("serial_sandwich_phases")
     (root / ("identity-" + name + ".json")).write_text(json.dumps(identity, indent=2) + "\n")
@@ -195,6 +199,7 @@ if __name__ == "__main__":
     p.add_argument("--profile-ppml-session", action="store_true")
     p.add_argument("--profile-low-qr", action="store_true")
     p.add_argument("--profile-serial-sandwich", action="store_true")
+    p.add_argument("--profile-owned-fe", action="store_true")
     p.add_argument("--schur-narrow-cap", type=int, choices=range(1, 65),
                    help="isolated narrow OLS cap experiment; never modifies the checkout")
     p.add_argument("--serial-lsmr-window", action="store_true",
@@ -206,4 +211,4 @@ if __name__ == "__main__":
     p.add_argument("--cycle-ols-lsmr", action="store_true",
                    help="isolated exact-cycle routing experiment; never modifies production source")
     a = p.parse_args()
-    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap, a.serial_lsmr_window, a.direct_ols_lsmr, a.cycle_ols_lsmr, a.profile_lsmr_transport, a.profile_ppml_session, a.threaded_lsmr_window, a.profile_low_qr, a.profile_serial_sandwich)
+    build(a.root, a.name, a.revision, a.overlay, a.profile_preparation, a.profile_completion, a.profile_breadth, a.profile_statistics, a.profile_slopes, a.profile_inference, a.profile_recovery, a.profile_schur, a.schur_narrow_cap, a.serial_lsmr_window, a.direct_ols_lsmr, a.cycle_ols_lsmr, a.profile_lsmr_transport, a.profile_ppml_session, a.threaded_lsmr_window, a.profile_low_qr, a.profile_serial_sandwich, a.profile_owned_fe)

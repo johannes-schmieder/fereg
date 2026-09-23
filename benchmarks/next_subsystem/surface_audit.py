@@ -7,6 +7,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+from scipy import sparse
 
 from audit import audit, compare, distance, read
 from oracles import oracle_sample
@@ -16,9 +17,34 @@ from oracle import dummy_matrix, solve
 
 def outputs(path, n):
     values=np.fromfile(path/'outputs.bin',dtype='<f8')
-    if values.size != 4*n:
+    if values.size == 4*n:
+        return values.reshape(4,n)
+    # Stata exports physical rows; fixest returns the estimation sample. Keep
+    # the original export and align by the separately certified row IDs.
+    saved=pd.read_csv(path/'saved_outputs.csv')
+    ids=saved.loc[saved.saved_resid.notna(),'obs_id'].to_numpy(dtype=int)
+    digest=hashlib.sha256(b''.join(int(i).to_bytes(8,'little') for i in ids)).hexdigest()
+    if digest != read(path/'result.json')['sample_sha256']:
+        raise ValueError('Saved-output row IDs differ from the certified sample')
+    if values.size % 4 or len(ids) != n or max(ids) > values.size//4:
         raise ValueError(f'Output shape mismatch: {values.size} versus {4*n}')
-    return values.reshape(4,n)
+    return values.reshape(4,-1)[:,ids-1]
+
+
+def absorbed_design(frame, cell):
+    if not cell.get('slope_partitions'):
+        return dummy_matrix(frame,cell['effects'])
+    width=sum(frame[effect].nunique()*(1+len(cell['slope_partitions'].get(effect,[])))
+              for effect in cell['effects'])
+    if width>1200:raise ValueError('Slope rank audit exceeds bounded explicit width')
+    blocks=[]
+    for effect in cell['effects']:
+        groups=pd.get_dummies(frame[effect],dtype=float).to_numpy()
+        blocks.append(groups)
+        blocks.extend(groups*frame[name].to_numpy()[:,None]
+                      for name in cell['slope_partitions'].get(effect,[]))
+    F=np.column_stack(blocks)
+    return sparse.csr_matrix(F),int(np.linalg.matrix_rank(F))
 
 
 def check(root, independent=False):
@@ -42,9 +68,13 @@ def check(root, independent=False):
         if independent:
             frame=pd.read_stata(root/f'data/c{index}-full.dta',convert_categoricals=False)
             if len(frame)>7680:raise ValueError('Independent oracle is bounded to 7680 rows')
-            frame,sample=oracle_sample(frame,cell)
-            F,rank=dummy_matrix(frame,cell['effects']); X=columns(frame,cell)
+            X_full=columns(frame,cell)
+            available=np.isfinite(X_full).all(axis=1)
+            frame,sample=oracle_sample(frame.loc[available].copy(),cell)
+            sample.update(original_rows=len(X_full),unavailable=int((~available).sum()))
+            F,rank=absorbed_design(frame,cell); X=X_full[frame.index]
             n,k=X.shape; y=frame.y.to_numpy()
+            if n<=rank+k:raise ValueError('Independent surface requires positive residual DoF')
             Z=np.column_stack([X[:,j]-F@solve(F,X[:,j]) for j in range(k)])
             y_within=y-F@solve(F,y)
             assert np.linalg.matrix_rank(Z)==k,'Finite surface is rank deficient'
