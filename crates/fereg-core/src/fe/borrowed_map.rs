@@ -1451,6 +1451,24 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         self.max_rhs
     }
 
+    /// PPML's base envelope already includes the categorical observation/graph
+    /// banks and generic projection/certificate buffers. Coexistence additionally
+    /// reserves both owner descriptors, borrowed effect records and the second
+    /// set of seven RHS scalar buffers.
+    pub(crate) fn coexisting_owner_bytes(effects: usize, rhs: usize) -> Result<u128> {
+        let descriptors = std::mem::size_of::<Self>() as u128
+            + std::mem::size_of::<super::map::ReusableMapAbsorber>() as u128;
+        let records = (effects as u128)
+            .checked_mul(std::mem::size_of::<crate::fe::BorrowedInterceptEffect<'_>>() as u128)
+            .ok_or_else(|| allocation("categorical checkpoint owner size overflows"))?;
+        let scalars = (rhs as u128)
+            .checked_mul(7 * std::mem::size_of::<f64>() as u128)
+            .ok_or_else(|| allocation("categorical checkpoint scalar size overflows"))?;
+        descriptors
+            .checked_add(records)
+            .and_then(|v| v.checked_add(scalars))
+            .ok_or_else(|| allocation("categorical checkpoint workspace size overflows"))
+    }
     pub(crate) fn capacities(&self) -> ReusableMapCapacities {
         ReusableMapCapacities {
             rhs: self.max_rhs,

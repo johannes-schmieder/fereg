@@ -115,6 +115,13 @@ memory mode; a declined witness
 retains canonical checkpoint/retry. Fresh final acceptance remains mandatory.
 Other slope calls retain their existing projector. See [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md)
 and [ADR 0069](adr/0069-low-memory-ppml-categorical-projection.md).
+Low-storage categorical MAP with multiple effects and finite controls also uses
+the admitted joint owner under [ADR 0136](adr/0136-low-memory-categorical-joint-ppml.md).
+Two-/three-FE sessions retain the borrowed categorical projector for canonical
+rank/bread construction and use joint directions between those boundaries.
+The owned FE design exists once. Four-plus FE use the generic coefficient
+projector at canonical boundaries. Optional-state refusal restores the prior
+route; all current-weight and final acceptance requirements remain unchanged.
 Final robust PPML inference borrows its certified design through fixed row-block
 visitors. Scratch-backed blocks own immutable scan cursors under
 [ADR 0135](adr/0135-immutable-ppml-inference-scans.md); numerical reductions and

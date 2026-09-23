@@ -1046,10 +1046,16 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             .max(1)
             .min(memory_plan.dimensions.finite_columns.max(1)),
     };
-    let slope_coefficients = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+    let categorical_checkpoints = config.linear.execution.mode == PreparedOlsExecutionMode::Low
+        && matches!(fe_design.effects().len(), 2 | 3)
+        && fe_design.effects().iter().all(|e| e.has_intercept() && e.slopes().is_empty());
+    let coefficient_solver = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && config.solver_plan.selected == super::PpmlSolverFamily::Map
         && fe_design.effects().len() > 1
-        && fe_design.effects().iter().any(|effect| !effect.slopes().is_empty())
+        && (fe_design.effects().iter().any(|effect| !effect.slopes().is_empty())
+            || (config.linear.execution.mode == PreparedOlsExecutionMode::Low
+                && solver_rhs > 1
+                && fe_design.effects().iter().all(|effect| effect.has_intercept())))
     {
         let mut candidate = memory_plan;
         match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(&fe_design).and_then(
@@ -1059,7 +1065,14 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     projection_rhs,
                     effective_threads,
                 )
-                .map(|workspace| (geometry, workspace + 8 * fe_design.nobs() as u128))
+                .and_then(|workspace| {
+                    let checkpoint = if categorical_checkpoints {
+                        crate::fe::ReusableCategoricalMapAbsorber::coexisting_owner_bytes(
+                            fe_design.effects().len(), projection_rhs,
+                        )?
+                    } else { 0 };
+                    Ok((geometry, workspace + 8 * fe_design.nobs() as u128 + checkpoint))
+                })
             },
         ) {
             Ok((geometry, workspace))
@@ -1075,7 +1088,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         }
     } else { false };
     // Mu exploration has a separate parent separation-phase envelope.
-    let projection_plan = if !slope_coefficients && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+    let projection_plan = if !coefficient_solver && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && config.solver_plan.selected == super::PpmlSolverFamily::Map
     {
         match crate::fe::ParallelProjectionPlan::for_design_and_threads(
@@ -1091,7 +1104,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         None
     };
-    let certificate_geometry = if slope_coefficients { true } else if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+    let certificate_geometry = if coefficient_solver { true } else if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && config.solver_plan.selected == super::PpmlSolverFamily::Map
         && fe_design.effects().len() > 1
         && fe_design
@@ -1109,7 +1122,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     };
     // Certificate scheduling is optional even after the slope solver fits.
     // A tight budget must retain that solver with its serial fresh check.
-    let slope_certificate = if slope_coefficients {
+    let slope_certificate = if coefficient_solver {
         match crate::fe::ReusableMapAbsorber::coefficient_certificate_bytes(
             &fe_design,
             projection_rhs,
@@ -1124,7 +1137,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     } else { false };
     // Prepared operators are independently optional after the numerical solver
     // and its certificate bank. Refusal cannot evict either admitted mechanism.
-    let slope_coupling = if slope_coefficients {
+    let slope_coupling = if coefficient_solver {
         match crate::fe::ReusableMapAbsorber::coefficient_coupling_bytes(&fe_design, projection_rhs) {
             Ok(Some(bytes)) => memory_plan.reusable_slope_bytes.checked_add(bytes)
                 .is_some_and(|total| memory_plan.admit_reusable_slope(total)),
@@ -1135,7 +1148,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         false
     };
-    let joint_slopes = if slope_coefficients && solver_rhs > 1 {
+    let joint_slopes = if coefficient_solver && solver_rhs > 1 {
         match crate::fe::ReusableMapAbsorber::joint_slope_bytes(&fe_design, solver_rhs - 1) {
             Ok(bytes) => memory_plan
                 .reusable_slope_bytes
@@ -1195,21 +1208,34 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         BorrowedMapWeights::Provided(workspace.hessian_weights()),
         ppml_bread_weight_scale(workspace.hessian_weights())?,
     )?;
-    let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
-        prepared,
-        frame,
-        initial_config,
-        LinearSessionGenerations::new(1, 1, 1, 1, 1),
-        fe_design,
-    )?;
+    // The joint engine owns the FE design once. Admitted categorical sessions
+    // also retain their borrowed canonical checkpoint projector; ordinary
+    // directions and canonical rank/bread construction have distinct duties.
+    let mut session = if coefficient_solver {
+        CertifiedLinearSession::new_with_fe_design(
+            prepared,
+            frame,
+            initial_config,
+            LinearSessionGenerations::new(1, 1, 1, 1, 1),
+            fe_design,
+        )?
+    } else {
+        CertifiedLinearSession::new_with_ppml_fe_design(
+            prepared,
+            frame,
+            initial_config,
+            LinearSessionGenerations::new(1, 1, 1, 1, 1),
+            fe_design,
+        )?
+    };
     if let Some(plan) = projection_plan {
         session.enable_ppml_parallel_projection(plan)?;
     }
     if certificate_geometry {
         session.enable_ppml_certificate_geometry()?;
     }
-    if slope_coefficients {
-        session.enable_ppml_slope_coefficients(
+    if coefficient_solver {
+        session.enable_ppml_coefficient_solver(
             effective_threads,
             slope_certificate,
             slope_coupling,
@@ -6276,6 +6302,161 @@ mod tests {
     }
 
     #[test]
+    fn low_categorical_geometry_refusal_retains_canonical_projection() {
+        let (prepared, y) = prepared_three_fe([0, 1, 2], false, None);
+        let weights: Vec<_> = (0..y.len()).map(|i| 0.2 + (i % 13) as f64).collect();
+        let frame = LinearSolveFrame::from_parts(
+            &y,
+            BorrowedMapWeights::Provided(&weights),
+            ppml_bread_weight_scale(&weights).unwrap(),
+        )
+        .unwrap();
+        let mut config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-12).unwrap();
+        config.execution.mode = PreparedOlsExecutionMode::Low;
+        config.execution.poolsize = 1;
+        let generations = LinearSessionGenerations::new(1, 1, 1, 1, 1);
+        let mut session = CertifiedLinearSession::new_with_fe_design(
+            &prepared,
+            frame,
+            config,
+            generations,
+            prepared.fit_owned_fe_design().unwrap(),
+        )
+        .unwrap();
+        // Optional certificate-bank refusal must leave the established
+        // categorical projector available without a second topology copy.
+        session
+            .enable_ppml_coefficient_solver(1, true, true)
+            .unwrap();
+        assert!(session.uses_ppml_categorical_map_for_test());
+        let actual = session.solve_fresh().unwrap();
+        assert!(actual.certified());
+        let mut baseline = CertifiedLinearSession::new_with_ppml_fe_design(
+            &prepared,
+            frame,
+            config,
+            generations,
+            prepared.fit_owned_fe_design().unwrap(),
+        )
+        .unwrap();
+        let expected = baseline.solve_fresh().unwrap();
+        assert_eq!(actual.fit().residuals(), expected.fit().residuals());
+        assert_eq!(
+            actual.fit().bread().values(),
+            expected.fit().bread().values()
+        );
+    }
+
+    #[test]
+    fn low_categorical_joint_strict_final_preserves_truth_and_canonical_retry() {
+        let n = 240;
+        let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
+        let h: Vec<_> = (0..n).map(|i| (i / 20 % 3) as f64).collect();
+        let x: Vec<_> = (0..n)
+            .map(|i| ((i % 5) as f64 - 2.).powi(2) + (i as f64 / 17.).sin())
+            .collect();
+        let eta: Vec<_> = (0..n)
+            .map(|i| 0.3 + 0.2 * x[i] + g[i] * 0.1 - h[i] * 0.05)
+            .collect();
+        let y: Vec<_> = eta.iter().map(|v| v.exp()).collect();
+        let prepared = prepared_two_fe_with_codes(&y, &x, &g, &h);
+        let weights: Vec<_> = (0..n).map(|i| 0.2 + (i % 13) as f64 / 7.).collect();
+        for threads in [1, 4] {
+            let mut config = PreparedPpmlIrlsConfig::default();
+            config.linear.execution.threads =
+                crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+            config.linear.execution.mode = PreparedOlsExecutionMode::Low;
+            config.linear.execution.poolsize = 1;
+            config.memory.requested = crate::options::MemoryMode::Low;
+            config.memory.poolsize = 1;
+            for mode in [0, 1, 2, 3] {
+                JOINT_FINAL_TEST_MODE.set(mode);
+                JOINT_FINAL_TEST_COUNTS.set((0, 0));
+                let fit = fit_prepared_ppml_irls(
+                    &prepared,
+                    &y,
+                    &weights,
+                    &vec![0.; n],
+                    config,
+                    plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                    None,
+                )
+                .unwrap();
+                assert!(
+                    fit.diagnostics().converged && fit.diagnostics().two_consecutive_convergence
+                );
+                assert!(fit.diagnostics().final_score.passed);
+                assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10);
+                assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+                validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
+                match mode {
+                    0 => assert_eq!(JOINT_FINAL_TEST_COUNTS.get().1, 1),
+                    1 => assert_eq!(JOINT_FINAL_TEST_COUNTS.get(), (0, 0)),
+                    _ => {
+                        assert!(JOINT_FINAL_TEST_COUNTS.get().0 >= 1);
+                        assert_eq!(JOINT_FINAL_TEST_MODE.get(), 0);
+                    }
+                }
+            }
+        }
+        JOINT_FINAL_TEST_MODE.set(0);
+    }
+
+    #[test]
+    fn low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control() {
+        for (order, nested, zero_control) in [
+            ([0, 1, 2], None, false),
+            ([2, 0, 1], Some(0), false),
+            ([1, 2, 0], Some(1), true),
+        ] {
+            let (prepared, _) = prepared_three_fe(order, zero_control, nested);
+            let design = prepared.fit_owned_fe_design().unwrap();
+            let n = design.nobs();
+            let offset: Vec<_> = (0..n).map(|i| (i as f64 / 17.).cos() * 0.1).collect();
+            let eta: Vec<_> = (0..n)
+                .map(|i| {
+                    let x = if zero_control {
+                        0.
+                    } else {
+                        (i as f64 * 0.173).sin() + (i as f64 * 0.071).cos()
+                    };
+                    offset[i]
+                        + 0.3
+                        + 0.2 * x
+                        + design
+                            .effects()
+                            .iter()
+                            .enumerate()
+                            .map(|(j, e)| 0.02 * (j + 1) as f64 * e.codes()[i] as f64)
+                            .sum::<f64>()
+                })
+                .collect();
+            let y: Vec<_> = eta.iter().map(|v| v.exp()).collect();
+            let weights: Vec<_> = (0..n).map(|i| 0.2 + (i % 17) as f64 / 7.).collect();
+            let mut config = PreparedPpmlIrlsConfig::default();
+            config.linear.execution.mode = PreparedOlsExecutionMode::Low;
+            config.linear.execution.poolsize = 1;
+            config.memory.requested = crate::options::MemoryMode::Low;
+            config.memory.poolsize = 1;
+            let fit = fit_prepared_ppml_irls(
+                &prepared,
+                &y,
+                &weights,
+                &offset,
+                config,
+                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                None,
+            )
+            .unwrap();
+            assert!(fit.diagnostics().converged && fit.diagnostics().final_score.passed);
+            assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10);
+            if !zero_control {
+                assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+            }
+            validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
+        }
+    }
+    #[test]
     fn joint_slope_session_preserves_changing_frames_rollback_and_fresh_rank() {
         let n = 240;
         let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
@@ -6315,7 +6496,7 @@ mod tests {
                 .unwrap();
                 session.enable_ppml_certificate_geometry().unwrap();
                 session
-                    .enable_ppml_slope_coefficients(threads, true, true)
+                    .enable_ppml_coefficient_solver(threads, true, true)
                     .unwrap();
                 session.enable_ppml_joint_slopes().unwrap();
                 assert!(session.solve_fresh().unwrap().certified());

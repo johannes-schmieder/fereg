@@ -257,6 +257,10 @@ pub(crate) struct ReusableMapCapacities {
 }
 
 impl ReusableMapAbsorber {
+    pub(crate) fn into_design(self) -> FeDesign {
+        self.design
+    }
+
     pub(crate) fn new(design: FeDesign, max_rhs: usize) -> Result<Self> {
         if max_rhs == 0 {
             return Err(FeregError::new(

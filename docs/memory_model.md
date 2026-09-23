@@ -776,3 +776,15 @@ ADR 0129's immutable-read rule. All joint state is released before inference.
 Fixed-configuration process audits remain exact-zero; the documented delayed
 Crossbeam frees in mixed-thread audits remain unresolved. Static allocation
 drift and physical-cap/platform gates remain separate.
+
+[ADR 0136](adr/0136-low-memory-categorical-joint-ppml.md) admits the same joint
+owner for low categorical MAP. For two/three effects, the canonical borrowed
+projector coexists with the generic joint owner. The base session envelope
+already includes categorical observation/graph banks and generic projection/
+certificate storage. Additional admission charges both boxed owner descriptors,
+borrowed effect records and seven RHS scalar buffers. The owned FE topology
+exists once; canonical capacities enter the same session fingerprint. Optional
+geometry/workspace/prior-response refusal consumes the generic owner to restore
+the categorical route without a topology clone. Both owners end before inference.
+The additional joint/coefficient payload follows the existing checked dimensions
+and fit-lifetime reservation; low mode still retains its bounded scratch pool.

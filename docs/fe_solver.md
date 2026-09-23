@@ -69,6 +69,14 @@ and a residual vector are admitted separately. Failed acceptance revokes geometr
 authority before canonical retry. See the ADRs for representative/weight/basis
 lifetimes and the mixed-thread allocation-audit limitation.
 
+ADR 0136 extends these joint directions and strict finalization to low-storage
+categorical MAP with multiple effects and finite controls. Two/three categorical
+effects retain their borrowed projector for canonical rank and inverse duties;
+four-plus effects use the generic coefficient projector there. Joint results
+remain direction-only. Optional-state refusal retains the previous categorical
+route without duplicating topology. This supersedes the categorical exclusions
+above for that bounded route; fast categorical LSMR and one-FE routing are unchanged.
+
 A solver recurrence is never sufficient evidence. For each effect-level
 block `B`, the final gate computes the projection of `sqrt(W) r` onto
 `col(sqrt(W) B)` with scaled, reorthogonalized rank-aware QR and measures it
