@@ -66,6 +66,7 @@ impl<P: PreparedOlsFitView + ?Sized> ProfiledDesign for &ProfiledRawColumns<'_, 
 }
 
 struct Moments {
+    anchor: Vec<f64>,
     mean: Vec<f64>,
     centered: Vec<f64>,
     gradient: Vec<f64>,
@@ -163,7 +164,7 @@ impl ProfiledOneFe {
                 + 2 * g as u128
                 + 4 * k as u128
                 + 2 * square as u128
-                + blocks as u128 * (3 * k as u128 + square as u128)))
+                + blocks as u128 * (4 * k as u128 + square as u128)))
     }
 
     pub(super) fn audit_bytes(n: usize, k: usize, g: usize) -> Result<u128> {
@@ -232,6 +233,7 @@ impl ProfiledOneFe {
         }
         for _ in 0..blocks {
             partials.push(Moments {
+                anchor: filled(k, 0.)?,
                 mean: filled(k, 0.)?,
                 centered: filled(k, 0.)?,
                 gradient: filled(k, 0.)?,
@@ -323,7 +325,8 @@ impl ProfiledOneFe {
             && self.partials.len() == g.div_ceil(GROUPS_PER_BLOCK)
             && self.partials.capacity() == self.partials.len()
             && self.partials.iter().all(|p| {
-                exact(&p.mean, k)
+                exact(&p.anchor, k)
+                    && exact(&p.mean, k)
                     && exact(&p.centered, k)
                     && exact(&p.gradient, k)
                     && exact(&p.hessian, k * k)
@@ -530,6 +533,11 @@ impl ProfiledOneFe {
                     for group in block * GROUPS_PER_BLOCK..end {
                         let rows = design.effects()[0].level_index().members(group);
                         let first = *rows.first().ok_or_else(numerical)?;
+                        // This immutable group row anchors both passes. Bind it
+                        // once instead of reevaluating its recipes for every row.
+                        for (j, value) in partial.anchor.iter_mut().enumerate() {
+                            *value = data.value(first, j)?;
+                        }
                         partial.mean.fill(0.);
                         let mut total = CompensatedSum::default();
                         for &row in rows {
@@ -540,7 +548,7 @@ impl ProfiledOneFe {
                             total.add(w);
                             for j in 0..k {
                                 partial.mean[j] = w.mul_add(
-                                    data.value(row, j)? - data.value(first, j)?,
+                                    data.value(row, j)? - partial.anchor[j],
                                     partial.mean[j],
                                 );
                             }
@@ -553,14 +561,17 @@ impl ProfiledOneFe {
                             let score = (q[row] / maximum) * (y[row] - mu[row]);
                             for j in 0..k {
                                 partial.centered[j] =
-                                    (data.value(row, j)? - data.value(first, j)?) - partial.mean[j];
+                                    (data.value(row, j)? - partial.anchor[j]) - partial.mean[j];
                             }
                             for j in 0..k {
                                 let x = partial.centered[j];
                                 partial.gradient[j] = x.mul_add(score, partial.gradient[j]);
-                                for l in 0..=j {
-                                    partial.hessian[j * k + l] = (w * x)
-                                        .mul_add(partial.centered[l], partial.hessian[j * k + l]);
+                                let weighted = w * x;
+                                for (entry, &right) in partial.hessian[j * k..j * k + j + 1]
+                                    .iter_mut()
+                                    .zip(&partial.centered[..=j])
+                                {
+                                    *entry = weighted.mul_add(right, *entry);
                                 }
                             }
                         }

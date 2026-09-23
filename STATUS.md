@@ -10,6 +10,180 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## PPML concentrated moments adopted; ambitious whole-command plan — 2026-09-23
+
+The active objective remains **whole public PPML <=0.90 times scientifically
+comparable pinned stock fixest wherever reasonably achievable**, per case, not
+an aggregate win rate. This opening supersedes earlier next-step orders. The
+pending concentrated-moment experiment is now finished and committed with the
+plan below; it is not completion of the broader optimization objective.
+
+Adopt `profilemom1`, based on `14c397ca`, under
+[ADR 0142](docs/adr/0142-contiguous-concentrated-ppml-moments.md) and the
+[source-bound report](benchmarks/reports/development/ppml-concentrated-moments-local-2026-09-23/README.md).
+All **541 computational inputs** match plugin
+`abcbf06ea8d0403d72950412f39b735f10b89fe80f0249a0f6c7632396b050a9`.
+The restored archive verifies **7,699 logical receipts**, SHA-256
+`23f2570f48ec2f6f988171fdd37da0584d75e8eefdef3119b16fe77c3c81d3aa`.
+All builds, tests, diagnostics, headline blocks, audits and archive operations
+are terminal. No push, release, SCC retry or broader qualification.
+
+### What changed and what passed
+
+Concentrated one-FE directions bind each group's anchor once and update contiguous
+triangular Hessian rows with the existing arithmetic/order. Both fast and low
+modes benefit; generated columns use the same mechanism. No weighted products
+cross changing frames. Ordinary pre-step and canonical accepted Hessians differ;
+source analysis rejected that proposed cache, while existing exact-frame final
+reuse remains. Moment value fetches fall from 4*N*K to (2*N+G)*K per direction.
+This is not a replacement for the already adopted coefficient-Schur/joint slope
+and categorical engines.
+
+**391 Rust tests**, production ABI/panic containment, **ten licensed runs of seven
+fixtures**, nine independent small Poisson/Hessian oracles, 180 public PPML state
+checks, 60 baseline/stock plus 60 direct candidate/stock checks pass. There are
+188 passing headline applications and eight separate passing diagnostic fits.
+All 60 native PPML pairs have byte-identical scientific exports/means, unchanged
+outer/inner counts and scratch. Four OLS pairs have exact science. All 35 wider
+one-FE pairs improve, including fresh serial and T8 cases.
+
+Additional active storage is `(8*K+24)*ceil(G/64)` bytes on the local architecture;
+conservative admission uses full candidate width. Sampled tracked increments are
+216–26,880 bytes, modeled increments 240–27,648. Multi-FE/slope peaks are unchanged.
+Fixed-process warmed audits remain zero-event/zero-growth with stable capacities.
+The optional implicit-state budget-refusal oracle passes; it is not physical-cap
+qualification or a direct new-anchor refusal test.
+
+### Current scorecard and remaining budgets
+
+Whole-command medians in milliseconds, robust inference plus fitted means.
+One-FE uses five rotations, PPML controls three. Targets are **goals derived from
+this block's stock median**, not predicted attainable runtimes. Full distributions,
+paired losses, exact identities and exclusions are in the report.
+
+| Case | Before | Current | Stock | Current/stock | 0.90 target | Further reduction needed |
+|---|---:|---:|---:|---:|---:|---:|
+| Low one-FE N61440/K10/T4 | 96 | 97 | 52 | 1.865 | 46.8 | 50.2 ms / 51.8% |
+| Low one-FE N30720/K32/T4 | 115 | 107 | 121 | 0.884 | 108.9 | margin reached in this block |
+| Fast one-FE N8192/K80/T4 | 182 | 166 | 127 | 1.307 | 114.3 | 51.7 ms / 31.1% |
+| Low one-FE N8192/K80/T4 | 172 | 155 | 128 | 1.211 | 115.2 | 39.8 ms / 25.7% |
+| Low one-FE N3840/K3/T1 | 17 | 16 | 11 | 1.455 | 9.9 | 6.1 ms / 38.1% |
+| Fresh low one-FE N16384/K48/T4 | 112 | 100 | 109 | 0.917 | 98.1 | 1.9 ms / 1.9% |
+| Fresh fast one-FE N12288/K40/T4 | 82 | 77 | 69 | 1.116 | 62.1 | 14.9 ms / 19.4% |
+| Fresh fast one-FE N8192/K80/T8 | 170 | 159 | 115 | 1.383 | 103.5 | 55.5 ms / 34.9% |
+| Fresh unbalanced low N24580/K24/T1 | 134 | 114 | 125 | 0.912 | 112.5 | 1.5 ms / 1.3% |
+| Fresh dense three-FE fast N30720/K6/T4 | 183 | 186 | 234 | 0.795 | 210.6 | margin reached in this block |
+| Fresh dense three-FE low, same shape | 341 | 346 | 234 | 1.479 | 210.6 | 135.4 ms / 39.1% |
+| Fresh two slope partitions low, same shape | 151 | 150 | 120 | 1.250 | 108 | 42 ms / 28.0% |
+| Fresh two slope partitions fast, same shape | 126 | 125 | 120 | 1.042 | 108 | 17 ms / 13.6% |
+
+Preserve losses: K10 has three +1-ms pairs and two ties. K3 has one +2-ms pair.
+Categorical fast/low pairs are +6,-5,+3 and +16,+5,-15 ms; low/fast slopes are
++1,+1,-4 and -3,-1,+2. OLS pairs are -1,+6 and 0,+2 ms, with medians 66.5/69 and
+65.5/66.5. Their causes are not established. There is no universal performance
+non-regression claim and no repeat replacing an unfavorable block.
+
+### Implementation plan, in priority order
+
+1. **Make low multi-FE canonical construction competitive.** Start with identical
+   frozen accepted weights/RHS/controls for low three-FE and multipartition
+   slopes. Attribute initialization, current-weight geometry, individual RHS
+   convergence, scratch traversal, reconstruction and final checks separately.
+   The current low three-FE strict/final marginal is **171.662 ms** versus
+   **0.615 ms inference**; the joint strict witness already works. Target the
+   initial/final canonical dataflow, not another ordinary-direction solver.
+   First candidate: let the existing current-frame coefficient/geometry owner
+   stream canonical corrections in bounded RHS tiles, stop each RHS independently,
+   and avoid repeated scratch read/normalize/write passes. Form compatible finite
+   products during construction where this preserves an independent later check.
+   Retain original-input reconstruction, local relative projection accuracy,
+   canonical rank/QR fallback, both inverse sides and final q*mu authority.
+   Do not replay ADR 0136's rejected all-coefficient categorical route without a
+   materially new local-scaling/error-control design. If streaming cannot remove
+   the dominant cost, compare one genuinely different canonical coefficient
+   formulation, using the same frozen-frame oracle and operation ledger. The
+   public goals are <=211 ms for this dense low cell and <=108 ms for both slope
+   modes, requiring about 39%, 28% and 14% reductions respectively.
+
+2. **Redesign narrow one-FE end to end.** The 97 -> 46.8-ms target requires removing
+   roughly half the public command. Freeze a narrow N/K ladder, including small
+   fits, and compare stock setup, solve, inference and outputs with equivalent
+   requested work. Trace Stata syntax/metadata, SPI loading, sample/topology,
+   canonical initialization/finalization, objective/score passes and publication.
+   Prototype one sample-generation owner for immutable recipes/membership and
+   one explicitly invalidated current-weight product owner where duplicate work
+   is measured. Investigate fused native passes and direct grouped canonical
+   products; retain independent final projection/rank/Hessian and original-input
+   score checks. For one-FE initialization, evaluate a cheaper scientifically
+   equivalent construction rather than presuming a complete generic transaction
+   is necessary twice. Avoid unsafe subtraction of large nearly equal Grams.
+   Keep Stata as the control plane, main-thread SPI and receipt-last atomicity.
+   If language/control-plane overhead dominates small fits, address it directly
+   through shared native metadata and fewer duplicated traversals, not work moved
+   outside the reported timer. Compare fast versus implicit storage by actual
+   cost/admission evidence; the previously rejected narrow fast implicit route
+   is not automatically revived.
+
+3. **Remove wide-column and verification bottlenecks.** Extend numeric binding
+   for PPML original-input scores through bounded column blocks instead of the
+   >64-column serial generic fallback; preserve each column's compensated row
+   order and independent score authority. Reorganize the two reported inverse
+   checks as bounded contiguous kernels, retaining their actual residual bounds.
+   Profile robust/cluster score reductions and output validation separately.
+   K80 baseline diagnostic costs include about 14 ms outer scores, 10 ms reported
+   inverse/intercept checks, 24–25 ms inference and 10 ms publication metadata;
+   not all are column-evaluation costs. Do not repeat the completed covariance
+   eigensystem/pivot tuning. The K80/T8 goal needs another **55.5 ms**, so evaluate
+   the combined whole-command budget, not a fast microbenchmark alone. Carry
+   shared kernels into OLS only with its focused scientific/performance controls.
+   K48/K24's 1–2-ms residual gaps may close incidentally; no dedicated long cycle.
+
+4. **Expand coverage adaptively and choose routes from costs.** Current-source
+   evidence is strongest for the listed one-FE widths and dense/slope controls.
+   Earlier disconnected/weak/sparse/unbalanced, higher-dimensional, multi-slope,
+   generated/factor, clustered/weighted and saved-output results stay attached
+   to their historical artifacts until remeasured. Comparator discrepancies stay
+   unranked; untested combinations remain explicitly untested. For each changed
+   boundary, predeclare a small fresh panel spanning those relevant axes, T1/T4/T8,
+   widths on both sides of existing representation boundaries, changing/extreme
+   weights and rank deficiency. Start around the measured problem; extend only
+   when evidence exposes a route boundary. Automatic routing may use stable
+   mathematical dimensions, topology, measured work estimates and admitted
+   memory, never benchmark names/seeds. Compare alternatives on identical frozen
+   frames before integrating a route and retire superseded production machinery.
+
+5. **Close each family with durable evidence and then move on.** Each milestone
+   gets a current-source baseline, phase/operation ledger, at most two materially
+   different candidates, independent explicit-design WLS/Poisson/Hessian checks,
+   alternating baseline/candidate/stock rotations, fresh confirmation and focused
+   excluded PPML/OLS controls. Use at least five rotations where margins matter;
+   assess variability as well as medians, and report the worst losses and failures.
+   A claimed 10% lead needs <=0.90 per comparable case plus fresh confirmation;
+   a three-rotation control is not a family-wide claim. Retain smaller coherent,
+   reliable improvements when cheap, but do not stop the larger task there.
+   Commit accepted changes/ADRs and immutable receipts; rejected candidates retain
+   evidence and a reason. If a target remains missed, supply the remaining phase
+   budget and a concrete next mechanism or measured limiting cost. No generic
+   assertion that certification makes parity impossible.
+
+### Continuing constraints
+
+No check, tolerance, sample, rank, weight, DoF, separation or transaction policy
+is relaxed. A verification schedule/authority redesign requires a successor ADR
+and independent tests that establish the same scientific purpose. Fresh residual,
+score, objective, reconstruction and final-Hessian conditions remain mandatory.
+Keep immutable topology distinct from current weights, geometry and iteration
+state; prior solutions are guesses, never current-frame acceptance.
+
+Seeds **202609346–347** are consumed in addition to earlier seeds through345.
+Protected cycle seeds211/212 and frozen77/16/111 definitions remain unchanged.
+Preserve static allocation drift, weighted constrained/nonretaining-CG failures,
+mixed-thread reclamation and existing comparator/platform deferrals. Linux
+T1/8/16 and constrained-memory confirmation await renewed SCC access; no repeated
+authentication attempts. Do not restart stopped campaigns. STATUS remains the
+sole mutable handover. The next implementation action is milestone 1's frozen-
+frame canonical checkpoint comparison; no further tuning of group-anchor width.
+
 ## PPML covariance ownership adopted; finite products and low checkpoints next — 2026-09-23
 
 The objective remains **whole public PPML <=0.90 times scientifically comparable
