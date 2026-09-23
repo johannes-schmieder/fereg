@@ -10,6 +10,52 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Generated OLS name reuse accepted — 2026-09-22
+
+The [generated-surface milestone](benchmarks/reports/development/generated-surface-local-2026-09-22/README.md)
+and ADR 0108 reuse parser factor names when the validated native receipt proves
+candidate and retained physical-row counts are equal. Any row deletion keeps
+the existing final-sample expansion. This ado-only change removes a measured
+48 ms repeated expansion from the wide interaction case; no native arithmetic,
+cache, memory admission, rank policy or publication validation changes.
+
+`factor_names1` is `56e4ff79`/`batch1` plus the archived
+`stata/_fereg_estimate_ols.ado` overlay. All 527 captured inputs match; the new
+fixture is separately executed and hash-bound. The reused plugin remains
+`a191585c5a156809f8a572bbce37d948b2ede1e0ca8579a85f15e4cb32547d14`.
+The accepted ado hash is
+`407ae24785bc028aef1a3d5b808f0bb210d27017c801546b5bcde835883abc62`.
+Wide interactions improve 341→288 ms (15.5% paired) and fresh 480→421 ms
+(12.1% paired). Narrow factor/output paired gains are about 3–8%; numeric
+controls are flat, with individual losses preserved. Six of eleven comparable
+stock rows still lose. A fresh three-FE beta/RSS discrepancy is unranked.
+
+All 144 headline calls pass application checks without detected overlap.
+All 36 native pairs have byte-identical scientific exports; direct candidate/
+stock checks pass 33/36, with the three failures above retained. Six supported
+small cases pass independent full-coefficient/covariance/sample/RSS oracles,
+including normalized requested outputs. Three licensed fixtures pass, including
+the new ten-scenario dummy-OLS/weight/sample-boundary fixture, established
+categorical rebasing and transaction checks. No native rebuild or Rust test
+rerun was needed. The 4,324-entry evidence archive verifies every hash.
+
+**Newly exposed baseline defect:** ordinary `absorb(g)` returns r(459),
+coefficient-name count disagreement, when missing outcomes remove an entire
+factor level. Both baseline and candidate reproduce it; categorical tuple
+rebasing passes. Original failing fixtures/log hashes are preserved. An invalid
+zero-FW fixture draft correctly returned r(401) and was corrected to missing
+FW; the failure remains documented. Continuous-product RHS r(498) is an
+intentional unsupported case, not a performance result.
+
+**Recommended next bounded task:** localize and repair the ordinary factor-level
+rebasing defect before further factor tuning. Two-/three-FE solver costs remain
+larger independent opportunities; closed RHS-window experiments stay closed.
+Current low-memory, generated TS, multi-partition slope and broad saved-output
+performance coverage remains incomplete. Native tracked peaks are unchanged
+outside threaded three-FE variation (−2.89 to +2.97 MB). Static allocation drift,
+constrained-fit issues, comparator discrepancies and SCC deferrals below remain
+open. No qualification, historical-win transfer, SCC retry, push or release.
+
 ## Three-FE scheduling experiment closed; native checkpoint retained — 2026-09-22
 
 The [three-FE window screen](benchmarks/reports/development/three-fe-window-local-2026-09-22/README.md)

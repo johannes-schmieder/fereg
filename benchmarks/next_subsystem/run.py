@@ -45,6 +45,11 @@ def main(args):
     shutil.copyfile(REPO / "benchmarks/systematic/generate.py", controller / "generate.py")
     sys.path.insert(0, str(controller))
     from common import read_json, write_json, sha256
+    surface = None
+    if args.surface:
+        shutil.copyfile(Path(__file__).with_name("surface.py"), controller / "surface.py")
+        surface = load("generated_surface", controller / "surface.py")
+        surface.stage(controller)
     from measure import measure
     from generate import generate
     from designs import augment
@@ -72,12 +77,16 @@ if `dimensions' == 3 local effects `effects' g3'''
     cells = read_json(args.cells) if args.cells else ANCHORS
     cells = [dict(c, effects=c.get("effects", manifest["designs"][c["design"]]["effects"]),
                   section=c.get("section", "diagnostic")) for c in cells]
+    if surface:
+        cells = [surface.configure(c) for c in cells]
+    elif any("terms" in c or "outputs" in c for c in cells):
+        raise ValueError("Generated terms/output requests require --surface")
     # The stock worker currently implements this deliberately narrow surface.
     # Native-only diagnostic controls may use the existing Stata options.
     if "fixest" in args.variants:
         for cell in cells:
             if any(cell.get(key) for key in
-                    ("weight", "vce", "absorb", "restriction", "fit_options", "string_columns")):
+                    ("weight", "absorb", "restriction", "fit_options", "string_columns")) or (not surface and cell.get("vce")):
                 raise ValueError("Stock comparison worker does not implement this cell's options")
     identities = {}
     for variant in args.variants:
@@ -93,7 +102,7 @@ if `dimensions' == 3 local effects `effects' g3'''
             identities[variant] = identity
     write_json(root / "plan.json", dict(schema="next-subsystem-screen-v1", cells=cells,
         seed=args.seed, repeats=args.repeats, variants=args.variants, trace=args.trace,
-        timeout=args.timeout, identities=identities,
+        timeout=args.timeout, surface=args.surface, identities=identities,
         sources={str(p.relative_to(REPO)): sha256(p) for p in [Path(__file__).resolve(),
             REPO / "benchmarks/two_fe_dense/route_development.py",
             REPO / "benchmarks/systematic/manifest.json",
@@ -108,6 +117,8 @@ if `dimensions' == 3 local effects `effects' g3'''
             path = root / "data" / f"c{index}-{role}.dta"
             generate(dict(cell, n=size), args.seed, path, manifest)
             augment(cell, path)
+            if surface:
+                surface.augment(cell, path)
             frame = pd.read_stata(path, convert_categoricals=False)
             with path.with_suffix(".bin").open("wb") as stream:
                 for column in frame:
@@ -166,4 +177,6 @@ if __name__ == "__main__":
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--timeout", type=int, default=90)
     parser.add_argument("--trace", action="store_true")
+    parser.add_argument("--surface", action="store_true",
+                        help="matched generated OLS terms and one-FE requested outputs")
     main(parser.parse_args())
