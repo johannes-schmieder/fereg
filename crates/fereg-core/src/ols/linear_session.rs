@@ -644,6 +644,33 @@ enum RetainedWithinStorage {
     Scratch(PreparedOlsScratch),
 }
 
+impl crate::fe::slope_coefficients::joint::JointFiniteDesign for RetainedWithinStorage {
+    fn nrows(&self) -> usize {
+        self.rows()
+    }
+    fn ncols(&self) -> usize {
+        self.columns()
+    }
+    fn visit_rows(
+        &self,
+        row_scratch: &mut [f64],
+        mut visit: impl FnMut(usize, &[f64]) -> Result<()>,
+    ) -> Result<()> {
+        if row_scratch.len() < self.columns() {
+            return Err(invalid_argument(
+                "joint scratch row exceeds its admitted width",
+            ));
+        }
+        let mut reader = self.reader();
+        let row_scratch = &mut row_scratch[..self.columns()];
+        for row in 0..self.rows() {
+            reader.fill_row(row, row_scratch)?;
+            visit(row, row_scratch)?;
+        }
+        Ok(())
+    }
+}
+
 struct RetainedWithinReader<'a> {
     storage: &'a RetainedWithinStorage,
     scratch: Option<PreparedOlsScratchReader<'a>>,
@@ -1958,7 +1985,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         if let Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) =
             self.fe_projector.as_mut()
         {
-            match projector.enable_joint_slopes() {
+            match projector.enable_joint_slopes_for_columns(self.prepared.fit_model().columns.len())
+            {
                 Ok(()) => {}
                 Err(error) if error.code == ErrorCode::Allocation => {}
                 Err(error) => return Err(error),
@@ -2042,11 +2070,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     pub(crate) fn supports_joint_ppml_direction(&self) -> bool {
-        self.config.execution.mode == PreparedOlsExecutionMode::Fast
-            && self
-                .frozen_basis
-                .as_ref()
-                .is_some_and(|b| !b.kept_generated_columns().is_empty())
+        self.frozen_basis
+            .as_ref()
+            .is_some_and(|b| !b.kept_generated_columns().is_empty())
             && matches!(self.fe_projector.as_ref(), Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) if projector.joint_slopes().is_some())
     }
 
@@ -2122,11 +2148,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 "joint slope retained basis identity is invalid",
             ));
         }
-        let RetainedWithinStorage::Dense(controls) = &within.storage else {
-            return Err(invalid_argument(
-                "joint slope direction requires admitted dense storage",
-            ));
-        };
         let Some(ReusableLinearMapProjector::PpmlSlopes {
             projector,
             previous_response,
@@ -2148,14 +2169,24 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         previous_response.copy_from_slice(&self.response);
         let started = Instant::now();
-        projector.solve_joint_slopes(
-            &self.map_weights,
-            controls,
-            &within.active_positions,
-            &self.frozen_workspace.response,
-            self.config.absorb.map,
-            self.generations.map_geometry(),
-        )?;
+        match &within.storage {
+            RetainedWithinStorage::Dense(controls) => projector.solve_joint_slopes(
+                &self.map_weights,
+                controls,
+                &within.active_positions,
+                &self.frozen_workspace.response,
+                self.config.absorb.map,
+                self.generations.map_geometry(),
+            )?,
+            RetainedWithinStorage::Scratch(_) => projector.solve_joint_slopes_streamed(
+                &self.map_weights,
+                &within.storage,
+                &within.active_positions,
+                &self.frozen_workspace.response,
+                self.config.absorb.map,
+                self.generations.map_geometry(),
+            )?,
+        }
         let solving_seconds = started.elapsed().as_secs_f64();
         let checking = Instant::now();
         let joint = projector.joint_slopes().expect("joint direction");

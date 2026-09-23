@@ -409,9 +409,17 @@ impl ReusableMapAbsorber {
         super::slope_coefficients::joint::JointFiniteWorkspace::bytes(design, controls)
     }
 
+    #[cfg(test)]
     pub(crate) fn enable_joint_slopes(&mut self) -> Result<()> {
         if let Some(solver) = self.coefficient_solver.as_mut() {
-            solver.enable_joint(&self.design)?;
+            solver.enable_joint(&self.design, self.max_rhs.saturating_sub(1))?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn enable_joint_slopes_for_columns(&mut self, columns: usize) -> Result<()> {
+        if let Some(solver) = self.coefficient_solver.as_mut() {
+            solver.enable_joint(&self.design, columns)?;
         }
         Ok(())
     }
@@ -462,6 +470,60 @@ impl ReusableMapAbsorber {
         response: &[f64],
         config: MapConfig,
         generation: MapGeometryGeneration,
+    ) -> Result<()> {
+        self.solve_joint_slopes_with(
+            weights,
+            response,
+            config,
+            generation,
+            |joint, owner, design, geometry, reusable| {
+                joint.solve(
+                    owner, design, geometry, weights, controls, selected, response, config,
+                    reusable,
+                )
+            },
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn solve_joint_slopes_streamed<
+        C: super::slope_coefficients::joint::JointFiniteDesign,
+    >(
+        &mut self,
+        weights: &[f64],
+        controls: &C,
+        selected: &[usize],
+        response: &[f64],
+        config: MapConfig,
+        generation: MapGeometryGeneration,
+    ) -> Result<()> {
+        self.solve_joint_slopes_with(
+            weights,
+            response,
+            config,
+            generation,
+            |joint, owner, design, geometry, reusable| {
+                joint.solve_streamed(
+                    owner, design, geometry, weights, controls, selected, response, config,
+                    reusable,
+                )
+            },
+        )
+    }
+
+    fn solve_joint_slopes_with(
+        &mut self,
+        weights: &[f64],
+        response: &[f64],
+        config: MapConfig,
+        generation: MapGeometryGeneration,
+        solve: impl FnOnce(
+            &mut super::slope_coefficients::joint::JointFiniteWorkspace,
+            &mut super::slope_coefficients::SlopeCoefficientWorkspace,
+            &FeDesign,
+            &ReusableCertificateGeometry,
+            bool,
+        ) -> Result<usize>,
     ) -> Result<()> {
         let previous = self
             .certificate_geometry
@@ -521,15 +583,11 @@ impl ReusableMapAbsorber {
             }
             let setup_seconds = started.elapsed().as_secs_f64();
             let solving = Instant::now();
-            let iterations = joint.solve(
+            let iterations = solve(
+                &mut joint,
                 self.coefficient_solver.as_mut().unwrap(),
                 &self.design,
                 self.certificate_geometry.as_ref().unwrap(),
-                weights,
-                controls,
-                selected,
-                response,
-                config,
                 reusable,
             )?;
             let mut valid = true;
@@ -1649,6 +1707,227 @@ mod tests {
                     bad[0] = f64::NAN;
                     assert!(owner
                         .solve_joint_slopes(&bad, &controls, &[2, 0], &y, config, generation)
+                        .is_err());
+                    assert!(owner.joint_slopes().unwrap().report.is_none());
+                    assert!(owner
+                        .certificate_geometry
+                        .as_ref()
+                        .unwrap()
+                        .generation
+                        .is_none());
+                }
+            }
+        }
+        assert!(ReusableMapAbsorber::joint_slope_bytes(&design, usize::MAX).is_err());
+    }
+
+    #[test]
+    fn streamed_joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frames() {
+        let mut f = Vec::new();
+        let mut g = Vec::new();
+        let mut slope = Vec::new();
+        let mut raw = Vec::new();
+        let mut cells = Vec::new();
+        for component in 0..2 {
+            for a in 0..3 {
+                for b in 0..4 {
+                    for r in 0..5 {
+                        let t = r as f64 - 2.;
+                        f.push((component * 3 + a) as u32);
+                        g.push((component * 4 + b) as u32);
+                        slope.push(t);
+                        raw.extend_from_slice(&[t * t * t * 1e5, 1., t * t]);
+                        cells.push((a, b, r));
+                    }
+                }
+            }
+        }
+        let n = f.len();
+        let controls = DenseMatrix::from_row_major(n, 3, raw).unwrap();
+        let design = FeDesign::new(
+            n,
+            vec![
+                EffectTerm::new(
+                    f,
+                    6,
+                    true,
+                    vec![slope.clone(), slope.iter().map(|v| 2. * v).collect()],
+                )
+                .unwrap(),
+                EffectTerm::new(g, 8, true, vec![slope.clone()]).unwrap(),
+            ],
+        )
+        .unwrap();
+        for threads in [1, 4] {
+            for coupling in [false, true] {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap();
+                let mut owner = ReusableMapAbsorber::new(design.clone(), 1).unwrap();
+                owner.enable_certificate_geometry().unwrap();
+                owner.enable_coefficient_solver(threads).unwrap();
+                owner.enable_coefficient_certificates().unwrap();
+                if coupling {
+                    owner.enable_coefficient_coupling().unwrap();
+                }
+                owner.enable_joint_slopes_for_columns(3).unwrap();
+                let capacity = owner.capacities();
+                let charged = ReusableMapAbsorber::joint_slope_bytes(&design, 3).unwrap();
+                let joint = owner.joint_slopes().unwrap();
+                assert!(
+                    charged >= 8 * joint.elements() as u128 + std::mem::size_of_val(joint) as u128
+                );
+                let config = MapConfig {
+                    tolerance: 1e-12,
+                    ..MapConfig::default()
+                };
+                for frame in 0..4 {
+                    let weights: Vec<_> = cells
+                        .iter()
+                        .map(|&(a, b, r)| {
+                            (1. + a as f64 + 2. * b as f64)
+                                * (1. + frame as f64 * 0.25 + r as f64 * r as f64 * 0.1)
+                        })
+                        .collect();
+                    let residual: Vec<_> = cells
+                        .iter()
+                        .zip(&weights)
+                        .map(|(&(_, _, r), &w)| [1., -4., 6., -4., 1.][r] * 0.01 / w)
+                        .collect();
+                    let y: Vec<_> = cells
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &(a, b, _))| {
+                            0.7 * controls[(i, 2)] - 3e-6 * controls[(i, 0)] + a as f64 * 0.2
+                                - b as f64 * 0.1
+                                + (a + b) as f64 * slope[i] * 0.05
+                                + residual[i]
+                        })
+                        .collect();
+                    let generation = MapGeometryGeneration {
+                        sample: 1,
+                        topology: 1,
+                        weights: frame + 1,
+                    };
+                    pool.install(|| {
+                        owner.solve_joint_slopes_streamed(
+                            &weights,
+                            &controls,
+                            &[2, 0],
+                            &y,
+                            config,
+                            generation,
+                        )
+                    })
+                    .unwrap();
+                    let out = owner.joint_slopes().unwrap();
+                    assert!(out.report.as_ref().unwrap().certified());
+                    assert!((out.beta()[0] - 0.7).abs() < 1e-10);
+                    assert!((out.beta()[1] + 3e-6).abs() < 1e-13);
+                    for (&a, &b) in out.residuals.as_slice().iter().zip(&residual) {
+                        assert!((a - b).abs() < 1e-10, "{a} != {b}");
+                    }
+                    assert_eq!(capacity, owner.capacities());
+                    let changed: Vec<_> = y.iter().map(|v| 2. * v).collect();
+                    pool.install(|| {
+                        owner.solve_joint_slopes_streamed(
+                            &weights,
+                            &controls,
+                            &[2, 0],
+                            &changed,
+                            config,
+                            generation,
+                        )
+                    })
+                    .unwrap();
+                    assert!((owner.joint_slopes().unwrap().beta()[0] - 1.4).abs() < 1e-10);
+                    let zero = vec![0.; y.len()];
+                    pool.install(|| {
+                        owner.solve_joint_slopes_streamed(
+                            &weights,
+                            &controls,
+                            &[2, 0],
+                            &zero,
+                            config,
+                            generation,
+                        )
+                    })
+                    .unwrap();
+                    assert!(owner
+                        .joint_slopes()
+                        .unwrap()
+                        .beta()
+                        .iter()
+                        .all(|&v| v == 0.));
+                    assert!(owner
+                        .joint_slopes()
+                        .unwrap()
+                        .residuals
+                        .as_slice()
+                        .iter()
+                        .all(|&v| v == 0.));
+                    let short = MapConfig {
+                        max_iterations: 1,
+                        ..config
+                    };
+                    let short_error = pool
+                        .install(|| {
+                            owner.solve_joint_slopes_streamed(
+                                &weights,
+                                &controls,
+                                &[2, 0],
+                                &y,
+                                short,
+                                generation,
+                            )
+                        })
+                        .unwrap_err();
+                    assert_eq!(short_error.code, ErrorCode::NonConvergence);
+                    assert!(owner.joint_slopes().unwrap().report.is_none());
+
+                    let error = pool
+                        .install(|| {
+                            owner.solve_joint_slopes_streamed(
+                                &weights,
+                                &controls,
+                                &[2, 2],
+                                &y,
+                                config,
+                                generation,
+                            )
+                        })
+                        .unwrap_err();
+                    assert_eq!(error.code, ErrorCode::NonConvergence);
+                    assert!(owner.joint_slopes().unwrap().report.is_none());
+                    assert!(owner
+                        .certificate_geometry
+                        .as_ref()
+                        .unwrap()
+                        .generation
+                        .is_none());
+                    pool.install(|| {
+                        owner.solve_joint_slopes_streamed(
+                            &weights,
+                            &controls,
+                            &[2, 0],
+                            &y,
+                            config,
+                            generation,
+                        )
+                    })
+                    .unwrap();
+                    let mut bad = weights.clone();
+                    bad[0] = f64::NAN;
+                    assert!(owner
+                        .solve_joint_slopes_streamed(
+                            &bad,
+                            &controls,
+                            &[2, 0],
+                            &y,
+                            config,
+                            generation
+                        )
                         .is_err());
                     assert!(owner.joint_slopes().unwrap().report.is_none());
                     assert!(owner

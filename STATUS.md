@@ -10,6 +10,131 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Bounded low-memory joint slopes accepted; scratch inference next — 2026-09-23
+
+The active objective remains whole public PPML **<=0.90 times scientifically
+comparable pinned stock fixest per case wherever achievable**. This checkpoint
+completes a useful implementation milestone; it does not complete that objective.
+It supersedes older implementation-order and unused-seed entries below.
+
+Accept `lowjoint4`, based on `7d665c37`, under
+[ADR 0134](docs/adr/0134-bounded-low-memory-joint-ppml-slopes.md) and its
+[source-bound report](benchmarks/reports/development/ppml-low-joint-local-2026-09-23/README.md).
+All **537 computational inputs** match plugin
+`853bd995ff3783f7223e5e29c18b343aa5bd4d05da42ca9bc0452629809837f2`.
+The immutable archive was restored and all **11,852 receipts** verified, SHA-256
+`9ecddafb244db5f6835c10ff0d8a2f836c9883daad904274364ae168832873f1`.
+
+Low PPML now uses the shared joint finite/FE Schur solver with bounded scratch-row
+tiles and existing worker observation buffers. Finite width is independent of
+RHS pool width; no new N-by-K bank. Current-weight norms/products are rebuilt,
+and recurrence diagnostics never substitute for fresh FE, original-input finite
+score or reconstruction acceptance. The admitted low owner also supplies the
+existing strict Newton witness followed by one independent canonical final
+rank/bread/Hessian construction. Tolerances, sample/weight/DoF/separation policies,
+geometry authority and failure atomicity remain unchanged.
+
+Final-source **353 distinct Rust tests**, actual-plugin ABI/panic checks and
+**eight licensed runs of five fixtures** pass. Final public evidence includes
+**153 passing applications**, **127 PPML states**, **46 native and 35 stock
+pairs**, **15 independent Poisson/Hessian checks**, **13 exact OLS pairs** and
+**11 exact excluded PPML pairs**. No public application failure, timeout,
+scientific discrepancy or detected timing contention in those blocks.
+
+### Current timings and remaining budget
+
+Robust inference plus fitted means, three alternating rotations; times are ms.
+Development seed333; fresh seed334. Low versus ordinary stock is not physically
+memory-matched. Full ranges, every pair and intermediate losses are in the report.
+
+| Case | Baseline | Candidate | Stock | Candidate/stock | Further reduction to 0.90*stock |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Low two slope partitions N30720 K6 T4 | 195 | 177 | 116 | 1.526 | 72.6 ms |
+| Low unbalanced three-FE slopes N30720 K6 T4 | 188 | 180 | 121 | 1.488 | 71.1 ms |
+| Low larger three-FE slopes N61440 K10 T8 | 474 | 415 | 226 | 1.836 | 211.6 ms |
+| Fresh low two slope partitions N38400 K8 T1 | 355 | 340 | 473 | 0.719 | Target met here |
+| Fresh low wider three-FE slopes N46080 K16 T8 | 565 | 475 | 1290 | 0.368 | Target met here |
+| Fresh low multiple slopes N23040 K6 T4 | 173 | 157 | 132 | 1.189 | 38.2 ms |
+| Fresh low weak barbell N7680 K4 T4 | 41 | 38 | 266 | 0.143 | Target met here |
+| Fresh low disconnected slopes N15360 K6 T4 | 126 | 109 | 80 | 1.363 | 37.0 ms |
+
+Fresh gains are **4.2–15.9%**, every native pair improves. The development middle
+case retains one **4.8% paired loss**. Fast slope controls retain **129/131** and
+**301/302 ms** native losses, versus stock120/227. Excluded low one-FE PPML's
+initial **101/118** ties at **107/107** on five identical-input follow-up pairs;
+its inference timing varies widely. Low categorical OLS's initial **63/64.5**
+becomes **64/63** on five identical-input pairs. Other OLS slopes retain **67/68**.
+Do not claim universal timing non-regression or transfer historical wins to this
+source. Preserve every initial loss and follow-up distribution.
+
+Tracked/modelled peak increments agree: **0.272/0.308/0.611 MB** on development
+low cases and **0.065–0.513 MB** fresh. The larger low peak is
+**57,443,213 tracked / 69,232,515 modeled bytes**. K16 exceeds default pool 10;
+weighted oracle and allocation fixtures cover pool 1/2 and T1/T4. Physical-cap
+confirmation remains deferred.
+
+### Retained failures and attribution
+
+The isolated frozen kernels were promising, but the first public per-column
+adapter regressed the larger low fit **488 -> 511 ms**. Bounded row tiles alone
+had only 1–4% median gains. Completing the shared strict/final path produced the
+accepted result. Preserve both rejected intermediate organizations; do not resume
+tile-width or benchmark-specific threshold tuning.
+
+Each of two frozen prototypes has 480 passing runtime kernel attempts. Strict
+independent WLS exports pass; ordinary 1e-7 exports fail final residual envelopes
+and some coefficient envelopes, so they are not ranked as final fits against
+strict stock. All public strict/final oracles pass. Constructor-clock overlap,
+missing-fixture compile failure, partial-formatting test break and corrected
+source identities are recorded explicitly. Do not use the partial-diff formatter
+again; format complete changed functions or files and inspect the result.
+
+Fixed-configuration production allocation audits remain exactly zero-event and
+zero-growth. **The mixed-thread audit still fails** after retiring T4 workers:
+zero events, **-4,376 bytes** growth, stable capacities and equivalent solves.
+An isolated intrusive build attributes 2,072+2,304-byte frees to Crossbeam epoch
+reclamation of Rayon queues. Baseline passed the same sequence. The exact-zero
+criterion is unchanged; the new fixture selects one configuration per fresh
+process. This runtime-accounting limitation is open, not repaired or hidden by
+the successful fixed-process checks. Intrusive/traced allocation probes are not
+headline timings or valid allocation witnesses.
+
+### Next bounded milestones
+
+1. **Scratch-backed inference and remaining low-mode transport.** The larger low
+   fit still needs 211.6 ms; projection is 168.8 ms, strict/final 94.3 and
+   inference 28.1, with some clocks nested. The current final score-design adapter
+   issues positional reads per row, whereas retained finite solving already has
+   an immutable scan cursor. Measure actual reads, consumer passes and ownership;
+   extend bounded read traversal where coherent, preserving arithmetic, parallel
+   ownership and independent Hessian/score checks. This should help low PPML
+   broadly. Treat the mixed-thread audit limitation separately; do not mask it
+   with sleeps or a relaxed growth criterion.
+2. **Joint ordinary directions for sparse categorical PPML.** Compare a direct
+   finite block with existing joint LSMR/categorical FE operators on identical
+   frozen weights. Reuse immutable topology, rebuild weight-dependent numerical
+   state, protect dense/weak/disconnected cases and retain canonical boundaries.
+3. **Whole-command one-FE concentration.** Inventory loading, preparation, accepted
+   means/predictors/group totals, strict/final products and publication. Remove
+   duplicated construction with clear ownership; do not spend a cycle on the
+   previously measured 3.9-ms inverse phase against much larger public deficits.
+4. **Remaining fast slopes and uncovered breadth.** Measure setup, current-weight
+   coupling/products and warm-start effectiveness. Extend mechanisms to wide,
+   generated, weighted, small/no-FE and requested-output cases using fresh
+   predeclarations. Previous one-FE/sparse stock budgets belong to their captured
+   artifact and need matched current-source remeasurement.
+
+Keep each milestone bounded: one computational comparison, a small public
+baseline/candidate/stock screen, independent science, fresh confirmation and
+excluded controls, then a coherent commit or documented rejection. Preserve
+stock/source identities, uncontended measurements and distributions. Do not
+accept a large unexplained deficit as an inherent certification cost.
+
+Seed **202609334 is consumed**; **202609335** is unused/reserved. Frozen 77/16/111
+inputs, static allocation drift, weighted constrained-fit/nonretaining-CG issues,
+historical comparator discrepancies and SCC/platform deferrals remain unchanged.
+No push, release, qualification, SCC retry or stopped-campaign restart.
+
 ## Current-frame scans accepted; ambitious per-case PPML plan — 2026-09-23
 
 The active objective remains whole public PPML **<=0.90 times scientifically

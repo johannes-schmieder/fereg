@@ -760,6 +760,13 @@ Its optional payload is `8*[P*K+2*K*K+(q+2)*K+5*(P+K)+N]` bytes for P retained
 FE coordinates, K controls and q eliminated channels, plus owner descriptors.
 The existing combined slope reservation is increased before allocation; refusal
 keeps the previous solver. Actual capacities enter the session fingerprint and
-fit-lifetime telemetry. This adds no resident N-by-K bank and does not activate
-a low-memory adapter. All joint state is released before inference. The current
-static allocation drift and physical-cap/platform gates remain separate.
+fit-lifetime telemetry. Under
+[ADR 0134](adr/0134-bounded-low-memory-joint-ppml-slopes.md), low storage streams
+finite-product tiles through the existing per-worker observation buffers. Its
+joint finite width is independent of the bounded RHS pool. Temporary norm state
+and row scratch reuse preconditioner/solution banks before their solve lifetimes;
+there is no additional N-by-K bank. One scan-local 8 KiB stack cursor follows
+ADR 0129's immutable-read rule. All joint state is released before inference.
+Fixed-configuration process audits remain exact-zero; the documented delayed
+Crossbeam frees in mixed-thread audits remain unresolved. Static allocation
+drift and physical-cap/platform gates remain separate.

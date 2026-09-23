@@ -1132,11 +1132,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             Err(error) if error.code == ErrorCode::Allocation => false,
             Err(error) => return Err(error),
         }
-    } else { false };
-    let joint_slopes = if slope_coefficients
-        && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
-        && solver_rhs > 1
-    {
+    } else {
+        false
+    };
+    let joint_slopes = if slope_coefficients && solver_rhs > 1 {
         match crate::fe::ReusableMapAbsorber::joint_slope_bytes(&fe_design, solver_rhs - 1) {
             Ok(bytes) => memory_plan
                 .reusable_slope_bytes
@@ -6222,39 +6221,54 @@ mod tests {
         let y: Vec<_> = eta.iter().map(|v| v.exp()).collect();
         let prepared = prepared_joint_slopes(&y, &x, &g, &h);
         let weights: Vec<_> = (0..n).map(|i| 0.2 + (i % 13) as f64 / 7.).collect();
-        for threads in [1, 4] {
-            let mut config = PreparedPpmlIrlsConfig::default();
-            config.linear.execution.threads =
-                crate::options::ThreadConfig::from_requested(threads, true).unwrap();
-            for mode in [0, 1, 2, 3] {
-                JOINT_FINAL_TEST_MODE.set(mode);
-                JOINT_FINAL_TEST_COUNTS.set((0, 0));
-                let fit = fit_prepared_ppml_irls(
-                    &prepared,
-                    &y,
-                    &weights,
-                    &vec![0.; n],
-                    config,
-                    plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
-                    None,
-                )
-                .unwrap();
-                assert!(
-                    fit.diagnostics().converged && fit.diagnostics().two_consecutive_convergence
-                );
-                assert!(fit.diagnostics().final_score.passed);
-                assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10);
-                assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
-                validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
-                if mode == 0 {
-                    assert_eq!(JOINT_FINAL_TEST_COUNTS.get().1, 1);
-                }
-                if mode == 1 {
-                    assert_eq!(JOINT_FINAL_TEST_COUNTS.get(), (0, 0));
-                }
-                if mode >= 2 {
-                    assert!(JOINT_FINAL_TEST_COUNTS.get().0 >= 1);
-                    assert_eq!(JOINT_FINAL_TEST_MODE.get(), 0);
+        for memory_mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            for threads in [1, 4] {
+                let mut config = PreparedPpmlIrlsConfig::default();
+                config.linear.execution.threads =
+                    crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                config.linear.execution.mode = memory_mode;
+                config.linear.execution.poolsize = 1;
+                config.memory.requested = match memory_mode {
+                    PreparedOlsExecutionMode::Fast => crate::options::MemoryMode::Fast,
+                    PreparedOlsExecutionMode::Low => crate::options::MemoryMode::Low,
+                };
+                config.memory.poolsize = 1;
+                for mode in [0, 1, 2, 3] {
+                    JOINT_FINAL_TEST_MODE.set(mode);
+                    JOINT_FINAL_TEST_COUNTS.set((0, 0));
+                    let fit = fit_prepared_ppml_irls(
+                        &prepared,
+                        &y,
+                        &weights,
+                        &vec![0.; n],
+                        config,
+                        plan_ppml_memory(memory_dimensions(&prepared, config), config.memory)
+                            .unwrap(),
+                        None,
+                    )
+                    .unwrap();
+                    assert!(
+                        fit.diagnostics().converged
+                            && fit.diagnostics().two_consecutive_convergence
+                    );
+                    assert!(fit.diagnostics().final_score.passed);
+                    assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10);
+                    assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+                    validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean())
+                        .unwrap();
+                    if mode == 0 {
+                        assert_eq!(JOINT_FINAL_TEST_COUNTS.get().1, 1);
+                    }
+                    if mode == 1 {
+                        assert_eq!(JOINT_FINAL_TEST_COUNTS.get(), (0, 0));
+                    }
+                    if mode >= 2 {
+                        assert!(JOINT_FINAL_TEST_COUNTS.get().0 >= 1);
+                        assert_eq!(JOINT_FINAL_TEST_MODE.get(), 0);
+                    }
                 }
             }
         }
@@ -6273,116 +6287,124 @@ mod tests {
             .map(|i| 3. + 0.7 * x[i] + g[i] * 0.2 - h[i] * 0.1 + (i as f64 / 13.).cos())
             .collect();
         let prepared = prepared_joint_slopes(&y, &x, &g, &h);
-        for threads in [1, 4] {
-            let mut config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-12).unwrap();
-            config.execution.threads =
-                crate::options::ThreadConfig::from_requested(threads, true).unwrap();
-            let initial = vec![1.; n];
-            let frame = LinearSolveFrame::from_parts(
-                &y,
-                BorrowedMapWeights::Provided(&initial),
-                ppml_bread_weight_scale(&initial).unwrap(),
-            )
-            .unwrap();
-            let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
-                &prepared,
-                frame,
-                config,
-                LinearSessionGenerations::new(1, 1, 1, 1, 1),
-                prepared.fit_owned_fe_design().unwrap(),
-            )
-            .unwrap();
-            session.enable_ppml_certificate_geometry().unwrap();
-            session
-                .enable_ppml_slope_coefficients(threads, true, true)
-                .unwrap();
-            session.enable_ppml_joint_slopes().unwrap();
-            assert!(session.solve_fresh().unwrap().certified());
-            for generation in 2..7 {
-                let weights: Vec<_> = (0..n)
-                    .map(|i| 0.2 + ((i * 13 + generation * 7) % 31) as f64 / 7.)
-                    .collect();
-                let response: Vec<_> = (0..n)
-                    .map(|i| y[i] + (generation as f64) * 0.2 * (i as f64 / 11.).sin())
-                    .collect();
-                let scale = ppml_bread_weight_scale(&weights).unwrap();
-                session
-                    .refresh_response(&response, generation as u64)
-                    .unwrap();
-                session
-                    .refresh_weights(
-                        BorrowedMapWeights::Provided(&weights),
-                        scale,
-                        generation as u64,
-                    )
-                    .unwrap();
-                let ordinary = session.solve_ordinary_ppml().unwrap();
-                assert!(matches!(ordinary, PpmlOrdinaryLinearOutput::Joint(_)));
-                assert!(ordinary.certified());
-                let actual_beta = ordinary.coefficients().to_vec();
-                let actual_residuals = ordinary.within_residuals().to_vec();
-                let expected_frame = LinearSolveFrame::from_parts(
-                    &response,
-                    BorrowedMapWeights::Provided(&weights),
-                    scale,
+        for (mode, poolsize) in [
+            (PreparedOlsExecutionMode::Fast, 10),
+            (PreparedOlsExecutionMode::Low, 1),
+            (PreparedOlsExecutionMode::Low, 2),
+        ] {
+            for threads in [1, 4] {
+                let mut config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-12).unwrap();
+                config.execution.threads =
+                    crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                config.execution.mode = mode;
+                config.execution.poolsize = poolsize;
+                let initial = vec![1.; n];
+                let frame = LinearSolveFrame::from_parts(
+                    &y,
+                    BorrowedMapWeights::Provided(&initial),
+                    ppml_bread_weight_scale(&initial).unwrap(),
                 )
                 .unwrap();
-                let mut expected_session = CertifiedLinearSession::new_with_fe_design(
+                let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
                     &prepared,
-                    expected_frame,
+                    frame,
                     config,
                     LinearSessionGenerations::new(1, 1, 1, 1, 1),
                     prepared.fit_owned_fe_design().unwrap(),
                 )
                 .unwrap();
-                let expected = expected_session.solve_fresh().unwrap();
-                assert!(
-                    relative_infinity_difference(
-                        &actual_beta,
-                        &expected
-                            .fit()
-                            .coefficients()
-                            .iter()
-                            .filter(|c| c.generated_column_index.is_some_and(|g| expected
-                                .fit()
-                                .kept_generated_columns()
-                                .contains(&g)))
-                            .map(|c| c.value.unwrap())
-                            .collect::<Vec<_>>()
-                    ) <= 1e-10
-                );
-                assert!(
-                    relative_infinity_difference(&actual_residuals, expected.fit().residuals())
-                        <= 1e-10
-                );
-                let expected_bread = expected.fit().bread().values().to_vec();
-                // A speculative strict frame may rebuild the canonical within
-                // design, but rollback must leave a valid representative for
-                // another ordinary direction under this frame and the next.
-                let transaction = session.strict_candidate().unwrap();
-                assert!(transaction.candidate().certified());
-                assert!(
-                    relative_infinity_difference(
-                        transaction.candidate().fit().bread().values(),
-                        &expected_bread
-                    ) <= 1e-10
-                );
-                if generation % 2 == 0 {
-                    transaction.rollback();
-                } else {
-                    transaction.commit();
-                }
-                let repeated = session.solve_ordinary_ppml().unwrap();
-                assert!(repeated.certified());
-                assert!(
-                    relative_infinity_difference(repeated.coefficients(), &actual_beta) <= 1e-10
-                );
-                assert!(
-                    relative_infinity_difference(repeated.within_residuals(), &actual_residuals)
-                        <= 1e-10
-                );
-                session.discard_invalid_frozen_state();
+                session.enable_ppml_certificate_geometry().unwrap();
+                session
+                    .enable_ppml_slope_coefficients(threads, true, true)
+                    .unwrap();
+                session.enable_ppml_joint_slopes().unwrap();
                 assert!(session.solve_fresh().unwrap().certified());
+                for generation in 2..7 {
+                    let weights: Vec<_> = (0..n)
+                        .map(|i| 0.2 + ((i * 13 + generation * 7) % 31) as f64 / 7.)
+                        .collect();
+                    let response: Vec<_> = (0..n)
+                        .map(|i| y[i] + (generation as f64) * 0.2 * (i as f64 / 11.).sin())
+                        .collect();
+                    let scale = ppml_bread_weight_scale(&weights).unwrap();
+                    session
+                        .refresh_response(&response, generation as u64)
+                        .unwrap();
+                    session
+                        .refresh_weights(
+                            BorrowedMapWeights::Provided(&weights),
+                            scale,
+                            generation as u64,
+                        )
+                        .unwrap();
+                    let ordinary = session.solve_ordinary_ppml().unwrap();
+                    assert!(matches!(ordinary, PpmlOrdinaryLinearOutput::Joint(_)));
+                    assert!(ordinary.certified());
+                    let actual_beta = ordinary.coefficients().to_vec();
+                    let actual_residuals = ordinary.within_residuals().to_vec();
+                    let expected_frame = LinearSolveFrame::from_parts(
+                        &response,
+                        BorrowedMapWeights::Provided(&weights),
+                        scale,
+                    )
+                    .unwrap();
+                    let mut expected_session = CertifiedLinearSession::new_with_fe_design(
+                        &prepared,
+                        expected_frame,
+                        config,
+                        LinearSessionGenerations::new(1, 1, 1, 1, 1),
+                        prepared.fit_owned_fe_design().unwrap(),
+                    )
+                    .unwrap();
+                    let expected = expected_session.solve_fresh().unwrap();
+                    assert!(
+                        relative_infinity_difference(
+                            &actual_beta,
+                            &expected
+                                .fit()
+                                .coefficients()
+                                .iter()
+                                .filter(|c| c.generated_column_index.is_some_and(|g| expected
+                                    .fit()
+                                    .kept_generated_columns()
+                                    .contains(&g)))
+                                .map(|c| c.value.unwrap())
+                                .collect::<Vec<_>>()
+                        ) <= 1e-10
+                    );
+                    assert!(
+                        relative_infinity_difference(&actual_residuals, expected.fit().residuals())
+                            <= 1e-10
+                    );
+                    let expected_bread = expected.fit().bread().values().to_vec();
+                    // A speculative strict frame may rebuild the canonical within
+                    // design, but rollback must leave a valid representative for
+                    // another ordinary direction under this frame and the next.
+                    let transaction = session.strict_candidate().unwrap();
+                    assert!(transaction.candidate().certified());
+                    assert!(
+                        relative_infinity_difference(
+                            transaction.candidate().fit().bread().values(),
+                            &expected_bread
+                        ) <= 1e-10
+                    );
+                    if generation % 2 == 0 {
+                        transaction.rollback();
+                    } else {
+                        transaction.commit();
+                    }
+                    let repeated = session.solve_ordinary_ppml().unwrap();
+                    assert!(repeated.certified());
+                    assert!(
+                        relative_infinity_difference(repeated.coefficients(), &actual_beta) <= 1e-10
+                    );
+                    assert!(
+                        relative_infinity_difference(repeated.within_residuals(), &actual_residuals)
+                            <= 1e-10
+                    );
+                    session.discard_invalid_frozen_state();
+                    assert!(session.solve_fresh().unwrap().certified());
+                }
             }
         }
     }

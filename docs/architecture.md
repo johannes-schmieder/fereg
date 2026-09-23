@@ -100,15 +100,18 @@ PPML multipartition slopes in the MAP family may instead use the independently
 certified coefficient Schur owner, with generation-bound weighted QR and optional
 symbolic group-pair coupling under [ADR 0123](adr/0123-ppml-coefficient-schur-slopes.md),
 [ADR 0124](adr/0124-ppml-frame-geometry-and-parallel-certificates.md), and
-[ADR 0126](adr/0126-ppml-symbolic-coupling.md). Admitted fast ordinary directions
+[ADR 0126](adr/0126-ppml-symbolic-coupling.md). Admitted ordinary directions
 couple finite controls directly to that FE operator under
 [ADR 0130](adr/0130-joint-ppml-slope-directions.md), borrowing retained
-FE-equivalent representatives and reusing the normalized column bank. Their
+FE-equivalent representatives. Fast mode reuses the normalized column bank;
+low mode streams bounded tiles through existing worker buffers under
+[ADR 0134](adr/0134-bounded-low-memory-joint-ppml-slopes.md). Their
 separate certified result carries no within-design inverse or final-Hessian
 authority. Canonical initial construction remains independent. Eligible slope
 finalization uses a strict joint Newton witness and one independent canonical
 rank/bread/Hessian construction on the unchanged accepted weight frame under
-[ADR 0131](adr/0131-single-frame-ppml-slope-finalization.md); a declined witness
+[ADR 0131](adr/0131-single-frame-ppml-slope-finalization.md), in either admitted
+memory mode; a declined witness
 retains canonical checkpoint/retry. Fresh final acceptance remains mandatory.
 Other slope calls retain their existing projector. See [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md)
 and [ADR 0069](adr/0069-low-memory-ppml-categorical-projection.md).

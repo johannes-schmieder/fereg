@@ -4,6 +4,37 @@
 use super::*;
 use crate::fe::SolveReport;
 
+/// A retained finite representative, in memory or on private row-major scratch.
+/// Each scan owns its reader; parallel columns never share a mutable file cursor.
+pub(crate) trait JointFiniteDesign: Sync {
+    fn nrows(&self) -> usize;
+    fn ncols(&self) -> usize;
+    fn visit_rows(
+        &self,
+        row_scratch: &mut [f64],
+        visit: impl FnMut(usize, &[f64]) -> Result<()>,
+    ) -> Result<()>;
+}
+
+impl JointFiniteDesign for DenseMatrix {
+    fn nrows(&self) -> usize {
+        self.nrows()
+    }
+    fn ncols(&self) -> usize {
+        self.ncols()
+    }
+    fn visit_rows(
+        &self,
+        _: &mut [f64],
+        mut visit: impl FnMut(usize, &[f64]) -> Result<()>,
+    ) -> Result<()> {
+        for (row, values) in self.as_slice().chunks(self.ncols()).enumerate() {
+            visit(row, values)?;
+        }
+        Ok(())
+    }
+}
+
 pub(crate) struct JointFiniteWorkspace {
     cross: Vec<f64>,
     hessian: Vec<f64>,
@@ -123,47 +154,48 @@ impl JointFiniteWorkspace {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn reconstruct(
+    fn reconstruct<C: JointFiniteDesign>(
         &mut self,
         op: &Operator<'_>,
-        controls: &DenseMatrix,
+        controls: &C,
         selected: &[usize],
         roots: &[f64],
         original: &[f64],
         observations: &mut [f64],
         scratch: &mut [f64],
-    ) -> f64 {
+    ) -> Result<f64> {
         let p = op.coefficients;
         op.forward(&self.coefficients[..p], observations);
-        for (row, value) in observations.iter_mut().enumerate() {
-            let mut residual = original[row] - *value;
+        controls.visit_rows(&mut self.column_scratch, |row, values| {
+            let mut residual = original[row] - observations[row];
             for (j, &column) in selected.iter().enumerate() {
-                residual = (-self.coefficients[p + j]).mul_add(
-                    controls[(row, column)] * roots[row] / self.scales[j],
-                    residual,
-                );
+                residual = (-self.coefficients[p + j])
+                    .mul_add(values[column] * roots[row] / self.scales[j], residual);
             }
-            *value = residual;
-        }
+            observations[row] = residual;
+            Ok(())
+        })?;
         op.project_eliminated(observations, scratch);
         let mut maximum = op.transpose(observations, &mut self.residual[..p], true);
-        for (j, &column) in selected.iter().enumerate() {
-            let mut sum = 0.;
-            for row in 0..observations.len() {
-                sum = (controls[(row, column)] * roots[row] / self.scales[j])
-                    .mul_add(observations[row], sum);
+        self.residual[p..p + selected.len()].fill(0.);
+        controls.visit_rows(&mut self.column_scratch, |row, values| {
+            for (j, &column) in selected.iter().enumerate() {
+                self.residual[p + j] = (values[column] * roots[row] / self.scales[j])
+                    .mul_add(observations[row], self.residual[p + j]);
             }
-            self.residual[p + j] = sum;
+            Ok(())
+        })?;
+        for &sum in &self.residual[p..p + selected.len()] {
             if !sum.is_finite() {
-                return f64::INFINITY;
+                return Ok(f64::INFINITY);
             }
             maximum = maximum.max(sum.abs());
         }
-        if observations.iter().any(|v| !v.is_finite()) {
+        Ok(if observations.iter().any(|v| !v.is_finite()) {
             f64::INFINITY
         } else {
             maximum
-        }
+        })
     }
 
     /// Reuse the existing normalized RHS bank for y and projected finite columns.
@@ -260,6 +292,37 @@ impl JointFiniteWorkspace {
                     row[j] = dot(&z[i * n..(i + 1) * n], &z[j * n..(j + 1) * n]);
                 }
             });
+        self.iterate(
+            &op,
+            controls,
+            selected,
+            roots,
+            original,
+            Some(z),
+            scale_y,
+            observations,
+            scratch,
+            config,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn iterate<C: JointFiniteDesign>(
+        &mut self,
+        op: &Operator<'_>,
+        controls: &C,
+        selected: &[usize],
+        roots: &[f64],
+        original: &[f64],
+        z: Option<&[f64]>,
+        scale_y: f64,
+        observations: &mut [f64],
+        scratch: &mut [f64],
+        config: MapConfig,
+    ) -> Result<usize> {
+        let n = original.len();
+        let k = selected.len();
+        let p = op.coefficients;
         self.factor[..k * k].copy_from_slice(&self.hessian[..k * k]);
         for i in 0..k {
             for j in 0..=i {
@@ -285,8 +348,10 @@ impl JointFiniteWorkspace {
         observations.copy_from_slice(original);
         op.project_eliminated(observations, scratch);
         op.transpose(observations, &mut self.residual[..p], false);
-        for j in 0..k {
-            self.residual[p + j] = dot(&z[j * n..(j + 1) * n], original);
+        if let Some(z) = z {
+            for j in 0..k {
+                self.residual[p + j] = dot(&z[j * n..(j + 1) * n], original);
+            }
         }
         self.precondition(p, k);
         self.direction[..dimension].copy_from_slice(&self.preconditioned[..dimension]);
@@ -307,7 +372,7 @@ impl JointFiniteWorkspace {
                     original,
                     observations,
                     scratch,
-                );
+                )?;
                 if maximum <= config.tolerance * 0.5 {
                     for j in 0..k {
                         self.beta[j] = self.coefficients[p + j] * scale_y / self.scales[j];
@@ -364,17 +429,38 @@ impl JointFiniteWorkspace {
                 // Cross-block cancellation must not turn a positive operator
                 // into a negative-curvature step. Reapply in observation space.
                 op.forward(&self.direction[..p], observations);
-                for row in 0..n {
-                    for j in 0..k {
-                        observations[row] =
-                            z[j * n + row].mul_add(self.direction[p + j], observations[row]);
+                if let Some(z) = z {
+                    for row in 0..n {
+                        for j in 0..k {
+                            observations[row] =
+                                z[j * n + row].mul_add(self.direction[p + j], observations[row]);
+                        }
                     }
+                } else {
+                    controls.visit_rows(&mut self.column_scratch, |row, values| {
+                        for (j, &column) in selected.iter().enumerate() {
+                            observations[row] = (values[column] * roots[row] / self.scales[j])
+                                .mul_add(self.direction[p + j], observations[row]);
+                        }
+                        Ok(())
+                    })?;
                 }
                 op.project_eliminated(observations, scratch);
                 curvature = dot(observations, observations);
                 op.transpose(observations, &mut self.product[..p], false);
-                for j in 0..k {
-                    self.product[p + j] = dot(&z[j * n..(j + 1) * n], observations);
+                if let Some(z) = z {
+                    for j in 0..k {
+                        self.product[p + j] = dot(&z[j * n..(j + 1) * n], observations);
+                    }
+                } else {
+                    self.product[p..dimension].fill(0.);
+                    controls.visit_rows(&mut self.column_scratch, |row, values| {
+                        for (j, &column) in selected.iter().enumerate() {
+                            self.product[p + j] = (values[column] * roots[row] / self.scales[j])
+                                .mul_add(observations[row], self.product[p + j]);
+                        }
+                        Ok(())
+                    })?;
                 }
             }
             if !curvature.is_finite() || curvature <= 0. || !square.is_finite() || square < 0. {
@@ -397,5 +483,151 @@ impl JointFiniteWorkspace {
             square = next;
         }
         Err(failed())
+    }
+    #[allow(clippy::too_many_arguments)]
+    pub(in crate::fe) fn solve_streamed<C: JointFiniteDesign>(
+        &mut self,
+        owner: &mut SlopeCoefficientWorkspace,
+        design: &FeDesign,
+        geometry: &ReusableCertificateGeometry,
+        weights: &[f64],
+        controls: &C,
+        selected: &[usize],
+        response: &[f64],
+        config: MapConfig,
+        reusable_geometry: bool,
+    ) -> Result<usize> {
+        self.report = None;
+        self.active = 0;
+        let n = design.nobs();
+        let k = selected.len();
+        let p = owner.coefficients;
+        if k == 0
+            || k > self.max_controls
+            || response.len() != n
+            || weights.len() != n
+            || controls.ncols() > self.max_controls
+            || controls.nrows() != n
+            || selected.iter().any(|&c| c >= controls.ncols())
+        {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "joint slope inputs exceed their admitted dimensions",
+            ));
+        }
+        if !reusable_geometry {
+            if let Some(coupling) = owner.coupling.as_mut() {
+                coupling.prepare(design, geometry, &owner.groups);
+            }
+        }
+        let op = Operator {
+            coupling: owner.coupling.as_deref(),
+            design,
+            geometry,
+            groups: &owner.groups,
+            coefficients: p,
+            eliminated: eliminated_effect(design),
+        };
+        let original = &mut owner.columns[..n];
+        let roots = &mut owner.roots;
+        for row in 0..n {
+            roots[row] = weights[row].sqrt();
+            original[row] = response[row] * roots[row];
+        }
+        let ynorm = super::super::map::reusable_norm(original);
+        if !ynorm.is_finite() {
+            return Err(failed());
+        }
+        let scale_y = if ynorm == 0. { 1. } else { ynorm };
+        for value in original.iter_mut() {
+            *value /= scale_y;
+        }
+        let roots = roots.as_slice();
+        // Norm state and row scratch occupy existing banks before their solve
+        // lifetimes. Visit each scratch row once for all current-weight scales.
+        self.scales[..k].fill(0.);
+        self.beta[..k].fill(1.);
+        controls.visit_rows(&mut self.factor[..controls.ncols()], |row, values| {
+            for (j, &column) in selected.iter().enumerate() {
+                let absolute = (values[column] * roots[row]).abs();
+                if absolute == 0. {
+                    continue;
+                }
+                if self.scales[j] < absolute {
+                    let ratio = self.scales[j] / absolute;
+                    self.beta[j] = 1. + self.beta[j] * ratio * ratio;
+                    self.scales[j] = absolute;
+                } else {
+                    let ratio = absolute / self.scales[j];
+                    self.beta[j] += ratio * ratio;
+                }
+            }
+            Ok(())
+        })?;
+        for j in 0..k {
+            self.scales[j] *= self.beta[j].sqrt();
+            if !self.scales[j].is_finite() || self.scales[j] <= 0. {
+                return Err(failed());
+            }
+        }
+        // A tile uses only the admitted per-worker observation buffers. Its
+        // two complete-row scans load the columns and form their products;
+        // no normalized N-by-K bank survives or is allocated for low mode.
+        let width = owner.workers.len().min(k);
+        self.hessian[..k * k].fill(0.);
+        for first in (0..k).step_by(width) {
+            let last = (first + width).min(k);
+            let workers = &mut owner.workers[..last - first];
+            controls.visit_rows(&mut self.factor[..controls.ncols()], |row, values| {
+                for (local, worker) in workers.iter_mut().enumerate() {
+                    let j = first + local;
+                    worker.observations[row] = values[selected[j]] * roots[row] / self.scales[j];
+                }
+                Ok(())
+            })?;
+            workers
+                .par_iter_mut()
+                .zip(self.cross[first * p..last * p].par_chunks_mut(p))
+                .zip(self.residual[p + first..p + last].par_iter_mut())
+                .for_each(|((worker, cross), rhs)| {
+                    let column = &mut worker.observations;
+                    op.project_eliminated(column, &mut worker.eliminated_scratch);
+                    op.transpose(column, cross, false);
+                    *rhs = dot(column, original);
+                });
+            controls.visit_rows(&mut self.factor[..controls.ncols()], |row, values| {
+                for (local, worker) in workers.iter().enumerate() {
+                    let i = first + local;
+                    let hessian_row = &mut self.hessian[i * k..(i + 1) * k];
+                    for (j, &column) in selected.iter().enumerate() {
+                        hessian_row[j] = (values[column] * roots[row] / self.scales[j])
+                            .mul_add(worker.observations[row], hessian_row[j]);
+                    }
+                }
+                Ok(())
+            })?;
+        }
+        let worker = &mut owner.workers[0];
+        let observations = &mut worker.observations;
+        let scratch = &mut worker.eliminated_scratch;
+        for i in 0..k {
+            for j in 0..i {
+                let mean = 0.5 * self.hessian[i * k + j] + 0.5 * self.hessian[j * k + i];
+                self.hessian[i * k + j] = mean;
+                self.hessian[j * k + i] = mean;
+            }
+        }
+        self.iterate(
+            &op,
+            controls,
+            selected,
+            roots,
+            original,
+            None,
+            scale_y,
+            observations,
+            scratch,
+            config,
+        )
     }
 }

@@ -49,6 +49,7 @@ void multipartition_slope_sandwich(string scalar covariance, string scalar kind)
 }
 end
 
+foreach memory in fast low {
 foreach kind in unit fw pw {
     local weight ""
     replace raw_w = 1
@@ -60,7 +61,7 @@ foreach kind in unit fw pw {
         local vce "robust"
         if "`covariance'" == "cluster" local vce "cluster cl"
         feppml y c.x1 c.x2 `weight', absorb(g##c.z h##c.w) offset(off) ///
-            vce(`vce') separation(none) keepsingletons threads(4) mu(mu_native)
+            vce(`vce') separation(none) keepsingletons threads(4) memory(`memory') poolsize(1) mu(mu_native)
         matrix b_native = e(b)
         matrix V_native = e(V)
         scalar correction = e(feppml_inference)[3,1]
@@ -79,6 +80,8 @@ foreach kind in unit fw pw {
         assert mreldif(V_slopes, V_dummy) <= 1e-7
         drop mu_native mu_dummy
     }
+}
+
 }
 
 display as result "END_FIXTURE|feppml_multipartition_slope_oracle|rc=0"

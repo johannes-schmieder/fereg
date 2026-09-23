@@ -214,8 +214,7 @@ impl SlopeCoefficientWorkspace {
                 .sum::<usize>()
     }
 
-    pub(super) fn enable_joint(&mut self, design: &FeDesign) -> Result<()> {
-        let controls = self.max_rhs.saturating_sub(1);
+    pub(super) fn enable_joint(&mut self, design: &FeDesign, controls: usize) -> Result<()> {
         if controls > 0 {
             self.joint = Some(Box::new(joint::JointFiniteWorkspace::new(
                 design,
