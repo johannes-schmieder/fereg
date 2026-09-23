@@ -58,32 +58,100 @@ five identical-input pairs, 194/195 ms with overlapping ranges. Preserve that
 small residual loss. OLS controls all pass. An early formatting-cleanup compile
 failure was repaired before artifact creation and is preserved in the receipts.
 
-### Next bounded implementation sequence
+### Ambitious PPML implementation plan
 
-1. **Joint finite-plus-slope ordinary Newton solving.** Projection is now the
-   dominant wider low-memory cost: fresh K12 native median 312.32 ms, essentially
-   unchanged, while finite work falls 213.67 to 51.91 ms. Fast threaded slope
-   losses remain. Compare a joint coefficient-space finite/FE solve against
-   shared-pass batched Schur using identical frozen current-weight problems.
-   Preserve initial canonical rank and all independently fresh final acceptance.
-   Avoid simply lifting categorical guards: its joint LSMR representation and
-   offsets are intercept-only, whereas the slope Schur owner already holds
-   rank-aware geometry and symbolic coupling. Reuse that geometry deliberately.
-2. **Shared exact final-state construction and one-FE ownership.** Fresh one-FE
-   low strict-final still costs 85.67 ms and inference 54.74 ms. Its concentrated
-   fast owner remains excluded. Remove repeated same-state construction and the
-   extra finite-design copy where valid; final fresh certificates remain required.
-   Do not resume rejected ADR 0128 response-history tuning.
-3. **Inference/shared passes and categorical routing.** Inference still reads
-   scratch rows individually; a coherent per-scan adapter can use the new reader.
-   Measure this separately. Extend successful joint mechanisms to sparse and
-   unbalanced categorical cases while protecting dense three FE and public OLS.
-4. Continue predeclared fresh oracles/rotations/controls and coherent accepted
-   commits. Report distributions, memory and losses; do not declare broad success
-   from one winning cell or substitute reference agreement for independent science.
+The target is **whole public command time <= 0.90 times comparable stock fixest
+per case**, not a 10% improvement over the previous fereg build or an aggregate
+win rate. The current fresh low-memory losses need approximately 48% (unbalanced
+slopes), 70% (one FE), 52% (sparse two FE), and 67% (unbalanced categorical three
+FE) further runtime reductions to reach that target. These are arithmetic budgets
+from the table above, not predictions. The wider slope cell already clears it.
+Low native versus ordinary stock remains explicitly unmatched on memory.
 
-Seeds **202609327/328 are consumed**. Use **202609329** for new development;
-declare fresh confirmation separately. Static allocation drift, constrained-fit/
+1. **Bind the remaining work to current source and cost budgets.** Keep the
+   existing current-source screen; remeasure older fast-path losses on the next
+   candidate/baseline/stock rotation rather than transferring older claims.
+   Start with two slope partitions, unbalanced three FE slopes, wider slopes,
+   one FE, sparse categorical two FE and unbalanced categorical three FE. Keep
+   dense categorical three FE as a control. Measure setup/loading, weighted
+   geometry, ordinary solving, strict/final construction, inference and output
+   separately, with counts of RHSs, passes, reconstruction and fresh checks.
+   Diagnostic instrumentation stays outside stock headline timings. Explicitly
+   rank comparable fast work separately from low-memory execution and preserve
+   scientific failures as unranked.
+2. **Replace K+1 ordinary slope projections with one joint Newton solve where
+   profitable.** Projection still costs 312.32 ms in the fresh wider low case.
+   Compare one augmented finite/FE coefficient Schur solve with a shared-pass
+   batched Schur alternative on identical frozen current-weight problems.
+   Reuse accepted local rank-aware geometry and symbolic topology; do not merely
+   lift intercept-only categorical guards. Include geometry construction,
+   finite coefficient recovery, certificates and all workspace in the comparison.
+   If the global finite QR or recovery erases savings, use a direct finite block
+   sharing the FE operator instead of tuning thresholds. Retain one successful
+   organization. Add current-weight-certified warm starts and a bounded-memory
+   adapter deliberately; no hidden resident N-by-K bank. Evaluate an OLS adapter
+   only after the PPML kernel succeeds and its one-shot costs are measured.
+3. **Make strict/final construction a shared exact-state operation.** Build
+   each necessary weighted geometry, within design, finite factor and Hessian
+   once per valid state, with explicit sample/design/weight/basis identities and
+   revocation on mutation or failure. Investigate whether a single canonical
+   construction can serve final rank, finite solve, bread and inference without
+   rebuilding it at each boundary. Cheap diagnostics may schedule expensive
+   checks; independently fresh residual, model-space, score, objective,
+   reconstruction and final-Hessian acceptance remain mandatory. Document any
+   revised checking procedure in a successor ADR with adversarial stale-state
+   tests. Do not resume ADR 0128's rejected response-history tuning.
+4. **Finish one-FE concentration and categorical solver coverage.** One-FE low
+   strict-final and inference alone still cost 85.67 and 54.74 ms in their native
+   phase medians. Remove the concentrated engine's extra finite-design copy
+   through deliberate ownership/streaming, then extend its useful computation
+   to low memory. Reuse centered group moments for Newton/Hessian construction
+   where valid. For sparse/unbalanced categorical cases, compare the admitted
+   joint operator, preconditioning and topology reuse against existing projection
+   using measured structural work. Protect dense categorical wins. Routing must
+   follow actual topology, dimensions, workspace and convergence evidence, never
+   case names or seeds. Do not accumulate overlapping speculative engines.
+5. **Reduce inference, saved-output and public-command passes.** Carry bounded
+   scratch readers through covariance scans; share compatible row decoding,
+   weighted score preparation and final products without reusing stale scores
+   or weakening independent acceptance. Include robust and clustered VCE and
+   requested fitted/saved effects in end-to-end comparisons. After the large
+   solve costs fall, measure loading, factor/generated-term preparation, worker
+   setup and publication on small fits; remove repeated ownership/copying work
+   within the Stata/Rust/main-thread SPI and transactional boundaries.
+6. **Close every measured loss with evidence.** Each milestone gets focused
+   independent weighted explicit-design/Poisson/Hessian oracles, baseline/candidate/
+   stock rotations, then fresh predeclared confirmation. Adapt coverage around
+   imbalance, weak/disconnected topology, multiple slopes, rank deficiency,
+   changing weights, regressor width, threads, memory, inference and outputs.
+   Keep OLS one/two/three-FE, slopes, generated terms and fast/low controls, plus
+   categorical PPML, separation and failure-atomicity checks proportionate to
+   the changed boundary. Report medians, ranges, paired changes, failures and
+   measured memory. Confirm noisy or small regressions before accepting them.
+   Commit coherent successful replacements and retire superseded machinery.
+
+**Bounded decision rule:** each coherent candidate gets a frozen-kernel decision,
+a public development screen and, if promising, fresh confirmation. Small reliable
+gains may be retained when cheap and broad, but they do not complete a subsystem
+whose remaining loss needs a multiple. Reject inconclusive high-complexity probes
+and move to a materially different organization. If a target remains unmet,
+provide its measured residual phase budget and the precise outstanding mechanism;
+do not replace evidence with a generic request for more profiling. This plan is
+development work, not authorization for full qualification or a claim of parity.
+
+**Pending isolated experiment:** `target/ppml-joint-slopes-20260923` contains the
+frozen augmented-Schur prototype and declarations. Its current-source diagnostic
+capture plugin `jointfreeze1` built successfully, SHA-256
+`4799fde7d15f0391c57796a549d75f1e6e17add662a641ee793bf0b3a6ec7edf`;
+the build receipt is `build-jointfreeze1.log` in that directory. The prototype
+has not yet been compiled or measured, and captures have not run. The later
+capture declaration correctly requires an actual fused response/control frame;
+older control-only frames must not stand in for a Newton response. No production
+source changes or new performance claims are associated with this preparation.
+
+Seeds **202609327/328 are consumed**. The pending experiment declares
+**202609329** for development and **202609330** for fresh confirmation; neither
+has been generated yet. Static allocation drift, constrained-fit/
 CG failures, obsolete receipt assertion, reference discrepancies and deferred
 Linux/SCC/physical caps remain open. Frozen 77/16/111 definitions are unchanged.
 No push, release, SCC authentication retry or stopped campaign restart occurred.
