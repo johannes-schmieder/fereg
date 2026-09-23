@@ -1,3 +1,4 @@
+pub(super) use crate::sandwich::compensated_add_scaled_row;
 use crate::data::{PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
@@ -2088,42 +2089,6 @@ pub(super) fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -
     } else {
         Err(invalid_data(
             "prepared iid compensated accumulation is not finite",
-        ))
-    }
-}
-
-pub(super) fn compensated_add_scaled_row(
-    scale: f64,
-    values: &[f64],
-    sums: &mut [f64],
-    corrections: &mut [f64],
-) -> Result<()> {
-    if values.len() != sums.len() || values.len() != corrections.len() {
-        return Err(invalid_argument(
-            "prepared compensated row dimensions are inconsistent",
-        ));
-    }
-    // Coordinates are independent. Check the whole private row before its
-    // caller continues so finite-value branches do not serialize each update.
-    // Each coordinate retains the scalar Neumaier operations and row order.
-    let mut finite = true;
-    for ((value, sum), correction) in values.iter().zip(sums).zip(corrections) {
-        let term = scale * value;
-        let updated = *sum + term;
-        let adjustment = if sum.abs() >= term.abs() {
-            (*sum - updated) + term
-        } else {
-            (term - updated) + *sum
-        };
-        *sum = updated;
-        *correction += adjustment;
-        finite &= term.is_finite() & sum.is_finite() & correction.is_finite();
-    }
-    if finite {
-        Ok(())
-    } else {
-        Err(invalid_data(
-            "prepared compensated row accumulation is not finite",
         ))
     }
 }

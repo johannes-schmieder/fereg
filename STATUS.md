@@ -10,6 +10,54 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Scratch influence rows accepted; low-memory tuning bounded — 2026-09-22
+
+The [scratch robust covariance milestone](benchmarks/reports/development/low-covariance-local-2026-09-22/README.md)
+and ADR 0112 reuse the accepted compensated row helper for production influence
+outer products. Scalar compensated bread multiplication, HC1/weight placement,
+per-coordinate observation order and independent certificates are unchanged.
+The helper moves to the shared sandwich module with an internal OLS re-export;
+there is no new buffer, cache, worker team, reduction tree or admission rule.
+
+`covrow1` is `fc2b0fc4` plus the archived `sandwich.rs` and
+`prepared_unadjusted.rs` overlays; all 529 captured inputs match. Plugin SHA-256:
+`6f4ad854b739f5fd694f51f98f507dcc0e865d96ec4486564e6314dea0b07162`.
+Wide command medians improve 1046→945 ms (9.7% paired), fresh K40 1305→1155 ms
+(11.6%), and fresh unbalanced factors 523→480 ms (8.5%). Narrow gains are small
+and three-FE results essentially flat. Eleven of twelve comparable stock rows
+still lose; ordinary stock memory execution is not an equal-budget comparison.
+
+All 155 headline calls pass without timeout, detected overlap or monitor error.
+All 58 native pairs, 80 native repeat checks and three saved-output binary pairs
+are exact. Five independent dummy pilots, 31 distinct Rust tests, four optimized
+serial tests, actual-plugin ABI containment and three licensed OLS oracle/
+transaction fixtures pass. The 165→71 ms wide outer-product phase explains
+the gain; compensated bread remains about 188 ms in the diagnostic.
+
+**Losses remain visible.** Original two-FE +31 ms, factor +6 ms and fast-control
++7 ms calls are retained. A declared five-pair confirmation on identical two-FE
+data does not reproduce the large loss (maximum +1 ms); the additional fast
+control has equal 86 ms medians, with individual losses up to +2 ms. No candidate
+edit or case-specific guard followed the measurements. Direct stock checks pass
+36/39; disconnected three-FE covariance has native residual DoF 48079 versus
+stock 46560 and remains unranked. Diagnostic rescaling is not rank adjudication.
+
+Tracked native peaks are unchanged outside parallel multi-FE variation
+(−1.60 to +0.50 MB). Four existing fallible covariance workspaces remain;
+there is no tighter whole-action or constrained-budget memory claim. Static
+allocation audit still fails source drift and was not regenerated. Weighted
+constrained fits, nonretaining CG span instability and Linux/SCC deferrals
+remain open.
+
+**Next bounded task:** return to breadth: screen generated time-series terms
+and multi-partition slopes on current source, including sample/time gaps,
+width/thread/output controls and independent explicit-design oracles. Select
+another implementation from measured gaps. Do not continue tuning narrow
+covariance cases or reopen closed serial-slope/window experiments. Factor-base
+provenance, prior comparator discrepancies and broader topology/memory coverage
+remain open. This is a clean local development milestone, not completion of
+the broad goal, qualification, push or release.
+
 ## Guarded scratch finite solve accepted — 2026-09-22
 
 The [low-memory finite milestone](benchmarks/reports/development/low-memory-cholesky-local-2026-09-22/README.md)

@@ -118,6 +118,13 @@ product, sum or correction before continuing. The two certificates retain
 separate fresh traversals and existing buffers. See
 [ADR 0110](adr/0110-compensated-scratch-certificate-rows.md).
 
+Scratch-backed production robust covariance uses the same compensated row
+helper for its upper-triangle influence outer product. It retains the scalar
+compensated bread-times-score calculation and applies the complete estimator
+multiplier before the outer product. Existing workspaces, per-coordinate order
+and independent certificates remain unchanged; see
+[ADR 0112](adr/0112-scratch-influence-covariance-rows.md).
+
 Eligible fast intercept-FE fits with at least 16,384 rows, at most 64 model
 columns and at least eight workers overlap independent source weight/outcome
 statistics with fitting. Reuse requires the same immutable sources and exact

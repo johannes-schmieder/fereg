@@ -163,3 +163,27 @@ fn development_low_profile_lap(family: &str, phase: &str, rows: usize, columns: 
 }
 '''
     path.write_text(text)
+
+
+def instrument_serial_sandwich(root):
+    path = root / "crates/fereg-core/src/sandwich.rs"
+    text = path.read_text()
+    start = text.index("pub(crate) fn reduce_serial_influence_covariance<")
+    end = text.index("/// Multiway clustered", start)
+    body = text[start:end]
+    points = [
+        ("    for row in 0..nrows {", "    let mut development_parts = [0.0_f64; 3];\n    let mut development_lap = std::time::Instant::now();\n"),
+        ("        for (left, influence_value) in influence.iter_mut().enumerate() {", "        development_parts[0] += development_lap.elapsed().as_secs_f64();\n        development_lap = std::time::Instant::now();\n"),
+        ("        for left in 0..dimension {", "        development_parts[1] += development_lap.elapsed().as_secs_f64();\n        development_lap = std::time::Instant::now();\n"),
+    ]
+    for marker, before in points:
+        assert body.count(marker) == 1, marker
+        body = body.replace(marker, before + marker)
+    marker = "    }\n    finalize_symmetric_triangle"
+    assert body.count(marker) == 1
+    body = body.replace(marker, '''        development_parts[2] += development_lap.elapsed().as_secs_f64();
+        development_lap = std::time::Instant::now();
+    }
+    eprintln!("FEREG_PHASE|serial_sandwich|rows={nrows}|columns={dimension}|scores={:.9}|bread={:.9}|outer={:.9}", development_parts[0], development_parts[1], development_parts[2]);
+    finalize_symmetric_triangle''')
+    path.write_text(text[:start] + body + text[end:])

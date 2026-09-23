@@ -730,14 +730,14 @@ where
             }
         }
         for left in 0..dimension {
-            for right in left..dimension {
-                let position = left * dimension + right;
-                compensated_add(
-                    influence[left] * influence[right],
-                    &mut covariance[position],
-                    &mut corrections[position],
-                )?;
-            }
+            let start = left * dimension + left;
+            let end = (left + 1) * dimension;
+            compensated_add_scaled_row(
+                influence[left],
+                &influence[left..],
+                &mut covariance[start..end],
+                &mut corrections[start..end],
+            )?;
         }
     }
     finalize_symmetric_triangle(&mut covariance, corrections, dimension)?;
@@ -1519,6 +1519,42 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
     }
 }
 
+pub(crate) fn compensated_add_scaled_row(
+    scale: f64,
+    values: &[f64],
+    sums: &mut [f64],
+    corrections: &mut [f64],
+) -> Result<()> {
+    if values.len() != sums.len() || values.len() != corrections.len() {
+        return Err(invalid_argument(
+            "prepared compensated row dimensions are inconsistent",
+        ));
+    }
+    // Coordinates are independent. Check the whole private row before its
+    // caller continues so finite-value branches do not serialize each update.
+    // Each coordinate retains the scalar Neumaier operations and row order.
+    let mut finite = true;
+    for ((value, sum), correction) in values.iter().zip(sums).zip(corrections) {
+        let term = scale * value;
+        let updated = *sum + term;
+        let adjustment = if sum.abs() >= term.abs() {
+            (*sum - updated) + term
+        } else {
+            (term - updated) + *sum
+        };
+        *sum = updated;
+        *correction += adjustment;
+        finite &= term.is_finite() & sum.is_finite() & correction.is_finite();
+    }
+    if finite {
+        Ok(())
+    } else {
+        Err(invalid_data(
+            "prepared compensated row accumulation is not finite",
+        ))
+    }
+}
+
 fn invalid_argument(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::InvalidArgument, message)
 }
@@ -1906,6 +1942,54 @@ mod tests {
             .expect("serial covariance");
         assert_eq!(actual, expected);
         assert_eq!(reservation.calls, 4);
+    }
+
+    #[test]
+    fn serial_influence_rows_preserve_scalar_bits_across_widths_and_scales() {
+        let rows = 67;
+        for dimension in [0, 1, 2, 3, 7, 8, 15, 16, 17, 31, 32, 33, 63, 64, 65, 129] {
+            let values: Vec<_> = (0..rows * dimension)
+                .map(|i| ((i * 17 + 3) as f64).sin() * [0.0, 1e-40, 1.0, 1e40][i % 4])
+                .collect();
+            let bread: Vec<_> = (0..dimension * dimension)
+                .map(|i| ((i * 11 + 7) as f64).cos() * [1e-20, 1.0, 1e20][i % 3])
+                .collect();
+            let multipliers: Vec<_> = (0..rows)
+                .map(|i| [0.0, -0.0, 1e-10, -1.0, 1e10][i % 5])
+                .collect();
+            let expected = legacy_serial_influence_covariance(
+                &values, rows, dimension, &multipliers, &bread,
+            );
+            let design = RowMajorSandwichDesign::new(&values, rows, dimension).unwrap();
+            let scores = SliceSandwichScoreMultiplier::same(&multipliers).unwrap();
+            let mut reservation = CountingReservation::default();
+            let actual = reduce_serial_influence_covariance(
+                &design, scores, &bread, &mut reservation,
+            ).unwrap();
+            assert_eq!(reservation.calls, 4);
+            for (actual, expected) in actual.iter().zip(expected) {
+                assert_eq!(actual.to_bits(), expected.to_bits(), "width={dimension}");
+            }
+        }
+    }
+
+    #[test]
+    fn serial_influence_rows_reject_nonfinite_bread_and_outer_products() {
+        for (values, bread) in [
+            (vec![1.0, 2.0], f64::NAN),
+            (vec![1.0, 2.0], f64::INFINITY),
+            (vec![1.0, 2.0], f64::MAX),
+            (vec![1e200, 1.0], 1.0),
+            (vec![1e154, 1e154], 1.0),
+        ] {
+            let design = RowMajorSandwichDesign::new(&values, 2, 1).unwrap();
+            let multipliers = [1.0, 1.0];
+            let scores = SliceSandwichScoreMultiplier::same(&multipliers).unwrap();
+            let error = reduce_serial_influence_covariance(
+                &design, scores, &[bread], &mut CountingReservation::default(),
+            ).expect_err("nonfinite influence or outer accumulator");
+            assert_eq!(error.code, ErrorCode::InvalidData);
+        }
     }
 
     #[test]
