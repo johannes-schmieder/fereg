@@ -10,6 +10,40 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Final-state probes rejected; proceed to substantial low-memory and joint solving — 2026-09-23
+
+The active objective remains public PPML at most **0.90 times scientifically
+comparable pinned stock fixest** wherever reasonably achievable, while protecting
+OLS and all scientific/memory/transaction contracts. This opening supersedes
+historical next-step and unused-seed entries below.
+
+Reject `finalstate1` and `finalstate2` under [ADR 0128](docs/adr/0128-final-state-response-probes.md).
+The [source-bound report](benchmarks/reports/development/ppml-final-state-probes-local-2026-09-23/README.md)
+preserves all **168 passing public applications**, both timing distributions,
+132/134 Rust checks, four passing licensed fixtures per candidate and exact source
+identities. Restored container verifies **6,173 receipts**, SHA-256
+`7294400c7cc4ea7eca78d524a5909cd9ef63c2480193496595e934c2a12fd467`.
+Production is restored to `4ad7ade5`: all **534 computational inputs** match
+accepted `oneprof6`. The broader point-retention/response-history state machine
+did not justify its complexity: second-screen gains are small/mixed, wide slopes
+lose slightly, and low memory is unchanged. Do not tune this probe further.
+
+Next implement bounded retained-scratch readers for QR and reconstruction,
+then inference where measured. **Finite moments already batch complete rows
+under ADR 0070**; do not repeat that work. Measure syscall counts, finite/strict
+phases, public time and admitted/actual memory. No hidden resident N-by-K bank.
+The principal algorithmic target remains joint finite-plus-slope Newton solving
+to avoid K+1 ordinary projections. Compare that coherent candidate against
+shared-pass batched Schur, then retain one successful organization. Subsequent
+shared exact-state factor construction, one-FE ownership and categorical/shared
+passes must address their full remaining cost budgets, with fresh independent
+acceptance and OLS/PPML controls at each accepted milestone.
+
+Seed **202609325 is consumed**; 326 was declared but not generated. Use
+**202609327** for the next development design and predeclare fresh confirmation
+separately. No broad objective, unresolved science/memory issue or deferred
+platform gate is closed by this rejection checkpoint.
+
 ## Concentrated one-FE PPML accepted; broad target remains active — 2026-09-23
 
 The active objective remains public PPML runtime at most **0.90 times scientifically
