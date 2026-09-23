@@ -46,9 +46,12 @@ def main(args):
     sys.path.insert(0, str(controller))
     from common import read_json, write_json, sha256
     surface = None
-    if args.surface:
+    if args.surface or args.ppml_surface:
         shutil.copyfile(Path(__file__).with_name("surface.py"), controller / "surface.py")
-        surface = load("generated_surface", controller / "surface.py")
+        module = "ppml_surface.py" if args.ppml_surface else "surface.py"
+        if args.ppml_surface:
+            shutil.copyfile(Path(__file__).with_name(module), controller / module)
+        surface = load("generated_surface", controller / module)
         surface.stage(controller)
     from measure import measure
     from generate import generate
@@ -80,7 +83,7 @@ if `dimensions' == 3 local effects `effects' g3'''
     if surface:
         cells = [surface.configure(c) for c in cells]
     elif any("terms" in c or "outputs" in c for c in cells):
-        raise ValueError("Generated terms/output requests require --surface")
+        raise ValueError("Generated terms/output requests require --surface or --ppml-surface")
     # The stock worker currently implements this deliberately narrow surface.
     # Native-only diagnostic controls may use the existing Stata options.
     if "fixest" in args.variants:
@@ -102,7 +105,7 @@ if `dimensions' == 3 local effects `effects' g3'''
             identities[variant] = identity
     write_json(root / "plan.json", dict(schema="next-subsystem-screen-v1", cells=cells,
         seed=args.seed, repeats=args.repeats, variants=args.variants, trace=args.trace,
-        timeout=args.timeout, surface=args.surface, identities=identities,
+        timeout=args.timeout, surface=args.surface, ppml_surface=args.ppml_surface, identities=identities,
         sources={str(p.relative_to(REPO)): sha256(p) for p in [Path(__file__).resolve(),
             REPO / "benchmarks/two_fe_dense/route_development.py",
             REPO / "benchmarks/systematic/manifest.json",
@@ -177,6 +180,8 @@ if __name__ == "__main__":
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--timeout", type=int, default=90)
     parser.add_argument("--trace", action="store_true")
-    parser.add_argument("--surface", action="store_true",
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument("--ppml-surface", action="store_true", help="positive PPML slopes and matched saved means")
+    modes.add_argument("--surface", action="store_true",
                         help="matched generated OLS terms and one-FE requested outputs")
     main(parser.parse_args())

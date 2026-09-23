@@ -10,6 +10,74 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## PPML slope opportunity verified; matched mean harness added — 2026-09-23
+
+The [PPML breadth milestone](benchmarks/reports/development/ppml-slope-opportunity-local-2026-09-23/README.md)
+adds `--ppml-surface`, positive-outcome numeric slope designs, timed public means,
+independent explicit-design Poisson/Hessian checks, and fresh public score/
+fixed-beta model-space diagnostics. This checkpoint changes benchmark/audit
+code only. All 529 computational inputs still match `parproj1` / `31a7f201`,
+plugin `2ed364308f8c7e239e242414621e23cf6b59d1d9a50d6ab0abd09775e419f80a`.
+No new native speedup, relaxed tolerance or memory policy is claimed.
+
+At N30720/T4 with saved means, default native medians are 206 ms for dense
+categorical three FE, 169 ms unbalanced categorical, 1488 ms two slope
+partitions, 1017 ms unbalanced three FE with slopes and 1196 ms in low memory.
+Default stock medians are 120/71/71/71/71 ms, but only six of 15 full-size
+comparisons pass completely: three families miss saved means, two also miss
+stock stationarity. All native public states pass. The three N2400 native
+pilots pass independent science; all default stock pilots miss means and one
+also misses covariance. Those default comparisons are not a blanket ranking.
+
+A separate stock diagnostic uses the same pinned library with public
+`glm.tol=1e-10, fixef.tol=1e-11`. All three small independent pilots and all
+five full-size comparisons/public-state checks pass. Single-run native/strict
+stock times are 196/244, 172/118, 1475/118, 1014/117 and 1194/118 ms. This
+isolates a large slope opportunity; dense categorical three FE is competitive
+in that specific diagnostic. It does not replace the failed default receipts.
+The first stricter request used unsupported fixef.tol=1e-12, producing three
+stock warmup failures; those errors are retained, not scientific failures.
+
+Isolated native profiles identify reusable generic MAP projection as the
+next cost: 1,380/1,260/1,320 projection calls take .999/.655/.695 seconds across
+the three slope cases. Fresh certificates take .432/.256/.258 seconds.
+`ReusableMapAbsorber` retains topology and storage but uses serial projection;
+it does not enter ADR 0118's one-shot automatic OLS plan. Surrounding retained
+finite design and fresh reference-statistic improvements already apply.
+Saved-mean publication itself is only about 5–6 ms here. Individual saved FE
+channels, weights/clusters and separation-heavy slope performance are still
+outside this new coverage.
+
+Final review caught the initial worker omitting explicit memory(fast): every
+such captured run actually requested auto and selected fast. The report keeps
+that label and those original receipts. The corrected worker emits explicit
+fast/low requests; repeated small pilots have exact native exports/means and
+pass independent/reference/state checks with the intended request codes.
+There are 67 application attempts: 64 successes and three stock API refusals,
+with no timeout, overlap or monitor error. All 20 repeat comparisons, means
+and scientific exports are exact. Ten harness tests and diagnostic-plugin ABI/
+panic containment pass. No new Rust or licensed-fixture campaign is claimed.
+
+**Next bounded implementation:** admit the existing parallel group-coefficient/
+row projection in the reusable PPML slope path. Recompute coefficients every
+projection; reuse storage/topology only. Respect PPML fit-lifetime admission,
+stable capacities, weight/sample generations, fresh certificates and affordable
+serial fallback. Inspect `prepared_irls.rs` solver admission, retained-session
+construction/capacity accounting and the projection plan together; do not simply
+remove OLS guards or keep weighted geometry across IRLS iterations. Begin with
+the verified two-slope and unbalanced-three-FE cases, then categorical, serial,
+low-memory and changing-weight controls. Seeds 202609289–291 are used;
+202609292 onward remain unused here. ADR 0119 remains available.
+
+Primary and memory-correction archives verify 1,548 and 158 entries with SHA-256
+`4ed1b2a5f452a6265bde632680a8e7f6b3d574b79c51cbffba1ecc93bf3f6433`
+and `6a39a61e30993ee1916fcd5fc714faa7c135023730b72e868c24bbcedba2f354`.
+Frozen 77/16/111 definitions, static allocation drift, weighted constrained-fit/
+nonretaining CG issues, factor-base provenance and SCC/Linux deferrals remain
+unchanged. No stopped campaign, push, release or qualification is resumed.
+This is verified progress toward the broad goal; the native PPML gap is open.
+This opening supersedes older next steps.
+
 ## Parallel owned-FE projection groups accepted — 2026-09-23
 
 The [projection milestone](benchmarks/reports/development/parallel-projection-local-2026-09-23/README.md)

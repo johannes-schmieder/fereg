@@ -46,7 +46,7 @@ def compare(a, b, model):
         covariance=distance(va.value, vb.value, 1e-6))
     keys = [("rss", "rss")] if model == "ols" else [("ll", "loglik"), ("deviance", "deviance")]
     for left, right in keys:
-        checks[left] = distance([ra["metadata"][left]], [rb["metadata"].get(right, rb["metadata"].get(left))], 1e-8)
+        checks[left] = distance([ra["metadata"].get(left, ra["metadata"].get(right))], [rb["metadata"].get(right, rb["metadata"].get(left))], 1e-8)
     checks["passed"] = all(v if isinstance(v, bool) else v["passed"] for v in checks.values())
     return checks
 

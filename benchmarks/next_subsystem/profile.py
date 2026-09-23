@@ -99,6 +99,27 @@ impl Drop for DevelopmentSessionLap {
     path.write_text(text[:start] + body + text[end:])
 
 
+    path = root / "crates/fereg-core/src/fe/map.rs"
+    text = path.read_text()
+    for function, label, values in (
+        ("    pub(crate) fn absorb(", "absorb", "values"),
+        ("    fn certify(", "certificate", "residuals"),
+    ):
+        start = text.index(function, text.index("impl ReusableMapAbsorber"))
+        body = text.index(" {\n", start) + 3
+        text = text[:body] + f'''        struct PpmlMapTimer(std::time::Instant, usize, usize);
+        impl Drop for PpmlMapTimer {{
+            fn drop(&mut self) {{
+                if std::env::var_os("FEREG_PHASE_TIMING").is_some() {{
+                    eprintln!("FEREG_PHASE|ppml_map|phase={label}|rows={{}}|rhs={{}}|seconds={{:.9}}", self.1, self.2, self.0.elapsed().as_secs_f64());
+                }}
+            }}
+        }}
+        let _map_timer = PpmlMapTimer(std::time::Instant::now(), {values}.nrows(), {values}.ncols());
+''' + text[body:]
+    path.write_text(text)
+
+
 def instrument_low_qr(root):
     path = root / "crates/fereg-core/src/ols/prepared_fit.rs"
     text = path.read_text()
