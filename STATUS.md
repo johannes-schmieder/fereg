@@ -10,6 +10,76 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Absorbed-slope solver redesign authorized — 2026-09-23
+
+The user has resumed and broadened this work to replace inefficient slope
+solver organization, including current-weight geometry, coefficient-space
+iteration, batching, warm starts and verification scheduling. A modest cache
+gain or preparatory diagnosis is not completion. Compare identical frozen
+linear frames, implement a coherent replacement, validate independent WLS and
+Poisson/Hessian science, measure fresh public-command rotations, and protect
+OLS/categorical paths. Preserve the existing scientific acceptance conditions;
+bitwise equality with the prior recurrence is not required. The completed
+diagnosis below remains evidence, while its pause is superseded by this request.
+No redesign candidate has yet been measured or accepted. Seed 202609306 is the
+next unused development seed; the previous failed timing block stays stopped.
+
+## Disconnected PPML diagnosis complete — 2026-09-23
+
+The [reduced diagnosis](benchmarks/reports/development/ppml-disconnected-map-local-2026-09-23/README.md)
+and ADR 0122 close that experiment at the user's intervening pause request.
+At closeout no new solver experiment, larger timing block or comparator probe
+had started. Production remains `190946a1`; all 529 computational inputs still
+match accepted `ppmlgeom1` and plugin SHA-256
+`895b2ae2ce57094a1290255d6e6f02ae15f7e374441e340caf5052d490003875`.
+The prior geometry gains and tests remain bound to their original evidence.
+
+Two predeclared disconnected three-FE/two-slope cases (N960/K3 and N1920/K4,
+T4, robust, saved means) reproduce native `r(459)` during warmup. Both small
+warmup datasets equal the full data. There are no native target clocks to
+rank. Strict stock succeeds in single diagnostic calls of 1.195/.554 seconds;
+the four completed attempts have no timeout, overlap or monitor error.
+
+An isolated diagnostic captures the first failing MAP invocation: 935 rows,
+five RHSs, all weights exactly one, tolerance `1e-6`, limit 16000. The final
+fresh infinity certificate is `8.61836e-5` and still contracting. Independent
+dense SVD and pivoted QR agree on rank 645 and residuals to `8.31e-14`; an
+independent local QR certificate reproduces the native failure. Remaining FE
+components reach 1.73% of an original RHS norm; leakage outside the FE span
+is below `9.88e-15`. The failure is slow initial projection convergence before
+IRLS advances, not stale changing-weight cache geometry. No tolerance, rank,
+sample, recurrence or iteration limit was changed.
+
+Both reduced cases have independent explicit Poisson/sample oracles. Stock
+passes coefficients, means, objectives and fresh public-state checks in both.
+The smaller case also passes covariance. The larger fails three covariance
+coordinates: maximum error `5.48511e-10`, tolerance ratio 2.572. Dense SVD/QR
+current-Hessian inference confirms the discrepancy, including at stock's own
+means; its exact internal cause remains unresolved. Keep that comparison
+scientifically unranked. No additional stock fit or instrumentation was run.
+
+The 72-entry archive verifies SHA-256
+`4468cedff139071d3d9fc8356399630a5d9b3a35df4016d571d9d7481febcce2`.
+It preserves the bounded synthetic failed frame, independent audit scripts,
+all outcomes, diagnostic source and protocols without raw licensed logs.
+The diagnostic actual-plugin ABI/panic checks and one licensed expected-failure
+capture fixture pass. This is not a passing native estimation, production
+memory claim, new Rust-suite run or qualification campaign.
+
+**Recommendation if work resumes:** predeclare a certified convergence remedy
+on the bounded frame, then validate fresh topology/weight and excluded-path
+controls. Do not repeat long failed fits, resume the stopped timing block or
+silently substitute unresolved nonretaining CG. ADR 0120's rejected
+extrapolation remains closed absent a separate new experiment. The stock
+covariance discrepancy is a separate comparator-adjudication task.
+
+Seed 202609305 is consumed; 202609306 onward are unused by this experiment.
+Frozen 77/16/111 definitions, static allocation drift, hidden PPML receipt
+assertion, factor-base provenance, constrained-fit/CG issues and SCC/Linux
+deferrals remain unchanged. No push, release, qualification or stopped
+historical campaign was initiated. The broad optimization objective remains
+open; the redesign request above now governs further work.
+
 ## Current-call PPML certificate geometry accepted — 2026-09-23
 
 The [geometry milestone](benchmarks/reports/development/ppml-certificate-geometry-local-2026-09-23/README.md)
