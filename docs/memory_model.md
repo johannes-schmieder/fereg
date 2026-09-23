@@ -470,6 +470,15 @@ and covariance certificates, and cluster reductions. Failed finite attempts
 release their local owners before fallback; sequential fit and inference frames
 contribute their maximum. FE solver admission remains separate.
 
+The scratch-backed full-rank trial uses the same finite frame allowance as
+dense execution. Its largest simultaneous square owners are the caller Gram,
+trial Gram, factor, inverse factor and canonical inverse; the inverse-factor
+owner drops before finite bread is allocated. These five square banks and
+linear metadata fit inside the existing `128*q*q + 1024*q + 4096` finite
+allowance, where `q` is the larger generated/reported width. There is no added
+row-sized buffer, and a rejected trial drops before scratch QR begins. See
+[ADR 0111](adr/0111-guarded-scratch-finite-solve.md).
+
 Dense cluster subsets can use the reducer's `max(32*N,64 MiB)` ceiling while
 parallel partials remain live. Both banks are charged together. Sorted fallback
 charges its two row orders. Low mode additionally reserves bounded scratch I/O

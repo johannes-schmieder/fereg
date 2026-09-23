@@ -1,4 +1,4 @@
-"""Diagnostic-only LSMR transport laps in an isolated source copy."""
+"""Diagnostic-only native phase laps in an isolated source copy."""
 
 
 def instrument(root):
@@ -97,3 +97,69 @@ impl Drop for DevelopmentSessionLap {
         development_lap = std::time::Instant::now();
 ''' + before)
     path.write_text(text[:start] + body + text[end:])
+
+
+def instrument_low_qr(root):
+    path = root / "crates/fereg-core/src/ols/prepared_fit.rs"
+    text = path.read_text()
+
+    def phases(text, start_marker, end_marker, entry, family, rows, columns, points):
+        start = text.index(start_marker)
+        end = text.index(end_marker, start)
+        body = text[start:end]
+        assert body.count(entry) == 1, entry
+        body = body.replace(entry, "    let mut development_low_lap = std::time::Instant::now();\n" + entry)
+        for before, label in points:
+            assert body.count(before) == 1, before
+            body = body.replace(before, f'''    development_low_profile_lap("{family}", "{label}", {rows}, {columns}, &mut development_low_lap);
+''' + before)
+        return text[:start] + body + text[end:]
+
+    text = phases(text, "fn fit_with_controls_low_internal_with_frame<",
+        "fn initial_within_sum_of_squares_low<", "    frame.validate_for(prepared)?;",
+        "low_fit", "rows", "generated_columns", [
+            ("    let raw_outcome =", "setup"),
+            ("    for start in (0..generated_columns).step_by(block_width)", "outcome_and_scratch"),
+            ("    let normalized_initial_within_sum_of_squares =", "regressors_and_scratch"),
+            ("    let mut raw_residuals =", "finite_qr"),
+            ("    let bread = finalize_reported_bread_and_intercept(", "raw_residual"),
+            ("    let initial_absorbed_outcome_sum_of_squares =", "reported_bread"),
+            ("    let score_certificate = certify_scores(", "final_residual_projection"),
+            ("    let coefficients = build_coefficient_slots", "score_certificate"),
+            ("    Ok(CertifiedPreparedOlsFit {", "assembly"),
+        ])
+    low_start = text.index("fn fit_scaled_pivoted_qr_low<")
+    low_end = text.index("fn reconstruct_within_residuals<", low_start)
+    guarded = "    if let Some(fit) = try_fit_scaled_pivoted_cholesky(" in text[low_start:low_end]
+    moments_end = ("    if let Some(fit) = try_fit_scaled_pivoted_cholesky(" if guarded else
+        "    fill_scratch_trailing_norms(\n        scratch,\n        &candidate_columns,\n        0,")
+    text = phases(text, "fn fit_scaled_pivoted_qr_low<", "fn reconstruct_within_residuals<",
+        "    let nrows =", "low_qr", "nrows", "generated_columns", [
+            ("    for (row, value) in within_outcome.iter_mut().enumerate()", "setup"),
+            ("    let mut standardized_rhs =", "standardization"),
+            (moments_end, "moments"),
+            ("    let mut rank = 0_usize;", "initial_norms"),
+            ("    fill_scratch_trailing_norms(\n        scratch,\n        &candidate_columns,\n        rank,", "reflectors"),
+            ("    let compact_columns =", "rank_certificate"),
+            ("    let condition_proxy =", "compact_solve"),
+            ("    let bread = build_finite_bread_draft(", "finite_score"),
+            ("    Ok(QrFit {", "finite_bread"),
+        ])
+    if guarded:
+        start = text.index("fn fit_scaled_pivoted_qr_low<")
+        end = text.index("fn reconstruct_within_residuals<", start)
+        body = text[start:end]
+        assert body.count("        return Ok(fit);") == 1
+        body = body.replace("        return Ok(fit);", '''        development_low_profile_lap("low_qr", "guarded_cholesky", nrows, generated_columns, &mut development_low_lap);
+        return Ok(fit);''')
+        text = text[:start] + body + text[end:]
+    text += '''
+fn development_low_profile_lap(family: &str, phase: &str, rows: usize, columns: usize, lap: &mut std::time::Instant) {
+    let now = std::time::Instant::now();
+    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+        eprintln!("FEREG_PHASE|{family}|phase={phase}|rows={rows}|columns={columns}|seconds={:.9}", now.duration_since(*lap).as_secs_f64());
+    }
+    *lap = std::time::Instant::now();
+}
+'''
+    path.write_text(text)

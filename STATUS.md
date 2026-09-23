@@ -10,6 +10,55 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Guarded scratch finite solve accepted — 2026-09-22
+
+The [low-memory finite milestone](benchmarks/reports/development/low-memory-cholesky-local-2026-09-22/README.md)
+and ADR 0111 reuse the existing full-rank guarded Cholesky trial on compensated
+scratch moments. Weak/deficient or uncertified trials retain unchanged QR
+omission decisions. Scratch and response remain untouched by the trial; fresh
+original-data residual reconstruction, FE projection, score, bread and inference
+certificates still run. No dense within matrix or PPML generation cache is added.
+
+`lowchol2` is `f8c2a0d6` plus the archived `prepared_fit.rs`/`memory.rs` overlay;
+all 529 captured inputs match. Plugin SHA-256:
+`45e2c724d80ee38e45d935b5c0d658c45f3d9c144b8f888041fd11a4d0b3b1da`.
+Fifteen eligible low-memory rows gain 8.3–38.8% by paired medians. Wide robust
+improves 1661→1046 ms; fresh K40 improves 2126→1304 ms. Factors, serial,
+one-/two-/three-FE, IID, weighted robust/clustered and saved-output cases benefit.
+The fast control has exact scientific exports and ratios .947–1.000; no new
+fast-path algorithm claim follows. Stock still wins eleven of twelve comparable
+rows; ordinary stock memory strategy is not an equal-budget comparison.
+
+All 135 headline calls pass without timeout, detected overlap or monitor error.
+All 48 native science pairs, repeats and three saved-output comparisons pass
+unchanged envelopes. Status/DoF/subset/FE metadata are identical; low numerical
+exports and condition proxies can change. Five independent dummy pilots,
+twenty distinct Rust tests (plus optimized direct trial), actual-plugin ABI
+containment, three licensed OLS fixtures and nine combinations in the additional
+PPML low-categorical fixture pass. Controller/packaging failures and corrected
+sentinel/environment handling remain archived, not silently discarded.
+
+The existing internal finite memory allowance covers at most five square banks
+and linear trial storage. No row-sized buffer, scratch size or admission policy
+changes. Independent allocator-frame checks pass. Whole-action peak differences
+remain zero outside parallel multi-FE variation (−3.54 to +2.22 MB); no tighter
+whole-action or constrained-budget guarantee follows. Static allocation audit
+still fails source drift; no successor inventory was generated.
+
+**Comparator boundary:** fresh disconnected three-FE native residual DoF 48104
+versus stock 46560 leaves all three stock covariance comparisons failed and
+unranked. Diagnostic rescaling agrees within 2.19e−13, without independent
+full-size rank adjudication. Direct stock checks pass 36/39.
+
+**Next bounded performance task:** profile current-source production covariance
+and independent checks. The wide finite phase is now 299 ms (282 ms moments),
+while the rest of the command still costs roughly 0.74 seconds. Confirm a large
+avoidable cost before changing another kernel. Factor-base provenance, generated
+TS, multi-partition slopes, broader topology/memory coverage, earlier scientific
+discrepancies, constrained-fit/CG failures and SCC deferrals remain open. Do not
+reopen closed window/serial-slope experiments. This is a clean local development
+milestone, not completion of the broad goal, qualification, push or release.
+
 ## Compensated scratch certificate rows accepted — 2026-09-22
 
 The [scratch-certificate milestone](benchmarks/reports/development/low-memory-gram-local-2026-09-22/README.md)

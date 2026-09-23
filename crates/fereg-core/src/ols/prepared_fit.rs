@@ -3657,7 +3657,7 @@ fn build_standardized_moments_columnwise<R: FitReservation>(
 
 #[allow(clippy::too_many_arguments)]
 fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
-    within: &DenseMatrix,
+    within: Option<&DenseMatrix>,
     weights: NormalizedWeights<'_>,
     bread_weight_scale: PreparedOlsBreadWeightScale,
     reference_norms: &[f64],
@@ -3812,29 +3812,36 @@ fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
         generated_coefficients[generated] = Some(coefficient);
         generated_statuses[generated] = PreparedOlsFitStatus::Kept;
     }
-    let mut residuals = reserved_filled(
-        reservation,
-        within.nrows(),
-        0.0_f64,
-        "unable to reserve prepared OLS Cholesky residual",
-    )?;
-    residuals
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(row, residual)| -> Result<()> {
-            let values = &within.as_slice()[row * within.ncols()..(row + 1) * within.ncols()];
-            let mut value = values[0];
-            for (position, generated) in canonical_candidates.iter().copied().enumerate() {
-                value =
-                    (-standardized_coefficients[position]).mul_add(values[generated + 1], value);
-            }
-            *residual = value / weights.root(row)?;
-            if residual.is_finite() {
-                Ok(())
-            } else {
-                Err(invalid_data("prepared OLS Cholesky residual is not finite"))
-            }
-        })?;
+    // Scratch fits reconstruct and project residuals from original columns in
+    // their caller. Only dense fits can reuse a standardized within residual.
+    let residuals = if let Some(within) = within {
+        let mut residuals = reserved_filled(
+            reservation,
+            within.nrows(),
+            0.0_f64,
+            "unable to reserve prepared OLS Cholesky residual",
+        )?;
+        residuals
+            .par_iter_mut()
+            .enumerate()
+            .try_for_each(|(row, residual)| -> Result<()> {
+                let values = &within.as_slice()[row * within.ncols()..(row + 1) * within.ncols()];
+                let mut value = values[0];
+                for (position, generated) in canonical_candidates.iter().copied().enumerate() {
+                    value =
+                        (-standardized_coefficients[position]).mul_add(values[generated + 1], value);
+                }
+                *residual = value / weights.root(row)?;
+                if residual.is_finite() {
+                    Ok(())
+                } else {
+                    Err(invalid_data("prepared OLS Cholesky residual is not finite"))
+                }
+            })?;
+        Some(residuals)
+    } else {
+        None
+    };
     if perturb_first_coefficient {
         let coefficient = generated_coefficients
             .iter_mut()
@@ -3920,8 +3927,8 @@ fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
         },
         finite_score,
         bread,
-        within_residuals: Some(residuals),
-        standardized_within_is_reusable: true,
+        within_residuals: residuals,
+        standardized_within_is_reusable: within.is_some(),
     }))
 }
 
@@ -4203,7 +4210,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let (standardized_rhs, standardized_gram) =
         build_standardized_moments(within, &canonical_candidates, reservation)?;
     if let Some(fit) = try_fit_scaled_pivoted_cholesky(
-        within,
+        Some(within),
         weights,
         bread_weight_scale,
         reference_norms,
@@ -4670,6 +4677,32 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         }
     }
 
+    let relative_threshold = config.rank_tolerance_multiplier
+        * f64::EPSILON
+        * nrows.max(generated_columns).max(1) as f64;
+    // The compensated scratch moments admit the same full-rank trial as the
+    // dense path. It does not mutate scratch or the response; rejected trials
+    // drop their owners before the unchanged rank-revealing QR fallback.
+    if let Some(fit) = try_fit_scaled_pivoted_cholesky(
+        None,
+        weights,
+        bread_weight_scale,
+        reference_norms,
+        score_norms,
+        &canonical_candidates,
+        &generated_statuses,
+        &standardized_gram,
+        &standardized_rhs,
+        relative_threshold,
+        config,
+        reservation,
+        perturb_first_coefficient,
+        perturb_bread,
+        true,
+    )? {
+        return Ok(fit);
+    }
+
     fill_scratch_trailing_norms(
         scratch,
         &candidate_columns,
@@ -4678,9 +4711,6 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         &mut target,
     )?;
     let initial_norm = trailing_norms.iter().copied().fold(0.0_f64, f64::max);
-    let relative_threshold = config.rank_tolerance_multiplier
-        * f64::EPSILON
-        * nrows.max(generated_columns).max(1) as f64;
     let absolute_threshold = initial_norm * relative_threshold;
     if !absolute_threshold.is_finite() {
         return Err(invalid_data(
@@ -10939,7 +10969,7 @@ mod tests {
             let bread_weight_scale =
                 prepared_bread_weight_scale(&prepared, weights).expect("bread weight scale");
             let fit = try_fit_scaled_pivoted_cholesky(
-                &within,
+                Some(&within),
                 weights,
                 bread_weight_scale,
                 &reference_norms,
@@ -10961,6 +10991,41 @@ mod tests {
             assert!(fit.certificate.passed);
             assert_eq!(fit.certificate.maximum_dropped_trailing_norm, 0.0);
             assert!(fit.finite_score.infinity_scale < 1e-10);
+            let scratch_fit = try_fit_scaled_pivoted_cholesky(
+                None,
+                weights,
+                bread_weight_scale,
+                &reference_norms,
+                &score_norms,
+                &candidates,
+                &statuses,
+                &gram,
+                &rhs,
+                relative_threshold,
+                PreparedOlsFitConfig::default(),
+                &mut reservation,
+                false,
+                false,
+                true,
+            )
+            .expect("scratch Cholesky attempt")
+            .expect("scratch moments select guarded Cholesky");
+            assert!(scratch_fit.within_residuals.is_none());
+            assert!(!scratch_fit.standardized_within_is_reusable);
+            assert!(fit.within_residuals.is_some());
+            assert!(fit.standardized_within_is_reusable);
+            assert_eq!(scratch_fit.generated_coefficients, fit.generated_coefficients);
+            assert_eq!(scratch_fit.generated_statuses, fit.generated_statuses);
+            assert_eq!(scratch_fit.kept, fit.kept);
+            assert_eq!(scratch_fit.dropped, fit.dropped);
+            assert_eq!(
+                scratch_fit.certificate.condition_proxy.to_bits(),
+                fit.certificate.condition_proxy.to_bits()
+            );
+            assert_eq!(
+                scratch_fit.bread.as_ref().expect("scratch bread").values,
+                fit.bread.as_ref().expect("dense bread").values
+            );
             let bread = fit.bread.expect("certified Cholesky bread");
             assert!(bread.left_inverse_relative_infinity_norm < 5e-10);
             assert!(bread.right_inverse_relative_infinity_norm < 5e-10);
@@ -10975,7 +11040,7 @@ mod tests {
                     }
                     weak_gram[columns * columns - 1] = gram[0] + gap;
                     assert!(try_fit_scaled_pivoted_cholesky(
-                        &within,
+                        None,
                         weights,
                         bread_weight_scale,
                         &reference_norms,
@@ -14833,6 +14898,42 @@ mod tests {
             .code,
             ErrorCode::Allocation
         );
+    }
+
+    #[test]
+    fn low_guarded_fit_allocation_and_certificate_failures_are_fatal() {
+        let x = vec![-2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
+        let y = vec![1.2, -0.5, 0.4, 3.1, 4.0, 7.2];
+        let data = prepared(&y, &[x], &[false], None, true, TestWeights::Unit);
+        let config = PreparedOlsFitConfig {
+            execution: PreparedOlsExecutionConfig {
+                mode: PreparedOlsExecutionMode::Low,
+                poolsize: 1,
+                ..PreparedOlsExecutionConfig::default()
+            },
+            ..PreparedOlsFitConfig::default()
+        };
+        let mut successful = InjectedReservation::default();
+        fit_with_controls(&data, config, &mut successful, false, false)
+            .expect("low guarded control");
+        for fail_at in 1..=successful.calls {
+            let mut injected = InjectedReservation {
+                fail_at: Some(fail_at),
+                ..InjectedReservation::default()
+            };
+            let error = fit_with_controls(&data, config, &mut injected, false, false)
+                .expect_err("low guarded allocation failure");
+            assert_eq!(error.code, ErrorCode::Allocation, "failure {fail_at}");
+        }
+        for perturbations in [
+            FitPerturbations { first_coefficient: true, ..FitPerturbations::default() },
+            FitPerturbations { finite_bread: true, ..FitPerturbations::default() },
+        ] {
+            let error = fit_with_controls_internal(
+                &data, config, &mut SystemFitReservation, perturbations,
+            ).expect_err("low guarded corruption must fail certification");
+            assert_eq!(error.code, ErrorCode::InvalidData);
+        }
     }
 
     #[test]

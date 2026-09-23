@@ -33,11 +33,15 @@ intercept, slope-only, intercept-plus-slope, multiple slope channels,
 disconnected components, and empty/no-regressor models.
 
 Finite regression preserves a canonical status for every coefficient slot.
-Fast execution first attempts guarded diagonal-pivoted Cholesky, including
-widths above 64 under ADR 0030. Every pivot must clear the stronger square-root
-rank guard, and the result must pass the independent score and inverse checks.
-Weak or rank-deficient designs use deterministic scaled column-pivoted
-Householder QR, which owns omission decisions. Low execution retains QR.
+Both fast and scratch-backed low execution first attempt guarded
+diagonal-pivoted Cholesky, including widths above 64 under ADRs 0030 and 0111.
+Every pivot must clear the stronger square-root rank guard, and the result
+must pass the independent score and inverse checks. Weak or rank-deficient
+designs use deterministic scaled column-pivoted Householder QR, which owns
+omission decisions. The low trial uses its existing compensated moments and
+does not mutate scratch or the response. Low fits still reconstruct residuals
+from original columns and independently project and certify them. No dense
+within matrix or cross-generation cache is introduced.
 Only the identified subspace is solved. The normalized reported `_cons`, when structurally
 present, is
 

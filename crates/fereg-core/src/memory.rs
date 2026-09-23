@@ -159,7 +159,8 @@ pub fn estimate_phase2_memory(
     // Wide fast fits can now enter guarded Cholesky. In addition to the
     // existing cross-product allowance, its peak owns four square arrays
     // (Gram copy, factor, inverse work and inverse/bread) and linear metadata.
-    // This reserve is independent of the worker count; low mode still uses QR.
+    // This legacy fast reserve is independent of the worker count. Public low
+    // admission separately includes the OLS transient QR/Cholesky frame.
     let wide_finite_solve = if finite_columns > 64 {
         checked_sum(&[
             checked_mul(
