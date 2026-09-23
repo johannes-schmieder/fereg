@@ -2299,26 +2299,32 @@ fn fill_retained_scratch_partitioned(
                     values.read_linear_shared(start_row * stored_columns, tile)?;
                     // Preserve every observation and FMA in canonical order;
                     // only the positional I/O granularity changes.
-                    for (local_row, stored_row) in tile.chunks_exact(stored_columns).enumerate() {
+                    for (local_row, stored_row) in tile.chunks_exact_mut(stored_columns).enumerate()
+                    {
                         let row = start_row + local_row;
                         let response_value = response[row];
                         let weight = normalized_weight(weights, divisor, row)?;
+                        // The validated selection is strictly increasing, so
+                        // selected[j] >= j. Compact and standardize forward
+                        // in this private tile without overwriting a later
+                        // source. Every Gram coordinate keeps its original
+                        // row/FMA order; scratch bytes are never changed.
+                        for column in left_start..dimension {
+                            let source =
+                                selected_columns.map_or(column, |selected| selected[column]);
+                            stored_row[column] = scaled_column(stored_row[source], scales, column)?;
+                        }
                         for (local_left, destination) in rhs_rows.iter_mut().enumerate() {
                             let left = left_start + local_left;
-                            let source_left =
-                                selected_columns.map_or(left, |selected| selected[left]);
-                            let left_value = scaled_column(stored_row[source_left], scales, left)?;
-                            let weighted_left = weight * left_value;
+                            let weighted_left = weight * stored_row[left];
                             *destination = weighted_left.mul_add(response_value, *destination);
                             let gram_row = &mut gram_rows
                                 [local_left * dimension..(local_left + 1) * dimension];
-                            for right in left..dimension {
-                                let source_right =
-                                    selected_columns.map_or(right, |selected| selected[right]);
-                                let right_value =
-                                    scaled_column(stored_row[source_right], scales, right)?;
-                                gram_row[right] =
-                                    weighted_left.mul_add(right_value, gram_row[right]);
+                            for (entry, &right_value) in gram_row[left..]
+                                .iter_mut()
+                                .zip(&stored_row[left..dimension])
+                            {
+                                *entry = weighted_left.mul_add(right_value, *entry);
                             }
                         }
                     }
@@ -2805,36 +2811,51 @@ mod tests {
                         assert_eq!(layout.partial_elements, 0);
                         let mut rhs = vec![0.0; columns];
                         let mut gram = vec![0.0; columns * columns];
-                        fill_finite_wls_moments(source, layout, &mut [], &mut rhs, &mut gram)
-                            .unwrap();
+                        fill_finite_wls_moments(source, layout, &mut [], &mut rhs, &mut gram).unwrap();
                         assert_eq!(rhs, expected_rhs);
                         assert_eq!(gram, expected_gram);
                     });
             }
-            if columns == 7 && spaced {
+            {
                 let mut scratch = PreparedOlsScratch::create_row_major(rows, stored).unwrap();
                 // Scratch validates every stored cell; only the dense source
                 // can use nonfinite unselected cells to detect accidental reads.
-                let scratch_values = values.iter().map(|&value| {
-                    if value.is_nan() { 0.0 } else { value }
-                }).collect::<Vec<_>>();
+                let scratch_values = values
+                    .iter()
+                    .map(|&value| if value.is_nan() { 0.0 } else { value })
+                    .collect::<Vec<_>>();
                 scratch.write_linear(0, &scratch_values).unwrap();
                 let source = FixedBlockMomentSource::RetainedScratch {
                     values: &scratch,
                     selected_columns: Some(&selected),
                     response: &response,
-                    weights: BorrowedMapWeights::Provided(&weights),
+                    weights: if provided {
+                        BorrowedMapWeights::Provided(&weights)
+                    } else {
+                        BorrowedMapWeights::Unit
+                    },
                     solver_weight_divisor: divisor,
-                    column_scales: Some(&scales),
+                    column_scales: if scaled { Some(&scales) } else { None },
                 };
-                let layout = finite_wls_moment_layout(source).unwrap();
-                let mut partials = vec![0.0; layout.partial_elements];
-                let mut rhs = vec![0.0; columns];
-                let mut gram = vec![0.0; columns * columns];
-                fill_finite_wls_moments(source, layout, &mut partials, &mut rhs, &mut gram)
-                    .unwrap();
-                assert_eq!(rhs, expected_rhs);
-                assert_eq!(gram, expected_gram);
+                for threads in [1, 4, 16] {
+                    rayon::ThreadPoolBuilder::new()
+                        .num_threads(threads)
+                        .build()
+                        .unwrap()
+                        .install(|| {
+                            let layout = finite_wls_moment_layout(source).unwrap();
+                            let mut partials = vec![0.0; layout.partial_elements];
+                            let mut rhs = vec![0.0; columns];
+                            let mut gram = vec![0.0; columns * columns];
+                            fill_finite_wls_moments(source, layout, &mut partials, &mut rhs, &mut gram)
+                                .unwrap();
+                            assert_eq!(rhs, expected_rhs);
+                            assert_eq!(gram, expected_gram);
+                        });
+                }
+                let mut preserved = vec![0.; scratch_values.len()];
+                scratch.read_linear_shared(0, &mut preserved).unwrap();
+                assert_eq!(preserved, scratch_values);
             }
         }
     }

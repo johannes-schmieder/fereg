@@ -10,6 +10,133 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Retained canonical tiles accepted; grouped product ownership next — 2026-09-23
+
+The active objective remains whole public PPML **<=0.90 times comparable pinned
+stock fixest wherever achievable**. This is a supporting improvement, not
+completion of that objective. This opening supersedes older next-step orders
+and unused-seed statements below.
+
+Accept `canontile1`, based on production `68e3ba75`, under
+[ADR 0138](docs/adr/0138-retained-scratch-standardization-and-norms.md) and the
+[source-bound report](benchmarks/reports/development/ppml-canonical-tiles-local-2026-09-23/README.md).
+All **539 captured computational inputs** match plugin
+`5ede5b83f42a4a291e56dab2b27a94c3711197ac3a32d3ef6d64870461a1b205`.
+The archive was restored and **7,126 logical receipts** verified, SHA-256
+`f8fbd79ab2fce16bf7b605b2ea038cceb7eac489a882bb41fadea6b7d9ec842b`.
+Baseline is `onelow1`; all earlier categorical, slope, loading, inference and
+OLS improvements remain. No push or release.
+
+### Adopted behavior and checks
+
+Retained scratch moments compact and standardize selected values once per row
+and Gram-row partition in the already admitted private tile. Strictly increasing
+source positions make forward compaction safe. Scratch bytes and every
+coordinate's observation/FMA order remain unchanged. This generalizes dense
+moment reuse to low PPML across FE families without new storage or thresholds.
+
+Retained control projection also borrows freshly certified column norms only
+for one categorical intercept FE at exactly matching weight normalization.
+Other projectors, multiple effects and mismatched scales retain explicit scans.
+No norm survives its absorption call. Raw means/norms, canonical rank and QR
+fallback, all projection/finite/score/objective/Hessian/reconstruction gates,
+separation and publication semantics remain unchanged.
+
+**376 distinct Rust tests**, production-plugin ABI/panic checks and **ten
+licensed runs of eight fixtures** pass. Independent scalar moments cover widths
+through K257, T1/T4/T16, weights, scaling and noncontiguous columns; scratch is
+reread to prove immutability. Full-dummy Poisson/Hessian/sandwich fixtures cover
+unit/FW/PW, offset, robust/clustered inference and generated terms. Fixed-process
+pool1/T1, pool1/T4 and pool2/T4 allocation audits have zero events/growth,
+stable capacities and warm/cold equivalence.
+
+Public receipts: **146 passing applications**, **130 PPML states**, **46 native
+PPML pairs**, **38 baseline/stock pairs**, **38 direct candidate/stock checks**,
+nine small independent oracle checks and **eight exact OLS pairs**. Eight
+excluded multi-FE/slope PPML pairs also have exact scientific exports. Isolated
+diagnostics add sixteen passing applications/states and six pairs. No timeout,
+application failure, scientific discrepancy, oracle skip or detected contention.
+
+### Gains, losses and memory
+
+Robust inference plus fitted means; stock glm.tol=1e-10/fixef.tol=1e-11,
+matched threads. Median ms, five decision rotations and three fresh rotations:
+
+| Low one FE | Baseline | Candidate | Stock | Candidate/stock |
+| --- | ---: | ---: | ---: | ---: |
+| N30720 K6 T4 | 59 | 59 | 25 | 2.360 |
+| N61440 K10 T4 | 122 | 119 | 53 | 2.245 |
+| N30720 K32 T4 | 167 | 150 | 121 | 1.240 |
+| Fresh N46080 K8 T8 | 86 | 85 | 39 | 2.179 |
+| Fresh N61440 K10 T1 | 165 | 160 | 95 | 1.684 |
+| Fresh unbalanced N61440 K16 T4 | 158 | 149 | 113 | 1.319 |
+| Fresh N12288 K65 T4 | 234 | 208 | 127 | 1.638 |
+| Fresh small N3840 K3 T1 | 23 | 22 | 13 | 1.692 |
+
+K32/K65 gains are **10.2%/11.1%**, all eight pairs improving. Narrow gains are
+small or absent. Fresh pairs have twelve gains, two ties and one loss. Fast
+one-FE medians are 104/104 versus stock54; fast three-FE control loses
+182/184.5 ms over two pairs. Preserve these losses and the full distributions.
+**Every measured one-FE case still loses stock.** Small-fit rounding prevents a
+precise margin claim. No general timing non-regression claim follows.
+
+All measured modeled/tracked peaks, scratch bytes and outer/inner counts are
+unchanged. Low N61440/K10/T4 tracked peak delta remains 34,603,565 bytes,
+modeled 43,061,399, observed scratch 4,915,200. No new design/tile/cache bank.
+Low against ordinary stock is not physically memory-matched.
+
+### Next bounded milestone: change canonical product ownership
+
+The refined paired diagnostic low N61440/K10/T4 plugin median is
+109.126 -> 102.217 ms. Two finite-moment calls fall 10.176 -> 7.245 ms; two
+duplicate within-norm scans disappear. All six canonical projections remain.
+Initial and strict WLS still cost **22.325 + 20.128 ms inclusive** in the
+candidate. Fast costs **16.849 + 14.160 ms inclusive**. Six objective evaluations
+remain about **11 ms**, ordinary profile directions only 5.656 ms low/3.420 fast,
+and low core publication 9.248 ms inclusive. Nested clocks are not additive;
+the report preserves exclusive costs and diagnostic variability.
+
+1. **Build one coherent grouped canonical product owner.** Initial rank and
+   accepted final Hessian should consume current-weight centered group products
+   directly from original prepared columns. Retain stable centered arithmetic,
+   deterministic FE-collinearity/rank policy and independent original-input WLS
+   witnesses. An implicit centered row view should serve reconstruction and
+   inference; materialize a design only where retained QR/fallback actually needs
+   it. Investigate ownership/lifetimes through session products first. Do not
+   accumulate another competing N-by-K cache. This design was investigated,
+   not implemented by the present tile change.
+2. **Set a whole-command budget before choosing the representation.** At this
+   stock median, low needs **119 -> <=47.7 ms**, fast **104 -> <=48.6 ms**. At most
+   two coherent candidates, measured first on identical frozen current-weight
+   frames, then the complete public command. Require independent WLS/Poisson/
+   Hessian checks, rank-deficient/extreme-scale/generated controls, and declared
+   fresh cases. Small factorization tuning cannot close this gap: guarded
+   Cholesky and retained QR already exist, and materialization/scans dominate.
+3. **Share accepted-state work as part of that budget.** Current means, working
+   state, objective and publication repeat compatible scans. Establish a frame
+   owner with explicit sample/prior/current-weight generations. Immutable
+   outcome terms may be cached, but keep an independent final objective replay.
+   Examine the Stata control-plane portion of the whole-command gap as well;
+   keep the one-call Rust boundary and transactional publication. A modest
+   objective cache alone is not completion.
+4. **Then refresh multi-FE/slope whole-command attribution and broaden coverage.**
+   Existing coefficient Schur/PCG, weighted geometry, coupling, joint directions,
+   low tiles and categorical joint steps are already adopted. Use measured
+   setup/canonical costs to select warm starts or shared geometry work. Protect
+   OLS and categorical/slopes with focused controls and include weights,
+   generated terms, output costs, memory limits and small/no-FE fits adaptively.
+   Do not reopen closed serial weighted-slope or rejected residual probes without
+   a materially different organization and cost hypothesis.
+
+Each milestone must end in a coherent measured commit; stop expensive low-return
+threshold tuning and move to the next cost center. The whole-command 10% goal
+remains active. Seeds **202609335 through 202609338 are consumed**; choose and
+predeclare fresh cases before the next candidate results. All current builds,
+tests, fits, profiles and archives are terminal. Preserve static inventory drift,
+mixed-thread allocation retirement, constrained-weight/nonretaining-CG issues,
+earlier comparator discrepancies and SCC/platform/physical-cap deferrals.
+Frozen 77 primary, 16 holdout and 111 native-control definitions remain unchanged.
+
 ## Low-memory concentrated one-FE PPML accepted; canonical construction next — 2026-09-23
 
 The active objective remains whole public PPML **<=0.90 times comparable pinned

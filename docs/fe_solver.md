@@ -86,6 +86,12 @@ strict canonical WLS remain acceptance gates. Final rank/bread products are
 reused only at the exact accepted Hessian frame with valid generations and
 reconstruction. Optional-memory or numerical refusal retains canonical solving.
 
+Retained canonical projection may borrow selected column norms from the same
+call's freshly accepted categorical certificate for exactly one FE and exactly
+matching weight normalization. Low control tiles use their own column axis.
+Other cases retain explicit norm scans; no later generation borrows these norms.
+See [ADR 0138](adr/0138-retained-scratch-standardization-and-norms.md).
+
 A solver recurrence is never sufficient evidence. For each effect-level
 block `B`, the final gate computes the projection of `sqrt(W) r` onto
 `col(sqrt(W) B)` with scaled, reorthogonalized rank-aware QR and measures it

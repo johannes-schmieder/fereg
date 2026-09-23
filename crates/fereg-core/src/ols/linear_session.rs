@@ -3312,6 +3312,39 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         )
     }
 
+    /// Borrow norms from this call's fresh categorical certificate only when
+    /// its weight normalization matches the finite solve. Scratch tiles carry
+    /// their own column axis; no cached norm survives a projection call.
+    fn absorb_reusable_map_with_norms(
+        &mut self,
+        values: DenseMatrix,
+        norms: &mut [f64],
+    ) -> Result<(CertifiedBorrowedMap, bool)> {
+        match self.fe_projector.as_mut() {
+            Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) => projector
+                .absorb_with_selected_norms(
+                    self.weights.borrowed(),
+                    values,
+                    self.config.absorb.map,
+                    self.bread_weight_scale.solver_weight_divisor,
+                    0..norms.len(),
+                    norms,
+                ),
+            Some(ReusableLinearMapProjector::PpmlCoefficients {
+                canonical: Some(projector),
+                ..
+            }) => projector.absorb_with_selected_norms(
+                self.weights.borrowed(),
+                values,
+                self.config.absorb.map,
+                self.bread_weight_scale.solver_weight_divisor,
+                0..norms.len(),
+                norms,
+            ),
+            _ => Ok((self.absorb_reusable_map(values)?, false)),
+        }
+    }
+
     fn reusable_map_max_rhs(&self) -> Result<usize> {
         self.fe_projector
             .as_ref()
@@ -4742,9 +4775,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// consumes the combined N-by-(K+1) absorbed matrix and compacts it
     /// forward in the same allocation; Low mode projects the complete design
     /// into one row-readable scratch artifact.
-    fn build_full_retained_design(
-        &mut self,
-    ) -> Result<(RetainedWithinDesign, Vec<f64>, SolveReport)> {
+    fn build_full_retained_design(&mut self) -> Result<(RetainedWithinDesign, Vec<f64>, SolveReport)> {
         let rows = self.response.len();
         let stored_generated_columns = self.full_retained_generated_columns()?;
         let stored_columns = stored_generated_columns.len();
@@ -4807,11 +4838,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         self.absorb_reusable_map(raw)?
                     }
                 } else {
-                    self.prepared.fit_absorb_matrix(
-                        self.weights.borrowed(),
-                        raw,
-                        self.config.absorb,
-                    )?
+                    self.prepared
+                        .fit_absorb_matrix(self.weights.borrowed(), raw, self.config.absorb)?
                 };
                 if !absorbed.report().certified() {
                     return Err(invalid_data(
@@ -4846,8 +4874,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         allocation("weighted-linear retained compact offset overflows")
                     })?;
                     if norms_reused {
-                        for (target, generated) in
-                            stored_generated_columns.iter().copied().enumerate()
+                        for (target, generated) in stored_generated_columns.iter().copied().enumerate()
                         {
                             values[target_start + target] = values[source_start + generated + 1];
                         }
@@ -4858,8 +4885,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             row,
                         )?
                         .sqrt();
-                        for (target, generated) in
-                            stored_generated_columns.iter().copied().enumerate()
+                        for (target, generated) in stored_generated_columns.iter().copied().enumerate()
                         {
                             let value = values[source_start + generated + 1];
                             update_scaled_square(
@@ -4939,14 +4965,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     reference_means[start..end].copy_from_slice(&means);
                     drop(norms);
                     drop(means);
-                    let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
-                        self.absorb_reusable_map(raw)?
+                    let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map {
+                        self.absorb_reusable_map_with_norms(raw, &mut within_norms[start..end])?
                     } else {
-                        self.prepared.fit_absorb_matrix(
-                            self.weights.borrowed(),
-                            raw,
-                            self.config.absorb,
-                        )?
+                        (
+                            self.prepared.fit_absorb_matrix(
+                                self.weights.borrowed(),
+                                raw,
+                                self.config.absorb,
+                            )?,
+                            false,
+                        )
                     };
                     if !absorbed.report().certified() {
                         return Err(invalid_data(
@@ -4955,9 +4984,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     }
                     let (within, block_report) = absorbed.into_parts();
                     merge_solve_report(&mut report, block_report)?;
-                    let norms = self.weighted_dense_column_norms(&within)?;
-                    within_norms[start..end].copy_from_slice(&norms);
-                    drop(norms);
+                    if !norms_reused {
+                        let norms = self.weighted_dense_column_norms(&within)?;
+                        within_norms[start..end].copy_from_slice(&norms);
+                    }
                     scratch.patch_row_major_block(start, block, within.as_slice())?;
                 }
                 (
@@ -5498,14 +5528,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             "weighted-linear reusable dense MAP projection exceeds its fixed workspace",
                         ));
                     }
-                    let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
-                        self.absorb_reusable_map(values)?
+                    let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map {
+                        self.absorb_reusable_map_with_norms(values, &mut within_norms)?
                     } else {
-                        self.prepared.fit_absorb_matrix(
-                            self.weights.borrowed(),
-                            values,
-                            self.config.absorb,
-                        )?
+                        (
+                            self.prepared.fit_absorb_matrix(
+                                self.weights.borrowed(),
+                                values,
+                                self.config.absorb,
+                            )?,
+                            false,
+                        )
                     };
                     let (values, report) = absorbed.into_parts();
                     if !report.certified() {
@@ -5513,8 +5546,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             "weighted-linear reusable dense projection did not certify",
                         ));
                     }
-                    workspace_reused &=
-                        self.fill_weighted_dense_column_norms_reusing(&values, &mut within_norms)?;
+                    if !norms_reused {
+                        workspace_reused &=
+                            self.fill_weighted_dense_column_norms_reusing(&values, &mut within_norms)?;
+                    }
                     RetainedWithinStorage::Dense(values)
                 }
             }
@@ -5543,14 +5578,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         block,
                         std::mem::take(&mut self.projection_block),
                     )?;
-                    let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
-                        self.absorb_reusable_map(raw)?
+                    let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map {
+                        self.absorb_reusable_map_with_norms(raw, &mut within_norms[start..end])?
                     } else {
-                        self.prepared.fit_absorb_matrix(
-                            self.weights.borrowed(),
-                            raw,
-                            self.config.absorb,
-                        )?
+                        (
+                            self.prepared.fit_absorb_matrix(
+                                self.weights.borrowed(),
+                                raw,
+                                self.config.absorb,
+                            )?,
+                            false,
+                        )
                     };
                     let (values, report) = absorbed.into_parts();
                     if !report.certified() {
@@ -5558,10 +5596,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             "weighted-linear reusable scratch projection did not certify",
                         ));
                     }
-                    workspace_reused &= self.fill_weighted_dense_column_norms_reusing(
-                        &values,
-                        &mut within_norms[start..end],
-                    )?;
+                    if !norms_reused {
+                        workspace_reused &= self.fill_weighted_dense_column_norms_reusing(
+                            &values,
+                            &mut within_norms[start..end],
+                        )?;
+                    }
                     self.projection_block = values.into_row_major();
                     scratch.patch_row_major_block(start, block, &self.projection_block)?;
                 }

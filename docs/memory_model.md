@@ -256,6 +256,13 @@ shrinkage and does not create observation-sized preparation state or another
 retained design. Positional I/O keeps its existing bounded encoded stack buffer;
 see [ADR 0070](adr/0070-bounded-retained-scratch-moment-tiles.md).
 
+Each private tile may compact and standardize its selected suffix in place
+before moment updates (ADR 0138). Strictly increasing selected positions make
+forward compaction safe. This adds no storage and never mutates the scratch
+artifact. Current-call one-FE certificate norms may replace a duplicate norm
+scan only at exactly matching normalization; they do not become retained cache
+authority for a later frame.
+
 Retained scratch QR/span and residual scans keep an 8 KiB encoded page on the
 stack across row reads (ADR 0129). Each immutable cursor has its own page and
 small descriptor; no heap bank or resident design is added. The longer lifetime
