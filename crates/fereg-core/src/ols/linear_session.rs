@@ -2738,6 +2738,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         &self,
         active: &[usize],
     ) -> Result<(&DenseMatrix, &[usize])> {
+        let within = self.validate_one_fe_profile_basis(active)?;
+        let RetainedWithinStorage::Dense(values) = &within.storage else {
+            return Err(invalid_argument(
+                "profile representatives require dense storage",
+            ));
+        };
+        Ok((values, &within.active_positions))
+    }
+
+    pub(crate) fn one_fe_original_columns(&self, active: &[usize]) -> Result<&[usize]> {
+        self.validate_one_fe_profile_basis(active)?;
+        Ok(self.frozen_basis.as_ref().expect("validated profile basis").kept_generated_columns())
+    }
+
+    fn validate_one_fe_profile_basis(&self, active: &[usize]) -> Result<&RetainedWithinDesign> {
         let design = self.fe_design();
         let within = self
             .within
@@ -2765,12 +2780,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 "profile representatives have incompatible topology or basis",
             ));
         }
-        let RetainedWithinStorage::Dense(values) = &within.storage else {
-            return Err(invalid_argument(
-                "profile representatives require dense storage",
-            ));
-        };
-        Ok((values, &within.active_positions))
+        Ok(within)
     }
 
     pub(crate) fn current_hessian_products_match(

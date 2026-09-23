@@ -77,6 +77,15 @@ remain direction-only. Optional-state refusal retains the previous categorical
 route without duplicating topology. This supersedes the categorical exclusions
 above for that bounded route; fast categorical LSMR and one-FE routing are unchanged.
 
+Under ADRs 0127, 0132 and 0137, actual one-intercept-FE publication PPML can
+analytically concentrate group intercepts during ordinary MAP-owned steps.
+Fast execution borrows retained dense finite representatives; low execution
+borrows original numeric columns or generated-column recipes. Current means and
+centered moments are recomputed, and independent original-input scores and
+strict canonical WLS remain acceptance gates. Final rank/bread products are
+reused only at the exact accepted Hessian frame with valid generations and
+reconstruction. Optional-memory or numerical refusal retains canonical solving.
+
 A solver recurrence is never sufficient evidence. For each effect-level
 block `B`, the final gate computes the projection of `sqrt(W) r` onto
 `col(sqrt(W) B)` with scaled, reorthogonalized rank-aware QR and measures it

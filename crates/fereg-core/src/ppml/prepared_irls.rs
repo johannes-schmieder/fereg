@@ -40,7 +40,7 @@ use super::family::{means_from_eta, poisson_objective_from_eta, CompensatedSum};
 #[cfg(test)]
 use super::memory::DIAGNOSTIC_RECORD_BYTES;
 use super::memory::{begin_phase_allocation, end_phase_allocation};
-use super::one_fe_profile::{ProfiledColumns, ProfiledOneFe};
+use super::one_fe_profile::{ProfiledColumns, ProfiledOneFe, ProfiledRawColumns};
 #[cfg(test)]
 use super::plan_ppml_memory;
 use super::prepared_estimator::PpmlInterruptPoint;
@@ -990,7 +990,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // lifetime is outside the measured iteration window.
     let one_fe_profile_admitted = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && config.solver_plan.selected == super::PpmlSolverFamily::Map
-        && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
         && prepared.fit_has_one_ordinary_intercept_effect()
         && fe_design.effects().len() == 1
         && fe_design.effects()[0].has_intercept()
@@ -1342,18 +1341,21 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         if iteration > 1 {
             if let Some(profile) = profiled_one_fe.as_mut() {
                 let started = Instant::now();
-                let (values, positions) =
-                    session.one_fe_representatives(profile.active_columns())?;
-                let data = ProfiledColumns::selected(values, positions)?;
-                match profile.prepare_direction(
-                    data,
-                    session.fe_design(),
-                    outcome,
-                    prior_weights,
-                    offset,
-                    workspace.coefficients(),
-                    config.ppml,
-                ) {
+                let direction = if config.linear.execution.mode == PreparedOlsExecutionMode::Low {
+                    let columns = session.one_fe_original_columns(profile.active_columns())?;
+                    let data = ProfiledRawColumns::new(prepared, columns)?;
+                    profile.prepare_direction(
+                        &data, session.fe_design(), outcome, prior_weights, offset,
+                        workspace.coefficients(), config.ppml,
+                    )
+                } else {
+                    let (values, positions) = session.one_fe_representatives(profile.active_columns())?;
+                    profile.prepare_direction(
+                        ProfiledColumns::selected(values, positions)?, session.fe_design(),
+                        outcome, prior_weights, offset, workspace.coefficients(), config.ppml,
+                    )
+                };
+                match direction {
                     Ok(error) => {
                         profiled_step = Some((
                             profile.active_rank(),
@@ -1846,19 +1848,21 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             let mut poll_line_search = || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
             let attempt = if profiled_step.is_some() {
                 let profile = profiled_one_fe.as_mut().expect("prepared profile step");
-                let (values, positions) =
-                    session.one_fe_representatives(profile.active_columns())?;
-                profile.accept(
-                    ProfiledColumns::selected(values, positions)?,
-                    session.fe_design(),
-                    outcome,
-                    prior_weights,
-                    offset,
-                    &mut workspace,
-                    objective,
-                    config.ppml,
-                    &mut poll_line_search,
-                )
+                if config.linear.execution.mode == PreparedOlsExecutionMode::Low {
+                    let columns = session.one_fe_original_columns(profile.active_columns())?;
+                    let data = ProfiledRawColumns::new(prepared, columns)?;
+                    profile.accept(
+                        &data, session.fe_design(), outcome, prior_weights, offset,
+                        &mut workspace, objective, config.ppml, &mut poll_line_search,
+                    )
+                } else {
+                    let (values, positions) = session.one_fe_representatives(profile.active_columns())?;
+                    profile.accept(
+                        ProfiledColumns::selected(values, positions)?, session.fe_design(),
+                        outcome, prior_weights, offset, &mut workspace, objective,
+                        config.ppml, &mut poll_line_search,
+                    )
+                }
             } else {
                 workspace.accept_candidate_interruptible(
                     outcome,
@@ -4590,6 +4594,78 @@ mod tests {
             },
         )
         .expect("prepared fixture")
+    }
+
+    #[test]
+    fn original_profile_columns_match_cold_design_across_bindings_and_weight_frames() {
+        use super::super::one_fe_profile::ProfiledDesign;
+        for (rows, width) in [(80, 3), (4096, 3), (4096, 65)] {
+            let y: Vec<_> = (0..rows).map(|r| 0.3 + (r % 13) as f64).collect();
+            let x: Vec<Vec<_>> = (0..width)
+                .map(|j| {
+                    (0..rows)
+                        .map(|r| (r as f64 / (j + 3) as f64).sin() + (r % 17) as f64 * (j + 1) as f64)
+                        .collect()
+                })
+                .collect();
+            let prepared = prepared(&y, &x);
+            let design = FeDesign::new(
+                rows,
+                vec![crate::fe::EffectTerm::new(
+                    (0..rows).map(|r| (r % 17) as u32).collect(),
+                    17,
+                    true,
+                    vec![],
+                )
+                .unwrap()],
+            )
+            .unwrap();
+            let active = [2, 0];
+            let columns = ProfiledRawColumns::new(&prepared, &active).unwrap();
+            for row in 0..rows {
+                for (position, &generated) in active.iter().enumerate() {
+                    assert_eq!(
+                        (&columns).value(row, position).unwrap(),
+                        prepared.fit_column_value(generated, row).unwrap()
+                    );
+                }
+            }
+            assert!(ProfiledRawColumns::new(&prepared, &[usize::MAX]).is_err());
+            let offset: Vec<_> = (0..rows).map(|r| (r as f64 / 19.).cos() * 0.1).collect();
+            let coefficients = vec![0.03; prepared.fit_model().coefficients.len()];
+            for threads in [1, 4] {
+                let threads = crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                for frame in [1, 7] {
+                    let weights: Vec<_> = (0..rows).map(|r| 0.2 + ((r * frame) % 13) as f64).collect();
+                    let mut profile =
+                        ProfiledOneFe::new(&prepared, &active, &design, &y, &weights, threads).unwrap();
+                    profile
+                        .prepare_direction(
+                            &columns,
+                            &design,
+                            &y,
+                            &weights,
+                            &offset,
+                            &coefficients,
+                            PpmlConfig::default(),
+                        )
+                        .unwrap();
+                    assert!(profile
+                        .fresh_direction_equivalent(
+                            &prepared,
+                            &design,
+                            &y,
+                            &weights,
+                            &offset,
+                            &coefficients,
+                            threads,
+                            PpmlConfig::default(),
+                            1e-12
+                        )
+                        .unwrap());
+                }
+            }
+        }
     }
 
     #[test]

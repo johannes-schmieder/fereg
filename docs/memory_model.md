@@ -18,6 +18,14 @@ limit for constrained-memory qualification; it is not a public Stata option.
 A future `maxmemory()` option will feed the same planner; this release adds no
 public memory-cap syntax or action-wire field.
 
+Concentrated one-intercept-FE PPML optionally admits its trial predictor/mean,
+prior log-weight, group and finite-moment buffers in both fast and low modes
+(ADR 0137). Low mode borrows original prepared numeric columns or generated
+recipes; it adds no N-by-K design copy. The complete owner is charged through
+strict solving and released before inference. Refusing its optional workspace
+preserves the canonical route at its previous budget. Explicit allocation
+audits additionally admit cold equivalence storage outside the measured window.
+
 On macOS, automatic availability uses free plus inactive pages from
 `HOST_VM_INFO64`. Mach's free count already includes speculative pages.
 The original statistics prefix supports older kernel revisions, and each

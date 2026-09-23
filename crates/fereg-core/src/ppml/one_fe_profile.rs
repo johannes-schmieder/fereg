@@ -7,12 +7,63 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
 use crate::linalg::solve_linear_system;
+use crate::ols::NumericOlsColumns;
 use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 
 const GROUPS_PER_BLOCK: usize = 64;
+
+pub(super) trait ProfiledDesign: Copy + Sync {
+    fn rows(self) -> usize;
+    fn columns(self) -> usize;
+    fn value(self, row: usize, column: usize) -> Result<f64>;
+}
+
+/// Low storage already owns the original loaded columns. Borrow their recipes
+/// instead of seeking retained scratch by group or materializing another N*K
+/// matrix. Original-input outer scores and canonical WLS remain independent.
+pub(super) struct ProfiledRawColumns<'a, P: PreparedOlsFitView + ?Sized> {
+    prepared: &'a P,
+    active: &'a [usize],
+    numeric: Option<NumericOlsColumns<'a>>,
+}
+
+impl<'a, P: PreparedOlsFitView + ?Sized> ProfiledRawColumns<'a, P> {
+    pub(super) fn new(prepared: &'a P, active: &'a [usize]) -> Result<Self> {
+        if active
+            .iter()
+            .any(|&j| j >= prepared.fit_model().columns.len())
+        {
+            return Err(numerical());
+        }
+        Ok(Self {
+            prepared,
+            active,
+            numeric: NumericOlsColumns::bind_score_means(
+                prepared.fit_model(),
+                prepared.fit_sample(),
+            )?,
+        })
+    }
+}
+
+impl<P: PreparedOlsFitView + ?Sized> ProfiledDesign for &ProfiledRawColumns<'_, P> {
+    fn rows(self) -> usize {
+        self.prepared.fit_sample().n_active()
+    }
+    fn columns(self) -> usize {
+        self.active.len()
+    }
+    fn value(self, row: usize, column: usize) -> Result<f64> {
+        let generated = self.active[column];
+        match &self.numeric {
+            Some(numeric) => Ok(numeric.raw_columns()[generated].map_or(1., |v| v[row])),
+            None => self.prepared.fit_column_value(generated, row),
+        }
+    }
+}
 
 struct Moments {
     mean: Vec<f64>,
@@ -45,6 +96,18 @@ impl<'a> ProfiledColumns<'a> {
     }
     fn columns(self) -> usize {
         self.positions.map_or(self.values.ncols(), |p| p.len())
+    }
+}
+
+impl ProfiledDesign for ProfiledColumns<'_> {
+    fn rows(self) -> usize {
+        self.values.nrows()
+    }
+    fn columns(self) -> usize {
+        self.columns()
+    }
+    fn value(self, row: usize, column: usize) -> Result<f64> {
+        Ok(self.value(row, column))
     }
 }
 
@@ -331,7 +394,7 @@ impl ProfiledOneFe {
 
     fn profile(
         &mut self,
-        data: ProfiledColumns<'_>,
+        data: impl ProfiledDesign,
         design: &FeDesign,
         offset: &[f64],
         step: f64,
@@ -343,7 +406,7 @@ impl ProfiledOneFe {
 
     fn profile_in_team(
         &mut self,
-        data: ProfiledColumns<'_>,
+        data: impl ProfiledDesign,
         design: &FeDesign,
         offset: &[f64],
         step: f64,
@@ -353,15 +416,19 @@ impl ProfiledOneFe {
         let base = &self.base;
         let direction = &self.direction;
         self.team.install(|| {
-            self.eta.par_iter_mut().enumerate().for_each(|(row, eta)| {
-                let mut value = offset[row];
-                for j in 0..k {
-                    value =
-                        (step.mul_add(direction[j], base[j])).mul_add(data.value(row, j), value);
-                }
-                *eta = value;
-            })
-        });
+            self.eta
+                .par_iter_mut()
+                .enumerate()
+                .try_for_each(|(row, eta)| -> Result<()> {
+                    let mut value = offset[row];
+                    for j in 0..k {
+                        value = (step.mul_add(direction[j], base[j]))
+                            .mul_add(data.value(row, j)?, value);
+                    }
+                    *eta = value;
+                    Ok(())
+                })
+        })?;
         let eta = &self.eta;
         let log_q = &self.log_weights;
         let log_y = &self.log_outcomes;
@@ -401,7 +468,7 @@ impl ProfiledOneFe {
     /// large raw cross-products. Partitioned reductions have fixed boundaries.
     pub(super) fn prepare_direction(
         &mut self,
-        data: ProfiledColumns<'_>,
+        data: impl ProfiledDesign,
         design: &FeDesign,
         y: &[f64],
         q: &[f64],
@@ -428,7 +495,7 @@ impl ProfiledOneFe {
 
     fn prepare_direction_in_team(
         &mut self,
-        data: ProfiledColumns<'_>,
+        data: impl ProfiledDesign,
         design: &FeDesign,
         y: &[f64],
         q: &[f64],
@@ -436,7 +503,7 @@ impl ProfiledOneFe {
         accepted_coefficients: &[f64],
         config: PpmlConfig,
     ) -> Result<f64> {
-        if data.values.nrows() != y.len() || data.columns() != self.columns {
+        if data.rows() != y.len() || data.columns() != self.columns {
             return Err(numerical());
         }
         for (j, &slot) in self.slots.iter().enumerate() {
@@ -473,7 +540,7 @@ impl ProfiledOneFe {
                             total.add(w);
                             for j in 0..k {
                                 partial.mean[j] = w.mul_add(
-                                    data.value(row, j) - data.value(first, j),
+                                    data.value(row, j)? - data.value(first, j)?,
                                     partial.mean[j],
                                 );
                             }
@@ -486,7 +553,7 @@ impl ProfiledOneFe {
                             let score = (q[row] / maximum) * (y[row] - mu[row]);
                             for j in 0..k {
                                 partial.centered[j] =
-                                    (data.value(row, j) - data.value(first, j)) - partial.mean[j];
+                                    (data.value(row, j)? - data.value(first, j)?) - partial.mean[j];
                             }
                             for j in 0..k {
                                 let x = partial.centered[j];
@@ -563,7 +630,7 @@ impl ProfiledOneFe {
 
     pub(super) fn accept(
         &mut self,
-        data: ProfiledColumns<'_>,
+        data: impl ProfiledDesign,
         design: &FeDesign,
         y: &[f64],
         q: &[f64],

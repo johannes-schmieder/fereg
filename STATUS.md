@@ -10,6 +10,139 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Low-memory concentrated one-FE PPML accepted; canonical construction next — 2026-09-23
+
+The active objective remains whole public PPML **<=0.90 times comparable pinned
+stock fixest wherever achievable**. This checkpoint improves low one-FE PPML;
+it does not complete that objective. This opening supersedes older next-step
+orders and unused-seed statements below.
+
+Accept `onelow1`, based on `e6f63a1b`, under
+[ADR 0137](docs/adr/0137-low-memory-one-fe-poisson.md) and the
+[source-bound report](benchmarks/reports/development/ppml-one-fe-low-local-2026-09-23/README.md).
+All **539 captured computational inputs** match plugin
+`c69cc27f61955232ee73f3183ec60f947203c0d5d9e91164ef97f8d58aac78c0`.
+The archive was restored and **8,304 logical receipts** verified, SHA-256
+`cedb9532dd73a72fa91a1b8914e92884068557ed6cd862592924d14951633ba6`.
+Baseline is `catjoint2`, production `e6f63a1b`; previous categorical, slope,
+loading, inference and OLS improvements remain.
+
+### Adopted behavior and validation
+
+Actual one-intercept-FE MAP-owned publication PPML now admits concentrated
+ordinary Newton steps in low mode. A short view borrows original prepared numeric
+columns or generated-column recipes; canonical sample/topology and frozen basis
+identities are checked. Fast mode retains its dense representatives. No new
+N-by-K matrix or random group access into scratch. Current means and centered
+moments are reconstructed at each step. Independent original-input scores,
+objective, two-pass convergence and strict canonical WLS remain acceptance gates.
+The existing strict/final product reuse now reaches low sessions only at the
+exact accepted q*mu frame with valid generations, rank/bread and reconstruction.
+No changed tolerance, sample, weight, DoF, separation or transactional policy.
+
+**348 distinct Rust tests**, production-plugin ABI/panic checks and **ten licensed
+runs of eight fixtures** pass. Independent full-dummy Poisson/Hessian/sandwich
+checks cover unit/FW/PW, offset, robust/clustered inference and generated factors.
+Production allocation audits at pool1/T1, pool1/T4 and pool2/T4 in separate
+processes have zero events/growth, stable capacities and warm/cold equivalence.
+
+Public evidence: **180 passing applications**, **164 PPML states**, **51 native
+PPML pairs**, **50 baseline/stock pairs**, **38 direct candidate/stock pairs**,
+six small independent oracle checks and **eight exact OLS pairs**. Eight excluded
+multi-FE/slope PPML pairs also have exact scientific exports. Separate diagnostic
+builds add eight passing applications/states and two pairs. No application failure,
+timeout, scientific discrepancy or detected contention in these blocks.
+
+The first pilot oracle request exceeded its existing 1,200-FE-column bound by
+29 columns. Its failure is preserved; the corrected bounded audit explicitly
+skips that cell's independent dense oracle and keeps its public-state/comparator
+checks. No bound changed. Independent licensed larger/weighted/generated oracles
+pass. A build CLI error, instrument-name error and empty test-filter attempt are
+preserved and separately identified; final test counts include executed tests only.
+
+### Measured gains, losses and memory
+
+Robust inference plus fitted means, matched threads, stock glm.tol=1e-10 and
+fixef.tol=1e-11. Median ms; development seed335 has five decision rotations,
+fresh seed337 has three. Full ranges and every pair are in the report.
+
+| Low one FE | Baseline | Candidate | Stock | Candidate/stock |
+| --- | ---: | ---: | ---: | ---: |
+| N30720 K6 T4 | 80 | 59 | 27 | 2.185 |
+| N61440 K10 T4 | 180 | 124 | 54 | 2.296 |
+| Fresh N46080 K8 T8 | 141 | 91 | 37 | 2.459 |
+| Fresh N61440 K10 T1 | 223 | 167 | 98 | 1.704 |
+| Fresh unbalanced N30720 K16 T4 | 151 | 98 | 46 | 2.130 |
+| Fresh disconnected generator N15360 K3 T1 | 47 | 38 | 15 | 2.533 |
+| Fresh small N3840 K3 T1 | 20 | 19 | 11 | 1.727 |
+
+Decision reductions are **26.3–31.1%**, fresh **5.0–35.5%**. All ten low decision
+pairs and 14/15 fresh pairs improve. Every one-FE case still loses to stock.
+The fast excluded control initially loses 103/105 ms; five identical-input pairs
+then give 104/103. The small fresh case's 22/21 ms loss triggers five fixed-input
+rotations, all native gains, medians 26/19/12 baseline/candidate/stock. Preserve
+both distributions; no universal non-regression or small-fit percentage claim.
+
+Fresh tracked peak increases **0.108–1.891 MB**, within admitted modeled storage;
+no new finite-design bank. N61440/K10/T4 peak is 32,712,369 -> 34,603,553 bytes,
+model 43,061,399; scratch remains 4,915,200. The profile owner is charged through
+strict solving and released before inference. Optional-state refusal retains the
+canonical route. Low versus ordinary stock is not physical-memory-matched.
+
+### Next bounded milestone
+
+The refined isolated whole-plugin ledger uses non-overlapping exclusive spans
+and keeps stock/production timings separate. At N61440/K10/T4 low it shows:
+retained-control reprojects **4 -> 1**, ordinary frozen solves **2 -> 0**, full
+rank constructions **3 -> 2**, strict solves **2 -> 1**. Diagnostic plugin time
+falls **166.058 -> 110.242 ms**. The accepted route still spends **24.192 ms** in
+initial canonical WLS and **24.046 ms** in strict canonical WLS, inclusive. Ordinary
+profiled directions total only **5.599 ms**. Six objective evaluations cost about
+**10.972 ms**; original-input outer scores remain five fresh checks at **3.106 ms**.
+SPI loading is **4.932 ms**, core preparation **4.397**, inference **1.915**, core
+publication **10.680 inclusive**, plugin publication **1.791**. See the report for
+exclusive costs and unassigned core/IRLS/control-plane work; do not sum nested
+phase clocks or use instrument timings as headline rankings.
+
+1. **Redesign one-intercept canonical construction.** Inspect initial/final rank,
+   scratch/retained-design construction and reconstruction passes. Build a bounded
+   current-weight group-centered finite-moment owner where it can preserve the
+   established rank policy, with independent original-input WLS/projection and
+   final-Hessian witnesses. Avoid promoting speculative profile state into authority.
+   Compare at most two coherent designs on the current source, then fresh cases
+   and excluded controls. The N61440/T4 target is 124 -> <=48.6 ms low and about
+   105 -> <=48.6 fast: tiny inner-kernel tuning cannot close that gap.
+2. **Share accepted-state scans with explicit generations.** Investigate compatible
+   means/predictors/working-state construction and repeated objective work. An
+   immutable outcome/prior-weight contribution cache is justified by measurement,
+   but its entire objective budget is only ~11 ms. Preserve independent final
+   objective replay and invalidate on sample/prior-weight changes. Treat this as
+   part of the larger cost budget, not completion after another small cache change.
+3. **Return to multi-FE/slope setup and canonical boundaries after that bounded
+   milestone.** Coefficient Schur/PCG, weighted factors, symbolic coupling, joint
+   finite directions, low-memory tiles and categorical joint steps already exist.
+   Reprofile full commands before selecting warm-start/recycled-preconditioner or
+   shared current-weight geometry work. No reopening of closed serial weighted-
+   slope tuning or rejected residual-extrapolation/local-stop probes without a
+   materially different computational design.
+4. **Broaden coverage adaptively.** Weighted/generated/output-heavy, no-FE/small,
+   wide/rank-deficient and memory-constrained paths need proportionate public timing
+   and oracle controls. Match actual work before ranking stock; retain losses and
+   unresolved comparisons. Freeze candidate source before fresh confirmation.
+
+Keep each milestone bounded, with a measured cost budget, independent oracles,
+alternating stock rotations, a coherent commit and explicit next subsystem. Smaller
+broad improvements are useful but do not finish the 10% goal. Do not call remaining
+checking costs intrinsically unavoidable without examining their implementation.
+
+Seeds **202609335, 202609336 and 202609337 are consumed**. **202609338** is unused
+and not yet a declared matrix. All builds, tests, fits, diagnostics and archives
+are terminal. Preserve mixed-thread allocation retirement, static inventory drift,
+weighted constrained-fit/nonretaining-CG failures, earlier comparator disagreements,
+and SCC/platform/physical-cap deferrals. Frozen 77 primary, 16 holdout and 111
+native-control definitions remain unchanged. No push, release, qualification,
+SCC authentication retry or stopped-campaign restart is authorized.
+
 ## Joint categorical low PPML accepted; whole-command one FE next — 2026-09-23
 
 The active objective is whole public PPML **at least 10% faster than comparable
