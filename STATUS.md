@@ -10,6 +10,64 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Parallel fresh owned-FE certificates accepted — 2026-09-23
+
+The [parallel-certificate milestone](benchmarks/reports/development/parallel-certificate-local-2026-09-23/README.md)
+and ADR 0117 evaluate independent groups on the existing worker team, then
+merge each group/RHS result in the original scalar order, including RMS FMA.
+It requires admitted current-weight geometry, at least 16,384 observations
+and more than one installed worker. Direct solvers, serial/small inputs and
+uncached contexts retain serial checks. Every residual norm, span/raw moment,
+checkpoint, rank, tolerance, iteration, contraction, route and publication
+rule stays unchanged. No state crosses absorption or PPML weight generations.
+
+Additional scratch is bounded by `8*max_effect_levels*(actual_RHS+1)` bytes.
+One effect bank is reused within each certificate and released before return.
+Allocation/size refusal uses the serial check. CG may drop scratch while
+retaining geometry, or release geometry too if required. LSMR still releases
+the context before its existing admission. Earlier admitted attempts remain
+charged. No new team or observation-sized worker bank is introduced.
+
+`parcert1` is `84de9f95` plus the archived certificate/automatic-routing overlays;
+all 529 computational inputs match. Plugin SHA-256:
+`d7c556d44ec6eeae06b16715d60b5e194be83b91bede821ded1819ce81776439`.
+Seven threaded slope cases gain 16.4–26.9% by paired medians. Original commands
+improve 267→211 and 327→238 ms; fresh unbalanced three FE 1939→1498 ms,
+low memory 292→245 ms, and AW/PW about 237→184 ms. Additional tracked heap
+is 0.064–1.065 MB. Stock still wins all five comparable rows. Explicit MAP
+has a 1.9% paired median loss (9–19 ms per pair); wide serial includes +19 ms,
+PPML +5 ms and categorical controls +2 ms. No threshold or tile tuning follows.
+
+All 93 headline calls pass without timeout, overlap or monitor error. All 39
+native pairs and 52 repeat checks pass with identical scientific exports and
+non-clock solver fields. Fifteen direct stock headline checks pass. Both native
+artifacts pass three N2400 independent explicit-design pilots. Stock passes two;
+weak covariance fails two coordinates (1.08998e-10 maximum, 1.02173 times the
+unchanged envelope), while native error is 2.81e-16. Weak stock timing remains
+unranked; earlier discrepancies and stopped campaigns remain untouched.
+
+Fifty distinct Rust tests pass, including an independent weighted two-column
+projection for the parallel kernel at 1/2/4/8 workers, cross-thread bit checks,
+rank/units/RHS boundaries, and exact-budget scratch/geometry fallbacks. Five
+harness tests, actual release-plugin ABI/panic containment and four licensed
+OLS/PPML/saved-slope/transaction fixtures pass. No optimized Rust unit-test run
+or qualification is claimed. The diagnostic confirms the same work counts,
+with initial certificate time 113→40 and 124→43 ms; all 21 parallel group
+calls use the requested four-worker team. Projection remains about 109–116 ms.
+
+**Next bounded subsystem:** generic owned-FE projection sweeps. Investigate
+independent group coefficient work followed by disjoint row subtraction,
+with explicit memory admission, unchanged raw Gram/pivot/rank rules and
+per-entry arithmetic. Retain current-weight scope and fresh certificates.
+Close parallel-certificate tuning; do not chase small serial/control losses.
+Seeds 202609277–282 are used; 202609283 onward remain unused here.
+The archive verifies 3,362 entries, SHA-256
+`9004a9eccd30e3ce54ebb6a9e6c4dfd37993a475198f3d3ba116c5590ac4bb5a`.
+Static allocation source drift, weighted constrained fits, nonretaining CG span
+instability, factor-base provenance and SCC/Linux deferrals remain open. Frozen
+77/16/111 definitions are unchanged. This is a local implementation checkpoint,
+not completion of the broad goal, qualification, push or release.
+
 ## Scoped owned-FE certificate geometry accepted — 2026-09-23
 
 The [geometry milestone](benchmarks/reports/development/certificate-geometry-local-2026-09-23/README.md)

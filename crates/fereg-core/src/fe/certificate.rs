@@ -1,6 +1,7 @@
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
+use rayon::prelude::*;
 
 /// Final weighted fixed-effect orthogonality certificate.
 #[derive(Debug, Clone, PartialEq)]
@@ -104,7 +105,15 @@ pub(crate) fn certify_residuals_with_reference_norms(
     reference_norms: &[f64],
     tolerance: f64,
 ) -> Result<FeCertificate> {
-    certify_with_bases(design, weights, residuals, reference_norms, tolerance, None)
+    certify_with_bases(
+        design,
+        weights,
+        residuals,
+        reference_norms,
+        tolerance,
+        None,
+        false,
+    )
 }
 
 fn certify_with_bases(
@@ -114,6 +123,7 @@ fn certify_with_bases(
     reference_norms: &[f64],
     tolerance: f64,
     cached_bases: Option<&[Vec<Vec<f64>>]>,
+    parallel: bool,
 ) -> Result<FeCertificate> {
     if residuals.nrows() != design.nobs() || weights.len() != design.nobs() {
         return Err(FeregError::new(
@@ -156,6 +166,38 @@ fn certify_with_bases(
         rhs_scales.push(reference.max(residual));
     }
 
+    if parallel {
+        if let Some(bases) = cached_bases {
+            let groups = design
+                .effects()
+                .iter()
+                .map(|effect| effect.n_levels())
+                .max()
+                .unwrap_or(0);
+            let cells = residuals
+                .ncols()
+                .checked_add(1)
+                .and_then(|width| groups.checked_mul(width));
+            if let Some(cells) = cells {
+                // Parallelism is optional. A failed scratch reservation retains
+                // the already admitted serial certificate and its check order.
+                if let Ok(mut scratch) =
+                    fallible_filled(cells, 0.0, "unable to reserve parallel certificate results")
+                {
+                    return certify_parallel_groups(
+                        design,
+                        weights,
+                        residuals,
+                        &rhs_scales,
+                        tolerance,
+                        bases,
+                        &mut scratch,
+                    );
+                }
+            }
+        }
+    }
+
     let mut absolute_infinity_norm = 0.0_f64;
     let mut relative_infinity_norm = 0.0_f64;
     let mut relative_square_sum = 0.0_f64;
@@ -173,22 +215,14 @@ fn certify_with_bases(
             };
             group += 1;
             for rhs in 0..residuals.ncols() {
-                let denominator = rhs_scales[rhs];
-                let mut projected_square_norm = 0.0_f64;
-                if denominator > 0.0 {
-                    for basis in orthonormal_basis {
-                        let mut coefficient = 0.0_f64;
-                        for (local_row, &observation) in observations.iter().enumerate() {
-                            let scaled_residual = weights[observation].sqrt()
-                                * residuals[(observation, rhs)]
-                                / denominator;
-                            coefficient = basis[local_row].mul_add(scaled_residual, coefficient);
-                        }
-                        projected_square_norm =
-                            coefficient.mul_add(coefficient, projected_square_norm);
-                    }
-                }
-                let relative = projected_square_norm.sqrt();
+                let relative = relative_projection(
+                    observations,
+                    orthonormal_basis,
+                    weights,
+                    residuals,
+                    rhs,
+                    rhs_scales[rhs],
+                );
                 if !relative.is_finite() {
                     return Err(FeregError::new(
                         ErrorCode::InvalidData,
@@ -222,6 +256,94 @@ fn certify_with_bases(
     })
 }
 
+fn relative_projection(
+    observations: &[usize],
+    orthonormal_basis: &[Vec<f64>],
+    weights: &[f64],
+    residuals: &DenseMatrix,
+    rhs: usize,
+    denominator: f64,
+) -> f64 {
+    let mut projected_square_norm = 0.0_f64;
+    if denominator > 0.0 {
+        for basis in orthonormal_basis {
+            let mut coefficient = 0.0_f64;
+            for (local_row, &observation) in observations.iter().enumerate() {
+                let scaled_residual =
+                    weights[observation].sqrt() * residuals[(observation, rhs)] / denominator;
+                coefficient = basis[local_row].mul_add(scaled_residual, coefficient);
+            }
+            projected_square_norm = coefficient.mul_add(coefficient, projected_square_norm);
+        }
+    }
+    projected_square_norm.sqrt()
+}
+
+/// Independent groups write disjoint slots; the caller merges every RHS in
+/// the original effect/level/RHS order, including the RMS FMA recurrence.
+fn certify_parallel_groups(
+    design: &FeDesign,
+    weights: &[f64],
+    residuals: &DenseMatrix,
+    rhs_scales: &[f64],
+    tolerance: f64,
+    bases: &[Vec<Vec<f64>>],
+    scratch: &mut [f64],
+) -> Result<FeCertificate> {
+    let rhs_count = residuals.ncols();
+    let width = rhs_count + 1;
+    let mut group = 0;
+    let mut absolute_infinity_norm = 0.0_f64;
+    let mut relative_infinity_norm = 0.0_f64;
+    let mut relative_square_sum = 0.0_f64;
+    let mut relative_count = 0;
+    for effect in design.effects() {
+        let results = &mut scratch[..effect.n_levels() * width];
+        results
+            .par_chunks_mut(width)
+            .enumerate()
+            .for_each(|(level, output)| {
+                let observations = effect.level_index().members(level);
+                for rhs in 0..rhs_count {
+                    output[rhs] = relative_projection(
+                        observations,
+                        &bases[group + level],
+                        weights,
+                        residuals,
+                        rhs,
+                        rhs_scales[rhs],
+                    );
+                }
+                output[rhs_count] = raw_moment_maximum(observations, effect, weights, residuals);
+            });
+        for output in results.chunks_exact(width) {
+            for &relative in &output[..rhs_count] {
+                if !relative.is_finite() {
+                    return Err(FeregError::new(
+                        ErrorCode::InvalidData,
+                        "fixed-effect projection certificate is not finite",
+                    ));
+                }
+                relative_infinity_norm = relative_infinity_norm.max(relative);
+                relative_square_sum = relative.mul_add(relative, relative_square_sum);
+                relative_count += 1;
+            }
+            absolute_infinity_norm = absolute_infinity_norm.max(output[rhs_count]);
+        }
+        group += effect.n_levels();
+    }
+    Ok(FeCertificate {
+        absolute_infinity_norm,
+        relative_infinity_norm,
+        relative_two_norm: if relative_count == 0 {
+            0.0
+        } else {
+            (relative_square_sum / relative_count as f64).sqrt()
+        },
+        passed: relative_infinity_norm <= tolerance,
+    })
+}
+
 /// One absorption call's immutable design and weight frame. Only geometry is
 /// retained; every check still reads the current residuals and reference norms.
 /// A new context is required after changing weights, sample or generation.
@@ -229,6 +351,7 @@ pub(super) struct CertificateContext<'a> {
     design: &'a FeDesign,
     weights: &'a [f64],
     bases: Option<Vec<Vec<Vec<f64>>>>,
+    parallel_rhs: usize,
 }
 
 impl<'a> CertificateContext<'a> {
@@ -237,6 +360,7 @@ impl<'a> CertificateContext<'a> {
             design,
             weights,
             bases: None,
+            parallel_rhs: 0,
         }
     }
 
@@ -291,7 +415,43 @@ impl<'a> CertificateContext<'a> {
         Ok(())
     }
 
+    /// Additional scratch for ordered results from one effect at a time.
+    /// Only an already installed team may evaluate immutable native inputs.
+    pub(super) fn parallel_workspace_bytes(&self, rhs: usize) -> Result<u128> {
+        if self.bases.is_none()
+            || rhs == 0
+            || self.design.nobs() < 16_384
+            || rayon::current_thread_index().is_none()
+            || rayon::current_num_threads() <= 1
+        {
+            return Ok(0);
+        }
+        let levels = self
+            .design
+            .effects()
+            .iter()
+            .map(|e| e.n_levels())
+            .max()
+            .unwrap_or(0);
+        (rhs as u128)
+            .checked_add(1)
+            .and_then(|r| r.checked_mul(levels as u128))
+            .and_then(|cells| cells.checked_mul(8))
+            .ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Allocation,
+                    "parallel certificate workspace overflows",
+                )
+            })
+    }
+
+    /// Caller admits the workspace before enabling any parallel certificate.
+    pub(super) fn set_parallel_rhs(&mut self, rhs: usize) {
+        self.parallel_rhs = rhs;
+    }
+
     pub(super) fn clear(&mut self) {
+        self.parallel_rhs = 0;
         self.bases = None;
     }
 
@@ -308,6 +468,7 @@ impl<'a> CertificateContext<'a> {
             reference_norms,
             tolerance,
             self.bases.as_deref(),
+            residuals.ncols() > 0 && residuals.ncols() <= self.parallel_rhs,
         )
     }
 }
@@ -602,7 +763,88 @@ mod tests {
     use crate::fe::EffectTerm;
 
     #[test]
+    fn parallel_groups_match_serial_bits_and_independent_weighted_two_column_projection() {
+        let n = 84;
+        let z: Vec<_> = (0..n).map(|r| (r / 7) as f64 - 5.5).collect();
+        let design = FeDesign::new(
+            n,
+            vec![EffectTerm::new(
+                (0..n).map(|r| (r % 7) as u32).collect(),
+                8,
+                true,
+                vec![z.clone(), z.clone(), vec![0.0; n]],
+            )
+            .unwrap()],
+        )
+        .unwrap();
+        for weights in [vec![1.0; n], (0..n).map(|r| 0.5 + (r % 5) as f64).collect()] {
+            let mut values = DenseMatrix::zeros(n, 7).unwrap();
+            for r in 0..n {
+                for c in 0..7 {
+                    values[(r, c)] = ((r * 13 + c * 7) as f64).sin();
+                }
+            }
+            let reference = weighted_column_norms(&values, &weights).unwrap();
+            let serial = certify_residuals_with_reference_norms(
+                &design, &weights, &values, &reference, 1e-8,
+            )
+            .unwrap();
+            let mut expected_inf = 0.0_f64;
+            let mut expected_square_sum = 0.0;
+            for level in 0..8 {
+                for rhs in 0..7 {
+                    let mut sw = 0.0;
+                    let mut sz = 0.0;
+                    let mut szz = 0.0;
+                    let mut sr = 0.0;
+                    let mut szr = 0.0;
+                    for r in (level..n).step_by(7).filter(|_| level < 7) {
+                        sw += weights[r];
+                        sz += weights[r] * z[r];
+                        szz += weights[r] * z[r] * z[r];
+                        sr += weights[r] * values[(r, rhs)];
+                        szr += weights[r] * z[r] * values[(r, rhs)];
+                    }
+                    let ratio = if sw == 0.0 {
+                        0.0
+                    } else {
+                        ((szz * sr * sr - 2.0 * sz * sr * szr + sw * szr * szr)
+                            / (sw * szz - sz * sz))
+                            .sqrt()
+                            / reference[rhs]
+                    };
+                    expected_inf = expected_inf.max(ratio);
+                    expected_square_sum += ratio * ratio;
+                }
+            }
+            assert!((serial.relative_infinity_norm - expected_inf).abs() < 1e-14);
+            assert!((serial.relative_two_norm - (expected_square_sum / 56.0).sqrt()).abs() < 1e-14);
+            for threads in [1, 2, 4, 8] {
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap()
+                    .install(|| {
+                        let mut context = CertificateContext::new(&design, &weights);
+                        context.cache().unwrap();
+                        // Exercise the kernel below its production scheduling floor.
+                        context.set_parallel_rhs(7);
+                        for _ in 0..3 {
+                            assert_eq!(context.certify(&values, &reference, 1e-8).unwrap(), serial);
+                        }
+                        context.clear();
+                        assert_eq!(context.parallel_rhs, 0);
+                    });
+            }
+        }
+    }
+
+    #[test]
     fn scoped_geometry_is_exact_across_residuals_weights_rank_and_units() {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap();
         for scale in [1e-100, 1.0, 1e100] {
             let n = 72;
             let z: Vec<_> = (0..n).map(|r| scale * ((r % 7) as f64 - 3.0)).collect();
@@ -643,6 +885,7 @@ mod tests {
                         .sum::<usize>();
                 assert!(actual as u128 <= context.cache_bytes().unwrap());
                 for rhs in [0, 1, 7, 33] {
+                    context.set_parallel_rhs(rhs);
                     let mut values = DenseMatrix::zeros(n, rhs).unwrap();
                     for state in [0.0, 1.0, 1e-14, -3.0] {
                         for row in 0..n {
@@ -656,7 +899,11 @@ mod tests {
                             &design, &weights, &values, &norms, 1e-8,
                         )
                         .unwrap();
-                        assert_eq!(context.certify(&values, &norms, 1e-8).unwrap(), expected);
+                        assert_eq!(
+                            pool.install(|| context.certify(&values, &norms, 1e-8))
+                                .unwrap(),
+                            expected
+                        );
                     }
                 }
                 let invalid = DenseMatrix::from_columns(&[vec![f64::NAN; n]]).unwrap();

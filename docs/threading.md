@@ -54,6 +54,14 @@ Dense integer FE encoding also uses an already installed team from 16,384
 rows: the range scan preserves the first ineligible/nonfinite row, and indexed
 collection fills the fallibly reserved code vector without another allocation.
 Canonical levels, signed-zero normalization and hash fallback remain unchanged.
+Generic automatic slope certificates with an admitted current-weight geometry
+cache and at least 16,384 observations can use the installed team when it has
+more than one worker. Each effect-level group writes a disjoint result slot;
+the caller merges every RHS in the original order, retaining the same RMS FMA
+recurrence and raw maximum. Residuals, weights and geometry are immutable during
+this work. Fallible scratch admission preserves the serial path. It does not
+start a pool or change the changing-weight reusable MAP implementation; see
+ADR 0117.
 Retired scoped teams signal shutdown and join their worker handles after the
 cache mutex is released. New and old teams can coexist during replacement.
 The general Rust API avoids self-join when external asynchronous work drops the

@@ -218,15 +218,18 @@ def instrument_owned_fe(root):
     text = path.read_text()
     def replace(before, after):
         nonlocal text
-        assert text.count(before) == 1, before
-        text = text.replace(before, after)
+        expected = 2 if ("fn certify_parallel_groups(" in text and before == "    let mut absolute_infinity_norm = 0.0_f64;") else 1
+        assert text.count(before) == expected, before
+        text = text.replace(before, after, 1)
     replace("    let mut absolute_infinity_norm = 0.0_f64;",
             "    let mut development_parts = [0.0_f64; 4];\n    let mut absolute_infinity_norm = 0.0_f64;")
     if "fn certify_with_bases(" in text:
         replace("            let fresh_basis;",
                 "            let mut development_lap = std::time::Instant::now();\n            let fresh_basis;")
         for index, marker in enumerate((
-            "            for rhs in 0..residuals.ncols() {\n                let denominator = rhs_scales[rhs];",
+            ("            for rhs in 0..residuals.ncols() {\n                let relative = relative_projection("
+             if "fn relative_projection(" in text else
+             "            for rhs in 0..residuals.ncols() {\n                let denominator = rhs_scales[rhs];"),
             "            absolute_infinity_norm = absolute_infinity_norm.max(raw_moment_maximum(",
         )):
             replace(marker, f"            development_parts[{index}] += development_lap.elapsed().as_secs_f64();\n            development_lap = std::time::Instant::now();\n" + marker)
@@ -256,6 +259,17 @@ def instrument_owned_fe(root):
                     '    eprintln!("FEREG_PHASE|owned_certificate|rows={}|rhs={}|normalize={:.9}|qr={:.9}|project={:.9}|raw_moments={:.9}", residuals.nrows(), residuals.ncols(), development_parts[0], development_parts[1], development_parts[2], development_parts[3]);\n\n' + marker)
             else:
                 replace(marker, f"            development_parts[{index}] += development_lap.elapsed().as_secs_f64();\n            development_lap = std::time::Instant::now();\n" + marker)
+    if "fn certify_parallel_groups(" in text:
+        start = text.index("fn certify_parallel_groups(")
+        end = text.index("/// One absorption call", start)
+        region = text[start:end]
+        entry = "    let rhs_count = residuals.ncols();"
+        assert region.count(entry) == 1
+        region = region.replace(entry, "    let parallel_started = std::time::Instant::now();\n" + entry)
+        entry = "    Ok(FeCertificate {"
+        assert region.count(entry) == 1
+        region = region.replace(entry, '    eprintln!("FEREG_PHASE|owned_fe|phase=parallel_groups|rows={}|rhs={}|threads={}|seconds={:.9}", design.nobs(), residuals.ncols(), rayon::current_num_threads(), parallel_started.elapsed().as_secs_f64());\n' + entry)
+        text = text[:start] + region + text[end:]
     path.write_text(text)
 
     path = root / "crates/fereg-core/src/fe/projection.rs"

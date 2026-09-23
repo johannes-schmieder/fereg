@@ -207,6 +207,21 @@ fn absorb_auto(
             }
         }
     }
+    let mut parallel_bytes = 0;
+    if let Ok(bytes) = context.parallel_workspace_bytes(values.ncols()) {
+        if bytes > 0 {
+            if let Ok(peak) = attempted_peak.with_retained(bytes) {
+                if config
+                    .solver_memory_budget
+                    .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
+                {
+                    context.set_parallel_rhs(values.ncols());
+                    parallel_bytes = bytes;
+                    attempted_peak = peak;
+                }
+            }
+        }
+    }
     let cache_seconds = cache_started.elapsed().as_secs_f64();
     let initial = context.certify(values, &reference_norms, config.map.tolerance)?;
     let pilot_budget = config.map.max_iterations.min(4);
@@ -253,6 +268,7 @@ fn absorb_auto(
         // admission so previously affordable routes and fallbacks stay valid.
         context.clear();
         retained = 0;
+        parallel_bytes = 0;
         let lsmr_config = LsmrConfig {
             tolerance: direct_lsmr_tolerance(config.map.tolerance),
             max_iterations: config.lsmr.max_iterations.min(remaining_iterations),
@@ -332,7 +348,20 @@ fn absorb_auto(
                 .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
         })
     {
-        attempted_peak = attempted_peak.max(cached_peak);
+        if let Some(parallel_peak) = cached_peak
+            .with_retained(parallel_bytes)
+            .ok()
+            .filter(|peak| {
+                config
+                    .solver_memory_budget
+                    .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
+            })
+        {
+            attempted_peak = attempted_peak.max(parallel_peak);
+        } else {
+            context.set_parallel_rhs(0);
+            attempted_peak = attempted_peak.max(cached_peak);
+        }
     } else {
         context.clear();
         attempted_peak = attempted_peak.max(continuation_peak);
@@ -738,6 +767,177 @@ mod generic_budget_regression {
             }
             reference = Some(result);
         }
+    }
+
+    #[test]
+    fn parallel_scratch_can_be_released_without_discarding_affordable_cg_geometry() {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap()
+            .install(|| {
+                let n = 16_416;
+                let design = FeDesign::new(
+                    n,
+                    vec![
+                        EffectTerm::new(
+                            (0..n).map(|r| (r % 170) as u32).collect(),
+                            170,
+                            true,
+                            vec![(0..n).map(|r| (r as f64).sin()).collect()],
+                        )
+                        .unwrap(),
+                        EffectTerm::new(
+                            (0..n).map(|r| (r % 130) as u32).collect(),
+                            130,
+                            true,
+                            vec![(0..n).map(|r| (r as f64 * 0.7).cos()).collect()],
+                        )
+                        .unwrap(),
+                    ],
+                )
+                .unwrap();
+                let weights = vec![1.0; n];
+                let mut original = DenseMatrix::zeros(n, 8).unwrap();
+                for row in 0..n {
+                    for rhs in 0..8 {
+                        original[(row, rhs)] = ((row * 13 + rhs * 7) as f64 * 0.31).sin()
+                            + (row % 170) as f64 * (row as f64).sin();
+                    }
+                }
+                let config = AbsorbConfig {
+                    map: MapConfig {
+                        tolerance: 1e-12,
+                        ..MapConfig::default()
+                    },
+                    ..AbsorbConfig::default()
+                };
+                let map =
+                    generic_fe_solver_bytes(&design, 8, FeSolverKind::Map, config.lsmr).unwrap();
+                let cg =
+                    generic_fe_solver_bytes(&design, 8, FeSolverKind::Cg, config.lsmr).unwrap();
+                let cache = CertificateContext::new(&design, &weights)
+                    .cache_bytes()
+                    .unwrap();
+                let mut context = CertificateContext::new(&design, &weights);
+                context.cache().unwrap();
+                let parallel = context.parallel_workspace_bytes(8).unwrap();
+                assert!(parallel > 0);
+                assert!(map + cache + parallel < cg);
+                let mut reference = None;
+                for budget in [cg, cg + cache - 1, cg + cache, cg + cache + parallel] {
+                    let mut values = original.clone();
+                    let report = absorb_fixed_effects(
+                        &design,
+                        &weights,
+                        &mut values,
+                        AbsorbConfig {
+                            solver_memory_budget: Some(FeSolverMemoryBudget {
+                                execution_bytes: 0,
+                                usable_bytes: budget,
+                            }),
+                            ..config
+                        },
+                    )
+                    .unwrap();
+                    assert_eq!(report.used_solver, FeSolverKind::Cg);
+                    assert!(!report.fallback_used);
+                    assert_eq!(
+                        report.solver_workspace_peak.bytes(),
+                        Some(if budget < cg + cache {
+                            cg
+                        } else if budget < cg + cache + parallel {
+                            cg + cache
+                        } else {
+                            cg + cache + parallel
+                        } as u64)
+                    );
+                    let result = (
+                        values,
+                        report.certificate,
+                        report.iterations,
+                        report.pilot_contraction,
+                    );
+                    if let Some(previous) = &reference {
+                        assert_eq!(&result, previous);
+                    }
+                    reference = Some(result);
+                }
+            });
+    }
+
+    #[test]
+    fn parallel_certificate_exact_budget_keeps_the_serial_cache_when_scratch_does_not_fit() {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap()
+            .install(|| {
+                let n = 48 * 342;
+                let left: Vec<_> = (0..n).map(|r| (r % 4) as u32).collect();
+                let right: Vec<_> = (0..n).map(|r| ((r / 4) % 3) as u32).collect();
+                let slope: Vec<_> = (0..n).map(|r| ((r / 12) % 4) as f64 - 1.5).collect();
+                let outcome: Vec<_> = (0..n)
+                    .map(|r| {
+                        2.0 * left[r] as f64
+                            + 3.0 * right[r] as f64 * slope[r]
+                            + [1.0, -1.0, -1.0, 1.0][(r / 12) % 4]
+                    })
+                    .collect();
+                let design = FeDesign::new(
+                    n,
+                    vec![
+                        EffectTerm::new(left, 4, true, vec![]).unwrap(),
+                        EffectTerm::new(right, 3, false, vec![slope]).unwrap(),
+                    ],
+                )
+                .unwrap();
+                let weights = vec![1.0; n];
+                let config = AbsorbConfig::default();
+                let required =
+                    generic_fe_solver_bytes(&design, 1, FeSolverKind::Map, config.lsmr).unwrap();
+                let mut context = CertificateContext::new(&design, &weights);
+                context.cache().unwrap();
+                let cached = required + context.cache_bytes().unwrap();
+                let parallel = context.parallel_workspace_bytes(1).unwrap();
+                assert_eq!(parallel, 4 * 2 * 8);
+                let mut reference = None;
+                for budget in [cached, cached + parallel - 1, cached + parallel] {
+                    let mut values = DenseMatrix::from_columns(&[outcome.clone()]).unwrap();
+                    let report = absorb_fixed_effects(
+                        &design,
+                        &weights,
+                        &mut values,
+                        AbsorbConfig {
+                            solver_memory_budget: Some(FeSolverMemoryBudget {
+                                execution_bytes: 137,
+                                usable_bytes: 137 + budget,
+                            }),
+                            ..config
+                        },
+                    )
+                    .unwrap();
+                    assert_eq!(report.used_solver, FeSolverKind::Map);
+                    assert_eq!(
+                        report.solver_workspace_peak.bytes(),
+                        Some(if budget < cached + parallel {
+                            cached
+                        } else {
+                            cached + parallel
+                        } as u64)
+                    );
+                    let result = (
+                        values,
+                        report.certificate,
+                        report.iterations,
+                        report.pilot_contraction,
+                    );
+                    if let Some(previous) = &reference {
+                        assert_eq!(&result, previous);
+                    }
+                    reference = Some(result);
+                }
+            });
     }
 
     #[test]

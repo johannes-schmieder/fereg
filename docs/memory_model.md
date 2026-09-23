@@ -66,6 +66,17 @@ the maximum admitted attempt, including discarded cache construction. This
 increases optional storage in both fast and low modes; it does not change the
 minimum memory needed by an existing route or claim a new whole-action bound.
 
+Parallel owned-FE certification adds at most
+`8*max_effect_levels*(actual_RHS+1)` bytes beside the admitted geometry and
+existing solver workspace (ADR 0117). One effect's result bank is reused within
+each certificate, then released; no residual result survives that check.
+Construction/size failure falls back to serial certification. Before CG, the
+parallel scratch can be declined independently of the geometry cache. The
+original cached or uncached route remains available at its previous budget.
+Raw-moment tiles use the existing 768-byte stack payload per active worker;
+no new pool or worker is created. Existing runtime/worker-stack headroom and
+whole-action coverage limitations remain authoritative.
+
 The action-local single-partition OLS slope cache separately admits retained
 square-root weights, group Grams/scales and QR bases, plus construction scratch
 or concurrent projection output, group coefficients, norms and certificate

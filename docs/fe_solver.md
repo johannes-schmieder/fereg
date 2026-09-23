@@ -33,6 +33,12 @@ are freshly evaluated at every scheduled check. Generic automatic slope
 absorption may reuse the identical weighted QR bases within one immutable
 design/weight call (ADR 0116). Rank rules, reduction order, checks and stopping
 remain unchanged. No geometry survives a change of weights or sample.
+With an admitted cache, at least 16,384 rows and an already installed team
+larger than one worker, automatic owned slope certificates may evaluate groups
+in parallel (ADR 0117). A bounded result bank keeps one value per group/RHS
+and one raw maximum per group. Merging remains in effect/level/RHS order,
+including the RMS FMA recurrence. Each residual still receives the same fresh
+norm, span and raw-moment checks. Scratch refusal retains serial certification.
 
 Hitting an iteration limit or failing the fresh certificate is fatal. Solver
 threads operate only on Rust-owned storage; no Stata SPI call occurs off the
