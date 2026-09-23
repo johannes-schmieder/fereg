@@ -1,8 +1,9 @@
+use super::certificate::CertificateContext;
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    certify_residuals_with_reference_norms, project_effect_in_place, weighted_column_norms,
-    FeDesign, FeSolverKind, MapConfig, ProjectionWorkspace, SolveReport, SolveStopReason,
+    project_effect_in_place, weighted_column_norms, FeDesign, FeSolverKind, MapConfig,
+    ProjectionWorkspace, SolveReport, SolveStopReason,
 };
 use std::time::Instant;
 
@@ -18,6 +19,21 @@ pub fn absorb_accelerated_map(
     config: MapConfig,
     solver: FeSolverKind,
 ) -> Result<SolveReport> {
+    absorb_accelerated_map_with_context(
+        &CertificateContext::new(design, weights),
+        values,
+        config,
+        solver,
+    )
+}
+
+pub(super) fn absorb_accelerated_map_with_context(
+    context: &CertificateContext<'_>,
+    values: &mut DenseMatrix,
+    config: MapConfig,
+    solver: FeSolverKind,
+) -> Result<SolveReport> {
+    let (design, weights) = context.inputs();
     if !matches!(
         solver,
         FeSolverKind::Cg | FeSolverKind::IronsTuck | FeSolverKind::Squarem
@@ -45,18 +61,12 @@ pub fn absorb_accelerated_map(
     }
 
     if solver == FeSolverKind::Cg {
-        return absorb_conjugate_gradient(design, weights, values, config);
+        return absorb_conjugate_gradient(context, values, config);
     }
 
     let started = Instant::now();
     let reference_norms = weighted_column_norms(values, weights)?;
-    let mut certificate = certify_residuals_with_reference_norms(
-        design,
-        weights,
-        values,
-        &reference_norms,
-        config.tolerance,
-    )?;
+    let mut certificate = context.certify(values, &reference_norms, config.tolerance)?;
     if design.effects().is_empty() || certificate.passed {
         return Ok(report(
             solver,
@@ -79,13 +89,7 @@ pub fn absorb_accelerated_map(
         let x0 = fallible_matrix_copy(values, "unable to reserve accelerator x0")?;
         sweep(design, weights, values, &mut workspace, config.symmetric)?;
         iterations += 1;
-        certificate = certify_residuals_with_reference_norms(
-            design,
-            weights,
-            values,
-            &reference_norms,
-            config.tolerance,
-        )?;
+        certificate = context.certify(values, &reference_norms, config.tolerance)?;
         if certificate.passed {
             return Ok(report(
                 solver,
@@ -102,13 +106,7 @@ pub fn absorb_accelerated_map(
         let x1 = fallible_matrix_copy(values, "unable to reserve accelerator x1")?;
         sweep(design, weights, values, &mut workspace, config.symmetric)?;
         iterations += 1;
-        let baseline_certificate = certify_residuals_with_reference_norms(
-            design,
-            weights,
-            values,
-            &reference_norms,
-            config.tolerance,
-        )?;
+        let baseline_certificate = context.certify(values, &reference_norms, config.tolerance)?;
         if baseline_certificate.passed {
             return Ok(report(
                 solver,
@@ -123,13 +121,8 @@ pub fn absorb_accelerated_map(
         let x2 = fallible_matrix_copy(values, "unable to reserve accelerator x2")?;
         let candidate = extrapolate(&x0, &x1, &x2, solver)?;
         if let Some(candidate) = candidate {
-            let candidate_certificate = certify_residuals_with_reference_norms(
-                design,
-                weights,
-                &candidate,
-                &reference_norms,
-                config.tolerance,
-            )?;
+            let candidate_certificate =
+                context.certify(&candidate, &reference_norms, config.tolerance)?;
             if candidate_certificate.relative_two_norm < baseline_certificate.relative_two_norm {
                 *values = candidate;
                 certificate = candidate_certificate;
@@ -169,20 +162,14 @@ pub fn absorb_accelerated_map(
 /// progress only controls when the independent fixed-effect certificate is
 /// recomputed; it is never accepted as the scientific stopping condition.
 fn absorb_conjugate_gradient(
-    design: &FeDesign,
-    weights: &[f64],
+    context: &CertificateContext<'_>,
     values: &mut DenseMatrix,
     config: MapConfig,
 ) -> Result<SolveReport> {
+    let (design, weights) = context.inputs();
     let started = Instant::now();
     let reference_norms = weighted_column_norms(values, weights)?;
-    let mut certificate = certify_residuals_with_reference_norms(
-        design,
-        weights,
-        values,
-        &reference_norms,
-        config.tolerance,
-    )?;
+    let mut certificate = context.certify(values, &reference_norms, config.tolerance)?;
     if design.effects().is_empty() || certificate.passed {
         return Ok(report(
             FeSolverKind::Cg,
@@ -222,13 +209,7 @@ fn absorb_conjugate_gradient(
                 // A semidefinite projection operator can lose its remaining
                 // direction to roundoff exactly at convergence.  Accept that
                 // boundary only when the independent FE certificate passes.
-                certificate = certify_residuals_with_reference_norms(
-                    design,
-                    weights,
-                    values,
-                    &reference_norms,
-                    config.tolerance,
-                )?;
+                certificate = context.certify(values, &reference_norms, config.tolerance)?;
                 if certificate.passed {
                     return Ok(cg_report(
                         iteration - 1,
@@ -251,13 +232,7 @@ fn absorb_conjugate_gradient(
             || recurrence_residual <= config.tolerance.sqrt()
             || iteration == config.max_iterations
         {
-            certificate = certify_residuals_with_reference_norms(
-                design,
-                weights,
-                values,
-                &reference_norms,
-                config.tolerance,
-            )?;
+            certificate = context.certify(values, &reference_norms, config.tolerance)?;
             if certificate.passed {
                 return Ok(cg_report(
                     iteration,

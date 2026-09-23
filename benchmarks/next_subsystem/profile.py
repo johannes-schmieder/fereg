@@ -196,6 +196,8 @@ def instrument_owned_fe(root):
     ):
         path = root / "crates/fereg-core/src/fe" / file
         text = path.read_text()
+        if file == "certificate.rs" and "fn certify_with_bases(" in text:
+            function = "fn certify_with_bases("
         start = text.index(function)
         body = text.index(" {\n", start) + 3
         label = file.removesuffix(".rs")
@@ -220,23 +222,40 @@ def instrument_owned_fe(root):
         text = text.replace(before, after)
     replace("    let mut absolute_infinity_norm = 0.0_f64;",
             "    let mut development_parts = [0.0_f64; 4];\n    let mut absolute_infinity_norm = 0.0_f64;")
-    replace("            let mut normalized_columns = fallible_empty(",
-            "            let mut development_lap = std::time::Instant::now();\n            let mut normalized_columns = fallible_empty(")
-    for index, marker in enumerate((
-        "            let orthonormal_basis = pivoted_reorthogonalized_qr(normalized_columns)?;",
-        "            for rhs in 0..residuals.ncols() {\n                let denominator = rhs_scales[rhs];",
-        ("            absolute_infinity_norm = absolute_infinity_norm.max(raw_moment_maximum("
-         if "raw_moment_maximum(" in text else
-         "            for channel in 0..channels {\n                for rhs in 0..residuals.ncols() {"),
-        "    let relative_two_norm = if relative_count == 0 {",
-    )):
-        if index == 3:
-            # The final group accumulator belongs inside both loops.
-            replace("        }\n    }\n\n" + marker,
-                "            development_parts[3] += development_lap.elapsed().as_secs_f64();\n        }\n    }\n"
-                '    eprintln!("FEREG_PHASE|owned_certificate|rows={}|rhs={}|normalize={:.9}|qr={:.9}|project={:.9}|raw_moments={:.9}", residuals.nrows(), residuals.ncols(), development_parts[0], development_parts[1], development_parts[2], development_parts[3]);\n\n' + marker)
-        else:
+    if "fn certify_with_bases(" in text:
+        replace("            let fresh_basis;",
+                "            let mut development_lap = std::time::Instant::now();\n            let fresh_basis;")
+        for index, marker in enumerate((
+            "            for rhs in 0..residuals.ncols() {\n                let denominator = rhs_scales[rhs];",
+            "            absolute_infinity_norm = absolute_infinity_norm.max(raw_moment_maximum(",
+        )):
             replace(marker, f"            development_parts[{index}] += development_lap.elapsed().as_secs_f64();\n            development_lap = std::time::Instant::now();\n" + marker)
+        marker = "    let relative_two_norm = if relative_count == 0 {"
+        replace("        }\n    }\n\n" + marker,
+            "            development_parts[2] += development_lap.elapsed().as_secs_f64();\n        }\n    }\n"
+            '    eprintln!("FEREG_PHASE|owned_certificate|rows={}|rhs={}|geometry={:.9}|project={:.9}|raw_moments={:.9}", residuals.nrows(), residuals.ncols(), development_parts[0], development_parts[1], development_parts[2]);\n\n' + marker)
+        replace("    pub(super) fn cache(&mut self) -> Result<()> {",
+            "    pub(super) fn cache(&mut self) -> Result<()> {\n        let geometry_started = std::time::Instant::now();")
+        replace("        self.bases = Some(bases);",
+            '        eprintln!("FEREG_PHASE|owned_fe|phase=certificate_geometry|rows={}|rhs=0|seconds={:.9}", self.design.nobs(), geometry_started.elapsed().as_secs_f64());\n        self.bases = Some(bases);')
+    else:
+        replace("            let mut normalized_columns = fallible_empty(",
+                "            let mut development_lap = std::time::Instant::now();\n            let mut normalized_columns = fallible_empty(")
+        for index, marker in enumerate((
+            "            let orthonormal_basis = pivoted_reorthogonalized_qr(normalized_columns)?;",
+            "            for rhs in 0..residuals.ncols() {\n                let denominator = rhs_scales[rhs];",
+            ("            absolute_infinity_norm = absolute_infinity_norm.max(raw_moment_maximum("
+             if "raw_moment_maximum(" in text else
+             "            for channel in 0..channels {\n                for rhs in 0..residuals.ncols() {"),
+            "    let relative_two_norm = if relative_count == 0 {",
+        )):
+            if index == 3:
+                # The final group accumulator belongs inside both loops.
+                replace("        }\n    }\n\n" + marker,
+                    "            development_parts[3] += development_lap.elapsed().as_secs_f64();\n        }\n    }\n"
+                    '    eprintln!("FEREG_PHASE|owned_certificate|rows={}|rhs={}|normalize={:.9}|qr={:.9}|project={:.9}|raw_moments={:.9}", residuals.nrows(), residuals.ncols(), development_parts[0], development_parts[1], development_parts[2], development_parts[3]);\n\n' + marker)
+            else:
+                replace(marker, f"            development_parts[{index}] += development_lap.elapsed().as_secs_f64();\n            development_lap = std::time::Instant::now();\n" + marker)
     path.write_text(text)
 
     path = root / "crates/fereg-core/src/fe/projection.rs"

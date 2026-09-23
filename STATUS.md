@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-22
+**Last updated:** 2026-09-23
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,59 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
+
+## Scoped owned-FE certificate geometry accepted — 2026-09-23
+
+The [geometry milestone](benchmarks/reports/development/certificate-geometry-local-2026-09-23/README.md)
+and ADR 0116 retain weighted QR bases within one immutable design/current-weight
+generic automatic MAP/CG absorption. Every residual norm, span projection and
+raw moment remains fresh at the same checkpoints. Rank, tolerance, contraction,
+routing, iterations, DoF and publication stay unchanged. Direct solvers and the
+separate changing-weight reusable MAP implementation remain uncached. Shared
+generic calls rebuild for their current weights; nothing crosses PPML frames.
+
+Optional storage is admitted beside existing QR construction/solve scratch.
+A refusal or allocation failure continues uncached. LSMR releases the cache
+before admission; CG releases it if retaining it would crowd out continuation.
+Exact-budget tests preserve affordable routes and charge discarded attempts.
+Fast and low modes can benefit, with additional measured heap of 0.67–4.54 MB.
+
+`certcache3` is `51ae723d` plus four archived FE solver/certificate overlays;
+all 529 computational inputs match. Plugin SHA-256:
+`21bb7a0d0a093e49e22b03e5923f4b13ab7bef2f727b7ebf4c4d30a640552e82`.
+Eight automatic slope cases gain 4.7–21.1% by paired medians. Original command
+medians improve 314→271 and 362→328 ms; fresh wide 1015→967 ms,
+unbalanced three FE 1997→1876 ms, and low memory 373→291 ms. Stock still
+wins all five comparable timing rows. Controls retain small losses, including
+PPML +2 ms pairs, explicit MAP +1–7 ms and explicit LSMR +7 ms.
+
+All 93 final headline calls pass without timeout, overlap or monitor error.
+All 39 native pairs and 52 repeat checks pass; scientific exports and all
+non-clock solver fields are exact. Fifteen stock headline checks pass. Three
+independent N2400 pilots pass for both native artifacts. Stock passes two;
+the weak pilot misses two covariance coordinates (maximum 1.38683e-10,
+1.1101 times tolerance). That failure remains archived and weak timings stay
+native-only. No tolerance or prior discrepancy is erased. 41 distinct Rust
+tests, five harness tests, release-plugin ABI/panic containment and four licensed
+OLS/PPML/saved-slope/transaction fixtures pass. No optimized Rust test run or
+qualification is claimed.
+
+Diagnostics retain identical certificate/projection counts. Including cache
+construction, total certificate time falls 177→127 and 176→140 ms on the
+two anchor models. Fresh span/raw moments and projection sweeps remain costly.
+The preliminary candidate, untimed intermediate build, setup failures and final
+confirmation are separately identified in the immutable report. Seeds
+202609271–276 are used; 202609277 onward remain unused in this milestone.
+
+**Next bounded subsystem:** deterministic parallel group evaluation of fresh
+owned-FE certificates, with ordered reductions and explicit scratch admission.
+Close cache-scope tuning; do not expand across mutable weights or chase small
+control losses. The archive verifies 3,864 entries, SHA-256
+`7e7dd504d58294761a5f835bfa8a8f6570953301b95c1acc1f08389e3ae6118d`.
+Static allocation source drift, weighted constrained fits, nonretaining CG span
+instability, factor-base provenance and SCC/Linux deferrals remain open. Frozen
+77/16/111 definitions are unchanged. This is a local implementation checkpoint,
+not completion of the broad objective, a release, push or qualification.
 
 ## Unused MAP initialization certificate removed — 2026-09-22
 

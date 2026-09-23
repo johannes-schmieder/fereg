@@ -104,6 +104,17 @@ pub(crate) fn certify_residuals_with_reference_norms(
     reference_norms: &[f64],
     tolerance: f64,
 ) -> Result<FeCertificate> {
+    certify_with_bases(design, weights, residuals, reference_norms, tolerance, None)
+}
+
+fn certify_with_bases(
+    design: &FeDesign,
+    weights: &[f64],
+    residuals: &DenseMatrix,
+    reference_norms: &[f64],
+    tolerance: f64,
+    cached_bases: Option<&[Vec<Vec<f64>>]>,
+) -> Result<FeCertificate> {
     if residuals.nrows() != design.nobs() || weights.len() != design.nobs() {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
@@ -149,57 +160,23 @@ pub(crate) fn certify_residuals_with_reference_norms(
     let mut relative_infinity_norm = 0.0_f64;
     let mut relative_square_sum = 0.0_f64;
     let mut relative_count = 0_usize;
+    let mut group = 0;
     for effect in design.effects() {
-        let channels = effect.channels();
         for level in 0..effect.n_levels() {
             let observations = effect.level_index().members(level);
-            let mut normalized_columns = fallible_empty(
-                channels,
-                "unable to reserve fixed-effect certificate normalized columns",
-            )?;
-            for channel in 0..channels {
-                let mut column = fallible_empty(
-                    observations.len(),
-                    "unable to reserve fixed-effect certificate level column",
-                )?;
-                let mut column_scale = 0.0_f64;
-                for &observation in observations {
-                    let value =
-                        weights[observation].sqrt() * effect.basis_value(channel, observation);
-                    if !value.is_finite() {
-                        return Err(FeregError::new(
-                            ErrorCode::InvalidData,
-                            "weighted fixed-effect basis is not finite",
-                        ));
-                    }
-                    column_scale = column_scale.max(value.abs());
-                    column.push(value);
-                }
-                if column_scale == 0.0 {
-                    continue;
-                }
-                for value in &mut column {
-                    *value /= column_scale;
-                }
-                let norm = euclidean_norm(&column);
-                if norm == 0.0 || !norm.is_finite() {
-                    return Err(FeregError::new(
-                        ErrorCode::InvalidData,
-                        "fixed-effect basis normalization failed",
-                    ));
-                }
-                for value in &mut column {
-                    *value /= norm;
-                }
-                normalized_columns.push(column);
-            }
-
-            let orthonormal_basis = pivoted_reorthogonalized_qr(normalized_columns)?;
+            let fresh_basis;
+            let orthonormal_basis = if let Some(bases) = cached_bases {
+                &bases[group]
+            } else {
+                fresh_basis = level_basis(effect, weights, level)?;
+                &fresh_basis
+            };
+            group += 1;
             for rhs in 0..residuals.ncols() {
                 let denominator = rhs_scales[rhs];
                 let mut projected_square_norm = 0.0_f64;
                 if denominator > 0.0 {
-                    for basis in &orthonormal_basis {
+                    for basis in orthonormal_basis {
                         let mut coefficient = 0.0_f64;
                         for (local_row, &observation) in observations.iter().enumerate() {
                             let scaled_residual = weights[observation].sqrt()
@@ -243,6 +220,145 @@ pub(crate) fn certify_residuals_with_reference_norms(
         relative_two_norm,
         passed: relative_infinity_norm <= tolerance,
     })
+}
+
+/// One absorption call's immutable design and weight frame. Only geometry is
+/// retained; every check still reads the current residuals and reference norms.
+/// A new context is required after changing weights, sample or generation.
+pub(super) struct CertificateContext<'a> {
+    design: &'a FeDesign,
+    weights: &'a [f64],
+    bases: Option<Vec<Vec<Vec<f64>>>>,
+}
+
+impl<'a> CertificateContext<'a> {
+    pub(super) fn new(design: &'a FeDesign, weights: &'a [f64]) -> Self {
+        Self {
+            design,
+            weights,
+            bases: None,
+        }
+    }
+
+    pub(super) fn inputs(&self) -> (&FeDesign, &[f64]) {
+        (self.design, self.weights)
+    }
+
+    /// Upper bound for retained numeric banks and both levels of descriptors.
+    /// Construction scratch is already in the generic certificate workspace;
+    /// numeric columns move from QR into this bank without a second copy.
+    pub(super) fn cache_bytes(&self) -> Result<u128> {
+        let mut bytes = 0_u128;
+        for effect in self.design.effects() {
+            let cells = (self.design.nobs() as u128).checked_mul(effect.channels() as u128);
+            let descriptors = (effect.n_levels() as u128).checked_mul(
+                (std::mem::size_of::<Vec<Vec<f64>>>() as u128)
+                    + (effect.channels() as u128) * std::mem::size_of::<Vec<f64>>() as u128,
+            );
+            bytes = cells
+                .and_then(|n| n.checked_mul(8))
+                .and_then(|n| n.checked_add(descriptors?))
+                .and_then(|n| n.checked_add(bytes))
+                .ok_or_else(|| {
+                    FeregError::new(ErrorCode::Allocation, "certificate cache size overflows")
+                })?;
+        }
+        Ok(bytes)
+    }
+
+    /// Caller must admit cache_bytes plus the existing certificate workspace.
+    /// Allocation failure leaves this context uncached and its input untouched.
+    pub(super) fn cache(&mut self) -> Result<()> {
+        let groups = self
+            .design
+            .effects()
+            .iter()
+            .try_fold(0_usize, |n, effect| {
+                n.checked_add(effect.n_levels()).ok_or_else(|| {
+                    FeregError::new(
+                        ErrorCode::Allocation,
+                        "certificate cache group count overflows",
+                    )
+                })
+            })?;
+        let mut bases = fallible_empty(groups, "unable to reserve certificate cache groups")?;
+        for effect in self.design.effects() {
+            for level in 0..effect.n_levels() {
+                bases.push(level_basis(effect, self.weights, level)?);
+            }
+        }
+        self.bases = Some(bases);
+        Ok(())
+    }
+
+    pub(super) fn clear(&mut self) {
+        self.bases = None;
+    }
+
+    pub(super) fn certify(
+        &self,
+        residuals: &DenseMatrix,
+        reference_norms: &[f64],
+        tolerance: f64,
+    ) -> Result<FeCertificate> {
+        certify_with_bases(
+            self.design,
+            self.weights,
+            residuals,
+            reference_norms,
+            tolerance,
+            self.bases.as_deref(),
+        )
+    }
+}
+
+fn level_basis(
+    effect: &crate::fe::EffectTerm,
+    weights: &[f64],
+    level: usize,
+) -> Result<Vec<Vec<f64>>> {
+    let channels = effect.channels();
+    let observations = effect.level_index().members(level);
+    let mut normalized_columns = fallible_empty(
+        channels,
+        "unable to reserve fixed-effect certificate normalized columns",
+    )?;
+    for channel in 0..channels {
+        let mut column = fallible_empty(
+            observations.len(),
+            "unable to reserve fixed-effect certificate level column",
+        )?;
+        let mut column_scale = 0.0_f64;
+        for &observation in observations {
+            let value = weights[observation].sqrt() * effect.basis_value(channel, observation);
+            if !value.is_finite() {
+                return Err(FeregError::new(
+                    ErrorCode::InvalidData,
+                    "weighted fixed-effect basis is not finite",
+                ));
+            }
+            column_scale = column_scale.max(value.abs());
+            column.push(value);
+        }
+        if column_scale == 0.0 {
+            continue;
+        }
+        for value in &mut column {
+            *value /= column_scale;
+        }
+        let norm = euclidean_norm(&column);
+        if norm == 0.0 || !norm.is_finite() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "fixed-effect basis normalization failed",
+            ));
+        }
+        for value in &mut column {
+            *value /= norm;
+        }
+        normalized_columns.push(column);
+    }
+    pivoted_reorthogonalized_qr(normalized_columns)
 }
 
 /// Column-pivoted, twice-reorthogonalized modified Gram-Schmidt.
@@ -484,6 +600,72 @@ fn validate_common(values: &DenseMatrix, weights: &[f64]) -> Result<()> {
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
+
+    #[test]
+    fn scoped_geometry_is_exact_across_residuals_weights_rank_and_units() {
+        for scale in [1e-100, 1.0, 1e100] {
+            let n = 72;
+            let z: Vec<_> = (0..n).map(|r| scale * ((r % 7) as f64 - 3.0)).collect();
+            let design = FeDesign::new(
+                n,
+                vec![
+                    EffectTerm::new(
+                        (0..n).map(|r| (r % 5) as u32).collect(),
+                        6,
+                        true,
+                        vec![z.clone(), z, vec![0.0; n]],
+                    )
+                    .unwrap(),
+                    EffectTerm::new(
+                        (0..n).map(|r| (r % 3) as u32).collect(),
+                        3,
+                        false,
+                        vec![vec![scale; n]],
+                    )
+                    .unwrap(),
+                ],
+            )
+            .unwrap();
+            for weights in [
+                vec![1.0; n],
+                (0..n).map(|r| 0.25 + (r % 11) as f64).collect(),
+            ] {
+                let mut context = CertificateContext::new(&design, &weights);
+                context.cache().unwrap();
+                let bases = context.bases.as_ref().unwrap();
+                let actual = bases.capacity() * std::mem::size_of::<Vec<Vec<f64>>>()
+                    + bases
+                        .iter()
+                        .map(|group| {
+                            group.capacity() * std::mem::size_of::<Vec<f64>>()
+                                + group.iter().map(|v| v.capacity() * 8).sum::<usize>()
+                        })
+                        .sum::<usize>();
+                assert!(actual as u128 <= context.cache_bytes().unwrap());
+                for rhs in [0, 1, 7, 33] {
+                    let mut values = DenseMatrix::zeros(n, rhs).unwrap();
+                    for state in [0.0, 1.0, 1e-14, -3.0] {
+                        for row in 0..n {
+                            for col in 0..rhs {
+                                values[(row, col)] =
+                                    state * (((row * 13 + col * 7) % 37) as f64 - 18.0);
+                            }
+                        }
+                        let norms = vec![100.0; rhs];
+                        let expected = certify_residuals_with_reference_norms(
+                            &design, &weights, &values, &norms, 1e-8,
+                        )
+                        .unwrap();
+                        assert_eq!(context.certify(&values, &norms, 1e-8).unwrap(), expected);
+                    }
+                }
+                let invalid = DenseMatrix::from_columns(&[vec![f64::NAN; n]]).unwrap();
+                assert!(context.certify(&invalid, &[1.0], 1e-8).is_err());
+                context.clear();
+                assert!(context.bases.is_none());
+            }
+        }
+    }
 
     #[test]
     fn raw_moment_tiles_match_scalar_entries_across_widths_and_scales() {

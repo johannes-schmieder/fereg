@@ -28,8 +28,11 @@ check, making the certificate invariant to absorbed-channel units.
 The generic owned-FE certificate computes its raw-moment diagnostic in bounded
 32-RHS row tiles (ADR 0113). Each entry keeps its scaled compensated arithmetic,
 observation order and overflow saturation. Three fixed arrays contain 768 bytes
-of stack payload; no heap or cross-call geometry/weight cache is added. Fresh
-weighted QR, relative span checks and solver stopping remain unchanged.
+of stack payload. Raw moments, residual norms and relative span projections
+are freshly evaluated at every scheduled check. Generic automatic slope
+absorption may reuse the identical weighted QR bases within one immutable
+design/weight call (ADR 0116). Rank rules, reduction order, checks and stopping
+remain unchanged. No geometry survives a change of weights or sample.
 
 Hitting an iteration limit or failing the fresh certificate is fatal. Solver
 threads operate only on Rust-owned storage; no Stata SPI call occurs off the

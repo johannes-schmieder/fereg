@@ -54,6 +54,18 @@ also admits topology validation and numeric workspace before allocation, then
 checks their actual capacities. Recovery and public whole-action reporting
 remain separate accounting boundaries.
 
+Generic automatic slope absorption may retain certificate QR geometry for one
+MAP/CG call (ADR 0116). Its bound adds `8*N*sum(channels)` numeric bytes and
+one group descriptor plus up to `channels` vector descriptors per level. The
+existing maximum-level certificate scratch stays charged alongside that bound,
+covering construction and solve overlap. QR moves numeric vectors into the
+cache; there is no second flat copy. Reservations are fallible. A declined or
+failed cache leaves the original route available. LSMR releases it before
+admission; CG releases it if the extra retained bytes do not fit. Reports keep
+the maximum admitted attempt, including discarded cache construction. This
+increases optional storage in both fast and low modes; it does not change the
+minimum memory needed by an existing route or claim a new whole-action bound.
+
 The action-local single-partition OLS slope cache separately admits retained
 square-root weights, group Grams/scales and QR bases, plus construction scratch
 or concurrent projection output, group coefficients, norms and certificate

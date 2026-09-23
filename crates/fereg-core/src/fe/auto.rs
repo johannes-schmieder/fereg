@@ -1,3 +1,6 @@
+use super::accelerated_map::absorb_accelerated_map_with_context;
+use super::certificate::CertificateContext;
+use super::map::absorb_map_with_context;
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
@@ -172,17 +175,43 @@ fn absorb_auto(
     let mut attempted_peak =
         admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
     let reference_norms = weighted_column_norms(values, weights)?;
-    let initial = certify_residuals_with_reference_norms(
-        design,
-        weights,
-        values,
-        &reference_norms,
-        config.map.tolerance,
-    )?;
+    let cache_started = std::time::Instant::now();
+    let mut context = CertificateContext::new(design, weights);
+    let mut retained = 0;
+    // Repeated auto checks can amortize QR geometry. Categorical-only paths,
+    // empty RHSs and invalid configurations keep their original behavior.
+    if values.ncols() > 0
+        && values.nrows() == design.nobs()
+        && design
+            .effects()
+            .iter()
+            .any(|effect| !effect.slopes().is_empty())
+        && config.map.tolerance.is_finite()
+        && config.map.tolerance > 0.0
+        && config.map.max_iterations > 1
+        && config.map.check_every > 0
+    {
+        if let Ok(bytes) = context.cache_bytes() {
+            if let Ok(peak) = attempted_peak.with_retained(bytes) {
+                if config
+                    .solver_memory_budget
+                    .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
+                {
+                    attempted_peak = peak;
+                    match context.cache() {
+                        Ok(()) => retained = bytes,
+                        Err(error) if error.code == ErrorCode::Allocation => {}
+                        Err(error) => return Err(error),
+                    }
+                }
+            }
+        }
+    }
+    let cache_seconds = cache_started.elapsed().as_secs_f64();
+    let initial = context.certify(values, &reference_norms, config.map.tolerance)?;
     let pilot_budget = config.map.max_iterations.min(4);
-    let mut pilot = absorb_map(
-        design,
-        weights,
+    let mut pilot = absorb_map_with_context(
+        &context,
         values,
         MapConfig {
             max_iterations: pilot_budget,
@@ -201,6 +230,7 @@ fn absorb_auto(
             "automatic MAP pilot contraction is invalid",
         ));
     }
+    pilot.setup_seconds += cache_seconds;
     pilot.solver_workspace_peak = attempted_peak;
     pilot.requested_solver = FeSolverKind::Auto;
     pilot.pilot_iterations = pilot.iterations;
@@ -219,6 +249,10 @@ fn absorb_auto(
     let mut lsmr_failure = None;
     let mut attempted_lsmr = None;
     if auto_selects_lsmr(contraction, design.total_coefficients()) {
+        // LSMR owns different geometry. Release this optional cache before its
+        // admission so previously affordable routes and fallbacks stay valid.
+        context.clear();
+        retained = 0;
         let lsmr_config = LsmrConfig {
             tolerance: direct_lsmr_tolerance(config.map.tolerance),
             max_iterations: config.lsmr.max_iterations.min(remaining_iterations),
@@ -289,10 +323,22 @@ fn absorb_auto(
     // A failed/rejected LSMR attempt has released its solver and transport.
     // Recheck the actual continuation instead of charging two live solvers.
     let continuation_peak = admit_generic_solver(design, values, config, FeSolverKind::Cg, false)?;
-    attempted_peak = attempted_peak.max(continuation_peak);
-    let mut cg = absorb_accelerated_map(
-        design,
-        weights,
+    if let Some(cached_peak) = continuation_peak
+        .with_retained(retained)
+        .ok()
+        .filter(|peak| {
+            config
+                .solver_memory_budget
+                .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
+        })
+    {
+        attempted_peak = attempted_peak.max(cached_peak);
+    } else {
+        context.clear();
+        attempted_peak = attempted_peak.max(continuation_peak);
+    }
+    let mut cg = absorb_accelerated_map_with_context(
+        &context,
         values,
         MapConfig {
             max_iterations: remaining_iterations,
@@ -566,6 +612,132 @@ mod generic_budget_regression {
         assert_eq!(values, original);
         assert_eq!(report.certificate, original_report.certificate);
         assert_eq!(report.iterations, original_report.iterations);
+    }
+
+    #[test]
+    fn optional_geometry_admission_preserves_affordable_map_and_charges_cache() {
+        let (design, outcome, _) = crossed_slope();
+        let weights = vec![1.0; design.nobs()];
+        let config = AbsorbConfig::default();
+        let required = generic_fe_solver_bytes(&design, 1, FeSolverKind::Map, config.lsmr).unwrap();
+        let cache = CertificateContext::new(&design, &weights)
+            .cache_bytes()
+            .unwrap();
+        let mut reference = None;
+        for usable in [required, required + cache - 1, required + cache] {
+            let mut values = DenseMatrix::from_columns(&[outcome.clone()]).unwrap();
+            let report = absorb_fixed_effects(
+                &design,
+                &weights,
+                &mut values,
+                AbsorbConfig {
+                    solver_memory_budget: Some(FeSolverMemoryBudget {
+                        execution_bytes: 137,
+                        usable_bytes: 137 + usable,
+                    }),
+                    ..config
+                },
+            )
+            .unwrap();
+            assert_eq!(report.used_solver, FeSolverKind::Map);
+            assert_eq!(
+                report.solver_workspace_peak.bytes(),
+                Some(if usable < required + cache {
+                    required
+                } else {
+                    required + cache
+                } as u64)
+            );
+            let result = (
+                values,
+                report.certificate,
+                report.iterations,
+                report.pilot_contraction,
+            );
+            if let Some(previous) = &reference {
+                assert_eq!(&result, previous);
+            }
+            reference = Some(result);
+        }
+    }
+
+    #[test]
+    fn optional_geometry_is_released_before_an_exact_budget_cg_continuation() {
+        let n = 480;
+        let design = FeDesign::new(
+            n,
+            vec![
+                EffectTerm::new(
+                    (0..n).map(|r| (r % 17) as u32).collect(),
+                    17,
+                    true,
+                    vec![(0..n).map(|r| (r as f64).sin()).collect()],
+                )
+                .unwrap(),
+                EffectTerm::new(
+                    (0..n).map(|r| (r % 13) as u32).collect(),
+                    13,
+                    true,
+                    vec![(0..n).map(|r| (r as f64 * 0.7).cos()).collect()],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        let weights = vec![1.0; n];
+        let mut original = DenseMatrix::zeros(n, 8).unwrap();
+        for row in 0..n {
+            for rhs in 0..8 {
+                original[(row, rhs)] = ((row * 13 + rhs * 7) as f64 * 0.31).sin()
+                    + (row % 17) as f64 * (row as f64).sin();
+            }
+        }
+        let config = AbsorbConfig {
+            map: MapConfig {
+                tolerance: 1e-12,
+                ..MapConfig::default()
+            },
+            ..AbsorbConfig::default()
+        };
+        let map = generic_fe_solver_bytes(&design, 8, FeSolverKind::Map, config.lsmr).unwrap();
+        let cg = generic_fe_solver_bytes(&design, 8, FeSolverKind::Cg, config.lsmr).unwrap();
+        let cache = CertificateContext::new(&design, &weights)
+            .cache_bytes()
+            .unwrap();
+        assert!(map + cache < cg);
+        let mut reference = None;
+        for budget in [cg, cg + cache - 1, cg + cache] {
+            let mut values = original.clone();
+            let report = absorb_fixed_effects(
+                &design,
+                &weights,
+                &mut values,
+                AbsorbConfig {
+                    solver_memory_budget: Some(FeSolverMemoryBudget {
+                        execution_bytes: 0,
+                        usable_bytes: budget,
+                    }),
+                    ..config
+                },
+            )
+            .unwrap();
+            assert_eq!(report.used_solver, FeSolverKind::Cg);
+            assert!(!report.fallback_used);
+            assert_eq!(
+                report.solver_workspace_peak.bytes(),
+                Some(if budget < cg + cache { cg } else { cg + cache } as u64)
+            );
+            let result = (
+                values,
+                report.certificate,
+                report.iterations,
+                report.pilot_contraction,
+            );
+            if let Some(previous) = &reference {
+                assert_eq!(&result, previous);
+            }
+            reference = Some(result);
+        }
     }
 
     #[test]

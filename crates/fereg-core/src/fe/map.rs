@@ -1,8 +1,11 @@
+#[cfg(test)]
+use crate::fe::certify_residuals_with_reference_norms;
+use super::certificate::CertificateContext;
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::ProjectionWorkspace;
 use crate::fe::{
-    certify_residuals_with_reference_norms, project_effect_in_place, weighted_column_norms,
+    project_effect_in_place, weighted_column_norms,
     CertifiedBorrowedMap, FeCertificate, FeDesign, FeSolverKind, SolveReport, SolveStopReason,
 };
 use std::time::Instant;
@@ -33,6 +36,15 @@ pub fn absorb_map(
     values: &mut DenseMatrix,
     config: MapConfig,
 ) -> Result<SolveReport> {
+    absorb_map_with_context(&CertificateContext::new(design, weights), values, config)
+}
+
+pub(super) fn absorb_map_with_context(
+    context: &CertificateContext<'_>,
+    values: &mut DenseMatrix,
+    config: MapConfig,
+) -> Result<SolveReport> {
+    let (design, weights) = context.inputs();
     validate_config(config)?;
     let started = Instant::now();
     if design.nobs() != values.nrows() || weights.len() != values.nrows() {
@@ -43,13 +55,7 @@ pub fn absorb_map(
     }
     let reference_norms = weighted_column_norms(values, weights)?;
     if design.effects().is_empty() {
-        let certificate = certify_residuals_with_reference_norms(
-            design,
-            weights,
-            values,
-            &reference_norms,
-            config.tolerance,
-        )?;
+        let certificate = context.certify(values, &reference_norms, config.tolerance)?;
         return Ok(SolveReport {
             checkpoint_retries: 0,
             solver_workspace_peak: crate::memory::SolverWorkspacePeak::UNMODELED,
@@ -103,13 +109,7 @@ pub fn absorb_map(
             }
         }
         if iteration % config.check_every == 0 || iteration == config.max_iterations {
-            let certificate = certify_residuals_with_reference_norms(
-                design,
-                weights,
-                values,
-                &reference_norms,
-                config.tolerance,
-            )?;
+            let certificate = context.certify(values, &reference_norms, config.tolerance)?;
             if certificate.passed {
                 return Ok(SolveReport {
                     checkpoint_retries: 0,
