@@ -9,9 +9,18 @@ import pandas as pd
 
 from surface import columns, configure, stage
 from surface_audit import absorbed_design
+from designs import weak_slope_memberships
 
 
 class SurfaceTests(unittest.TestCase):
+    def test_weak_slope_barbell_has_only_four_cross_block_rows(self):
+        for n in (960, 1920, 7680, 61440):
+            worker, firm = weak_slope_memberships(n)
+            half = max(2, (n // 24) // 40)
+            self.assertEqual(np.count_nonzero((worker-1)%2 != (firm-1)//half), 4)
+            self.assertEqual(np.bincount(worker)[1:].min(), 24)
+            self.assertGreater(np.bincount(firm)[1:].min(), 1)
+
     def test_keyed_operators_keep_panel_boundaries_and_time_gaps(self):
         frame = pd.DataFrame(dict(ts_panel=[1, 1, 1, 2, 2], ts_time=[1, 2, 4, 1, 2],
                                   x1=[1., 3., 7., 11., 17.],

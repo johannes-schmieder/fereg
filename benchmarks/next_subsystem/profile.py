@@ -238,3 +238,30 @@ def instrument_owned_fe(root):
         else:
             replace(marker, f"            development_parts[{index}] += development_lap.elapsed().as_secs_f64();\n            development_lap = std::time::Instant::now();\n" + marker)
     path.write_text(text)
+
+    path = root / "crates/fereg-core/src/fe/projection.rs"
+    text, tests = path.read_text().split("\n#[cfg(test)]", 1)
+    def replace_projection(before, after):
+        nonlocal text
+        assert text.count(before) == 1, before
+        text = text.replace(before, after)
+    replace_projection("    for level in 0..effect.n_levels() {", '''    let development_validation = _profile_timer.0.elapsed().as_secs_f64();
+    let mut development_parts = [0.0_f64; 3];
+    for level in 0..effect.n_levels() {
+        let mut development_lap = std::time::Instant::now();''')
+    replace_projection("        solve_linear_system(", '''        development_parts[0] += development_lap.elapsed().as_secs_f64();
+        development_lap = std::time::Instant::now();
+        solve_linear_system(''')
+    subtraction = ("        // Batch independent RHSs while keeping each fitted value's channel FMA"
+        if "// Batch independent RHSs" in text else
+        "        for observation in effect.level_index().members(level) {\n            for rhs in 0..rhs_count {")
+    replace_projection(subtraction, '''        development_parts[1] += development_lap.elapsed().as_secs_f64();
+        development_lap = std::time::Instant::now();
+''' + subtraction)
+    replace_projection("    }\n    Ok(())\n}\n", '''        development_parts[2] += development_lap.elapsed().as_secs_f64();
+    }
+    eprintln!("FEREG_PHASE|owned_projection|rows={}|rhs={}|validation={:.9}|moments={:.9}|solve={:.9}|subtract={:.9}", values.nrows(), values.ncols(), development_validation, development_parts[0], development_parts[1], development_parts[2]);
+    Ok(())
+}
+''')
+    path.write_text(text + '\n#[cfg(test)]' + tests)

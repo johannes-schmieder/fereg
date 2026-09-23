@@ -10,6 +10,61 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Owned-FE projection RHS arithmetic accepted — 2026-09-22
+
+The [projection milestone](benchmarks/reports/development/owned-fe-projection-local-2026-09-22/README.md)
+and ADR 0114 bind contiguous RHS moment rows and reconstruct fitted values in
+fixed 32-entry tiles. Per-entry arithmetic order, raw Grams, pivoting, rank,
+certificates, automatic routes, DoF, weights and publication are unchanged.
+One 256-byte stack tile is added; no heap state or geometry cache persists
+across calls or PPML weight frames. The one-partition cache guards stay intact.
+
+`projrow1` is `738ce242` plus the archived `projection.rs` overlay; all 529
+captured inputs match. Plugin SHA-256:
+`4bec0e08a01eb8f642c87f9398186d1c3345ce1b9ba3b090b78c6c4b9bc5c522`.
+Seven eligible slope rows gain 6.4–18.4% by paired medians. Original commands
+improve 370→333 and 428→393 ms; fresh K33 improves 1027→901 ms and fresh
+three-partition slopes 902→736 ms. AW/PW controls gain 6–7%, and the new weak
+native control 8.7%. Disconnected gain is below 1%; low memory and categorical,
+PPML and cached-path controls are effectively flat with individual losses.
+All six direct stock timing rows still favor fixest. No tile or guard tuning
+follows these results.
+
+All 96 headline calls pass without timeout, detected overlap or monitor error.
+All 39 native pairs and 52 repeat checks pass unchanged scientific envelopes;
+every pair has exact scientific exports and identical tracked heap peaks.
+All 18 direct stock headline comparisons pass. Validation also passes 31
+distinct Rust tests, two optimized projection tests, actual-plugin ABI/panic
+containment, five harness tests and four licensed OLS/PPML/transaction fixtures.
+
+**Independent science remains explicit.** Three current-candidate bounded
+pilots pass b/V/sample/RSS/rank checks. A fourth three-partition pilot has exact
+FE rank 315 but the registered conservative count 316 on both estimators.
+Its exact-rank covariance checks fail; a separate independent channel/graph
+count and explicit-dummy covariance using the declared policy pass. Both
+records remain archived; no oracle, tolerance or production DoF change is made.
+The first positive-DoF weak pilot has native rank 167 and residual DoF 1747,
+with stock missing four covariance coordinates. A fresh weak pilot passes,
+but the first discrepancy remains and the larger weak timing is native-only.
+Prior weak_d3 failures and disconnected stock discrepancies remain open.
+
+Separate diagnostics put projection at 125→108 and 135→98 ms, mainly from
+RHS moments; certificates stay about 176 ms. Close this projection experiment.
+**Next bounded subsystem:** generic owned-FE fresh certification. Trace
+same-call weighted normalization/QR reuse with explicit ownership and memory
+admission, and compare scheduling in an isolated pinned fixest diagnostic
+before introducing a cache. Keep fresh residual/span checks independent.
+Do not tune either tile, chase the disconnected <1% residual, or reopen closed
+serial-slope/window work.
+
+The archive verifies 3,581 entries, SHA-256
+`f2f1dcf149f93dcd6e368e919619e18f164aa50f44e7c4b76ddf6f6daa7a5b13`.
+The static allocation inventory still fails documented source drift; weighted
+constrained fits, nonretaining CG span instability, factor-base provenance and
+SCC/Linux deferrals remain open. Frozen 77/16/111 definitions and reserved
+seeds are untouched. This is a clean local implementation milestone, not broad
+goal completion, qualification, push or release.
+
 ## Owned-FE raw moments accepted; breadth gaps verified — 2026-09-22
 
 The [generated-term/multi-partition milestone](benchmarks/reports/development/owned-fe-certificate-local-2026-09-22/README.md)

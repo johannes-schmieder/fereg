@@ -7,13 +7,33 @@ import numpy as np
 import pandas as pd
 
 
+def weak_slope_memberships(n):
+    """Two well-populated blocks joined by four observations, with 24 rows per worker."""
+    if n < 960 or n % 24:
+        raise ValueError('Weak slope barbell requires whole 24-row workers and at least 960 rows')
+    row = np.arange(n, dtype=np.int64)
+    worker, period = row // 24, row % 24
+    half = max(2, (n // 24) // 40)
+    block = worker % 2
+    primary = (worker // 2) % half
+    secondary = (primary + 1 + worker // (2 * half)) % half
+    firm = block * half + np.where(period < 16, primary, secondary)
+    bridges = (worker < 2) & (period >= 22)
+    firm[bridges] = (1 - block[bridges]) * half + primary[bridges]
+    return worker + 1, firm + 1
+
+
 def augment(cell, path):
     topology = cell.get("topology")
     if not topology:
         return
     frame = pd.read_stata(path, convert_categoricals=False)
     i = np.arange(len(frame), dtype=np.int64)
-    if topology == "disconnected":
+    if topology == "weak_slope_barbell":
+        if cell['effects'] != ['g1', 'g2']:
+            raise ValueError('Weak slope barbell currently requires two FE partitions')
+        frame['g1'], frame['g2'] = weak_slope_memberships(len(frame))
+    elif topology == "disconnected":
         # Whole five-row workers remain intact; split each other FE label by
         # worker component, giving four disjoint subgraphs without deletion.
         component = (frame.g1.to_numpy(dtype=np.int64) - 1) % 4
