@@ -137,6 +137,8 @@ fn use_initial_checkpoint_lsmr_accelerator(
 
 #[cfg(test)]
 thread_local! {
+    static JOINT_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
+    static JOINT_FINAL_TEST_COUNTS: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
     static STRICT_RESUME_INJECTION: Cell<u8> = const { Cell::new(0) };
     static REPEATED_STRICT_RESUME_INJECTION: Cell<usize> = const { Cell::new(0) };
     static STRICT_BASIS_CHANGE_INJECTION: Cell<u8> = const { Cell::new(0) };
@@ -1917,6 +1919,36 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             interrupt(PpmlInterruptPoint::StrictFinalSolve)?;
             begin_phase_allocation(config.phase_allocation_probe, PpmlPhase::StrictFinalSolve);
             let strict_clock = PpmlPhaseClock::start();
+            if !profile_rebuild_pending
+                && !checkpoint_refinement_pending
+                && session.supports_joint_ppml_direction()
+                && try_joint_strict_final_frame(
+                    &mut session,
+                    &mut workspace,
+                    outcome,
+                    prior_weights,
+                    offset,
+                    config,
+                    checkpoint_tolerance,
+                    &mut frame_generation,
+                    &mut total_inner_iterations,
+                    finite_rank,
+                    objective,
+                    solver_report
+                        .as_mut()
+                        .ok_or_else(|| internal("joint strict solve lacks diagnostics"))?,
+                )?
+            {
+                two_consecutive_convergence = true;
+                converged = true;
+                memory.record_phase(PpmlPhase::StrictFinalSolve, strict_clock.elapsed());
+                record_phase_allocation(
+                    &mut memory,
+                    config.phase_allocation_probe,
+                    PpmlPhase::StrictFinalSolve,
+                );
+                break;
+            }
             // The strict solve must be constructed from the newly accepted
             // eta, never from the pre-step working frame still in the session.
             workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
@@ -2961,6 +2993,171 @@ enum FinalHessianSynchronization {
     Certified,
     ResumeWithCandidate,
     ResumeAcceptedState,
+}
+
+/// Check the Newton direction and final canonical products on one accepted
+/// weight frame. No speculative eta/beta is published. Any movement or basis
+/// change returns to the canonical checkpoint/resume policy below the caller.
+#[allow(clippy::too_many_arguments)]
+fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
+    session: &mut CertifiedLinearSession<'_, P>,
+    workspace: &mut PpmlIterationWorkspace,
+    outcome: &[f64],
+    prior_weights: &[f64],
+    offset: &[f64],
+    config: PreparedPpmlIrlsConfig,
+    checkpoint_tolerance: f64,
+    frame_generation: &mut u64,
+    total_inner_iterations: &mut usize,
+    expected_rank: usize,
+    accepted_objective: PoissonObjective,
+    solver_report: &mut PpmlSolverReport,
+) -> Result<bool> {
+    #[cfg(test)]
+    if JOINT_FINAL_TEST_MODE.get() == 1 {
+        return Ok(false);
+    }
+    #[cfg(test)]
+    JOINT_FINAL_TEST_COUNTS.set((
+        JOINT_FINAL_TEST_COUNTS.get().0 + 1,
+        JOINT_FINAL_TEST_COUNTS.get().1,
+    ));
+    workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
+    *frame_generation = next_frame_generation(*frame_generation)?;
+    refresh_linear_frame(session, workspace, *frame_generation)?;
+    session.set_config(ppml_linear_config(config, checkpoint_tolerance)?)?;
+    let direction = match session.solve_ordinary_ppml() {
+        Ok(output) => output,
+        Err(error) if classify_frozen_linear_fallback(&error).is_some() => return Ok(false),
+        Err(error) => return Err(error),
+    };
+    if !matches!(direction, PpmlOrdinaryLinearOutput::Joint(_)) || !direction.certified() {
+        return Ok(false);
+    }
+    accumulate_inner_iterations(
+        total_inner_iterations,
+        direction.response_absorption_report(),
+    )?;
+    record_checkpoint_solver_observation(
+        solver_report,
+        direction.response_absorption_report(),
+        false,
+    )?;
+    fill_candidate_eta_from_frozen_output(&direction, offset, workspace.candidate_eta_mut())?;
+    fill_candidate_coefficients_from_frozen_output(
+        &direction,
+        workspace.candidate_coefficients_mut(),
+    )?;
+    let rank = direction.basis().kept_generated_columns().len();
+    #[cfg(test)]
+    if JOINT_FINAL_TEST_MODE.get() == 2 {
+        JOINT_FINAL_TEST_MODE.set(0);
+        inject_candidate_profile_movement(workspace);
+    }
+    let objective =
+        match workspace.evaluate_candidate_objective(outcome, prior_weights, config.ppml.bounds) {
+            Ok(value) => Some(value),
+            Err(error) if error.code == ErrorCode::NonConvergence => None,
+            Err(error) => return Err(error),
+        };
+    let consistent = strict_candidate_decision_with_coefficient_slots(
+        true,
+        true,
+        expected_rank,
+        rank,
+        workspace.eta(),
+        workspace.coefficients(),
+        accepted_objective,
+        workspace.candidate_eta(),
+        workspace.candidate_coefficients(),
+        objective,
+        config.ppml,
+        None,
+    ) == FinalHessianSynchronization::Certified;
+    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        super::categorical_lsmr::emit_solver_trace_line(&format!(
+            "FEREG_SOLVER_TRACE|phase=joint_strict_direction|consistent={}|eta_change={:.17e}|beta_change={:.17e}",
+            u8::from(consistent), relative_infinity_difference(workspace.eta(), workspace.candidate_eta()),
+            relative_infinity_difference(workspace.coefficients(), workspace.candidate_coefficients())));
+    }
+    if !consistent {
+        return Ok(false);
+    }
+    // Keep the accepted point. The strict direction is only a witness; the
+    // canonical final rank/inverse below independently validates its basis on
+    // these exact weights before either result can authorize publication.
+    workspace.prepare_final_hessian_response(offset)?;
+    *frame_generation = next_frame_generation(*frame_generation)?;
+    if !refresh_final_linear_frame(session, workspace, *frame_generation)? {
+        return Ok(false);
+    }
+    let transaction = session.strict_candidate()?;
+    let canonical = transaction.candidate();
+    let unchanged = transaction.basis_unchanged();
+    #[cfg(test)]
+    let unchanged = if JOINT_FINAL_TEST_MODE.get() == 3 {
+        JOINT_FINAL_TEST_MODE.set(0);
+        false
+    } else {
+        unchanged
+    };
+    accumulate_inner_iterations(total_inner_iterations, canonical.fit().absorption_report())?;
+    fill_candidate_eta_from_linear_output(&canonical, offset, workspace.candidate_eta_mut())?;
+    fill_candidate_coefficients_from_linear_output(
+        &canonical,
+        workspace.candidate_coefficients_mut(),
+    )?;
+    let objective =
+        match workspace.evaluate_candidate_objective(outcome, prior_weights, config.ppml.bounds) {
+            Ok(value) => Some(value),
+            Err(error) if error.code == ErrorCode::NonConvergence => None,
+            Err(error) => return Err(error),
+        };
+    let accepted = strict_candidate_decision_with_coefficient_slots(
+        canonical.certified(),
+        unchanged,
+        expected_rank,
+        canonical.fit().finite_rank(),
+        workspace.eta(),
+        workspace.coefficients(),
+        accepted_objective,
+        workspace.candidate_eta(),
+        workspace.candidate_coefficients(),
+        objective,
+        config.ppml,
+        None,
+    ) == FinalHessianSynchronization::Certified
+        && relative_infinity_difference(workspace.eta(), workspace.candidate_eta())
+            <= config.ppml.tolerance
+        && relative_infinity_difference(
+            workspace.coefficients(),
+            workspace.candidate_coefficients(),
+        ) <= config.ppml.tolerance;
+    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        super::categorical_lsmr::emit_solver_trace_line(&format!(
+            "FEREG_SOLVER_TRACE|phase=joint_strict_final|accepted={}|basis_unchanged={}",
+            u8::from(accepted),
+            u8::from(unchanged)
+        ));
+    }
+    if accepted {
+        transaction.commit();
+    } else {
+        record_checkpoint_solver_observation(
+            solver_report,
+            canonical.fit().absorption_report(),
+            false,
+        )?;
+        transaction.rollback();
+    }
+    #[cfg(test)]
+    if accepted {
+        JOINT_FINAL_TEST_COUNTS.set((
+            JOINT_FINAL_TEST_COUNTS.get().0,
+            JOINT_FINAL_TEST_COUNTS.get().1 + 1,
+        ));
+    }
+    Ok(accepted)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -4940,8 +5137,8 @@ mod tests {
         assert!(plan.with_solver_workspace(wide.incremental_bytes).is_ok());
     }
 
-    fn memory_dimensions(
-        prepared: &PreparedOlsData,
+    fn memory_dimensions<P: PreparedOlsFitView + ?Sized>(
+        prepared: &P,
         config: PreparedPpmlIrlsConfig,
     ) -> PpmlMemoryDimensions {
         let design = prepared.fit_owned_fe_design().expect("fixture FE design");
@@ -5773,6 +5970,62 @@ mod tests {
                     <= 1e-10
             );
         }
+    }
+
+    #[test]
+    fn joint_strict_final_preserves_truth_current_hessian_and_canonical_retry() {
+        let n = 240;
+        let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
+        let h: Vec<_> = (0..n).map(|i| (i / 20 % 3) as f64).collect();
+        let x: Vec<_> = (0..n)
+            .map(|i| ((i % 5) as f64 - 2.).powi(2) + (i as f64 / 17.).sin())
+            .collect();
+        let eta: Vec<_> = (0..n)
+            .map(|i| {
+                0.3 + 0.2 * x[i] + g[i] * 0.1 - h[i] * 0.05
+                    + (g[i] + h[i]) * ((i % 5) as f64 - 2.) * 0.02
+            })
+            .collect();
+        let y: Vec<_> = eta.iter().map(|v| v.exp()).collect();
+        let prepared = prepared_joint_slopes(&y, &x, &g, &h);
+        let weights: Vec<_> = (0..n).map(|i| 0.2 + (i % 13) as f64 / 7.).collect();
+        for threads in [1, 4] {
+            let mut config = PreparedPpmlIrlsConfig::default();
+            config.linear.execution.threads =
+                crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+            for mode in [0, 1, 2, 3] {
+                JOINT_FINAL_TEST_MODE.set(mode);
+                JOINT_FINAL_TEST_COUNTS.set((0, 0));
+                let fit = fit_prepared_ppml_irls(
+                    &prepared,
+                    &y,
+                    &weights,
+                    &vec![0.; n],
+                    config,
+                    plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                    None,
+                )
+                .unwrap();
+                assert!(
+                    fit.diagnostics().converged && fit.diagnostics().two_consecutive_convergence
+                );
+                assert!(fit.diagnostics().final_score.passed);
+                assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10);
+                assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+                validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
+                if mode == 0 {
+                    assert_eq!(JOINT_FINAL_TEST_COUNTS.get().1, 1);
+                }
+                if mode == 1 {
+                    assert_eq!(JOINT_FINAL_TEST_COUNTS.get(), (0, 0));
+                }
+                if mode >= 2 {
+                    assert!(JOINT_FINAL_TEST_COUNTS.get().0 >= 1);
+                    assert_eq!(JOINT_FINAL_TEST_MODE.get(), 0);
+                }
+            }
+        }
+        JOINT_FINAL_TEST_MODE.set(0);
     }
 
     #[test]

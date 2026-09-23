@@ -2041,13 +2041,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.frozen_ppml_output()
     }
 
-    pub(crate) fn solve_ordinary_ppml(&mut self) -> Result<PpmlOrdinaryLinearOutput<'_>> {
-        let eligible = self.config.execution.mode == PreparedOlsExecutionMode::Fast
+    pub(crate) fn supports_joint_ppml_direction(&self) -> bool {
+        self.config.execution.mode == PreparedOlsExecutionMode::Fast
             && self
                 .frozen_basis
                 .as_ref()
                 .is_some_and(|b| !b.kept_generated_columns().is_empty())
-            && matches!(self.fe_projector.as_ref(), Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) if projector.joint_slopes().is_some());
+            && matches!(self.fe_projector.as_ref(), Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) if projector.joint_slopes().is_some())
+    }
+
+    pub(crate) fn solve_ordinary_ppml(&mut self) -> Result<PpmlOrdinaryLinearOutput<'_>> {
+        let eligible = self.supports_joint_ppml_direction();
         if !eligible {
             return self
                 .solve_frozen_ppml()
@@ -2740,9 +2744,18 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             require_newer(self.generations.weights, generation, "weight")?;
         }
         let prior_weight_generation = self.generations.weights;
+        let prior_geometry_generation = self.generations.map_geometry();
         self.refresh_response(response, generation)?;
         if identical_weights {
             self.generations.weights = generation;
+            if let Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) =
+                self.fe_projector.as_mut()
+            {
+                projector.rebind_identical_weight_generation(
+                    prior_geometry_generation,
+                    self.generations.map_geometry(),
+                );
+            }
             if let Some(within) = self.within.as_mut() {
                 if within.generations.sample == self.generations.sample
                     && within.generations.topology == self.generations.topology

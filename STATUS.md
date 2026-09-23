@@ -10,6 +10,95 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Single-frame slope finalization accepted; one-FE whole-path redesign next — 2026-09-23
+
+The active objective remains whole public PPML time <= **0.90 times comparable
+pinned stock fixest** wherever achievable. This is a bounded implementation
+milestone, not completion. It supersedes the pending candidate and unused-seed
+entries below; the broader per-case plan remains active.
+
+Accept `jointfinal2`, based on `00e9b30c`, under
+[ADR 0131](docs/adr/0131-single-frame-ppml-slope-finalization.md) and its
+[source-bound report](benchmarks/reports/development/ppml-single-frame-finalization-local-2026-09-23/README.md).
+All **536 computational inputs** match plugin
+`96bea000c5ca47fa0176ae37302b793fec13470efbcbbf657b7446e7cf99506b`.
+The restored immutable container verifies **9,799 receipts**, SHA-256
+`5fa293ccf608f3ecedab1c0cbb7410c66fbee617d681342df96957c5e7527dce`.
+
+Eligible fast slope finalization now uses a strict joint Newton witness followed
+by one canonical rank/within-design/bread/Hessian construction at the unchanged
+accepted weights. Fresh projection, finite score, model-space, objective,
+reconstruction and final-Hessian conditions remain mandatory. Exact owned weight
+bits/scales and sample/topology generations govern geometry relabeling; revoked
+authority cannot revive. A declined witness or comparison retains canonical retry.
+There is no additional heap bank. Ordinary joint solving is unchanged; the
+shortcut excludes low, categorical, one-FE and other solver families.
+
+Development seed330 baseline/candidate/strict-stock medians (ms): two slope
+partitions N30720/K6/T4 **149/139/116**; unbalanced three FE N30720/K6/T4
+**155/150/116**; larger N61440/K10/T8 **337/321/230**. Fresh seed331:
+
+| Case | Baseline | Candidate | Stock | Candidate/stock |
+| --- | ---: | ---: | ---: | ---: |
+| Two slope partitions N23040 K8 T1 | 159 | 149 | 294 | Unranked |
+| Unbalanced three FE N38400 K6 T4 | 195 | 184 | 154 | 1.195 |
+| Wider unbalanced three FE N46080 K12 T8 | 283 | 273 | 960 | 0.284 |
+| Multiple slopes N7680 K6 T4 | 53 | 51 | 50 | 1.020 |
+| Weak barbell N15360 K6 T4 | 69 | 64 | 1146 | 0.056 |
+| Disconnected N15360 K6 T4 | 92 | 88 | 70 | 1.257 |
+
+Every main paired native change improves; fresh median gains are **3.5–7.2%**.
+The first fresh cell's three stock pairs fail one fitted-mean coordinate:
+maximum mean error 6.437e-7, maximum tolerance ratio 1.027866. Native pairs and
+all independent public states pass, but this does not identify which large
+returned mean is responsible. Keep stock unranked. Small passing pilots and
+previous seeds do not resolve this discrepancy or historical reference failures.
+
+**53 distinct Rust checks**, actual-plugin ABI/panic checks, **five licensed
+fixtures**, and all **15 small independent Poisson/Hessian oracle checks** pass.
+All **195 public applications**, **151 PPML public states** and **52 native PPML
+pairs** pass; 44 of 47 stock pairs pass, with the three failures above preserved.
+No headline overlap/monitor error is recorded. One existing environment-dependent
+Rust harness test remains ignored. Failed build/controller/diagnostic setup
+attempts are retained separately. The actual T1/T4 warmed allocation audit stays
+zero-event/zero-growth. Median tracked and modeled peaks are unchanged; larger
+development peak **58,342,238 bytes**, modeled **65,262,268 bytes**.
+
+Excluded controls have **20 PPML and 22 OLS exact scientific-export pairs**.
+Initial small timing losses received five identical-input pairs: dense categorical
+PPML **191/191 ms**, slope OLS **69/66**, low categorical OLS **64/64**, with
+overlapping ranges. Preserve the original losses too; no excluded speed claim.
+Current candidate/stock excluded medians remain low slopes **221/113**, sparse
+categorical **234/136**, unbalanced categorical **181/113**, dense categorical
+**193/232**, and one FE **128/52**. Low versus ordinary stock is not memory-matched.
+
+The large native strict/final phase falls **86.945 -> 72.783 ms**; outer iterations
+remain six. Isolated diagnostic same-input calls replace **43.483 + 34.953 ms**
+canonical transactions with a **20.704 ms** strict joint witness and **44.486 ms**
+canonical final transaction. Final reprojection costs **23.369 ms**, norm refresh
+**3.857**, and finite/rank assembly **16.704**, including **10.459 ms** reprojecting
+the nearly zero residual. Ordinary joint calls take 18.2–20.8 ms; fresh single-RHS
+FE certificates take about 0.8–1.1 ms. These diagnostic builds are not headline
+comparators. The 321 ms large fit still needs **114 ms** to reach the 207 ms target.
+
+**Next bounded implementation:** one-FE whole-path concentration and final product
+ownership. Existing analytic concentration already converges in three outer
+iterations in the captured one-FE diagnostic. Initial retained construction is
+18.4 ms, strict transactions 15.6 + 11.3 ms, and the complete strict/final phase
+37.3 ms. The current public 128/52 ms comparison needs an **81.2 ms** reduction to
+46.8 ms; ordinary-step polishing or a small copy alone cannot deliver it. Design
+shared accepted-weight centered-design/moment and canonical final products with
+independent rank/bread/reconstruction checks; remove the second selected-design
+copy through explicit ownership. Include initial and public/outer passes in the
+budget. Refresh weight-dependent moments on the exact accepted frame. Do not
+continue threshold tuning this accepted slope shortcut or revive rejected probes.
+
+Seeds **202609330/331 are consumed**; **202609332** is reserved and unused for
+the next fresh confirmation, with case declarations still required. Known static
+allocation drift, constrained-fit/CG failures, comparator discrepancies and
+deferred platform/physical-cap qualification remain open. Frozen 77/16/111
+definitions are unchanged. No push, release, SCC retry or stopped campaign restart.
+
 ## Updated PPML plan: close per-case runtime budgets — 2026-09-23
 
 The target is whole public `feppml` time **<= 0.90 times scientifically comparable

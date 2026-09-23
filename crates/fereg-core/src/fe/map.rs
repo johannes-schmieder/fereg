@@ -424,6 +424,22 @@ impl ReusableMapAbsorber {
             .and_then(|s| s.joint.as_deref())
     }
 
+    /// The owning session proved raw weight bits and every scale field equal.
+    /// Only surviving authority on that exact frame can follow its new label.
+    pub(crate) fn rebind_identical_weight_generation(
+        &mut self,
+        prior: MapGeometryGeneration,
+        next: MapGeometryGeneration,
+    ) {
+        if prior.sample == next.sample && prior.topology == next.topology {
+            if let Some(geometry) = self.certificate_geometry.as_mut() {
+                if geometry.generation == Some(prior) {
+                    geometry.generation = Some(next);
+                }
+            }
+        }
+    }
+
     pub(crate) fn invalidate_joint_slopes(&mut self) {
         if let Some(geometry) = self.certificate_geometry.as_mut() {
             geometry.generation = None;
@@ -2082,6 +2098,45 @@ mod tests {
             assert_eq!(geometry.generation, Some(generation));
             assert_eq!(geometry.preparations, step / 2 + 1);
             assert_eq!(cached.coefficient_solver.as_ref().unwrap().coupling_preparations(), Some(step / 2 + 1));
+            if step == 1 {
+                let wrong_sample = MapGeometryGeneration {
+                    sample: generation.sample + 1,
+                    ..generation
+                };
+                cached.rebind_identical_weight_generation(generation, wrong_sample);
+                assert_eq!(
+                    cached.certificate_geometry.as_ref().unwrap().generation,
+                    Some(generation)
+                );
+                let next = MapGeometryGeneration {
+                    weights: generation.weights + 100,
+                    ..generation
+                };
+                cached.rebind_identical_weight_generation(generation, next);
+                let repeated = cached
+                    .absorb_in_generation(
+                        &weights,
+                        values.clone(),
+                        MapConfig::default(),
+                        false,
+                        Some(next),
+                    )
+                    .unwrap();
+                assert_eq!(repeated.residualized(), expected.residualized());
+                assert_eq!(
+                    cached.certificate_geometry.as_ref().unwrap().preparations,
+                    1
+                );
+                assert_eq!(
+                    cached
+                        .coefficient_solver
+                        .as_ref()
+                        .unwrap()
+                        .coupling_preparations(),
+                    Some(1)
+                );
+                generation = next;
+            }
             if step == 5 {
                 values[(0, 0)] = f64::NAN;
                 assert!(cached
@@ -2093,6 +2148,17 @@ mod tests {
                         Some(generation)
                     )
                     .is_err());
+                assert_eq!(
+                    cached.certificate_geometry.as_ref().unwrap().generation,
+                    None
+                );
+                cached.rebind_identical_weight_generation(
+                    generation,
+                    MapGeometryGeneration {
+                        weights: generation.weights + 1,
+                        ..generation
+                    },
+                );
                 assert_eq!(
                     cached.certificate_geometry.as_ref().unwrap().generation,
                     None
