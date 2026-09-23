@@ -10,6 +10,115 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Updated PPML plan: close per-case runtime budgets — 2026-09-23
+
+The target is whole public `feppml` time **<= 0.90 times scientifically comparable
+pinned stock fixest in each case wherever achievable**. It is not an aggregate
+win-rate target. This planning update preserves the pending implementation below;
+it introduces no new accepted runtime change or speed claim. Accepted production
+remains `4527694e` / `jointprod2` and its source-bound report below.
+
+Current accepted-artifact budgets, robust inference plus fitted means, in ms:
+
+| Case | fereg | Stock | Target | Further fereg reduction |
+| --- | ---: | ---: | ---: | ---: |
+| Two slope partitions N30720 K6 T4, development seed329 | 147 | 118 | 106.2 | 27.8% |
+| Unbalanced three-FE slopes N30720 K6 T4, development seed329 | 153 | 118 | 106.2 | 30.6% |
+| Larger three-FE slopes N61440 K10 T8, development seed329 | 335 | 227 | 204.3 | 39.0% |
+| One categorical FE N61440 K10 T4, seed330 | 128 | 51 | 45.9 | 64.1% |
+| Sparse categorical two FE N61440 K10 T4, seed330 | 245 | 136 | 122.4 | 50.0% |
+| Unbalanced categorical three FE N30720 K10 T4, seed330 | 178 | 115 | 103.5 | 41.9% |
+
+Low slopes N30720/K6/T4 are 222 versus 118 ms, implying a 106.2 ms aspirational
+target and 52.2% reduction; native low versus ordinary stock is not memory-matched.
+Several fresh slope cases and dense categorical already clear 0.90. Preserve
+their exact-source evidence and protect those wins. The multiple-slope 0.900
+rounded median has no comfortable timing margin. These budgets are arithmetic,
+not forecasts or claims covering an entire design family.
+
+1. **Complete the strict/final redesign, then account for the remaining slope
+   gap.** Test the pending tight joint Newton witness followed by one canonical
+   rank/bread/Hessian construction on the unchanged accepted weight frame.
+   Only bit-identical weights and scales may transfer weighted geometry authority;
+   a changed basis, failed witness or movement retains canonical retry. Independently
+   verify all final conditions. The isolated accepted-source diagnostic found
+   about 43 ms strict plus 35 ms final work on the larger case; that is an envelope,
+   not all removable time. Even eliminating the accepted report's entire 87 ms
+   strict/final phase would not cover its 131 ms public deficit. After this decision,
+   examine initial construction and the remaining joint projected-control setup,
+   normalization, current-weight products and reconstruction. Pursue shared row
+   passes and certified coefficient warm starts within the existing Schur owner;
+   retain a new organization only if complete public work improves. Do not restart
+   the rejected response-history or residual-extrapolation probes.
+2. **Finish exact one-FE concentration as an end-to-end engine.** Analytic group
+   elimination already exists; adding it again is not the task. Remove its second
+   selected finite-design copy through borrowing or bounded row access. Reuse
+   exact-state centered moments and final products only where they can discharge
+   the canonical rank, inverse and reconstruction duties independently. Count
+   initial, ordinary and final passes explicitly. If redundant canonical work
+   dominates, redesign its interfaces instead of polishing ordinary Newton steps.
+   Preserve initial rank/status policy and retain numerical fallback. The 64%
+   required reduction makes a whole-path change necessary.
+3. **Close sparse and unbalanced categorical losses.** Compare the existing joint
+   LSMR route with a direct finite block coupled to reusable categorical FE
+   operators/preconditioners. Reuse topology across IRLS, refresh numerical
+   weights, and share compatible RHS/product work. Compare on identical frozen
+   frames first; do not assume slope routing guards can simply be removed. Choose
+   one successful organization using structural work, dimensions and admitted
+   memory. Protect dense categorical wins and weak/disconnected graph behavior;
+   remove superseded ordinary machinery once replacement is established.
+4. **Make low memory an efficient solver design.** Adapt successful joint or
+   concentrated computation to bounded row tiles and streamed finite products,
+   avoiding repeated scratch decoding and unnecessary full-design rewrites. Count
+   I/O bytes and passes as well as arithmetic. No hidden resident N-by-K copy.
+   Evaluate fast/low native equivalence and report actual/modeled peaks separately
+   from ordinary-stock timing. Refusal must retain an affordable certified route
+   or fail atomically. Physical-cap qualification remains deferred.
+5. **Remove remaining public-command overhead where measurements justify it.**
+   Once large solve costs fall, measure loading, generated/factor terms, worker
+   setup, inference and saved-output reconstruction, including small fits and
+   wider controls. Share compatible final row scans and owned data; preserve fresh
+   scores and main-thread SPI. Inference is only 1.3 ms in the larger accepted
+   slope case, so it cannot be the first answer to that case's 131 ms deficit.
+6. **Confirm breadth and close each loss explicitly.** Use predeclared fresh
+   cases around any successful mechanism: imbalance, weak/disconnected topology,
+   multiple slopes, rank deficiency, changing prior/IRLS weights, N/K, T1/T4/T8,
+   robust/clustered VCE, requested outputs and memory limits. Keep no-FE, generated
+   terms and higher-dimensional cases in the adaptive coverage inventory rather
+   than claiming untested families. Protect one/two/three-FE and slope OLS,
+   categorical PPML, separation and failure atomicity with focused controls.
+
+Each candidate has three decision stages: frozen computational comparison,
+alternating public baseline/candidate/stock screen, then fresh confirmation.
+Extend repetitions when spread or timer precision prevents a 10% conclusion.
+Compare matched work against unmodified pinned fixest with `glm.tol=1e-10` and
+`fixef.tol=1e-11`; instrumented reference builds remain diagnostic. No compilation,
+profiling, archiving or competing fits accompany headline timings. Independent
+explicit-design WLS and Poisson/Hessian oracles precede ranking; ordinary fixest
+weights never serve as an FW inference oracle. Report distributions, paired
+changes, failures, scientific discrepancies and memory per case. Preserve all
+samples, tolerances, rank/DoF/weight/separation policies and final certificates.
+
+Accept smaller broad, cheap gains when reliable, but do not call a subsystem done
+while a large budget remains. Reject inconclusive complex candidates, record why,
+and choose a materially different design. Each adopted milestone receives its
+own ADR where required, immutable report and coherent local commit. Any remaining
+loss must end with measured required versus avoidable costs and a concrete next
+mechanism. No claim of universal parity, release qualification or Linux results.
+Frozen 77/16/111 definitions and known deferred failures remain unchanged.
+
+**Pending experiment preserved:** three modified Rust files implement the
+strict/final candidate; no production adoption or public candidate timing yet.
+Current focused checks pass: 37 prepared-IRLS and 10 FE-MAP tests; one existing
+FE-MAP harness test remains ignored. The analytic test includes T1/T4, disabled
+candidate, forced predictor movement and forced basis-change retry. Local
+`target/ppml-final-construction-20260923/pending-plan-checkpoint.json` binds source,
+patch and test-log hashes; its adjacent patch preserves this exact working state.
+Diagnostic `finalgeomdiag2` is accepted-source instrumentation, not the candidate.
+Seed **202609331** remains predeclared and unused for candidate fresh confirmation.
+Resume by reviewing/formatting this candidate, building an immutable artifact,
+running focused licensed/oracle boundaries, then the public decision screen.
+
 ## Joint finite/FE PPML directions accepted; exact-state final work next — 2026-09-23
 
 The active objective remains whole public PPML time <= **0.90 times comparable
