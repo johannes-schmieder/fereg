@@ -10,6 +10,65 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Reusable PPML slope projection accepted — 2026-09-23
+
+The [PPML projection milestone](benchmarks/reports/development/reusable-ppml-projection-local-2026-09-23/README.md)
+and ADR 0119 extend the accepted parallel group-coefficient/row kernel to the
+reusable generic MAP owner. Only topology and scratch storage persist. Each
+projection rebuilds coefficients and weighted Grams from its current frame;
+all arithmetic, rank, certificates, iterations, final-Hessian requirements
+and publication boundaries remain unchanged. This follows the coverage commit
+`fa20dfd5`; all 529 computational inputs match candidate `ppmlproj1`, plugin
+`f42ed127513640759dd4b0135c665d39e49061b40627390574bbb81fe48b17c2`.
+
+Four eligible threaded PPML rows gain 27.8–37.8% by paired medians:
+two slope partitions 1463→910 ms, unbalanced three FE slopes 918→596 ms,
+fresh wider T8 2201→1406 ms and low memory 1158→832 ms. Added tracked heap
+is 35–656 KB. The optional bank is admitted for the entire linear-session
+lifetime, has stable reported capacities, and falls back to serial if it
+cannot fit or allocate. Explicit non-MAP engines, Mu exploration, categorical
+specializations and serial/small fits retain their execution. Mu's separate
+parent separation allowance is not enlarged.
+
+Comparisons use the pinned unmodified stock library with the previously
+adjudicated public tolerances `glm.tol=1e-10, fixef.tol=1e-11`, robust inference
+and means inside both command timers. Stock still wins all slope rows. Serial
+PPML has a 0.4% paired median loss (1437→1443 ms); excluded OLS slope medians
+are 67→68 ms. Categorical controls are effectively unchanged. These losses
+and all distributions remain in the report. Earlier default-stock scientific
+discrepancies are neither erased nor ranked as comparable timings.
+
+All 66 headline calls pass without timeout, overlap or monitor errors. All 26
+native pairs including pilots have exact scientific exports and non-clock
+solver fields; all 20 mean pairs and 44 repeat comparisons are exact. All 18
+headline stock comparisons and fresh public states pass. Two independent
+Poisson/Hessian/rank pilots pass for baseline, candidate and strict stock.
+Sixty-five distinct Rust tests, actual-plugin ABI/panic checks and four
+licensed saved-slope/weight-inference/OLS transaction fixtures pass.
+
+**Visible fixture failure:** `estimate_ppml_hidden_transaction.do` fails on
+both baseline and candidate at its unchanged receipt minor-version assertion
+(2 versus current source 3). Prior injected transaction stages run, but the
+whole fixture is not counted as passing. Its repair is separate from this
+performance change. No tolerances, samples or assertion are weakened.
+
+Isolated profiles retain 1476/1240 projections while projection time falls
+1.086→.472 and .644→.325 seconds. Fresh certificates stay about .470/.249
+seconds. Close this scheduling milestone; do not tune thresholds or chunks.
+**Next bounded investigation:** reduce repeated certified slope MAP work in
+PPML, first examining an accelerator scoped to the current weight/response
+frame and fresh certificate costs. Retain current-generation ownership,
+rank and final-Hessian checks. Weighted/clustered, weak/disconnected and
+separation-heavy slope throughput remains unmeasured by this screen.
+
+The 2,355-entry archive verifies SHA-256
+`bb65391b56f47e49679a1455b10731c86c9267a2256f28de9de8dedbb7dc751d`.
+Seeds 202609292–296 are used; 202609297 onward remain unused here. Frozen
+77/16/111 definitions, static allocation drift, factor-base provenance,
+constrained-fit/nonretaining-CG issues and SCC/Linux deferrals remain unchanged.
+No stopped campaign, qualification, push or release is resumed. The broad
+performance goal remains open; this opening supersedes older next steps.
+
 ## PPML slope opportunity verified; matched mean harness added — 2026-09-23
 
 The [PPML breadth milestone](benchmarks/reports/development/ppml-slope-opportunity-local-2026-09-23/README.md)

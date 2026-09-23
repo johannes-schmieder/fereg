@@ -1465,6 +1465,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             group_corrections: self.workspace.group_corrections.capacity(),
             projection_gram: self.workspace.parallel_group_weights.capacity(),
             projection_rhs: self.workspace.parallel_group_means.capacity(),
+            projection_workers: 0,
             certificate_columns: self.workspace.parallel_dot_sums.capacity(),
             certificate_basis: 0,
             accelerator_state: self

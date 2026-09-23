@@ -695,6 +695,9 @@ pub struct PpmlMemoryPlan {
     /// Retained workspace for the selected PPML-specific ordinary-frame
     /// engine. MAP is already included in the base route inventory.
     pub solver_workspace_bytes: u128,
+    /// Optional generic MAP projection bank, retained from preparation through
+    /// the final Hessian solve and released with the linear session.
+    pub reusable_projection_bytes: u128,
 }
 
 impl PpmlMemoryPlan {
@@ -731,6 +734,24 @@ impl PpmlMemoryPlan {
         self.selected_inventory()
             .peak_bytes
             .saturating_add(self.solver_workspace_bytes)
+            .saturating_add(self.reusable_projection_bytes)
+    }
+
+    /// Optional storage must never make an otherwise affordable fit fail.
+    pub(crate) fn admit_reusable_projection(&mut self, bytes: u128) -> bool {
+        let Some(peak) = self
+            .selected_inventory()
+            .peak_bytes
+            .checked_add(self.solver_workspace_bytes)
+            .and_then(|n| n.checked_add(bytes))
+        else {
+            return false;
+        };
+        if self.usable_bytes.is_some_and(|usable| peak > usable) {
+            return false;
+        }
+        self.reusable_projection_bytes = bytes;
+        true
     }
 
     pub(crate) fn with_solver_workspace(mut self, bytes: u128) -> Result<Self> {
@@ -738,6 +759,7 @@ impl PpmlMemoryPlan {
             .selected_inventory()
             .peak_bytes
             .checked_add(bytes)
+            .and_then(|n| n.checked_add(self.reusable_projection_bytes))
             .ok_or_else(|| allocation("PPML solver workspace peak overflows"))?;
         if self.usable_bytes.is_some_and(|usable| peak > usable) {
             return Err(allocation(format!(
@@ -779,9 +801,11 @@ impl PpmlMemoryPlan {
             | PpmlPhase::FeProjection
             | PpmlPhase::FiniteSolve
             | PpmlPhase::ObjectiveLineSearch
-            | PpmlPhase::StrictFinalSolve => base.saturating_add(self.solver_workspace_bytes),
-            PpmlPhase::Preparation
-            | PpmlPhase::SeparationFe
+            | PpmlPhase::StrictFinalSolve => base
+                .saturating_add(self.solver_workspace_bytes)
+                .saturating_add(self.reusable_projection_bytes),
+            PpmlPhase::Preparation => base.saturating_add(self.reusable_projection_bytes),
+            PpmlPhase::SeparationFe
             | PpmlPhase::SeparationSimplex
             | PpmlPhase::SeparationIr
             | PpmlPhase::SeparationMu
@@ -892,6 +916,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
         safety_headroom_bytes,
         usable_bytes,
         solver_workspace_bytes: 0,
+        reusable_projection_bytes: 0,
     })
 }
 
@@ -3357,7 +3382,7 @@ impl PpmlMemoryTelemetry {
             ));
         }
         let diagnostic_capacity = self.plan.estimate_diagnostic_capacity();
-        let reconstructed = plan_ppml_memory(
+        let mut reconstructed = plan_ppml_memory(
             self.plan.preflight_dimensions,
             PpmlMemoryConfig {
                 requested: self.plan.requested,
@@ -3370,7 +3395,9 @@ impl PpmlMemoryTelemetry {
         )?
         .with_final_dimensions(self.plan.dimensions)?
         .with_solver_workspace(self.plan.solver_workspace_bytes)?;
-        if reconstructed != self.plan {
+        if !reconstructed.admit_reusable_projection(self.plan.reusable_projection_bytes)
+            || reconstructed != self.plan
+        {
             return Err(invalid_argument(
                 "PPML memory telemetry plan does not match a fresh preflight reconstruction",
             ));
@@ -5103,6 +5130,59 @@ mod tests {
         )
         .expect_err("no usable memory");
         assert_eq!(error.code, ErrorCode::Allocation);
+    }
+
+    #[test]
+    fn optional_reusable_projection_respects_exact_budget_and_phase_lifetime() {
+        let base = plan_ppml_memory(dimensions(), PpmlMemoryConfig::default())
+            .unwrap()
+            .with_solver_workspace(1024)
+            .unwrap();
+        let mut plan = base;
+        plan.usable_bytes = Some(base.selected_bytes() + 4095);
+        let before = plan;
+        assert!(!plan.admit_reusable_projection(4096));
+        assert_eq!(plan, before);
+        plan.usable_bytes = Some(base.selected_bytes() + 4096);
+        assert!(plan.admit_reusable_projection(4096));
+        assert_eq!(plan.selected_bytes(), base.selected_bytes() + 4096);
+        assert!(plan.with_solver_workspace(1025).is_err());
+        for phase in [
+            PpmlPhase::Preparation,
+            PpmlPhase::WeightResponseRefresh,
+            PpmlPhase::FeProjection,
+            PpmlPhase::FiniteSolve,
+            PpmlPhase::ObjectiveLineSearch,
+            PpmlPhase::StrictFinalSolve,
+        ] {
+            assert_eq!(
+                plan.modeled_phase_peak_bytes(phase),
+                base.modeled_phase_peak_bytes(phase) + 4096
+            );
+        }
+        for phase in [
+            PpmlPhase::SeparationFe,
+            PpmlPhase::SeparationMu,
+            PpmlPhase::Inference,
+            PpmlPhase::FeRecovery,
+            PpmlPhase::Publication,
+        ] {
+            assert_eq!(
+                plan.modeled_phase_peak_bytes(phase),
+                base.modeled_phase_peak_bytes(phase)
+            );
+        }
+        let before = plan;
+        assert!(!plan.admit_reusable_projection(u128::MAX));
+        assert_eq!(plan, before);
+        let mut unlimited = base;
+        assert!(unlimited.admit_reusable_projection(4096));
+        let mut telemetry =
+            PpmlMemoryTelemetry::new(unlimited, dimensions().threads, dimensions().threads)
+                .unwrap();
+        telemetry.observe_linear_route(FeSolverKind::Map);
+        telemetry.observe_scratch(0);
+        telemetry.validate().unwrap();
     }
 
     #[test]

@@ -89,6 +89,18 @@ context. Earlier attempts remain in the reported maximum. Each row worker uses
 the existing 256-byte fitted-value tile, with no new team. Coefficients never
 survive a solver invocation or substitute for fresh certificates.
 
+Public PPML's generic slope MAP session can retain the same optional projection
+bank through its final Hessian solve (ADR 0119). R is the session's maximum
+response/design or low-memory block width, and T is the explicitly resolved
+team. `reusable_projection_bytes` is admitted beside the selected plan before
+allocation and charged from preparation through ordinary/strict linear work;
+it is released before inference. A budget or allocation refusal preserves the
+serial workspace. Gram, coefficient and worker capacities enter the session
+fingerprint. Only storage and immutable topology persist: every projection
+rebuilds coefficients from its current weights and RHS. Specialized categorical
+paths, other PPML engines and Mu separation exploration do not enter this
+admission. Existing whole-action coverage gaps remain unchanged.
+
 The action-local single-partition OLS slope cache separately admits retained
 square-root weights, group Grams/scales and QR bases, plus construction scratch
 or concurrent projection output, group coefficients, norms and certificate

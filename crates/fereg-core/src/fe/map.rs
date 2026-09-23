@@ -4,10 +4,11 @@ use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 #[cfg(test)]
 use crate::fe::certify_residuals_with_reference_norms;
-use crate::fe::ProjectionWorkspace;
+#[cfg(test)]
+use crate::fe::{project_effect_in_place, ProjectionWorkspace};
 use crate::fe::{
-    project_effect_in_place, weighted_column_norms, CertifiedBorrowedMap, FeCertificate, FeDesign,
-    FeSolverKind, SolveReport, SolveStopReason,
+    weighted_column_norms, CertifiedBorrowedMap, FeCertificate, FeDesign, FeSolverKind,
+    SolveReport, SolveStopReason,
 };
 use std::time::Instant;
 
@@ -173,7 +174,7 @@ pub(super) fn absorb_map_with_context(
 /// without another size-dependent allocation.
 pub(crate) struct ReusableMapAbsorber {
     design: FeDesign,
-    projection: ProjectionWorkspace,
+    projection: AutoProjectionWorkspace,
     max_rhs: usize,
     max_level_members: usize,
     max_channels: usize,
@@ -202,6 +203,7 @@ pub(crate) struct ReusableMapCapacities {
     pub(crate) group_corrections: usize,
     pub(crate) projection_gram: usize,
     pub(crate) projection_rhs: usize,
+    pub(crate) projection_workers: usize,
     pub(crate) certificate_columns: usize,
     pub(crate) certificate_basis: usize,
     pub(crate) accelerator_state: usize,
@@ -239,7 +241,7 @@ impl ReusableMapAbsorber {
                 )
             })?;
         Ok(Self {
-            projection: ProjectionWorkspace::new(max_channels, max_rhs)?,
+            projection: AutoProjectionWorkspace::new(&design, max_rhs, None)?,
             design,
             max_rhs,
             max_level_members,
@@ -262,6 +264,15 @@ impl ReusableMapAbsorber {
         })
     }
 
+    /// Only storage is retained: every call rebuilds group coefficients using
+    /// the current weights and RHS. The caller admits this bank for the session.
+    pub(crate) fn enable_parallel_projection(
+        &mut self,
+        plan: ParallelProjectionPlan,
+    ) -> Result<()> {
+        self.projection.enable_parallel(plan)
+    }
+
     pub(crate) const fn max_rhs(&self) -> usize {
         self.max_rhs
     }
@@ -271,7 +282,8 @@ impl ReusableMapAbsorber {
     }
 
     pub(crate) fn capacities(&self) -> ReusableMapCapacities {
-        let (projection_gram, projection_rhs) = self.projection.storage_capacities();
+        let (projection_gram, projection_rhs, projection_workers) =
+            self.projection.storage_capacities();
         let topology = self.design.storage_capacities();
         ReusableMapCapacities {
             rhs: self.reference_norms.capacity(),
@@ -286,6 +298,7 @@ impl ReusableMapAbsorber {
             group_corrections: self.group_corrections.capacity(),
             projection_gram,
             projection_rhs,
+            projection_workers,
             certificate_columns: self.certificate_columns.capacity(),
             certificate_basis: self.certificate_basis.capacity(),
             accelerator_state: 0,
@@ -403,11 +416,11 @@ impl ReusableMapAbsorber {
         }
         for iteration in 1..=config.max_iterations {
             for effect in self.design.effects() {
-                project_effect_in_place(effect, weights, &mut values, &mut self.projection)?;
+                self.projection.project(effect, weights, &mut values)?;
             }
             if config.symmetric && self.design.effects().len() > 1 {
                 for effect in self.design.effects().iter().rev().skip(1) {
-                    project_effect_in_place(effect, weights, &mut values, &mut self.projection)?;
+                    self.projection.project(effect, weights, &mut values)?;
                 }
             }
             if self.design.effects().len() <= 1
@@ -908,6 +921,87 @@ fn validate_config(config: MapConfig) -> Result<()> {
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
+
+    #[test]
+    fn reusable_parallel_projection_refreshes_weights_rhs_and_capacity() {
+        let rows = 16_384;
+        let design = FeDesign::new(
+            rows,
+            vec![
+                EffectTerm::new(
+                    (0..rows).map(|i| (i % 64) as u32).collect(),
+                    64,
+                    true,
+                    vec![(0..rows).map(|i| ((i * 13) % 79) as f64 / 79.0).collect()],
+                )
+                .unwrap(),
+                EffectTerm::new(
+                    (0..rows).map(|i| ((i / 64) % 32) as u32).collect(),
+                    32,
+                    true,
+                    vec![(0..rows).map(|i| ((i * 17) % 83) as f64 / 83.0).collect()],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        let mut serial = ReusableMapAbsorber::new(design.clone(), 7).unwrap();
+        let mut parallel = ReusableMapAbsorber::new(design.clone(), 7).unwrap();
+        let plan = ParallelProjectionPlan::for_design_and_threads(&design, 7, 4)
+            .unwrap()
+            .unwrap();
+        parallel.enable_parallel_projection(plan).unwrap();
+        let before = parallel.capacities();
+        assert_eq!(before.projection_workers, 4);
+        assert_eq!(
+            before.projection_rhs,
+            serial.capacities().projection_rhs + 64 * 2 * 7
+        );
+        assert_eq!(
+            before.projection_gram,
+            serial.capacities().projection_gram + 4 * 2 * 2
+        );
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap();
+        for (generation, rhs) in [7, 1, 3, 7].into_iter().enumerate() {
+            let weights: Vec<_> = (0..rows)
+                .map(|i| 0.1 + ((i * (generation + 1)) % 11) as f64)
+                .collect();
+            let mut values = DenseMatrix::zeros(rows, rhs).unwrap();
+            for row in 0..rows {
+                for col in 0..rhs {
+                    values[(row, col)] = ((row * 19 + col * 11 + generation) % 97) as f64;
+                }
+            }
+            let expected = serial
+                .absorb(&weights, values.clone(), MapConfig::default(), false)
+                .unwrap();
+            let actual = pool
+                .install(|| parallel.absorb(&weights, values, MapConfig::default(), false))
+                .unwrap();
+            assert_eq!(actual.residualized(), expected.residualized());
+            assert_eq!(actual.report().certificate, expected.report().certificate);
+            assert_eq!(actual.report().iterations, expected.report().iterations);
+            assert_eq!(parallel.capacities(), before);
+        }
+        let mut bad_weights = vec![1.0; rows];
+        bad_weights[rows - 1] = f64::NAN;
+        assert_eq!(
+            parallel
+                .absorb(
+                    &bad_weights,
+                    DenseMatrix::zeros(rows, 1).unwrap(),
+                    MapConfig::default(),
+                    false
+                )
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidData
+        );
+        assert_eq!(parallel.capacities(), before);
+    }
 
     #[test]
     fn map_preserves_scheduled_certificates_and_iteration_boundaries() {

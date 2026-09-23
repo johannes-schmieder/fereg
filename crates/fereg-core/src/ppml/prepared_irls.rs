@@ -744,6 +744,7 @@ fn summarize_linear_workspace(
         capacity.fe_group_correction_elements,
         capacity.fe_projection_gram_elements,
         capacity.fe_projection_rhs_elements,
+        capacity.fe_projection_workers,
         capacity.fe_certificate_column_elements,
         capacity.fe_certificate_basis_elements,
         capacity.fe_accelerator_state_elements,
@@ -957,6 +958,40 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .map(std::num::NonZeroUsize::get)
         .unwrap_or(0);
     let effective_threads = config.linear.execution.threads.resolved();
+    let projection_rhs = match config.linear.execution.mode {
+        PreparedOlsExecutionMode::Fast => solver_rhs,
+        PreparedOlsExecutionMode::Low => config
+            .memory
+            .poolsize
+            .max(1)
+            .min(memory_plan.dimensions.finite_columns.max(1)),
+    };
+    // Mu exploration has a separate parent separation-phase envelope.
+    let projection_plan = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+        && config.solver_plan.selected == super::PpmlSolverFamily::Map
+    {
+        match crate::fe::ParallelProjectionPlan::for_design_and_threads(
+            &fe_design,
+            projection_rhs,
+            effective_threads,
+        ) {
+            Ok(Some(plan)) if memory_plan.admit_reusable_projection(plan.bytes()?) => Some(plan),
+            Ok(_) => None,
+            Err(error) if error.code == ErrorCode::Allocation => None,
+            Err(error) => return Err(error),
+        }
+    } else {
+        None
+    };
+    // The retained bank cannot consume slack promised to another solver call.
+    let solver_memory_budget = FeSolverMemoryBudget {
+        execution_bytes: solver_execution_bytes
+            .checked_add(memory_plan.reusable_projection_bytes)
+            .ok_or_else(|| allocation("PPML projection execution memory overflows"))?,
+        ..solver_memory_budget
+    };
+    config.ppml.absorb.solver_memory_budget = Some(solver_memory_budget);
+    config.linear.absorb.solver_memory_budget = Some(solver_memory_budget);
     let mut memory = PpmlMemoryTelemetry::new(memory_plan, requested_threads, effective_threads)?;
     if config.solver_plan.selected == super::PpmlSolverFamily::Cmg {
         memory.expected_solver_workspace_peak = Some(crate::memory::SolverWorkspacePeak::from_bytes(
@@ -1001,6 +1036,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         LinearSessionGenerations::new(1, 1, 1, 1, 1),
         fe_design,
     )?;
+    if let Some(plan) = projection_plan {
+        session.enable_ppml_parallel_projection(plan)?;
+    }
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
     let initial_checkpoint_lsmr = use_initial_checkpoint_lsmr_accelerator(
         &config,

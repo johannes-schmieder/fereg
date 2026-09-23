@@ -358,6 +358,7 @@ pub(crate) struct LinearSessionWorkspaceCapacities {
     pub(crate) fe_group_correction_elements: usize,
     pub(crate) fe_projection_gram_elements: usize,
     pub(crate) fe_projection_rhs_elements: usize,
+    pub(crate) fe_projection_workers: usize,
     pub(crate) fe_certificate_column_elements: usize,
     pub(crate) fe_certificate_basis_elements: usize,
     pub(crate) fe_accelerator_state_elements: usize,
@@ -1730,6 +1731,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             fe_group_correction_elements: fe.group_corrections,
             fe_projection_gram_elements: fe.projection_gram,
             fe_projection_rhs_elements: fe.projection_rhs,
+            fe_projection_workers: fe.projection_workers,
             fe_certificate_column_elements: fe.certificate_columns,
             fe_certificate_basis_elements: fe.certificate_basis,
             fe_accelerator_state_elements: fe.accelerator_state,
@@ -1752,6 +1754,20 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             return Err(allocation("injected canonical fallback allocation failure"));
         }
         self.solve(LinearSessionSolveKind::Fresh)
+    }
+
+    pub(crate) fn enable_ppml_parallel_projection(
+        &mut self,
+        plan: crate::fe::ParallelProjectionPlan,
+    ) -> Result<()> {
+        match self.fe_projector.as_mut() {
+            Some(ReusableLinearMapProjector::Generic(projector)) => {
+                projector.enable_parallel_projection(plan)
+            }
+            _ => Err(invalid_argument(
+                "parallel PPML projection requires the generic reusable MAP owner",
+            )),
+        }
     }
 
     pub(crate) fn enable_checkpoint_lsmr(&mut self) {

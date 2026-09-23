@@ -88,6 +88,7 @@ pub use partition_singleton::{
     prune_categorical_partition_singletons, CategoricalPartitionSingletonResult,
 };
 pub use partition_validation::validate_categorical_partition;
+pub(crate) use projection::ParallelProjectionPlan;
 pub use projection::{project_effect_in_place, ProjectionWorkspace};
 pub use report::{FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason};
 pub use singleton::{

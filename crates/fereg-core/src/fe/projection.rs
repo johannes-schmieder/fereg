@@ -183,8 +183,8 @@ fn validate_projection(
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(super) struct ParallelProjectionPlan {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ParallelProjectionPlan {
     channels: usize,
     rhs: usize,
     levels: usize,
@@ -209,10 +209,21 @@ pub(super) struct AutoProjectionWorkspace {
 
 impl ParallelProjectionPlan {
     pub(super) fn for_design(design: &FeDesign, rhs: usize) -> Result<Option<Self>> {
+        if rayon::current_thread_index().is_none() {
+            return Ok(None);
+        }
+        Self::for_design_and_threads(design, rhs, rayon::current_num_threads())
+    }
+
+    /// Reusable callers bind this capacity to their explicitly resolved team.
+    pub(crate) fn for_design_and_threads(
+        design: &FeDesign,
+        rhs: usize,
+        threads: usize,
+    ) -> Result<Option<Self>> {
         if design.nobs() < 16_384
             || rhs == 0
-            || rayon::current_thread_index().is_none()
-            || rayon::current_num_threads() <= 1
+            || threads <= 1
             || !design.effects().iter().any(|e| !e.slopes().is_empty())
         {
             return Ok(None);
@@ -226,7 +237,7 @@ impl ParallelProjectionPlan {
                 .map(|e| e.n_levels())
                 .max()
                 .unwrap_or(0),
-            workers: rayon::current_num_threads(),
+            workers: threads,
         };
         plan.bytes()?;
         Ok(Some(plan))
@@ -248,7 +259,7 @@ impl ParallelProjectionPlan {
         ))
     }
 
-    pub(super) fn bytes(self) -> Result<u128> {
+    pub(crate) fn bytes(self) -> Result<u128> {
         let (coefficients, gram) = self.cells()?;
         (gram as u128)
             .checked_mul(self.workers as u128)
@@ -307,13 +318,39 @@ impl AutoProjectionWorkspace {
         rhs: usize,
         plan: Option<ParallelProjectionPlan>,
     ) -> Result<Self> {
-        let serial = ProjectionWorkspace::new(design.max_channels(), rhs)?;
-        let parallel = match plan.map(ParallelProjectionPlan::allocate).transpose() {
-            Ok(workspace) => workspace,
+        let serial = ProjectionWorkspace::new(design.max_channels().max(1), rhs)?;
+        let mut workspace = Self {
+            serial,
+            parallel: None,
+        };
+        if let Some(plan) = plan {
+            workspace.enable_parallel(plan)?;
+        }
+        Ok(workspace)
+    }
+
+    pub(super) fn enable_parallel(&mut self, plan: ParallelProjectionPlan) -> Result<()> {
+        self.parallel = match plan.allocate() {
+            Ok(workspace) => Some(workspace),
             Err(error) if error.code == ErrorCode::Allocation => None,
             Err(error) => return Err(error),
         };
-        Ok(Self { serial, parallel })
+        Ok(())
+    }
+
+    pub(super) fn storage_capacities(&self) -> (usize, usize, usize) {
+        let (gram, rhs) = self.serial.storage_capacities();
+        self.parallel.as_ref().map_or((gram, rhs, 0), |parallel| {
+            (
+                gram + parallel
+                    .workers
+                    .iter()
+                    .map(|worker| worker.gram.capacity())
+                    .sum::<usize>(),
+                rhs + parallel.coefficients.capacity(),
+                parallel.workers.capacity(),
+            )
+        })
     }
 
     pub(super) fn project(
