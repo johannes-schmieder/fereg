@@ -10,6 +10,126 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Implicit one-FE frame verified; whole-command redesign plan — 2026-09-23
+
+The objective remains **whole public PPML <=0.90 times scientifically comparable
+pinned stock fixest per case wherever achievable**. The user requests an
+ambitious plan; implementation authority and the broader unfinished objective
+remain active. This opening supersedes older next-step orders. This checkpoint
+records a completed bounded experiment, not adoption or completion of the goal.
+
+Production remains `b7106fcb` / `canontile1`; all **539 computational inputs** are
+unchanged. The [frozen implicit-frame experiment](benchmarks/reports/development/ppml-grouped-canonical-probe-local-2026-09-23/README.md)
+is now preserved with **464 restored/verified logical receipts**, archive SHA-256
+`b4aa8622bd002fac29df341f46d8c3a70770f807dc8dd2154ace7f3cbf0bb5b4`.
+All builds, tests, native measurements and archive operations are terminal.
+
+### What the experiment establishes
+
+Current-weight group means plus an implicit original-minus-center row view can
+avoid a projected N-by-K matrix while retaining a fresh independent projection
+check. Frozen K10/T4 components fall **7.951 -> 4.162 ms**; K32/T1
+**18.805 -> 15.306**; K32/T4 **10.017 -> 6.100**. All 30 refined pairs improve;
+Gram/RHS/within-norm coordinates are exact on all three frozen inputs. Independent
+explicit-dummy SVD WLS/Hessian checks pass. Eighteen changing-weight/extreme-scale
+boundary configurations pass in each version. The first indexed Gram loop lost
+K32/T1 by 7.4%; its source/results remain preserved. Contiguous disjoint-row
+iteration repairs that local cost without thresholds or changed arithmetic.
+
+These are component results, **not public fit, canonical rank, Poisson, memory
+admission or fixest wins**. The candidate's Gram component still loses K32/T1.
+Center payloads replace larger projected-matrix payloads, but total peak and
+coexistence have not been measured. Do not extrapolate the 19–48% component
+improvement to the command. No production algorithm has changed in this checkpoint.
+
+### Per-case budgets and ordered implementation milestones
+
+The latest source-bound public one-FE evidence still has low N61440/K10/T4 at
+**119 ms versus stock 53**, requiring **<=47.7 ms**, a further 59.9% reduction.
+Fast is **104 versus 54**, requiring **<=48.6 ms**, a further 53.3% reduction.
+Low K32 is 150/121 and fresh K65 is 208/127. Every measured current one-FE cell
+loses stock. Other families' older medians must be remeasured before claiming
+current wins or choosing their exact remaining budget.
+
+1. **Integrate a canonical grouped product owner through final inference.**
+   This is the immediate next implementation milestone. Share the immutable
+   prepared sample/model/topology through a neutral safe owner; keep concrete
+   column access in hot loops. An owned fit cannot simply borrow the generation
+   returned alongside it by the separation closure. Use ownership, not unsafe
+   pointer rebinding or another full design copy, to resolve that lifetime.
+   Initial and strict/final WLS should consume current-weight implicit centered
+   columns, stable raw/within scales, finite moments and independent residual
+   replay. Preserve guarded pivoted Cholesky and canonical rank/status policy;
+   admit materialization only where retained QR fallback actually needs it.
+   Carry the same row view into reconstruction and robust/clustered inference.
+   Charge all group/worker/owner state, including G near N, before allocation;
+   refused optional state retains the existing certified route. Verify changing
+   weights, generations, rank deficiency, generated terms, zero controls and
+   interruption/failure rollback. Measure the complete fast and low command
+   before adoption. A successful component prototype alone is insufficient.
+
+2. **Make accepted-state work one coherent current-frame pipeline.**
+   The paired diagnostic still has about 43 ms in initial plus strict low WLS,
+   eleven in six objective evaluations, and nine inclusive in core publication.
+   Nested times are not additive. Inventory compatible means, predictors,
+   working state, group totals and weighted moments by sample/prior/current
+   weight generation; compute each required product once per valid state.
+   Fuse compatible scans, bind immutable outcome/prior terms once, and retain
+   an independent final objective replay. Keep fresh original-input scores,
+   model-space, reconstruction and final-Hessian acceptance. Explicitly justify
+   any removed intermediate duplicate in a successor ADR. Do not treat another
+   modest objective cache as completion. As a feasibility budget, investigate
+   <=15 ms canonical initial/final work, <=25 ms other native work and <=7 ms
+   control-plane work on the large one-FE cell. These sum to 47 ms; they are
+   engineering targets, **not predicted or measured attainable costs**. Measure
+   exclusive spans in the same diagnostic call before assigning savings.
+
+3. **Close the remaining multi-FE and absorbed-slope gaps.**
+   Refresh matched public fast/low baselines after the coherent one-FE change.
+   Current source already has coefficient Schur/PCG, current-weight factors,
+   symbolic coupling, joint finite/FE directions and bounded low-memory tiles;
+   do not reimplement them or restart residual extrapolation/local-stop probes.
+   Use frozen identical frames and a full-command ledger to choose between
+   coefficient warm starts/recycled preconditioning and shared FE/finite
+   canonical construction. Immutable topology can survive weight changes;
+   weighted geometry and acceptance cannot be assumed valid. Aim to reduce
+   setup, canonical construction and unnecessary column work, not merely
+   reported iteration counts. Protect multipartition OLS with the same tests
+   and retain only mechanisms that carry over cleanly. At most two materially
+   different candidates per measured cost center before moving on.
+
+4. **Remove measured public overhead and cover neglected families.**
+   Profile the whole Stata command against plugin spans without inferring exact
+   overhead by subtracting unrelated runs. Address repeated loading/metadata,
+   result assembly and requested output costs while retaining one guarded
+   plugin call, main-thread SPI and transactional publication. Use small
+   adaptive screens for no-FE/small fits, wide/generated/factor terms, weights,
+   multiple slopes, cluster inference and saved effects. Match work before
+   ranking; ordinary fixest weights are not a Stata FW inference oracle.
+   Low versus ordinary stock remains distinct from a physically matched cap.
+
+5. **Confirm the 10% margin per case and commit each adopted milestone.**
+   Start with a small baseline/candidate/pinned-stock rotation, followed by
+   predeclared fresh cases covering imbalance, weak/disconnected topology where
+   applicable, widths, threads, memory and changing weights. Use independent
+   WLS and Poisson/Hessian/sandwich oracles, not reference agreement alone.
+   Require at least five decision pairs when timer resolution or spread can
+   alter a margin claim; report medians, ranges, paired losses and failures.
+   Keep scientific discrepancies unranked and instrumented fixest separate
+   from stock. Each integration must protect categorical/slopes/OLS, inference,
+   memory refusal and publication with focused controls. A family closes when
+   <=0.90 survives fresh confirmation, or measured remaining costs and tested
+   alternatives explain why the remaining pursuit is disproportionate. Smaller
+   broad improvements may be accepted without claiming the objective complete.
+
+The next action is production integration of milestone 1, including ownership,
+rank fallback and memory admission, not another frozen-loop tuning round.
+Seeds 202609335–338 remain consumed; no fresh case was used in this experiment.
+Preserve all frozen 77 primary/16 holdout/111 native-control definitions. Static
+allocation inventory drift, mixed-thread pool retirement, constrained weighted
+and nonretaining-CG failures, unresolved comparisons and SCC/platform/physical-
+cap deferrals remain open. No push, release, stopped campaign or SCC retry.
+
 ## Retained canonical tiles accepted; grouped product ownership next — 2026-09-23
 
 The active objective remains whole public PPML **<=0.90 times comparable pinned
