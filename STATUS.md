@@ -10,6 +10,143 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Current-frame scans accepted; ambitious per-case PPML plan — 2026-09-23
+
+The active objective remains whole public PPML **<=0.90 times scientifically
+comparable pinned stock fixest in each case wherever achievable**. This update
+finishes the pending experiment and revises the implementation order from its
+evidence. It does not declare that objective complete. Historical source-bound
+claims and unresolved comparator discrepancies retain their original scope.
+
+Accept `framemom1`, based on `07d41bef`, under
+[ADR 0133](docs/adr/0133-current-frame-moments-and-ppml-scores.md) and its
+[source-bound report](benchmarks/reports/development/ppml-current-frame-moments-local-2026-09-23/README.md).
+All **536 computational inputs** match plugin
+`12fd878cf359681240c23c43f46cdc3f541ff41c81bd980106510502db5c7509`.
+The restored immutable archive verifies **7,367 receipts**, SHA-256
+`c7964155884721759a83d75f5b11663254e73f5d0b78792d37b63feaf9e97bc2`.
+
+Canonical retained assembly borrows already fresh raw means under checked
+sample/topology/weight generations. Original-input outer numeric scores run
+independent columns on the admitted team, preserving row arithmetic and ordered
+reduction. Every required score check still runs; FE scores remain fresh.
+No new observation bank, rank/tolerance/sample/weight/DoF change or weakened
+certificate. Small/generated/wider score models retain the generic evaluator;
+ordinary one-shot OLS retains its computation. Tracked/modelled peaks are unchanged.
+
+Final-source **352 distinct Rust tests**, actual-plugin ABI/panic checks and
+**six licensed fixtures** pass. Headline/pilot/control evidence has **163 passing
+applications**, **117 PPML states**, **39 native and 39 stock pairs**, **nine
+independent Poisson/Hessian checks**, and **23 exact OLS export pairs**. No
+application failure, timeout, current scientific discrepancy or timing contention.
+The initial failed compile is preserved. Real T1/T4 warmed allocation audits
+remain zero-event/zero-growth. Small OLS one-FE retains a **17/18 ms** follow-up
+loss; slope and generated-term controls tie on follow-up. No universal timing
+non-regression claim. Full distributions and all initial losses remain in the report.
+
+### Current budgets, not forecasts
+
+Robust inference plus fitted means, three alternating rotations. The first two
+rows use development seed332; the remaining rows use predeclared fresh seed333.
+No median transfers to another revision or another design. Times are milliseconds.
+
+| Case | fereg | Stock | 0.90*stock | Further native reduction |
+| --- | ---: | ---: | ---: | ---: |
+| Larger three-FE slopes N61440 K10 T8 | 300 | 232 | 208.8 | 30.4% |
+| Dense categorical three FE N30720 K6 T4 | 193 | 232 | 208.8 | Already below target |
+| One FE N61440 K10 T1 | 142 | 97 | 87.3 | 38.5% |
+| One FE N76800 K8 T4 | 112 | 55 | 49.5 | 55.8% |
+| Unbalanced one FE N122880 K6 T8 | 162 | 96 | 86.4 | 46.7% |
+| Two slope partitions N23040 K6 T4 | 99 | 86 | 77.4 | 21.8% |
+| Wider unbalanced three-FE slopes N46080 K10 T8 | 269 | 930 | 837.0 | Already below target |
+| Sparse categorical N38400 K8 T4 | 133 | 84 | 75.6 | 43.2% |
+| Low three-FE slopes N30720 K6 T4 | 194 | 117 | 105.3 | 45.7% |
+
+Low versus ordinary stock is not physical-memory-matched. Development low one-FE
+is still **98/24 ms**, an important diagnostic loss, not a constrained-memory
+comparison. Fresh native gains are 5.9–12.9% in six main cells and a variable 1%
+in low slopes, including a 5.1% paired loss. Preserve both existing wins above.
+
+The isolated baseline diagnostic found only ~3.9 ms in each initial/strict
+moments-factor-inverse phase on larger one FE; independent outer scores totalled
+29.1 ms and each raw mean scan ~5.8 ms. Removing an initial inverse alone is not
+the next redesign. Current larger one-FE phase medians include preparation 35.9,
+publication 29.1, line search/profile 24.9 and strict/final 51.1 ms, versus 236 ms
+public and a 121.5 ms target. Larger slope projection remains 109.0 ms and
+strict/final 70.4 ms versus a 91.2 ms public deficit. These phases are partly
+nested, not additive estimates of removable cost.
+
+### Implementation order
+
+1. **Make the successful joint solver work within low-memory ownership.**
+   Start with matched fast/low frozen frames and count scratch reads, generated
+   column evaluations, projections, normalized copies and finite products.
+   The current ordinary joint path is fast-only because it owns a normalized
+   N-by-RHS bank. Implement bounded tiles/streamed FE-finite cross-products and
+   a matrix-free joint action over existing scratch; do not simply remove the
+   guard or hide an N-by-K resident copy. Compare this organization with the
+   existing affordable route before production integration. Keep current-weight
+   geometry, rank, score/reconstruction and final-Hessian acceptance. Aim to
+   remove a substantial part of the 45.7% deficit, with measured I/O and peak
+   memory alongside time. This is the next bounded implementation milestone.
+2. **Generalize joint ordinary directions to sparse/unbalanced categorical PPML.**
+   Compare a direct finite block with the existing joint LSMR and categorical
+   FE operators/preconditioners on identical frozen weights. Reuse immutable
+   topology; rebuild only numerical weight-dependent state. Share projected
+   control products and compatible response work. Choose one coherent ordinary
+   direction engine with explicit admission and canonical initial/final duties.
+   The 43% deficit calls for eliminating repeated work, not routing thresholds.
+   Protect dense categorical wins and weak/disconnected graphs. Remove superseded
+   machinery once a replacement is established.
+3. **Complete one-FE concentration across the public command.** Analytic profiling,
+   borrowed representatives and shared strict/final products are already accepted.
+   Inventory every full-data pass from loading to publication; separate mandatory
+   independent witnesses from repeated construction. Design a single accepted-
+   state owner for means/predictors/group totals and final moment consumers,
+   retaining independent original-input and Hessian certificates. Redesign initial
+   and final interfaces where duplicated work dominates, including setup and
+   output copying, instead of optimizing a 3.9-ms phase against a 62.5-ms deficit.
+   Evaluate a bounded streamed one-FE route for low mode as part of this design.
+4. **Close remaining ordinary slope losses.** In the existing coefficient Schur
+   and joint owner, measure warm-start effectiveness, current-weight projected-
+   control setup, coupling construction, Krylov work and canonical reconstruction.
+   Compare coefficient warm starts/recycled preconditioning and shared streamed
+   products as a small number of complete candidates. Prior solutions are guesses,
+   never certificates for new weights. Target the 21.8–30.4% deficits on the
+   comparable two-partition and larger three-FE cases. Do not restart the rejected
+   residual-extrapolation probe or closed serial weighted-OLS tuning.
+5. **Finish coverage and route selection.** Remeasure current unbalanced categorical,
+   small/no-FE, wider and generated-term PPML before assigning them priorities.
+   Extend successful mechanisms around imbalance, weak/disconnected topology,
+   multiple slopes, rank deficiency, changing prior/IRLS weights, N/K, T1/T4/T8,
+   robust/cluster inference and requested outputs. Use structure and admitted work
+   to select routes, never case names or tuning seeds. Resolve scientific failures
+   with independent evidence before ranking them. Preserve frozen 77/16/111 inputs.
+
+Each milestone gets a frozen-frame computational comparison, one public decision
+screen and predeclared fresh confirmation. Limit initial exploration to one or
+two materially different designs; if both fail, record the cost evidence and move
+on instead of tuning thresholds indefinitely. Accept smaller broad/cheap gains,
+but do not call a loss closed while a large unexplained budget remains. For a
+10% win claim, require the margin to survive fresh paired distributions and
+relevant controls, extending repetitions when timer precision/spread matters.
+
+Use unmodified pinned fixest, matched samples/work/threads/outputs and strict
+reference tolerances. Diagnostic instrumentation stays separate. No competing
+builds/profiles/fits during headline timings. Validate with independent explicit-
+design WLS and Poisson/Hessian oracles; preserve rank, DoF, weight semantics,
+separation, every final certificate and failure atomicity. Protect categorical
+PPML, weighted/slope OLS, generated terms and saved outputs. Every adoption gets
+its own reviewed decision, immutable evidence and coherent local commit. Remaining
+losses require measured unavoidable/avoidable costs and a concrete next mechanism;
+near-parity is not promised before evidence.
+
+Seed **202609333 is consumed**; **202609334** is unused and reserved for future
+predeclared confirmation. Static allocation drift, weighted constrained-fit and
+nonretaining-CG failures, historical comparator discrepancies and platform/
+physical-cap deferrals remain open. No push, release, qualification, SCC retry
+or stopped-campaign restart. This section supersedes older next-step entries.
+
 ## Shared one-FE products accepted; whole-path construction next — 2026-09-23
 
 The active goal remains whole public PPML **<= 0.90 times comparable pinned

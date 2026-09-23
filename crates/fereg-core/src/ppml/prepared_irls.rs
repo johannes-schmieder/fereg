@@ -137,6 +137,7 @@ fn use_initial_checkpoint_lsmr_accelerator(
 
 #[cfg(test)]
 thread_local! {
+    static FORCE_GENERIC_OUTER_SCORE: Cell<bool> = const { Cell::new(false) };
     static PROFILE_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
     static PROFILE_FINAL_ACCEPTED: Cell<usize> = const { Cell::new(0) };
     static JOINT_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
@@ -427,12 +428,13 @@ impl PreparedPpmlIrlsFit {
 }
 
 struct PpmlScoreWorkspace {
+    team: crate::parallel::InstalledThreadTeam,
     fe_moments: Vec<f64>,
     fe_basis_squares: Vec<f64>,
 }
 
 impl PpmlScoreWorkspace {
-    fn new(design: &FeDesign) -> Result<Self> {
+    fn new(design: &FeDesign, threads: crate::options::ThreadConfig) -> Result<Self> {
         let directions = design.effects().iter().try_fold(0_usize, |total, effect| {
             let effect_directions = effect
                 .n_levels()
@@ -443,6 +445,7 @@ impl PpmlScoreWorkspace {
                 .ok_or_else(|| allocation("prepared PPML FE-score dimensions overflow"))
         })?;
         Ok(Self {
+            team: crate::parallel::ThreadTeam::new(threads).acquire()?,
             fe_moments: fallible_filled(
                 directions,
                 0.0,
@@ -1184,7 +1187,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
     let mut objective =
         poisson_objective_from_eta(outcome, workspace.eta(), workspace.mean(), prior_weights)?;
-    let mut score_workspace = PpmlScoreWorkspace::new(&fe_design)?;
+    let mut score_workspace = PpmlScoreWorkspace::new(&fe_design, config.linear.execution.threads)?;
     let initial_tolerance =
         scheduled_inner_tolerance(config.ppml, 1, config.ppml.inner_tolerance_initial, None);
     let initial_config = ppml_linear_config(config, initial_tolerance)?;
@@ -4232,19 +4235,56 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
     let mut relative_infinity = 0.0_f64;
     let mut relative_square = CompensatedSum::default();
     let mut relative_count = 0_usize;
+    let numeric = crate::ols::NumericOlsColumns::bind_score_means(
+        prepared.fit_model(),
+        prepared.fit_sample(),
+    )?;
+    #[cfg(test)]
+    let numeric = if FORCE_GENERIC_OUTER_SCORE.get() {
+        None
+    } else {
+        numeric
+    };
+    let mut numeric_moments = [(0.0_f64, 0.0_f64); crate::ols::MAX_BOUND_NUMERIC_COLUMNS];
+    if let Some(numeric) = numeric.as_ref() {
+        // Each column keeps the original observation order and arithmetic.
+        // Only independent columns run concurrently; the certificate reduction
+        // below remains in canonical column order. Inputs are original rows,
+        // not previously projected controls or a cached Newton score.
+        workspace.team.install(|| {
+            use rayon::prelude::*;
+            numeric_moments[..numeric.raw_columns().len()]
+                .par_iter_mut()
+                .zip(numeric.raw_columns().par_iter())
+                .for_each(|(target, column)| {
+                    let mut moment = CompensatedSum::default();
+                    let mut square = CompensatedSum::default();
+                    for row in 0..rows {
+                        let basis = column.map_or(1.0, |values| values[row]);
+                        moment.add(prior_weights[row] * (outcome[row] - mean[row]) * basis);
+                        square.add(prior_weights[row] * mean[row] * basis * basis);
+                    }
+                    *target = (moment.total(), square.total());
+                });
+        });
+    }
     for column in 0..prepared.fit_model().columns.len() {
-        let mut moment = CompensatedSum::default();
-        let mut basis_square = CompensatedSum::default();
-        for row in 0..rows {
-            let basis = prepared.fit_column_value(column, row)?;
-            moment.add(prior_weights[row] * (outcome[row] - mean[row]) * basis);
-            basis_square.add(prior_weights[row] * mean[row] * basis * basis);
-        }
-        let moment = moment.total();
+        let (moment, basis_square) = if numeric.is_some() {
+            numeric_moments[column]
+        } else {
+            let mut moment = CompensatedSum::default();
+            let mut basis_square = CompensatedSum::default();
+            for row in 0..rows {
+                let basis = prepared.fit_column_value(column, row)?;
+                moment.add(prior_weights[row] * (outcome[row] - mean[row]) * basis);
+                basis_square.add(prior_weights[row] * mean[row] * basis * basis);
+            }
+            (moment.total(), basis_square.total())
+        };
         finite_absolute = finite_absolute.max(moment.abs());
         add_relative_score(
             moment,
-            basis_square.total().sqrt(),
+            basis_square.sqrt(),
             score_scale,
             &mut relative_infinity,
             &mut relative_square,
@@ -4525,6 +4565,85 @@ mod tests {
             },
         )
         .expect("prepared fixture")
+    }
+
+    #[test]
+    fn numeric_outer_scores_preserve_every_certificate_bit_across_teams_and_weights() {
+        let rows = 4096;
+        let y: Vec<_> = (0..rows).map(|r| (r % 13) as f64 / 3.0).collect();
+        let mu: Vec<_> = (0..rows)
+            .map(|r| (0.4 * (r as f64 / 91.0).sin()).exp())
+            .collect();
+        let outer = rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .build()
+            .unwrap();
+        for width in [1, 6, 63, 64, 65] {
+            let x: Vec<Vec<_>> = (0..width)
+                .map(|j| {
+                    (0..rows)
+                        .map(|r| (r as f64 / (j + 3) as f64).sin() + 0.1 * (r % 17) as f64)
+                        .collect()
+                })
+                .collect();
+            let prepared = prepared(&y, &x);
+            let design = FeDesign::new(
+                rows,
+                vec![crate::fe::EffectTerm::new(
+                    (0..rows).map(|r| (r % 17) as u32).collect(),
+                    17,
+                    true,
+                    vec![x[0].clone()],
+                )
+                .unwrap()],
+            )
+            .unwrap();
+            for scale in [1e-30, 1.0, 1e30] {
+                let q: Vec<_> = (0..rows)
+                    .map(|r| scale * (0.25 + (r % 11) as f64))
+                    .collect();
+                let mut expected = PpmlScoreWorkspace::new(
+                    &design,
+                    crate::options::ThreadConfig::from_requested(1, true).unwrap(),
+                )
+                .unwrap();
+                FORCE_GENERIC_OUTER_SCORE.set(true);
+                let baseline = prepared_score_certificate(
+                    &prepared,
+                    &design,
+                    &y,
+                    &mu,
+                    &q,
+                    1e-8,
+                    &mut expected,
+                );
+                FORCE_GENERIC_OUTER_SCORE.set(false);
+                let baseline = baseline.unwrap();
+                for threads in [1, 4, 8] {
+                    let mut workspace = PpmlScoreWorkspace::new(
+                        &design,
+                        crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
+                    )
+                    .unwrap();
+                    let actual = outer
+                        .install(|| {
+                            prepared_score_certificate(
+                                &prepared,
+                                &design,
+                                &y,
+                                &mu,
+                                &q,
+                                1e-8,
+                                &mut workspace,
+                            )
+                        })
+                        .unwrap();
+                    assert_eq!(actual, baseline);
+                    assert_eq!(workspace.fe_moments, expected.fe_moments);
+                    assert_eq!(workspace.fe_basis_squares, expected.fe_basis_squares);
+                }
+            }
+        }
     }
 
     fn prepared_two_fe(outcome: &[f64], regressor: &[f64]) -> PreparedOlsData {

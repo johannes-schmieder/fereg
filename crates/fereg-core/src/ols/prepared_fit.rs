@@ -871,7 +871,40 @@ struct QrFit {
 /// all OLS-compatible slot, intercept, residual, score, and bread publication
 /// policy in one place without reconstructing another observation-by-column
 /// design.
+/// Borrowed only during one canonical solve, after its session has checked the
+/// sample/topology/weight generation. These are raw, current-weight means.
+#[derive(Clone, Copy)]
+pub(super) struct CurrentFrameColumnMeans<'a> {
+    pub(super) generated_columns: &'a [usize],
+    pub(super) values: &'a [f64],
+}
+
+impl CurrentFrameColumnMeans<'_> {
+    fn fill_selected(self, selected: &[usize], output: &mut [f64]) -> Result<()> {
+        if self.generated_columns.len() != self.values.len()
+            || self.generated_columns.windows(2).any(|p| p[0] >= p[1])
+            || selected.len() != output.len()
+        {
+            return Err(invalid_argument(
+                "current-frame mean coordinates are inconsistent",
+            ));
+        }
+        for (&generated, value) in selected.iter().zip(output) {
+            let position = self
+                .generated_columns
+                .binary_search(&generated)
+                .map_err(|_| invalid_argument("current-frame mean coordinate is absent"))?;
+            *value = self.values[position];
+            if !value.is_finite() {
+                return Err(invalid_data("current-frame mean is not finite"));
+            }
+        }
+        Ok(())
+    }
+}
+
 pub(super) struct RetainedFiniteFitDraft<'a> {
+    pub(super) raw_column_means: CurrentFrameColumnMeans<'a>,
     pub(super) generated_coefficients: Vec<Option<f64>>,
     pub(super) generated_statuses: Vec<PreparedOlsFitStatus>,
     pub(super) kept: Vec<usize>,
@@ -1205,6 +1238,7 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
         None,
         None,
         None,
+        Some(draft.raw_column_means),
     )?;
     let initial_absorbed_outcome_sum_of_squares = draft.normalized_initial_within_sum_of_squares
         * frame.bread_weight_scale().reference_weight_multiplier;
@@ -2470,17 +2504,18 @@ fn fit_with_controls_internal_mode_with_frame<
             )?);
         }
         finalize_reported_bread_and_intercept(
-        prepared,
-        frame.response(),
-        &mut qr,
-        independent_raw_residuals.as_deref_mut(),
-        weights,
-        config.bread_tolerance,
-        reservation,
-        perturbations,
-        fast_score_cache.as_ref(),
-        raw_moments.as_ref(),
-        retain_fast_score_cache.then_some(reference_mean_scales.as_slice()),
+            prepared,
+            frame.response(),
+            &mut qr,
+            independent_raw_residuals.as_deref_mut(),
+            weights,
+            config.bread_tolerance,
+            reservation,
+            perturbations,
+            fast_score_cache.as_ref(),
+            raw_moments.as_ref(),
+            retain_fast_score_cache.then_some(reference_mean_scales.as_slice()),
+            None,
         )
     };
     // A retained sandwich score cache is already live across both phases and
@@ -3205,6 +3240,7 @@ fn fit_with_controls_low_internal_with_frame<
         config.bread_tolerance,
         reservation,
         perturbations,
+        None,
         None,
         None,
         None,
@@ -5600,6 +5636,7 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
     fast_score_cache: Option<&PreparedOlsFastScoreCache>,
     raw_moments: Option<&RawMomentCache>,
     raw_column_scales: Option<&[f64]>,
+    current_frame_means: Option<CurrentFrameColumnMeans<'_>>,
 ) -> Result<PreparedOlsBread> {
     if response.len() != prepared.fit_sample().n_active()
         || raw_residuals
@@ -5717,17 +5754,25 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             0.0_f64,
             "unable to reserve prepared OLS reported-intercept means",
         )?;
-        let numeric = if raw_moments.is_none() && fast_score_cache.is_none() {
-            super::prepared_rhs::NumericOlsColumns::bind_score_means(
-                prepared.fit_model(), prepared.fit_sample(),
-            )?
-        } else {
-            None
-        };
-        if let Some(numeric) = numeric.as_ref() {
+        let numeric =
+            if current_frame_means.is_none() && raw_moments.is_none() && fast_score_cache.is_none()
+            {
+                super::prepared_rhs::NumericOlsColumns::bind_score_means(
+                    prepared.fit_model(),
+                    prepared.fit_sample(),
+                )?
+            } else {
+                None
+            };
+        if let Some(current) = current_frame_means {
+            current.fill_selected(&finite.generated_columns, &mut means)?;
+        } else if let Some(numeric) = numeric.as_ref() {
             fill_bound_weighted_column_means(
-                prepared.fit_sample().n_active(), numeric.raw_columns(),
-                &finite.generated_columns, weights, &mut means,
+                prepared.fit_sample().n_active(),
+                numeric.raw_columns(),
+                &finite.generated_columns,
+                weights,
+                &mut means,
             )?;
         } else {
             for (position, generated) in finite.generated_columns.iter().copied().enumerate() {
@@ -7531,6 +7576,39 @@ mod tests {
     };
     use crate::sandwich::SandwichDesign;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn current_frame_means_select_canonical_coordinates_and_reject_invalid_views() {
+        let known = CurrentFrameColumnMeans {
+            generated_columns: &[0, 2, 5],
+            values: &[1.0, -3.0, 7.0],
+        };
+        let mut output = [0.0; 2];
+        known.fill_selected(&[5, 0], &mut output).unwrap();
+        assert_eq!(output, [7.0, 1.0]);
+        assert!(known.fill_selected(&[1, 0], &mut output).is_err());
+        assert!(known.fill_selected(&[0], &mut output).is_err());
+        for bad in [
+            CurrentFrameColumnMeans {
+                generated_columns: &[1, 1],
+                values: &[1.0, 2.0],
+            },
+            CurrentFrameColumnMeans {
+                generated_columns: &[2, 1],
+                values: &[1.0, 2.0],
+            },
+            CurrentFrameColumnMeans {
+                generated_columns: &[0, 1],
+                values: &[1.0],
+            },
+            CurrentFrameColumnMeans {
+                generated_columns: &[0, 1],
+                values: &[1.0, f64::NAN],
+            },
+        ] {
+            assert!(bad.fill_selected(&[0, 1], &mut output).is_err());
+        }
+    }
 
     static ACTIVE_LINEAR_ALLOCATION_PHASE: AtomicUsize = AtomicUsize::new(0);
     static LINEAR_PROJECTION_ENDS: AtomicUsize = AtomicUsize::new(0);

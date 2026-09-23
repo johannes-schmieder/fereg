@@ -34,8 +34,8 @@ use super::finite_wls_kernel::{
 #[cfg(test)]
 use super::prepared_fit::PreparedOlsFastScoreCache;
 use super::prepared_fit::{
-    assemble_retained_weighted_linear_fit, merge_solve_report, LinearSolveFrame,
-    RetainedFiniteFitDraft,
+    assemble_retained_weighted_linear_fit, merge_solve_report, CurrentFrameColumnMeans,
+    LinearSolveFrame, RetainedFiniteFitDraft,
 };
 use super::prepared_scratch::{PreparedOlsScratch, PreparedOlsScratchReader};
 use super::{
@@ -4523,7 +4523,20 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             ));
         }
         let (residuals, residual_absorption_report) = residual_absorbed.into_parts();
+        let retained = self
+            .within
+            .as_ref()
+            .ok_or_else(|| invalid_argument("current-frame means are absent"))?;
+        if !retained.generations.same_design(self.generations) {
+            return Err(invalid_argument(
+                "current-frame means have stale design generations",
+            ));
+        }
         let draft = RetainedFiniteFitDraft {
+            raw_column_means: CurrentFrameColumnMeans {
+                generated_columns: &retained.stored_generated_columns,
+                values: &retained.reference_means,
+            },
             generated_coefficients,
             generated_statuses,
             kept,
