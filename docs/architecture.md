@@ -127,6 +127,10 @@ visitors. Scratch-backed blocks own immutable scan cursors under
 [ADR 0135](adr/0135-immutable-ppml-inference-scans.md); numerical reductions and
 independent certificate storage remain unchanged. Clustered inference and
 one-shot OLS retain their existing access paths.
+PPML covariance construction owns one certified eigensystem for each unchanged
+matrix and recomputes it after an actual PSD repair. The exact pivot cache serves
+all widths; the separate publication boundary still independently inspects the
+returned matrix. See [ADR 0141](adr/0141-ppml-covariance-eigensystem-ownership.md).
 After a fused response/design projection, retained within-column norms must
 also use the current weight frame. Strict rank and score checks consume those
 norms even when the preceding frozen-basis solve did not need them; advancing

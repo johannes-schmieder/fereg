@@ -10,6 +10,104 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## PPML covariance ownership adopted; finite products and low checkpoints next — 2026-09-23
+
+The objective remains **whole public PPML <=0.90 times scientifically comparable
+pinned stock fixest wherever practical**. This is a completed bounded inference
+milestone, not completion of that objective. It supersedes the next-step order
+below.
+
+Adopt `psdowner1`, based on `d6c18ccb`, under
+[ADR 0141](docs/adr/0141-ppml-covariance-eigensystem-ownership.md) and the
+[source-bound report](benchmarks/reports/development/ppml-wide-inference-local-2026-09-23/README.md).
+All **541 computational inputs** match plugin
+`ae620228d87df873839c06436af6a55f72c0461d4f531d1b1b766bcdad685da1`.
+The archive was restored and **8,522 logical receipts** verified, SHA-256
+`1f63e1cb755150e171a477985a624bf9f29995e41ec5f24e3fd3aa7dc4370e78`.
+All builds, tests, benchmarks, diagnostics, audits and archive operations are
+terminal. No push, release or broader qualification.
+
+### Adopted mechanism and evidence
+
+An unchanged covariance keeps its already certified production eigensystem;
+actual multiway clipping still receives a fresh final eigensystem. Independent
+publication inspection remains mandatory. The established exact maximum-pivot
+cache now serves every width; exhaustive search is test-only. Pivot order,
+rotations, stopping, rank, clipping, tolerances and all other scientific checks
+are unchanged. There is no additional heap payload or retained cache.
+
+**391 Rust tests**, ABI/panic containment, **four licensed independent-oracle/
+boundary fixtures**, nine small Python oracles, 210 PPML public-state checks,
+70 baseline/stock plus 70 direct candidate/stock checks pass. There are **218
+passing headline applications** and eight separate diagnostic fits. All 70 native
+PPML pairs have byte-identical scientific exports and means, identical iterations,
+tracked peaks, modeled memory and scratch. Four OLS pairs have exact science.
+This does not repair the historical static allocation drift or constrained fits.
+
+### Current timings and losses
+
+Whole-command medians in ms, robust inference plus means; five rotations for
+one-FE widths and rechecks, three for initial PPML controls. Complete distributions
+and paired losses are in the report.
+
+| Case | Baseline | Current | Stock | Current/stock | 0.90 target |
+|---|---:|---:|---:|---:|---:|
+| Low one-FE N61440 K10 T4 | 94 | 94 | 54 | 1.741 | 48.6 |
+| Low one-FE N30720 K32 T4 | 114 | 111 | 118 | 0.941 | 106.2 |
+| Low one-FE N16384 K48 T4 | 125 | 108 | 107 | 1.009 | 96.3 |
+| Low one-FE N16384 K65 T4 | 197 | 191 | 185 | 1.032 | 166.5 |
+| Fresh unbalanced low N24580 K24 T1 | 134 | 133 | 127 | 1.047 | 114.3 |
+| Fresh fast N12288 K40 T4 | 88 | 82 | 69 | 1.188 | 62.1 |
+| Fresh low N20480 K56 T4 | 176 | 146 | 178 | 0.820 | 160.2 |
+| Fresh fast N8192 K80 T8 | 182 | 170 | 112 | 1.518 | 100.8 |
+| Fresh dense three-FE fast N30720 K6 T4 | 197 | 198 | 238 | 0.832 | 214.2 |
+| Fresh dense three-FE low, same shape | 340 | 348 | 232 | 1.500 | 208.8 |
+| Fresh two slope partitions low, same shape | 152 | 151 | 118 | 1.280 | 106.2 |
+| Fresh two slope partitions fast, same shape | 123 | 126 | 120 | 1.050 | 108.0 |
+
+All 25 K40/K48/K56/K65/K80 pairs improve; K32 has four gains and a tie. Small
+K3 has a 17 -> 20 ms median loss; narrow K10 has three paired 1–2 ms losses.
+Initial low three-FE losses are +8,+15,+3 ms and fast slope losses +1,+4,+3.
+Their one separately declared unchanged-source/data five-rotation recheck is
+362/359/238 and 127/127/118 ms (baseline/current/stock), with paired differences
+-6,-12,-10,+10,+4 and -2,0,0,+1,+4. Preserve both blocks; no universal timing
+non-regression or family-wide speed claim. OLS medians are 67.5/67.5 and 63/63.5.
+
+The original fresh preparation rejected N24576 because it leaves a singleton.
+No data or fit existed; only that count changed to N24580 before any fresh
+results. Its failed preparation remains archived. No completed-block application
+failure, timeout, scientific discrepancy or overlap was detected.
+
+### Next bounded implementation milestones
+
+1. **Current-weight finite products, with a whole-command goal.** Share compatible
+   centered products between concentrated one-FE directions and canonical
+   construction, and investigate the remaining robust-score reductions (current
+   diagnostics: 11.052 ms at K48, 17.931 at K65). K32 needs another 4.8 ms; fast
+   K40 needs 19.9 ms and K80 69.2 ms. Exact sample/weight/basis ownership and
+   independent final-Hessian witnesses remain mandatory. Do not keep tuning
+   covariance thresholds: its K48 eigensystem cost is already 19.502 -> 4.362 ms.
+2. **Low multi-FE and slope checkpoint ownership.** Low three-FE's recheck strict/
+   final marginal is 177.963 ms, versus 0.664 inference. Profile its canonical
+   checkpoint on identical frozen frames and compare the existing joint,
+   categorical and coefficient/Schur owners. Remove duplicated work where
+   identities permit; do not layer another solver over solved machinery. Confirm
+   weak/disconnected/unbalanced designs and multi-partition OLS controls.
+3. **Narrow public preparation and publication.** N61440/K10 is still 94/54 ms;
+   the <=48.6 ms target needs roughly half the command removed. Measure matched
+   stock phases and the native/control-plane boundary before choosing a larger
+   ownership/pass redesign. Small fits remain noisy and slow.
+4. **Fresh family confirmation.** Require matched outputs/threads, independent
+   oracles, >=5 rotations where margins matter, explicit tails/losses and memory
+   accounting. At most two materially different candidates per cost center;
+   no seed-specific guards, tolerance relaxation or endless residual-gap tuning.
+
+Seeds **202609344–345** are consumed, in addition to earlier seeds through343.
+Protected cycle seeds 202609211/212 and frozen77/16/111 definitions are unchanged.
+Static allocation drift, mixed-thread retirement, weighted constrained/nonretaining
+CG failures and existing platform/comparator deferrals remain open. No SCC retry
+or stopped-campaign restart. STATUS remains the sole mutable handover.
+
 ## PPML accepted-state products adopted; wide finite/inference work next — 2026-09-23
 
 The active objective remains **whole public PPML <=0.90 times scientifically

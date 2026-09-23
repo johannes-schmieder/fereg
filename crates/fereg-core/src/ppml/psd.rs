@@ -77,34 +77,45 @@ pub(crate) fn apply_ppml_psd_policy(
 
     let raw_reconstruction_error = raw.reconstruction_relative_error;
     let raw_orthogonality_error = raw.orthogonality_relative_error;
-    let (mut output, clipped, clipped_error, state) = if cluster_dimensions > 1 && raw_minimum < 0.0
-    {
-        let (repaired, clipped) = reconstruct_clipped(&raw, dimension)?;
-        let error = certify_clipped_reconstruction(&raw, &repaired, dimension)?;
-        drop(raw);
-        drop(symmetric);
-        (repaired, clipped, error, PpmlPsdState::MultiwayClipped)
-    } else {
-        drop(raw);
-        (
-            symmetric,
-            0,
-            0.0,
-            if cluster_dimensions > 1 {
-                PpmlPsdState::MultiwayRaw
-            } else {
-                PpmlPsdState::Strict
-            },
-        )
-    };
-    symmetrize(&mut output, dimension)?;
-    let final_system = symmetric_eigensystem(&output, dimension)?;
+    let (output, final_system, final_scale, clipped, clipped_error, state) =
+        if cluster_dimensions > 1 && raw_minimum < 0.0 {
+            let (mut repaired, clipped) = reconstruct_clipped(&raw, dimension)?;
+            let error = certify_clipped_reconstruction(&raw, &repaired, dimension)?;
+            drop(raw);
+            drop(symmetric);
+            symmetrize(&mut repaired, dimension)?;
+            let final_system = symmetric_eigensystem(&repaired, dimension)?;
+            let final_scale = matrix_scale(&repaired, dimension)?;
+            (
+                repaired,
+                final_system,
+                final_scale,
+                clipped,
+                error,
+                PpmlPsdState::MultiwayClipped,
+            )
+        } else {
+            // This exact symmetric matrix already has its certified eigensystem.
+            // Only a repair changes it. Publication independently inspects the
+            // actual returned covariance under the separate result boundary.
+            (
+                symmetric,
+                raw,
+                raw_scale,
+                0,
+                0.0,
+                if cluster_dimensions > 1 {
+                    PpmlPsdState::MultiwayRaw
+                } else {
+                    PpmlPsdState::Strict
+                },
+            )
+        };
     let final_minimum = final_system
         .values
         .iter()
         .copied()
         .fold(f64::INFINITY, f64::min);
-    let final_scale = matrix_scale(&output, dimension)?;
     let final_rank = final_system
         .values
         .iter()
@@ -242,14 +253,11 @@ fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEi
         vectors[index * dimension + index] = 1.0;
     }
     // The modeled eigensystem peak already includes this vector beside work
-    // and eigenvectors. Wide rotations reuse it for upper-row maxima before
+    // and eigenvectors. Rotations reuse it for upper-row maxima before
     // filling the final diagonal; there is no second cache allocation.
     let mut values = filled(dimension, 0.0_f64, "unable to reserve PPML eigenvalues")?;
-    let cached_pivots = dimension > 64;
-    if cached_pivots {
-        for (row, maximum) in values.iter_mut().enumerate() {
-            *maximum = upper_row_maximum(&work, dimension, row).1;
-        }
+    for (row, maximum) in values.iter_mut().enumerate() {
+        *maximum = upper_row_maximum(&work, dimension, row).1;
     }
     if dimension > 1 {
         let threshold = 128.0 * f64::EPSILON * matrix_scale(&work, dimension)?;
@@ -259,22 +267,14 @@ fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEi
             .ok_or_else(|| allocation("PPML Jacobi iteration limit overflows usize"))?;
         let mut converged = false;
         for _ in 0..maximum_iterations {
-            let (pivot_row, pivot_column, maximum) = if cached_pivots {
-                cached_jacobi_pivot(&work, dimension, &values)
-            } else {
-                exhaustive_jacobi_pivot(&work, dimension)
-            };
+            let (pivot_row, pivot_column, maximum) = cached_jacobi_pivot(&work, dimension, &values);
             if maximum <= threshold {
                 converged = true;
                 break;
             }
-            if cached_pivots {
-                invalidate_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column);
-            }
+            invalidate_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column);
             jacobi_rotate(&mut work, &mut vectors, dimension, pivot_row, pivot_column)?;
-            if cached_pivots {
-                refresh_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column);
-            }
+            refresh_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column);
         }
         if !converged {
             return Err(numerical_nonconvergence(
@@ -298,6 +298,7 @@ fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEi
     })
 }
 
+#[cfg(test)]
 fn exhaustive_jacobi_pivot(matrix: &[f64], dimension: usize) -> (usize, usize, f64) {
     let (mut pivot_row, mut pivot_column, mut maximum) = (0, 1, 0.0_f64);
     for row in 0..dimension {
@@ -671,8 +672,82 @@ mod tests {
     use super::*;
 
     #[test]
+    fn unchanged_covariance_certificate_matches_known_householder_spectrum() {
+        for dimension in [1, 3, 8, 32, 48, 65] {
+            let n = dimension as f64;
+            let eigenvalues = (0..dimension)
+                .map(|i| 1.0 + (i % 7) as f64)
+                .collect::<Vec<_>>();
+            let sum = eigenvalues.iter().sum::<f64>();
+            // Q = I - 2 uu' / n, u = (1, ..., 1). Expanding Q D Q'
+            // gives a closed-form oracle without a second eigensolver.
+            let covariance = (0..dimension * dimension)
+                .map(|i| {
+                    let (row, column) = (i / dimension, i % dimension);
+                    f64::from(u8::from(row == column)) * eigenvalues[row]
+                        - 2.0 * (eigenvalues[row] + eigenvalues[column]) / n
+                        + 4.0 * sum / (n * n)
+                })
+                .collect::<Vec<_>>();
+            for clusters in [0, 1, 2] {
+                let (output, report) =
+                    apply_ppml_psd_policy(&covariance, dimension, clusters, 1e-10).unwrap();
+                assert_eq!(output, covariance);
+                assert!(!report.adjusted);
+                assert_eq!(report.clipped_eigenvalues, 0);
+                assert_eq!(report.final_rank, dimension);
+                assert!((report.raw_minimum_eigenvalue - 1.0).abs() < 1e-11);
+                assert_eq!(
+                    report.final_minimum_eigenvalue,
+                    report.raw_minimum_eigenvalue
+                );
+                let (_, inspection) =
+                    inspect_published_ppml_covariance(&output, dimension, clusters, 1e-10).unwrap();
+                assert_eq!(report.final_rank, inspection.rank);
+                assert_eq!(
+                    report.final_minimum_eigenvalue,
+                    inspection.minimum_eigenvalue
+                );
+                assert_eq!(
+                    report.eigensystem_reconstruction_relative_error,
+                    inspection.reconstruction_relative_error
+                );
+                assert_eq!(
+                    report.orthogonality_relative_error,
+                    inspection.orthogonality_relative_error
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn covariance_owner_preserves_tiny_negative_and_repaired_rank_policies() {
+        let covariance = [-1e-12, 0.0, 0.0, 2.0];
+        for clusters in [0, 1] {
+            let (output, report) = apply_ppml_psd_policy(&covariance, 2, clusters, 1e-10).unwrap();
+            assert_eq!(output, covariance);
+            assert_eq!(report.final_minimum_eigenvalue, -1e-12);
+            assert_eq!(report.final_rank, 1);
+            assert!(!report.adjusted);
+        }
+        let (output, report) = apply_ppml_psd_policy(&covariance, 2, 2, 1e-10).unwrap();
+        assert_eq!(output, [0.0, 0.0, 0.0, 2.0]);
+        assert_eq!(report.raw_minimum_eigenvalue, -1e-12);
+        assert_eq!(report.final_minimum_eigenvalue, 0.0);
+        assert_eq!(report.final_rank, 1);
+        assert_eq!(report.clipped_eigenvalues, 1);
+        assert!(report.adjusted);
+        let (_, inspection) = inspect_published_ppml_covariance(&output, 2, 2, 1e-10).unwrap();
+        assert_eq!(
+            inspection.minimum_eigenvalue,
+            report.final_minimum_eigenvalue
+        );
+        assert_eq!(inspection.rank, report.final_rank);
+    }
+
+    #[test]
     fn cached_jacobi_pivots_match_exhaustive_search_after_rotations() {
-        for dimension in [1, 2, 7, 63, 64, 65, 129, 257] {
+        for dimension in [1, 2, 7, 10, 16, 32, 48, 63, 64, 65, 129, 257] {
             for pattern in 0..4 {
                 let scale = match pattern {
                     0 => 2.0_f64.powi(-400),
