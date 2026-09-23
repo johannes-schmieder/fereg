@@ -10,13 +10,15 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Scratch inference accepted; plan to reach 0.90 times stock PPML — 2026-09-23
+## Plan for 0.90 times stock PPML; categorical prototype complete — 2026-09-23
 
 The active objective is whole public PPML **at least 10% faster than comparable
-pinned stock fixest per case wherever achievable**. This checkpoint completes
-the running inference experiment and sets the next implementation milestones.
-It does not complete the objective. This opening supersedes older implementation
-orders, proposed mechanisms already adopted, and unused-seed entries below.
+pinned stock fixest per case wherever achievable**. Production is `b9f2acbf`;
+this planning checkpoint completes the isolated categorical experiment and
+selects its production integration as the next milestone. No production solver
+change is adopted here and the objective remains unfinished. This opening
+supersedes older implementation orders, proposed mechanisms already adopted,
+and unused-seed entries below.
 
 Accept `infscan1`, based on `3295603f`, under
 [ADR 0135](docs/adr/0135-immutable-ppml-inference-scans.md) and the
@@ -55,6 +57,44 @@ not combine later native medians with earlier stock medians. No universal timing
 non-regression claim. OLS controls cover slopes, low categorical, generated
 factors and robust/full-output one-FE; licensed oracles cover unit/AW/FW/PW.
 
+### Completed categorical experiment
+
+The [source-bound categorical report](benchmarks/reports/development/ppml-categorical-joint-probe-local-2026-09-23/README.md)
+preserves the current-source baseline, captured iteration-two frames and all
+native/stock prototypes. All 537 production inputs still match `infscan1`.
+The archive was restored and **2,605 receipts** verified, SHA-256
+`c8311ae0da61e792c694b15893eb8a00baca46c4c92308f97e073b74b038cfd3`.
+
+Three current-source rotations confirm dense three-FE N30720/K6/T4 fast
+**187/247 ms** versus stock and low **555/246 ms**. The latter needs a **60.1%**
+native reduction to reach its **221.4-ms** target. Sparse N38400/K8/T4 produces
+fast **292/15977** and low **5345/15823 ms**, but both comparisons remain
+**unranked**: five fitted means exceed the unchanged envelope. Sample,
+coefficients, covariance, likelihood and deviance pass. All 24 applications and
+individual public-state checks pass; that does not erase paired discrepancies.
+
+The completed frozen test has **360 native and 45 stock kernels**, T1/T4/T8,
+five rotations per arm, ordinary and strict native tolerances. At dense T4,
+strict categorical blocked absorption/FWL takes **96.080 ms**, joint dense
+**12.876 ms**, joint streamed preparation **13.451 ms**, and stock **52 ms**.
+These are isolated kernels on identical current weights and representatives;
+the streamed arm uses an in-memory row source, not timed scratch I/O. Constructors
+are separate. No whole-command candidate claim or complete memory bound follows.
+
+Independent explicit weighted-design SVD/LSMR checks pass all **six strict joint
+beta/residual comparisons**. On the sparse frame, the existing fused/blocked
+projector and stock fail the strict residual envelope; their beta checks pass.
+The oracle controller deliberately returns failure after preserving all three
+discrepancies. All ordinary-tolerance residual outputs fail that strict envelope
+and are not final-output evidence. The first native dimension-error probe and
+two invalid stock argument calls are preserved as corrected harness failures.
+Frozen linear evidence does not settle the nonlinear public discrepancy.
+
+No benchmark or build is left running. `integrate.py` in the local categorical
+experiment directory is an **unexecuted draft**, not a production change.
+No fresh seed336 case has run. Resume with the bounded integration and checks
+below; do not repeat this completed baseline/probe or restart inference tuning.
+
 ### Current budgets and coverage
 
 Robust inference plus fitted means, three alternating rotations. Times are ms.
@@ -87,22 +127,35 @@ unranked. Prior OLS wins retain their original source scope.
 
 ### Ambitious implementation plan
 
-1. **Joint categorical directions, with a bounded low-memory implementation.**
-   First refresh a small fast/low sparse and dense stock screen, then freeze a
-   representative ordinary and strict weight frame for each measured loss.
-   The low dense case spends 333.1 ms in projection and 164.9 ms in strict/final
-   work (partly nested), against a 337.3-ms public deficit. Compare two complete
-   candidates: direct finite-block elimination coupled to the categorical FE
-   operator, and the existing augmented LSMR with a full finite-block
-   preconditioner replacing its diagonal finite action. Reuse immutable graph
-   structure, rebuild current-weight numerical factors, and avoid projecting
-   every control independently in every ordinary step. Share the admitted dense
-   and streamed owners instead of removing fast-only guards. Extend the strict
-   Newton-witness/one-canonical-final pattern only after independently proving
-   the same current-weight acceptance. Protect disconnected/weak graphs and
-   current fast categorical wins. Choose one coherent engine and retire any
-   superseded path; do not accumulate another collection of benchmark guards.
-   This is the **next implementation milestone**, not another inference pass.
+1. **Integrate joint categorical directions with bounded low-memory ownership.**
+   The completed experiment selects the existing finite/FE Schur engine as the
+   first candidate. It already handles intercept channels mathematically; the
+   remaining work is current-weight session ownership, admission, strict/final
+   authority and public validation. Construct the appropriate owner directly,
+   avoiding categorical observation banks that would immediately be discarded.
+   Admit QR/coupling, prior-response and finite-block payloads against the full
+   fit lifetime; retain canonical fallback when optional state does not fit.
+   Use bounded scratch tiles, not an extra N-by-K resident design. Rebuild
+   current-weight factors, reuse immutable topology, and avoid independently
+   projecting every control in ordinary steps. Extend the strict Newton-witness/
+   one-canonical-final procedure only with independently proved current-weight
+   acceptance, rank-loss refusal and rollback. A successor ADR must explain
+   these categorical ownership and checking decisions.
+
+   Validate two-/three-FE truth and changing weights, narrow pools, deficient
+   controls, tight budgets, forced predictor/basis movement and canonical retry.
+   Predeclare fresh dense, sparse, weak, disconnected and unbalanced cases across
+   K4/K8/K16 and T1/T4/T8 before fitting; use a small adaptive selection rather
+   than their Cartesian product. Adjudicate sparse scientific discrepancies
+   independently and keep them unranked until resolved. Protect the existing
+   fast categorical LSMR wins, slopes, one FE and OLS. Measure complete public
+   baseline/candidate/stock rotations, including scratch costs and inference.
+   The refreshed dense low target is **<=221.4 ms**, subject to matched stock
+   remeasurement. Frozen kernel gains are not that outcome. Only if a measured
+   limitation defeats this coherent candidate, compare augmented LSMR with a
+   full finite-block preconditioner as the second design. Retire superseded
+   machinery after replacement is established; do not accumulate overlapping
+   solvers or benchmark-name guards. This is the **next implementation milestone**.
 
 2. **Carry one-FE concentration through the whole command and into low mode.**
    Analytic profiling, borrowed design, strict/final product sharing and parallel
