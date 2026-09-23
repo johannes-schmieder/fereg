@@ -62,6 +62,11 @@ recurrence and raw maximum. Residuals, weights and geometry are immutable during
 this work. Fallible scratch admission preserves the serial path. It does not
 start a pool or change the changing-weight reusable MAP implementation; see
 ADR 0117.
+The PPML multipartition coefficient solver can separately admit an ordered
+group result bank for its fresh certificates (ADR 0124). It uses the existing
+team, bounded RHS tiles and disjoint group slots, followed by the original
+ordered scalar merge. No pool or parallel floating-point reduction is added.
+Budget/allocation refusal retains serial certification and the same solver.
 Retired scoped teams signal shutdown and join their worker handles after the
 cache mutex is released. New and old teams can coexist during replacement.
 The general Rust API avoids self-join when external asynchronous work drops the

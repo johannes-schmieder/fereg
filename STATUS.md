@@ -10,6 +10,80 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## PPML frame geometry and fresh certificates accepted — 2026-09-23
+
+The broader implementation objective is active: aim for public PPML runtime
+at most **0.90 times scientifically comparable pinned stock fixest**, wherever
+reasonably achievable. This checkpoint completes the first implementation
+milestone of the new plan; it does not complete that objective.
+
+The [source-bound report](benchmarks/reports/development/ppml-frame-certificates-local-2026-09-23/README.md)
+and ADR 0124 accept `slframe3`. All **531 computational inputs** match plugin
+`c5e41cef298abced05af47874afc957eb4e6ffa0e5ad13174e58d3e7624c1b5a`.
+The restored immutable receipt container verifies 7,518 logical files, SHA-256
+`940650d9cb08ef812efd07bbea8491582d10f97319ad7d2e159421e33413c97c`.
+
+Fresh certificate groups now share row loads in bounded RHS tiles, use the
+existing native team, and merge in the original scalar order. Local weighted
+QR can persist across compatible calls only under explicit sample/topology/
+weight generations supplied by the owning linear session. Every call still
+gets fresh acceptance; changed generations, errors and unframed calls revoke
+reuse. The extra result bank is independently optional: refusing it preserves
+the coefficient solver with serial certification. No numerical or scientific
+policy, convergence schedule, sample, output or public routing changes.
+
+Fresh baseline/candidate/strict-stock medians (ms) are two-partition T4
+**219/187/118**, unbalanced three FE **214/180/120**, larger K10/T8
+**491/385/232**, serial **318/308/315**, low memory **407/357/118**, and
+multiple slopes **73/64/53**. Native gains range 3.1–21.6%; most stock gaps
+remain. The multiple-slope large comparison passes pairwise/public checks,
+but a smaller fresh stock pilot fails five covariance coordinates against the
+independent Hessian oracle (maximum tolerance ratio 1.57822); keep that failure
+unranked and do not make an unqualified family-level comparison.
+
+On identical diagnostic inputs, wide fresh certification drops **133 to 20 ms**;
+geometry builds drop 11 to 8. Low-memory geometry builds drop 19 to 8. Added
+tracked peak is **0.0406–0.3779 MB**, matching modeled increments. This is not
+physical-cap qualification or a whole-action allocation proof.
+
+34 distinct Rust tests, actual-plugin ABI/panic checks, and three licensed
+fixtures pass. Independent native Poisson/Hessian pilots and all final native
+public states pass; 88 native pairs preserve exact scientific exports/means.
+Of 254 benchmark attempts, 242 pass and 12 stock setup attempts fail before
+fitting due to an omitted existing R dependency path; corrected rotations and
+all failures are retained. No timeout, competing fit/build or monitor error.
+An oversized independent pilot was replaced with smaller fresh cases within
+the unchanged oracle bound, preserving its refusal and original applications.
+
+Current categorical PPML candidate/stock medians are dense three FE **196/239**,
+one FE **145/54**, degree-six two FE **229/139**, and unbalanced three FE
+**181/110** ms. Fresh weak/disconnected slope cases pass same-cell independent
+oracles and give **14/23** and **42/756** ms. These bounded cells clear the
+0.90 median target; they do not establish broad topology or qualification claims.
+Excluded controls retain exact science. Five-pair confirmation leaves a small
+dense categorical PPML loss **190/193** ms with overlapping ranges; one-FE
+saved-output OLS is **17/17** ms. The initial categorical OLS 43/44-ms loss is
+also recorded, not silently dismissed.
+
+**Next bounded implementation target:** compare prepared cross-partition
+coupling operators and current-weight coefficient warm starts against the
+remaining observation-based Schur operator on identical frozen frames. The
+wide diagnostic still spends about 119 ms in absorption outside geometry and
+certification. Count setup, coupling fill, applications and memory before
+choosing compact versus observation-based execution; no benchmark-name guards.
+Low-memory finite solving remains a separate large cost (104 ms ordinary,
+81 ms strict-final in a representative fresh call). One-FE profiled Poisson
+optimization is also now supported by a current measured gap. Outstanding plan
+items include outer/checkpoint work sharing, low-memory redesign, categorical
+specialization, broader PPML coverage, and a selectively admitted shared OLS
+adapter; none is completed by this certificate milestone.
+
+Seeds 202609311–202609317 are consumed; 202609318 is next unused. Frozen
+77/16/111 definitions, static allocation drift, constrained-fit/CG failures,
+hidden PPML receipt assertion, factor-base provenance and Linux/SCC/physical-cap
+deferrals remain open. No push, release, qualification, SCC retry or stopped
+campaign restart occurred. Historical closeouts below remain source-bound.
+
 ## Absorbed-slope solver replacement accepted — 2026-09-23
 
 The [source-bound replacement report](benchmarks/reports/development/ppml-coefficient-schur-local-2026-09-23/README.md)

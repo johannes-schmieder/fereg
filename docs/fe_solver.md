@@ -39,13 +39,19 @@ lifetime; budget or allocation refusal keeps uncached certification. This
 does not change rank, convergence, final-Hessian or publication requirements.
 
 Publication PPML with multiple effects and absorbed slopes may instead admit
-one coefficient-space Schur workspace (ADR 0123). It shares the current-call
+one coefficient-space Schur workspace (ADR 0123). It shares the current-weight
 rank-aware QR bank, eliminates the largest partition exactly, and solves the
 remaining normal operator with independent per-column conjugate gradients.
 Fresh reconstruction and the full residual certificate remain acceptance gates;
 cheap coefficient moments only schedule them. Dense response/control warm starts
-share a single absorption call. No weighted basis or coefficient solution is
-trusted across calls. Admission refusal retains the bounded generic MAP path.
+share a single absorption call. Under ADR 0124, the owning session's explicit
+sample/topology/weight generations permit local QR reuse across compatible
+calls. Unframed calls, changed generations and failures revoke that authority.
+Every RHS still receives fresh acceptance; coefficient solutions are not cached.
+An independently admitted group result bank permits tiled parallel fresh
+certification with the original scalar arithmetic and ordered merge. Refusing
+that bank preserves the Schur solver with serial certification. Refusing the
+solver itself retains the bounded generic MAP path.
 The public MAP-owned engine identity includes this slope kernel; its iteration
 count is the maximum column Krylov count, not a symmetric-MAP sweep count.
 Categorical, one-effect, mu-separation and public OLS routing are unchanged.

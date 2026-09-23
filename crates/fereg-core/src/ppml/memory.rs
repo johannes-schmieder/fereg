@@ -5258,6 +5258,10 @@ mod tests {
         plan.usable_bytes = Some(base.selected_bytes() + 4096);
         assert!(plan.admit_reusable_slope(4096));
         assert_eq!(plan.selected_bytes(), base.selected_bytes() + 4096);
+        // Refusing a certificate result bank preserves the admitted solver.
+        let solver_only = plan;
+        assert!(!plan.admit_reusable_slope(4097));
+        assert_eq!(plan, solver_only);
         assert!(plan.with_solver_workspace(1025).is_err());
         assert!(!plan.admit_reusable_projection(1025));
         assert!(!plan.admit_reusable_slope(u128::MAX));

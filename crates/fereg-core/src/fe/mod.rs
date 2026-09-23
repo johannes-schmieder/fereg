@@ -82,7 +82,7 @@ pub(crate) use interaction::{try_factorize_dense_code_interaction, InteractionRe
 pub(crate) use lsmr::resolve_preconditioner_kind;
 pub use lsmr::{absorb_lsmr, LsmrConfig};
 pub use map::{absorb_map, MapConfig};
-pub(crate) use map::{ReusableMapAbsorber, ReusableMapCapacities};
+pub(crate) use map::{MapGeometryGeneration, ReusableMapAbsorber, ReusableMapCapacities};
 pub use partition::CategoricalPartition;
 pub use partition_registry::CategoricalPartitionRegistry;
 pub use partition_singleton::{

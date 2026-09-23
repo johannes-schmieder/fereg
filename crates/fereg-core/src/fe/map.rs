@@ -191,10 +191,21 @@ pub(crate) struct ReusableMapAbsorber {
     coefficient_solver: Option<Box<super::slope_coefficients::SlopeCoefficientWorkspace>>,
 }
 
-// Capacity belongs to the session; validity belongs only to an absorb stack frame.
+/// Supplied only by the linear session that owns all weight mutations. Response
+/// and finite-basis changes do not alter local weighted FE geometry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct MapGeometryGeneration {
+    pub(crate) sample: u64,
+    pub(crate) topology: u64,
+    pub(crate) weights: u64,
+}
+
 pub(super) struct ReusableCertificateGeometry {
     pub(super) basis: Vec<f64>,
     pub(super) ranks: Vec<usize>,
+    generation: Option<MapGeometryGeneration>,
+    #[cfg(test)]
+    preparations: usize,
 }
 
 fn reusable_certificate_dimensions(design: &FeDesign) -> Result<(usize, usize)> {
@@ -306,7 +317,9 @@ impl ReusableMapAbsorber {
 
     pub(crate) fn certificate_geometry_bytes(design: &FeDesign) -> Result<u128> {
         let (basis, ranks) = reusable_certificate_dimensions(design)?;
-        Ok(basis as u128 * 8 + ranks as u128 * std::mem::size_of::<usize>() as u128)
+        Ok(basis as u128 * 8
+            + ranks as u128 * std::mem::size_of::<usize>() as u128
+            + std::mem::size_of::<Option<MapGeometryGeneration>>() as u128)
     }
 
     /// The caller admits this optional bank for the entire session lifetime.
@@ -328,7 +341,13 @@ impl ReusableMapAbsorber {
                 "reusable certificate capacity exceeds admission",
             ));
         }
-        self.certificate_geometry = Some(ReusableCertificateGeometry { basis, ranks });
+        self.certificate_geometry = Some(ReusableCertificateGeometry {
+            basis,
+            ranks,
+            generation: None,
+            #[cfg(test)]
+            preparations: 0,
+        });
         Ok(())
     }
 
@@ -359,6 +378,17 @@ impl ReusableMapAbsorber {
 
     pub(crate) fn has_certificate_geometry(&self) -> bool {
         self.certificate_geometry.is_some()
+    }
+
+    pub(crate) fn coefficient_certificate_bytes(design: &FeDesign, rhs: usize) -> Result<u128> {
+        super::slope_coefficients::SlopeCoefficientWorkspace::certificate_bytes(design, rhs)
+    }
+
+    pub(crate) fn enable_coefficient_certificates(&mut self) -> Result<()> {
+        if let Some(solver) = self.coefficient_solver.as_mut() {
+            solver.enable_certificate_groups()?;
+        }
+        Ok(())
     }
 
     pub(crate) const fn max_rhs(&self) -> usize {
@@ -411,10 +441,28 @@ impl ReusableMapAbsorber {
     pub(crate) fn absorb(
         &mut self,
         weights: &[f64],
-        mut values: DenseMatrix,
+        values: DenseMatrix,
         config: MapConfig,
         structural_constant_if_empty: bool,
     ) -> Result<CertifiedBorrowedMap> {
+        self.absorb_in_generation(weights, values, config, structural_constant_if_empty, None)
+    }
+
+    pub(crate) fn absorb_in_generation(
+        &mut self,
+        weights: &[f64],
+        mut values: DenseMatrix,
+        config: MapConfig,
+        structural_constant_if_empty: bool,
+        generation: Option<MapGeometryGeneration>,
+    ) -> Result<CertifiedBorrowedMap> {
+        // Take authority before any fallible work. Failure or unwind cannot
+        // leave a generation authorized for a later call.
+        let previous = self
+            .certificate_geometry
+            .as_mut()
+            .and_then(|g| g.generation.take());
+        let reusable_geometry = generation.is_some() && previous == generation;
         validate_config(config)?;
         let rhs = values.ncols();
         if values.nrows() != self.design.nobs()
@@ -497,21 +545,49 @@ impl ReusableMapAbsorber {
             );
         }
 
-        // Even an identical weight slice starts a new geometry lifetime. Neither
-        // an early return nor an error can authorize reuse in the next call.
         let mut geometry_valid = false;
         if self.coefficient_solver.is_some() {
-            self.prepare_coefficient_geometry(weights)?;
-            geometry_valid = true;
-            let solver = self.coefficient_solver.as_mut().expect("admitted coefficient workspace");
-            let iterations = solver.solve(&self.design, self.certificate_geometry.as_ref().expect("admitted geometry"),
-                weights, &mut values, &self.reference_norms[..rhs], config)?;
-            let certificate = self.certify(&values, weights, rhs, config.tolerance, &mut geometry_valid)?;
-            if !certificate.passed {
-                return Err(FeregError::new(ErrorCode::InvalidData, "slope coefficient residual failed independent certification"));
+            if !reusable_geometry {
+                self.prepare_coefficient_geometry(weights)?;
             }
-            return CertifiedBorrowedMap::from_certified_parts(values, reusable_map_report(
-                SolveStopReason::Certified, iterations, certificate, setup_seconds, solve_started.elapsed().as_secs_f64()));
+            geometry_valid = true;
+            let solver = self
+                .coefficient_solver
+                .as_mut()
+                .expect("admitted coefficient workspace");
+            let iterations = solver.solve(
+                &self.design,
+                self.certificate_geometry
+                    .as_ref()
+                    .expect("admitted geometry"),
+                weights,
+                &mut values,
+                &self.reference_norms[..rhs],
+                config,
+            )?;
+            let certificate =
+                self.certify(&values, weights, rhs, config.tolerance, &mut geometry_valid)?;
+            if !certificate.passed {
+                return Err(FeregError::new(
+                    ErrorCode::InvalidData,
+                    "slope coefficient residual failed independent certification",
+                ));
+            }
+            let result = CertifiedBorrowedMap::from_certified_parts(
+                values,
+                reusable_map_report(
+                    SolveStopReason::Certified,
+                    iterations,
+                    certificate,
+                    setup_seconds,
+                    solve_started.elapsed().as_secs_f64(),
+                ),
+            )?;
+            self.certificate_geometry
+                .as_mut()
+                .expect("admitted geometry")
+                .generation = generation;
+            return Ok(result);
         }
         let initial = self.certify(&values, weights, rhs, config.tolerance, &mut geometry_valid)?;
         if initial.passed {
@@ -656,6 +732,10 @@ impl ReusableMapAbsorber {
             .certificate_geometry
             .as_mut()
             .expect("admitted geometry");
+        #[cfg(test)]
+        {
+            geometry.preparations += 1;
+        }
         let mut offset = 0;
         let mut group = 0;
         for effect in self.design.effects() {
@@ -701,6 +781,24 @@ impl ReusableMapAbsorber {
         for column in 0..rhs {
             self.rhs_scales[column] = self.reference_norms[column].max(self.residual_norms[column]);
         }
+        if *geometry_valid {
+            if let Some(solver) = self
+                .coefficient_solver
+                .as_mut()
+                .filter(|s| s.has_certificate_groups())
+            {
+                return Ok(solver.certify(
+                    &self.design,
+                    self.certificate_geometry
+                        .as_ref()
+                        .expect("valid geometry has storage"),
+                    weights,
+                    residuals,
+                    &self.rhs_scales[..rhs],
+                    tolerance,
+                ));
+            }
+        }
         let mut absolute = 0.0_f64;
         let mut relative_max = 0.0_f64;
         let mut relative_square = 0.0_f64;
@@ -719,8 +817,14 @@ impl ReusableMapAbsorber {
                         .expect("valid geometry has storage")
                         .ranks[group_index]
                 } else {
-                    let basis_count = prepare_reusable_group_basis(effect, members, weights,
-                        self.max_level_members, &mut self.certificate_columns, &mut self.certificate_basis)?;
+                    let basis_count = prepare_reusable_group_basis(
+                        effect,
+                        members,
+                        weights,
+                        self.max_level_members,
+                        &mut self.certificate_columns,
+                        &mut self.certificate_basis,
+                    )?;
                     if let Some(geometry) = self.certificate_geometry.as_mut() {
                         geometry.ranks[group_index] = basis_count;
                         for basis in 0..basis_count {
@@ -787,6 +891,85 @@ impl ReusableMapAbsorber {
             relative_two_norm: relative_two,
             passed: relative_max <= tolerance,
         })
+    }
+
+}
+
+// Preserve every scalar entry's observation order while sharing row loads,
+// weight roots and raw-channel products across a bounded RHS tile.
+pub(super) fn certify_reusable_group(
+    effect: &super::EffectTerm,
+    members: &[usize],
+    weights: &[f64],
+    residuals: &DenseMatrix,
+    scales: &[f64],
+    basis: &[f64],
+    rank: usize,
+    result: &mut [f64],
+) {
+    const TILE: usize = 16;
+    let rhs = residuals.ncols();
+    result.fill(0.0);
+    for first in (0..rhs).step_by(TILE) {
+        let width = (rhs - first).min(TILE);
+        let mut projected = [0.0_f64; TILE];
+        for channel in 0..rank {
+            let mut coefficients = [0.0_f64; TILE];
+            let direction = &basis[channel * members.len()..(channel + 1) * members.len()];
+            for (local, &row) in members.iter().enumerate() {
+                let root = weights[row].sqrt();
+                let values = &residuals.as_slice()[row * rhs + first..row * rhs + first + width];
+                for column in 0..width {
+                    let denominator = scales[first + column];
+                    if denominator > 0.0 {
+                        let scaled = root * values[column] / denominator;
+                        coefficients[column] =
+                            direction[local].mul_add(scaled, coefficients[column]);
+                    }
+                }
+            }
+            for column in 0..width {
+                projected[column] =
+                    coefficients[column].mul_add(coefficients[column], projected[column]);
+            }
+        }
+        for column in 0..width {
+            result[1 + first + column] = projected[column].sqrt();
+        }
+        for channel in 0..effect.channels() {
+            let mut raw_scales = [0.0_f64; TILE];
+            for &row in members {
+                let left = weights[row] * effect.basis_value(channel, row);
+                let values = &residuals.as_slice()[row * rhs + first..row * rhs + first + width];
+                for column in 0..width {
+                    raw_scales[column] = raw_scales[column].max((left * values[column]).abs());
+                }
+            }
+            let mut sums = [0.0_f64; TILE];
+            let mut corrections = [0.0_f64; TILE];
+            for &row in members {
+                let left = weights[row] * effect.basis_value(channel, row);
+                let values = &residuals.as_slice()[row * rhs + first..row * rhs + first + width];
+                for column in 0..width {
+                    if raw_scales[column] == 0.0 {
+                        continue;
+                    }
+                    let scaled = (left * values[column]) / raw_scales[column];
+                    let sum = sums[column];
+                    let updated = sum + scaled;
+                    corrections[column] += if sum.abs() >= scaled.abs() {
+                        (sum - updated) + scaled
+                    } else {
+                        (scaled - updated) + sum
+                    };
+                    sums[column] = updated;
+                }
+            }
+            for column in 0..width {
+                let moment = (sums[column] + corrections[column]) * raw_scales[column];
+                result[0] = result[0].max(moment.abs());
+            }
+        }
     }
 }
 
@@ -1442,6 +1625,197 @@ mod tests {
     }
 
     #[test]
+    fn slope_geometry_reuses_only_explicit_generations_and_invalidates_before_errors() {
+        let rows = 120;
+        let z: Vec<_> = (0..rows).map(|i| (i % 7) as f64 - 3.0).collect();
+        let design = FeDesign::new(
+            rows,
+            vec![
+                EffectTerm::new(
+                    (0..rows).map(|i| (i % 5) as u32).collect(),
+                    5,
+                    true,
+                    vec![z.clone(), z.iter().map(|v| 2.0 * v).collect()],
+                )
+                .unwrap(),
+                EffectTerm::new(
+                    (0..rows).map(|i| ((i / 5) % 4) as u32).collect(),
+                    4,
+                    true,
+                    vec![],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        let mut cached = ReusableMapAbsorber::new(design.clone(), 3).unwrap();
+        cached.enable_certificate_geometry().unwrap();
+        cached.enable_coefficient_solver(1).unwrap();
+        cached.enable_coefficient_certificates().unwrap();
+        let mut fresh = ReusableMapAbsorber::new(design, 3).unwrap();
+        fresh.enable_certificate_geometry().unwrap();
+        fresh.enable_coefficient_solver(1).unwrap();
+        let capacities = cached.capacities();
+        let mut generation = MapGeometryGeneration {
+            sample: 1,
+            topology: 2,
+            weights: 3,
+        };
+        for step in 0..6 {
+            if step == 2 {
+                generation.weights += 1;
+            }
+            if step == 4 {
+                generation.topology += 1;
+            }
+            let weights: Vec<_> = (0..rows)
+                .map(|i| 0.2 + ((i * generation.weights as usize) % 17) as f64)
+                .collect();
+            let rhs = if step % 2 == 0 { 3 } else { 1 };
+            let mut values = DenseMatrix::zeros(rows, rhs).unwrap();
+            for row in 0..rows {
+                for col in 0..rhs {
+                    values[(row, col)] = ((row * 19 + col * 11 + step) as f64).sin();
+                }
+            }
+            let expected = fresh
+                .absorb(&weights, values.clone(), MapConfig::default(), false)
+                .unwrap();
+            let actual = cached
+                .absorb_in_generation(
+                    &weights,
+                    values.clone(),
+                    MapConfig::default(),
+                    false,
+                    Some(generation),
+                )
+                .unwrap();
+            assert_eq!(actual.residualized(), expected.residualized());
+            assert_eq!(actual.report().certificate, expected.report().certificate);
+            assert_eq!(cached.capacities(), capacities);
+            let geometry = cached.certificate_geometry.as_ref().unwrap();
+            assert_eq!(geometry.generation, Some(generation));
+            assert_eq!(geometry.preparations, step / 2 + 1);
+            if step == 5 {
+                values[(0, 0)] = f64::NAN;
+                assert!(cached
+                    .absorb_in_generation(
+                        &weights,
+                        values,
+                        MapConfig::default(),
+                        false,
+                        Some(generation)
+                    )
+                    .is_err());
+                assert_eq!(
+                    cached.certificate_geometry.as_ref().unwrap().generation,
+                    None
+                );
+                let zeros = DenseMatrix::zeros(rows, 1).unwrap();
+                cached
+                    .absorb_in_generation(
+                        &weights,
+                        zeros.clone(),
+                        MapConfig::default(),
+                        false,
+                        Some(generation),
+                    )
+                    .unwrap();
+                assert_eq!(
+                    cached.certificate_geometry.as_ref().unwrap().preparations,
+                    4
+                );
+                cached
+                    .absorb(&weights, zeros, MapConfig::default(), false)
+                    .unwrap();
+                assert_eq!(
+                    cached.certificate_geometry.as_ref().unwrap().generation,
+                    None
+                );
+                assert_eq!(
+                    cached.certificate_geometry.as_ref().unwrap().preparations,
+                    5
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn reusable_certificate_tiles_match_serial_bits_across_threads_widths_and_scales() {
+        let rows = 120;
+        let z: Vec<_> = (0..rows).map(|i| (i % 7) as f64 - 3.0).collect();
+        let design = FeDesign::new(
+            rows,
+            vec![
+                EffectTerm::new(
+                    (0..rows).map(|i| (i % 5) as u32).collect(),
+                    6,
+                    true,
+                    vec![
+                        z.clone(),
+                        z.iter().map(|v| 2.0 * v).collect(),
+                        vec![0.0; rows],
+                    ],
+                )
+                .unwrap(),
+                EffectTerm::new(
+                    (0..rows).map(|i| ((i / 5) % 4) as u32).collect(),
+                    4,
+                    false,
+                    vec![(0..rows).map(|i| (i % 11) as f64 - 5.0).collect()],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        for threads in [1, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            let mut serial = ReusableMapAbsorber::new(design.clone(), 33).unwrap();
+            serial.enable_certificate_geometry().unwrap();
+            let mut tiled = ReusableMapAbsorber::new(design.clone(), 33).unwrap();
+            tiled.enable_certificate_geometry().unwrap();
+            tiled.enable_coefficient_solver(threads).unwrap();
+            let before = tiled.capacities().accelerator_state;
+            tiled.enable_coefficient_certificates().unwrap();
+            assert_eq!(
+                (tiled.capacities().accelerator_state - before) as u128 * 8,
+                ReusableMapAbsorber::coefficient_certificate_bytes(&design, 33).unwrap(),
+            );
+            let capacities = tiled.capacities();
+            for rhs in [1, 7, 16, 17, 33] {
+                for factor in [1e-60, 1.0, 1e60] {
+                    let weights: Vec<_> = (0..rows)
+                        .map(|i| factor * (0.1 + (i % 13) as f64))
+                        .collect();
+                    let mut residuals = DenseMatrix::zeros(rows, rhs).unwrap();
+                    for row in 0..rows {
+                        for column in 1..rhs {
+                            residuals[(row, column)] = ((row * 19 + column * 11) as f64).sin()
+                                * if column % 2 == 0 { 1e-60 } else { 1e60 };
+                        }
+                    }
+                    serial.prepare_coefficient_geometry(&weights).unwrap();
+                    tiled.prepare_coefficient_geometry(&weights).unwrap();
+                    let expected = serial
+                        .certify(&residuals, &weights, rhs, 1e-12, &mut true)
+                        .unwrap();
+                    let actual = pool
+                        .install(|| tiled.certify(&residuals, &weights, rhs, 1e-12, &mut true))
+                        .unwrap();
+                    assert_eq!(
+                        actual, expected,
+                        "threads={threads}, rhs={rhs}, factor={factor}"
+                    );
+                    assert_eq!(tiled.capacities(), capacities);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn reusable_certificate_geometry_is_exact_and_rebuilt_after_every_call() {
         let rows = 120;
         let z: Vec<_> = (0..rows).map(|i| (i % 7) as f64 - 3.0).collect();
@@ -1477,7 +1851,8 @@ mod tests {
         assert_eq!(capacities.certificate_ranks, 10);
         assert_eq!(
             ReusableMapAbsorber::certificate_geometry_bytes(&design).unwrap(),
-            (rows * 5 * 8 + 10 * std::mem::size_of::<usize>()) as u128
+            (rows * 5 * 8 + 10 * std::mem::size_of::<usize>()
+                + std::mem::size_of::<Option<MapGeometryGeneration>>()) as u128
         );
         for (generation, rhs) in [7, 1, 3, 7].into_iter().enumerate() {
             let weights: Vec<_> = (0..rows)

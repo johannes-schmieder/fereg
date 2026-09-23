@@ -10,7 +10,7 @@
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSolverKind,
+    BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSolverKind, MapGeometryGeneration,
     ReusableCategoricalMapAbsorber, ReusableMapAbsorber, ReusableMapCapacities, SolveReport,
 };
 use crate::metadata::CoefficientSlot;
@@ -54,6 +54,14 @@ pub(crate) struct LinearSessionGenerations {
 }
 
 impl LinearSessionGenerations {
+    const fn map_geometry(self) -> MapGeometryGeneration {
+        MapGeometryGeneration {
+            sample: self.sample,
+            topology: self.topology,
+            weights: self.weights,
+        }
+    }
+
     pub(crate) const fn new(
         sample: u64,
         topology: u64,
@@ -1299,19 +1307,28 @@ impl ReusableLinearMapProjector<'_> {
         values: DenseMatrix,
         config: crate::fe::MapConfig,
         structural_constant_if_empty: bool,
+        generations: LinearSessionGenerations,
     ) -> Result<CertifiedBorrowedMap> {
         match self {
-            Self::Generic(projector) | Self::PpmlSlopes { projector, .. } => projector.absorb(
+            Self::Generic(projector) => projector.absorb(
                 normalized_weights,
                 values,
                 config,
                 structural_constant_if_empty,
+            ),
+            Self::PpmlSlopes { projector, .. } => projector.absorb_in_generation(
+                normalized_weights,
+                values,
+                config,
+                structural_constant_if_empty,
+                Some(generations.map_geometry()),
             ),
             Self::PpmlCategorical { projector, .. } => {
                 projector.absorb(raw_weights, values, config)
             }
         }
     }
+
 }
 
 /// A frozen solve may fail because its reused numerical state no longer
@@ -1800,7 +1817,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
     }
 
-    pub(crate) fn enable_ppml_slope_coefficients(&mut self, threads: usize) -> Result<()> {
+    pub(crate) fn enable_ppml_slope_coefficients(&mut self, threads: usize, parallel_certificate: bool) -> Result<()> {
         let Some(ReusableLinearMapProjector::Generic(projector)) = self.fe_projector.as_mut()
         else {
             return Err(invalid_argument(
@@ -1814,6 +1831,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             Ok(()) => {}
             Err(error) if error.code == ErrorCode::Allocation => return Ok(()),
             Err(error) => return Err(error),
+        }
+        if parallel_certificate {
+            match projector.enable_coefficient_certificates() {
+                Ok(()) => {}
+                Err(error) if error.code == ErrorCode::Allocation => {}
+                Err(error) => return Err(error),
+            }
         }
         let previous_response =
             match fallible_copy(&self.response, "unable to retain slope prior response") {
@@ -2736,6 +2760,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             values,
             self.config.absorb.map,
             self.prepared.fit_has_absorbed_intercept(),
+            self.generations,
         )
     }
 
@@ -5085,7 +5110,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 self.weights.borrowed(), combined, self.config.absorb.map,
                 self.bread_weight_scale.solver_weight_divisor, &mut within_norms)?,
             Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) =>
-                (projector.absorb(&self.map_weights, combined, self.config.absorb.map, false)?, false),
+                (projector.absorb_in_generation(&self.map_weights, combined, self.config.absorb.map, false,
+                    Some(self.generations.map_geometry()))?, false),
             _ => return Err(invalid_argument("fused projection requires an admitted PPML projector")),
         };
         if !absorbed.report().certified() {

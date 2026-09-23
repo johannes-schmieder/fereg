@@ -8,7 +8,7 @@
 //! residuals only schedule reconstruction: acceptance uses freshly reconstructed
 //! observation residuals, followed by the caller's independent full certificate.
 use super::map::ReusableCertificateGeometry;
-use super::{FeDesign, MapConfig};
+use super::{FeCertificate, FeDesign, MapConfig};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use rayon::prelude::*;
@@ -37,6 +37,7 @@ pub(super) struct SlopeCoefficientWorkspace {
     workers: Vec<Worker>,
     columns: Vec<f64>,
     roots: Vec<f64>,
+    certificate_groups: Vec<f64>,
     max_rhs: usize,
     coefficients: usize,
 }
@@ -84,6 +85,12 @@ fn dimensions(
     }
     let columns = design.nobs().checked_mul(rhs).ok_or_else(allocation)?;
     Ok((groups, coefficients, columns, threads.max(1).min(rhs)))
+}
+
+fn certificate_elements(groups: usize, rhs: usize) -> Result<usize> {
+    rhs.checked_add(1)
+        .and_then(|width| groups.checked_mul(width))
+        .ok_or_else(allocation)
 }
 
 impl SlopeCoefficientWorkspace {
@@ -146,6 +153,7 @@ impl SlopeCoefficientWorkspace {
             workers: workspaces,
             columns: filled(column_count, 0.)?,
             roots: filled(design.nobs(), 0.)?,
+            certificate_groups: Vec::new(),
             max_rhs,
             coefficients,
         })
@@ -154,6 +162,7 @@ impl SlopeCoefficientWorkspace {
     pub(super) fn elements(&self) -> usize {
         self.columns.capacity()
             + self.roots.capacity()
+            + self.certificate_groups.capacity()
             + self
                 .workers
                 .iter()
@@ -165,6 +174,79 @@ impl SlopeCoefficientWorkspace {
                         + w.observations.capacity()
                 })
                 .sum::<usize>()
+    }
+
+    pub(super) fn certificate_bytes(design: &FeDesign, rhs: usize) -> Result<u128> {
+        let (groups, _, _, _) = dimensions(design, rhs, 1)?;
+        Ok(certificate_elements(groups, rhs)? as u128 * 8)
+    }
+
+    pub(super) fn enable_certificate_groups(&mut self) -> Result<()> {
+        self.certificate_groups =
+            filled(certificate_elements(self.groups.len(), self.max_rhs)?, 0.)?;
+        Ok(())
+    }
+
+    pub(super) fn has_certificate_groups(&self) -> bool {
+        !self.certificate_groups.is_empty()
+    }
+
+    /// Independent fresh residual checks share row loads within each group.
+    /// Disjoint results are merged in the original group/RHS order so worker
+    /// scheduling cannot change the certificate's RMS reduction.
+    pub(super) fn certify(
+        &mut self,
+        design: &FeDesign,
+        geometry: &ReusableCertificateGeometry,
+        weights: &[f64],
+        residuals: &DenseMatrix,
+        scales: &[f64],
+        tolerance: f64,
+    ) -> FeCertificate {
+        let stride = self.max_rhs + 1;
+        let rhs = residuals.ncols();
+        self.certificate_groups
+            .par_chunks_mut(stride)
+            .zip(self.groups.par_iter())
+            .enumerate()
+            .for_each(|(index, (result, group))| {
+                let effect = &design.effects()[group.effect];
+                let members = effect.level_index().members(group.level);
+                let rank = geometry.ranks[index];
+                let basis =
+                    &geometry.basis[group.basis_start..group.basis_start + members.len() * rank];
+                super::map::certify_reusable_group(
+                    effect,
+                    members,
+                    weights,
+                    residuals,
+                    scales,
+                    basis,
+                    rank,
+                    &mut result[..rhs + 1],
+                );
+            });
+        let mut absolute = 0.0_f64;
+        let mut maximum = 0.0_f64;
+        let mut square = 0.0_f64;
+        for result in self.certificate_groups.chunks(stride) {
+            absolute = absolute.max(result[0]);
+            for &relative in &result[1..rhs + 1] {
+                maximum = maximum.max(relative);
+                square = relative.mul_add(relative, square);
+            }
+        }
+        let count = self.groups.len() * rhs;
+        FeCertificate {
+            absolute_infinity_norm: absolute,
+            relative_infinity_norm: maximum,
+            relative_two_norm: if count == 0 {
+                0.0
+            } else {
+                (square / count as f64).sqrt()
+            },
+            passed: maximum <= tolerance,
+        }
     }
 
     pub(super) fn solve(

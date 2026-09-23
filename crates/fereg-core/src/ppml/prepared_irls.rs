@@ -1018,6 +1018,16 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         false
     };
+    // Certificate scheduling is optional even after the slope solver fits.
+    // A tight budget must retain that solver with its serial fresh check.
+    let slope_certificate = if slope_coefficients {
+        match crate::fe::ReusableMapAbsorber::coefficient_certificate_bytes(&fe_design, projection_rhs) {
+            Ok(bytes) => memory_plan.reusable_slope_bytes.checked_add(bytes)
+                .is_some_and(|total| memory_plan.admit_reusable_slope(total)),
+            Err(error) if error.code == ErrorCode::Allocation => false,
+            Err(error) => return Err(error),
+        }
+    } else { false };
     // The retained bank cannot consume slack promised to another solver call.
     let solver_memory_budget = FeSolverMemoryBudget {
         execution_bytes: solver_execution_bytes
@@ -1080,7 +1090,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         session.enable_ppml_certificate_geometry()?;
     }
     if slope_coefficients {
-        session.enable_ppml_slope_coefficients(effective_threads)?;
+        session.enable_ppml_slope_coefficients(effective_threads, slope_certificate)?;
     }
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
     let initial_checkpoint_lsmr = use_initial_checkpoint_lsmr_accelerator(

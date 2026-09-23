@@ -720,7 +720,7 @@ remain checked. A tighter budget can retain the existing MAP fallback. See
 ## PPML multipartition slope workspace
 
 ADR 0123 admits a coefficient-space Schur solver instead of the optional repeated
-projection bank. In addition to current-call QR geometry, it reserves an N-by-RHS
+projection bank. In addition to current-weight QR geometry, it reserves an N-by-RHS
 normalized input bank, N square-root weights, and per worker four coefficient
 vectors and one N-vector. The number of workers is bounded by requested RHSs
 and effective threads. Group descriptors, worker descriptors and the boxed owner
@@ -728,6 +728,14 @@ are charged explicitly. Dense response fusion adds one N-vector for the prior
 working response. Coefficient and QR reservations are fallible and checked against actual
 capacities. Prior-response storage uses the existing fallible exact-reservation
 session helper and enters its capacity fingerprint. No Krylov step grows storage.
+
+ADR 0124 independently admits `8*sum(FE levels)*(maximum RHS+1)` bytes for
+ordered parallel certificate results after the solver itself is admitted.
+Budget/allocation refusal keeps the solver with serial fresh certification.
+The vector descriptor is charged with its coefficient owner, and the explicit
+sample/topology/weight-generation descriptor is charged with QR geometry.
+Generation equality permits reuse only through the owning PPML slope session;
+fresh residual checks remain mandatory and errors clear reuse authority.
 
 The PPML plan charges this optional storage throughout the linear session,
 including refresh, ordinary solves, line search and strict checkpoints, and
