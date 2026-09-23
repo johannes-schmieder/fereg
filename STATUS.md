@@ -10,6 +10,62 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Direct joint slope candidate selected; production integration next — 2026-09-23
+
+The active objective remains public PPML runtime <= **0.90 times comparable
+pinned stock fixest** wherever reasonably achievable. This milestone establishes
+a computational candidate, not production adoption or completion. It supersedes
+the pending-experiment and unused-seed entries below; the implementation plan
+otherwise remains active.
+
+The [frozen comparison report](benchmarks/reports/development/ppml-joint-slope-frozen-local-2026-09-23/README.md)
+preserves two implemented isolated candidates and actual changing-weight fused
+response/control frames. Reject generic global-partition augmentation: its global
+QR/recovery and loss of RHS parallelism make the wider ordinary T8 proxy
+54.568 versus 21.954 ms. Select the direct finite block coupled to the existing
+FE Schur operator for a production ordinary-iteration experiment. Its paired
+proxy medians improve 9.269 to 6.689 ms on unbalanced K6/T4 and 23.018 to
+15.967 ms on wider K10/T8; wider T1 improves 71.178 to 27.929 ms. Small and
+tight two-partition threaded losses remain. No threshold has been fitted to them.
+
+All strict candidate, baseline and stock outputs pass independent explicit
+weighted-design oracles on four frozen frames. Direct maximum coefficient and
+residual discrepancies are 3.194e-14 and 1.464e-11. Loose ordinary solves do not
+meet final-publication envelopes, reinforcing the required strict acceptance.
+Five accepted-baseline licensed captures and eight frozen test invocations pass.
+These are not candidate public Poisson/Hessian or OLS integration tests.
+
+The accepted native inner solver already beats stock on these warm frozen
+problems. That limited evidence does not rank whole IRLS and does not remove
+the final-state/inference work from the plan. Preserve the corrected small-case
+generator, independent SVD nullspace and standalone stock-thread-controller
+attempts; the existing public benchmark harness's thread settings are unaffected.
+
+The immutable archive restores **2,323 receipts**, SHA-256
+`9a29de4aded72296438cc7ad8213504b07577717db5449912db950d9652634c3`.
+All **534 production computational inputs** still match accepted `scrread1` at
+`7bf3c402`. Both prototypes remain isolated under
+`target/ppml-joint-slopes-20260923`, with exact source also sealed in the report.
+No new production runtime or memory claim is established.
+
+**Immediate implementation:** integrate a direct finite-block ordinary PPML
+direction with the existing slope geometry/Schur owner. Reuse its normalized
+column bank and borrow retained controls where valid, rather than adding another
+N-by-K design or FE-owner copy. The prototype's dense Z bank is not low-memory
+admission evidence. Add bounded fallible storage, original-input finite/FE score
+checks, reconstruction, frame/basis invalidation, fallback and allocation-audit
+coverage. Preserve initial canonical rank and strict/final construction. Measure
+complete public baseline/candidate/stock rotations and excluded OLS/categorical
+controls before adoption; the narrow threaded margin may disappear in public
+costs. Broader exact-state final construction and inference remain next.
+
+Seed **202609329 is consumed**; fresh **202609330** is predeclared but ungenerated.
+Controllers ran sequentially without assistant-launched builds, profiles, archives
+or competing fits; these diagnostic kernels did not attach a whole-machine
+contention monitor. Static allocation drift, constrained-fit/CG failures,
+reference discrepancies and deferred platform gates remain open. No push,
+release, SCC retry or stopped campaign restart.
+
 ## Bounded low-memory reads accepted; joint finite-plus-FE solving is next — 2026-09-23
 
 The active objective remains public PPML at most **0.90 times scientifically
