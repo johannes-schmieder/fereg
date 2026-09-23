@@ -22,6 +22,8 @@ def configure(cell):
         raise ValueError('Unknown generated-term surface')
     if cell.get('outputs', 'none') not in ('none', 'all'):
         raise ValueError('Unknown output request')
+    if cell.get('memory', 'fast') not in ('fast', 'low'):
+        raise ValueError('Surface worker supports explicit fast/low memory only')
     if cell.get('outputs') == 'all' and len(cell['effects']) != 1:
         raise ValueError('Matched normalized saved outputs currently require one FE')
     names = [f'x{i}' for i in range(1, cell['k'] + 1)]
@@ -51,7 +53,7 @@ def configure(cell):
     cell.update(rhs=' '.join(stata_rhs), rhs_r=' + '.join(r_rhs),
                 coefficient_names=names, r_coefficient_names=r_names,
                 export_names=' '.join(names), outputs=cell.get('outputs', 'none'),
-                vce=cell.get('vce') or 'iid')
+                vce=cell.get('vce') or 'iid', memory=cell.get('memory', 'fast'))
     return cell
 
 
@@ -95,12 +97,13 @@ def columns(frame, cell):
 def stage(folder):
     path=folder/'measure.py'; text=path.read_text()
     text=replace(text,'("weight", "vce", "absorb", "restriction", "fit_options", "string_columns"))',
-                 '("weight", "vce", "absorb", "restriction", "fit_options", "string_columns", "rhs", "export_names", "outputs"))')
+                 '("weight", "vce", "absorb", "restriction", "fit_options", "string_columns", "rhs", "export_names", "outputs", "memory"))')
     path.write_text(text)
     path=folder/'stata_worker.do'; text=path.read_text()
-    text=replace(text,'fit_options string_columns\n','fit_options string_columns rhs export_names outputs\n')
+    text=replace(text,'fit_options string_columns\n','fit_options string_columns rhs export_names outputs memory\n')
     text=replace(text,'local effects\n','if "`rhs\'" != "" local xvars `"`rhs\'"\'\nlocal effects\n')
-    text=replace(text,'local command `"`arm\' y', '''if "`outputs'" == "all" {
+    text=replace(text,'local command `"`arm\' y', '''if "`memory'" == "low" local fit_options `fit_options' memory(low)
+if "`outputs'" == "all" {
     local absorption absorb(saved_fe=g1)
     local fit_options `fit_options' residuals(saved_resid)
 }

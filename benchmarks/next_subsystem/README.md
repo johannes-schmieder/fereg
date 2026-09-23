@@ -33,6 +33,15 @@ The `product` probe records the public continuous-product rejection, not a
 supported performance case. `surface_audit.py ROOT OUTPUT --independent` adds
 bounded explicit-dummy inference and normalized-output checks; omit the flag
 for large paired comparisons. Original failed attempts must remain visible.
+`memory: "low"` requests native scratch-backed OLS; the default `"fast"`
+keeps the public OLS default. Stock fixest uses its ordinary memory strategy,
+so these timings do not establish performance under an equal memory budget.
+
+`factor_rebase_probe.do` is a diagnostic reproducer for the ordinary one-FE
+factor-level deletion defect. It verifies that candidate metadata cannot
+distinguish `i.f` from `ib1.f`, checks their different final-sample expansion,
+and records native outcomes and rollback. Its terminal sentinel confirms the
+probe completed, not that the underlying rebasing defect is repaired.
 
 `ado_snapshot.py ARTIFACTS BASE CANDIDATE --overlay stata/FILE.ado` captures an
 ado-only change and verifies/reuses the baseline native plugin. `--profile`

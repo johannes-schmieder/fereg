@@ -55,6 +55,12 @@ pre-absorption reference scales remain unchanged. Both memory layouts reject
 nonfinite transformed values, including the leading entry. Inverse-certificate
 failures report rank, both errors and the unchanged tolerance.
 
+Scratch-backed QR computes each next pivot norm from the resident transformed
+target after its successful write, using the same stable norm and observation
+order as a read-back. The initial and final independent scratch scans remain;
+no norm downdate or additional buffer is used. See
+[ADR 0109](adr/0109-low-memory-qr-target-norms.md).
+
 For raw matrices wider than 64 columns, ADR 0031 groups adjacent columns in
 blocks of eight when enough blocks exist for the native worker team. Raw
 maxima, scaled norms and compensated means retain their prior per-column

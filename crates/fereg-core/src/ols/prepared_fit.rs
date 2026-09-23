@@ -4692,13 +4692,6 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let mut largest_diagonal = 0.0_f64;
     let mut smallest_diagonal = f64::INFINITY;
     while rank < nrows.min(candidate_count) {
-        fill_scratch_trailing_norms(
-            scratch,
-            &candidate_columns,
-            rank,
-            &mut trailing_norms,
-            &mut target,
-        )?;
         let mut pivot_position = rank;
         let mut pivot_norm = trailing_norms[rank];
         for (position, candidate_norm) in trailing_norms.iter().copied().enumerate().skip(rank + 1)
@@ -4747,10 +4740,14 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             }
         }
         scratch.write_column(pivot_generated, &reflector)?;
-        for other in candidate_columns.iter().copied().skip(rank + 1) {
+        for (position, other) in candidate_columns.iter().copied().enumerate().skip(rank + 1) {
             scratch.read_column(other, &mut target)?;
             apply_householder_slices(&reflector, &mut target, rank, tau)?;
             scratch.write_column(other, &target)?;
+            // This is the exact next pivot norm, not a downdate. The target
+            // still owns the bytes just written; no other column update can
+            // change them. Keep the final independent scratch rank scan below.
+            trailing_norms[position] = stable_slice_segment_norm(&target, rank + 1)?;
         }
         apply_householder_slices(&reflector, within_outcome, rank, tau)?;
 

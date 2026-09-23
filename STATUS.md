@@ -10,6 +10,53 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Low-memory QR norm reuse accepted — 2026-09-22
+
+The [low-memory milestone](benchmarks/reports/development/low-memory-qr-local-2026-09-22/README.md)
+and ADR 0109 remove redundant scratch reads before finite-QR pivot selection.
+Each next norm uses the just-written resident target and the same stable norm
+arithmetic. Initial/final independent scratch scans, rank policy and all fresh
+residual/inference certificates remain. No allocation, memory admission or
+cross-fit/weight-generation cache changes.
+
+`qrnorm1` is `f69cf21f` plus the archived `prepared_fit.rs` overlay; all 529
+captured inputs match. Plugin SHA-256:
+`f106400d4ed2561fcde5eedb367bcbe384e0c768aa563cc4df6840f09eb8846a`.
+Eleven low-memory rows improve by paired medians of 1.8–4.5%, including fresh
+serial, two-FE, factor, wide and saved-output cases. Wide robust changes
+2169→2081 ms; fresh K40 changes 2765→2687 ms. Two fast controls are flat and
+2 ms slower, respectively, with individual losses retained. All eleven
+low-memory medians still lose to ordinary stock fixest; this is not an
+equal-memory-budget comparison.
+
+All 231 headline attempts pass with no detected overlap, timeout or monitor
+error. All 65 native scientific pairs and ten native saved-output binary pairs
+are identical; all 65 direct candidate/stock checks pass. Four independent
+small designs pass on both artifacts. Fifty-one distinct Rust tests, actual
+plugin ABI containment and three licensed oracle/transaction fixtures pass.
+Two generator refusals were corrected before fitting and remain archived.
+The 6,184-entry evidence archive verifies every hash. Native tracked peaks are
+unchanged outside threaded three-FE variation (−1.24 to +0.87 MB); no new storage
+is introduced and no constrained-memory claim follows.
+
+**Factor-rebasing defect remains open.** The new diagnostic proves candidate
+metadata for `i.f` and `ib1.f` is identical but final-sample expansion differs
+after level 1 disappears. Ordinary default/explicit-other/no-base forms can
+return r(459); failed calls preserve prior results and output absence. A safe
+general repair needs original base/level-selection provenance in the model
+wire. No blind minimum-base rewrite or compatibility change was adopted.
+
+**Next bounded performance task:** scratch-backed compensated Gram/covariance
+loops. The wide trace spends 310 ms in the fresh score Gram certificate,
+368 ms in covariance and 339 ms in its independent certificate; score copying
+costs only 7 ms. Preserve per-coordinate arithmetic, fresh traversals and
+influence accumulation order. Do not spend another cycle tuning norm reads.
+Low-memory topology/weighted timing, generated TS, multi-partition slope and
+constrained-memory coverage remains incomplete. Earlier comparator discrepancies,
+static allocation drift, constrained-fit/CG failures and SCC deferrals remain
+open. This is a local development checkpoint, not completion of the broad goal,
+qualification, push or release.
+
 ## Generated OLS name reuse accepted — 2026-09-22
 
 The [generated-surface milestone](benchmarks/reports/development/generated-surface-local-2026-09-22/README.md)
