@@ -18,7 +18,7 @@ use crate::fe::{
 };
 use crate::memory::FeSolverMemoryBudget;
 use crate::ols::{
-    classify_frozen_linear_fallback, CertifiedFrozenPpmlLinearOutput, CertifiedLinearSession,
+    classify_frozen_linear_fallback, PpmlOrdinaryLinearOutput, CertifiedLinearSession,
     CertifiedLinearSessionOutput, CertifiedLinearSessionProducts, FrozenLinearFallbackKind,
     LinearSessionGenerations, LinearSessionPhaseAllocatorProbe, LinearSessionReuseReport,
     LinearSessionWorkspaceCapacities, LinearSolveFrame, PreparedOlsBreadWeightScale,
@@ -1108,6 +1108,21 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             Err(error) => return Err(error),
         }
     } else { false };
+    let joint_slopes = if slope_coefficients
+        && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
+        && solver_rhs > 1
+    {
+        match crate::fe::ReusableMapAbsorber::joint_slope_bytes(&fe_design, solver_rhs - 1) {
+            Ok(bytes) => memory_plan
+                .reusable_slope_bytes
+                .checked_add(bytes)
+                .is_some_and(|total| memory_plan.admit_reusable_slope(total)),
+            Err(error) if error.code == ErrorCode::Allocation => false,
+            Err(error) => return Err(error),
+        }
+    } else {
+        false
+    };
     // The retained bank cannot consume slack promised to another solver call.
     let solver_memory_budget = FeSolverMemoryBudget {
         execution_bytes: solver_execution_bytes
@@ -1175,6 +1190,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             slope_certificate,
             slope_coupling,
         )?;
+    }
+    if joint_slopes {
+        session.enable_ppml_joint_slopes()?;
     }
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
     let initial_checkpoint_lsmr = use_initial_checkpoint_lsmr_accelerator(
@@ -1609,7 +1627,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 },
                 Fallback(FrozenLinearFallbackKind),
             }
-            let frozen_attempt = match session.solve_frozen_ppml() {
+            let frozen_attempt = match session.solve_ordinary_ppml() {
                 Ok(output) if output.certified() => {
                     certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
                     accumulate_inner_iterations(
@@ -1636,9 +1654,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         rank: output.basis().kept_generated_columns().len(),
                         reuse: output.reuse_report(),
                         route: output.response_absorption_report().used_solver,
-                        fully_certified: output.certificate().passed
-                            && output.within_certificate().passed
-                            && output.reconstruction_certificate().passed,
+                        fully_certified: output.certified(),
                     }
                 }
                 Ok(_) => FrozenAttempt::Fallback(FrozenLinearFallbackKind::Bread),
@@ -3511,7 +3527,7 @@ fn fill_candidate_coefficients_from_linear_output(
 }
 
 fn fill_candidate_eta_from_frozen_output(
-    output: &CertifiedFrozenPpmlLinearOutput<'_>,
+    output: &PpmlOrdinaryLinearOutput<'_>,
     offset: &[f64],
     eta: &mut [f64],
 ) -> Result<()> {
@@ -3537,7 +3553,7 @@ fn fill_candidate_eta_from_frozen_output(
 }
 
 fn fill_candidate_coefficients_from_frozen_output(
-    output: &CertifiedFrozenPpmlLinearOutput<'_>,
+    output: &PpmlOrdinaryLinearOutput<'_>,
     coefficients: &mut [f64],
 ) -> Result<()> {
     if coefficients.len() != output.basis().slots().len() {
@@ -4276,6 +4292,94 @@ mod tests {
                     (x.id, loaded(regressor)),
                     (g.id, loaded(first)),
                     (h.id, loaded(second)),
+                ],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+        )
+        .expect("prepared two-FE fixture")
+    }
+
+    fn prepared_joint_slopes(
+        outcome: &[f64],
+        regressor: &[f64],
+        first: &[f64],
+        second: &[f64],
+    ) -> crate::PreparedCategoricalOlsData {
+        assert_eq!(regressor.len(), outcome.len());
+        let z = source(4, "z");
+        let w = source(5, "w");
+        let slopes: Vec<f64> = (0..outcome.len()).map(|i| (i % 5) as f64 - 2.).collect();
+        let x = source(1, "x");
+        let g = source(2, "g");
+        let h = source(3, "h");
+        crate::prepare_categorical_ols_data(
+            &OlsRequestV1 {
+                model: CompiledTermGraph {
+                    sources: vec![x.clone(), g.clone(), h.clone(), z.clone(), w.clone()],
+                    terms: vec![continuous_term(1, x.id)],
+                },
+                absorbed_terms: vec![
+                    AbsorbedTerm {
+                        id: AbsorbTermId::new(1).expect("g absorb id"),
+                        intercept: true,
+                        categorical_sources: vec![g.id],
+                        slope_sources: vec![z.id],
+                        label: "g".to_owned(),
+                        saved_name: String::new(),
+                    },
+                    AbsorbedTerm {
+                        id: AbsorbTermId::new(2).expect("h absorb id"),
+                        intercept: true,
+                        categorical_sources: vec![h.id],
+                        slope_sources: vec![w.id],
+                        label: "h".to_owned(),
+                        saved_name: String::new(),
+                    },
+                ],
+                bindings: vec![
+                    OlsInputBinding {
+                        stata_var_position: 1,
+                        role: OlsInputRole::Candidate,
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 2,
+                        role: OlsInputRole::Outcome,
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 3,
+                        role: OlsInputRole::NumericSource(x.id),
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 4,
+                        role: OlsInputRole::NumericSource(g.id),
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 5,
+                        role: OlsInputRole::NumericSource(h.id),
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 6,
+                        role: OlsInputRole::NumericSource(z.id),
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 7,
+                        role: OlsInputRole::NumericSource(w.id),
+                    },
+                ],
+                include_intercept: true,
+                keep_singletons: true,
+            },
+            &LoadedOlsInput {
+                candidate: vec![true; outcome.len()],
+                outcome: loaded(outcome),
+                numeric_sources: vec![
+                    (x.id, loaded(regressor)),
+                    (g.id, loaded(first)),
+                    (h.id, loaded(second)),
+                    (z.id, loaded(&slopes)),
+                    (w.id, loaded(&slopes)),
                 ],
                 analytic_weight: None,
                 frequency_weight: None,
@@ -5668,6 +5772,132 @@ mod tests {
                 relative_infinity_difference(&actual_bread, expected.fit().bread().values())
                     <= 1e-10
             );
+        }
+    }
+
+    #[test]
+    fn joint_slope_session_preserves_changing_frames_rollback_and_fresh_rank() {
+        let n = 240;
+        let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
+        let h: Vec<_> = (0..n).map(|i| (i / 20 % 3) as f64).collect();
+        let x: Vec<_> = (0..n)
+            .map(|i| ((i % 5) as f64 - 2.).powi(2) + (i as f64 / 17.).sin())
+            .collect();
+        let y: Vec<_> = (0..n)
+            .map(|i| 3. + 0.7 * x[i] + g[i] * 0.2 - h[i] * 0.1 + (i as f64 / 13.).cos())
+            .collect();
+        let prepared = prepared_joint_slopes(&y, &x, &g, &h);
+        for threads in [1, 4] {
+            let mut config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-12).unwrap();
+            config.execution.threads =
+                crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+            let initial = vec![1.; n];
+            let frame = LinearSolveFrame::from_parts(
+                &y,
+                BorrowedMapWeights::Provided(&initial),
+                ppml_bread_weight_scale(&initial).unwrap(),
+            )
+            .unwrap();
+            let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                &prepared,
+                frame,
+                config,
+                LinearSessionGenerations::new(1, 1, 1, 1, 1),
+                prepared.fit_owned_fe_design().unwrap(),
+            )
+            .unwrap();
+            session.enable_ppml_certificate_geometry().unwrap();
+            session
+                .enable_ppml_slope_coefficients(threads, true, true)
+                .unwrap();
+            session.enable_ppml_joint_slopes().unwrap();
+            assert!(session.solve_fresh().unwrap().certified());
+            for generation in 2..7 {
+                let weights: Vec<_> = (0..n)
+                    .map(|i| 0.2 + ((i * 13 + generation * 7) % 31) as f64 / 7.)
+                    .collect();
+                let response: Vec<_> = (0..n)
+                    .map(|i| y[i] + (generation as f64) * 0.2 * (i as f64 / 11.).sin())
+                    .collect();
+                let scale = ppml_bread_weight_scale(&weights).unwrap();
+                session
+                    .refresh_response(&response, generation as u64)
+                    .unwrap();
+                session
+                    .refresh_weights(
+                        BorrowedMapWeights::Provided(&weights),
+                        scale,
+                        generation as u64,
+                    )
+                    .unwrap();
+                let ordinary = session.solve_ordinary_ppml().unwrap();
+                assert!(matches!(ordinary, PpmlOrdinaryLinearOutput::Joint(_)));
+                assert!(ordinary.certified());
+                let actual_beta = ordinary.coefficients().to_vec();
+                let actual_residuals = ordinary.within_residuals().to_vec();
+                let expected_frame = LinearSolveFrame::from_parts(
+                    &response,
+                    BorrowedMapWeights::Provided(&weights),
+                    scale,
+                )
+                .unwrap();
+                let mut expected_session = CertifiedLinearSession::new_with_fe_design(
+                    &prepared,
+                    expected_frame,
+                    config,
+                    LinearSessionGenerations::new(1, 1, 1, 1, 1),
+                    prepared.fit_owned_fe_design().unwrap(),
+                )
+                .unwrap();
+                let expected = expected_session.solve_fresh().unwrap();
+                assert!(
+                    relative_infinity_difference(
+                        &actual_beta,
+                        &expected
+                            .fit()
+                            .coefficients()
+                            .iter()
+                            .filter(|c| c.generated_column_index.is_some_and(|g| expected
+                                .fit()
+                                .kept_generated_columns()
+                                .contains(&g)))
+                            .map(|c| c.value.unwrap())
+                            .collect::<Vec<_>>()
+                    ) <= 1e-10
+                );
+                assert!(
+                    relative_infinity_difference(&actual_residuals, expected.fit().residuals())
+                        <= 1e-10
+                );
+                let expected_bread = expected.fit().bread().values().to_vec();
+                // A speculative strict frame may rebuild the canonical within
+                // design, but rollback must leave a valid representative for
+                // another ordinary direction under this frame and the next.
+                let transaction = session.strict_candidate().unwrap();
+                assert!(transaction.candidate().certified());
+                assert!(
+                    relative_infinity_difference(
+                        transaction.candidate().fit().bread().values(),
+                        &expected_bread
+                    ) <= 1e-10
+                );
+                if generation % 2 == 0 {
+                    transaction.rollback();
+                } else {
+                    transaction.commit();
+                }
+                let repeated = session.solve_ordinary_ppml().unwrap();
+                assert!(repeated.certified());
+                assert!(
+                    relative_infinity_difference(repeated.coefficients(), &actual_beta) <= 1e-10
+                );
+                assert!(
+                    relative_infinity_difference(repeated.within_residuals(), &actual_residuals)
+                        <= 1e-10
+                );
+                session.discard_invalid_frozen_state();
+                assert!(session.solve_fresh().unwrap().certified());
+            }
         }
     }
 

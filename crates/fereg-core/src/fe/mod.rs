@@ -14,7 +14,7 @@ mod interaction;
 mod lsmr;
 mod lsmr_batch;
 mod map;
-mod slope_coefficients;
+pub(crate) mod slope_coefficients;
 mod partition;
 mod partition_registry;
 mod partition_singleton;

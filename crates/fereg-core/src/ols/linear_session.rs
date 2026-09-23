@@ -1069,24 +1069,12 @@ impl<'a> CertifiedFrozenPpmlLinearOutput<'a> {
         &self.step.response_absorption_report
     }
 
-    pub(crate) const fn certificate(&self) -> FrozenLinearSolveCertificate {
-        self.step.certificate
-    }
-
     pub(crate) const fn basis(&self) -> &'a FrozenLinearBasis {
         self.basis
     }
 
     pub(crate) const fn response(&self) -> &'a [f64] {
         self.response
-    }
-
-    pub(crate) const fn within_certificate(&self) -> LinearWithinDesignCertificate {
-        self.within.certificate
-    }
-
-    pub(crate) const fn reconstruction_certificate(&self) -> LinearReconstructionCertificate {
-        self.reconstruction
     }
 
     pub(crate) const fn reuse_report(&self) -> LinearSessionReuseReport {
@@ -1101,6 +1089,79 @@ impl<'a> CertifiedFrozenPpmlLinearOutput<'a> {
     }
 }
 
+/// Ordinary PPML may certify a joint direction without constructing a bread.
+/// Keeping this output distinct prevents final inference from consuming it.
+pub(crate) struct CertifiedJointPpmlLinearOutput<'a> {
+    joint: &'a crate::fe::slope_coefficients::joint::JointFiniteWorkspace,
+    basis: &'a FrozenLinearBasis,
+    response: &'a [f64],
+    reported: &'a [Option<f64>],
+    reconstruction: LinearReconstructionCertificate,
+    reuse: LinearSessionReuseReport,
+}
+
+pub(crate) enum PpmlOrdinaryLinearOutput<'a> {
+    Frozen(CertifiedFrozenPpmlLinearOutput<'a>),
+    Joint(CertifiedJointPpmlLinearOutput<'a>),
+}
+
+impl<'a> PpmlOrdinaryLinearOutput<'a> {
+    pub(crate) fn certified(&self) -> bool {
+        match self {
+            Self::Frozen(output) => output.certified(),
+            Self::Joint(output) => {
+                output
+                    .joint
+                    .report
+                    .as_ref()
+                    .is_some_and(SolveReport::certified)
+                    && output.reconstruction.passed
+            }
+        }
+    }
+    pub(crate) fn coefficients(&self) -> &'a [f64] {
+        match self {
+            Self::Frozen(o) => o.coefficients(),
+            Self::Joint(o) => o.joint.beta(),
+        }
+    }
+    pub(crate) fn reported_coefficients(&self) -> &'a [Option<f64>] {
+        match self {
+            Self::Frozen(o) => o.reported_coefficients(),
+            Self::Joint(o) => o.reported,
+        }
+    }
+    pub(crate) fn within_residuals(&self) -> &'a [f64] {
+        match self {
+            Self::Frozen(o) => o.within_residuals(),
+            Self::Joint(o) => o.joint.residuals.as_slice(),
+        }
+    }
+    pub(crate) fn response_absorption_report(&self) -> &'a SolveReport {
+        match self {
+            Self::Frozen(o) => o.response_absorption_report(),
+            Self::Joint(o) => o.joint.report.as_ref().expect("certified joint result"),
+        }
+    }
+    pub(crate) fn basis(&self) -> &'a FrozenLinearBasis {
+        match self {
+            Self::Frozen(o) => o.basis(),
+            Self::Joint(o) => o.basis,
+        }
+    }
+    pub(crate) fn response(&self) -> &'a [f64] {
+        match self {
+            Self::Frozen(o) => o.response(),
+            Self::Joint(o) => o.response,
+        }
+    }
+    pub(crate) fn reuse_report(&self) -> LinearSessionReuseReport {
+        match self {
+            Self::Frozen(o) => o.reuse_report(),
+            Self::Joint(o) => o.reuse,
+        }
+    }
+}
 #[derive(Debug, Default)]
 struct FrozenLinearWorkspace {
     response: Vec<f64>,
@@ -1424,6 +1485,7 @@ pub(crate) fn classify_frozen_linear_fallback(
     let message = error.message.as_str();
     if message.starts_with("frozen weighted-linear reusable MAP projection failed;")
         || message.starts_with("frozen weighted-linear fused MAP projection failed;")
+        || message.starts_with("frozen weighted-linear joint slope failed;")
         || message.starts_with("frozen weighted-linear warm projection failed;")
         || message == "frozen weighted-linear response absorption did not certify"
     {
@@ -1892,6 +1954,19 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(())
     }
 
+    pub(crate) fn enable_ppml_joint_slopes(&mut self) -> Result<()> {
+        if let Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) =
+            self.fe_projector.as_mut()
+        {
+            match projector.enable_joint_slopes() {
+                Ok(()) => {}
+                Err(error) if error.code == ErrorCode::Allocation => {}
+                Err(error) => return Err(error),
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn enable_checkpoint_lsmr(&mut self) {
         if let Some(projector) = self.fe_projector.as_mut() {
             projector.enable_checkpoint_lsmr();
@@ -1964,6 +2039,236 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             self.solve_frozen_internal(FrozenLinearOutputKind::PpmlCombinedPredictor)
         })??;
         self.frozen_ppml_output()
+    }
+
+    pub(crate) fn solve_ordinary_ppml(&mut self) -> Result<PpmlOrdinaryLinearOutput<'_>> {
+        let eligible = self.config.execution.mode == PreparedOlsExecutionMode::Fast
+            && self
+                .frozen_basis
+                .as_ref()
+                .is_some_and(|b| !b.kept_generated_columns().is_empty())
+            && matches!(self.fe_projector.as_ref(), Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) if projector.joint_slopes().is_some());
+        if !eligible {
+            return self
+                .solve_frozen_ppml()
+                .map(PpmlOrdinaryLinearOutput::Frozen);
+        }
+        self.check_frozen_failure_injection()?;
+        let team = ThreadTeam::new(self.config.execution.threads);
+        let result = team.install(|| self.solve_joint_ppml_internal())?;
+        if let Err(error) = result {
+            if let Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) =
+                self.fe_projector.as_mut()
+            {
+                projector.invalidate_joint_slopes();
+            }
+            return Err(if error.code == ErrorCode::NonConvergence {
+                FeregError::new(
+                    error.code,
+                    format!(
+                        "frozen weighted-linear joint slope failed; {}",
+                        error.message
+                    ),
+                )
+            } else {
+                error
+            });
+        }
+        let Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) =
+            self.fe_projector.as_ref()
+        else {
+            unreachable!()
+        };
+        Ok(PpmlOrdinaryLinearOutput::Joint(
+            CertifiedJointPpmlLinearOutput {
+                joint: projector.joint_slopes().expect("admitted joint owner"),
+                basis: self.frozen_basis.as_ref().expect("frozen joint basis"),
+                response: &self.response,
+                reported: &self.frozen_workspace.reported_coefficients,
+                reconstruction: self.reconstruction.expect("joint reconstruction"),
+                reuse: self.reuse.expect("joint reuse accounting"),
+            },
+        ))
+    }
+
+    fn solve_joint_ppml_internal(&mut self) -> Result<()> {
+        self.ensure_bound()?;
+        self.recycle_frozen_step();
+        self.fill_reusable_map_weights()?;
+        let basis = self
+            .frozen_basis
+            .as_ref()
+            .ok_or_else(|| invalid_argument("joint slope basis is absent"))?;
+        let within = self
+            .within
+            .as_ref()
+            .ok_or_else(|| invalid_argument("joint slope retained controls are absent"))?;
+        if within.generations.sample != self.generations.sample
+            || within.generations.topology != self.generations.topology
+            || within.active_positions.len() != basis.kept_generated_columns().len()
+            || within
+                .active_positions
+                .iter()
+                .zip(basis.kept_generated_columns())
+                .any(|(&position, &generated)| {
+                    within.stored_generated_columns.get(position) != Some(&generated)
+                })
+        {
+            return Err(invalid_argument(
+                "joint slope retained basis identity is invalid",
+            ));
+        }
+        let RetainedWithinStorage::Dense(controls) = &within.storage else {
+            return Err(invalid_argument(
+                "joint slope direction requires admitted dense storage",
+            ));
+        };
+        let Some(ReusableLinearMapProjector::PpmlSlopes {
+            projector,
+            previous_response,
+        }) = self.fe_projector.as_mut()
+        else {
+            unreachable!()
+        };
+        let n = self.response.len();
+        if previous_response.len() != n || self.frozen_workspace.response.len() != n {
+            return Err(invalid_argument(
+                "joint slope response representatives are misaligned",
+            ));
+        }
+        // A representative differs from the current response only by FE terms.
+        // Advance its anchor even on a later solver failure, so canonical fallback
+        // cannot apply this same response difference for a second time.
+        for row in 0..n {
+            self.frozen_workspace.response[row] += self.response[row] - previous_response[row];
+        }
+        previous_response.copy_from_slice(&self.response);
+        let started = Instant::now();
+        projector.solve_joint_slopes(
+            &self.map_weights,
+            controls,
+            &within.active_positions,
+            &self.frozen_workspace.response,
+            self.config.absorb.map,
+            self.generations.map_geometry(),
+        )?;
+        let solving_seconds = started.elapsed().as_secs_f64();
+        let checking = Instant::now();
+        let joint = projector.joint_slopes().expect("joint direction");
+        let residuals = joint.residuals.as_slice();
+        let reference =
+            stable_weighted_norm(n, |row| Ok((self.response[row], self.map_weights[row])))?.max(
+                stable_weighted_norm(n, |row| Ok((residuals[row], self.map_weights[row])))?,
+            );
+        let rank = basis.kept_generated_columns().len();
+        resize_zeroed(
+            &mut self.frozen_workspace.scores,
+            rank,
+            "unable to reserve joint score checks",
+        )?;
+        resize_zeroed(
+            &mut self.frozen_workspace.rhs,
+            rank,
+            "unable to reserve joint current means",
+        )?;
+        let prepared = self.prepared;
+        let weights = &self.map_weights;
+        let numeric = super::prepared_rhs::NumericOlsColumns::bind(
+            prepared.fit_model(),
+            prepared.fit_sample(),
+        )?;
+        let mut weight_sum = 0.;
+        let mut weight_correction = 0.;
+        for &weight in weights {
+            compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
+        }
+        let weight_sum = weight_sum + weight_correction;
+        self.frozen_workspace
+            .scores
+            .par_iter_mut()
+            .zip(self.frozen_workspace.rhs.par_iter_mut())
+            .zip(basis.kept_generated_columns().par_iter())
+            .try_for_each(|((score, mean), &generated)| -> Result<()> {
+                let mut scale = 0.;
+                let mut square = 1.;
+                let mut sum = 0.;
+                let mut correction = 0.;
+                let mut mean_sum = 0.;
+                let mut mean_correction = 0.;
+                for row in 0..n {
+                    let value = if let Some(numeric) = numeric.as_ref() {
+                        numeric.raw_columns()[generated].map_or(1., |column| column[row])
+                    } else {
+                        prepared.fit_column_value(generated, row)?
+                    };
+                    update_scaled_square(weights[row].sqrt() * value, &mut scale, &mut square)?;
+                    compensated_add(
+                        weights[row] * value * residuals[row],
+                        &mut sum,
+                        &mut correction,
+                    )?;
+                    compensated_add(weights[row] * value, &mut mean_sum, &mut mean_correction)?;
+                }
+                let norm = stable_norm(scale, square)?;
+                let moment = (sum + correction).abs();
+                *score = if moment == 0. {
+                    0.
+                } else {
+                    moment / norm / reference
+                };
+                *mean = (mean_sum + mean_correction) / weight_sum;
+                if !score.is_finite()
+                    || *score > self.config.absorb.map.tolerance
+                    || !mean.is_finite()
+                {
+                    return Err(FeregError::new(
+                        ErrorCode::NonConvergence,
+                        "joint original-input finite score failed",
+                    ));
+                }
+                Ok(())
+            })?;
+        let reconstruction = certify_frozen_combined_predictor(&self.response, residuals)?;
+        let within = self.within.as_mut().expect("joint retained controls");
+        for (&position, &mean) in within
+            .active_positions
+            .iter()
+            .zip(&self.frozen_workspace.rhs)
+        {
+            within.reference_means[position] = mean;
+        }
+        let mut reported = std::mem::take(&mut self.frozen_workspace.reported_coefficients);
+        let Some(ReusableLinearMapProjector::PpmlSlopes { projector, .. }) =
+            self.fe_projector.as_ref()
+        else {
+            unreachable!()
+        };
+        let joint = projector.joint_slopes().expect("joint solution");
+        let basis = self.frozen_basis.as_ref().expect("joint basis");
+        let reporting = self.build_frozen_ppml_reported_coefficients(
+            basis.slots(),
+            basis.kept_generated_columns(),
+            joint.beta(),
+            &mut reported,
+        );
+        self.frozen_workspace.reported_coefficients = reported;
+        reporting?;
+        self.fit = None;
+        self.reconstruction = Some(reconstruction);
+        let mut reuse = LinearSessionReuseReport::ppml_specialized(
+            solving_seconds,
+            checking.elapsed().as_secs_f64(),
+        );
+        // Every joint bank was admitted before the initial solve. The first call
+        // warms the existing small score/report banks; allocator auditing decides
+        // whether the complete subsequent iteration stays allocation-free.
+        reuse.steady_state_allocation_free = true;
+        self.reuse = Some(reuse);
+        self.pending_response_buffer_reused = false;
+        self.pending_weight_buffer_reused = false;
+        // Retained controls remain FE-equivalent representatives, not a newly
+        // certified current-weight within design. Their generations stay stale.
+        Ok(())
     }
 
     fn check_frozen_failure_injection(&self) -> Result<()> {

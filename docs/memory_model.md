@@ -751,3 +751,15 @@ Failure to admit it preserves the existing generic route. Explicit low-memory
 execution still uses bounded blocks, with the coefficient workspace sized to
 its admitted RHS width. This development change does not repair the documented
 static-allocation inventory drift or establish a whole-action allocation proof.
+
+### Joint ordinary PPML slope directions
+
+[ADR 0130](adr/0130-joint-ppml-slope-directions.md) borrows retained dense controls
+and reuses the slope owner's normalized RHS bank, roots and worker scratch.
+Its optional payload is `8*[P*K+2*K*K+(q+2)*K+5*(P+K)+N]` bytes for P retained
+FE coordinates, K controls and q eliminated channels, plus owner descriptors.
+The existing combined slope reservation is increased before allocation; refusal
+keeps the previous solver. Actual capacities enter the session fingerprint and
+fit-lifetime telemetry. This adds no resident N-by-K bank and does not activate
+a low-memory adapter. All joint state is released before inference. The current
+static allocation drift and physical-cap/platform gates remain separate.

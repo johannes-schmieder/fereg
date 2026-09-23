@@ -8,6 +8,7 @@
 //! residuals only schedule reconstruction: acceptance uses freshly reconstructed
 //! observation residuals, followed by the caller's independent full certificate.
 mod coupling;
+pub(crate) mod joint;
 use super::map::ReusableCertificateGeometry;
 use super::{FeCertificate, FeDesign, MapConfig};
 use crate::data::DenseMatrix;
@@ -45,6 +46,7 @@ pub(super) struct SlopeCoefficientWorkspace {
     coupling: Option<Box<PreparedCoupling>>,
     max_rhs: usize,
     coefficients: usize,
+    pub(super) joint: Option<Box<joint::JointFiniteWorkspace>>,
 }
 
 fn allocation() -> FeregError {
@@ -188,11 +190,13 @@ impl SlopeCoefficientWorkspace {
             coupling: None,
             max_rhs,
             coefficients,
+            joint: None,
         })
     }
 
     pub(super) fn elements(&self) -> usize {
-        self.columns.capacity()
+        self.joint.as_ref().map_or(0, |j| j.elements())
+            + self.columns.capacity()
             + self.roots.capacity()
             + self.certificate_groups.capacity()
             + self.coupling.as_ref().map_or(0, |c| c.elements())
@@ -208,6 +212,18 @@ impl SlopeCoefficientWorkspace {
                         + w.eliminated_scratch.capacity()
                 })
                 .sum::<usize>()
+    }
+
+    pub(super) fn enable_joint(&mut self, design: &FeDesign) -> Result<()> {
+        let controls = self.max_rhs.saturating_sub(1);
+        if controls > 0 {
+            self.joint = Some(Box::new(joint::JointFiniteWorkspace::new(
+                design,
+                controls,
+                self.coefficients,
+            )?));
+        }
+        Ok(())
     }
 
     #[cfg(test)]

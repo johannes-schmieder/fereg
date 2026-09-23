@@ -10,6 +10,93 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Joint finite/FE PPML directions accepted; exact-state final work next — 2026-09-23
+
+The active objective remains whole public PPML time <= **0.90 times comparable
+pinned stock fixest** wherever reasonably achievable. This checkpoint completes
+a production solver milestone, not that broader objective. It supersedes the
+pending integration and unused-seed entries below.
+
+Accept `jointprod2` under [ADR 0130](docs/adr/0130-joint-ppml-slope-directions.md)
+and its [source-bound report](benchmarks/reports/development/ppml-joint-slope-production-local-2026-09-23/README.md).
+All **536 computational inputs** match plugin
+`5ca6e1a81a548aef3c733146f04929b68da849493c35574a0361973a94aa8730`,
+based on `b2b59f62`. The restored immutable container verifies **6,723 receipts**,
+SHA-256 `9bc10851c2710c2e2cbe152d33c584ac74c8fd1925f398d6d930f926b36a6ddf`.
+
+Fast ordinary multipartition slope PPML now solves one joint finite/FE direction
+using the existing rank-aware QR, FE Schur operator and optional coupling. It
+borrows retained FE-equivalent controls and reuses the normalized RHS bank;
+there is no additional N-by-K design. The distinct ordinary result cannot supply
+bread or within-inverse authority. Current-weight FE/raw finite-score and
+reconstruction checks remain fresh; canonical initial rank, strict transactions,
+model-space/objective and final-Hessian construction remain independent. The
+ADR records the replacement of unused ordinary inverse construction. Low,
+categorical, one-FE, explicit non-MAP, separation and public OLS routes are unchanged.
+
+Development seed329 baseline/candidate/strict-stock medians (ms): two slope
+partitions N30720/K6/T4 **163/147/118**; unbalanced three FE N30720/K6/T4
+**166/153/118**; wider N61440/K10/T8 **372/335/227**. All still lose to stock.
+Fresh seed330, three rotations, robust inference and fitted means:
+
+| Case | Baseline | Candidate | Stock | Candidate/stock |
+| --- | ---: | ---: | ---: | ---: |
+| Two slope partitions N23040 K8 T1 | 176 | 163 | 290 | 0.562 |
+| Unbalanced three FE N38400 K6 T4 | 211 | 198 | 154 | 1.286 |
+| Wider unbalanced three FE N46080 K12 T8 | 354 | 306 | 958 | 0.319 |
+| Multiple slopes N7680 K6 T4 | 60 | 54 | 60 | 0.900 |
+| Weak barbell N15360 K6 T4 | 76 | 68 | 1263 | 0.054 |
+| Disconnected N15360 K6 T4 | 99 | 91 | 76 | 1.197 |
+
+Fresh gains are **6.2–13.6%**, all paired native changes improve. The report
+includes ranges and every pair; the 0.900 multiple-slope margin is limited by
+millisecond timer precision. Passing current cases do not resolve historical
+reference failures at other inputs. Default-reference failures stay separate.
+
+**52 distinct Rust checks**, actual-plugin ABI/panic checks and **five final
+licensed fixtures** pass, including the independent unit/FW/PW robust/cluster
+Poisson/Hessian oracle and a T1/T4 actual-allocation audit. The warmed 16-iteration
+window has zero events/growth and passes fresh/canonical equivalence. Five small
+explicit Poisson/Hessian pilots pass all 15 native/stock oracle comparisons.
+All **175 public applications**, **141 PPML public-state checks** and **64 native
+scientific pairs** pass, with no detected overlap or monitor error. The initial
+foreign-Stata preflight refusal and repaired test-development failures are retained.
+One unrelated frozen-frame Rust test was ignored by its existing harness.
+
+Excluded controls remain healthy: 15 PPML and 17 OLS native scientific-export
+pairs are exact. The initial OLS slope 68/70 ms loss was checked with five more
+identical-input pairs: **73/73 ms**, overlapping ranges. Do not claim an OLS speed
+improvement. Current excluded candidate/stock medians remain **222/118 ms** for
+low slopes, **245/136** sparse categorical, **178/115** unbalanced categorical,
+**203/242** dense categorical, and **128/51** one FE. These are important remaining
+losses; low native versus ordinary stock is not matched on memory.
+
+The joint owner adds **0.069–0.611 MB** to tracked local peaks across the measured
+main cases. The larger development peak is 58,337,590 bytes versus 57,726,518.
+Optional refusal preserves the old solver; all joint state is released before
+inference. Static allocation inventory drift and physical-cap gates remain open.
+
+**Next bounded implementation:** shared exact-state strict/final construction.
+On the larger development case, projection falls **153.760 -> 109.043 ms**,
+while strict/final rises **74.261 -> 87.053 ms**; outer iterations stay six,
+fallbacks zero. Controls retained after a joint direction are valid representatives,
+not newly converged current-weight within columns. Their later canonical refresh
+is real work. A 227 ms stock time implies a 204.3 ms target versus 335 ms now,
+so another **130.7 ms** is needed; 1.3 ms inference cannot close that gap.
+Inspect exact accepted-frame ownership and duplicate projection/rank/factor/
+Hessian construction, then implement coherent reuse/transfer only where identities
+and independent acceptance justify it. Preserve current-weight final certificates;
+do not restart ADR 0128's rejected response-history probes or tune joint thresholds.
+Then address deliberate low-memory solving, one-FE concentration and categorical
+coverage under the broader plan below. OLS needs a canonical within design/bread;
+this direction-only win does not itself justify a one-shot OLS adapter.
+
+Seeds **202609329 and 202609330 are consumed**. Seed **202609331** is predeclared
+and unused for the next materially new candidate. Work remains local on main;
+no push/release, SCC retry, stopped campaign or qualification run. Constrained-fit/
+generic CG failures, historical comparator discrepancies and deferred platform
+qualification remain unresolved.
+
 ## Direct joint slope candidate selected; production integration next — 2026-09-23
 
 The active objective remains public PPML runtime <= **0.90 times comparable

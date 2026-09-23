@@ -30,7 +30,7 @@ pub(crate) use linear_session::{
 };
 #[allow(unused_imports)]
 pub(crate) use linear_session::{
-    classify_frozen_linear_fallback, CertifiedFrozenPpmlLinearOutput, CertifiedLinearSession,
+    classify_frozen_linear_fallback, PpmlOrdinaryLinearOutput, CertifiedLinearSession,
     CertifiedLinearSessionOutput, CertifiedLinearSessionProducts, CertifiedLinearWithinDesign,
     FrozenLinearBasis, FrozenLinearBasisSlot, FrozenLinearFallbackKind,
     FrozenLinearSolveCertificate, LinearReconstructionCertificate, LinearSessionGenerations,

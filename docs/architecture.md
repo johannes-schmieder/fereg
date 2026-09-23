@@ -100,8 +100,13 @@ PPML multipartition slopes in the MAP family may instead use the independently
 certified coefficient Schur owner, with generation-bound weighted QR and optional
 symbolic group-pair coupling under [ADR 0123](adr/0123-ppml-coefficient-schur-slopes.md),
 [ADR 0124](adr/0124-ppml-frame-geometry-and-parallel-certificates.md), and
-[ADR 0126](adr/0126-ppml-symbolic-coupling.md). Other slope calls retain their
-existing projector. See [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md)
+[ADR 0126](adr/0126-ppml-symbolic-coupling.md). Admitted fast ordinary directions
+couple finite controls directly to that FE operator under
+[ADR 0130](adr/0130-joint-ppml-slope-directions.md), borrowing retained
+FE-equivalent representatives and reusing the normalized column bank. Their
+separate certified result carries no within-design inverse or final-Hessian
+authority. Canonical initial, strict and final construction remains independent.
+Other slope calls retain their existing projector. See [ADR 0039](adr/0039-ppml-one-fe-retained-projection.md)
 and [ADR 0069](adr/0069-low-memory-ppml-categorical-projection.md).
 After a fused response/design projection, retained within-column norms must
 also use the current weight frame. Strict rank and score checks consume those

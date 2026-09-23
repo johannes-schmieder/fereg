@@ -56,6 +56,16 @@ The public MAP-owned engine identity includes this slope kernel; its iteration
 count is the maximum column Krylov count, not a symmetric-MAP sweep count.
 Categorical, one-effect, mu-separation and public OLS routing are unchanged.
 
+Under ADR 0130, admitted fast ordinary PPML slope directions couple the finite
+controls to the same FE Schur operator and use one block-preconditioned Krylov
+solve. This call reports its joint Krylov count. Reconstructed residuals receive
+fresh FE and original-input finite-score checks; the result carries no bread or
+within-inverse authority. Canonical initial/strict/final calls retain independent
+per-column absorption, rank and inverse construction. The joint owner reuses the
+existing normalized RHS bank; its optional cross-products and residual vector
+are admitted separately. Failed acceptance revokes geometry authority before
+canonical retry. See the ADR for representative/weight/basis lifetimes.
+
 A solver recurrence is never sufficient evidence. For each effect-level
 block `B`, the final gate computes the projection of `sqrt(W) r` onto
 `col(sqrt(W) B)` with scaled, reorthogonalized rank-aware QR and measures it
