@@ -10,6 +10,62 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Prepared PPML coupling integration rejected — 2026-09-23
+
+The full implementation goal remains active: public PPML at most **0.90 times
+scientifically comparable pinned stock fixest** wherever reasonably achievable,
+with OLS and the existing scientific/transaction/memory boundaries protected.
+Production remains computationally identical to `9955bd36` / `slframe3`;
+all **531 inputs** have been verified after removing the rejected candidate.
+
+The [source-bound report](benchmarks/reports/development/ppml-prepared-coupling-probe-local-2026-09-23/README.md)
+and ADR 0125 preserve a complete first prepared-operator experiment. Frozen
+native absorption favored explicit Schur for two FE (12.46 to 8.78 ms at T4)
+and compact products for three FE (14.19 to 10.64 ms); both lost on the
+935-row disconnected frame. All 54 native calls and 18 independent WLS/span
+audits pass. These are inner diagnostics, not public speed claims.
+
+The integrated `slcouple1` adds generation-authorized reuse, complete conservative
+optional admission, independent certification and structural work selection.
+Three public rotations, baseline/candidate/strict pinned stock (ms), give
+**186/180/114** for two FE, **181/176/115** for three FE,
+**387/399/230** for the wider T8 case, and **361/339/118** in low memory.
+Gains of 2.8–6.1% do not justify the wide 3.1% loss or additional tracked peaks
+of **3.98–20.84 MB**. All 42 public screen/pilot applications, their public-state
+and pairwise checks, both independent small Poisson/Hessian pilots, 35 distinct
+Rust tests, actual-plugin ABI checks and three licensed fixtures pass. No timeout,
+fit/build overlap or monitor error. Candidate science passed; performance and
+memory organization caused rejection. It is not enabled in production.
+
+A separate instrumented build on identical screen data locates **48.62 ms** of
+wide coupling preparation across eight weight frames: C construction 27.22 ms,
+D construction 17.02 ms. All 540 prepared applications avoid the cancellation
+fallback. The current prototype repeatedly builds sparse patterns and uses a
+dense D construction bank; faster products alone do not repay that preparation.
+The receipt container restores and verifies **3,071 logical files**, SHA-256
+`9f87180b9d85d2c954192e5cb489706adb4983160d5f48c95f16fee57dff43a9`.
+Native/prototype and production-shaped source snapshots, all clocks/audits,
+failed build recipes and omitted-data hashes are preserved. Raw licensed logs
+and binaries remain outside Git. No additional holdout or excluded-path timing
+block was run after rejection; accepted production code was restored instead.
+
+**Next bounded implementation:** retain symbolic cross-partition sparsity and
+observation-to-block mappings with the immutable topology, refill only numeric
+weighted blocks, and remove the dense D construction bank from compact execution.
+Measure full preparation plus applications; then consider RHS tiling and compact
+remaining-coordinate vectors if products still dominate. Do not tune the rejected
+20% work selector to these inputs. Prior response/control residuals already provide
+a mathematical warm start; another coefficient cache must add a real benefit.
+
+The remaining plan also includes outer/checkpoint work sharing, dedicated
+one-categorical-FE profiled Poisson, low-memory finite solving, categorical
+2+/3+ FE losses, broader PPML coverage and a selectively admitted shared OLS
+adapter. None is completed by this rejected experiment. Seed **202609318** is
+consumed; **202609319 remains unused** (previously reserved for fresh acceptance).
+Frozen 77/16/111 definitions and all previously recorded allocation, constrained-fit,
+CG, comparator and platform deferrals remain open. No push, release, qualification,
+SCC retry or stopped campaign restart occurred.
+
 ## PPML frame geometry and fresh certificates accepted — 2026-09-23
 
 The broader implementation objective is active: aim for public PPML runtime
