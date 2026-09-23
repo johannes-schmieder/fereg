@@ -1,9 +1,9 @@
 use super::certificate::CertificateContext;
+use super::projection::{AutoProjectionWorkspace, ParallelProjectionPlan};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    project_effect_in_place, weighted_column_norms, FeDesign, FeSolverKind, MapConfig,
-    ProjectionWorkspace, SolveReport, SolveStopReason,
+    weighted_column_norms, FeDesign, FeSolverKind, MapConfig, SolveReport, SolveStopReason,
 };
 use std::time::Instant;
 
@@ -24,6 +24,7 @@ pub fn absorb_accelerated_map(
         values,
         config,
         solver,
+        None,
     )
 }
 
@@ -32,6 +33,7 @@ pub(super) fn absorb_accelerated_map_with_context(
     values: &mut DenseMatrix,
     config: MapConfig,
     solver: FeSolverKind,
+    projection_plan: Option<ParallelProjectionPlan>,
 ) -> Result<SolveReport> {
     let (design, weights) = context.inputs();
     if !matches!(
@@ -61,7 +63,7 @@ pub(super) fn absorb_accelerated_map_with_context(
     }
 
     if solver == FeSolverKind::Cg {
-        return absorb_conjugate_gradient(context, values, config);
+        return absorb_conjugate_gradient(context, values, config, projection_plan);
     }
 
     let started = Instant::now();
@@ -82,7 +84,7 @@ pub(super) fn absorb_accelerated_map_with_context(
         ));
     }
 
-    let mut workspace = ProjectionWorkspace::new(design.max_channels(), values.ncols())?;
+    let mut workspace = AutoProjectionWorkspace::new(design, values.ncols(), projection_plan)?;
     let mut iterations = 0;
     let mut accepted = 0;
     while iterations < config.max_iterations {
@@ -165,6 +167,7 @@ fn absorb_conjugate_gradient(
     context: &CertificateContext<'_>,
     values: &mut DenseMatrix,
     config: MapConfig,
+    projection_plan: Option<ParallelProjectionPlan>,
 ) -> Result<SolveReport> {
     let (design, weights) = context.inputs();
     let started = Instant::now();
@@ -185,7 +188,7 @@ fn absorb_conjugate_gradient(
         ));
     }
 
-    let mut workspace = ProjectionWorkspace::new(design.max_channels(), values.ncols())?;
+    let mut workspace = AutoProjectionWorkspace::new(design, values.ncols(), projection_plan)?;
     let mut residual = apply_symmetric_projection(design, weights, values, &mut workspace)?;
     let mut direction = fallible_matrix_copy(&residual, "unable to reserve CG direction")?;
     let mut residual_square = weighted_dot_columns(&residual, &residual, weights)?;
@@ -266,7 +269,7 @@ fn apply_symmetric_projection(
     design: &FeDesign,
     weights: &[f64],
     input: &DenseMatrix,
-    workspace: &mut ProjectionWorkspace,
+    workspace: &mut AutoProjectionWorkspace,
 ) -> Result<DenseMatrix> {
     let mut residual = fallible_matrix_copy(input, "unable to reserve CG projection matrix")?;
     sweep(design, weights, &mut residual, workspace, true)?;
@@ -492,15 +495,15 @@ fn sweep(
     design: &FeDesign,
     weights: &[f64],
     values: &mut DenseMatrix,
-    workspace: &mut ProjectionWorkspace,
+    workspace: &mut AutoProjectionWorkspace,
     symmetric: bool,
 ) -> Result<()> {
     for effect in design.effects() {
-        project_effect_in_place(effect, weights, values, workspace)?;
+        workspace.project(effect, weights, values)?;
     }
     if symmetric && design.effects().len() > 1 {
         for effect in design.effects().iter().rev().skip(1) {
-            project_effect_in_place(effect, weights, values, workspace)?;
+            workspace.project(effect, weights, values)?;
         }
     }
     Ok(())

@@ -1,12 +1,13 @@
-#[cfg(test)]
-use crate::fe::certify_residuals_with_reference_norms;
 use super::certificate::CertificateContext;
+use super::projection::{AutoProjectionWorkspace, ParallelProjectionPlan};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
+#[cfg(test)]
+use crate::fe::certify_residuals_with_reference_norms;
 use crate::fe::ProjectionWorkspace;
 use crate::fe::{
-    project_effect_in_place, weighted_column_norms,
-    CertifiedBorrowedMap, FeCertificate, FeDesign, FeSolverKind, SolveReport, SolveStopReason,
+    project_effect_in_place, weighted_column_norms, CertifiedBorrowedMap, FeCertificate, FeDesign,
+    FeSolverKind, SolveReport, SolveStopReason,
 };
 use std::time::Instant;
 
@@ -36,13 +37,19 @@ pub fn absorb_map(
     values: &mut DenseMatrix,
     config: MapConfig,
 ) -> Result<SolveReport> {
-    absorb_map_with_context(&CertificateContext::new(design, weights), values, config)
+    absorb_map_with_context(
+        &CertificateContext::new(design, weights),
+        values,
+        config,
+        None,
+    )
 }
 
 pub(super) fn absorb_map_with_context(
     context: &CertificateContext<'_>,
     values: &mut DenseMatrix,
     config: MapConfig,
+    projection_plan: Option<ParallelProjectionPlan>,
 ) -> Result<SolveReport> {
     let (design, weights) = context.inputs();
     validate_config(config)?;
@@ -76,7 +83,7 @@ pub(super) fn absorb_map_with_context(
             warnings: Vec::new(),
         });
     }
-    let mut workspace = ProjectionWorkspace::new(design.max_channels(), values.ncols())?;
+    let mut workspace = AutoProjectionWorkspace::new(design, values.ncols(), projection_plan)?;
     // MAP always performs a sweep before its first scheduled certificate.
     // Validate the weighted basis before mutation, but do not construct an
     // unused initial QR/span certificate. Every returned residual is freshly
@@ -101,11 +108,11 @@ pub(super) fn absorb_map_with_context(
 
     for iteration in 1..=config.max_iterations {
         for effect in design.effects() {
-            project_effect_in_place(effect, weights, values, &mut workspace)?;
+            workspace.project(effect, weights, values)?;
         }
         if config.symmetric && design.effects().len() > 1 {
             for effect in design.effects().iter().rev().skip(1) {
-                project_effect_in_place(effect, weights, values, &mut workspace)?;
+                workspace.project(effect, weights, values)?;
             }
         }
         if iteration % config.check_every == 0 || iteration == config.max_iterations {

@@ -1,6 +1,7 @@
 use super::accelerated_map::absorb_accelerated_map_with_context;
 use super::certificate::CertificateContext;
 use super::map::absorb_map_with_context;
+use super::projection::ParallelProjectionPlan;
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
@@ -222,6 +223,12 @@ fn absorb_auto(
             }
         }
     }
+    let projection_plan = ParallelProjectionPlan::for_design(design, values.ncols())
+        .ok()
+        .flatten();
+    let (pilot_projection, pilot_peak) =
+        admit_parallel_projection(projection_plan, attempted_peak, config.solver_memory_budget);
+    attempted_peak = pilot_peak;
     let cache_seconds = cache_started.elapsed().as_secs_f64();
     let initial = context.certify(values, &reference_norms, config.map.tolerance)?;
     let pilot_budget = config.map.max_iterations.min(4);
@@ -233,6 +240,7 @@ fn absorb_auto(
             check_every: 1,
             ..config.map
         },
+        pilot_projection,
     )?;
     let contraction = if initial.relative_two_norm == 0.0 {
         0.0
@@ -339,15 +347,14 @@ fn absorb_auto(
     // A failed/rejected LSMR attempt has released its solver and transport.
     // Recheck the actual continuation instead of charging two live solvers.
     let continuation_peak = admit_generic_solver(design, values, config, FeSolverKind::Cg, false)?;
-    if let Some(cached_peak) = continuation_peak
+    let continuation_peak = if let Some(cached_peak) = continuation_peak
         .with_retained(retained)
         .ok()
         .filter(|peak| {
             config
                 .solver_memory_budget
                 .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
-        })
-    {
+        }) {
         if let Some(parallel_peak) = cached_peak
             .with_retained(parallel_bytes)
             .ok()
@@ -357,15 +364,21 @@ fn absorb_auto(
                     .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
             })
         {
-            attempted_peak = attempted_peak.max(parallel_peak);
+            parallel_peak
         } else {
             context.set_parallel_rhs(0);
-            attempted_peak = attempted_peak.max(cached_peak);
+            cached_peak
         }
     } else {
         context.clear();
-        attempted_peak = attempted_peak.max(continuation_peak);
-    }
+        continuation_peak
+    };
+    let (cg_projection, continuation_peak) = admit_parallel_projection(
+        projection_plan,
+        continuation_peak,
+        config.solver_memory_budget,
+    );
+    attempted_peak = attempted_peak.max(continuation_peak);
     let mut cg = absorb_accelerated_map_with_context(
         &context,
         values,
@@ -374,6 +387,7 @@ fn absorb_auto(
             ..config.map
         },
         FeSolverKind::Cg,
+        cg_projection,
     )?;
     if !cg.certified() {
         return Err(FeregError::new(
@@ -400,6 +414,23 @@ fn absorb_auto(
         cg.warnings.insert(0, warning);
     }
     Ok(cg)
+}
+
+/// Optional projection storage is last in admission priority: it cannot evict
+/// the existing serial route, its geometry, or its admitted certificate scratch.
+fn admit_parallel_projection(
+    plan: Option<ParallelProjectionPlan>,
+    base: SolverWorkspacePeak,
+    budget: Option<FeSolverMemoryBudget>,
+) -> (Option<ParallelProjectionPlan>, SolverWorkspacePeak) {
+    if let Some(plan) = plan {
+        if let Ok(peak) = plan.bytes().and_then(|bytes| base.with_retained(bytes)) {
+            if budget.map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128)) {
+                return (Some(plan), peak);
+            }
+        }
+    }
+    (None, base)
 }
 
 fn admit_generic_solver(
@@ -823,9 +854,21 @@ mod generic_budget_regression {
                 context.cache().unwrap();
                 let parallel = context.parallel_workspace_bytes(8).unwrap();
                 assert!(parallel > 0);
-                assert!(map + cache + parallel < cg);
+                let projection = ParallelProjectionPlan::for_design(&design, 8)
+                    .unwrap()
+                    .unwrap()
+                    .bytes()
+                    .unwrap();
+                assert!(map + cache + parallel + projection < cg);
                 let mut reference = None;
-                for budget in [cg, cg + cache - 1, cg + cache, cg + cache + parallel] {
+                for budget in [
+                    cg,
+                    cg + cache - 1,
+                    cg + cache,
+                    cg + cache + parallel,
+                    cg + cache + parallel + projection - 1,
+                    cg + cache + parallel + projection,
+                ] {
                     let mut values = original.clone();
                     let report = absorb_fixed_effects(
                         &design,
@@ -842,16 +885,19 @@ mod generic_budget_regression {
                     .unwrap();
                     assert_eq!(report.used_solver, FeSolverKind::Cg);
                     assert!(!report.fallback_used);
-                    assert_eq!(
-                        report.solver_workspace_peak.bytes(),
-                        Some(if budget < cg + cache {
-                            cg
-                        } else if budget < cg + cache + parallel {
-                            cg + cache
-                        } else {
-                            cg + cache + parallel
-                        } as u64)
-                    );
+                    let continuation = if budget < cg + cache {
+                        cg
+                    } else if budget < cg + cache + parallel {
+                        cg + cache
+                    } else {
+                        cg + cache + parallel
+                    };
+                    let expected = if continuation + projection <= budget {
+                        continuation + projection
+                    } else {
+                        continuation
+                    };
+                    assert_eq!(report.solver_workspace_peak.bytes(), Some(expected as u64));
                     let result = (
                         values,
                         report.certificate,
@@ -867,7 +913,7 @@ mod generic_budget_regression {
     }
 
     #[test]
-    fn parallel_certificate_exact_budget_keeps_the_serial_cache_when_scratch_does_not_fit() {
+    fn parallel_projection_exact_budget_preserves_geometry_and_certificate_priority() {
         rayon::ThreadPoolBuilder::new()
             .num_threads(4)
             .build()
@@ -902,7 +948,18 @@ mod generic_budget_regression {
                 let parallel = context.parallel_workspace_bytes(1).unwrap();
                 assert_eq!(parallel, 4 * 2 * 8);
                 let mut reference = None;
-                for budget in [cached, cached + parallel - 1, cached + parallel] {
+                let projection = ParallelProjectionPlan::for_design(&design, 1)
+                    .unwrap()
+                    .unwrap()
+                    .bytes()
+                    .unwrap();
+                for budget in [
+                    cached,
+                    cached + parallel - 1,
+                    cached + parallel,
+                    cached + parallel + projection - 1,
+                    cached + parallel + projection,
+                ] {
                     let mut values = DenseMatrix::from_columns(&[outcome.clone()]).unwrap();
                     let report = absorb_fixed_effects(
                         &design,
@@ -922,8 +979,10 @@ mod generic_budget_regression {
                         report.solver_workspace_peak.bytes(),
                         Some(if budget < cached + parallel {
                             cached
-                        } else {
+                        } else if budget < cached + parallel + projection {
                             cached + parallel
+                        } else {
+                            cached + parallel + projection
                         } as u64)
                     );
                     let result = (

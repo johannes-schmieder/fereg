@@ -274,6 +274,34 @@ def instrument_owned_fe(root):
 
     path = root / "crates/fereg-core/src/fe/projection.rs"
     text, tests = path.read_text().split("\n#[cfg(test)]", 1)
+    if "fn group_coefficients(" in text:
+        # Each successful projection is timed once. The parallel timer starts
+        # before shared validation; workers never emit or sum wall-clock laps.
+        timer_start = text.index("    struct OwnedFeTimer(")
+        timer_end = text.index("    validate_projection(", timer_start)
+        timer = text[timer_start:timer_end]
+        timer = timer.replace("OwnedFeTimer(std::time::Instant::now(),", "OwnedFeTimer(profile_parallel_started,")
+        marker = "        if let Some(parallel) = self.parallel.as_mut() {"
+        assert text.count(marker) == 1
+        text = text.replace(marker, marker + "\n            let profile_parallel_started = std::time::Instant::now();")
+        marker = "                return project_parallel(effect, weights, values, parallel);"
+        assert text.count(marker) == 1
+        text = text.replace(marker, timer + marker)
+        start = text.index("fn project_parallel(")
+        end = len(text)
+        region = text[start:end]
+        marker = "    let group_width = channels * rhs;"
+        assert region.count(marker) == 1
+        region = region.replace(marker, "    let profile_group_started = std::time::Instant::now();\n" + marker)
+        marker = "    values\n        .as_mut_slice()"
+        assert region.count(marker) == 1
+        region = region.replace(marker, "    let profile_groups = profile_group_started.elapsed().as_secs_f64();\n    let profile_subtract_started = std::time::Instant::now();\n" + marker)
+        marker = "    Ok(())"
+        assert region.count(marker) == 1
+        region = region.replace(marker, '    eprintln!("FEREG_PHASE|owned_projection_parallel|rows={}|rhs={}|threads={}|groups={:.9}|subtract={:.9}", values.nrows(), values.ncols(), rayon::current_num_threads(), profile_groups, profile_subtract_started.elapsed().as_secs_f64());\n' + marker)
+        text = text[:start] + region
+        path.write_text(text + '\n#[cfg(test)]' + tests)
+        return
     def replace_projection(before, after):
         nonlocal text
         assert text.count(before) == 1, before

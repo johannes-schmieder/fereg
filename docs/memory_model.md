@@ -77,6 +77,18 @@ Raw-moment tiles use the existing 768-byte stack payload per active worker;
 no new pool or worker is created. Existing runtime/worker-stack headroom and
 whole-action coverage limitations remain authoritative.
 
+Automatic owned-slope MAP/CG projection can additionally admit
+`8*(L*C*R + T*C*C) + T*sizeof(ProjectionWorker)` bytes (ADR 0118): one
+coefficient bank, per-worker Grams and worker descriptors. L/C are the maximum
+effect level/channel counts, R is actual RHS width and T is installed workers.
+The serial workspace remains charged. Dimensions and actual capacities are
+checked; allocation refusal retains serial execution. Admission follows the
+existing geometry/certificate choices and cannot evict them. MAP drops its
+bank before LSMR/CG; CG independently admits a new bank after choosing its
+context. Earlier attempts remain in the reported maximum. Each row worker uses
+the existing 256-byte fitted-value tile, with no new team. Coefficients never
+survive a solver invocation or substitute for fresh certificates.
+
 The action-local single-partition OLS slope cache separately admits retained
 square-root weights, group Grams/scales and QR bases, plus construction scratch
 or concurrent projection output, group coefficients, norms and certificate

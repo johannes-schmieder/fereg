@@ -10,6 +10,65 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Parallel owned-FE projection groups accepted — 2026-09-23
+
+The [projection milestone](benchmarks/reports/development/parallel-projection-local-2026-09-23/README.md)
+and ADR 0118 split independent group coefficient solves from disjoint row
+subtraction on the installed team. Automatic owned slopes require at least
+16,384 rows, nonempty RHSs and more than one worker. Original raw Gram/pivot/
+rank rules, observation/channel arithmetic and per-entry subtraction remain
+unchanged. No tolerance, certificate, recurrence, contraction, routing or
+publication rule changes. Direct/serial/small paths, categorical borrowed
+solvers and the separate changing-weight reusable MAP keep their execution.
+
+A fallible optional bank adds at most `8*(L*C*R + T*C*C)` numeric bytes plus
+T worker descriptors, beside the existing serial workspace. Admission follows
+geometry/certificate priority and cannot displace an affordable route. MAP
+releases its bank before LSMR/CG; CG admits a new bank after selecting its
+context. Allocation/size refusal uses serial execution. Earlier attempts stay
+in the peak. Coefficients are refreshed every projection; nothing survives
+an invocation or crosses PPML weight/sample generations.
+
+`parproj1` is `9a1d8db2` plus the archived projection/MAP/accelerator/automatic
+overlays; all 529 computational inputs match. Plugin SHA-256:
+`2ed364308f8c7e239e242414621e23cf6b59d1d9a50d6ab0abd09775e419f80a`.
+Seven eligible threaded slope rows gain 15.3–36.0% by paired medians. Original
+commands improve 213→174 and 276→210 ms, fresh unbalanced three FE
+1648→1055 ms, low memory 254→209 ms, AW 196→161 and PW 197→159 ms.
+Added tracked heap is 0.116–1.966 MB. Stock still wins all five comparable
+rows. Wide serial loses 1.7% by paired median (+17/+25 ms pairs); small
+categorical/PPML/explicit-solver losses remain visible. No further guard,
+chunk or tile tuning follows this bounded candidate.
+
+All 93 headline calls pass without timeout, overlap or monitor error. All 39
+native pairs have exact scientific exports and non-clock solver fields; all
+52 repeat checks and 15 direct stock comparisons pass. Three N2400 independent
+explicit-design pilots pass for both natives and stock on this seed. Earlier
+weak-stock covariance failures remain unresolved; weak timings stay native-only.
+Fifty distinct Rust tests, five harness tests, actual-plugin ABI/panic checks
+and four licensed slope/saved-PPML/transaction fixtures pass. Exact-budget,
+capacity, fallback, independent weighted-formula and cross-thread bit checks
+cover the new kernel. No optimized Rust tests or qualification are claimed.
+
+Separate diagnostics retain work counts and confirm all 99 full-data projection
+calls use four workers. Initial candidate projections take 33.5/47.3 ms;
+fresh certificates remain about 39/50 ms. Baseline fine-grained timer overhead
+can inflate phase contrasts, so speed claims use uninstrumented public pairs.
+Most remaining native time remains in absorption. The 3,374-entry archive
+verifies SHA-256 `2c27996c1f8b9620d6cb914662d8f7db5610e67bed0093b67d248a8ffdb3074c`.
+
+**Next bounded subsystem:** return to public PPML breadth, starting with a small
+current-source screen of higher-dimensional/slope designs and saved-output
+costs. Performance coverage there remains incomplete. Establish comparable
+samples/inference/outputs and profile changing-weight state separately before
+choosing an implementation. Do not extend OLS cache lifetimes across IRLS
+frames or reopen closed window/serial-slope tuning. Seeds 202609283–288 are
+used; 202609289 onward remain unused here. Static allocation source drift,
+weighted constrained fits, nonretaining CG span instability, factor-base
+provenance and SCC/Linux deferrals remain open. Frozen 77/16/111 definitions
+are unchanged. This local committed milestone is not completion of the broad
+goal, a qualification, push or release. This opening supersedes older next steps.
+
 ## Parallel fresh owned-FE certificates accepted — 2026-09-23
 
 The [parallel-certificate milestone](benchmarks/reports/development/parallel-certificate-local-2026-09-23/README.md)

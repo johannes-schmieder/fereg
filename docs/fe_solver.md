@@ -19,6 +19,15 @@ and reuses bounded projection workspaces. Rank-deficient local slope blocks use
 pivoted elimination; unidentified parameter directions may be normalized, but
 fitted projections must remain identified.
 
+Automatic owned-slope MAP/CG projections may split independent group solves
+from disjoint row subtraction on an installed team (ADR 0118). At least 16,384
+rows, nonempty RHSs and more than one worker are required. Raw Gram accumulation,
+pivot/rank rules and each entry's FMA/subtraction order remain unchanged. An
+optional admitted coefficient bank is reused within one solver invocation;
+every sweep recomputes its coefficients. Allocation refusal uses the serial
+workspace. Direct solvers and the separate changing-weight reusable MAP retain
+their existing execution. No state crosses a weight or sample generation.
+
 A solver recurrence is never sufficient evidence. For each effect-level
 block `B`, the final gate computes the projection of `sqrt(W) r` onto
 `col(sqrt(W) B)` with scaled, reorthogonalized rank-aware QR and measures it
