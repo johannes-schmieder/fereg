@@ -1,0 +1,15 @@
+{
+  "schema": "fereg-development-receipt-verification-v1",
+  "candidate": "oneprof6",
+  "plugin": "c1aa681c6c160d60381d8483b783a1bbed057c63d4f0d81c89f9e02485ac67b3",
+  "container_sha256": "c9b6d302f392429be442c67b5eb115884d510469343f1e6020a9c2d62a85b691",
+  "verified_logical_files": 11494,
+  "distinct_payloads": 2069,
+  "restore_returncode": 0,
+  "restore_result": "Verified and restored 11494 logical receipts",
+  "earlier_restore": {
+    "returncode": 2,
+    "reason": "Verification was attempted before the sealer had finished copying its restore helper; no receipt was extracted or accepted.",
+    "original_log_sha256": "ec66aa4a0063322f84f1672ef4e8615e3c48d5156d6f92db592fd5f0d1cf7850"
+  }
+}

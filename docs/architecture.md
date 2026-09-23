@@ -43,6 +43,12 @@ over the guarded PPML transaction; it neither reparses nor posts results.
 
 ## Public PPML architecture
 
+After the canonical initial rank solve, fast one-categorical-FE publication
+fits may use analytic group-intercept elimination and concentrated finite
+Poisson steps. Full outer, strict and final-Hessian acceptance remains independent;
+the optional owner and exact-state reuse boundary are specified in
+[ADR 0127](adr/0127-profiled-one-fe-poisson.md).
+
 The public PPML path reuses the prepared model,
 certified weighted-linear kernels, and sandwich reductions below the
 estimator-policy boundary. OLS remains a one-shot caller; PPML owns separation

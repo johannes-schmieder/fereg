@@ -10,6 +10,108 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Concentrated one-FE PPML accepted; broad target remains active — 2026-09-23
+
+The active objective remains public PPML runtime at most **0.90 times scientifically
+comparable pinned stock fixest** wherever reasonably achievable, while protecting
+OLS and scientific/transaction/memory contracts. This checkpoint completes the
+one-FE experiment; it does not complete that broader objective. This opening and
+the next sequence below supersede historical next-step and unused-seed entries.
+
+Accept `oneprof6`, based on `386b2170`, under
+[ADR 0127](docs/adr/0127-profiled-one-fe-poisson.md) and the
+[source-bound report](benchmarks/reports/development/ppml-one-fe-profile-local-2026-09-23/README.md).
+All **534 computational inputs** match plugin
+`c1aa681c6c160d60381d8483b783a1bbed057c63d4f0d81c89f9e02485ac67b3`.
+The restored immutable container verifies **11,494 logical files**, SHA-256
+`c9b6d302f392429be442c67b5eb115884d510469343f1e6020a9c2d62a85b691`.
+
+After the canonical initial rank solve, analytically optimize categorical group
+intercepts for every finite-beta trial and use a centered finite Newton system.
+Keep independent outer scores, two convergence passes, strict canonical WLS and
+fresh final predictor-response/Hessian acceptance. Retaining a strict-confirmed
+accepted point preserves bitwise current weights and enables existing same-weight
+control reuse. No tolerances, sample, rank, weights, inference, DoF, separation
+or failure atomicity were weakened. Scope is optional fast, actual one-intercept-FE,
+MAP-owned publication; other paths retain their existing execution.
+
+Fresh seed324 medians, baseline/candidate/strict-stock ms:
+
+| One-FE case | Baseline | Candidate | Stock | Candidate/stock |
+| --- | ---: | ---: | ---: | ---: |
+| N61440 K10 T4 | 147 | 129 | 53 | 2.43 |
+| N61440 K10 T1 | 194 | 172 | 98 | 1.76 |
+| N30720 K32 T4 | 186 | 151 | 116 | 1.30 |
+| Unbalanced N61440 K10 T8 | 140 | 129 | 49 | 2.63 |
+| N3840 K3 T1 | 25 | 20 | 11 | 1.82 |
+| N245760 K6 T8 | 474 | 406 | 158 | 2.57 |
+
+Native gains span **7.9–20.0%**, with **0.20–18.89 MB** extra tracked peak. Every
+cell still loses to stock. The additional N-by-K finite-design copy is a material
+memory cost and is excluded from low memory. Both fresh small independent
+Poisson/Hessian pilots pass for baseline, candidate and stock; all large public
+state and pair checks pass. Distributions remain in the report and receipts.
+
+**134 distinct Rust tests**, actual-plugin ABI/panic checks and **four licensed
+fixtures** pass. The licensed coverage includes weighted explicit-dummy inference,
+separation, saved outputs and real sixteen-iteration allocator audits at T1/T4.
+The audit caught allocate/free churn despite stable capacities; grouping dependent
+worker phases reduced seven external submissions to two and the unchanged audit
+now passes. All **206 public applications** across development and final screens
+pass, with no overlap/monitor errors. All **22 excluded PPML/OLS pairs** retain
+exact scientific exports. Initial small low-memory and degree-six losses receive
+five further identical-input pairs: 187/188 and 113/113 ms. Preserve both blocks.
+
+Failed broad no-FE routing, invalidated-session audit access, new-fixture syntax
+and offset-identity errors, diagnostic setup errors and sealing false positives
+are preserved. The obsolete hidden allocation fixture fails the same wire-minor
+assertion on accepted baseline and prototype; this milestone does not repair it.
+The successful new allocator fixture is separate evidence.
+
+### Next bounded implementation sequence
+
+1. **Share exact final-state construction.** Final-source K10/T4 strict-final
+   work is 35.83 ms; N245760/K6 is 131.34 ms. A separate actual-FE diagnostic
+   locates two full finite rank solves of about 8 ms each around final acceptance,
+   despite identical final weights and no final control reprojection. Separate
+   response-dependent work from current-weight design/rank/factor products;
+   bind reuse to complete owned generations and invalidate on mutation/errors.
+   Preserve fresh residual, score, model-space, reconstruction and Hessian checks.
+   Also investigate ownership of the new finite-design copy. Establish a full
+   cost budget: K10/T4 still needs 81.3 ms (63%) reduction to reach 0.90, so this
+   duplicate alone cannot close the public gap. Use an ADR for checking changes.
+2. **Reduce ordinary slope work fundamentally.** Existing slope Schur already
+   has weighted geometry reuse, fusion and individual stopping. Compare a joint
+   finite-plus-slope Newton/Krylov update, avoiding K+1 ordinary absorptions,
+   against shared-load batched Schur products/reconstruction. Use identical
+   frozen frames and complete setup/certificate costs; retain one coherent
+   successful organization. The prior threaded gaps still need 34–45% less
+   public time. Do not repeat the rejected residual extrapolation or tune the
+   prepared-operator selector to existing seeds.
+3. **Low-memory finite and strict solving.** Prior source-bound diagnostics show
+   114.8 ms finite and 70.6 ms strict-final work. Develop bounded block/streamed
+   stable finite solving and valid same-frame reuse without a hidden resident
+   N-by-K bank. Count scratch passes, standardization, rank and reconstruction;
+   measure runtime and admitted/actual peaks together.
+4. **Categorical multi-FE and shared passes.** Extend the existing joint and
+   projection mechanisms using structural dimensions/connectivity/RHS/memory
+   evidence, protecting already competitive dense-three-FE cases. Then address
+   generated terms, objective/score passes, inference and saved outputs where
+   measured. A shared OLS adapter needs separate OLS oracles and controls.
+5. **Fresh broad confirmation.** Extend bounded cases around measured weaknesses
+   in imbalance/connectivity, multiple slopes, widths, weights, rank, threads,
+   budgets and outputs. For each milestone, freeze baseline/science, implement,
+   check independent oracles/boundaries, run uncontended alternating rotations,
+   confirm fresh cases and controls, then commit or reject with immutable evidence.
+   Keep per-cell distributions/losses and unranked scientific discrepancies visible.
+
+Seeds **202609321 and 202609324 are consumed**. Seeds322/323 were declared but
+never generated; **202609325 is next unused for new work**. Static allocation
+inventory drift, weighted constrained-fit failures, generic nonretaining-CG
+instability, older comparator/factor-provenance issues and Linux/SCC/physical-cap
+deferrals remain open. Frozen 77/16/111 definitions are unchanged. No push,
+release, SCC authentication retry or stopped campaign restart occurred.
+
 ## Symbolic PPML coupling accepted; broader target remains active — 2026-09-23
 
 The active objective remains public PPML runtime at most **0.90 times scientifically

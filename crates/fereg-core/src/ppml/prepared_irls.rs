@@ -40,6 +40,7 @@ use super::family::{means_from_eta, poisson_objective_from_eta, CompensatedSum};
 #[cfg(test)]
 use super::memory::DIAGNOSTIC_RECORD_BYTES;
 use super::memory::{begin_phase_allocation, end_phase_allocation};
+use super::one_fe_profile::ProfiledOneFe;
 #[cfg(test)]
 use super::plan_ppml_memory;
 use super::prepared_estimator::PpmlInterruptPoint;
@@ -452,6 +453,7 @@ struct PpmlAllocationAuditBoundary {
     ppml_workspace: PpmlWorkspaceCapacityReport,
     linear_workspace: LinearSessionWorkspaceCapacities,
     linear_workspace_report: PpmlLinearWorkspaceCapacityReport,
+    profile_workspace_valid: Option<bool>,
     scratch_bytes: u64,
 }
 
@@ -480,7 +482,9 @@ impl PendingPpmlAllocationAudit {
             linear_workspace_start: self.start.linear_workspace_report,
             linear_workspace_end: self.end.linear_workspace_report,
             linear_workspace_capacity_stable: self.start.linear_workspace
-                == self.end.linear_workspace,
+                == self.end.linear_workspace
+                && self.start.profile_workspace_valid == self.end.profile_workspace_valid
+                && self.start.profile_workspace_valid != Some(false),
             scratch_bytes_start: self.start.scratch_bytes,
             scratch_bytes_end: self.end.scratch_bytes,
             linear_route: self.linear_route,
@@ -558,6 +562,7 @@ impl PpmlAllocationAuditWindow {
         &mut self,
         session: &CertifiedLinearSession<'_, P>,
         workspace: &PpmlIterationWorkspace,
+        profile: Option<&ProfiledOneFe>,
     ) -> Result<()> {
         let probe = self.probe.ok_or_else(|| {
             FeregError::new(
@@ -565,7 +570,9 @@ impl PpmlAllocationAuditWindow {
                 "PPML allocation audit start lacks its allocator probe",
             )
         })?;
-        self.start = Some(allocation_audit_start_boundary(session, workspace, probe)?);
+        self.start = Some(allocation_audit_start_boundary(
+            session, workspace, profile, probe,
+        )?);
         self.measured_iterations = 0;
         self.linear_route = FeSolverKind::Map;
         self.linear_session_allocation_free = true;
@@ -580,6 +587,7 @@ impl PpmlAllocationAuditWindow {
         reuse: LinearSessionReuseReport,
         route: FeSolverKind,
         elapsed: Duration,
+        profile: Option<&ProfiledOneFe>,
     ) -> Result<()> {
         let Some(start) = self.start else {
             return Ok(());
@@ -613,7 +621,7 @@ impl PpmlAllocationAuditWindow {
         // The end snapshot is the first operation after the complete measured
         // iteration. Capacity/scratch reads that follow are outside the
         // allocator window and are themselves allocation-free.
-        let end = allocation_audit_end_boundary(session, workspace, probe)?;
+        let end = allocation_audit_end_boundary(session, workspace, profile, probe)?;
         self.pending = Some(PendingPpmlAllocationAudit {
             start,
             end,
@@ -644,6 +652,7 @@ impl PpmlAllocationAuditWindow {
 fn allocation_audit_start_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
     session: &CertifiedLinearSession<'_, P>,
     workspace: &PpmlIterationWorkspace,
+    profile: Option<&ProfiledOneFe>,
     probe: PpmlAllocatorSnapshotProbe,
 ) -> Result<PpmlAllocationAuditBoundary> {
     let ppml_workspace = workspace.capacity_report();
@@ -658,6 +667,7 @@ fn allocation_audit_start_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
             )
         })?
         .scratch_bytes;
+    let profile_workspace_valid = profile.map(ProfiledOneFe::capacities_unchanged);
     // Capture last: the window begins after all boundary evidence has been
     // read and immediately before the next complete IRLS iteration.
     let allocator = probe();
@@ -666,6 +676,7 @@ fn allocation_audit_start_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
         ppml_workspace,
         linear_workspace,
         linear_workspace_report,
+        profile_workspace_valid,
         scratch_bytes,
     })
 }
@@ -673,6 +684,7 @@ fn allocation_audit_start_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
 fn allocation_audit_end_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
     session: &CertifiedLinearSession<'_, P>,
     workspace: &PpmlIterationWorkspace,
+    profile: Option<&ProfiledOneFe>,
     probe: PpmlAllocatorSnapshotProbe,
 ) -> Result<PpmlAllocationAuditBoundary> {
     // Capture first: nothing after this read belongs to the measured window.
@@ -694,6 +706,7 @@ fn allocation_audit_end_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
         ppml_workspace,
         linear_workspace,
         linear_workspace_report,
+        profile_workspace_valid: profile.map(ProfiledOneFe::capacities_unchanged),
         scratch_bytes,
     })
 }
@@ -938,7 +951,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         solver_admission = PublicSolverMemoryAdmission::default();
     }
     memory_plan = memory_plan.with_solver_workspace(solver_admission.incremental_bytes)?;
-    let solver_execution_bytes = memory_plan
+    let mut solver_execution_bytes = memory_plan
         .selected_inventory()
         .peak_bytes
         .checked_add(solver_admission.owned_fe_design_shortfall_bytes)
@@ -960,6 +973,46 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .map(std::num::NonZeroUsize::get)
         .unwrap_or(0);
     let effective_threads = config.linear.execution.threads.resolved();
+    // An allocation audit additionally admits a cold equivalence engine whose
+    // lifetime is outside the measured iteration window.
+    let one_fe_profile_admitted = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+        && config.solver_plan.selected == super::PpmlSolverFamily::Map
+        && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
+        && prepared.fit_has_one_ordinary_intercept_effect()
+        && fe_design.effects().len() == 1
+        && fe_design.effects()[0].has_intercept()
+        && fe_design.effects()[0].slopes().is_empty()
+    {
+        let profile_bytes = ProfiledOneFe::bytes(
+            fe_design.nobs(),
+            prepared.fit_model().columns.len(),
+            fe_design.effects()[0].n_levels(),
+        )
+        .ok()
+        .and_then(|bytes| bytes.checked_mul(1 + u128::from(config.allocation_snapshot_probe.is_some())))
+        .and_then(|bytes| {
+            memory_plan
+                .solver_workspace_bytes
+                .checked_add(bytes)
+                .map(|total| (bytes, total))
+        });
+        match profile_bytes {
+            Some((bytes, total)) => match memory_plan.with_solver_workspace(total) {
+                Ok(plan) => {
+                    solver_execution_bytes = solver_execution_bytes
+                        .checked_add(bytes)
+                        .ok_or_else(|| allocation("one-FE profile workspace size overflows"))?;
+                    memory_plan = plan;
+                    true
+                }
+                Err(error) if error.code == ErrorCode::Allocation => false,
+                Err(error) => return Err(error),
+            },
+            None => false,
+        }
+    } else {
+        false
+    };
     let projection_rhs = match config.linear.execution.mode {
         PreparedOlsExecutionMode::Fast => solver_rhs,
         PreparedOlsExecutionMode::Low => config
@@ -974,12 +1027,23 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         && fe_design.effects().iter().any(|effect| !effect.slopes().is_empty())
     {
         let mut candidate = memory_plan;
-        match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(&fe_design)
-            .and_then(|geometry| crate::fe::ReusableMapAbsorber::coefficient_solver_bytes(
-                &fe_design, projection_rhs, effective_threads).map(|workspace| (geometry, workspace + 8 * fe_design.nobs() as u128)))
-        {
-            Ok((geometry, workspace)) if candidate.admit_reusable_certificate(geometry)
-                && candidate.admit_reusable_slope(workspace) => { memory_plan = candidate; true }
+        match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(&fe_design).and_then(
+            |geometry| {
+                crate::fe::ReusableMapAbsorber::coefficient_solver_bytes(
+                    &fe_design,
+                    projection_rhs,
+                    effective_threads,
+                )
+                .map(|workspace| (geometry, workspace + 8 * fe_design.nobs() as u128))
+            },
+        ) {
+            Ok((geometry, workspace))
+                if candidate.admit_reusable_certificate(geometry)
+                    && candidate.admit_reusable_slope(workspace) =>
+            {
+                memory_plan = candidate;
+                true
+            }
             Ok(_) => false,
             Err(error) if error.code == ErrorCode::Allocation => false,
             Err(error) => return Err(error),
@@ -1021,8 +1085,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // Certificate scheduling is optional even after the slope solver fits.
     // A tight budget must retain that solver with its serial fresh check.
     let slope_certificate = if slope_coefficients {
-        match crate::fe::ReusableMapAbsorber::coefficient_certificate_bytes(&fe_design, projection_rhs) {
-            Ok(bytes) => memory_plan.reusable_slope_bytes.checked_add(bytes)
+        match crate::fe::ReusableMapAbsorber::coefficient_certificate_bytes(
+            &fe_design,
+            projection_rhs,
+        ) {
+            Ok(bytes) => memory_plan
+                .reusable_slope_bytes
+                .checked_add(bytes)
                 .is_some_and(|total| memory_plan.admit_reusable_slope(total)),
             Err(error) if error.code == ErrorCode::Allocation => false,
             Err(error) => return Err(error),
@@ -1101,7 +1170,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         session.enable_ppml_certificate_geometry()?;
     }
     if slope_coefficients {
-        session.enable_ppml_slope_coefficients(effective_threads, slope_certificate, slope_coupling)?;
+        session.enable_ppml_slope_coefficients(
+            effective_threads,
+            slope_certificate,
+            slope_coupling,
+        )?;
     }
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
     let initial_checkpoint_lsmr = use_initial_checkpoint_lsmr_accelerator(
@@ -1118,6 +1191,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     }
     let mut joint_lsmr = None;
     let mut joint_lsmr_engine = None;
+    let mut profiled_one_fe: Option<ProfiledOneFe> = None;
     let mut fused_cmg = None;
     let mut solver_report = None;
     let retained_limit = MAX_RETAINED_ITERATION_REPORTS
@@ -1185,7 +1259,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         session.set_config(ppml_linear_config(config, inner_tolerance)?)?;
         if iteration > 1 {
             frame_generation = next_frame_generation(frame_generation)?;
-            if joint_lsmr.is_none() && fused_cmg.is_none() {
+            if joint_lsmr.is_none() && fused_cmg.is_none() && profiled_one_fe.is_none() {
                 refresh_linear_frame(&mut session, &workspace, frame_generation)?;
             }
         }
@@ -1195,6 +1269,53 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             config.phase_allocation_probe,
             PpmlPhase::WeightResponseRefresh,
         );
+        let mut profiled_step = None;
+        if iteration > 1 {
+            if let Some(profile) = profiled_one_fe.as_mut() {
+                let started = Instant::now();
+                match profile.prepare_direction(
+                    session.fe_design(),
+                    outcome,
+                    prior_weights,
+                    offset,
+                    workspace.coefficients(),
+                    config.ppml,
+                ) {
+                    Ok(error) => {
+                        profiled_step = Some((
+                            profile.active_rank(),
+                            error,
+                            started.elapsed().as_secs_f64(),
+                        ));
+                        if allocation_audit.needs_equivalence() {
+                            let equivalent = profile.fresh_direction_equivalent(
+                                prepared,
+                                session.fe_design(),
+                                outcome,
+                                prior_weights,
+                                offset,
+                                workspace.coefficients(),
+                                config.linear.execution.threads,
+                                config.ppml,
+                                fresh_warm_tolerance(config.ppml, inner_tolerance),
+                            )?;
+                            let observation = allocation_audit.complete_equivalence(equivalent)?;
+                            memory.observe_steady_state_allocation(observation)?;
+                        }
+                    }
+                    Err(error) if error.code == ErrorCode::NonConvergence => {
+                        if allocation_audit.needs_equivalence() {
+                            let observation = allocation_audit.complete_equivalence(false)?;
+                            memory.observe_steady_state_allocation(observation)?;
+                        }
+                        profiled_one_fe = None;
+                        memory.record_fallback(PpmlFallbackKind::Route);
+                        refresh_linear_frame(&mut session, &workspace, frame_generation)?;
+                    }
+                    Err(error) => return Err(error),
+                }
+            }
+        }
         let mut joint_lsmr_frame = None;
         let (finite_rank, reuse, linear_route) = if iteration == 1 {
             let output = session.solve_fresh()?;
@@ -1235,7 +1356,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 &output,
                 workspace.candidate_coefficients_mut(),
             )?;
-            let specialized_columns = (selected_engine != PpmlSolverEngine::Map)
+            let specialized_columns = (selected_engine != PpmlSolverEngine::Map
+                || one_fe_profile_admitted)
                 .then(|| {
                     fallible_copy(
                         output.fit().kept_generated_columns(),
@@ -1248,6 +1370,24 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 output.reuse_report(),
                 output.fit().absorption_report().used_solver,
             );
+            if one_fe_profile_admitted {
+                match ProfiledOneFe::new(
+                    prepared,
+                    specialized_columns.as_deref().expect("profile basis"),
+                    session.fe_design(),
+                    outcome,
+                    prior_weights,
+                    config.linear.execution.threads,
+                ) {
+                    Ok(profile) => profiled_one_fe = Some(profile),
+                    Err(error)
+                        if matches!(
+                            error.code,
+                            ErrorCode::Allocation | ErrorCode::NonConvergence
+                        ) => {}
+                    Err(error) => return Err(error),
+                }
+            }
             match selected_engine {
                 PpmlSolverEngine::Map => {}
                 PpmlSolverEngine::LsmrJoint | PpmlSolverEngine::LsmrFused => {
@@ -1301,6 +1441,34 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 record_cmg_heap_forecast(&mut memory, cmg, solver_admission)?;
             }
             result
+        } else if let Some((rank, error, seconds)) = profiled_step {
+            total_inner_iterations = total_inner_iterations
+                .checked_add(1)
+                .ok_or_else(|| internal("profile step count overflow"))?;
+            solver_report
+                .as_mut()
+                .ok_or_else(|| internal("profile step lacks diagnostics"))?
+                .observe(PpmlSolverObservation {
+                    engine: PpmlSolverEngine::Map,
+                    frame: PpmlSolverFrameKind::Ordinary,
+                    retries: 0,
+                    iterations: 1,
+                    setup_seconds: 0.,
+                    solve_seconds: seconds,
+                    certification_seconds: 0.,
+                    absolute_infinity_norm: None,
+                    relative_infinity_norm: Some(error),
+                    relative_two_norm: None,
+                    normal_equation: Some(error),
+                    projection_absolute_infinity_norm: None,
+                    backward_error: Some(error),
+                })?;
+            rank_frozen = true;
+            let mut reuse = LinearSessionReuseReport::ppml_specialized(0., seconds);
+            reuse.steady_state_allocation_free = profiled_one_fe
+                .as_ref()
+                .is_some_and(ProfiledOneFe::capacities_unchanged);
+            (rank, reuse, FeSolverKind::Map)
         } else if let Some(joint) = joint_lsmr.as_mut() {
             let report = joint.solve(
                 session.fe_design(),
@@ -1350,7 +1518,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     workspace.hessian_weights(),
                     inner_tolerance,
                 )?;
-            record_cmg_heap_forecast(&mut memory, fused_cmg.as_ref().expect("CMG attempt retained"), solver_admission)?;
+            record_cmg_heap_forecast(
+                &mut memory,
+                fused_cmg.as_ref().expect("CMG attempt retained"),
+                solver_admission,
+            )?;
             match attempt {
                 FusedFwlCmgSolveOutcome::Certified(report) => {
                     let cmg = fused_cmg
@@ -1601,13 +1773,30 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         let previous_objective = objective;
         let accepted = {
             let mut poll_line_search = || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
-            match workspace.accept_candidate_interruptible(
-                outcome,
-                prior_weights,
-                objective,
-                config.ppml,
-                &mut poll_line_search,
-            ) {
+            let attempt = if profiled_step.is_some() {
+                profiled_one_fe
+                    .as_mut()
+                    .expect("prepared profile step")
+                    .accept(
+                        session.fe_design(),
+                        outcome,
+                        prior_weights,
+                        offset,
+                        &mut workspace,
+                        objective,
+                        config.ppml,
+                        &mut poll_line_search,
+                    )
+            } else {
+                workspace.accept_candidate_interruptible(
+                    outcome,
+                    prior_weights,
+                    objective,
+                    config.ppml,
+                    &mut poll_line_search,
+                )
+            };
+            match attempt {
                 Ok(accepted) => accepted,
                 Err(error)
                     if matches!(purpose, PreparedPpmlIrlsPurpose::MuExploration { .. })
@@ -1795,7 +1984,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     fused_cmg
                         .as_ref()
                         .map(ReusableCategoricalFwlCmg::active_slots)
-                });
+                })
+                .or_else(|| profiled_one_fe.as_ref().map(ProfiledOneFe::active_slots));
             let strict_consistent = strict_candidate_decision_with_coefficient_slots(
                 strict_certified,
                 strict_basis_unchanged,
@@ -1876,12 +2066,15 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             checkpoint_refinement_pending = false;
             let mut strict_committed = false;
             if strict_consistent {
-                // Publish the strict state itself. A unit trial copies the
-                // already-certified strict eta/beta and its evaluated means
-                // into the accepted buffers without allocating.
-                workspace.fill_line_search_trial(1.0, config.ppml.bounds)?;
-                workspace.accept_trial()?;
-                objective = strict_objective.expect("consistent strict objective is present");
+                // A profiled point already satisfies the independently checked
+                // outer conditions. If strict WLS confirms that same point,
+                // retaining it keeps the current Hessian exact for final
+                // reconstruction; the final response is still freshly solved.
+                if profiled_one_fe.is_none() {
+                    workspace.fill_line_search_trial(1.0, config.ppml.bounds)?;
+                    workspace.accept_trial()?;
+                    objective = strict_objective.expect("consistent strict objective is present");
+                }
                 strict_transaction.commit();
                 strict_committed = true;
             } else {
@@ -1930,6 +2123,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 }
             }
             if strict_committed {
+                if !strict_basis_unchanged {
+                    profiled_one_fe = None;
+                }
                 if let Some(joint) = joint_lsmr.as_mut() {
                     joint.reset_warm_start();
                 }
@@ -2002,6 +2198,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     &mut total_inner_iterations,
                     finite_rank,
                     objective,
+                    profiled_one_fe.as_ref().map(ProfiledOneFe::active_slots),
                 )?;
                 if synchronized == FinalHessianSynchronization::Certified {
                     two_consecutive_convergence = consecutive_converged >= 2;
@@ -2152,9 +2349,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 reuse,
                 linear_route,
                 elapsed.elapsed(),
+                profiled_one_fe.as_ref(),
             )?;
         } else if audit_can_start {
-            allocation_audit.start_after(&session, &workspace)?;
+            allocation_audit.start_after(&session, &workspace, profiled_one_fe.as_ref())?;
         }
         previous_outer_progress = Some(PpmlInnerToleranceProgress::new(
             relative_deviance_change(previous_objective, objective),
@@ -2762,6 +2960,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     total_inner_iterations: &mut usize,
     expected_rank: usize,
     accepted_objective: PoissonObjective,
+    coefficient_slots: Option<&[usize]>,
 ) -> Result<FinalHessianSynchronization> {
     workspace.refresh_working_state(outcome, prior_weights, offset, config.ppml.bounds)?;
     workspace.prepare_final_hessian_response(offset)?;
@@ -2804,8 +3003,21 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     }
     let predictor_difference =
         relative_infinity_difference(workspace.eta(), workspace.candidate_eta());
-    let coefficient_difference =
-        relative_infinity_difference(workspace.coefficients(), workspace.candidate_coefficients());
+    let coefficient_difference = coefficient_slots.map_or_else(
+        || {
+            relative_infinity_difference(
+                workspace.coefficients(),
+                workspace.candidate_coefficients(),
+            )
+        },
+        |slots| {
+            relative_infinity_difference_at_slots(
+                workspace.coefficients(),
+                workspace.candidate_coefficients(),
+                slots,
+            )
+        },
+    );
     #[cfg(test)]
     let injected_movement = take_strict_resume(2);
     #[cfg(test)]
@@ -2821,7 +3033,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
             }
             Err(error) => return Err(error),
         };
-    let decision = strict_candidate_decision(
+    let decision = strict_candidate_decision_with_coefficient_slots(
         synchronized_certified,
         synchronized_basis_unchanged,
         expected_rank,
@@ -2833,6 +3045,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         workspace.candidate_coefficients(),
         Some(candidate_objective),
         config.ppml,
+        coefficient_slots,
     );
     let decision = if decision == FinalHessianSynchronization::Certified
         && (predictor_difference > config.ppml.tolerance
@@ -3512,6 +3725,7 @@ fn strict_profile_difference(
         })
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 fn strict_candidate_decision(
     certified: bool,

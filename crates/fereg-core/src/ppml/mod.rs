@@ -12,6 +12,7 @@ mod family;
 mod irls;
 mod memory;
 mod metadata_memory;
+mod one_fe_profile;
 mod prepared;
 mod prepared_estimator;
 mod prepared_irls;
@@ -31,7 +32,6 @@ pub use family::{
     offset_from_exposure, poisson_null_objective, poisson_objective, PoissonNullObjective,
     PoissonObjective,
 };
-pub use metadata_memory::PpmlMetadataMemory;
 pub use memory::{
     certify_ppml_steady_state_allocation, estimate_ppml_memory, plan_ppml_memory,
     BoundedPpmlDiagnostics, PpmlAllocationTelemetry, PpmlAllocatorSnapshot,
@@ -43,6 +43,7 @@ pub use memory::{
     PpmlSteadyStateAllocationCertificate, PpmlSteadyStateAllocationObservation,
     PpmlWorkspaceCapacityReport, PPML_PHASES, PPML_PHASE_COUNT, PPML_STEADY_STATE_AUDIT_ITERATIONS,
 };
+pub use metadata_memory::PpmlMetadataMemory;
 pub use prepared::{
     prepare_ppml_numeric_data, PpmlNumericPreparationInput, PreparedPpmlAdjustmentKind,
     PreparedPpmlAdjustmentReport, PreparedPpmlNumericData, PreparedPpmlWeightReport,
