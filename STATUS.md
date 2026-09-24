@@ -10,7 +10,108 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Bounded PPML reconstruction/moments adopted; projection lifecycle next — 2026-09-24
+## PPML frame-operator design selected; production integration next — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. Production computation remains **`2c34503d`**, artifact
+**`jointpanels2`**, plugin SHA-256
+`4d4c669d6716583b14be437e2732133d61f733840b610414429d8df5614168b1`.
+Neither prototype below is admitted or routed in production. The only source
+change at this checkpoint repairs test-only checkpoint accounting.
+
+The [completed lifecycle/design-selection report](benchmarks/reports/development/ppml-frame-operator-local-2026-09-24/README.md)
+captures isolated diagnostic `frameledger1`, both frozen operator prototypes,
+all distributions, independent oracles and failed builds. Its **2,123 logical
+receipts** were verified and restored; archive SHA-256
+`edbd169f91aa568a6e8c61595741bf2072315c8ef6c00bf34682df85becba15b`.
+All builds, diagnostic fits, probes, tests and archive/restore processes are
+terminal. No stock timing, fresh seed campaign or new whole-public speedup claim
+belongs to this milestone.
+
+### What the experiment established
+
+- All **14 diagnostic public fits and independent public-state checks pass**.
+  Wide low two-FE makes **11 canonical Schur calls across only two weight
+  frames**, with 78 operator applications and 15,014,400 observation-by-RHS
+  visits. Its measured operator work takes about 12.5 ms, initialization 3.9–5.0,
+  reconstruction 2.0–2.7 and final certificates 8.5–8.7. These are instrumented
+  diagnostic phases; nested certificate spans must not be added twice.
+- Reusable edge operators improve 22/33 warm configurations and lose 11;
+  only nine improve with all setup charged to one call. **Reject broad
+  edge-only adoption.** Wide and narrow designs have no repeated pairs, so
+  edge compression is not their missing advantage.
+- A **frame-owned reduced matrix inside the existing PCG recurrence** improves
+  all 24 small-system warm medians by **29–59%**. All nine larger disconnected
+  medians lose **6–142%**. Only eight configurations improve after charging full
+  setup to one call. Wide width10/T8 is 4.559→2.396 ms warm with 1.283 ms setup;
+  unbalanced width10/T4 is 3.487→1.920 with 2.291 ms setup. This supports reuse
+  across compatible calls, with structural work/memory admission, not universal
+  dense routing or a claim that preparation is free.
+- **582 explicit-design WLS oracle checks per prototype pass**. These are
+  identical frozen final weights/RHSs at tolerance 1e-12, seven alternating
+  pairs per configuration. Changing-weight ownership, extreme-weight safety
+  and whole-public Poisson/Hessian integration still need validation.
+- The prior actual2/expected3 checkpoint test failure is resolved as a
+  **test-accounting bug**: a rank-zero external fused Newton witness contributes
+  a reported checkpoint without refreshing the canonical session. A test-only
+  counter records that successful witness separately. All **three focused
+  regressions pass**. Production reporting and scientific behavior are unchanged.
+
+### Implementation plan and measurable exit conditions
+
+1. **Integrate one frame-owned reduced operator.** Keep immutable FE topology
+   and prepare the current-weight reduced matrix once for compatible control
+   tiles, response and checkpoint consumers. Response-only changes may reuse
+   it; sample/topology/weight changes and failed construction invalidate it.
+   Use exact symmetric construction, existing component scaling, fallible
+   fixed capacities and complete live-memory admission. Compare q² operator
+   work with two observation passes and include assembly degree costs in the
+   structural decision. The larger disconnected system must retain the current
+   operator when preparation or application is unfavorable. Do not add another
+   edge-only solver layer or borrow OLS cache authority. Preserve original-input
+   reconstruction and independent certificates. First gate: independent WLS,
+   changing/extreme weights, weak/disconnected graphs, rank-zero, interruption,
+   refusal and generation tests; then an early whole-public baseline/candidate/
+   stock screen. Kernel gains alone do not justify adoption.
+2. **Attack the remaining full-command passes.** The operator attribution
+   cannot by itself supply the wide/unbalanced 34–40% reductions still needed.
+   After measuring integration, address the dominant remaining initial/final
+   canonical construction, reconstruction and checking work. Compare one
+   coherent alternative: raw weighted moments plus certified FE coefficient
+   products, retaining canonical rank/QR/span authority and cancellation bounds.
+   Materialize rows for consumers that require them. A replacement verification
+   schedule needs an explicit mathematical argument, successor ADR and
+   adversarial independent tests; no tolerance or acceptance condition changes.
+   Do not repeat ADR0164's rejected lazy row-view or per-call dense checkpoint.
+3. **Remove common overhead to carry near-parity families below 0.90 stock.**
+   Remeasure narrow, disconnected, three-FE and slope controls after the larger
+   changes. Consolidate loading, original-input scans, inference and requested
+   outputs where phase evidence supports it. Target shared savings rather than
+   seed-specific guards or prolonged tuning for a 1-ms remainder. Keep the
+   accepted slope engine and categorical OLS gains protected.
+4. **Expand by topology and work, not a large Cartesian campaign.** Predeclare
+   fresh cases for larger N, four-plus FE, multiple slope partitions, wider and
+   generated controls, imbalance, weak/disconnected topology, rank deficiency,
+   changing/extreme weights, T1/T4/T8, low budgets and robust/cluster/full outputs.
+   Each accepted mechanism gets independent WLS/Poisson/Hessian/weight checks,
+   five uncontended baseline/candidate/pinned-stock rotations on fresh cases,
+   distributions including losses and failures, complete memory accounting and
+   a coherent local commit. Protect one-FE PPML and categorical/slope OLS with
+   focused excluded-path controls. Scientifically unresolved comparisons stay
+   unranked; 0.90 is assessed per comparable whole-command case.
+
+The latest accepted seed202609377 medians and exact remaining budgets appear in
+the previous milestone below. Wide low needs **40.9 ms**, unbalanced low **38.3**,
+disconnected fast **15.7**, narrow fast **7.2**, low slopes **6.5**, unbalanced
+fast three FE **5.6**, and fast slopes **1.0** to reach the target. Serial low,
+low three FE and weak fast two FE already exceed the 10% margin on those cases.
+These are engineering budgets, not promised gains or transferred timing claims.
+Seeds already used remain consumed; preserve 77/16/111 definitions, static
+allocation-inventory drift, constrained-fit/nonretaining-CG failures and all
+historical receipts. No SCC retry, stopped campaign restart, push or qualification.
+
+## Historical: bounded PPML reconstruction/moments adopted — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
 fixest wherever reasonably achievable with at least two FE partitions**. It is

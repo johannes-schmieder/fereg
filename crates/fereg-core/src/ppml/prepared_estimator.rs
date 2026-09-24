@@ -1698,6 +1698,7 @@ mod tests {
     use crate::ols::{OlsInputBinding, OlsInputRole};
     use crate::ppml::prepared_irls::{
         reset_canonical_frame_refresh_count, take_canonical_frame_refresh_count,
+        take_fused_strict_witness_count,
         take_cmg_early_memory_peaks,
     };
     use crate::ppml::{PpmlFallbackKind, PPML_STEADY_STATE_AUDIT_ITERATIONS};
@@ -2452,10 +2453,14 @@ mod tests {
             .expect("canonical solver report contains the selected engine row");
         assert!(specialized.ordinary_frames > 0);
         assert_eq!(map.ordinary_frames, 0);
+        // Rank-zero external joint witnesses report the fused engine, whose
+        // row also includes canonical checkpoints. They do not refresh the
+        // canonical session and must be counted separately from those frames.
+        let fused_witnesses = take_fused_strict_witness_count();
         assert_eq!(
-            canonical_refreshes.saturating_add(1),
+            canonical_refreshes.saturating_add(1) + fused_witnesses,
             map.checkpoint_frames + solver.engines()[1].checkpoint_frames,
-            "every canonical checkpoint is attributed to its computing engine",
+            "canonical frames and fused witnesses are attributed to their computing engines",
         );
         assert_eq!(solver.checkpoint, PpmlSolverFamily::Lsmr);
     }

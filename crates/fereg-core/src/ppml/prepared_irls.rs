@@ -148,6 +148,7 @@ thread_local! {
     static REPEATED_STRICT_RESUME_INJECTION: Cell<usize> = const { Cell::new(0) };
     static STRICT_BASIS_CHANGE_INJECTION: Cell<u8> = const { Cell::new(0) };
     static CANONICAL_FRAME_REFRESH_COUNT: Cell<usize> = const { Cell::new(0) };
+    static FUSED_STRICT_WITNESS_COUNT: Cell<usize> = const { Cell::new(0) };
     static CMG_EARLY_MEMORY_PEAKS: Cell<Option<(u128, u128)>> = const { Cell::new(None) };
 }
 
@@ -189,11 +190,17 @@ fn take_strict_basis_change(bit: u8) -> bool {
 #[cfg(test)]
 pub(super) fn reset_canonical_frame_refresh_count() {
     CANONICAL_FRAME_REFRESH_COUNT.set(0);
+    FUSED_STRICT_WITNESS_COUNT.set(0);
 }
 
 #[cfg(test)]
 pub(super) fn take_canonical_frame_refresh_count() -> usize {
     CANONICAL_FRAME_REFRESH_COUNT.replace(0)
+}
+
+#[cfg(test)]
+pub(super) fn take_fused_strict_witness_count() -> usize {
+    FUSED_STRICT_WITNESS_COUNT.replace(0)
 }
 
 #[cfg(test)]
@@ -3259,6 +3266,10 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         let mut observation = joint_solver_observation(report, *engine);
         observation.frame = PpmlSolverFrameKind::Checkpoint;
         solver_report.observe(observation)?;
+        #[cfg(test)]
+        if *engine == PpmlSolverEngine::LsmrFused {
+            FUSED_STRICT_WITNESS_COUNT.set(FUSED_STRICT_WITNESS_COUNT.get() + 1);
+        }
         joint.fill_candidate(workspace)?;
         joint.active_rank()
     } else {
