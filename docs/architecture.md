@@ -117,8 +117,12 @@ Other slope calls retain their existing projector. See [ADR 0039](adr/0039-ppml-
 and [ADR 0069](adr/0069-low-memory-ppml-categorical-projection.md).
 Low-storage categorical MAP with multiple effects and finite controls also uses
 the admitted joint owner under [ADR 0136](adr/0136-low-memory-categorical-joint-ppml.md).
-Two-/three-FE sessions retain the borrowed categorical projector for canonical
+Two-/three-FE sessions retain the borrowed categorical owner for canonical
 rank/bread construction and use joint directions between those boundaries.
+Admitted low three-FE sessions use pool-bounded, component-scaled LSMR inside
+that canonical owner under [ADR 0143](adr/0143-low-memory-three-fe-checkpoints.md).
+Original-weight acceptance remains independent; an ordinary MAP allocation audit
+has a separate identity from its final LSMR checkpoint.
 The owned FE design exists once. Four-plus FE use the generic coefficient
 projector at canonical boundaries. Optional-state refusal restores the prior
 route; all current-weight and final acceptance requirements remain unchanged.

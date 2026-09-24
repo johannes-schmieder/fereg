@@ -10,6 +10,132 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Low three-FE PPML checkpoints adopted; narrow whole-command work next — 2026-09-23
+
+The objective remains **whole public PPML <=0.90 times scientifically comparable
+pinned stock fixest wherever reasonably achievable**, per case. This opening
+supersedes earlier next-step orders. The bounded low categorical checkpoint
+milestone is complete; the broader performance objective is not.
+
+Adopt `ckptlow5`, based on `d71ad743`, under
+[ADR 0143](docs/adr/0143-low-memory-three-fe-checkpoints.md) and the
+[source-bound report](benchmarks/reports/development/ppml-low-checkpoints-local-2026-09-23/README.md).
+All **541 computational inputs** match plugin
+`c07ad1086ef53f4fa7e79b6c2ee6a8b2a4c61decfce757077d57006f65337eef`.
+The verified/restored archive contains **13,612 logical receipts**, SHA-256
+`383f68b947d537bb317e0ac0e0979df9b8c12051acd1954ad95e8069fc03f317`.
+All builds, tests, fits, diagnostics and archive operations are terminal.
+
+### Adopted mechanism and evidence
+
+Low three-categorical-FE publication fits with finite controls may use the
+existing LSMR canonical accelerator at bounded RHS width. Ordinary joint
+finite/FE directions remain unchanged. Disconnected components use separate
+positive weight scales inside absorption only; canonical acceptance, finite
+regression and inference use original weights. Independent current-weight
+certificates, rank, inverse, score, objective, reconstruction and final q*mu
+conditions remain. Two effects retain their existing level-space projector:
+measured gains did not justify extending this route. Slopes and OLS keep their
+engines. Optional-memory refusal retains prior solving and the joint owner.
+
+Zero-work tile reports merge without inventing a solver failure. Actual fallback,
+certificates, clocks and retries remain visible. The zero-allocation audit
+measures ordinary MAP iterations independently of the final LSMR checkpoint;
+zero events/growth, stable capacities and fresh/warm numerical checks remain.
+The public guard uses selected low storage, including an automatic request.
+
+**444 distinct Rust tests** pass: 441 on the final artifact plus three extra
+checkpoint tests on its byte-identical predecessor core. Production ABI/panic
+containment and **six final licensed runs of five fixtures** pass, including
+weighted explicit Poisson, slopes, separation, new-route rollback and allocation
+windows at pool/T=1/1 and 2/4. The complete adopted/confirmation blocks contain
+212 passing applications, 204 public-state checks, 69 native pairs and four exact
+OLS pairs. All native small independent oracles pass; two stock pilot covariance
+failures remain unranked. Historical protocol/receipt-assertion failures reproduce
+on the unchanged baseline and remain recorded, not converted into passes.
+
+### Final-artifact scorecard
+
+Whole public milliseconds, robust inference plus means, three rotations at seed
+202609348. Five-rotation development/fresh evidence belongs to `ckptlow4` and is
+reported separately. Final `ckptlow5` changes only the publication guard/test;
+all numerical core/ado inputs match and four common fresh exports/means are exact.
+Do not transfer timings across artifacts. Full distributions and losses are in
+the report and receipts.
+
+| Low three-FE case | Before | Final | Stock | Final/stock | 0.90 target |
+|---|---:|---:|---:|---:|---:|
+| Dense N30720/K6/T4 | 339 | 241 | 236 | 1.021 | 212.4 |
+| Dense N61440/K16/T8 | 1031 | 744 | 771 | 0.965 | 693.9 |
+| Unbalanced N24580/K10/T1 | 348 | 282 | 284 | 0.993 | 255.6 |
+| Dense N16384/K3/T8 | 176 | 135 | 80 | 1.688 | 72 |
+| Sparse N15360/K6/T4 | 1030 | 125 | 2319 | 0.054 | 2087.1 |
+| Dense N12288/K24/T4 | 700 | 251 | 328 | 0.765 | 295.2 |
+
+All 18 confirmation pairs improve, with 19–88% median reductions. Two meet the
+10% lead; the narrow T8 deficit remains large. The large disconnected native
+check improves 4807→1357 ms on ckptlow4, but its earlier stock fitted-mean
+comparison is unresolved and unranked. Stock covariance discrepancies in two
+small final pilots also remain visible.
+
+Preserve control losses: ckptlow4 fast categorical pairs are -4,+12,-5 ms;
+low/fast slope pairs +2,-3,+1 and +3,-1,+2. Their science/means are exact. Low
+two-FE control is 130 versus stock 58 ms; low/fast slopes 157/127 versus stock
+120 ms. OLS pairs are -2,+1 and 0,0. These belong to their captured artifact,
+not a universal non-regression claim.
+
+Additional tracked peak is 6.17–36.19 MB across the changed-route ckptlow4 shapes;
+conservative modeled increments are 19.74–314.83 MB. Scratch is unchanged.
+Dense K6 tracked/model totals increase 29.30/34.76→62.10/98.87 MB; K16 increases
+78.68/88.90→114.87/403.74 MB. Optional admission is a speed/memory tradeoff,
+not a physical-cap qualification. One-byte-below admission preserves prior
+science and joint state.
+
+### Next bounded implementation milestones
+
+1. **Narrow one-/two-FE whole-command redesign.** Prior source-bound one-FE
+   97/52-ms and this round's two-FE 130/58-ms results indicate larger opportunity
+   than another near-parity adjustment. Remeasure a small current-source N/K
+   ladder with matched outputs/threads; split Stata/native setup, ordinary
+   directions, accepted-state passes, inference and publication. Compare stock
+   computational work and frozen weighted subproblems where inner solving is
+   material. Implement one coherent native ownership/dataflow change aimed at
+   removing roughly half the current narrow command cost. Retain all independent
+   acceptance checks and main-thread SPI/transaction boundaries. Do not move
+   work outside the timer or assume the remaining cost is mandatory verification.
+
+2. **Wide score binding and verification.** Return to measured wide-column
+   lookup, independent inverse-check and inference costs with current-source
+   baselines. Reuse exact-frame products only where their authority matches;
+   ordinary and canonical Hessians are not interchangeable. Keep low storage
+   bounded and guard by mathematical/resource properties, not benchmark seeds.
+
+3. **Remaining slope setup and coverage.** Multi-partition low/fast slopes still
+   lose to stock in controls. Inspect reusable current-weight geometry, ordinary
+   joint setup, RHS work and warm starts with a frozen-frame comparison before
+   selecting the next redesign. Do not reopen the rejected residual-space
+   extrapolation or closed serial weighted-OLS micro-tuning. Extend weighted,
+   generated, clustered/output-heavy and four-plus-FE coverage adaptively.
+
+Close this checkpoint cost center now. Diagnostic dense K6/K16 LSMR setup is
+21.97/55.59 ms versus iteration work 53.69/173.15 ms; current-frame geometry reuse
+is a concrete secondary opportunity, not a reason to prolong this round.
+Remaining IRLS-exclusive spans of 93.14/314.35 ms are not fully attributed and
+must not be labeled necessary scientific overhead. A complete frozen-weight
+stock/native operation ledger was not produced in this milestone.
+
+### Continuing constraints
+
+Source-bound evidence is immutable; historical instructions below are not
+current tasks. Seed 202609348 is now consumed for validation; 202609347 was reused
+as a control. Protected cycle seeds 202609211/212 remain unavailable for tuning.
+Frozen 77 primary, 16 holdout and 111 native-control definitions are unchanged.
+Linux T1/8/16 and physical constrained-memory confirmation await renewed SCC
+access; do not retry authentication. Preserve static allocation-inventory drift,
+weighted constrained-fit failures and explicit/insufficient-budget nonretaining
+CG span instability. No push, release, full qualification, new monitor or stopped
+campaign restart is authorized or performed. Keep the active goal unfinished.
+
 ## PPML concentrated moments adopted; ambitious whole-command plan — 2026-09-23
 
 The active objective remains **whole public PPML <=0.90 times scientifically

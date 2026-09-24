@@ -1308,6 +1308,57 @@ impl FrozenLinearWorkspace {
     }
 }
 
+fn merge_canonical_projection_reports(
+    target: &mut SolveReport,
+    mut source: SolveReport,
+) -> Result<()> {
+    let no_work = |r: &SolveReport| {
+        r.requested_solver == FeSolverKind::Map
+            && r.used_solver == FeSolverKind::Map
+            && r.iterations == 0
+            && !r.fallback_used
+    };
+    let checkpoint = |r: &SolveReport| {
+        r.requested_solver == FeSolverKind::Lsmr
+            && (r.used_solver == FeSolverKind::Lsmr
+                || (r.used_solver == FeSolverKind::Map && r.fallback_used))
+    };
+    if target.certified()
+        && source.certified()
+        && (checkpoint(target) || checkpoint(&source))
+        && (checkpoint(target) || no_work(target))
+        && (checkpoint(&source) || no_work(&source))
+    {
+        // A zero-iteration input certificate is neutral to the aggregate
+        // engine. Any actual MAP fallback governs the combined row. Preserve
+        // a uniform preconditioner; a heterogeneous aggregate has no single one.
+        let used = if (target.used_solver == FeSolverKind::Map && !no_work(target))
+            || (source.used_solver == FeSolverKind::Map && !no_work(&source))
+        {
+            FeSolverKind::Map
+        } else {
+            FeSolverKind::Lsmr
+        };
+        let preconditioners = if no_work(target) {
+            (source.requested_preconditioner, source.used_preconditioner)
+        } else if no_work(&source)
+            || (target.requested_preconditioner == source.requested_preconditioner
+                && target.used_preconditioner == source.used_preconditioner)
+        {
+            (target.requested_preconditioner, target.used_preconditioner)
+        } else {
+            (None, None)
+        };
+        for report in [&mut *target, &mut source] {
+            report.requested_solver = FeSolverKind::Lsmr;
+            report.used_solver = used;
+            report.requested_preconditioner = preconditioners.0;
+            report.used_preconditioner = preconditioners.1;
+        }
+    }
+    merge_solve_report(target, source)
+}
+
 /// Owned handoff after a final strict solve. This keeps dense or scratch
 /// within-design row access alive after the iterative session is consumed.
 pub(crate) struct CertifiedLinearSessionProducts {
@@ -1470,8 +1521,12 @@ impl ReusableLinearMapProjector<'_> {
     }
 
     fn enable_checkpoint_lsmr(&mut self) {
-        if let Self::PpmlCategorical { projector, .. } = self {
-            projector.enable_checkpoint_lsmr();
+        match self {
+            Self::PpmlCategorical { projector, .. }
+            | Self::PpmlCoefficients { canonical: Some(projector), .. } => {
+                projector.enable_checkpoint_lsmr();
+            }
+            _ => {}
         }
     }
 
@@ -2142,6 +2197,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     pub(crate) fn enable_checkpoint_lsmr(&mut self) {
         if let Some(projector) = self.fe_projector.as_mut() {
             projector.enable_checkpoint_lsmr();
+        }
+    }
+
+    pub(crate) fn enable_component_checkpoint_scaling(&mut self) {
+        if let Some(ReusableLinearMapProjector::PpmlCoefficients {
+            canonical: Some(p), ..
+        }) = self.fe_projector.as_mut() {
+            p.enable_component_checkpoint_scaling();
         }
     }
 
@@ -5084,7 +5147,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         ));
                     }
                     let (within, block_report) = absorbed.into_parts();
-                    merge_solve_report(&mut report, block_report)?;
+                    merge_canonical_projection_reports(&mut report, block_report)?;
                     if !norms_reused {
                         let norms = self.weighted_dense_column_norms(&within)?;
                         within_norms[start..end].copy_from_slice(&norms);
@@ -6839,5 +6902,85 @@ mod inference_scan_tests {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod checkpoint_report_tests {
+    use super::*;
+
+    fn report(solver: FeSolverKind) -> SolveReport {
+        SolveReport {
+            requested_solver: solver,
+            used_solver: solver,
+            iterations: if solver == FeSolverKind::Map { 0 } else { 12 },
+            checkpoint_retries: 0,
+            solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
+            stop_reason: crate::fe::SolveStopReason::Certified,
+            certificate: crate::fe::FeCertificate {
+                absolute_infinity_norm: 1e-12,
+                relative_infinity_norm: 1e-12,
+                relative_two_norm: 1e-12,
+                passed: true,
+            },
+            normal_equation_residual: 0.,
+            setup_seconds: 1.,
+            solve_seconds: 2.,
+            certification_seconds: 3.,
+            fallback_used: false,
+            requested_preconditioner: None,
+            used_preconditioner: None,
+            pilot_iterations: 0,
+            pilot_contraction: 0.,
+            warnings: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn ppml_canonical_report_merge_preserves_work_and_fallback_in_any_order() {
+        let zero = report(FeSolverKind::Map);
+        let mut lsmr = report(FeSolverKind::Lsmr);
+        lsmr.requested_preconditioner = Some(crate::fe::LsmrPreconditioner::Auto);
+        lsmr.used_preconditioner = Some(crate::fe::LsmrPreconditioner::Schwarz);
+        for (mut a, b) in [(zero.clone(), lsmr.clone()), (lsmr.clone(), zero.clone())] {
+            merge_canonical_projection_reports(&mut a, b).unwrap();
+            assert_eq!(a.used_solver, FeSolverKind::Lsmr);
+            assert_eq!(a.used_preconditioner, lsmr.used_preconditioner);
+            assert_eq!(a.certification_seconds, 6.);
+            assert_eq!(a.iterations, 12);
+        }
+        let mut fallback = report(FeSolverKind::Lsmr);
+        fallback.used_solver = FeSolverKind::Map;
+        fallback.fallback_used = true;
+        fallback.checkpoint_retries = 1;
+        fallback.warnings.push("certified fallback".to_owned());
+        let reports = [zero, lsmr, fallback];
+        for order in [
+            [0, 1, 2],
+            [0, 2, 1],
+            [1, 0, 2],
+            [1, 2, 0],
+            [2, 0, 1],
+            [2, 1, 0],
+        ] {
+            let mut merged = reports[order[0]].clone();
+            for i in &order[1..] {
+                merge_canonical_projection_reports(&mut merged, reports[*i].clone()).unwrap();
+            }
+            assert!(merged.certified() && merged.fallback_used);
+            assert_eq!(merged.requested_solver, FeSolverKind::Lsmr);
+            assert_eq!(merged.used_solver, FeSolverKind::Map);
+            assert_eq!(merged.checkpoint_retries, 1);
+            assert_eq!(merged.setup_seconds, 3.);
+            assert_eq!(merged.solve_seconds, 6.);
+            assert_eq!(merged.certification_seconds, 9.);
+            assert_eq!(merged.warnings, vec!["certified fallback"]);
+        }
+        let mut invalid = report(FeSolverKind::Map);
+        invalid.iterations = 1;
+        assert!(merge_canonical_projection_reports(&mut invalid, reports[1].clone()).is_err());
+        let mut invalid = report(FeSolverKind::Map);
+        invalid.certificate.passed = false;
+        assert!(merge_canonical_projection_reports(&mut invalid, reports[1].clone()).is_err());
     }
 }

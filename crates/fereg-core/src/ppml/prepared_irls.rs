@@ -1232,6 +1232,45 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         false
     };
+    // Canonical low-memory projections operate on one response or pool-bounded
+    // control tile. Admit the existing independent checkpoint solver at that
+    // width while retaining the ordinary joint owner and its full budget.
+    // Two effects already use level-space Schur/PCG; the measured avoidable
+    // observation-space CG cost belongs to three-effect canonical construction.
+    let low_checkpoint_lsmr = if coefficient_solver && categorical_checkpoints
+        && fe_design.effects().len() == 3
+    {
+        let mut level_storage = [0; 3];
+        for (slot, effect) in level_storage.iter_mut().zip(fe_design.effects()) {
+            *slot = effect.n_levels();
+        }
+        let levels = &level_storage[..fe_design.effects().len()];
+        match estimate_checkpoint_lsmr_workspace_bytes(
+            fe_design.nobs(), projection_rhs, levels, effective_threads,
+        ).and_then(|bytes| {
+            // Scaling overlaps the LSMR frame: N weights, component labels
+            // and maxima. Topology construction uses <32 bytes/level plus
+            // <512 bytes of descriptors for these three effects.
+            let component_bytes = 8 * fe_design.nobs() as u128
+                + 32 * levels.iter().map(|&n| n as u128).sum::<u128>() + 512;
+            let bytes = bytes.checked_add(component_bytes)
+                .ok_or_else(|| allocation("component checkpoint workspace overflows"))?;
+            memory_plan.solver_workspace_bytes.checked_add(bytes)
+                .ok_or_else(|| allocation("low PPML checkpoint workspace overflows"))
+                .and_then(|total| memory_plan.with_solver_workspace(total).map(|plan| (plan, bytes)))
+        }) {
+            Ok((plan, bytes)) => {
+                memory_plan = plan;
+                solver_execution_bytes = solver_execution_bytes.checked_add(bytes)
+                    .ok_or_else(|| allocation("low PPML checkpoint overlap overflows"))?;
+                true
+            }
+            Err(error) if error.code == ErrorCode::Allocation => false,
+            Err(error) => return Err(error),
+        }
+    } else {
+        false
+    };
     // The retained bank cannot consume slack promised to another solver call.
     let solver_memory_budget = FeSolverMemoryBudget {
         execution_bytes: solver_execution_bytes
@@ -1323,7 +1362,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         session.enable_ppml_joint_slopes()?;
     }
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
-    let initial_checkpoint_lsmr = use_initial_checkpoint_lsmr_accelerator(
+    let initial_checkpoint_lsmr = low_checkpoint_lsmr || use_initial_checkpoint_lsmr_accelerator(
         &config,
         purpose,
         session.fe_design().nobs(),
@@ -1334,6 +1373,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         // The canonical session still makes the first rank/status decision
         // and independently certifies every downstream linear product.
         session.enable_checkpoint_lsmr();
+        if low_checkpoint_lsmr {
+            session.enable_component_checkpoint_scaling();
+        }
     }
     let mut joint_lsmr = None;
     let mut joint_lsmr_engine = None;
@@ -1824,17 +1866,22 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         &mut total_inner_iterations,
                         canonical.fit().absorption_report(),
                     )?;
-                    solver_report
-                        .as_mut()
-                        .ok_or_else(|| internal("PPML MAP equivalence solve lacks diagnostics"))?
-                        .observe(map_solver_observation(
-                            canonical.fit().absorption_report(),
-                            PpmlSolverFrameKind::Ordinary,
+                    let solver = solver_report.as_mut()
+                        .ok_or_else(|| internal("PPML MAP equivalence solve lacks diagnostics"))?;
+                    if initial_checkpoint_lsmr {
+                        record_checkpoint_solver_observation(
+                            solver, canonical.fit().absorption_report(), false,
+                        )?;
+                    } else {
+                        solver.observe(map_solver_observation(
+                            canonical.fit().absorption_report(), PpmlSolverFrameKind::Ordinary,
                         ))?;
+                    }
                     let canonical_route = canonical.fit().absorption_report().used_solver;
                     let mut equivalent = frozen_certified
                         && frozen_route == FeSolverKind::Map
-                        && canonical_route == frozen_route
+                        && (canonical_route == frozen_route
+                            || (initial_checkpoint_lsmr && canonical_route == FeSolverKind::Lsmr))
                         && fresh_warm_linear_equivalent(
                             &canonical,
                             offset,
@@ -6443,6 +6490,66 @@ mod tests {
             }
         }
         JOINT_FINAL_TEST_MODE.set(0);
+    }
+
+    #[test]
+    fn low_three_fe_audit_certifies_map_window_independently_of_lsmr_final_checkpoint() {
+        fn stable_probe() -> PpmlAllocatorSnapshot {
+            PpmlAllocatorSnapshot { current_bytes: 16384, peak_bytes: 32768, allocation_events: 41 }
+        }
+        let (prepared, y) = prepared_three_fe([0, 1, 2], false, None);
+        let mut config = PreparedPpmlIrlsConfig::default();
+        config.linear.execution.mode = PreparedOlsExecutionMode::Low;
+        config.linear.execution.poolsize = 1;
+        config.memory.requested = crate::options::MemoryMode::Low;
+        config.memory.poolsize = 1;
+        config.allocation_snapshot_probe = Some(stable_probe);
+        let fit = fit_prepared_ppml_irls(
+            &prepared, &y, &vec![1.; y.len()], &vec![0.; y.len()], config,
+            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(), None,
+        ).unwrap();
+        let memory = &fit.diagnostics().memory;
+        memory.validate().unwrap();
+        let audit = memory.steady_state_allocation_certificate.unwrap();
+        assert!(audit.passed && audit.fresh_warm_equivalent);
+        assert_eq!(audit.linear_route, FeSolverKind::Map);
+        assert_eq!(memory.linear_route, Some(FeSolverKind::Lsmr));
+        for route in [FeSolverKind::Auto, FeSolverKind::Cg, FeSolverKind::Cmg] {
+            assert!(!memory.plan.audit_route_matches_final(FeSolverKind::Map, route));
+        }
+        let mut invalid = memory.plan;
+        invalid.solver_workspace_bytes = 0;
+        assert!(!invalid.audit_route_matches_final(FeSolverKind::Map, FeSolverKind::Lsmr));
+        invalid = memory.plan;
+        invalid.dimensions.fe_total_channels += 1;
+        assert!(!invalid.audit_route_matches_final(FeSolverKind::Map, FeSolverKind::Lsmr));
+    }
+
+    #[test]
+    fn low_three_fe_checkpoint_budget_refusal_preserves_joint_owner_and_science() {
+        let (prepared, y) = prepared_three_fe([0, 1, 2], false, None);
+        let weights: Vec<_> = (0..y.len()).map(|i| 0.2 + (i % 13) as f64).collect();
+        let mut config = PreparedPpmlIrlsConfig::default();
+        config.linear.execution.mode = PreparedOlsExecutionMode::Low;
+        config.linear.execution.poolsize = 1;
+        config.memory.requested = crate::options::MemoryMode::Low;
+        config.memory.poolsize = 1;
+        let plan = plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
+        let fit = |plan| fit_prepared_ppml_irls(
+            &prepared, &y, &weights, &vec![0.; y.len()], config, plan, None,
+        ).unwrap();
+        let admitted = fit(plan);
+        assert_eq!(admitted.diagnostics().solver.checkpoint, super::super::PpmlSolverFamily::Lsmr);
+        let mut constrained = plan;
+        constrained.usable_bytes = Some(admitted.diagnostics().memory.plan.selected_bytes() - 1);
+        let declined = fit(constrained);
+        assert_eq!(declined.diagnostics().solver.checkpoint, super::super::PpmlSolverFamily::Map);
+        assert_eq!(admitted.diagnostics().memory.plan.reusable_slope_bytes,
+                   declined.diagnostics().memory.plan.reusable_slope_bytes);
+        assert!(declined.diagnostics().memory.plan.reusable_slope_bytes > 0);
+        assert!(declined.diagnostics().memory.plan.selected_bytes() <= constrained.usable_bytes.unwrap());
+        assert!(relative_infinity_difference(admitted.eta(), declined.eta()) < 1e-10);
+        assert!(admitted.diagnostics().final_score.passed && declined.diagnostics().final_score.passed);
     }
 
     #[test]

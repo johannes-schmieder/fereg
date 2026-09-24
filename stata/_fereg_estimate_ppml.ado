@@ -1481,7 +1481,6 @@ program define _fereg_eppml_validate, rclass
        (`selected_family' == 2 & `selected_engine' != 1) | ///
        (`selected_family' == 3 & !inlist(`selected_engine', 2, 3)) | ///
        (`selected_family' == 7 & `selected_engine' != 4) | ///
-       (`checkpoint_family' == 3 & !inlist(`selected_family', 3, 7)) | ///
        (`effective_family' == 2 & `effective_engine' != 1) | ///
        (`effective_family' == 3 & ///
             (!inlist(`effective_engine', 2, 3) | `effective_engine' != `selected_engine')) | ///
@@ -2249,7 +2248,10 @@ program define _fereg_eppml_validate, rclass
            (`runtime'[67,1] == 1 & !`linear_capacity_stable') | ///
            `runtime'[70,1] != (`runtime'[68,1] == `runtime'[69,1]) | ///
            `runtime'[69,1] != `runtime'[16,1] | ///
-           `runtime'[71,1] != `runtime'[7,1] | ///
+           (`runtime'[71,1] != `runtime'[7,1] & ///
+                !(`runtime'[71,1] == 2 & `runtime'[7,1] == 3 & ///
+                  `selected_family' == 2 & `effective_family' == 2 & ///
+                  `checkpoint_family' == 3)) | ///
            `runtime'[72,1] != (`runtime'[71,1] == 2) | ///
            `runtime'[76,1] != `allocation_certificate_passed' | ///
            `runtime'[76,1] != `runtime'[25,1] {

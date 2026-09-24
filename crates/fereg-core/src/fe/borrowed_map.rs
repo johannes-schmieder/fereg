@@ -1200,6 +1200,7 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     max_rhs: usize,
     max_level_members: usize,
     checkpoint_lsmr_enabled: bool,
+    checkpoint_component_scaling: bool,
     #[cfg(test)]
     checkpoint_lsmr_certificate_failure: bool,
     #[cfg(test)]
@@ -1210,6 +1211,47 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     checkpoint_schur_iteration_cap: Option<usize>,
     #[cfg(test)]
     checkpoint_schur_certificate_failure: bool,
+}
+
+// Multiplying every weight in one disconnected FE component by the same
+// positive scalar leaves its projection unchanged. This keeps low-mass
+// components visible to the Krylov recurrence; final acceptance uses raw weights.
+fn component_scaled_checkpoint_weights(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+) -> Result<Option<Vec<f64>>> {
+    let mut codes = [&[][..]; 3];
+    let mut levels = [0; 3];
+    for (i, effect) in design.effects().iter().enumerate() {
+        codes[i] = effect.codes();
+        levels[i] = effect.n_levels();
+    }
+    let components = super::connected_components_all_fallible(
+        &codes[..design.effects().len()],
+        &levels[..design.effects().len()],
+    )?;
+    if components.n_components <= 1 {
+        return Ok(None);
+    }
+    let mut reservation = SystemWorkspaceReservation;
+    let mut maxima = reserved_zeros(
+        components.n_components,
+        &mut reservation,
+        "unable to reserve component weight scales",
+    )?;
+    let component = |row: usize| components.component_by_effect_level[0][codes[0][row] as usize];
+    for row in 0..design.nobs() {
+        maxima[component(row)] = maxima[component(row)].max(weights.values.map_or(1., |w| w[row]));
+    }
+    let mut scaled = reserved_zeros(
+        design.nobs(),
+        &mut reservation,
+        "unable to reserve component-scaled checkpoint weights",
+    )?;
+    for (row, value) in scaled.iter_mut().enumerate() {
+        *value = weights.values.map_or(1., |w| w[row]) / maxima[component(row)];
+    }
+    Ok(Some(scaled))
 }
 
 /// Reusable level-space PCG state for two-way categorical graphs.
@@ -1399,6 +1441,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             max_rhs,
             max_level_members,
             checkpoint_lsmr_enabled: false,
+            checkpoint_component_scaling: false,
             #[cfg(test)]
             checkpoint_lsmr_certificate_failure: false,
             #[cfg(test)]
@@ -1414,6 +1457,10 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
 
     pub(crate) fn enable_checkpoint_lsmr(&mut self) {
         self.checkpoint_lsmr_enabled = true;
+    }
+
+    pub(crate) fn enable_component_checkpoint_scaling(&mut self) {
+        self.checkpoint_component_scaling = true;
     }
 
     #[cfg(test)]
@@ -1647,7 +1694,21 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             if let Some(error) = self.take_checkpoint_lsmr_fatal_failure() {
                 return Err(error);
             }
-            let (schur, schur_cost) = self.try_checkpoint_schur(weights, &values, config)?;
+            let balanced_weights = if self.checkpoint_component_scaling {
+                component_scaled_checkpoint_weights(&self.design, weights)?
+            } else {
+                None
+            };
+            let solver_weights = match balanced_weights.as_deref() {
+                Some(w) => validate_weights(BorrowedMapWeights::Provided(w), values.nrows())?,
+                None => weights,
+            };
+            let (schur, schur_cost) = if balanced_weights.is_none() {
+                self.try_checkpoint_schur(weights, &values, config)?
+            } else {
+                (None, CheckpointSchurCost::default())
+            };
+
             if let Some(mut certified) = schur {
                 certified.report.setup_seconds += setup_seconds;
                 certified.report.certification_seconds += initial_certification_seconds;
@@ -1669,16 +1730,23 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 let lsmr = LsmrConfig {
                     tolerance: recurrence_tolerance,
                     max_iterations: config.max_iterations,
+                    threads: crate::options::ThreadConfig::from_requested(
+                        rayon::current_num_threads(), false,
+                    )?,
                     ..LsmrConfig::default()
                 };
                 let (candidate, mut report, owned_setup_seconds, _) = run_borrowed_lsmr(
                     &self.design,
-                    weights,
+                    solver_weights,
                     &values,
                     recurrence_tolerance,
                     config.max_iterations,
                     lsmr,
-                    Some(&self.workspace.reference_norms),
+                    if balanced_weights.is_some() {
+                        None
+                    } else {
+                        Some(&self.workspace.reference_norms)
+                    },
                     false,
                 )?;
                 report.setup_seconds += owned_setup_seconds;
@@ -2882,7 +2950,8 @@ fn fill_two_fe_left_rhs(
 }
 
 fn cache_weighted_schur_right_edges(
-    design: &BorrowedInterceptFeDesign<'_>, weights: ValidatedWeights<'_>,
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
     graph: &mut TwoFePcgWorkspace, scratch: &mut [f64],
 ) -> Result<bool> {
     let n = design.nobs();
@@ -11500,6 +11569,70 @@ mod tests {
             .zip(expected.residualized().as_slice())
         {
             assert!((left - right).abs() <= 1e-12, "{left} != {right}");
+        }
+    }
+
+    #[test]
+    fn ppml_component_checkpoint_preserves_exact_projection_across_weight_frames() {
+        // The repeated-row contrast is orthogonal to every explicit FE column.
+        // Thus its residual is known analytically, independently of either solver.
+        let mut codes = [Vec::new(), Vec::new(), Vec::new()];
+        for component in 0..2_u32 {
+            for a in 0..2_u32 { for b in 0..3_u32 { for c in 0..4_u32 {
+                for _ in 0..2 {
+                    codes[0].push(a + 2 * component);
+                    codes[1].push(b + 3 * component);
+                    codes[2].push(c + 4 * component);
+                }
+            } } }
+        }
+        let indices = [
+            LevelIndex::from_codes(&codes[0], 4).unwrap(),
+            LevelIndex::from_codes(&codes[1], 6).unwrap(),
+            LevelIndex::from_codes(&codes[2], 8).unwrap(),
+        ];
+        let sources = [
+            ValidatedBorrowedInterceptSource::new(&codes[0], 4, &indices[0]).unwrap(),
+            ValidatedBorrowedInterceptSource::new(&codes[1], 6, &indices[1]).unwrap(),
+            ValidatedBorrowedInterceptSource::new(&codes[2], 8, &indices[2]).unwrap(),
+        ];
+        let rows = codes[0].len();
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                let design = BorrowedInterceptFeDesign::new(
+                    rows, sources.iter().map(|s| s.effect()).collect(),
+                ).unwrap();
+                let mut projector = ReusableCategoricalMapAbsorber::new(design, 2, threads).unwrap();
+                projector.enable_checkpoint_lsmr();
+                projector.enable_component_checkpoint_scaling();
+                for frame in 0..3 {
+                    let weights: Vec<_> = (0..rows).map(|r| {
+                        let mass = if (r < rows / 2) == (frame % 2 == 0) { 1e13 } else { 1. };
+                        mass * (1. + (r / 2 % 7) as f64) * if r % 2 == 0 { 1. } else { 2. + frame as f64 }
+                    }).collect();
+                    let expected: Vec<_> = (0..rows).map(|r| {
+                        if r % 2 == 0 { 0.5 } else { -0.5 / (2. + frame as f64) }
+                    }).collect();
+                    let response: Vec<_> = (0..rows).map(|r| {
+                        expected[r] + 0.3 * codes[0][r] as f64
+                            - 0.2 * codes[1][r] as f64 + 0.1 * codes[2][r] as f64
+                    }).collect();
+                    for fallback in [false, true] {
+                        if fallback { projector.inject_checkpoint_lsmr_certificate_failure(); }
+                        let fit = projector.absorb(
+                            BorrowedMapWeights::Provided(&weights),
+                            DenseMatrix::from_columns(&[response.clone(), vec![0.; rows]]).unwrap(),
+                            config(),
+                        ).unwrap();
+                        assert!(fit.report().certified());
+                        assert_eq!(fit.report().fallback_used, fallback);
+                        for r in 0..rows {
+                            assert!((fit.residualized()[(r, 0)] - expected[r]).abs() < 1e-10);
+                            assert_eq!(fit.residualized()[(r, 1)], 0.);
+                        }
+                    }
+                }
+            });
         }
     }
 

@@ -707,6 +707,18 @@ pub struct PpmlMemoryPlan {
 }
 
 impl PpmlMemoryPlan {
+    /// A warmed MAP audit measures ordinary directions, separately from an
+    /// admitted low three-FE canonical LSMR checkpoint outside that window.
+    #[must_use]
+    pub fn audit_route_matches_final(self, audited: FeSolverKind, final_route: FeSolverKind) -> bool {
+        audited == final_route
+            || (audited == FeSolverKind::Map && final_route == FeSolverKind::Lsmr
+                && self.selected == PpmlMemoryRoute::Low
+                && self.dimensions.fe_dimensions == 3
+                && self.dimensions.fe_total_channels == 3
+                && self.solver_workspace_bytes > 0)
+    }
+
     /// Bind the already-selected fit-lifetime plan to a smaller final
     /// generation without re-running route selection after separation.
     pub(crate) fn with_final_dimensions(
@@ -3400,7 +3412,7 @@ impl PpmlMemoryTelemetry {
     ) -> Result<()> {
         if self
             .linear_route
-            .is_some_and(|route| route != observation.linear_route)
+            .is_some_and(|route| !self.plan.audit_route_matches_final(observation.linear_route, route))
         {
             return Err(FeregError::new(
                 ErrorCode::Internal,
@@ -3578,7 +3590,7 @@ impl PpmlMemoryTelemetry {
                             .steady_iteration_median_nanoseconds,
                     })?;
                 if recomputed != certificate
-                    || certificate.linear_route != route
+                    || !self.plan.audit_route_matches_final(certificate.linear_route, route)
                     || self.workspace_capacity != Some(certificate.workspace_end)
                     || certificate.scratch_bytes_end != scratch
                 {

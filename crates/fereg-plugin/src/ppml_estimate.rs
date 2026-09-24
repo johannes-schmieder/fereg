@@ -1676,7 +1676,13 @@ fn validate_solver_evidence(
     let checkpoint_valid = checkpoint == f64::from(PpmlSolverFamily::Map.code())
         || (checkpoint == f64::from(PpmlSolverFamily::Lsmr.code())
             && (expected_selected == f64::from(PpmlSolverFamily::Lsmr.code())
-                || expected_selected == f64::from(PpmlSolverFamily::Cmg.code())));
+                || expected_selected == f64::from(PpmlSolverFamily::Cmg.code())
+                || (expected_selected == f64::from(PpmlSolverFamily::Map.code())
+                    && shadow.runtime[5] == 2.0
+                    && action.request.absorbed_terms.len() == 3
+                    && action.request.absorbed_terms.iter().all(|term| {
+                        term.intercept && term.slope_sources.is_empty()
+                    }))));
     let no_fallback = fallback_reason == 0.0
         && fallback_count == 0
         && shadow.solver[3] == expected_selected
@@ -4284,6 +4290,34 @@ mod tests {
             )
             .expect("PPML fixture shadow");
             assertion(&action, &mut shadow, &mut spi);
+        });
+    }
+
+    #[test]
+    fn low_checkpoint_publication_uses_selected_memory_including_auto() {
+        with_unpublished_shadow(|_, shadow, _| {
+            let (args, mut spi) = categorical_absorb_cluster_weight_fixture();
+            let mut action = EstimatePpmlSpec::parse(&args).unwrap()
+                .decode_and_validate(&mut spi).unwrap();
+            let term = action.request.absorbed_terms[0].clone();
+            action.request.absorbed_terms = vec![term; 3];
+            shadow.runtime[5] = 2.0;
+            for request in [PpmlSolverFamily::Auto, PpmlSolverFamily::Map] {
+                action.solver = request;
+                for row in 0..SOLVER_ROWS {
+                    shadow.solver[row * SOLVER_COLUMNS..row * SOLVER_COLUMNS + 6]
+                        .copy_from_slice(&[f64::from(request.code()), 2., 1., 2., 1., 3.]);
+                }
+                for memory in [MemoryMode::Auto, MemoryMode::Low] {
+                    action.memory.requested = memory;
+                    validate_solver_evidence(&action, shadow).unwrap();
+                }
+            }
+            shadow.runtime[5] = 1.0;
+            assert!(validate_solver_evidence(&action, shadow).is_err());
+            shadow.runtime[5] = 2.0;
+            action.request.absorbed_terms.pop();
+            assert!(validate_solver_evidence(&action, shadow).is_err());
         });
     }
 

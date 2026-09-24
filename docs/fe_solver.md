@@ -451,6 +451,16 @@ score, rank, basis, and all estimable coefficients must agree; an unidentified
 normalization coordinate cannot force another IRLS frame, and the canonical
 strict state replaces it before publication.
 
+Under [ADR 0143](adr/0143-low-memory-three-fe-checkpoints.md), publication MAP
+sessions with three categorical intercept effects, finite controls and selected
+low storage may also admit canonical LSMR at the bounded pool width. Disconnected
+components use independent positive weight scales inside absorption only; all
+canonical finite/rank/score/Hessian checks use the original weights. Optional
+workspace refusal retains the established projector and joint ordinary owner.
+The warmed allocation window measures ordinary MAP directions independently of
+its out-of-window canonical LSMR equivalence and finalization; both identities
+remain explicit and all numerical/capacity/event checks remain required.
+
 On already admitted two-FE checkpoint-LSMR sessions, the retained Schur
 workspace may accelerate 1–64 actual RHSs at N>=16,384. The eight-step
 current-weight probe uses every column for batches of up to three RHSs and

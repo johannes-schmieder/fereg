@@ -1308,7 +1308,7 @@ fn validate_memory_telemetry(result: &CertifiedPpmlResult) -> Result<()> {
             ));
         }
         Some(certificate)
-            if certificate.linear_route != route
+            if !memory.plan.audit_route_matches_final(certificate.linear_route, route)
                 || certificate.workspace_capacity_stable
                     != (certificate.workspace_start == certificate.workspace_end)
                 || certificate.scratch_stable

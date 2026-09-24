@@ -333,11 +333,6 @@ impl PpmlSolverReport {
                 self.checkpoint,
                 PpmlSolverFamily::Map | PpmlSolverFamily::Lsmr
             )
-            || (self.checkpoint == PpmlSolverFamily::Lsmr
-                && !matches!(
-                    self.selected,
-                    PpmlSolverFamily::Lsmr | PpmlSolverFamily::Cmg
-                ))
         {
             return Err(FeregError::new(
                 ErrorCode::Internal,
