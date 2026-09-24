@@ -10,6 +10,19 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Standalone paper repository — 2026-09-24
+
+The paper moved to sibling `../fereg-paper` with fresh history, frozen evidence
+copies and import provenance. `make paper check` passes there: 37 evidence files
+verify, the publication figure test passes, and all four generated TeX assets
+match the former paper exactly. The 26-page PDF renders identically through
+page 23; the reproduction-instruction update reflows the final three pages.
+Three copied AKM CSVs restore CRLF bytes matching unchanged receipt hashes;
+the original LF checksums and transformation are recorded in the paper manifest.
+Original evidence and benchmark execution remain here; only the paper-specific
+figure assertion moved out of the implementation test suite. No estimator,
+benchmark result, qualification claim, or remote state changed.
+
 ## Frame-owned PPML operator rejected; canonical products next — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock

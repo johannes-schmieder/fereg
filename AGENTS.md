@@ -176,3 +176,10 @@ Stata profiles. Licensed-runner requirements and exact-SHA acceptance are in
 - Development and release: `docs/development_workflow.md`,
   `docs/release_process.md`, `STATA_CI_RUNNER.md`
 - Current state: `STATUS.md`
+
+## Working paper boundary
+
+The manuscript lives in the sibling `../fereg-paper` repository. Paper edits,
+publication assets, and paper build checks belong there. Keep implementation
+tests, benchmark execution, and original qualification receipts here. Do not
+restore a paper/ subtree or add a package-test dependency on the paper checkout.

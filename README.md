@@ -150,3 +150,10 @@ acceptance and runner requirements are documented in
 
 Development is consolidated on `main`. Historical receipts are evidence for
 the exact source and artifact they name; they are not general release claims.
+
+## Working paper
+
+The manuscript, publication assets, and frozen paper evidence live in the
+sibling [fereg-paper repository](../fereg-paper/README.md). Build it there with
+`make paper`; the paper build does not require this implementation checkout.
+Original benchmark execution scripts and qualification receipts remain here.

@@ -50,12 +50,5 @@ class PaperAkmScalingMemoryContract(unittest.TestCase):
         self.assertIn("threads(`requested_threads')", source)
         self.assertIn("dfabsorb noabsorbtest", source.replace("///\n        ", ""))
 
-    def test_observation_figure_is_three_panels_at_equal_allocation(self):
-        source = (ROOT / "paper/reproducibility/build_figures.py").read_text(encoding="utf-8")
-        self.assertIn('int(row["requested_threads"]) == 4', source)
-        self.assertIn("group size=3 by 1", source)
-        self.assertNotIn("group size=3 by 2", source)
-
-
 if __name__ == "__main__":
     unittest.main()
