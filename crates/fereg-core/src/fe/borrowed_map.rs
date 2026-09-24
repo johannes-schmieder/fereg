@@ -2063,31 +2063,15 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         let mut cost = CheckpointSchurCost::default();
         if !self.checkpoint_lsmr_enabled
             || self.two_fe_pcg.is_none()
-            || self.design.nobs() < PARALLEL_PROJECTION_MIN_ROWS
             || !(1..=64).contains(&values.ncols())
             || config.max_iterations <= OLS_SCHUR_PROBE_ITERATIONS
         {
             return Ok((None, cost));
         }
         let started = Instant::now();
-        // Tiny batches probe every RHS. Keep the established three-column
-        // selection for larger batches and the separate OLS entry point.
-        let columns = [0, 1, if values.ncols() == 3 { 2 } else { values.ncols() / 2 }];
-        cost.contraction = schur_probe_reusing(
-            &self.design,
-            weights,
-            values,
-            self.two_fe_pcg.as_mut().unwrap(),
-            self.max_rhs,
-            &columns[..values.ncols().min(3)],
-        )?;
-        cost.probe_iterations = OLS_SCHUR_PROBE_ITERATIONS;
-        cost.setup_seconds = started.elapsed().as_secs_f64();
-        if cost.contraction > OLS_SCHUR_MAX_CONTRACTION {
-            cost.trace(values, "probe_rejected");
-            return Ok((None, cost));
-        }
-
+        // The initial full-batch iterations are useful solve work. A bounded
+        // progress check can decline without discarding a separate pilot or
+        // rebuilding its current-weight group state.
         // Only checkpoint-LSMR callers enter here. Their preflight charges an
         // input plus the borrowed adapter's output/transport banks, while this
         // retained graph is already in the canonical session's selected plan.
@@ -2104,10 +2088,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             Some(4),
         )?
         .lsmr_schwarz_bytes;
-        let copy_started = Instant::now();
         let candidate = checkpoint_schur_copy(values, transient)?;
-        cost.setup_seconds += copy_started.elapsed().as_secs_f64();
-        let cap = OLS_SCHUR_MAX_ITERATIONS.min(config.max_iterations - cost.probe_iterations);
+        cost.setup_seconds = started.elapsed().as_secs_f64();
+        let cap = OLS_SCHUR_MAX_ITERATIONS.min(config.max_iterations);
         #[cfg(test)]
         let cap = self
             .checkpoint_schur_iteration_cap
@@ -2132,7 +2115,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             &mut self.cg_next_residual_square,
             &mut self.cg_direction_projection,
             &mut self.cg_ratio,
-            Some(cap),
+            SchurWorkLimit::Checkpoint(cap),
             false,
             None,
         )?;
@@ -2148,22 +2131,25 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 }
                 result.report.requested_solver = FeSolverKind::Lsmr;
                 result.report.setup_seconds += cost.setup_seconds;
-                result.report.iterations += cost.probe_iterations;
-                result.report.pilot_iterations = cost.probe_iterations;
-                cost.iterations = result.report.iterations - cost.probe_iterations;
+                cost.contraction = result.report.pilot_contraction;
+                cost.iterations = result.report.iterations;
                 cost.trace(values, "certified");
                 Ok((Some(result), cost))
             }
             SchurAttempt::Continue {
                 iterations,
                 candidate,
+                progress_contraction,
                 ..
             } => {
                 cost.iterations = iterations;
+                cost.contraction = progress_contraction.unwrap_or(0.0);
                 cost.rejected = true;
                 cost.trace(
                     values,
-                    if candidate {
+                    if progress_contraction.is_some_and(|c| c > OLS_SCHUR_MAX_CONTRACTION) {
+                        "progress_rejected"
+                    } else if candidate {
                         "certificate_rejected"
                     } else {
                         "capped_or_breakdown"
@@ -2208,7 +2194,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             &mut self.cg_next_residual_square,
             &mut self.cg_direction_projection,
             &mut self.cg_ratio,
-            None,
+            SchurWorkLimit::Map,
             false,
             None,
         );
@@ -2546,7 +2532,7 @@ fn absorb_two_fe_pcg_reusing(
     next_residual_square: &mut Vec<f64>,
     direction_projection: &mut Vec<f64>,
     ratio: &mut Vec<f64>,
-    ols_cap: Option<usize>,
+    work_limit: SchurWorkLimit,
     allow_ols_rhs_scratch: bool,
     continuation: Option<&NarrowSchurState>,
 ) -> Result<SchurAttempt> {
@@ -2555,7 +2541,17 @@ fn absorb_two_fe_pcg_reusing(
     let mut operator_seconds = 0.0;
     let mut recurrence_seconds = 0.0;
     let rhs_count = values.ncols();
-    let scale_components = ols_cap.is_none() && !graph.component_roots.is_empty();
+    let (iteration_cap, checkpoint_progress) = match work_limit {
+        SchurWorkLimit::Map => (None, false),
+        SchurWorkLimit::Ols(cap) => (Some(cap), false),
+        SchurWorkLimit::Checkpoint(cap) => (Some(cap), true),
+    };
+    if checkpoint_progress && rhs_count > 64 {
+        return Err(invalid_argument("checkpoint Schur progress width exceeds capacity"));
+    }
+    // Component banks belong only to the PPML constructor. A numerical work
+    // cap must not turn off their current-weight scaling.
+    let scale_components = !graph.component_roots.is_empty();
     let left = &design.effects()[graph.left_effect];
     let right = &design.effects()[graph.right_effect];
     let left_levels = left.n_levels();
@@ -2594,7 +2590,7 @@ fn absorb_two_fe_pcg_reusing(
     }
 
     if let Some(state) = continuation {
-        if !allow_ols_rhs_scratch || ols_cap.is_none() || rhs_count != state.rhs_count
+        if !allow_ols_rhs_scratch || !matches!(work_limit, SchurWorkLimit::Ols(_)) || rhs_count != state.rhs_count
             || completed_pilot_iterations != OLS_SCHUR_PROBE_ITERATIONS {
             return Err(invalid_argument("narrow Schur continuation identity is invalid"));
         }
@@ -2694,11 +2690,14 @@ fn absorb_two_fe_pcg_reusing(
             "two-FE categorical MAP PCG initial residual is invalid",
         ));
     }
+    let mut initial_energy = [0.0; 64];
+    if checkpoint_progress { initial_energy[..rhs_count].copy_from_slice(residual_square); }
+    let mut progress_contraction = None;
     let remaining_iterations = config
         .max_iterations
         .saturating_sub(completed_pilot_iterations);
     let map_fallback_reserve = remaining_iterations / 4;
-    let pcg_iteration_limit = ols_cap.map_or_else(
+    let pcg_iteration_limit = iteration_cap.map_or_else(
         || config.max_iterations.saturating_sub(map_fallback_reserve),
         |cap| cap.min(config.max_iterations),
     );
@@ -2709,7 +2708,7 @@ fn absorb_two_fe_pcg_reusing(
     // state updates at larger team sizes as well.
     let parallel_recurrence = design.nobs() >= TWO_FE_PCG_PARALLEL_MIN_ROWS
         && rayon::current_num_threads() > 1
-        && (ols_cap.is_some()
+        && (iteration_cap.is_some()
             || rayon::current_num_threads() <= TWO_FE_PCG_PARALLEL_RECURRENCE_MAX_THREADS);
     active_rhs_state.fill(0.0);
     for rhs in 0..rhs_count {
@@ -2731,11 +2730,11 @@ fn absorb_two_fe_pcg_reusing(
     // unit-weight OLS solves, combine repeated pairs into counted graph edges.
     // The private bank stores packed u32 codes/counts as bits; no floating-point
     // arithmetic touches that representation before certification overwrites it.
-    let cached_unit = if ols_cap.is_some() && weights.values.is_none()
+    let cached_unit = if matches!(work_limit, SchurWorkLimit::Ols(_)) && weights.values.is_none()
         && rayon::current_num_threads() >= 8 {
         cache_unit_schur_edges(design, graph, &mut certificate_workspace.parallel_group_means, allow_ols_rhs_scratch)?
     } else { UnitSchurEdges::None };
-    let weighted_neighbors = allow_ols_rhs_scratch && ols_cap.is_some() && weights.values.is_some()
+    let weighted_neighbors = allow_ols_rhs_scratch && matches!(work_limit, SchurWorkLimit::Ols(_)) && weights.values.is_some()
         && active_rhs > 0 && rayon::current_num_threads() >= 8
         && cache_weighted_schur_right_edges(design, weights, graph,
             &mut certificate_workspace.parallel_group_means)?;
@@ -2956,13 +2955,28 @@ fn absorb_two_fe_pcg_reusing(
         }
         residual_square.copy_from_slice(next_residual_square);
         recurrence_seconds += rec_start.elapsed().as_secs_f64();
+        if checkpoint_progress && iterations == OLS_SCHUR_PROBE_ITERATIONS && !reconstruct {
+            let contraction = (0..rhs_count).map(|rhs| {
+                if initial_energy[rhs] == 0.0 { 0.0 }
+                else { (residual_square[rhs] / initial_energy[rhs]).sqrt() }
+            }).fold(0.0_f64, f64::max);
+            progress_contraction = Some(contraction);
+            if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+                emit_solver_trace(&format!(
+                    "FEREG_SOLVER_TRACE|phase=checkpoint_schur_progress|iterations={iterations}|rhs={rhs_count}|contraction={contraction:.17e}|admitted={}",
+                    u8::from(contraction <= OLS_SCHUR_MAX_CONTRACTION),
+                ));
+            }
+            if contraction > OLS_SCHUR_MAX_CONTRACTION { break; }
+        }
     }
 
-    if ols_cap.is_some() && (active_rhs > 0 || breakdown) {
+    if iteration_cap.is_some() && (active_rhs > 0 || breakdown) {
         return Ok(SchurAttempt::Continue {
             values,
             iterations,
             candidate: false,
+            progress_contraction,
         });
     }
     if reconstruct || iterations > completed_pilot_iterations {
@@ -2992,16 +3006,17 @@ fn absorb_two_fe_pcg_reusing(
                 solve_started.elapsed().as_secs_f64(),
             )?;
             result.report.pilot_iterations = completed_pilot_iterations;
-            result.report.pilot_contraction = pilot_contraction;
+            result.report.pilot_contraction = progress_contraction.unwrap_or(pilot_contraction);
             return Ok(SchurAttempt::Certified(result));
         }
     }
 
-    if ols_cap.is_some() {
+    if iteration_cap.is_some() {
         return Ok(SchurAttempt::Continue {
             values,
             iterations,
             candidate: true,
+            progress_contraction,
         });
     }
     // PCG is an acceleration only. A finite breakdown or a full-certificate
@@ -3035,7 +3050,7 @@ fn absorb_two_fe_pcg_reusing(
                     solve_started.elapsed().as_secs_f64(),
                 )?;
                 result.report.pilot_iterations = completed_pilot_iterations;
-                result.report.pilot_contraction = pilot_contraction;
+                result.report.pilot_contraction = progress_contraction.unwrap_or(pilot_contraction);
                 return Ok(SchurAttempt::Certified(result));
             }
         }
@@ -9327,7 +9342,6 @@ pub(crate) const OLS_SCHUR_MAX_CONTRACTION: f64 = 0.01;
 
 #[derive(Default)]
 struct CheckpointSchurCost {
-    probe_iterations: usize,
     iterations: usize,
     contraction: f64,
     setup_seconds: f64,
@@ -9337,15 +9351,15 @@ struct CheckpointSchurCost {
 
 impl CheckpointSchurCost {
     fn add_to(&self, report: &mut SolveReport) {
-        if self.probe_iterations == 0 {
+        if !self.rejected {
             return;
         }
         report.iterations = report
             .iterations
-            .saturating_add(self.probe_iterations + self.iterations);
+            .saturating_add(self.iterations);
         report.setup_seconds += self.setup_seconds;
         report.solve_seconds += self.solve_seconds;
-        report.pilot_iterations = self.probe_iterations;
+        report.pilot_iterations = 0;
         report.pilot_contraction = self.contraction;
         report.checkpoint_retries += usize::from(self.rejected);
         if self.rejected {
@@ -9359,8 +9373,8 @@ impl CheckpointSchurCost {
     fn trace(&self, values: &DenseMatrix, outcome: &str) {
         if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
             emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=checkpoint_schur_attempt|outcome={outcome}|rows={}|rhs={}|probe_budget={}|contraction={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}",
-                values.nrows(), values.ncols(), self.probe_iterations, self.contraction,
+                "FEREG_SOLVER_TRACE|phase=checkpoint_schur_attempt|outcome={outcome}|rows={}|rhs={}|probe_budget=0|contraction={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}",
+                values.nrows(), values.ncols(), self.contraction,
                 self.iterations, self.setup_seconds, self.solve_seconds,
             ));
         }
@@ -9382,6 +9396,13 @@ fn checkpoint_schur_copy(
     fallible_matrix_copy(values, "unable to reserve checkpoint Schur candidate")
 }
 
+#[derive(Clone, Copy)]
+enum SchurWorkLimit {
+    Map,
+    Ols(usize),
+    Checkpoint(usize),
+}
+
 // Values remain authoritative input until reconstruction. A failed final
 // certificate can instead hand off its finite observation-space candidate.
 enum SchurAttempt {
@@ -9390,6 +9411,7 @@ enum SchurAttempt {
         values: DenseMatrix,
         iterations: usize,
         candidate: bool,
+        progress_contraction: Option<f64>,
     },
 }
 
@@ -9471,7 +9493,7 @@ fn try_absorb_ols_schur_narrow_at_cap(
         absorber.max_rhs, &mut graph, &mut absorber.workspace,
         &mut absorber.cg_residual_square, &mut absorber.cg_initial_residual_square,
         &mut absorber.cg_next_residual_square, &mut absorber.cg_direction_projection,
-        &mut absorber.cg_ratio, Some(cap + OLS_SCHUR_PROBE_ITERATIONS),
+        &mut absorber.cg_ratio, SchurWorkLimit::Ols(cap + OLS_SCHUR_PROBE_ITERATIONS),
         true, Some(&state))?;
     finish_ols_schur(absorber, graph, weights, config, map, peak, probe_seconds,
         solve_started, 0.0, contraction, OLS_SCHUR_PROBE_ITERATIONS, 0, outcome,
@@ -9993,7 +10015,7 @@ fn absorb_ols_schur_with_probe_count(
         &mut absorber.cg_next_residual_square,
         &mut absorber.cg_direction_projection,
         &mut absorber.cg_ratio,
-        Some(cap),
+        SchurWorkLimit::Ols(cap),
         true,
         None,
     )?;
@@ -10025,6 +10047,7 @@ fn finish_ols_schur(
             values,
             iterations,
             candidate,
+            ..
         } => {
             let solve_seconds = solve_started.elapsed().as_secs_f64();
             let reference_norms = std::mem::take(&mut absorber.workspace.reference_norms);
@@ -10337,7 +10360,7 @@ mod tests {
     }
 
     #[test]
-    fn checkpoint_schur_reuses_probe_and_falls_back_on_untouched_inputs() {
+    fn checkpoint_schur_reuses_full_progress_and_falls_back_on_untouched_inputs() {
         for width in [1, 2, 3, 8, 15, 16, 17] {
             check_checkpoint_schur_width(width);
         }
@@ -10437,7 +10460,7 @@ mod tests {
                         let solved = reusable.absorb(raw, values.clone(), config).unwrap();
                         assert_eq!(solved.report.used_solver, FeSolverKind::Map);
                         assert_eq!(solved.report.requested_solver, FeSolverKind::Lsmr);
-                        assert_eq!(solved.report.pilot_iterations, 8);
+                        assert_eq!(solved.report.pilot_iterations, 0);
                         assert!(!solved.report.fallback_used);
                         assert_eq!(solved.report.checkpoint_retries, 0);
                         for (&a, &b) in solved
@@ -10512,7 +10535,7 @@ mod tests {
     }
 
     #[test]
-    fn checkpoint_schur_weighted_cut_rejects_before_copying() {
+    fn checkpoint_schur_weighted_cut_rejects_after_bounded_progress() {
         let rows = 16384;
         let left_codes = (0..rows).map(|r| (r / 4) as u32).collect::<Vec<_>>();
         let right_codes = (0..rows)
@@ -10559,9 +10582,9 @@ mod tests {
             .unwrap();
         assert!(result.is_none());
         assert!(cost.contraction > OLS_SCHUR_MAX_CONTRACTION);
-        assert_eq!(cost.iterations, 0);
-        assert_eq!(cost.solve_seconds, 0.0);
-        assert!(!cost.rejected);
+        assert_eq!(cost.iterations, OLS_SCHUR_PROBE_ITERATIONS);
+        assert!(cost.solve_seconds > 0.0);
+        assert!(cost.rejected);
         assert_eq!(reusable.capacities(), capacities);
         for width in [1, 2, 3, 8, 15] {
             let narrow = DenseMatrix::from_columns(&(0..width).map(|column|
@@ -10573,8 +10596,8 @@ mod tests {
             ).unwrap();
             assert!(result.is_none());
             assert!(cost.contraction > OLS_SCHUR_MAX_CONTRACTION);
-            assert_eq!(cost.iterations, 0);
-            assert_eq!(cost.solve_seconds, 0.0);
+            assert_eq!(cost.iterations, OLS_SCHUR_PROBE_ITERATIONS);
+            assert!(cost.solve_seconds > 0.0);
             assert_eq!(reusable.capacities(), capacities);
         }
         for width in [0, 65] {
@@ -10587,7 +10610,8 @@ mod tests {
                 )
                 .unwrap();
             assert!(result.is_none());
-            assert_eq!(cost.probe_iterations, 0);
+            assert_eq!(cost.iterations, 0);
+            assert!(!cost.rejected);
         }
     }
 
@@ -11885,6 +11909,15 @@ mod tests {
 
     #[test]
     fn direct_two_fe_schur_matches_weighted_contrasts_across_frames_and_widths() {
+        check_direct_two_fe_weighted_contrasts(false);
+    }
+
+    #[test]
+    fn checkpoint_schur_preserves_component_contrasts_across_frames_and_widths() {
+        check_direct_two_fe_weighted_contrasts(true);
+    }
+
+    fn check_direct_two_fe_weighted_contrasts(checkpoint: bool) {
         // Paired rows share both FE labels and have reciprocal weighted
         // contrasts. The exact WLS residual is known without either solver.
         let mut cells = Vec::new();
@@ -11909,6 +11942,7 @@ mod tests {
                 assert!(ordinary.two_fe_pcg.as_ref().unwrap().component_roots.is_empty());
                 let mut owner = ReusableCategoricalMapAbsorber::new_ppml(design(), 8, threads).unwrap();
                 assert_eq!(owner.capacities().accelerator_state, ordinary.capacities().accelerator_state + 32);
+                if checkpoint { owner.enable_checkpoint_lsmr(); }
                 let capacities = owner.capacities();
                 for (frame, width) in [8, 3, 1, 8].into_iter().enumerate() {
                     let pair_ratio = 2. + frame as f64;
@@ -11932,7 +11966,7 @@ mod tests {
                             };
                         }
                     }
-                    if frame == 0 {
+                    if frame == 0 && !checkpoint {
                         let attempt = owner.absorb(BorrowedMapWeights::Provided(&weights), input.clone(),
                             MapConfig { tolerance: 1e-12, max_iterations: 1, ..config() });
                         assert_eq!(attempt.unwrap_err().code, ErrorCode::InvalidData);
@@ -11941,6 +11975,7 @@ mod tests {
                     let result = owner.absorb(BorrowedMapWeights::Provided(&weights), input,
                         MapConfig { tolerance: 1e-12, ..config() }).unwrap();
                     assert!(result.report().certified());
+                    if checkpoint { assert_eq!(result.report().used_solver, FeSolverKind::Map); }
                     assert_eq!(result.report().pilot_iterations, 0);
                     for (row, &(_, _, _, r)) in cells.iter().enumerate() {
                         for j in 0..width {

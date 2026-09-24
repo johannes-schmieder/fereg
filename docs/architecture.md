@@ -60,12 +60,12 @@ complete specialized workspace are admitted; other designs select MAP.
 The canonical session owns checkpoint authority and active-basis freeze;
 eligible explicit LSMR/CMG fits may compute initial, strict, and final-Hessian
 projections with independently re-certified current-weight LSMR under
-[ADR 0027](adr/0027-canonical-ppml-checkpoint-projection.md). Eligible wide two-FE
-checkpoints may instead use the existing current-weight Schur accelerator under
-[ADR 0067](adr/0067-guarded-ppml-schur-checkpoints.md): the weighted probe and full
-candidate reuse the retained graph, a transient copy preserves original-input LSMR
-fallback, and the canonical certificate retains its exact tolerance. Ordinary joint
-LSMR and the narrow final checkpoint are unchanged. The ownership,
+[ADR 0027](adr/0027-canonical-ppml-checkpoint-projection.md). Admitted two-FE
+checkpoints may instead use the existing coefficient Schur accelerator under [ADR 0154](adr/0154-bounded-full-batch-ppml-schur-checkpoints.md):
+one current-weight preparation, useful full-batch progress and PPML component
+scaling replace the separate probe. A bounded original-input copy preserves
+selective LSMR fallback, and the fresh original-weight canonical certificate
+retains its exact tolerance. Ordinary joint LSMR remains separate. The ownership,
 invalidation, and zero-cost OLS rules are fixed by
 [ADR 0015](adr/0015-shared-prepared-weighted-linear-boundary.md), and PPML
 memory/routing rules by
