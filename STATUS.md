@@ -10,6 +10,136 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Bounded canonical PPML output tiles adopted — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This opening supersedes the next-step instructions below.
+[ADR 0173](docs/adr/0173-tiled-canonical-ppml-reconstruction.md) and the
+[source-bound report](benchmarks/reports/development/ppml-tiled-output-local-2026-09-24/README.md)
+record the accepted storage milestone and the preceding narrow/fast profile.
+
+Accepted artifact **canonicaltiles2**, plugin SHA-256
+`e7c6d4bd81433f0a7067107bf3c167e02146845122c9c53e057673beccc2f529`,
+is captured from b6088330f1c1c46ea6946d66b35fdab33cc6fdaf plus
+ols/canonical_products.rs, ols/prepared_scratch.rs and ols/linear_session.rs.
+All **548 captured inputs match** final source. The archive contains
+**10,383 logical receipts / 2,378 payloads / 28,417,811 bytes**, all verified and
+restored, SHA-256
+`6a3aebdc60810692f4c58198f774a4e8a62bf95148b9e9d84e70545c0ce9e3c1`.
+All agent-owned builds, tests, fixtures, fits, audits and archive/restore processes
+are terminal. No operation awaits an idle-window reply.
+
+### Adopted change and measured tradeoffs
+
+The low two-categorical-FE canonical product engine no longer requires a full
+P-by-W eliminated coefficient bank for output. When retained centers and full
+post-certificate reconstruction exceed the existing allowance, it prepares the
+groups needed by one bounded row tile. Current weights, masses, original columns
+and solved right coefficients remain immutable through writing. The exact same
+pure coefficient recurrence supplies the original-input certificate and every
+tile. The writer performs no old scratch reads and poisons its private file on
+preparation, numerical or I/O failure. All scientific acceptance requirements
+remain. Complete phase admission, work guards and outer budgets are unchanged;
+affordable full banks stay preferred. No weighted authority crosses a call.
+
+Fresh seed **202609389**, five rotating baseline/candidate/stock repetitions,
+robust inference and saved means, stock glm.tol=1e-10/fixef.tol=1e-11:
+
+| Case, low unless stated | Baseline ms | Accepted ms | Stock ms | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Connected N22560/K142/T8 |894|735|685|1.073|
+| Connected N44880/K146/T8 |1512|1198|1290|0.929|
+| Serial N17280/K138/T1 |1320|1364|2761|0.494|
+| Admitted N28800/K104/T4 |567|570|891|0.640|
+| Disconnected/refused N55200/K102/T8 |1097|1100|954|1.153|
+| Narrow N22560/K2/T4 |49|48|31|1.548|
+| Fast N22560/K10/T4 |67|65|57|1.140|
+| Two slope partitions N22560/K10/T4 |106|104|114|0.912|
+| Three FE unbalanced N24480/K10/T4 |92|92|95|0.968|
+| Two FE unbalanced N24240/K28/T4 |112|111|114|0.974|
+
+Both threaded targets improve every pair, about 18% and 21%. Serial loses every
+pair, 2.3–3.7%, while remaining about twice as fast as stock. Adoption accepts
+that tradeoff; no guard is fitted to the fresh serial case. The admitted wide
+control adds 3 ms, and every range/paired loss remains in the report. Only two
+selected medians meet the full 10% lead; four more beat stock without that margin.
+This is a remaining-gap screen, not a package-wide win rate. Close this output-
+storage experiment here; do not keep tuning its tile size on frozen cases.
+
+Threaded gains come from canonical projection, finite products and strict
+solving. The serial loss localizes to projection +67 ms and strict +10 ms,
+partially offset by finite work -33 ms; no isolated kernel attribution was run.
+Newly admitted median tracked peaks change +40,649 / -836,656 / -1,245,264 bytes;
+model/scratch sizes are unchanged. Maximum fresh tracked/model is 0.852472.
+Tiling trades the full PW bank for retained current weights/masses and a bounded
+coefficient bank. RSS and physical constrained-memory qualification did not run.
+
+### Validation and preserved evidence
+
+53 distinct core tests pass during development; final source replays all nine
+canonical tests and the new prepared-tile failure test. The 144-control nonzero-
+residual independent WLS fixture covers changed weights, T1/T8, exact tiled/full
+output identity, direct Gram agreement and the one-byte boundary. Five licensed
+fixtures and both plugin ABI/panic-containment checks pass. All 192 development/
+fresh/oracle public states, 128 baseline pairs and 64 direct stock pairs pass.
+Six fits also pass independent explicit Poisson/Hessian/sandwich/means oracles.
+All 24 OLS applications and 12 science/output pairs pass: 17→16,29→29,104→105,
+62→61 ms. Seeds **202609389/390 are consumed/frozen**, as are all earlier seeds.
+
+The initial process-monitor sandbox refusal, invalid whole-graph fresh sizes,
+wrong OLS surface adapter and archive-path error all occurred before their
+respective fits/archive creation; corrected attempts and original failures are
+preserved. Earlier isolated profile/capture setup errors are preserved too.
+No completed fit or oracle failed scientific acceptance. All headline monitors
+are clear; the unrelated GUI was untouched. Preserve the pre-existing canonical
+LSMR reporting assertion, allocation-inventory drift, weighted constrained/
+nonretaining-CG span problems, seed378 comparator issue and SCC/platform gaps.
+No stopped campaign, SCC retry, remote mutation or qualification occurred.
+
+### Ambitious next plan, selected by current costs
+
+1. **Reorganize the complete two-FE Poisson direction lifecycle.** The completed
+   warm baseline at b6088330 gives narrow 46 ms versus stock 30, disconnected 119
+   versus 77, fast 64 versus 53, and unbalanced 103 versus 97. Isolated timers put
+   narrow ado preparation/plugin/validation at 5/36/3 ms. Native core is 34.62 ms;
+   four complete joint calls total 9.16 ms, but their recurrence only 1.21 ms.
+   Two canonical preparations total 8.77 ms. A new recurrence alone cannot close
+   the gap. Prototype analytic elimination of one categorical partition during
+   every Poisson trial and a joint Newton step for finite/remaining-FE parameters.
+   Compare this coherent candidate against the current full weighted joint
+   organization, using bounded centered products and current-frame factors.
+   Preserve canonical initial rank, original-input finite/model-space/score/
+   objective checks and final Hessian. Keep the existing fast incremental-history
+   boundary; do not repeat ADR0155's rejected family switch. Aim for a material
+   20–40% public reduction with measured initial/strict costs, not an inner-only
+   win. Do not assume nonlinear concentration is already validated or adopted.
+2. **Use the captured frames before public integration.** Work roots are
+   target/ppml-joint-direct-20260924 and target/ppml-tiled-products-20260924.
+   captured2/c0,c1,c3 contain four exact low-mode frames each: codes, weights,
+   response, controls, tolerance and solution. Captures are disabled in timings;
+   hashes/recipes and isolated source identities are archived. A frozen-frame
+   alternative-kernel comparison has not yet run. Compare setup, products,
+   recurrence, reconstruction and independent acceptance on these literal inputs
+   and separately pinned stock; keep diagnostics separate from headline fits.
+   Use fresh cases for acceptance, including imbalance, weak/disconnected
+   graphs, changing weights, rank boundaries, multiple slopes, widths and T1/4/8.
+3. **Remove wide reduction duplication as the next memory mechanism.** Full
+   worker-private QW RHS/certificate reductions still refuse disconnected wide
+   work. Partition or tile their coordinate ownership inside the same allowance.
+   The serial direct certificate Gram schedule also warrants comparison with
+   the existing serial moment kernel on frozen inputs. Do not add a serial
+   exclusion based solely on the current holdout. Current wide targets need
+   735→616.5 and 1198→1161 ms for a 10% stock lead; narrow needs 48→27.9, fast 65→51.3.
+4. **Carry successful mechanisms to slopes/three-plus FE with focused controls.**
+   Current slope/three-FE/unbalanced ratios are 0.912/0.968/0.974. They do not
+   inherit earlier artifact wins. Preserve the 77/16/111 definitions, independent
+   WLS/Poisson/Hessian oracles, weights/DoF/separation, certificates and failure
+   atomicity. Use small predeclared screens, alternating stock/baseline/candidate
+   rotations, report distributions/losses, and commit each accepted milestone.
+   Stop a candidate when its measured phase ceiling is too small; do not return
+   to the closed residual-space extrapolation or serial-slope micro-probes.
+
 ## Wide canonical PPML coefficient storage adopted — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock

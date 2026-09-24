@@ -471,7 +471,7 @@ to the strict overlap charge, not a second permanent observation vector. The
 session row buffer is a separate K-double bank. Optional-cell validation during
 plugin publication uses predicates without allocating index vectors.
 
-For admitted low two-categorical-FE canonical products (ADRs 0168–0172), a
+For admitted low two-categorical-FE canonical products (ADRs 0168–0173), a
 checked current-call bank replaces the planned temporary projection panel and
 reusable projection block. The maximum setup, solve, certificate and
 reconstruction payload, plus live descriptors, must fit `16*N*pool` bytes. The initial topology plan
@@ -481,8 +481,9 @@ work/memory plan may reclaim that obsolete block before weighted allocation.
 Actual capacity is charged before initialization;
 credit is granted only after consuming and dropping an owner. Setup factors and
 scratch end before later consumers, RHS and certificate reductions have separate
-lifetimes, and normalized weights become the response only after all current-
-weight checks pass. Existing retained metadata, scratch I/O, finite workspace
+lifetimes. After all current-weight checks pass, full reconstruction reuses
+normalized weights for the response; tiled reconstruction retains them through
+row writing and separately owns the within response. Existing retained metadata, scratch I/O, finite workspace
 and rollback charges remain. Optional budget refusal precedes scratch mutation.
 Complete scratch rewrites use the existing I/O buffer, perform no reads, and
 poison the private file on callback, numeric or I/O failure. See
@@ -501,6 +502,14 @@ are consumed and released. This adds a separate reconstruction peak and bounded
 recomputation, avoiding overlap of the full coefficient bank with either set of
 worker reductions. Current normalized weights and masses remain live until that
 replay completes; all four phase peaks must fit the same reservation.
+[ADR 0173](adr/0173-tiled-canonical-ppml-reconstruction.md) admits bounded row
+reconstruction when the full P-by-W bank itself exceeds that reservation. It
+retains immutable current weights and group masses through the last write,
+prepares only the groups in each row tile, and releases the temporary response
+coefficient bank before the tile bank exists. The complete minimum is the
+smaller of full and tiled reconstruction plans; affordable full-bank paths
+remain preferred. Every setup, solve, certificate and reconstruction peak still
+fits the unchanged reservation. No cross-call weighted state survives.
 
 ## PPML separation memory
 

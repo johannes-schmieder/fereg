@@ -154,11 +154,34 @@ impl Plan {
             bytes: 0,
             factor_work_budget: work_allowance - work,
         };
-        plan.bytes = plan.storage_bytes(0, 0, false)?;
+        plan.bytes = plan.minimum_storage_bytes(0, 0)?;
         Some(plan)
     }
 
+    fn output_tile_rows(&self) -> usize {
+        // A bounded group bank keeps reconstruction independent of P*W. The
+        // existing scratch encoder can use smaller tiles without new storage.
+        (8192 / self.width).max(1).min(self.n)
+    }
+
+    fn minimum_storage_bytes(&self, matrix: usize, factor: usize) -> Option<u128> {
+        Some(
+            self.storage_bytes(matrix, factor, false)?
+                .min(self.storage_bytes_for(matrix, factor, false, true)?),
+        )
+    }
+
     fn storage_bytes(&self, matrix: usize, factor: usize, retain_centers: bool) -> Option<u128> {
+        self.storage_bytes_for(matrix, factor, retain_centers, false)
+    }
+
+    fn storage_bytes_for(
+        &self,
+        matrix: usize,
+        factor: usize,
+        retain_centers: bool,
+        tile_output: bool,
+    ) -> Option<u128> {
         let Self {
             n,
             p,
@@ -210,10 +233,29 @@ impl Plan {
             square,
             reductions,
         ])?;
-        // Streaming rebuilds coefficients after the independent certificate
-        // releases its reductions. Both layouts retain them for the row writer;
-        // only retention overlaps them with RHS and certificate reductions.
-        let reconstruct = words(&[n, p, q, coefficients, cross, width, width, width, square])?;
+        // Full reconstruction overlaps P*W with no worker reductions. Tiled
+        // reconstruction instead keeps immutable weights and a bounded group
+        // bank until the retained row writer completes.
+        let reconstruct = if tile_output {
+            let groups = p.min(self.output_tile_rows());
+            // Keep current weights/masses until the last row tile is written.
+            // Response coefficients die before the tile map and bank exist.
+            words(&[
+                n,
+                n,
+                p,
+                cross,
+                width,
+                width,
+                width,
+                square,
+                groups.checked_mul(width)?,
+            ])?
+            .checked_add(indices(p.checked_add(groups)?)?)?
+            .max(words(&[n, n, p, p, cross, width, width, width, square])?)
+        } else {
+            words(&[n, p, q, coefficients, cross, width, width, width, square])?
+        };
         setup
             .max(solve)
             .max(certify)
@@ -245,11 +287,21 @@ pub(super) struct CanonicalMoments {
     pub response_scale: f64,
 }
 
+struct TiledCoefficients {
+    weights: Vec<f64>,
+    masses: Vec<f64>,
+    slots: Vec<usize>,
+    groups: Vec<usize>,
+    values: Vec<f64>,
+    rows: usize,
+}
+
 pub(super) struct Products<'a, P: PreparedOlsFitView + ?Sized> {
     columns: Vec<Column<'a, P>>,
     design: BorrowedInterceptFeDesign<'a>,
     left_effect: usize,
     left: Vec<f64>,
+    tiled: Option<TiledCoefficients>,
     right: Vec<f64>,
     pub scales: Vec<f64>,
     pub means: Vec<f64>,
@@ -268,8 +320,24 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
         let a = &self.design.effects()[self.left_effect];
         let b = &self.design.effects()[1 - self.left_effect];
         let scale = nonzero(self.scales[j]);
+        let group = a.codes()[row] as usize;
+        let left = if let Some(tile) = &self.tiled {
+            group_coefficient(
+                &self.columns[j],
+                &tile.weights,
+                scale,
+                tile.masses[group],
+                a.level_index().members(group),
+                Some((
+                    &self.right[j * b.n_levels()..(j + 1) * b.n_levels()],
+                    b.codes(),
+                )),
+            )?
+        } else {
+            self.left[j * a.n_levels() + group]
+        };
         let value = (self.columns[j].value(row)? / scale
-            - self.left[j * a.n_levels() + a.codes()[row] as usize]
+            - left
             - self.right[j * b.n_levels() + b.codes()[row] as usize])
             * scale;
         if value.is_finite() {
@@ -279,14 +347,63 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
         }
     }
 
-    pub fn write_controls(&self, storage: &mut PreparedOlsScratch) -> Result<()> {
+    pub fn write_controls(&mut self, storage: &mut PreparedOlsScratch) -> Result<()> {
         if storage.rows() != self.design.nobs() || storage.columns() + 1 != self.columns.len() {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
                 "canonical product storage is misaligned",
             ));
         }
-        storage.rewrite_row_major_with(|row, column| self.residual(row, column + 1))
+        let Some(tile) = self.tiled.as_mut() else {
+            return storage.rewrite_row_major_with(|row, column| self.residual(row, column + 1));
+        };
+        let a = &self.design.effects()[self.left_effect];
+        let b = &self.design.effects()[1 - self.left_effect];
+        let q = b.n_levels();
+        let width = self.columns.len();
+        let rows = tile.rows;
+        storage.rewrite_row_major_prepared_with(
+            tile,
+            rows,
+            |tile, first, count| {
+                tile.slots.fill(usize::MAX);
+                let mut groups = 0;
+                for &g in &a.codes()[first..first + count] {
+                    let g = g as usize;
+                    if tile.slots[g] == usize::MAX {
+                        tile.slots[g] = groups;
+                        tile.groups[groups] = g;
+                        groups += 1;
+                    }
+                }
+                tile.values[..groups * width]
+                    .par_chunks_mut(width)
+                    .enumerate()
+                    .try_for_each(|(slot, values)| -> Result<()> {
+                        let g = tile.groups[slot];
+                        for j in 1..width {
+                            values[j] = group_coefficient(
+                                &self.columns[j],
+                                &tile.weights,
+                                nonzero(self.scales[j]),
+                                tile.masses[g],
+                                a.level_index().members(g),
+                                Some((&self.right[j * q..(j + 1) * q], b.codes())),
+                            )?;
+                        }
+                        Ok(())
+                    })
+            },
+            |tile, row, column| {
+                let j = column + 1;
+                let scale = nonzero(self.scales[j]);
+                let slot = tile.slots[a.codes()[row] as usize];
+                Ok((self.columns[j].value(row)? / scale
+                    - tile.values[slot * width + j]
+                    - self.right[j * q + b.codes()[row] as usize])
+                    * scale)
+            },
+        )
     }
 }
 
@@ -478,7 +595,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         return Err(declined());
     }
     let minimum_bytes = plan
-        .storage_bytes(matrix_cells, factor_cells, false)
+        .minimum_storage_bytes(matrix_cells, factor_cells)
         .ok_or_else(declined)?;
     if minimum_bytes > allowance {
         return Err(declined());
@@ -486,10 +603,14 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     // Retention avoids repeated original-column passes when the complete
     // coexisting phase banks fit. Streaming is the same solve under tighter
     // workspace, not a different numerical route or a threshold by width.
-    let (retain_centers, bytes) = match plan.storage_bytes(matrix_cells, factor_cells, true) {
-        Some(bytes) if bytes <= allowance => (true, bytes),
-        _ => (false, minimum_bytes),
-    };
+    let (retain_centers, tile_output, bytes) =
+        match plan.storage_bytes(matrix_cells, factor_cells, true) {
+            Some(bytes) if bytes <= allowance => (true, false, bytes),
+            _ => match plan.storage_bytes(matrix_cells, factor_cells, false) {
+                Some(bytes) if bytes <= allowance => (false, false, bytes),
+                _ => (false, true, minimum_bytes),
+            },
+        };
     // The complete topology/work/memory plan is now known. Reclaim the old
     // temporary panel only if the new phase needs its reservation; numerical
     // refusal can still rebuild that panel through the ordinary fallible path.
@@ -931,49 +1052,94 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         return Err(declined());
     }
     budget.release(partials)?;
-    // Streaming replays the certified group calculation with unchanged columns,
-    // normalized weights and right coefficients after reductions are released.
-    // Retention can move its already certified bank directly to the row writer.
-    let left = if let Some(left) = retained_left {
-        left
-    } else {
-        let mut left = budget.reserve(p * width, 0.)?;
-        left.par_chunks_mut(p)
+    // Replay the certified pure coefficient calculation with unchanged inputs.
+    // Full reconstruction releases weights now; tiled reconstruction retains
+    // them through row writing. Neither layout carries authority across calls.
+    budget.release(mass_b)?;
+    let (left, tiled, within_response) = if tile_output {
+        let mut response_coefficients = budget.reserve(p, 0.)?;
+        response_coefficients
+            .par_iter_mut()
             .enumerate()
-            .try_for_each(|(j, values)| -> Result<()> {
-                for (g, value) in values.iter_mut().enumerate() {
-                    *value = group_coefficient(
-                        &columns[j],
-                        &w,
-                        nonzero(scales[j]),
-                        mass_a[g],
-                        a.level_index().members(g),
-                        Some((&right[j * q..(j + 1) * q], b.codes())),
-                    )?;
+            .try_for_each(|(g, value)| -> Result<()> {
+                *value = group_coefficient(
+                    &columns[0],
+                    &w,
+                    nonzero(scales[0]),
+                    mass_a[g],
+                    a.level_index().members(g),
+                    Some((&right[..q], b.codes())),
+                )?;
+                Ok(())
+            })?;
+        let mut within = budget.reserve(n, 0.)?;
+        within
+            .par_iter_mut()
+            .enumerate()
+            .try_for_each(|(i, value)| -> Result<()> {
+                *value = (response[i] / nonzero(scales[0])
+                    - response_coefficients[a.codes()[i] as usize]
+                    - right[b.codes()[i] as usize])
+                    * nonzero(scales[0]);
+                if !value.is_finite() {
+                    return Err(declined());
                 }
                 Ok(())
             })?;
-        left
+        budget.release(response_coefficients)?;
+        let rows = plan.output_tile_rows();
+        let groups = p.min(rows);
+        let tile = TiledCoefficients {
+            weights: w,
+            masses: mass_a,
+            slots: budget.reserve(p, usize::MAX)?,
+            groups: budget.reserve(groups, 0_usize)?,
+            values: budget.reserve(groups * width, 0.)?,
+            rows,
+        };
+        (Vec::new(), Some(tile), within)
+    } else {
+        let left = if let Some(left) = retained_left {
+            left
+        } else {
+            let mut left = budget.reserve(p * width, 0.)?;
+            left.par_chunks_mut(p)
+                .enumerate()
+                .try_for_each(|(j, values)| -> Result<()> {
+                    for (g, value) in values.iter_mut().enumerate() {
+                        *value = group_coefficient(
+                            &columns[j],
+                            &w,
+                            nonzero(scales[j]),
+                            mass_a[g],
+                            a.level_index().members(g),
+                            Some((&right[j * q..(j + 1) * q], b.codes())),
+                        )?;
+                    }
+                    Ok(())
+                })?;
+            left
+        };
+        budget.release(mass_a)?;
+        // Every weight-dependent solve and acceptance check has finished. Each
+        // observation is overwritten from immutable originals, so this transfer
+        // needs neither another N-vector nor a changed reconstruction recurrence.
+        let mut within_response = w;
+        within_response
+            .par_iter_mut()
+            .enumerate()
+            .try_for_each(|(i, value)| -> Result<()> {
+                *value = (response[i] / nonzero(scales[0])
+                    - left[a.codes()[i] as usize]
+                    - right[b.codes()[i] as usize])
+                    * nonzero(scales[0]);
+                if !value.is_finite() {
+                    return Err(declined());
+                }
+                Ok(())
+            })?;
+        (left, None, within_response)
     };
-    budget.release(mass_a)?;
-    budget.release(mass_b)?;
-    // Every weight-dependent solve and acceptance check has finished. Each
-    // observation is overwritten from immutable originals, so this transfer
-    // needs neither another N-vector nor a changed reconstruction recurrence.
-    let mut within_response = w;
-    within_response
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(i, value)| -> Result<()> {
-            *value = (response[i] / nonzero(scales[0])
-                - left[a.codes()[i] as usize]
-                - right[b.codes()[i] as usize])
-                * nonzero(scales[0]);
-            if !value.is_finite() {
-                return Err(declined());
-            }
-            Ok(())
-        })?;
     let report = SolveReport {
         requested_solver: FeSolverKind::Map,
         used_solver: FeSolverKind::Map,
@@ -1008,6 +1174,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         design,
         left_effect,
         left,
+        tiled,
         right,
         scales,
         means,
@@ -1324,12 +1491,20 @@ mod tests {
 
     #[test]
     fn streamed_canonical_groups_admit_wide_nonzero_weighted_contrasts() {
+        weighted_streaming_case(8640, 100, 36, false);
+    }
+
+    #[test]
+    fn tiled_canonical_output_matches_independent_wls_under_changing_weights() {
+        weighted_streaming_case(14400, 144, 32, true);
+    }
+
+    fn weighted_streaming_case(n: usize, k: usize, q: usize, tile_output: bool) {
         use crate::ols::linear_session::{CertifiedLinearSession, LinearSessionGenerations};
         use crate::ols::prepared_fit::LinearSolveFrame;
         use crate::ols::{
             PreparedOlsBreadWeightScale, PreparedOlsExecutionMode, PreparedOlsFitConfig,
         };
-        let (n, k, q) = (8640, 100, 36);
         let g: Vec<_> = (0..n).map(|i| (i / 6) as f64).collect();
         let h: Vec<_> = (0..n)
             .map(|i| ((i / 6 + 11 * ((i % 6) / 2)) % q) as f64)
@@ -1409,7 +1584,7 @@ mod tests {
                         reference_weight_multiplier: divisor,
                         reference_weight_sum: weights.iter().sum(),
                     };
-                    let products = try_build(
+                    let mut products = try_build(
                         &prepared,
                         &(0..k).collect::<Vec<_>>(),
                         &y,
@@ -1424,6 +1599,7 @@ mod tests {
                     .unwrap();
                     assert!(products.report.certified());
                     assert!(!products.retained_centers);
+                    assert_eq!(products.tiled.is_some(), tile_output);
                     let bytes = products.minimum_workspace_bytes;
                     assert!(
                         products.report.solver_workspace_peak.bytes().unwrap() as u128 <= allowance
@@ -1442,7 +1618,21 @@ mod tests {
                     .unwrap()
                     .unwrap();
                     assert!(cached.retained_centers);
-                    assert_eq!(products.left, cached.left);
+                    if tile_output {
+                        let mut scratch = PreparedOlsScratch::create_row_major(n, k).unwrap();
+                        products.write_controls(&mut scratch).unwrap();
+                        let mut row = vec![0.; k];
+                        let mut reader = scratch.shared_reader();
+                        for i in 0..n {
+                            reader.read_linear(i * k, &mut row).unwrap();
+                            for (j, &actual) in row.iter().enumerate() {
+                                assert_eq!(actual, cached.residual(i, j + 1).unwrap());
+                            }
+                        }
+                        assert!(products.left.is_empty());
+                    } else {
+                        assert_eq!(products.left, cached.left);
+                    }
                     assert_eq!(products.right, cached.right);
                     assert_eq!(products.response, cached.response);
                     assert_eq!(products.moments.gram, cached.moments.gram);
@@ -1801,7 +1991,7 @@ mod tests {
                             tolerance: 1e-12,
                             ..MapConfig::default()
                         };
-                        let result = try_build(
+                        let mut result = try_build(
                             &p,
                             &[0, 1, 2],
                             &values[0],

@@ -187,7 +187,12 @@ certificate passes when retaining it would exceed the existing allowance.
 Affordable retention uses the same solver and certificate without recomputation.
 A streamed call rebuilds that bank for retained-row writing after certification
 releases its reductions, using the same coefficient recurrence on unchanged
-inputs. Work admission, factors and acceptance thresholds are unchanged.
+inputs. If that bank also exceeds the allowance,
+[ADR 0173](adr/0173-tiled-canonical-ppml-reconstruction.md) instead rebuilds only
+the groups needed by each retained-row tile. Its weights, masses, original
+columns and retained coefficients remain immutable until writing finishes.
+The same certified coefficient recurrence governs either reconstruction.
+Work admission, factors and acceptance thresholds are unchanged.
 
 Under ADR 0139, admitted low one-FE PPML canonical products use immutable
 original columns minus freshly computed current-weight group centers. A separate

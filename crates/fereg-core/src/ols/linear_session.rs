@@ -3317,7 +3317,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let pool = self.config.execution.poolsize.max(1).min(generated.len());
         let allowance = (self.response.len() as u128).checked_mul(pool as u128)
             .and_then(|x|x.checked_mul(16)).ok_or_else(|| allocation("canonical product allowance overflows"))?;
-        let Some(products) = super::canonical_products::try_build(
+        let Some(mut products) = super::canonical_products::try_build(
             self.prepared, &generated, &self.response, self.weights.borrowed(),
             self.bread_weight_scale.solver_weight_divisor, self.config.absorb.map, allowance,
             self.canonical_projection_work_hint,

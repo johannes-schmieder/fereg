@@ -310,26 +310,55 @@ impl PreparedOlsScratch {
         &mut self,
         value: impl Fn(usize, usize) -> Result<f64> + Sync,
     ) -> Result<()> {
-        if self.layout != ScratchLayout::RowMajor || self.poisoned {
-            return Err(invalid("prepared OLS rewrite requires valid row-major scratch"));
+        self.rewrite_row_major_prepared_with(
+            &mut (),
+            usize::MAX,
+            |_, _, _| Ok(()),
+            |_, row, column| value(row, column),
+        )
+    }
+
+    /// Prepare one bounded immutable row tile before parallel encoding. The
+    /// preparation state is private to this rewrite; failure poisons scratch
+    /// before either preparation or publication of the first encoded tile.
+    pub(crate) fn rewrite_row_major_prepared_with<T: Sync>(
+        &mut self,
+        state: &mut T,
+        maximum_rows: usize,
+        prepare: impl Fn(&mut T, usize, usize) -> Result<()>,
+        value: impl Fn(&T, usize, usize) -> Result<f64> + Sync,
+    ) -> Result<()> {
+        if self.layout != ScratchLayout::RowMajor || self.poisoned || maximum_rows == 0 {
+            return Err(invalid(
+                "prepared OLS rewrite requires valid row-major scratch",
+            ));
         }
-        if self.rows == 0 || self.columns == 0 { return Ok(()); }
-        let tile_rows = self.row_major_tile_rows()?;
+        if self.rows == 0 || self.columns == 0 {
+            return Ok(());
+        }
+        let tile_rows = self.row_major_tile_rows()?.min(maximum_rows);
         let row_bytes = self.row_bytes()?;
         self.poisoned = true;
         for first in (0..self.rows).step_by(tile_rows) {
-            let count = (self.rows-first).min(tile_rows);
-            let byte_count = count.checked_mul(row_bytes).ok_or_else(|| allocation("prepared OLS rewrite tile overflows"))?;
-            self.io_buffer[..byte_count].par_chunks_mut(row_bytes).enumerate()
+            let count = (self.rows - first).min(tile_rows);
+            prepare(state, first, count)?;
+            let byte_count = count
+                .checked_mul(row_bytes)
+                .ok_or_else(|| allocation("prepared OLS rewrite tile overflows"))?;
+            self.io_buffer[..byte_count]
+                .par_chunks_mut(row_bytes)
+                .enumerate()
                 .try_for_each(|(local, bytes)| -> Result<()> {
                     for (column, target) in bytes.chunks_exact_mut(8).enumerate() {
-                        let x = value(first+local,column)?;
-                        if !x.is_finite() {return Err(invalid("prepared OLS rewrite value is nonfinite"));}
+                        let x = value(state, first + local, column)?;
+                        if !x.is_finite() {
+                            return Err(invalid("prepared OLS rewrite value is nonfinite"));
+                        }
                         target.copy_from_slice(&x.to_le_bytes());
                     }
                     Ok(())
                 })?;
-            self.write_encoded_tile(first*self.columns,byte_count)?;
+            self.write_encoded_tile(first * self.columns, byte_count)?;
         }
         self.poisoned = false;
         Ok(())
@@ -983,6 +1012,45 @@ mod tests {
         scratch.file = Some(File::open(&scratch.path).unwrap());
         assert!(scratch.rewrite_row_major_with(|_, _| Ok(1.)).is_err());
         assert!(scratch.poisoned);
+    }
+
+    #[test]
+    fn prepared_row_tiles_preserve_state_and_poison_failed_preparation() {
+        let mut scratch = PreparedOlsScratch::create_row_major(11, 3).unwrap();
+        let mut state = (usize::MAX, 0);
+        scratch
+            .rewrite_row_major_prepared_with(
+                &mut state,
+                4,
+                |state, first, count| {
+                    *state = (first, count);
+                    Ok(())
+                },
+                |state, row, column| {
+                    assert!(row >= state.0 && row < state.0 + state.1);
+                    Ok((row * 3 + column) as f64)
+                },
+            )
+            .unwrap();
+        assert_eq!(scratch.encoded_tile_writes, 3);
+        assert_eq!(scratch.encoded_tile_reads, 0);
+        let mut row = [0.; 3];
+        scratch.read_linear_shared(30, &mut row).unwrap();
+        assert_eq!(row, [30., 31., 32.]);
+        assert!(scratch
+            .rewrite_row_major_prepared_with(
+                &mut (),
+                4,
+                |_, first, _| if first == 4 {
+                    Err(invalid("injected preparation refusal"))
+                } else {
+                    Ok(())
+                },
+                |_, _, _| Ok(0.)
+            )
+            .is_err());
+        assert!(scratch.poisoned);
+        assert!(scratch.read_linear_shared(0, &mut row).is_err());
     }
 
     #[test]
