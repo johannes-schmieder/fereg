@@ -108,8 +108,10 @@ low mode streams bounded tiles through existing worker buffers under
 [ADR 0134](adr/0134-bounded-low-memory-joint-ppml-slopes.md). Low-mode ordinary
 products borrow original prepared controls under
 [ADR 0144](adr/0144-original-controls-for-streamed-ppml-directions.md), avoiding
-repeated scratch scans. The frozen basis remains authoritative; canonical
-construction and inference still use retained within products. The separate
+repeated scratch scans. [ADR 0145](adr/0145-column-oriented-streamed-ppml-products.md)
+forms those products through independent source-column reads on existing workers,
+without another normalized design. The frozen basis remains authoritative;
+canonical construction and inference still use retained within products. The separate
 certified direction result carries no within-design inverse or final-Hessian
 authority. Canonical initial construction remains independent. Eligible slope
 finalization uses a strict joint Newton witness and one independent canonical

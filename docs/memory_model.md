@@ -795,8 +795,10 @@ fit-lifetime telemetry. Under
 finite-product tiles through the existing per-worker observation buffers. Its
 joint finite width is independent of the bounded RHS pool. Temporary norm state
 and row scratch reuse preconditioner/solution banks before their solve lifetimes;
-there is no additional N-by-K bank. One scan-local 8 KiB stack cursor follows
-ADR 0129's immutable-read rule. All joint state is released before inference.
+there is no additional N-by-K bank. ADRs 0144 and 0145 replace ordinary scratch
+reads with borrowed original columns and independent Hessian-row work. The same
+worker buffers and admission remain; canonical scratch scans retain ADR 0129's
+immutable-read rule. All joint state is released before inference.
 Fixed-configuration process audits remain exact-zero; the documented delayed
 Crossbeam frees in mixed-thread audits remain unresolved. Static allocation
 drift and physical-cap/platform gates remain separate.

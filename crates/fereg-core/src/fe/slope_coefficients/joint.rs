@@ -4,11 +4,16 @@
 use super::*;
 use crate::fe::SolveReport;
 
-/// A retained finite representative, in memory or on private row-major scratch.
-/// Each scan owns its reader; parallel columns never share a mutable file cursor.
+/// An immutable finite representative. Row and column access let preparation
+/// follow the source layout without materializing another normalized design.
 pub(crate) trait JointFiniteDesign: Sync {
     fn nrows(&self) -> usize;
     fn ncols(&self) -> usize;
+    fn visit_column(
+        &self,
+        column: usize,
+        visit: impl FnMut(usize, f64) -> Result<()>,
+    ) -> Result<()>;
     fn visit_rows(
         &self,
         row_scratch: &mut [f64],
@@ -23,6 +28,17 @@ impl JointFiniteDesign for DenseMatrix {
     fn ncols(&self) -> usize {
         self.ncols()
     }
+    fn visit_column(
+        &self,
+        column: usize,
+        mut visit: impl FnMut(usize, f64) -> Result<()>,
+    ) -> Result<()> {
+        for row in 0..self.nrows() {
+            visit(row, self[(row, column)])?;
+        }
+        Ok(())
+    }
+
     fn visit_rows(
         &self,
         _: &mut [f64],
@@ -570,50 +586,59 @@ impl JointFiniteWorkspace {
                 return Err(failed());
             }
         }
-        // A tile uses only the admitted per-worker observation buffers. Its
-        // two complete-row scans load the columns and form their products;
-        // no normalized N-by-K bank survives or is allocated for low mode.
+        // Only the admitted worker observation buffers hold projected columns.
+        // Each worker reads original columns directly for one Hessian row,
+        // retaining each dot product's observation/FMA order on every team.
         let width = owner.workers.len().min(k);
         self.hessian[..k * k].fill(0.);
         for first in (0..k).step_by(width) {
             let last = (first + width).min(k);
-            let workers = &mut owner.workers[..last - first];
-            controls.visit_rows(&mut self.factor[..controls.ncols()], |row, values| {
-                for (local, worker) in workers.iter_mut().enumerate() {
-                    let j = first + local;
-                    worker.observations[row] = values[selected[j]] * roots[row] / self.scales[j];
-                }
-                Ok(())
-            })?;
-            workers
+            owner.workers[..last - first]
                 .par_iter_mut()
                 .zip(self.cross[first * p..last * p].par_chunks_mut(p))
                 .zip(self.residual[p + first..p + last].par_iter_mut())
-                .for_each(|((worker, cross), rhs)| {
+                .zip(self.hessian[first * k..last * k].par_chunks_mut(k))
+                .zip(self.factor.par_chunks_mut(controls.ncols()))
+                .enumerate()
+                .try_for_each(|(local, ((((worker, cross), rhs), hessian_row), row_scratch))| {
+                    let j = first + local;
                     let column = &mut worker.observations;
+                    controls.visit_column(selected[j], |row, value| {
+                        column[row] = value * roots[row] / self.scales[j];
+                        Ok(())
+                    })?;
                     op.project_eliminated(column, &mut worker.eliminated_scratch);
                     op.transpose(column, cross, false);
                     *rhs = dot(column, original);
-                });
-            controls.visit_rows(&mut self.factor[..controls.ncols()], |row, values| {
-                // All rows in this Hessian tile use the same normalized raw
-                // finite row. The norm recurrence has finished with beta;
-                // reuse that bank until iterate installs the solved beta.
-                for (value, (&column, &scale)) in self.beta[..k]
-                    .iter_mut()
-                    .zip(selected.iter().zip(&self.scales[..k]))
-                {
-                    *value = values[column] * roots[row] / scale;
-                }
-                for (local, worker) in workers.iter().enumerate() {
-                    let i = first + local;
-                    let hessian_row = &mut self.hessian[i * k..(i + 1) * k];
-                    for (entry, &value) in hessian_row.iter_mut().zip(&self.beta[..k]) {
-                        *entry = value.mul_add(worker.observations[row], *entry);
+                    if width == 1 {
+                        // Keep independent entry accumulators available to a
+                        // serial worker. A single scalar dot-product chain can
+                        // otherwise dominate even contiguous numeric reads.
+                        // The factor bank is free until iterate prepares it.
+                        controls.visit_rows(row_scratch, |row, values| {
+                            for (entry, (&selected, &scale)) in hessian_row
+                                .iter_mut()
+                                .zip(selected.iter().zip(&self.scales[..k]))
+                            {
+                                let value = values[selected] * roots[row] / scale;
+                                *entry = value.mul_add(column[row], *entry);
+                            }
+                            Ok(())
+                        })?;
+                    } else {
+                        for (entry, (&selected, &scale)) in hessian_row
+                            .iter_mut()
+                            .zip(selected.iter().zip(&self.scales[..k]))
+                        {
+                            controls.visit_column(selected, |row, value| {
+                                let value = value * roots[row] / scale;
+                                *entry = value.mul_add(column[row], *entry);
+                                Ok(())
+                            })?;
+                        }
                     }
-                }
-                Ok(())
-            })?;
+                    Ok(())
+                })?;
         }
         let worker = &mut owner.workers[0];
         let observations = &mut worker.observations;

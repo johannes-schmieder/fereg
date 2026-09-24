@@ -10,6 +10,102 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Column-oriented low PPML finite products adopted — 2026-09-23
+
+The objective remains **whole public PPML <=0.90 times scientifically comparable
+pinned stock fixest wherever reasonably achievable**, per case. This opening
+supersedes earlier next-step orders. The bounded finite-product milestone is
+complete; the broader goal remains active.
+
+Adopt `jointcolpar2`, based on `47bb7ef5`, under
+[ADR 0145](docs/adr/0145-column-oriented-streamed-ppml-products.md) and the
+[source-bound report](benchmarks/reports/development/ppml-joint-column-products-local-2026-09-23/README.md).
+All **542 captured inputs** match plugin
+`92e878f6d394242480b3030123d97a23edf67a808bc0f48656d20e3af1b8743f`.
+The verified/restored archive contains **13,267 logical receipts**, SHA-256
+`dd717c7c5ebafa81f608afcdae6dc7d67da2a46f913b16f09aaceb23a7cb6306`.
+All builds, fits, tests, diagnostics and archive operations are terminal.
+
+### Adopted mechanism and checks
+
+Low joint PPML directions load normalized finite columns directly from original
+numeric slices or generated recipes. Existing workers project columns and form
+independent Hessian rows. With one admitted worker buffer, row-wise accumulation
+keeps independent entry chains available while retaining direct column loading.
+This replaces the old serial product tile; no new solver, N/K/seed threshold,
+heap bank, memory admission or numerical authority is added. Entry/FMA order,
+current-weight geometry, fresh scores/reconstruction, canonical rank/inverse,
+objective, strict witness and final-Hessian requirements remain unchanged.
+Fast PPML, one-FE concentration and OLS retain their algorithms.
+
+**155 distinct final-source Rust tests**, production ABI/panic containment and
+**ten final licensed runs of eight fixtures** pass. The added N4800/K8 explicit
+Poisson/Hessian/sandwich oracle covers bound numeric columns, T1/T4, FW/PW and
+robust/cluster VCE. Four actual-plugin allocation windows retain exactly zero
+events/growth, stable capacities and fresh/warm equivalence. Across prototype
+and final standard blocks, 345 applications, 315 public-state checks, 45 small
+independent oracle results and 116 exact native pairs pass; all 107 baseline/
+stock and 101 direct candidate/stock pairs pass. Generated controls add 24
+applications/12 exact pairs, half on the final artifact. These are development
+results, not qualification.
+
+Final development wide two-FE N16320/K24/T8 improves **234→190 vs stock 69 ms**.
+Narrow N30720/K6/T4 is nearly unchanged, **116→115 vs 56**. Final fresh seed
+202609351, five rotations, robust plus fitted means:
+
+| Low case | Baseline | Final | Stock | Final/stock |
+|---|---:|---:|---:|---:|
+| Two FE N16320/K32/T8 | 319 | 254 | 89 | 2.854 |
+| Two FE N38400/K10/T4 | 196 | 174 | 86 | 2.023 |
+| Unbalanced three FE, two slopes, N28800/K8/T4 | 151 | 142 | 168 | 0.845 |
+| Two FE N24480/K10/T1 | 195 | 179 | 141 | 1.270 |
+
+All twenty main fresh pairs improve; median reductions are 20.4%, 11.2%, 6.0%
+and 8.2%. Weak two-slope N7680/K4/T4 is 34→33 vs 266 ms, with one +1-ms native
+pair. Native generated-factor controls improve **621→443 ms at T1** and
+**423→310 at T4**; no stock claim is made for those controls. Full distributions
+are in the report. Final excluded fast two-/three-FE medians retain +3/+2-ms
+losses with exact exports; OLS medians tie at 66/65 ms with mixed pairs. No
+universal timing non-regression claim is made. All 41 final standard PPML pairs
+have identical iteration/halving/fallback/rank/DoF metadata, modeled peaks and
+scratch sizes. Tracked peaks match in 40 pairs and decline 6,400 bytes in one
+small pilot. No physical-cap or cross-platform claim.
+
+### Preserved experiments and next work
+
+The first row-parallel prototype gave only a 4% wide gain. Column-only products
+improved threaded cases, but a fixed-input T1 follow-up lost 194→204 ms. Preserve
+that evidence; the final single-worker organization uses new validation seed351
+and improves T1. Seeds 350 and 351 are consumed. A build-tag collision stopped
+before compilation and left the existing artifact intact. No estimator failure
+or scientific exclusion occurred in these new blocks.
+
+Close this product-loop experiment. The exploratory column-candidate diagnostic
+reduces wide joint work 101.89→58.77 ms, finite tiles 71.53→30.38 ms; the exclusive
+recurrence remains below 1 ms. Its canonical projection still costs about
+66.72 ms (including 35.31-ms symmetric sweeps and 14.74-ms categorical checks),
+with 17.69-ms canonical finite solves. These nested timings belong to the
+separate `jointcolpar1` diagnostic, not final `jointcolpar2`; final headline
+performance has its own receipts. Stronger scientific checks are not proven to
+require these implementation costs.
+
+Next, address **canonical two-FE PPML projection and products**. Attribute
+same-weight group statistics, scratch transport and repeated RHS passes, then
+reuse compatible group/Schur geometry across canonical tiles or use direct
+level-space solving where the reduced system permits it. Keep independent
+original-weight acceptance, disconnected-mass controls and current rank authority.
+The rejected all-coefficient canonical path remains rejected; merely removing
+its guard is not a new design. Protect fast categorical PPML and OLS. Do not
+continue tuning this finite-product loop. Whole-command one-FE preparation/
+objective work and wide inference remain subsequent measured targets.
+
+Historical large one-FE stock-mean discrepancies, the shared 1e6-FE-shift failure,
+static allocation inventory drift, weighted constrained-fit failures and
+nonretaining-CG instability retain their prior scope. Frozen 77/16/111 definitions,
+protected cycle seeds 211/212 and deferred SCC/physical-memory checks are unchanged.
+No push, release, stopped-campaign restart or SCC retry. Keep the active goal
+unfinished.
+
 ## Original controls adopted for low PPML joint directions — 2026-09-23
 
 The objective remains **whole public PPML <=0.90 times scientifically comparable

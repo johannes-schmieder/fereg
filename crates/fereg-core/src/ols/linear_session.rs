@@ -666,6 +666,34 @@ impl<P: PreparedOlsFitView + Sync + ?Sized>
         self.generated.len()
     }
 
+    fn visit_column(
+        &self,
+        column: usize,
+        mut visit: impl FnMut(usize, f64) -> Result<()>,
+    ) -> Result<()> {
+        let generated = self.generated[column];
+        match &self.numeric {
+            Some(numeric) => match numeric.raw_columns()[generated] {
+                Some(values) => {
+                    for (row, &value) in values.iter().enumerate() {
+                        visit(row, value)?;
+                    }
+                }
+                None => {
+                    for row in 0..self.nrows() {
+                        visit(row, 1.)?;
+                    }
+                }
+            },
+            None => {
+                for row in 0..self.nrows() {
+                    visit(row, self.prepared.fit_column_value(generated, row)?)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn visit_rows(
         &self,
         row_scratch: &mut [f64],
