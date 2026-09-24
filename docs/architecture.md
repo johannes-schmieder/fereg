@@ -105,8 +105,12 @@ couple finite controls directly to that FE operator under
 [ADR 0130](adr/0130-joint-ppml-slope-directions.md), borrowing retained
 FE-equivalent representatives. Fast mode reuses the normalized column bank;
 low mode streams bounded tiles through existing worker buffers under
-[ADR 0134](adr/0134-bounded-low-memory-joint-ppml-slopes.md). Their
-separate certified result carries no within-design inverse or final-Hessian
+[ADR 0134](adr/0134-bounded-low-memory-joint-ppml-slopes.md). Low-mode ordinary
+products borrow original prepared controls under
+[ADR 0144](adr/0144-original-controls-for-streamed-ppml-directions.md), avoiding
+repeated scratch scans. The frozen basis remains authoritative; canonical
+construction and inference still use retained within products. The separate
+certified direction result carries no within-design inverse or final-Hessian
 authority. Canonical initial construction remains independent. Eligible slope
 finalization uses a strict joint Newton witness and one independent canonical
 rank/bread/Hessian construction on the unchanged accepted weight frame under

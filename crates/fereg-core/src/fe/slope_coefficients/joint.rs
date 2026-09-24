@@ -596,12 +596,20 @@ impl JointFiniteWorkspace {
                     *rhs = dot(column, original);
                 });
             controls.visit_rows(&mut self.factor[..controls.ncols()], |row, values| {
+                // All rows in this Hessian tile use the same normalized raw
+                // finite row. The norm recurrence has finished with beta;
+                // reuse that bank until iterate installs the solved beta.
+                for (value, (&column, &scale)) in self.beta[..k]
+                    .iter_mut()
+                    .zip(selected.iter().zip(&self.scales[..k]))
+                {
+                    *value = values[column] * roots[row] / scale;
+                }
                 for (local, worker) in workers.iter().enumerate() {
                     let i = first + local;
                     let hessian_row = &mut self.hessian[i * k..(i + 1) * k];
-                    for (j, &column) in selected.iter().enumerate() {
-                        hessian_row[j] = (values[column] * roots[row] / self.scales[j])
-                            .mul_add(worker.observations[row], hessian_row[j]);
+                    for (entry, &value) in hessian_row.iter_mut().zip(&self.beta[..k]) {
+                        *entry = value.mul_add(worker.observations[row], *entry);
                     }
                 }
                 Ok(())

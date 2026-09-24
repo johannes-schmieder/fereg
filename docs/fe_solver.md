@@ -69,6 +69,13 @@ and a residual vector are admitted separately. Failed acceptance revokes geometr
 authority before canonical retry. See the ADRs for representative/weight/basis
 lifetimes and the mixed-thread allocation-audit limitation.
 
+Under ADR 0144, low-mode joint products borrow original prepared controls instead
+of repeatedly scanning retained scratch. They are FE-equivalent representatives;
+canonical rank/inference still require retained within products. Each Hessian
+tile reuses one normalized finite row in existing scratch. Current-weight
+geometry, fresh acceptance and numerical fallback are unchanged. Original-input
+finite score/mean checks use the existing narrow numeric binding in both modes.
+
 ADR 0136 extends these joint directions and strict finalization to low-storage
 categorical MAP with multiple effects and finite controls. Two/three categorical
 effects retain their borrowed projector for canonical rank and inverse duties;

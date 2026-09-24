@@ -10,6 +10,95 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Original controls adopted for low PPML joint directions — 2026-09-23
+
+The objective remains **whole public PPML <=0.90 times scientifically comparable
+pinned stock fixest wherever reasonably achievable**, per case. This opening
+supersedes the previous next-step order. The bounded ordinary-control dataflow
+milestone is complete; the broader goal remains active.
+
+Adopt `jointorig2`, based on `7a68c163`, under
+[ADR 0144](docs/adr/0144-original-controls-for-streamed-ppml-directions.md) and the
+[source-bound report](benchmarks/reports/development/ppml-joint-original-controls-local-2026-09-23/README.md).
+All **541 computational inputs** match plugin
+`ebf09233b4f56e01cd18accd7c0d6183f46b329025edbc33b077de7c0f9b91de`.
+The verified/restored archive contains **12,730 logical receipts**, SHA-256
+`14e8c5064e27a0182b10074add7fe9de7aa5c9d191e58a38785ec0ab6f353365`.
+All builds, fits, diagnostics, tests and archives are terminal.
+
+### Adopted mechanism and checks
+
+Low-memory joint directions borrow original numeric/generated controls instead
+of repeatedly reading retained scratch. Their frozen finite coordinates and
+joint FE model remain the same. Current-weight geometry, products, fresh scores,
+reconstruction, canonical rank/inverse and final-Hessian acceptance remain.
+Canonical construction/inference still use retained within products. A Hessian
+tile reuses its normalized finite row in the existing beta bank; narrow numeric
+original-input scores use the existing binding. The unused ordinary scratch
+adapter is removed. No solver, routing guard, tolerance or heap bank is added.
+
+**155 distinct final-source Rust tests**, actual-plugin ABI/panic containment,
+and **nine passing final licensed runs of seven fixtures** cover independent
+weighted WLS/Poisson/Hessian, FW/PW/cluster inference, factor terms, rank and
+changing frames, rollback, separation and four zero-event/zero-growth allocation
+windows. Across all headline blocks, 311 applications, 303 public-state checks,
+36 small independent oracle results and 95 native pairs pass. Stock fitted-mean
+discrepancies remain unranked. Focused OLS and excluded PPML science is exact.
+
+All 28 fresh/weak pairs improve. Final confirmation at seed 202609347 has low
+two-FE N30720/K6/T4 **130→118 vs stock 58 ms**, low three-FE **237→228 vs 234**,
+and low two-slope **150→141 vs 121**. Five fresh medians at seed 202609349:
+
+| Low case | Baseline | Candidate | Stock | Candidate/stock |
+|---|---:|---:|---:|---:|
+| Two FE N49200/K8/T8 | 203 | 194 | 78 | 2.487 |
+| Unbalanced three FE N24580/K3/T1 | 147 | 143 | 110 | 1.300 |
+| Unbalanced three FE, two slopes, N38400/K8/T4 | 238 | 230 | 206 | 1.117 |
+| Two FE N16320/K24/T8 | 239 | 230 | 71 | 3.239 |
+| Two FE N24480/K10/T1 | 204 | 195 | 142 | 1.373 |
+
+The separate weak two-slope N7680/K4/T4 block is 37→34 vs 216 ms. Full distributions
+and losses are in the report. One-FE K32 control 103→105, fast three-FE 182→183,
+and low three-FE OLS 65→66.5 retain small timing losses and exact scientific
+exports. No new fallback events occur. Changed representatives add 2–8 reported
+inner iterations while reducing data movement. Modeled peaks/scratch are
+unchanged; tracked peaks are unchanged in 54/55 final PPML pairs, with one 32-byte
+decrease. No physical-cap or cross-platform qualification is claimed.
+
+### Preserved failures and next work
+
+Current large one-FE stock means miss the existing envelope at five rows.
+Independent analytic group intercepts match native means to 3.2e-14 and localize
+stock error to 7.14e-7; these timings remain unranked. A new factor-term test with
+a 1e6 FE component fails at the 10000-iteration cap on both unchanged baseline and
+candidate; 0/1000 controls pass. This is an unresolved numerical boundary, not a
+repaired one. An unsupported-syntax fixture and two invalid planned generator
+sizes are preserved separately; no fresh fits ran before the generator fixes.
+
+Close this data-access experiment. The low two-FE diagnostic reduces joint work
+45.66→37.76 ms: finite preparation 23.38→18.11, reconstruction 6.99→4.99, but Krylov
+iteration outside reconstruction 1.37→1.40. The remaining cost is preparation
+and checks, not a slow inner recurrence. Next, attribute the fresh wide low
+two-FE case's finite-product setup and canonical construction separately. Its
+projection 112.8-ms and strict-final 65.0-ms fields overlap; do not add them.
+Test parallel formation of independent finite Hessian rows using the new original
+view and already bounded buffers. Require fresh cases before adoption; do not
+chase another small row-loop threshold. Then address the measured canonical
+two-FE cost. A new frozen stock/native inner ledger is needed only if recurrence
+becomes a material target; this milestone did not produce one.
+
+One-FE still needs whole-command work: the diagnostic has about 16 ms outside
+the plugin, 7.96 ms in implicit refresh, 5.89 ms in finite moments and 7.73 ms in
+objective evaluations; concentrated direction preparation is only 4.19 ms.
+Those costs are not established as mandatory scientific overhead. Keep wide
+inference and remaining slope setup on the later evidence-driven worklist.
+
+Seed 202609349 is consumed for validation; 347 was reused for development/control.
+Protected cycle seeds 211/212, frozen 77/16/111 definitions, deferred SCC/physical
+memory checks, static allocation drift, weighted constrained-fit failures and
+nonretaining-CG instability remain unchanged. No push, release, campaign restart,
+new monitor or SCC retry. Keep the active goal unfinished.
+
 ## Low three-FE PPML checkpoints adopted; narrow whole-command work next — 2026-09-23
 
 The objective remains **whole public PPML <=0.90 times scientifically comparable
