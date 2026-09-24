@@ -10,7 +10,113 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## PPML frame-operator design selected; production integration next — 2026-09-24
+## Frame-owned PPML operator rejected; canonical products next — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. [ADR 0166](docs/adr/0166-frame-owned-ppml-operator-closeout.md) closes
+the frame-owned reduced-operator integration without production adoption.
+Computation remains **`2c34503d` / `jointpanels2`**, plugin SHA-256
+`4d4c669d6716583b14be437e2732133d61f733840b610414429d8df5614168b1`.
+The worktree is restored to `86124f72`, including its separately accepted
+test-only checkpoint-accounting repair. No candidate solver, generation,
+memory-admission or experimental test code remains in production.
+
+The [source-bound closeout report](benchmarks/reports/development/ppml-frame-operator-integration-local-2026-09-24/README.md)
+preserves complete baseline and both candidate sources, tests, failures,
+declarations, all distributions and restoration proof. Final candidate
+**`frameoperator2`**, plugin
+`71f2924e0ceb59be4450181620cfcecfbefc03148353ee2b93a7b88ace3be68d`, had all
+**547 computational inputs** verified before restoration. Its evidence archive
+has **9,735 logical receipts**, all verified and restored, SHA-256
+`4dc511e30529fd6ec894db2f6691a7e06e64dcdb4b1894f347c36701b9caef39`.
+All builds, tests, fits, audits and archive/restore processes are terminal.
+
+The implemented owner borrows existing group indexes, builds exactly symmetric
+weighted Schur couplings once per valid frame and applies them through coefficient
+differences. It keeps current-weight certificates, reconstruction and component
+scaling. Checked structural work and optional-memory admission preserve the old
+operator on refusal; response changes reuse geometry, changed dependencies and
+failed calls revoke it. Public MAP and LSMR canonical checkpoints share the owner.
+This is substantially different from the earlier per-call dense experiment,
+but its public gains still do not justify adoption.
+
+Fresh seed **202609378 is consumed/frozen**. Five matched rotations, robust
+inference plus fitted means, pinned unmodified fixest 0.14.2 at `glm.tol=1e-10`
+and `fixef.tol=1e-11`. These medians belong to the captured artifacts and cases:
+
+| Case | Accepted ms | Rejected candidate ms | Stock ms | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Wide low 2FE N20160/K34/T8 | 137 | 136 | 109 | 1.257 |
+| Serial low 2FE N14400/K20/T1 | 108 | 101 | 162 | 0.667 |
+| Unbalanced low 2FE N25920/K16/T4 | 98 | 101 | 72 | 1.361 |
+| Narrow fast 2FE N15600/K6/T1 | 60 | 57 | 67 | 0.896 |
+| Disconnected fast 2FE N24000/K14/T4 | 91 | 91 | 81 | **unranked** |
+| Weak fast 2FE N10560/K6/T1 | 44 | 41 | 1109 | 0.040 |
+| Low 3FE N17760/K10/T4 | 75 | 76 | 214 | 0.350 |
+| Two slope partitions low N19200/K11/T4 | 105 | 106 | 104 | 1.010 |
+| Two slope partitions fast N19200/K9/T4 | 94 | 94 | 99 | 0.949 |
+| Larger low 2FE N48000/K20/T8 | 185 | 183 | 160 | 1.156 |
+| Wider low 2FE N24000/K70/T8 | 357 | 351 | 290 | 1.231 |
+| Excluded one FE N17760/K6/T4 | 32 | 32 | 21 | 1.524 |
+
+Development wide 120→110 and final-candidate narrow 50→44 do not transfer to
+these fresh shapes. Fresh unbalanced loses four pairs and ties one; the larger
+low case has three losing pairs despite its lower marginal median. Serial and
+70-control cases improve every pair; the latter's 1.7% gain remains small
+relative to its stock gap. All **100 native pairs have identical outer and
+reported inner iteration counts**. No extra IRLS step explains these losses.
+Fresh wide adds 57,920 modeled/57,912 tracked bytes; larger low adds
+323,328/323,320. Small memory cost does not make the weak large-case gains sufficient.
+
+All **300 public applications and independent public-state checks**, **100
+native comparisons**, **75 distinct final-source Rust tests** and **six licensed
+Stata fixtures** pass. The fixtures include explicit Poisson/Hessian/sandwich,
+FW/PW inference, saved outputs and warmed allocation audits. New tests cover
+generation invalidation, budget refusal, exact weighted contrasts, changing
+widths/threads and disconnected mass ratios up to 160 orders of magnitude.
+No OLS headline benchmark was run after rejection; accepted OLS source is restored.
+Initial boundary-test and zero-match-selector failures are preserved with their
+corrected passing evidence. A stop request found the long debug fixture already
+finished; no test was terminated.
+
+**New unresolved comparison:** all five fresh disconnected stock pairs exceed
+the coefficient envelope at one coordinate (maximum absolute error 2.324539e-10,
+tolerance ratio 1.088198). Baseline and candidate exports agree exactly, and the
+new operator is excluded there. Sample, covariance, means, objective and public
+state pass. Do not attribute error to either package or rank that comparison
+without adjudication. The other **95 direct stock comparisons pass**. Tolerances
+and scientific acceptance are unchanged.
+
+### Next bounded implementation milestone
+
+Move to **canonical weighted-product ownership**, not another matrix-application
+variant or threshold adjustment. Wide/unbalanced accepted fresh cases still need
+**38.9/33.2 ms** (28.4%/33.9%) to reach 0.90 stock. The prior isolated profile's
+entire Schur operator cost was too small to supply that reduction alone.
+
+1. Trace existing joint FE/finite products, their sample/weight/basis generations
+   and their numerical authority. Identify which canonical Gram, rank, bread and
+   reconstruction consumers force construction, scratch writes and repeat scans
+   of residualized control panels. Use the existing lifecycle evidence; instrument
+   only the missing boundaries needed to choose the replacement.
+2. Implement one coherent candidate using raw weighted moments plus certified
+   FE coefficient products. Compare it with current panels on identical frozen
+   frames. Preserve canonical rank/status/QR/span authority, with explicit
+   cancellation bounds and materialized-row fallback where needed. A small
+   reusable factorization may support that larger organization, rather than add
+   another standalone solver layer. Any changed checking schedule needs a new
+   invariant argument, ADR and adversarial independent tests.
+3. Run independent WLS/Poisson/Hessian, collinearity, weight/generation, refusal
+   and output checks, then an early complete-command screen. Confirm a promising
+   replacement on fresh predeclared cases and OLS/slope/one-FE controls, with
+   full losses and memory accounting. Do not call kernel-only savings completion.
+
+Preserve 77/16/111 definitions, all consumed seeds, historical unresolved science,
+allocation-inventory drift, constrained-fit/nonretaining-CG failures and deferred
+platform gates. No SCC retry, stopped campaign restart, push, release or qualification.
+
+## Historical: PPML frame-operator design selected — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
 fixest wherever reasonably achievable with at least two FE partitions**. It is
