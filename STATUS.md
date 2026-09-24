@@ -10,7 +10,127 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Canonical PPML phase ownership adopted — 2026-09-24
+## Componentwise canonical PPML geometry adopted — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This milestone adopts the component work named by the prior handover;
+[ADR 0170](docs/adr/0170-componentwise-canonical-schur-factors.md) and the
+[source-bound report](benchmarks/reports/development/ppml-canonical-components-local-2026-09-24/README.md)
+are authoritative. The old ownership milestone below is historical.
+
+Accepted artifact **`canonicalcomponents2`**, plugin SHA-256
+`55639c6687a26b2ad8f2edd6cc248d26a6baa764c38a13b9a936d41e996896c3`, is captured
+from `a82572668d51504d7c059d3de43942a644b56bb1` plus only
+`ols/canonical_products.rs`. All **202 captured native/build-interface inputs
+match** final source. Of all 548 captured inputs, only the nonnative Python
+isolation test differs; the corrected monitor and its tests are archived
+separately. Earlier timings remain attached to their own artifacts.
+The archive contains **19,950 logical receipts / 4,331 payloads**, all verified
+and restored, SHA-256
+`9159758055ab4b85ffa6ab4fd9dba83b759fc2974997e2b49de04c7e78a17d56`.
+All agent-owned builds, tests, fits, audits and archive/restore processes are terminal.
+
+### Adopted organization and fresh results
+
+Low two-categorical-FE canonical products now discover immutable connected
+components before weighted numeric allocation, then pack matrices, factors and
+triangular solves within each component. Work admission uses component cubes;
+complete phase admission preserves live topology charges before changing its
+allowance. There is no outer budget increase or persistent topology/weight
+cache. The current-weight pair arithmetic, maximum-mass grounding, global pivot
+guard and independent original-input certificates remain. All RHSs share the
+call's factors. Fast, joint, slope, three-plus-FE and OLS engines are unchanged.
+The factor-only intermediate was replaced because global matrix memory still
+refused useful cases and weighted setup preceded some refusals.
+
+Seeds **202609381 and 202609382 are consumed/frozen**. Final selected evidence is
+five rotations of baseline `canonicalownership2`, candidate and pinned stock
+fixest 0.14.2, with robust inference and fitted means, stock `glm.tol=1e-10`,
+`fixef.tol=1e-11`. Every fresh native case below uses low mode. Medians, ms:
+
+| Fresh case | Baseline | Accepted | Stock | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Disconnected N26400/K18/T4 | 118 | 98 | 101 | 0.970 |
+| Disconnected N45600/K26/T8 | 233 | 181 | 202 | 0.896 |
+| Disconnected N20160/K11/T1 | 107 | 91 | 144 | 0.632 |
+| Disconnected N15600/K9/T4 | 63 | 52 | 48 | 1.083 |
+| Work-refused disconnected N48000/K10/T8 | 144 | 148 | 87 | 1.701 |
+| Work-refused connected N21600/K2/T4 | 53 | 52 | 31 | 1.677 |
+| Connected wide N31200/K76/T8 | 319 | 316 | 459 | 0.688 |
+| Unbalanced N23520/K16/T4 | 82 | 84 | 71 | 1.183 |
+| Two slope partitions N21600/K10/T4 | 104 | 106 | 110 | 0.964 |
+| Three FE N23520/K10/T4 | 113 | 115 | 278 | 0.414 |
+| Weak graph N12000/K8/T1 | 50 | 51 | 1794 | 0.028 |
+| Memory-refused N21600/K100/T8 | 514 | 520 | 436 | 1.193 |
+
+All 20 native pairs improve on the four newly admitted disconnected cases,
+whose median gains are 15–22%. The second case's paired stock median is 0.901
+(range 0.877–0.914), so its marginal 10% advantage is borderline. Five of the
+12 selected medians meet the goal, including existing fast paths; five still
+lose to stock. This is not a coverage-wide rate. Small baseline losses remain,
+including 144→148 ms on the large work-refused case and 82→84 ms unbalanced.
+The extra topology pass has a real cost on subsequent refusals; no additional
+solver layer or seed-specific guard was retained to hide it.
+
+Tracked peaks fall by 1,091,664 / 13,520 / 1,281,288 / 893,640 bytes on the first
+four cases; other fresh peaks and all scratch sizes are unchanged. Maximum
+tracked/model ratio is 0.88656. Projection and strict canonical work account for
+the measured reductions; every targeted fit still takes four outer iterations.
+Full timing, phase, paired and memory distributions are in the report.
+
+### Scientific checks and timing qualification
+
+Thirty-six distinct focused core tests, one plugin one-byte budget/publication
+test, seven process-monitor tests and five licensed fixtures pass. New independent
+weighted contrasts cover 24 unequal/interleaved components, both FE role orders,
+changing weights, zero-free-coordinate components and T1/T4. The public explicit-
+design Poisson/Hessian/sandwich oracle passes for candidate, baseline and stock.
+All **180 selected PPML states, 60 native pairs and 60 direct candidate/stock
+pairs** pass. All 24 OLS calls and 12 science/output pairs pass, with medians
+17→17 / 30→29 / 104→104 / 62→62 ms for one-FE/all-output, two-FE, low slopes,
+and low three-FE controls. No scientific tolerance, sample or policy changed.
+The original disconnected refusal-test failure and K1 generator failure are
+preserved and explained. This is local development evidence, not qualification.
+
+The original monitor missed an active unrelated `StataMP` GUI process.
+**Original packed candidate timing blocks are unranked**, including favorable
+results; source receipts and old empty overlap fields remain untouched. The
+corrected monitor samples GUI CPU activity and fails closed on inaccessible
+activity/ancestry. Its recheck stopped at 165/180 calls after detecting renewed
+GUI activity. Final selection is cleanly completed recheck cases 0–9 plus an
+identical-full-data two-case supplement. All 180 selected calls have no detected
+overlap or monitor errors. Ambient OS load remains a reported limitation.
+The unrelated GUI was not killed or modified. No operation remains waiting for
+an idle-window reply. The changed solver's formatting check and diff check pass;
+whole-workspace formatting reports 65 pre-existing, byte-unchanged files and
+remains failed rather than triggering unrelated cleanup.
+
+### Next bounded implementation milestone
+
+1. **Narrow low-mode canonical work first.** The work cap refuses N48000/K10 at
+   148 versus stock 87 ms and connected N21600/K2 at 52 versus 31. Measure direct
+   assembly/factors and iterative passes on identical frozen current-weight
+   frames; derive routing from comparable work or implement a cheaper solve.
+   Do not merely loosen the Gram-based threshold. Reuse immutable same-sample
+   topology if useful, but target the substantive solve gap, not another cycle
+   on its 2–4 ms refusal overhead.
+2. **Wide certificate workspace.** K100 requires 4,540,096 bytes versus
+   3,456,000 available. Left-group coefficient storage and worker-private
+   Gram/FE reductions dominate. Test a bounded smaller reduction team or
+   streamed coefficient organization within the existing budget, preserving
+   all independent certificates. Projection/strict work is 114/153 ms here.
+3. **Unbalanced canonical/joint/preparation costs.** The 84 versus 71 ms case
+   includes 17.7 ms projection, 17.4 ms strict final and 8.2 ms preparation;
+   inference is only 1.2 ms. Protect wide, slope, three-FE and OLS improvements
+   with focused controls and fresh predeclared validation at each milestone.
+
+Preserve frozen 77/16/111 definitions, consumed seeds, prior seed-378 comparator
+discrepancy, static allocation-inventory drift, weighted constrained-fit and
+nonretaining-CG failures, platform deferrals and the sibling-paper boundary.
+No SCC retry, stopped campaign restart, push, release or qualification is authorized.
+
+## Historical: canonical PPML phase ownership adopted — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
 fixest wherever reasonably achievable with at least two FE partitions**. It is

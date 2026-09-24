@@ -168,8 +168,10 @@ Other cases retain explicit norm scans; no later generation borrows these norms.
 See [ADR 0138](adr/0138-retained-scratch-standardization-and-norms.md).
 
 Under [ADR 0168](adr/0168-fused-canonical-ppml-products.md), admitted low
-two-categorical-FE PPML canonical calls share one current-weight grounded Schur
-factor across response and controls. A fused original-input residual pass forms
+two-categorical-FE PPML canonical calls share current-weight grounded Schur
+factors across response and controls. [ADR 0170](adr/0170-componentwise-canonical-schur-factors.md)
+packs matrices and factors separately for each immutable connected component,
+with complete work/memory admission before weighted geometry allocation. A fused original-input residual pass forms
 direct fully absorbed Gram/RHS/norms and independent FE moments. Same-call
 products go directly to canonical rank solving; retained rows are written once
 for unchanged QR/span, residual, inverse and inference consumers. Complete

@@ -471,7 +471,7 @@ to the strict overlap charge, not a second permanent observation vector. The
 session row buffer is a separate K-double bank. Optional-cell validation during
 plugin publication uses predicates without allocating index vectors.
 
-For admitted low two-categorical-FE canonical products (ADRs 0168–0169), a
+For admitted low two-categorical-FE canonical products (ADRs 0168–0170), a
 checked current-call bank replaces the planned temporary projection panel and
 reusable projection block. The maximum setup, solve and certificate payload,
 plus live descriptors, must fit `16*N*pool` bytes less any already-live
@@ -483,9 +483,13 @@ weight checks pass. Existing retained metadata, scratch I/O, finite workspace
 and rollback charges remain. Optional budget refusal precedes scratch mutation.
 Complete scratch rewrites use the existing I/O buffer, perform no reads, and
 poison the private file on callback, numeric or I/O failure. See
-[ADR 0169](adr/0169-canonical-products-phase-ownership.md) for the phase bounds and
-[ADR 0168](adr/0168-fused-canonical-ppml-products.md) for the unchanged work and
-scientific contracts.
+[ADR 0169](adr/0169-canonical-products-phase-ownership.md) for the ownership
+boundaries. [ADR 0170](adr/0170-componentwise-canonical-schur-factors.md) packs
+matrices and factors by immutable component: a bounded topology pass establishes
+the complete current-call geometry plan before any weighted numeric bank is
+allocated. Its work bound uses component cubes, and complete phase admission
+preserves already charged topology capacity. Independent scientific acceptance
+remains as in [ADR 0168](adr/0168-fused-canonical-ppml-products.md).
 
 ## PPML separation memory
 

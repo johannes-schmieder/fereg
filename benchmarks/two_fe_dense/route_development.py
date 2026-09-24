@@ -18,6 +18,8 @@ import broad
 
 HERE = Path(__file__).resolve().parent
 FAMILIES = ['auto', 'map', 'cg', 'lsmr', 'cmg', 'it']
+GUI_STATA_NAMES = frozenset(('Stata', 'StataMP', 'StataSE', 'StataBE', 'StataIC'))
+
 GRAPHS = ['two_fe_dense', 'strong_d2', 'strong_d3', 'strong_d6', 'two_fe_sparse',
           'unbalanced', 'disconnected_blocks', 'weak_d3', 'bottleneck_ring', 'cycle']
 
@@ -28,7 +30,8 @@ def foreign_processes():
     records = []
     for process in psutil.process_iter(['pid', 'name', 'create_time']):
         info = process.info
-        if info['pid'] not in ours and info['name'] in ('stata-mp', 'R', 'Rscript', 'rustc', 'cargo'):
+        if info['pid'] not in ours and (info['name'] in GUI_STATA_NAMES
+                or info['name'] in ('stata-mp', 'stata-se', 'stata', 'R', 'Rscript', 'rustc', 'cargo')):
             # A worker may start after the descendants snapshot. Resolve its
             # live ancestry before treating our own new child as interference.
             try:
@@ -39,6 +42,25 @@ def foreign_processes():
                             ancestry_status='resolved')
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 info = dict(info, ancestry_status='unavailable')
+            if info['name'] in GUI_STATA_NAMES and info['ancestry_status'] == 'resolved':
+                # A Stata GUI can remain open while idle. Sample cumulative CPU
+                # rather than overlooking its differently named worker process.
+                # GUI event handling consumes a little CPU even when idle.
+                # At least 10% of one core marks possible fitting activity;
+                # unavailable activity fails closed. Poll throughout the fit.
+                try:
+                    started = time.monotonic()
+                    before = process.cpu_times()
+                    time.sleep(0.05)
+                    after = process.cpu_times()
+                    cpu_seconds = (after.user + after.system) - (before.user + before.system)
+                    elapsed = time.monotonic() - started
+                    if 0 <= cpu_seconds < 0.1 * elapsed:
+                        continue
+                    info = dict(info, activity_status='cpu_observed',
+                                sampled_cpu_seconds=cpu_seconds, sample_seconds=elapsed)
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    info = dict(info, activity_status='unavailable')
             records.append(info)
     return records
 

@@ -63,6 +63,15 @@ benchmark artifacts, explicitly force compilation of changed crates and verify
 the rebuilt artifact's hash against the measured binary; matching source-file
 hashes alone do not establish what the compiler rebuilt.
 
+Local headline timing must capture the process monitor revision separately from
+the estimator artifact. Monitor both Stata command-line and GUI process names;
+an unrelated open GUI may be idle, so sample its CPU activity before and during
+each fit. Unavailable ancestry/activity fails closed. Preserve detected overlaps
+and interrupted or missing calls. If a monitor defect is discovered later, add
+an explicit timing adjudication without rewriting the original receipt, then
+remeasure affected frozen cases under the corrected monitor. A clean sampled
+monitor does not establish absence of all ambient operating-system load.
+
 For focused PPML development, use the active public command and the smallest
 fixture that exercises the changed boundary:
 

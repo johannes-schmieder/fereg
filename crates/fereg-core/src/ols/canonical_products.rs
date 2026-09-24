@@ -56,6 +56,15 @@ impl Budget {
         Ok(())
     }
 
+    // A cheap topology phase is admitted first. Its complete packed geometry
+    // then fixes the final allowance before any weighted numeric bank exists.
+    fn set_limit(&mut self, limit: u128) -> Result<()> {
+        let live = self.limit - self.remaining;
+        self.remaining = limit.checked_sub(live).ok_or_else(allocation)?;
+        self.limit = limit;
+        Ok(())
+    }
+
     fn reserve<T: Clone>(&mut self, n: usize, value: T) -> Result<Vec<T>> {
         let mut result = Vec::new();
         let bytes = (n as u128)
@@ -78,6 +87,15 @@ impl Budget {
     }
 }
 
+#[derive(Clone, Copy, Default)]
+struct ComponentFactor {
+    start: usize,
+    len: usize,
+    offset: usize,
+    matrix_offset: usize,
+    level_start: usize,
+}
+
 #[derive(Clone, Copy)]
 struct Plan {
     n: usize,
@@ -87,6 +105,7 @@ struct Plan {
     workers: usize,
     stride: usize,
     bytes: u128,
+    factor_work_budget: u128,
 }
 impl Plan {
     fn new(
@@ -104,14 +123,13 @@ impl Plan {
         let workers = threads.min(p);
         let square = width.checked_mul(width)?;
         let cross = q.checked_mul(width)?;
-        let factor = q.checked_mul(q)?;
         let stride = square
             .checked_add(cross)?
             .checked_add(width.checked_mul(5)?)?;
-        // Preparation must fit within one complete finite Gram's arithmetic.
-        // Distinct neighbours cannot exceed either membership or q; this
-        // upper bound needs no allocated topology or benchmark-specific rule.
-        let mut work = (q as u128).checked_mul(q as u128)?.checked_mul(q as u128)? / 3;
+        // Pair assembly must fit before any weighted graph allocation. The
+        // remaining work allowance is checked against immutable component
+        // sizes before the weighted geometry is admitted.
+        let mut work = 0_u128;
         for a in 0..p {
             let degree = design.effects()[left].level_index().members(a).len().min(q) as u128;
             work = work.checked_add(degree.checked_mul(degree.saturating_sub(1))? / 2)?;
@@ -123,6 +141,32 @@ impl Plan {
         if work > gram_work {
             return None;
         }
+        let mut plan = Self {
+            n,
+            p,
+            q,
+            width,
+            workers,
+            stride,
+            bytes: 0,
+            factor_work_budget: gram_work - work,
+        };
+        plan.bytes = plan.storage_bytes(0, 0)?;
+        Some(plan)
+    }
+
+    fn storage_bytes(&self, matrix: usize, factor: usize) -> Option<u128> {
+        let Self {
+            n,
+            p,
+            q,
+            width,
+            workers,
+            stride,
+            ..
+        } = *self;
+        let square = width.checked_mul(width)?;
+        let cross = q.checked_mul(width)?;
         let coefficients = p.checked_mul(width)?;
         let reductions = workers.checked_mul(stride)?;
         let rhs_reductions = workers.checked_mul(cross)?;
@@ -133,12 +177,10 @@ impl Plan {
                 .checked_mul(size_of::<f64>() as u128)
         };
         let indices = |n: usize| (n as u128).checked_mul(size_of::<usize>() as u128);
-        // These are actual ownership boundaries, enforced by Budget::release:
-        // setup matrices/graph scratch end before column solves; the factor
-        // and cross-moments end before right coefficients; solve coordinates
-        // end before certification. Normalized weights become the response.
+        // Five Q-index arrays and Q five-index descriptors belong to setup.
+        // Only free coordinates and descriptors survive through column solves.
         let setup =
-            words(&[n, p, q, q, q, factor, factor])?.checked_add(indices(q.checked_mul(4)?)?)?;
+            words(&[n, p, q, q, q, matrix, factor])?.checked_add(indices(q.checked_mul(10)?)?)?;
         let solve = words(&[
             n,
             p,
@@ -151,7 +193,7 @@ impl Plan {
             width,
             rhs_reductions,
         ])?
-        .checked_add(indices(q)?)?;
+        .checked_add(indices(q.checked_mul(6)?)?)?;
         let certify = words(&[
             n,
             p,
@@ -164,22 +206,11 @@ impl Plan {
             square,
             reductions,
         ])?;
-        // Borrowed design, source bindings, Vec headers and scalar scratch
-        // remain live across all three phases; no credit is taken for them.
-        let bytes = setup
+        setup
             .max(solve)
             .max(certify)
             .checked_add((width as u128).checked_mul(32)?)?
-            .checked_add(2048)?;
-        Some(Self {
-            n,
-            p,
-            q,
-            width,
-            workers,
-            stride,
-            bytes,
-        })
+            .checked_add(2048)
     }
 }
 
@@ -299,7 +330,7 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         return Ok(None);
     }
     match build(
-        prepared, generated, response, weights, divisor, config, design, left, plan,
+        prepared, generated, response, weights, divisor, config, design, left, plan, allowance,
     ) {
         Ok(result) => Ok(Some(result)),
         Err(error) if error.code == ErrorCode::NonConvergence => Ok(None),
@@ -318,6 +349,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     design: BorrowedInterceptFeDesign<'a>,
     left_effect: usize,
     plan: Plan,
+    allowance: u128,
 ) -> Result<Products<'a, P>> {
     let started = Instant::now();
     let Plan {
@@ -327,11 +359,12 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         width,
         workers,
         stride,
-        bytes,
+        bytes: initial_bytes,
+        factor_work_budget,
     } = plan;
     let a = &design.effects()[left_effect];
     let b = &design.effects()[1 - left_effect];
-    let mut budget = Budget::new(bytes - 2048 - (width as u128) * 32);
+    let mut budget = Budget::new(initial_bytes - 2048 - (width as u128) * 32);
     let mut columns = Vec::new();
     columns.try_reserve_exact(width).map_err(|_| allocation())?;
     if columns.capacity() as u128 * size_of::<Column<'_, P>>() as u128 > width as u128 * 32 {
@@ -358,6 +391,78 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             columns.push(Column::Generated(prepared, j));
         }
     }
+    let mut parent = budget.reserve(q, 0_usize)?;
+    for (h, value) in parent.iter_mut().enumerate() {
+        *value = h;
+    }
+    for g in 0..p {
+        let (&first, rest) = a
+            .level_index()
+            .members(g)
+            .split_first()
+            .ok_or_else(declined)?;
+        for &i in rest {
+            let first_root = root(&mut parent, b.codes()[first] as usize);
+            let next_root = root(&mut parent, b.codes()[i] as usize);
+            parent[next_root.max(first_root)] = next_root.min(first_root);
+        }
+    }
+    let mut components = budget.reserve(q, ComponentFactor::default())?;
+    for h in 0..q {
+        let r = root(&mut parent, h);
+        parent[h] = r;
+        components[r].len += 1;
+    }
+    let (mut d, mut factor_cells, mut matrix_cells, mut level_start) =
+        (0_usize, 0_usize, 0_usize, 0_usize);
+    let mut factor_work = 0_u128;
+    for (r, block) in components.iter_mut().enumerate() {
+        if parent[r] != r {
+            continue;
+        }
+        let levels = block.len;
+        block.len -= 1;
+        block.start = d;
+        block.offset = factor_cells;
+        block.matrix_offset = matrix_cells;
+        block.level_start = level_start;
+        d = d.checked_add(block.len).ok_or_else(declined)?;
+        factor_cells = factor_cells
+            .checked_add(block.len.checked_mul(block.len).ok_or_else(declined)?)
+            .ok_or_else(declined)?;
+        matrix_cells = matrix_cells
+            .checked_add(levels.checked_mul(levels).ok_or_else(declined)?)
+            .ok_or_else(declined)?;
+        level_start = level_start.checked_add(levels).ok_or_else(declined)?;
+        let levels = levels as u128;
+        factor_work = factor_work
+            .checked_add(
+                levels
+                    .checked_mul(levels)
+                    .and_then(|x| x.checked_mul(levels))
+                    .ok_or_else(declined)?
+                    / 3,
+            )
+            .ok_or_else(declined)?;
+    }
+    if factor_work > factor_work_budget {
+        return Err(declined());
+    }
+    let bytes = plan
+        .storage_bytes(matrix_cells, factor_cells)
+        .ok_or_else(declined)?;
+    if bytes > allowance {
+        return Err(declined());
+    }
+    budget.set_limit(bytes - 2048 - width as u128 * 32)?;
+    let mut local = budget.reserve(q, 0_usize)?;
+    let mut anchors = budget.reserve(q, 0_usize)?;
+    for h in 0..q {
+        let r = parent[h];
+        local[h] = anchors[r];
+        anchors[r] += 1;
+    }
+    anchors.fill(usize::MAX);
     let mut w = budget.reserve(n, 0.)?;
     let mut mass_a = budget.reserve(p, 0.)?;
     let mut mass_b = budget.reserve(q, 0.)?;
@@ -384,11 +489,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     {
         return Err(declined());
     }
-    let mut matrix = budget.reserve(q * q, 0.)?;
-    let mut parent = budget.reserve(q, 0_usize)?;
-    for (i, x) in parent.iter_mut().enumerate() {
-        *x = i;
-    }
+    let mut matrix = budget.reserve(matrix_cells, 0.)?;
     let mut totals = budget.reserve(q, 0.)?;
     let mut touched = budget.reserve(q, 0_usize)?;
     for g in 0..p {
@@ -406,76 +507,93 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             return Err(declined());
         }
         for (position, &h) in touched[..count].iter().enumerate() {
-            let rh = root(&mut parent, h);
-            let rf = root(&mut parent, touched[0]);
-            parent[rh] = rf;
+            let block = components[parent[h]];
+            let size = block.len + 1;
+            let row = local[h];
             for &j in &touched[position + 1..count] {
                 let value = (totals[h].max(totals[j]) / mass_a[g]) * totals[h].min(totals[j]);
                 if !value.is_finite() || value <= 0. {
                     return Err(declined());
                 }
-                matrix[h * q + j] -= value;
-                matrix[j * q + h] -= value;
-                matrix[h * q + h] += value;
-                matrix[j * q + j] += value;
+                let column = local[j];
+                matrix[block.matrix_offset + row * size + column] -= value;
+                matrix[block.matrix_offset + column * size + row] -= value;
+                matrix[block.matrix_offset + row * size + row] += value;
+                matrix[block.matrix_offset + column * size + column] += value;
             }
         }
         for &h in &touched[..count] {
             totals[h] = 0.;
         }
     }
-    let mut anchors = budget.reserve(q, usize::MAX)?;
     for h in 0..q {
-        let r = root(&mut parent, h);
+        let r = parent[h];
         let old = anchors[r];
         if old == usize::MAX || mass_b[h] > mass_b[old] {
             anchors[r] = h;
         }
     }
     let mut free = budget.reserve(q, usize::MAX)?;
-    let mut d = 0;
     let mut roots = budget.reserve(q, 0.)?;
+    // Assembly no longer needs its neighbour list. Reuse that allocation for
+    // component membership so matrix packing never scans cross-component cells.
     for h in 0..q {
-        roots[h] = matrix[h * q + h].sqrt();
-        if anchors[root(&mut parent, h)] != h {
+        let r = parent[h];
+        let block = components[r];
+        let size = block.len + 1;
+        touched[block.level_start + local[h]] = h;
+        roots[h] = matrix[block.matrix_offset + local[h] * size + local[h]].sqrt();
+        if anchors[r] != h {
             if !roots[h].is_finite() || roots[h] <= 0. {
                 return Err(declined());
             }
-            free[h] = d;
-            d += 1;
+            free[h] = block.start + local[h] - usize::from(local[h] > local[anchors[r]]);
         }
     }
-    let mut factor = budget.reserve(d * d, 0.)?;
+    let mut factor = budget.reserve(factor_cells, 0.)?;
     for h in 0..q {
         if free[h] != usize::MAX {
-            for j in 0..q {
+            let block = components[parent[h]];
+            let size = block.len + 1;
+            for &j in &touched[block.level_start..block.level_start + size] {
                 if free[j] != usize::MAX {
-                    factor[free[h] * d + free[j]] = (matrix[h * q + j] / roots[h]) / roots[j];
+                    factor[block.offset + (free[h] - block.start) * block.len + free[j]
+                        - block.start] = (matrix[block.matrix_offset + local[h] * size + local[j]]
+                        / roots[h])
+                        / roots[j];
                 }
             }
         }
     }
+    components.retain(|block| block.len != 0);
+    // Keep the existing global pivot guard; splitting independent blocks does
+    // not weaken numerical admission or confer rank/certificate authority.
     let guard = 128. * f64::EPSILON * d.max(1) as f64;
-    for j in 0..d {
-        let mut diagonal = factor[j * d + j];
-        for k in 0..j {
-            diagonal -= factor[j * d + k].powi(2);
-        }
-        if !diagonal.is_finite() || diagonal <= guard {
-            return Err(declined());
-        }
-        factor[j * d + j] = diagonal.sqrt();
-        for i in j + 1..d {
-            let mut value = factor[i * d + j];
+    for block in &components {
+        let size = block.len;
+        let factor = &mut factor[block.offset..block.offset + size * size];
+        for j in 0..size {
+            let mut diagonal = factor[j * size + j];
             for k in 0..j {
-                value -= factor[i * d + k] * factor[j * d + k];
+                diagonal -= factor[j * size + k].powi(2);
             }
-            factor[i * d + j] = value / factor[j * d + j];
+            if !diagonal.is_finite() || diagonal <= guard {
+                return Err(declined());
+            }
+            factor[j * size + j] = diagonal.sqrt();
+            for i in j + 1..size {
+                let mut value = factor[i * size + j];
+                for k in 0..j {
+                    value -= factor[i * size + k] * factor[j * size + k];
+                }
+                factor[i * size + j] = value / factor[j * size + j];
+            }
         }
     }
     budget.release(matrix)?;
     budget.release(totals)?;
     budget.release(parent)?;
+    budget.release(local)?;
     budget.release(touched)?;
     budget.release(anchors)?;
     let setup_seconds = started.elapsed().as_secs_f64();
@@ -572,17 +690,22 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                         values[free[h]] = cross[h * width + j] / roots[h];
                     }
                 }
-                for i in 0..d {
-                    for k in 0..i {
-                        values[i] -= factor[i * d + k] * values[k];
+                for block in &components {
+                    let size = block.len;
+                    let values = &mut values[block.start..block.start + size];
+                    let factor = &factor[block.offset..block.offset + size * size];
+                    for i in 0..size {
+                        for k in 0..i {
+                            values[i] -= factor[i * size + k] * values[k];
+                        }
+                        values[i] /= factor[i * size + i];
                     }
-                    values[i] /= factor[i * d + i];
-                }
-                for i in (0..d).rev() {
-                    for k in i + 1..d {
-                        values[i] -= factor[k * d + i] * values[k];
+                    for i in (0..size).rev() {
+                        for k in i + 1..size {
+                            values[i] -= factor[k * size + i] * values[k];
+                        }
+                        values[i] /= factor[i * size + i];
                     }
-                    values[i] /= factor[i * d + i];
                 }
                 if values.iter().any(|x| !x.is_finite()) {
                     return Err(declined());
@@ -591,6 +714,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             })?;
     }
     budget.release(factor)?;
+    budget.release(components)?;
     budget.release(cross)?;
     let mut right = budget.reserve(q * width, 0.)?;
     right.par_chunks_mut(q).enumerate().for_each(|(j, values)| {
@@ -890,6 +1014,11 @@ mod tests {
         let first = budget.reserve(6, 0_f64).unwrap();
         let second = budget.reserve(2, 0_u64).unwrap();
         assert_eq!(budget.remaining, 0);
+        assert!(budget.set_limit(63).is_err());
+        assert_eq!(budget.limit, 64);
+        budget.set_limit(80).unwrap();
+        assert_eq!(budget.remaining, 16);
+        budget.set_limit(64).unwrap();
         assert!(budget.reserve(1, 0_u8).is_err());
         budget.release(first).unwrap();
         let third = budget.reserve(12, 0_u32).unwrap();
@@ -998,7 +1127,7 @@ mod tests {
                     BorrowedMapWeights::Provided(&weights),
                     divisor,
                     config.absorb.map,
-                    plan.bytes - 1
+                    products.report.solver_workspace_peak.bytes().unwrap() as u128 - 1
                 )
                 .unwrap()
                 .is_none());
@@ -1224,8 +1353,7 @@ mod tests {
                             }
                         }
                         assert!(result.norms[3] / result.scales[3] < 2e-14);
-                        let design = p.fit_borrowed_intercept_map_design().unwrap().unwrap();
-                        let bytes = Plan::new(&design, 4, 0, threads).unwrap().bytes;
+                        let bytes = result.report.solver_workspace_peak.bytes().unwrap() as u128;
                         assert!(try_build(
                             &p,
                             &[0, 1, 2],
@@ -1248,6 +1376,138 @@ mod tests {
                         )
                         .unwrap()
                         .is_some());
+                    }
+                }
+            });
+        }
+    }
+
+    #[test]
+    fn canonical_component_factors_admit_disconnected_weighted_contrasts() {
+        for threads in [1, 4] {
+            let team = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            team.install(|| {
+                for transpose in [false, true] {
+                    for shift in [0., 0.7] {
+                        let (mut g, mut h, mut weights) = (Vec::new(), Vec::new(), Vec::new());
+                        let mut values = vec![Vec::new(); 3];
+                        let mut truth = vec![Vec::new(); 3];
+                        for component in 0..24 {
+                            // Unequal component dimensions include one retained level
+                            // (no factor) and noncontiguous labels across components.
+                            let na = 4 + component % 3;
+                            let nb = 1 + component % 4;
+                            let wa: Vec<_> = (0..na).map(|a| 1. + a as f64 + shift).collect();
+                            let wb: Vec<_> = (0..nb).map(|b| 0.5 + b as f64 + shift).collect();
+                            let ma = wa
+                                .iter()
+                                .enumerate()
+                                .map(|(a, w)| a as f64 * w)
+                                .sum::<f64>()
+                                / wa.iter().sum::<f64>();
+                            let mb = wb
+                                .iter()
+                                .enumerate()
+                                .map(|(b, w)| b as f64 * w)
+                                .sum::<f64>()
+                                / wb.iter().sum::<f64>();
+                            for a in 0..na {
+                                for b in 0..nb {
+                                    for t in 0..4 {
+                                        g.push((a * 24 + component) as f64);
+                                        h.push((b * 24 + component) as f64);
+                                        weights.push(
+                                            wa[a]
+                                                * wb[b]
+                                                * if component % 2 == 0 { 0.03 } else { 30. },
+                                        );
+                                        let ab = (a as f64 - ma) * (b as f64 - mb);
+                                        for (j, r) in
+                                            [ab, t as f64 - 1.5, ab + 0.3 * (t as f64 - 1.5)]
+                                                .into_iter()
+                                                .enumerate()
+                                        {
+                                            truth[j].push(r);
+                                            values[j].push(
+                                                r + 0.2 * a as f64 - 0.1 * b as f64
+                                                    + component as f64,
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if transpose {
+                            std::mem::swap(&mut g, &mut h);
+                        }
+                        let prepared = prepared(&values[0], &values[1..], &g, &h);
+                        let design = prepared
+                            .fit_borrowed_intercept_map_design()
+                            .unwrap()
+                            .unwrap();
+                        let left = usize::from(
+                            design.effects()[1].n_levels() > design.effects()[0].n_levels(),
+                        );
+                        let plan = Plan::new(&design, 3, left, threads).unwrap();
+                        assert!(
+                            (plan.q as u128).pow(3) / 3 > plan.factor_work_budget,
+                            "the global factor bound must reject this fixture"
+                        );
+                        let allowance = (g.len() * 2 * 16) as u128;
+                        assert!(
+                            plan.storage_bytes(plan.q * plan.q, plan.q * plan.q)
+                                .unwrap()
+                                > allowance
+                        );
+                        let divisor = weights.iter().copied().fold(0_f64, f64::max);
+                        let result = try_build(
+                            &prepared,
+                            &[0, 1],
+                            &values[0],
+                            BorrowedMapWeights::Provided(&weights),
+                            divisor,
+                            MapConfig {
+                                tolerance: 1e-12,
+                                ..MapConfig::default()
+                            },
+                            allowance,
+                        )
+                        .unwrap()
+                        .expect("component factors admitted");
+                        assert!(result.report.certified());
+                        for j in 0..3 {
+                            for i in 0..g.len() {
+                                assert!(
+                                    (result.residual(i, j).unwrap() - truth[j][i]).abs() < 1e-11
+                                );
+                            }
+                        }
+                        for j in 0..3 {
+                            for k in 0..3 {
+                                let expected = (0..g.len())
+                                    .map(|i| {
+                                        weights[i] / divisor * truth[j][i] * truth[k][i]
+                                            / result.scales[j]
+                                            / result.scales[k]
+                                    })
+                                    .sum::<f64>();
+                                assert!((result.moments.gram[j * 3 + k] - expected).abs() < 1e-12);
+                            }
+                        }
+                        assert!(try_build(
+                            &prepared,
+                            &[0, 1],
+                            &values[0],
+                            BorrowedMapWeights::Provided(&weights),
+                            divisor,
+                            MapConfig::default(),
+                            result.report.solver_workspace_peak.bytes().unwrap() as u128 - 1
+                        )
+                        .unwrap()
+                        .is_none());
                     }
                 }
             });
@@ -1328,7 +1588,23 @@ mod tests {
             .is_none());
             let large: Vec<_> = (0..n).map(|i| (i % 60) as f64).collect();
             let other: Vec<_> = (0..n).map(|i| ((i / 4 + i) % 60) as f64).collect();
-            let wide = prepared(&y, &[x], &large, &other);
+            // The old global-work refusal has multiple small components, so
+            // the component engine now legitimately admits its same design.
+            let disconnected = prepared(&y, &[x.clone()], &large, &other);
+            assert!(try_build(
+                &disconnected,
+                &[0],
+                &y,
+                BorrowedMapWeights::Unit,
+                1.,
+                MapConfig::default(),
+                u128::MAX
+            )
+            .unwrap()
+            .is_some());
+            // One connected cycle still exceeds the same Gram work allowance.
+            let connected: Vec<_> = (0..n).map(|i| ((i % 60 + i / 60) % 60) as f64).collect();
+            let wide = prepared(&y, &[x], &large, &connected);
             assert!(try_build(
                 &wide,
                 &[0],
