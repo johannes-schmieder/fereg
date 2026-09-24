@@ -746,10 +746,10 @@ impl JointFiniteWorkspace {
                     op.project_eliminated(column, &mut worker.eliminated_scratch);
                     op.transpose(column, cross, false);
                     *rhs = dot(column, original);
-                    if width == 1 {
-                        // Keep independent entry accumulators available to a
-                        // serial worker. A single scalar dot-product chain can
-                        // otherwise dominate even contiguous numeric reads.
+                    if width == 1 && !controls.prefers_column_scans() {
+                        // Direct rows share reads across independent entry
+                        // accumulators. Recipe-backed rows instead resolve each
+                        // source once in finite_product, even with one worker.
                         // The factor bank is free until iterate prepares it.
                         controls.visit_rows(row_scratch, |row, values| {
                             for (entry, &selected) in hessian_row[j..]

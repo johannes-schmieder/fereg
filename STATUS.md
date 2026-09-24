@@ -10,6 +10,128 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Serial recipe-backed PPML products adopted; direct storage next — 2026-09-24
+
+The broad objective remains **whole public PPML <=0.90 times scientifically
+comparable pinned stock fixest wherever reasonably achievable, per case**.
+This opening supersedes prior next-step orders. The serial recipe-access
+milestone is complete; broad performance is unfinished. The next target is
+**serial finite products on direct numeric storage**, now measured below.
+
+Adopt `serialproduct1`, based on `07a4d616`, under
+[ADR 0150](docs/adr/0150-source-oriented-serial-joint-products.md) and the
+[source-bound report](benchmarks/reports/development/ppml-serial-products-local-2026-09-24/README.md).
+All **542 captured computational inputs** match plugin
+`e3794b449b9b778f32362de017fc865c2075e51f68b823c5c4dff7475f70aac7`.
+The verified/restored archive contains **8,102 logical receipts**, SHA-256
+`840f12ae2cc4cfe9b408d4461d5205763f201e6657e2e8631ac0689d8a081878`.
+All builds, tests, fits, diagnostics and archive operations are terminal.
+
+### What changed and passed
+
+Joint PPML's single-worker finite-Hessian construction now uses the existing
+column product kernel when complete rows require recipe evaluation. It resolves
+sources before scanning them, removing repeated full-model recipe dispatch.
+Direct numeric rows retain their prior fused upper-triangle kernel. No new
+solver, width/thread threshold, heap bank, cache, N-by-K copy or admission formula.
+The helper uses eight existing f64 stack accumulators. Eligible serial reduction
+order changes; independent scientific acceptance, not old-recurrence bit equality,
+is authoritative. All current-weight, projection/model-space, finite-score,
+objective, reconstruction, strict rank/bread/final-Hessian and publication checks
+retain their schedule and tolerances. Samples, weights, DoF, separation and
+failure atomicity are unchanged.
+
+**58 distinct final-source Rust tests**, production ABI/panic checks and **seven
+licensed fixtures** pass. The independent weighted-contrast oracle exercises
+both streamed layouts and dense directions with changed frames, rank deficiency,
+disconnection, zero response, T1/T4 and failure revocation. K8/K65 explicit
+Poisson/Hessian/sandwich fixtures cover unit/FW/PW × T1/T4 × robust/cluster.
+Further fixtures cover factors/products, FE shifts 0/1000, multipartition slopes,
+separation, low checkpoint rollback and a K65/T1 allocation window: zero events/
+growth over sixteen joint steps, stable capacities and fresh/warm equivalence.
+
+All **201 headline applications**, **189 public-state checks**, **nine small
+independent Python oracle results**, **69 native pairs** and **63 direct stock
+comparisons** pass. Thirty-two native exports are exact; other differences pass
+unchanged envelopes (maximum coefficient difference 1.11e-16, means 2.14e-14).
+No application failure, timeout, scientific exclusion or detected contention.
+Eight diagnostic applications pass separately. The first fresh controller failed
+before fits because N3072 violated graph dimensions. Its original declaration
+and receipts remain; only that row count was corrected to N3120 before retry.
+No source, seed or tolerance changed.
+
+All 63 PPML pairs retain iteration/rank/scientific metadata, modeled peaks and
+scratch bytes. Tracked peaks match in 61; two excluded fast categorical peaks
+fall by 641,111 and 551,063 bytes. No universal peak or timing non-regression
+claim. Physical memory caps and cross-platform checks remain deferred.
+
+### Current public timings and residual budgets
+
+Fresh seed **202609356** is consumed, not tuning input. Five rotations, low
+mode, T1, robust inference and fitted means. Medians in ms; distributions and
+paired losses are in the report. Stock is pinned/unmodified with `glm.tol=1e-10`,
+`fixef.tol=1e-11`, matched threads and serial BLAS. Native low execution is not
+physical-memory-matched to stock.
+
+| Case | Baseline | Current | Stock | Current/stock | 0.90 target |
+|---|---:|---:|---:|---:|---:|
+| Two FE N17280/K64 | 1859 | 540 | 882 | 0.612 | 793.8 |
+| Disconnected two FE N20160/K66 | 2312 | 661 | 1142 | 0.579 | 1027.8 |
+| Unbalanced two FE N15120/K80 | 2161 | 571 | 887 | 0.644 | 798.3 |
+| Two FE N16320/K63, direct rows | 1017 | 1015 | 802 | 1.266 | 721.8 |
+| Small two FE N3120/K10 | 34 | 29 | 26 | 1.115 | 23.4 |
+| Unbalanced three FE, multiple slopes, N19200/K64 | 2382 | 913 | 2932 | 0.311 | 2638.8 |
+
+Four fresh cases clear the target. All twenty pairs in those four wide cases
+improve; native medians fall 61.7–73.6%. Small fits improve 14.7% but miss stock.
+K63 is nearly unchanged, with mixed paired changes. Three development wide
+serial medians improve 70–77%; direct K24 loses 3 ms with mixed pairs. Do not
+transfer older timing claims to this source/seed.
+
+Current three-rotation controls still lose to stock: fast categorical two FE
+**124 vs 61**, low one FE **42 vs 26**, fast slopes **125 vs 116**, threaded low
+K64/T8 **324 vs 226 ms**. Weak barbell wins **32 vs 209**. OLS categorical is
+36→36 ms and OLS slopes 72→69 ms, with exact exports. One-FE loses 1 ms at the
+median with mixed pairs; threaded wide includes a +6-ms pair. Preserve these
+losses. The small one-FE case does not resolve its historical large discrepancy.
+
+### Next implementation milestone
+
+**Implement efficient serial finite products across direct storage too.** The
+isolated current-source ledger attributes K65 tiles **1084.274→110.312 ms** and
+K96 tiles **3156.245→279.439 ms**, almost all of their native-root improvement.
+Six calls and unchanged iteration metadata confirm computational organization
+rather than fewer solves. Exclusive joint recurrence is only 2–4 ms.
+
+The added development-seed K63 diagnostic still spends **683.350 ms**, about
+**68%** of its 999.753-ms native root, in direct-row product formation. Its
+exclusive recurrence is 2.181 ms. This new evidence takes priority over the
+previous opening's immediate canonical-ownership next step. A useful coherent
+candidate should compare bounded column/block Gram formation against the fused
+row kernel on identical current-weight frames, keeping norms/reconstruction
+policies separate. The earlier unconditional-column rejection covered those
+other scans; it did not establish optimal serial product organization. Avoid
+K63/K64 routing rules, accumulator-width tuning and new overlapping solvers.
+Use development seed347 and a new predeclared confirmation seed; 356 stays frozen.
+Protect finite-scale extremes, changing frames, direct/narrow/generated storage,
+threads, slopes, memory admission and OLS with independent oracles and controls.
+
+K63 needs about a **29% whole-command reduction** to meet the current fresh
+stock budget, making this a substantial remaining opportunity. After that,
+resume accepted-frame canonical/product ownership, fast categorical LSMR versus
+joint organization, and one-FE/public-output costs. Current control targets are
+54.9, 203.4, 23.4 and 104.4 ms for fast categorical, threaded K64, one FE and fast
+slopes respectively. Obtain new current-source attribution before treating old
+threaded phase spans as budgets. Preserve independent rank and Hessian authority;
+ordinary joint products cannot become inference products by removing guards.
+
+Known deferred boundaries remain: static allocation source drift; weighted
+constrained-fit failures; explicit/insufficient-budget nonretaining-CG span
+instability; historical large one-FE stock-mean discrepancy; separate 1e6-shift
+failure; SCC/Linux T1/8/16 and physical-cap confirmation. Do not retry SCC auth,
+restart stopped campaigns, use frozen cycle seeds 211/212 for tuning, push,
+release or infer qualification. Frozen 77/16/111 definitions are unchanged.
+
 ## Source-oriented joint PPML access adopted; serial products next — 2026-09-24
 
 The broad objective remains **whole public PPML <=0.90 times scientifically

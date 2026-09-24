@@ -119,6 +119,12 @@ factor code column separately. The existing current-weight arithmetic and
 acceptance remain, with no new heap storage or cross-frame products. Other
 consumers retain their numeric-binding admission rules.
 
+ADR 0150 extends that storage-oriented choice to single-worker finite products.
+Recipe-backed rows use the existing fixed-accumulator column product kernel;
+direct numeric row bindings retain fused upper-triangle entry accumulation.
+Eligible serial reductions change order but retain independent scientific
+acceptance. No new workspace, cache generation or solver route is introduced.
+
 Under ADRs 0127, 0132 and 0137, actual one-intercept-FE publication PPML can
 analytically concentrate group intercepts during ordinary MAP-owned steps.
 Fast execution borrows retained dense finite representatives; low execution
