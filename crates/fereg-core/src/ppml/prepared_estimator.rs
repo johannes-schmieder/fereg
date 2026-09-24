@@ -2483,53 +2483,55 @@ mod tests {
     #[test]
     fn profiled_final_products_match_canonical_and_reject_stale_authority() {
         use super::super::prepared_irls::profile_final_test_mode;
-        for (memory, pool) in [
-            (MemoryMode::Fast, 10000),
-            (MemoryMode::Low, 1),
-            (MemoryMode::Low, 2),
-        ] {
-            for threads in [1, 4] {
-                for weighted in [false, true] {
-                    let run = |mode| {
-                        profile_final_test_mode(mode);
-                        let (mut request, loaded) = fixture(1, true, true, weighted, true, false);
-                        request.memory.requested = memory;
-                        request.memory.poolsize = pool;
-                        request.linear.execution.poolsize = pool;
-                        request.linear.execution.threads =
-                            crate::options::ThreadConfig::from_requested(threads, true).unwrap();
-                        let result = fit_prepared_ppml(request, loaded);
-                        let accepted = profile_final_test_mode(0);
-                        (result.expect("one-FE final products"), accepted)
-                    };
-                    let (baseline, count) = run(1);
-                    assert_eq!(count, 0);
-                    for mode in [0, 2, 3] {
-                        let (candidate, count) = run(mode);
-                        assert_eq!(count, usize::from(mode == 0));
-                        assert_ppml_results_close(&candidate, &baseline);
-                        for (left, right) in candidate
-                            .inference()
-                            .vce
-                            .covariance
-                            .iter()
-                            .zip(&baseline.inference().vce.covariance)
-                        {
+        for effects in [1, 2] {
+            for (memory, pool) in [
+                (MemoryMode::Fast, 10000),
+                (MemoryMode::Low, 1),
+                (MemoryMode::Low, 2),
+            ] {
+                for threads in [1, 4] {
+                    for weighted in [false, true] {
+                        let run = |mode| {
+                            profile_final_test_mode(mode);
+                            let (mut request, loaded) = fixture(effects, true, true, weighted, true, false);
+                            request.memory.requested = memory;
+                            request.memory.poolsize = pool;
+                            request.linear.execution.poolsize = pool;
+                            request.linear.execution.threads =
+                                crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                            let result = fit_prepared_ppml(request, loaded);
+                            let accepted = profile_final_test_mode(0);
+                            (result.expect("profiled final products"), accepted)
+                        };
+                        let (baseline, count) = run(1);
+                        assert_eq!(count, 0);
+                        for mode in [0, 2, 3] {
+                            let (candidate, count) = run(mode);
+                            assert_eq!(count, usize::from(mode == 0));
+                            assert_ppml_results_close(&candidate, &baseline);
+                            for (left, right) in candidate
+                                .inference()
+                                .vce
+                                .covariance
+                                .iter()
+                                .zip(&baseline.inference().vce.covariance)
+                            {
+                                assert!(
+                                    (left - right).abs() <= 1e-8 * left.abs().max(right.abs()).max(1.0)
+                                );
+                            }
+                            assert!(candidate.inference().vce.certificate.passed);
                             assert!(
-                                (left - right).abs() <= 1e-8 * left.abs().max(right.abs()).max(1.0)
+                                candidate
+                                    .output()
+                                    .saved_effects()
+                                    .unwrap()
+                                    .full_decomposition_certified
                             );
                         }
-                        assert!(candidate.inference().vce.certificate.passed);
-                        assert!(
-                            candidate
-                                .output()
-                                .saved_effects()
-                                .unwrap()
-                                .full_decomposition_certified
-                        );
                     }
                 }
-            }
+        }
         }
     }
 

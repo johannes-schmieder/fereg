@@ -13,6 +13,7 @@ mod irls;
 mod memory;
 mod metadata_memory;
 mod one_fe_profile;
+mod profiled_intercept_curve;
 mod prepared;
 mod prepared_estimator;
 mod prepared_irls;

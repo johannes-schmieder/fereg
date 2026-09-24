@@ -10,6 +10,133 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Profiled two-FE Poisson trials adopted — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This opening supersedes next-step instructions in older sections.
+[ADR 0174](docs/adr/0174-profiled-two-fe-poisson-trials.md) and the
+[source-bound report](benchmarks/reports/development/ppml-profiled-two-fe-local-2026-09-24/README.md)
+record the implementation, rejected candidates, distributions and scientific evidence.
+
+Accepted artifact **profilecurve5**, plugin SHA-256
+`569c601e8143e0744d9359f44d9fc966a09b244ee2a29a51ad0e1840a5b2bbd0`,
+is captured from **17a239ee05de5b23ba0611de1ebeedb7df694ff0** plus five PPML
+Rust files and the new component-truth fixture. All **550 captured inputs match**
+final computational source. The separately added allocation fixture exactly matches
+its tested copy. The immutable archive contains **12,512 logical receipts / 2,671
+payloads / 24,969,269 bytes**, all verified and restored, SHA-256
+`3cbb1b7bfda867da25bf507b00f2c16034e34731f1e1850f982f766dc19613e1`.
+All agent-owned builds, tests, fits, audits and archive/restore processes are
+terminal. No operation awaits an idle-window reply.
+
+### Adopted change
+
+Exactly two categorical intercept partitions may analytically optimize the
+larger partition at every trial along the existing certified MAP/LSMR direction.
+Immutable prior-weight/outcome totals are prepared once; current means, Hessian
+weights, geometry and certificates remain fresh. A trial adds only valid FE
+intercept shifts. The existing objective, bounds and transaction decide acceptance.
+LSMR history is cleared because the accepted increment changed.
+
+One strict canonical Newton checkpoint independently confirms the accepted point.
+Keeping that point preserves exact q*mu; independently checked current products,
+generation, rank and reconstruction may then serve final inference. A mismatch
+uses existing full synchronization; a changed basis revokes the optional curve.
+This removes duplicate final work, not a scientific condition. Tolerances, sample,
+weights, separation, DoF, inference, model space and publication atomicity remain.
+No additional ordinary direction engine or public solver family is introduced.
+
+Fresh seed **202609391**, five rotating baseline/candidate/stock repetitions,
+robust inference and fitted means; stock glm.tol=1e-10/fixef.tol=1e-11. Low mode
+unless stated. See report for full distributions and every matched-pair loss.
+
+| Case | Baseline ms | Accepted ms | Stock ms | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Connected N22560/K2/T4 |48|43|31|1.387|
+| Disconnected N44160/K10/T8 |131|121|79|1.532|
+| Fast N22560/K10/T4 |67|62|57|1.088|
+| Unbalanced N24480/K28/T4 |113|95|116|0.819|
+| Serial N17280/K10/T1 |70|59|102|0.578|
+| Weak graph N15360/K8/T1 |161|138|953|0.145|
+| Wide N28800/K104/T4 |572|541|891|0.607|
+| Disconnected wide N55200/K102/T8 |1109|1071|968|1.106|
+| Two slope partitions N22560/K10/T4 |104|105|112|0.938|
+| Three FE unbalanced N24480/K10/T4 |92|92|95|0.968|
+| One FE fast control N12480/K6/T1 |39|39|21|1.857|
+
+Eligible medians improve 3–16%; seven cases improve every native pair. Four of
+ten multi-FE medians meet the 10% lead, two beat stock with less margin, four lose.
+This is a selected remaining-gap screen, not a package-wide win rate.
+
+**Wide tail remains unresolved:** original c7 candidate range1067–4733 ms;
+mean1803.4 versus baseline1112.2. The slow run retains identical iterations,
+memory and scientific result; delay lies mostly in projection and publication.
+A separately predeclared frozen-case confirmation gives B1115[1106–1133],
+C1076[1072–1264], stock950[938–957] ms. No4.73 s repeat, but one1264 ms loss.
+Both distributions and clear monitors remain. Do not discard the tails or claim
+a worst-case win; close this bounded confirmation without threshold tuning.
+
+Extra median tracked peak is184,400–589,616 bytes; excluded paths' tracked/model
+values are unchanged. The owner charges N log weights, two G banks and slot
+storage beside existing checkpoints; no N-by-K copy. No RSS/physical-memory claim.
+The weak graph's gains come mainly from strict64.60→39.61 ms; narrow saves one
+outer iteration and strict8.01→4.28 ms. Raw inner counts are not equivalent work
+units against fixest.
+
+### Validation and preserved alternatives
+
+Final source passes **33 distinct focused Rust tests**, **five licensed science
+fixtures**, **two real sixteen-iteration allocation audits (T1/T4)** and plugin
+ABI/panic checks. Independent nonzero-residual Poisson truth covers disconnected
+components, offsets, PW weight disparity1e13, fast/low and T1/T4. Expanded final-
+reuse tests cover stale generations, corrupted predictors, canonical fallback,
+cluster/saved effects and pool limits. Failed trials preserve accepted state.
+All **297 public states / 198 baseline pairs / 99 direct stock pairs** pass across
+all candidates and final confirmation; **nine fits** additionally pass independent
+explicit Poisson/Hessian/sandwich/mean oracles. Final subset:189 public states.
+All **24 OLS applications / 12 science-output pairs** pass, medians15→16,28→28,
+97→97,59→60 ms. No completed application failure, timeout or scientific failure.
+Seeds **202609391/392 are consumed/frozen**; 77/16/111 definitions are unchanged.
+
+The dense centered alternative passed36 literal frame/thread checks and independent
+WLS truth, but disconnected710-coordinate work took33–35 ms versus8–10 ms and
+up to40.56 MB. Reject it. Full canonical products on every ordinary direction also
+cost too much. Curve-only work kept duplicate final cost. The final implementation
+retains only the successful curve plus single-checkpoint organization. The first
+full-products artifact had a canonical-response ownership defect found before
+fits and corrected in the measured successor; both are archived. Stock frozen-
+inner comparison was not run. Initial build, graph-generation and archive-path
+failures are preserved; none became hidden scientific/timing observations.
+
+### Next bounded milestones
+
+1. **Initial canonical and observation-pass organization for narrow fits.**
+   Narrow43 versus31 needs15.1 ms more savings to reach0.90×. Even eliminating
+   its entire4.28 ms strict phase cannot close it; recurrence-only tuning is also
+   too small. Target initial rank preparation and repeated loading/binding,
+   normalization and publication passes together. Preserve independent rank,
+   model-space and current-weight checks; compare whole public commands.
+2. **Partition ownership of group/RHS reductions for disconnected fits.**
+   K10 still121 versus79, ordinary FE+finite41.4 ms and strict23.0 ms. Wide K102
+   remains1071 versus968, projection288.2, finite114.3 and strict312.2 ms. Remove
+   full worker-private reduction duplication using coordinate partitions or tiles
+   under the existing allowance, enabling component-wise canonical products.
+   Do not revive the rejected global dense solve or tune to frozen case IDs.
+   Treat observed latency tails separately from arithmetic improvements.
+3. **Canonical products in retained fast storage.** Fast K10 needs62→51.3 ms.
+   Evaluate the accepted low-mode direct mathematics with output written to the
+   existing dense owner, preserving generation/ownership and independent checks.
+4. **Generalize only valid lifecycle mechanisms to slopes and three-plus FE.**
+   Current105/112 and92/95 need about4.2/6.5 ms for a10% lead. They did not receive
+   this curve. Use independent changing-weight/slope/Poisson/Hessian controls.
+
+Preserve the static allocation-inventory drift, canonical LSMR reporting assertion,
+weighted constrained/nonretaining-CG span failures, seed378 comparator issue and
+SCC/Linux/thread/physical-memory gaps. No SCC retry, stopped campaign, remote
+mutation or qualification occurred. Work roots: target/ppml-profile-curve-20260924
+and target/ppml-concentrated-two-20260924. Keep STATUS the sole mutable handover.
+
 ## Bounded canonical PPML output tiles adopted — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock

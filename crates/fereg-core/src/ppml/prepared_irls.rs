@@ -43,6 +43,7 @@ use super::family::poisson_objective_from_eta;
 use super::memory::DIAGNOSTIC_RECORD_BYTES;
 use super::memory::{begin_phase_allocation, end_phase_allocation};
 use super::one_fe_profile::{ProfiledColumns, ProfiledOneFe, ProfiledRawColumns};
+use super::profiled_intercept_curve::ProfiledInterceptCurve;
 #[cfg(test)]
 use super::plan_ppml_memory;
 use super::prepared_estimator::PpmlInterruptPoint;
@@ -140,6 +141,7 @@ fn use_initial_checkpoint_lsmr_accelerator(
 #[cfg(test)]
 thread_local! {
     static FORCE_GENERIC_OUTER_SCORE: Cell<bool> = const { Cell::new(false) };
+    static PROFILE_CURVE_TEST_DISABLED: Cell<bool> = const { Cell::new(false) };
     static PROFILE_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
     static PROFILE_FINAL_ACCEPTED: Cell<usize> = const { Cell::new(0) };
     static JOINT_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
@@ -218,6 +220,28 @@ fn inject_candidate_profile_movement(workspace: &mut PpmlIterationWorkspace) {
     }
     if let Some(value) = workspace.candidate_coefficients_mut().last_mut() {
         *value += DELTA;
+    }
+}
+
+fn profile_curve_enabled() -> bool {
+    #[cfg(test)]
+    { !PROFILE_CURVE_TEST_DISABLED.get() }
+    #[cfg(not(test))]
+    { true }
+}
+
+#[cfg(test)]
+pub(super) struct ProfileCurveTestGuard(bool);
+#[cfg(test)]
+impl ProfileCurveTestGuard {
+    pub(super) fn disabled() -> Self {
+        Self(PROFILE_CURVE_TEST_DISABLED.replace(true))
+    }
+}
+#[cfg(test)]
+impl Drop for ProfileCurveTestGuard {
+    fn drop(&mut self) {
+        PROFILE_CURVE_TEST_DISABLED.set(self.0);
     }
 }
 
@@ -585,6 +609,7 @@ impl PpmlAllocationAuditWindow {
         session: &CertifiedLinearSession<'_, P>,
         workspace: &PpmlIterationWorkspace,
         profile: Option<&ProfiledOneFe>,
+        curve: Option<&ProfiledInterceptCurve>,
     ) -> Result<()> {
         let probe = self.probe.ok_or_else(|| {
             FeregError::new(
@@ -593,7 +618,7 @@ impl PpmlAllocationAuditWindow {
             )
         })?;
         self.start = Some(allocation_audit_start_boundary(
-            session, workspace, profile, probe,
+            session, workspace, profile, curve, probe,
         )?);
         self.measured_iterations = 0;
         self.linear_route = FeSolverKind::Map;
@@ -610,6 +635,7 @@ impl PpmlAllocationAuditWindow {
         route: FeSolverKind,
         elapsed: Duration,
         profile: Option<&ProfiledOneFe>,
+        curve: Option<&ProfiledInterceptCurve>,
     ) -> Result<()> {
         let Some(start) = self.start else {
             return Ok(());
@@ -643,7 +669,7 @@ impl PpmlAllocationAuditWindow {
         // The end snapshot is the first operation after the complete measured
         // iteration. Capacity/scratch reads that follow are outside the
         // allocator window and are themselves allocation-free.
-        let end = allocation_audit_end_boundary(session, workspace, profile, probe)?;
+        let end = allocation_audit_end_boundary(session, workspace, profile, curve, probe)?;
         self.pending = Some(PendingPpmlAllocationAudit {
             start,
             end,
@@ -675,6 +701,7 @@ fn allocation_audit_start_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
     session: &CertifiedLinearSession<'_, P>,
     workspace: &PpmlIterationWorkspace,
     profile: Option<&ProfiledOneFe>,
+    curve: Option<&ProfiledInterceptCurve>,
     probe: PpmlAllocatorSnapshotProbe,
 ) -> Result<PpmlAllocationAuditBoundary> {
     let ppml_workspace = workspace.capacity_report();
@@ -689,7 +716,8 @@ fn allocation_audit_start_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
             )
         })?
         .scratch_bytes;
-    let profile_workspace_valid = profile.map(ProfiledOneFe::capacities_unchanged);
+    let profile_workspace_valid = profile.map(ProfiledOneFe::capacities_unchanged)
+        .or_else(|| curve.map(ProfiledInterceptCurve::capacities_unchanged));
     // Capture last: the window begins after all boundary evidence has been
     // read and immediately before the next complete IRLS iteration.
     let allocator = probe();
@@ -707,6 +735,7 @@ fn allocation_audit_end_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
     session: &CertifiedLinearSession<'_, P>,
     workspace: &PpmlIterationWorkspace,
     profile: Option<&ProfiledOneFe>,
+    curve: Option<&ProfiledInterceptCurve>,
     probe: PpmlAllocatorSnapshotProbe,
 ) -> Result<PpmlAllocationAuditBoundary> {
     // Capture first: nothing after this read belongs to the measured window.
@@ -728,7 +757,8 @@ fn allocation_audit_end_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
         ppml_workspace,
         linear_workspace,
         linear_workspace_report,
-        profile_workspace_valid: profile.map(ProfiledOneFe::capacities_unchanged),
+        profile_workspace_valid: profile.map(ProfiledOneFe::capacities_unchanged)
+            .or_else(|| curve.map(ProfiledInterceptCurve::capacities_unchanged)),
         scratch_bytes,
     })
 }
@@ -1081,6 +1111,33 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         false
     };
+    // Prior-weight group totals belong to this immutable prepared sample.
+    // Charge their complete lifetime beside the existing solver and checkpoints.
+    let profiled_curve_admitted = if profile_curve_enabled()
+        && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+        && fe_design.effects().len() == 2
+        && fe_design.effects().iter().all(|e| e.has_intercept() && e.slopes().is_empty())
+    {
+        let bytes = ProfiledInterceptCurve::bytes(
+            fe_design.nobs(),
+            prepared.fit_model().columns.len(),
+            fe_design.effects().iter().map(|e| e.n_levels()).max().unwrap(),
+        );
+        match memory_plan.solver_workspace_bytes.checked_add(bytes)
+            .map(|total| memory_plan.with_solver_workspace(total))
+        {
+            Some(Ok(plan)) => {
+                solver_execution_bytes = solver_execution_bytes.checked_add(bytes)
+                    .ok_or_else(|| allocation("profile curve size overflows"))?;
+                memory_plan = plan;
+                true
+            }
+            Some(Err(error)) if error.code != ErrorCode::Allocation => return Err(error),
+            _ => false,
+        }
+    } else {
+        false
+    };
     // Low mode retains group centers; fast mode uses the same certified
     // construction, then writes the result once into its retained dense bank.
     // Admit the extra geometry without crediting the replaced projector.
@@ -1386,6 +1443,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let mut joint_lsmr = None;
     let mut joint_lsmr_engine = None;
     let mut profiled_one_fe: Option<ProfiledOneFe> = None;
+    let mut profiled_curve: Option<ProfiledInterceptCurve> = None;
     let mut fused_cmg = None;
     let mut solver_report = None;
     let retained_limit = MAX_RETAINED_ITERATION_REPORTS
@@ -1559,7 +1617,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 workspace.candidate_coefficients_mut(),
             )?;
             let specialized_columns = (selected_engine != PpmlSolverEngine::Map
-                || one_fe_profile_admitted)
+                || one_fe_profile_admitted || profiled_curve_admitted)
                 .then(|| {
                     fallible_copy(
                         output.fit().kept_generated_columns(),
@@ -1587,6 +1645,17 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                             error.code,
                             ErrorCode::Allocation | ErrorCode::NonConvergence
                         ) => {}
+                    Err(error) => return Err(error),
+                }
+            }
+            if profiled_curve_admitted {
+                match ProfiledInterceptCurve::new(
+                    prepared,
+                    specialized_columns.as_deref().expect("curve basis"),
+                    session.fe_design(), outcome, prior_weights, config.linear.execution.threads,
+                ) {
+                    Ok(curve) => profiled_curve = Some(curve),
+                    Err(error) if matches!(error.code, ErrorCode::Allocation | ErrorCode::NonConvergence) => {}
                     Err(error) => return Err(error),
                 }
             }
@@ -1993,6 +2062,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         config.ppml, &mut poll_line_search,
                     )
                 }
+            } else if let Some(curve) = profiled_curve.as_mut() {
+                curve.accept(session.fe_design(), &objective_inputs, &mut workspace,
+                    objective, config.ppml, &mut poll_line_search)
             } else {
                 workspace.accept_candidate_interruptible(
                     &objective_inputs,
@@ -2022,7 +2094,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             }
         };
         if let Some(joint) = joint_lsmr.as_mut() {
-            joint.accept_step(accepted.step);
+            // The analytic FE shift changes the accepted increment. Discard
+            // the LSMR history witness before solving under the new weights.
+            if profiled_curve.is_some() {
+                joint.reset_warm_start();
+            } else {
+                joint.accept_step(accepted.step);
+            }
         }
         accepted_iterations = accepted_iterations.saturating_add(1);
         let increase = (accepted.objective.deviance - previous_objective.deviance).max(0.0)
@@ -2106,7 +2184,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             interrupt(PpmlInterruptPoint::StrictFinalSolve)?;
             begin_phase_allocation(config.phase_allocation_probe, PpmlPhase::StrictFinalSolve);
             let strict_clock = PpmlPhaseClock::start();
-            if !profile_rebuild_pending
+            // Profiled trials preserve the model space. One canonical Newton
+            // checkpoint can both confirm that accepted point and supply its
+            // exact-weight design/bread; the independent final checks below
+            // still decide whether those products can be reused.
+            if profiled_curve.is_none()
+                && !profile_rebuild_pending
                 && !checkpoint_refinement_pending
                 && (session.supports_joint_ppml_direction() || joint_lsmr.is_some())
                 && try_joint_strict_final_frame(
@@ -2219,7 +2302,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         .as_ref()
                         .map(ReusableCategoricalFwlCmg::active_slots)
                 })
-                .or_else(|| profiled_one_fe.as_ref().map(ProfiledOneFe::active_slots));
+                .or_else(|| profiled_one_fe.as_ref().map(ProfiledOneFe::active_slots))
+                .or_else(|| profiled_curve.as_ref().map(ProfiledInterceptCurve::active_slots));
             let strict_consistent = strict_candidate_decision_with_coefficient_slots(
                 strict_certified,
                 strict_basis_unchanged,
@@ -2304,7 +2388,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 // outer conditions. If strict WLS confirms that same point,
                 // retaining it keeps the strict canonical products on the exact
                 // accepted Hessian frame for independently checked final reuse.
-                if profiled_one_fe.is_none() {
+                if profiled_one_fe.is_none() && profiled_curve.is_none() {
                     workspace.fill_line_search_trial(1.0, config.ppml.bounds)?;
                     workspace.accept_trial()?;
                     objective = strict_objective.expect("consistent strict objective is present");
@@ -2357,6 +2441,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             }
             if strict_committed {
                 if !strict_basis_unchanged {
+                    profiled_curve = None;
                     profiled_one_fe = None;
                 }
                 if let Some(joint) = joint_lsmr.as_mut() {
@@ -2419,7 +2504,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             )?;
             if strict_consistent && final_score.passed {
                 interrupt(PpmlInterruptPoint::StrictFinalSolve)?;
-                let synchronized = if profiled_one_fe.is_some()
+                let synchronized = if (profiled_one_fe.is_some() || profiled_curve.is_some())
                     && strict_basis_unchanged
                     && reuse_profiled_final_products(
                         &session,
@@ -2594,9 +2679,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 linear_route,
                 elapsed.elapsed(),
                 profiled_one_fe.as_ref(),
+                profiled_curve.as_ref(),
             )?;
         } else if audit_can_start {
-            allocation_audit.start_after(&session, &workspace, profiled_one_fe.as_ref())?;
+            allocation_audit.start_after(
+                &session, &workspace, profiled_one_fe.as_ref(), profiled_curve.as_ref(),
+            )?;
         }
         previous_outer_progress = Some(PpmlInnerToleranceProgress::new(
             relative_deviance_change(previous_objective, objective),
@@ -6795,6 +6883,8 @@ mod tests {
 
     #[test]
     fn fast_categorical_lsmr_strict_final_preserves_truth_and_canonical_retry() {
+        // Preserve coverage of the fallback when the optional curve is absent.
+        let _curve = ProfileCurveTestGuard::disabled();
         let n = 240;
         let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
         let h: Vec<_> = (0..n).map(|i| (i / 20 % 3) as f64).collect();
@@ -6850,6 +6940,8 @@ mod tests {
 
     #[test]
     fn low_categorical_joint_strict_final_preserves_truth_and_canonical_retry() {
+        // Preserve coverage of the fallback when the optional curve is absent.
+        let _curve = ProfileCurveTestGuard::disabled();
         let n = 240;
         let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
         let h: Vec<_> = (0..n).map(|i| (i / 20 % 3) as f64).collect();

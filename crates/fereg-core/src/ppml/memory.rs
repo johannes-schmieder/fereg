@@ -2873,6 +2873,13 @@ impl PpmlIterationWorkspace {
         step: f64,
         bounds: PoissonBounds,
     ) -> Result<()> {
+        self.fill_line_search_trial_with(step, bounds, |_| Ok(()))
+    }
+
+    pub(super) fn fill_line_search_trial_with(
+        &mut self, step: f64, bounds: PoissonBounds,
+        transform: impl FnOnce(&mut [f64]) -> Result<()>,
+    ) -> Result<()> {
         if !step.is_finite() || !(0.0..=1.0).contains(&step) {
             return Err(invalid_argument(
                 "PPML line-search step must be finite and lie in [0, 1]",
@@ -2899,6 +2906,7 @@ impl PpmlIterationWorkspace {
             }
             self.trial_coefficients[column] = value;
         }
+        transform(&mut self.trial_eta)?;
         means_from_eta(&self.trial_eta, bounds, &mut self.trial_mean)?;
         self.certify_steady_state_capacity()
     }
@@ -5901,6 +5909,38 @@ mod tests {
         assert!(accepted.objective.deviance < objective.deviance);
         assert_eq!(workspace.coefficients(), &[0.25, -0.5, 1.0]);
         assert_eq!(workspace.capacity_report(), capacities);
+    }
+
+    #[test]
+    fn transformed_line_search_failure_preserves_accepted_state() {
+        let mut shape = dimensions();
+        shape.observations = 2;
+        shape.separation_generation_capacity = 2;
+        shape.fe_max_level_members = 2;
+        shape.finite_columns = 1;
+        shape.coefficient_slots = 1;
+        shape.reported_coefficient_slots = 1;
+        let plan = plan_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+        let mut workspace = PpmlIterationWorkspace::new(plan, &[0.; 2]).unwrap();
+        let bounds = PoissonBounds::default();
+        workspace.refresh_working_state(&[1., 2.], &[1.; 2], &[0.; 2], bounds).unwrap();
+        workspace.set_candidate_eta(&[0.25, -0.5]).unwrap();
+        workspace.set_candidate_coefficients(&[0.75]).unwrap();
+        let before = (workspace.eta().to_vec(), workspace.mean().to_vec(),
+            workspace.coefficients().to_vec(), workspace.capacity_report());
+        for overflow in [false, true] {
+            let result = workspace.fill_line_search_trial_with(0.5, bounds, |eta| {
+                eta[0] = if overflow { 1000. } else { 0.1 };
+                if overflow { Ok(()) } else {
+                    Err(FeregError::new(ErrorCode::NonConvergence, "injected profile refusal"))
+                }
+            });
+            assert_eq!(result.unwrap_err().code, ErrorCode::NonConvergence);
+            assert_eq!(workspace.eta(), before.0);
+            assert_eq!(workspace.mean(), before.1);
+            assert_eq!(workspace.coefficients(), before.2);
+            assert_eq!(workspace.capacity_report(), before.3);
+        }
     }
 
     #[test]
