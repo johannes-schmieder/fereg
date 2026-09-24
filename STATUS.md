@@ -10,7 +10,104 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Admitted three-FE Schur checkpoints adopted — 2026-09-24
+## Two-FE storage/checkpoint experiment closed; larger lifecycle redesign next — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. [ADR 0164](docs/adr/0164-two-fe-schur-storage-closeout.md) rejects the
+current coefficient-row and dense two-FE checkpoint experiments. Production
+computation remains **`a1bf9ce0`**, artifact **`threeschur3`**, plugin
+`a8366911510287757fb4644ff47ab04030521991a2067c3964abbf8c52ef4df0`.
+All **546 computational inputs** match after restoration. No candidate solver,
+routing, memory or publication change remains in production.
+
+The [source-bound report](benchmarks/reports/development/ppml-two-fe-schur-storage-local-2026-09-24/README.md)
+preserves all five artifact sources, two frozen-input diagnostic sources,
+failed integration states, independent oracles and every public distribution.
+Its archive contains **11,753 logical receipts**, was verified and restored,
+and has SHA-256
+`8a8d887e7c204a436070ed99439ad1a5a16f033c549751d7c5aaf9cfbbcf9f57`.
+All builds, tests, fits, audits and archive/restore processes are terminal.
+
+Fresh seed **202609376 is consumed/frozen**, five matched rotations, robust
+inference plus fitted means. All comparisons in this block pass science:
+
+| Case | Accepted ms | Rejected candidate ms | Stock ms | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Wide low 2FE N18720/K28/T8 | 123 | 122 | 84 | 1.464 |
+| Serial low 2FE N12960/K16/T1 | 84 | 83 | 121 | 0.694 |
+| Narrow fast 2FE N14160/K5/T1 | 56 | 56 | 52 | 1.077 |
+| Unbalanced fast 2FE N24480/K12/T4 | 73 | 78 | 61 | 1.197 |
+| Disconnected fast 2FE N22560/K13/T4 | 78 | 81 | 72 | 1.083 |
+| Weak fast 2FE N9840/K5/T1 | 41 | 38 | 770 | 0.053 |
+| Low 3FE N16320/K9/T4 | 74 | 74 | 191 | 0.387 |
+| Two slope partitions N17760/K8/T4 | 77 | 79 | 90 | 0.856 |
+| Unbalanced low 2FE N24480/K12/T4 | 89 | 97 | 59 | 1.508 |
+
+Every fresh unbalanced/disconnected pair loses; wide's 0.8% gain and the
+unconfirmed narrow development gain do not justify adoption. Fresh wide modeled
+selected memory rises 25.7 to 65.1 MB; the development wide tracked peak rises
+2.9 MB. Optional budget refusal preserves the previous route but does not remove
+that headroom cost. The standalone coefficient view saves scratch writes but
+roughly doubles wide row-scan cost; kernel gains do not establish a public win.
+
+The rejected final candidate passes **198 public applications/public-state
+checks, 66 native comparisons, 66 direct stock comparisons, 68 distinct focused
+Rust tests and seven licensed fixture invocations**. Separate frozen-frame
+checks pass 50/50 and 37/37 independent projection/score oracles. The report
+scopes the preceding-source full-width control separately. Earlier six low
+checkpoint warmups failed plugin publication validation; the final candidate
+repaired that boundary and added a 24-combination explicit Poisson/Hessian/
+sandwich fixture. All failed receipts remain visible. No additional OLS block
+was run after rejecting the candidate; production inputs are exactly restored,
+and prior OLS evidence retains its original scope.
+
+### Next bounded implementation plan
+
+1. **Redesign joint reconstruction and canonical product ownership together.**
+   Wide low needs 47.4 ms (38.5%) and unbalanced low 35.9 ms (40.3%) to reach
+   0.90 stock in the fresh block; unbalanced fast needs 18.1 ms (24.8%). Start
+   with these anchors and the existing winning controls. Reconcile current
+   frame/row-pass counts with the prior scoped attribution; the existing joint
+   engine already has reduced finite/FE blocks. Do not build another wrapper
+   around unchanged algebra. Compare at most two organizations: admitted
+   projected panels shared across compatible consumers, and algebraic canonical
+   products from raw weighted moments plus certified FE coefficients. The latter
+   must guard cancellation, retain canonical rank/QR/span authority and only
+   materialize final projected rows where their consumers need them. This is
+   pass elimination across the lifecycle, not the rejected lazy-row probe,
+   eight-row Gram tile or reconstruction scalar-hoist experiment. Seek 35–45%
+   whole-command gains on low anchors and 20–30% on unbalanced fast.
+2. **Close narrow/disconnected overhead after the shared redesign.** Their
+   present gaps to target are 9.2 and 13.2 ms (16–17%). Attribute original-input
+   score/objective, input preparation and output passes, then consolidate
+   compatible work with explicit generation ownership. Keep fresh independent
+   acceptance. Target about 20% overall, not a sub-millisecond kernel victory.
+3. **Finish remaining three-plus-FE and slope losses.** Remeasure unbalanced
+   three FE after the shared change; its earlier source-bound 95/100 block has
+   only a 5-ms target residue. Preserve current weak/low-three-FE/slope wins.
+   Extend ordinary work only when measured residual costs justify it; no revival
+   of rejected coefficient wrappers or seed-fitted solver thresholds.
+4. **Broaden around successful replacements.** Predeclare fresh larger-N,
+   four-plus-FE, multiple-slope, wide/generated-control, cluster/full-output,
+   changing/extreme-weight, rank-deficient, disconnected/weak, T1/T4/T8 and
+   budget-refusal cases. Compare matched public work and pinned stock; retain
+   independent WLS/Poisson/Hessian/weight oracles and categorical/slope OLS plus
+   one-FE PPML controls. Scientific discrepancies remain unranked. Each accepted
+   change needs alternating development pairs, five fresh rotations, complete
+   loss/memory reporting, an ADR where contracts change, and a coherent commit.
+
+These are ambitious engineering targets, not promised speedups. Independent
+current-weight projection, model-space, rank, finite solve, score, objective,
+reconstruction and final-Hessian requirements remain. Any verification redesign
+must explain the invariant and error bound, with adversarial tests. Stop a
+candidate after a bounded public screen if its full-pipeline gains are small or
+inconsistent; do not continue tuning on seed376. STATUS is the only mutable
+handover. Preserve 77/16/111 definitions, static allocation-inventory drift,
+constrained-fit/nonretaining-CG failures and historical unresolved comparisons.
+No SCC retry, stopped campaign restart, push, release or qualification.
+
+## Historical: admitted three-FE Schur checkpoints adopted — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
 fixest wherever reasonably achievable with at least two FE partitions**. It is
