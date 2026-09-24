@@ -82,6 +82,24 @@ fn failed() -> FeregError {
     )
 }
 
+// Independent accumulation chains remove the dense Gram's serial dependency.
+// Both inputs are freshly normalized; scheduling cannot change this reduction.
+fn normalized_product(left: &[f64], right: &[f64]) -> f64 {
+    debug_assert_eq!(left.len(), right.len());
+    let mut sums = [0.0_f64; 8];
+    let blocks = left.len() / sums.len();
+    for block in 0..blocks {
+        let start = block * sums.len();
+        for lane in 0..sums.len() {
+            sums[lane] = left[start + lane].mul_add(right[start + lane], sums[lane]);
+        }
+    }
+    for row in blocks * sums.len()..left.len() {
+        sums[0] = left[row].mul_add(right[row], sums[0]);
+    }
+    sums.iter().sum()
+}
+
 fn finite_product<C: JointFiniteDesign>(
     controls: &C,
     selected: usize,
@@ -136,6 +154,17 @@ mod product_tests {
         fn visit_rows(&self, _: &mut [f64], mut visit: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> {
             for (row, value) in self.values.iter().enumerate() { visit(row, std::slice::from_ref(value))?; }
             Ok(())
+        }
+    }
+
+    #[test]
+    fn normalized_products_preserve_independent_signed_inner_products_and_tails() {
+        for n in [1, 7, 8, 9, 17, 8193] {
+            let left: Vec<_> = (0..n).map(|i| (i as f64 * 1.731).sin() / (n as f64).sqrt()).collect();
+            let right: Vec<_> = (0..n).map(|i| ((i % 13) as f64 - 6.) / (7. * (n as f64).sqrt())).collect();
+            let expected: f64 = left.iter().zip(&right).map(|(a,b)| a*b).sum();
+            assert!((normalized_product(&left, &right) - expected).abs() < 1e-13);
+            assert!((normalized_product(&right, &left) - expected).abs() < 1e-13);
         }
     }
 
@@ -413,7 +442,7 @@ impl JointFiniteWorkspace {
             .enumerate()
             .for_each(|(i, row)| {
                 for j in i..k {
-                    row[j] = dot(&z[i * n..(i + 1) * n], &z[j * n..(j + 1) * n]);
+                    row[j] = normalized_product(&z[i * n..(i + 1) * n], &z[j * n..(j + 1) * n]);
                 }
             });
         for i in 0..k {

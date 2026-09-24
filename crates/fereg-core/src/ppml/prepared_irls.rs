@@ -5090,7 +5090,7 @@ mod tests {
 
     #[test]
     fn refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model() {
-        for hot in [30.0_f64] {
+        for (hot, mode) in [(30.0_f64, PreparedOlsExecutionMode::Low), (30., PreparedOlsExecutionMode::Fast)] {
             let mut x = Vec::new();
             let mut g = Vec::new();
             let mut h = Vec::new();
@@ -5128,9 +5128,9 @@ mod tests {
             let prepared = prepared_two_fe_with_codes(&y, &x, &g, &h);
             let mut config = PreparedPpmlIrlsConfig::default();
             config.ppml.max_iterations = 6;
-            config.memory.requested = crate::options::MemoryMode::Low;
+            config.memory.requested = if mode == PreparedOlsExecutionMode::Low { crate::options::MemoryMode::Low } else { crate::options::MemoryMode::Fast };
             config.memory.poolsize = 1;
-            config.linear.execution.mode = PreparedOlsExecutionMode::Low;
+            config.linear.execution.mode = mode;
             config.linear.execution.poolsize = 1;
             let start = PreparedPpmlStart {
                 coefficient_values: vec![0.2, 0.0],
@@ -5148,7 +5148,7 @@ mod tests {
             let fit = fitted.expect("refined ordinary solves must preserve strict progress");
             assert!(fit.diagnostics().converged);
             assert_eq!(fit.diagnostics().strict_profile_rejections, 1);
-            assert!(relative_infinity_difference(fit.eta(), &truth) < 1e-10);
+            assert!(relative_infinity_difference(fit.eta(), &truth) < 1e-10, "mode={mode:?} eta_error={:.17e}", relative_infinity_difference(fit.eta(), &truth));
             assert!(fit.diagnostics().iterations <= 6);
         }
     }

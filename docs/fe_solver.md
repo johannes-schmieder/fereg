@@ -123,7 +123,8 @@ engine.
 ADR 0148 prepares the joint PPML finite Hessian from one symmetric triangle.
 Streamed entries delay right-column normalization until after the weighted inner
 product, using fixed independent accumulators and borrowed numeric slices where
-available. Dense entries retain their projected-column dot arithmetic. Existing
+available. ADR 0155 also uses eight fixed accumulation chains for dense
+projected-column Gram entries; RHS and Krylov products remain unchanged. Existing
 current-weight geometry, fresh FE/finite scores, reconstruction and canonical
 rank/final-Hessian authority remain. No previous-frame factor or new solver route
 is retained from the rejected matrix-free experiments.

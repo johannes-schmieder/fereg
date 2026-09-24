@@ -10,6 +10,107 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Dense PPML Gram improvement adopted; categorical joint replacement rejected — 2026-09-24
+
+The broad objective remains **whole public PPML <=0.90 times comparable pinned
+stock fixest wherever reasonably achievable, per case**. It is unfinished.
+This opening supersedes earlier next-step orders. The current bounded experiment
+is closed; do not repeat its generic-session guard removal or tune its width limits.
+
+Adopt `densegram2`, based on `a1687ddb`, under
+[ADR 0155](docs/adr/0155-dense-joint-gram-and-categorical-engine-rejection.md) and the
+[source-bound report](benchmarks/reports/development/ppml-joint-engine-screen-local-2026-09-24/README.md).
+All **543 captured inputs** match plugin
+`a5768ce3774837d1968f21f956b9457cd35571760a6e2b0a01a88a1b26095a4c`.
+The verified/restored archive contains **14,834 logical receipts**, SHA-256
+`9ce0122427002eb118dbc0775fe8bd4f7b35e577f327bdad83986717570529df`.
+All builds, tests, public fits, frozen probes, diagnostics and archive/restore jobs
+are terminal. No pending process needs restarting.
+
+### Retained implementation and evidence
+
+Eight fixed FMA chains replace the dependent dot only in dense joint finite Gram
+construction. Retain the existing slope solver, weighted geometry, recurrence,
+RHS products, full independent certificates and canonical finalization. No new
+heap bank, cache, route, threshold or tolerance. The helper has eight f64 stack
+accumulators. Automatic categorical LSMR, low memory and OLS keep their policies.
+The existing disconnected extreme-weight truth test now also covers fast storage;
+its 1e-10 envelope and bounded iteration/rejection assertions are unchanged.
+
+**66 distinct Rust tests**, ABI/panic checks, **four licensed fixtures**, **132
+public applications**, **120 public-state checks**, **six independent Python
+oracles**, **46 native pairs** and **40 direct stock comparisons** pass. No final
+application failure, timeout, scientific exclusion or detected contention.
+Fifteen native export pairs are exact. Max differences: beta 1.110223e-16,
+covariance 5.929231e-20, means 3.552714e-14, likelihood 4.547474e-13, deviance zero.
+All forty PPML pairs retain outer/inner iteration and scientific metadata,
+**tracked peak, modeled selected bytes and scratch bytes exactly**.
+
+Fresh **202609363 is consumed and frozen**; five rotations, robust and means,
+pinned unmodified stock with glm.tol=1e-10/fixef.tol=1e-11, matched threads and
+serial BLAS. Medians in milliseconds; distributions and losses are in the report.
+
+| Slope design | Baseline | Current | Stock | Current/stock | 0.90 target |
+|---|---:|---:|---:|---:|---:|
+| Two partitions N32640/K7/T4 | 141 | 139 | 114 | 1.219 | 102.6 |
+| Unbalanced three FE, multiple slopes N34560/K12/T4 | 210 | 203 | 269 | 0.755 | 242.1 |
+| Unbalanced three FE, two slope partitions N24960/K30/T1 | 444 | 387 | 1243 | 0.311 | 1118.7 |
+| Disconnected two slope partitions N21120/K60/T8 | 348 | 310 | 472 | 0.657 | 424.8 |
+
+Wide fresh improvements are 12.8% and 10.9%, every pair faster. Narrow K7 has
+one +1-ms pair and still loses to stock. Controls: one FE 44→44 vs26 (one +1-ms
+pair), categorical two FE 79→78 vs64, low slopes 99→97 vs193. OLS exports are
+exact: categorical 35→35; slopes 68→69 with all three pairs +2/+1/+1 ms. Keep that
+small loss visible; do not claim universal non-regression or chase it with a guard.
+
+### Rejected route and new scientific boundary
+
+Frozen current-frame coefficient solving with the improved Gram beats joint LSMR
+in eight case/thread scopes by 23–54%; all 396 native calls and all 42 strict
+explicit-design LU/SciPy oracle outputs pass (max projection error 1.695339e-11).
+These clocks exclude owner construction and the public wrapper's original-input
+checks. They are not whole-command or stock headline claims.
+
+The public generic coefficient-session integration fails to carry those gains
+broadly: reliable K10/K16 serial losses remain. Its first accelerated-checkpoint
+prototype also hits an atomic publication-envelope r(3499); the corrected version
+passes its ordinary public screen but is still rejected. More decisively, the new
+fast extreme-component truth test fails, while an isolated a1687ddb baseline with
+the identical fast fixture passes. Separate canonical ownership and component-
+balanced checkpoints do not repair it; original-control/norm-sharing returns
+relative predictor error 1.2343253e-9 against 1e-10. All routing, new admission,
+publication-guard and norm-sharing changes are removed. Do not reuse their timing
+claims as production results. This is separate from ADR 0136's earlier rejected
+all-coefficient canonical probe.
+
+### Next bounded redesign
+
+**Investigate coefficient-space Newton increments behind the existing categorical
+incremental-direction interface**, preserving its independent canonical response
+history. First trace the extreme-component oracle at initial, ordinary and
+strict/final states; distinguish the passing baseline MAP path from automatic/
+explicit LSMR before assuming either is an oracle. The integration failure's exact
+state origin is not established. Keep independent cold explicit-design checks.
+
+Then port efficient current-weight coefficient preparation/operator work without
+the generic absolute-WLS wrapper. Dense diagnostics: inner coefficient calls
+11.235 ms, wrapper 20.745 ms, baseline joint LSMR 23.700 ms. Unbalanced: inner
+10.368 ms, wrapper 22.107 ms, baseline 19.734 ms. Inference is only 0.6–1.6 ms in
+those diagnostic fits. These are nested instrumented clocks, not additive costs
+or current production headlines. The evidence supports a different ownership and
+solver organization, not blanket routing, more width thresholds or relaxed checks.
+
+Use development 347 for diagnosis. Seed 360 remains frozen; 361 was predeclared
+but never generated/measured and supplies no validation. Seed 363 and protected
+211/212 must not become tuning seeds. Preserve sparse/weak automatic wins and
+focused low-memory/OLS controls; move on from small residual losses.
+
+Known deferred items remain: static allocation source drift; weighted constrained
+fits; explicit/insufficient-budget nonretaining-CG span instability; historical
+large one-FE stock-mean discrepancy; separate 1e6-shift failure; synthetic exact-fit
+three-FE ordinary-LSMR refusal; SCC/Linux T1/8/16 and physical caps. No SCC auth
+retry, stopped campaign, push, release or qualification. Frozen 77/16/111 unchanged.
+
 ## Full-batch PPML Schur checkpoints adopted; ordinary categorical joint directions next — 2026-09-24
 
 The active broad objective remains **whole public PPML <=0.90 times comparable
