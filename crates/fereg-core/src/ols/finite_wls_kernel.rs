@@ -2321,6 +2321,88 @@ fn fill_retained_dense_standardized_tiles(
         })
 }
 
+// Repartition only the already admitted row-tile bank. Each observation is
+// read and standardized once, then contributes to one private complete Gram.
+// Refuse when the bank or the conservative multiply-add work bound cannot
+// support a shorter parallel critical path than disjoint Gram rows.
+fn scratch_row_partition_plan(
+    rows: usize, stored: usize, dimension: usize, layout: FiniteWlsMomentLayout,
+) -> Option<(usize, usize)> {
+    if dimension == 0 || stored < dimension || rows == 0
+        || layout.columns_per_partition == 0 || layout.columns_per_partition > dimension {
+        return None;
+    }
+    let square = dimension.checked_mul(dimension)?;
+    let stride = square.checked_add(dimension)?.checked_add(stored)?;
+    let partitions = (layout.partial_elements / stride).min(layout.partitions).min(rows);
+    if partitions < 2 { return None; }
+    let d = dimension as u128;
+    let left = layout.columns_per_partition as u128;
+    let total_work = d * (d + 1) / 2 + d;
+    let old_critical_work = left * (2 * d - left + 1) / 2 + left;
+    if rows.div_ceil(partitions) as u128 * total_work >= rows as u128 * old_critical_work {
+        return None;
+    }
+    Some((partitions, stride))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn fill_retained_scratch_row_partitions(
+    values: &PreparedOlsScratch,
+    selected: Option<&[usize]>,
+    response: &[f64],
+    weights: BorrowedMapWeights<'_>,
+    divisor: f64,
+    scales: Option<&[f64]>,
+    layout: FiniteWlsMomentLayout,
+    partials: &mut [f64],
+    rhs: &mut [f64],
+    gram: &mut [f64],
+) -> Result<bool> {
+    let dimension = rhs.len();
+    let Some((partitions, stride)) = scratch_row_partition_plan(
+        response.len(), values.columns(), dimension, layout,
+    ) else { return Ok(false); };
+    let used = &mut partials[..partitions * stride];
+    used.par_chunks_mut(stride).enumerate().try_for_each(|(part, bank)| -> Result<()> {
+        record_retained_moment_worker();
+        let (out_rhs, rest) = bank.split_at_mut(dimension);
+        let (out_gram, row) = rest.split_at_mut(dimension * dimension);
+        let length = response.len() / partitions;
+        let tail = response.len() % partitions;
+        let start = part * length + part.min(tail);
+        let end = start + length + usize::from(part < tail);
+        let mut reader = values.shared_reader();
+        for observation in start..end {
+            reader.read_linear(observation * values.columns(), row)?;
+            let weight = normalized_weight(weights, divisor, observation)?;
+            // Selection is increasing, so forward compaction cannot overwrite
+            // a source that a later selected coordinate still needs.
+            for j in 0..dimension {
+                row[j] = scaled_column(row[selected.map_or(j, |ids| ids[j])], scales, j)?;
+            }
+            for j in 0..dimension {
+                let left = weight * row[j];
+                out_rhs[j] = left.mul_add(response[observation], out_rhs[j]);
+                for (entry, &right) in out_gram[j * dimension + j..(j + 1) * dimension]
+                    .iter_mut().zip(&row[j..dimension]) {
+                    *entry = left.mul_add(right, *entry);
+                }
+            }
+        }
+        if out_rhs.iter().chain(out_gram.iter()).all(|v| v.is_finite()) {
+            Ok(())
+        } else {
+            Err(invalid_data("finite-WLS row-partition moment is not finite"))
+        }
+    })?;
+    merge_fixed_block_partials(
+        FiniteWlsMomentLayout { partitions, partial_stride: stride,
+            partial_elements: used.len(), ..layout }, used, rhs, gram,
+    )?;
+    Ok(true)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_scratch_partitioned(
     values: &PreparedOlsScratch,
@@ -2334,6 +2416,11 @@ fn fill_retained_scratch_partitioned(
     rhs: &mut [f64],
     gram: &mut [f64],
 ) -> Result<()> {
+    if fill_retained_scratch_row_partitions(
+        values, selected_columns, response, weights, divisor, scales, layout, partials, rhs, gram,
+    )? {
+        return Ok(());
+    }
     let dimension = rhs.len();
     let stored_columns = values.columns();
     partials
@@ -2666,6 +2753,49 @@ mod tests {
         );
     }
 
+    fn assert_reordered_moments(
+        rhs: &[f64], gram: &[f64], expected_rhs: &[f64], expected_gram: &[f64],
+        rows: usize, response_norm: f64,
+    ) {
+        let k = rhs.len();
+        // Both scalar and partitioned FMA sums have forward error bounded by
+        // gamma_N times the absolute products; Cauchy bounds those products.
+        // Four N*epsilon covers both sums and the compensated partial merge.
+        let bound = 4. * rows as f64 * f64::EPSILON;
+        for j in 0..k {
+            let norm = expected_gram[j*k+j].sqrt();
+            assert_close(rhs[j], expected_rhs[j], bound * norm * response_norm);
+            for q in 0..k {
+                assert_close(gram[j*k+q], expected_gram[j*k+q],
+                    bound * norm * expected_gram[q*k+q].sqrt());
+            }
+        }
+    }
+
+    #[test]
+    fn scratch_row_partition_admission_bounds_storage_and_critical_work() {
+        for dimension in [1_usize, 7, 16, 28, 32, 33, 63, 64, 65, 128, 257] {
+            for threads in [1_usize, 4, 8, 16] {
+                let width = dimension.div_ceil(threads.min(dimension));
+                let parts = dimension.div_ceil(width);
+                let layout = FiniteWlsMomentLayout {
+                    mode: FiniteWlsMomentMode::RetainedPartitioned, partitions: parts,
+                    columns_per_partition: width, partial_stride: 1024,
+                    partial_elements: parts * 1024,
+                };
+                if let Some((count, stride)) = scratch_row_partition_plan(16_385, dimension, dimension, layout) {
+                    assert!(count >= 2 && count <= parts);
+                    assert!(count * stride <= layout.partial_elements);
+                    assert_eq!(stride, dimension * dimension + 2 * dimension);
+                    assert!(16_385_usize.div_ceil(count) * (dimension * (dimension + 1) / 2 + dimension)
+                        < 16_385 * (width * (2 * dimension - width + 1) / 2 + width));
+                } else if dimension == 32 && threads == 8 {
+                    panic!("the representative wide scratch bank admits seven complete partials");
+                }
+            }
+        }
+    }
+
     #[test]
     fn scratch_moment_tiles_match_scalar_oracle_and_bound_read_chunks() {
         for (stored, columns, rows) in [
@@ -2749,14 +2879,28 @@ mod tests {
                             let before = scratch.shared_read_chunks_for_test();
                             fill_finite_wls_moments(source, layout, &mut partials, &mut rhs, &mut gram)
                                 .unwrap();
-                            assert_eq!(rhs, expected_rhs);
-                            assert_eq!(gram, expected_gram);
+                            let row_plan = scratch_row_partition_plan(rows, stored, columns, layout);
+                            if row_plan.is_some() {
+                                let response_norm = response.iter().enumerate().map(|(i, y)|
+                                    (if provided { weights[i] / divisor } else { 1. }) * y * y).sum::<f64>().sqrt();
+                                assert_reordered_moments(&rhs, &gram, &expected_rhs, &expected_gram, rows, response_norm);
+                            } else {
+                                assert_eq!(rhs, expected_rhs);
+                                assert_eq!(gram, expected_gram);
+                            }
                             let tile_rows = layout.partial_stride / stored;
                             let chunks_per_tile = layout.partial_stride.div_ceil(1024);
                             let full_tiles = rows / tile_rows;
                             let tail = rows % tile_rows;
-                            let expected_chunks = layout.partitions
-                                * (full_tiles * chunks_per_tile + (tail * stored).div_ceil(1024));
+                            let expected_chunks = if let Some((parts, _)) = row_plan {
+                                (0..parts).map(|part| {
+                                    let start = part * (rows / parts) + part.min(rows % parts);
+                                    let end = start + rows / parts + usize::from(part < rows % parts);
+                                    (end * stored).div_ceil(1024) - start * stored / 1024
+                                }).sum()
+                            } else {
+                                layout.partitions * (full_tiles * chunks_per_tile + (tail * stored).div_ceil(1024))
+                            };
                             assert_eq!(
                                 scratch.shared_read_chunks_for_test() - before,
                                 expected_chunks as u64
@@ -2902,8 +3046,14 @@ mod tests {
                             let mut gram = vec![0.0; columns * columns];
                             fill_finite_wls_moments(source, layout, &mut partials, &mut rhs, &mut gram)
                                 .unwrap();
-                            assert_eq!(rhs, expected_rhs);
-                            assert_eq!(gram, expected_gram);
+                            if scratch_row_partition_plan(rows, stored, columns, layout).is_some() {
+                                let response_norm = response.iter().enumerate().map(|(i, y)|
+                                    (if provided { weights[i] / divisor } else { 1. }) * y * y).sum::<f64>().sqrt();
+                                assert_reordered_moments(&rhs, &gram, &expected_rhs, &expected_gram, rows, response_norm);
+                            } else {
+                                assert_eq!(rhs, expected_rhs);
+                                assert_eq!(gram, expected_gram);
+                            }
                         });
                 }
                 let mut preserved = vec![0.; scratch_values.len()];

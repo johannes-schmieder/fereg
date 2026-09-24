@@ -132,6 +132,40 @@ fn finite_product<C: JointFiniteDesign>(
     Ok(sums.iter().sum::<f64>() / scale)
 }
 
+// Independent row panels borrow contiguous original columns. Each residual
+// keeps its selected-column FMA order, while the inner loop follows the source
+// layout. No normalized N-by-K bank or worker scratch is needed.
+fn reconstruct_direct_columns<C: JointFiniteDesign>(
+    controls: &C,
+    selected: &[usize],
+    coefficients: &[f64],
+    scales: &[f64],
+    roots: &[f64],
+    original: &[f64],
+    observations: &mut [f64],
+) -> bool {
+    if !selected.iter().all(|&column| controls.column_slice(column)
+        .is_some_and(|values| values.len() == observations.len())) {
+        return false;
+    }
+    const ROWS: usize = 1024;
+    observations.par_chunks_mut(ROWS).enumerate().for_each(|(panel, target)| {
+        let start = panel * ROWS;
+        let end = start + target.len();
+        for (value, &input) in target.iter_mut().zip(&original[start..end]) {
+            *value = input - *value;
+        }
+        for (j, &column) in selected.iter().enumerate() {
+            let values = controls.column_slice(column).expect("validated immutable column");
+            for ((value, &x), &root) in target.iter_mut()
+                .zip(&values[start..end]).zip(&roots[start..end]) {
+                *value = (-coefficients[j]).mul_add(x * root / scales[j], *value);
+            }
+        }
+    });
+    true
+}
+
 #[cfg(test)]
 mod product_tests {
     use super::*;
@@ -154,6 +188,57 @@ mod product_tests {
         fn visit_rows(&self, _: &mut [f64], mut visit: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> {
             for (row, value) in self.values.iter().enumerate() { visit(row, std::slice::from_ref(value))?; }
             Ok(())
+        }
+    }
+
+    struct Columns {
+        values: Vec<Vec<f64>>,
+        missing: Option<usize>,
+    }
+
+    impl JointFiniteDesign for Columns {
+        fn nrows(&self) -> usize { self.values[0].len() }
+        fn ncols(&self) -> usize { self.values.len() }
+        fn column_slice(&self, column: usize) -> Option<&[f64]> {
+            (self.missing != Some(column)).then(|| self.values[column].as_slice())
+        }
+        fn visit_column(&self, _: usize, _: impl FnMut(usize, f64) -> Result<()>) -> Result<()> { unreachable!() }
+        fn visit_rows(&self, _: &mut [f64], _: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> { unreachable!() }
+    }
+
+    #[test]
+    fn direct_reconstruction_preserves_order_panels_scales_and_refusal() {
+        for threads in [1, 4, 8] {
+            let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+            pool.install(|| {
+                for n in [1, 1023, 1024, 1025, 2083] {
+                    for k in [1, 7, 33, 65] {
+                        let scales: Vec<_> = (0..k).map(|j| [1e-200, 1., 1e200][j % 3]).collect();
+                        let roots: Vec<_> = (0..n).map(|i| [0.125, 0.5, 1., 4.][i % 4]).collect();
+                        let original: Vec<_> = (0..n).map(|i| (i as f64 / 13.).sin()).collect();
+                        let coefficients: Vec<_> = (0..k).map(|j| (j as f64 + 1.).cos()).collect();
+                        let selected: Vec<_> = (0..k).map(|j| 2*j).collect();
+                        let mut controls = Columns { values: (0..2*k).map(|j| (0..n).map(|i| {
+                            ((i + j) as f64 / 17.).sin() * scales[j / 2]
+                        }).collect()).collect(), missing: None };
+                        let initial: Vec<_> = (0..n).map(|i| (i % 7) as f64 / 3.).collect();
+                        let expected: Vec<_> = (0..n).map(|i| {
+                            selected.iter().enumerate().fold(original[i] - initial[i], |r, (j, &c)|
+                                (-coefficients[j]).mul_add(controls.values[c][i] * roots[i] / scales[j], r))
+                        }).collect();
+                        let mut actual = initial.clone();
+                        assert!(reconstruct_direct_columns(&controls, &selected, &coefficients, &scales,
+                            &roots, &original, &mut actual));
+                        assert_eq!(actual.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                                   expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>());
+                        controls.missing = Some(selected[k-1]);
+                        actual.copy_from_slice(&initial);
+                        assert!(!reconstruct_direct_columns(&controls, &selected, &coefficients, &scales,
+                            &roots, &original, &mut actual));
+                        assert_eq!(actual, initial);
+                    }
+                }
+            });
         }
     }
 
@@ -294,7 +379,11 @@ impl JointFiniteWorkspace {
     ) -> Result<f64> {
         let p = op.coefficients;
         op.forward(&self.coefficients[..p], observations);
-        if controls.prefers_column_scans() {
+        let direct = reconstruct_direct_columns(
+            controls, selected, &self.coefficients[p..p + selected.len()],
+            &self.scales[..selected.len()], roots, original, observations,
+        );
+        if !direct && controls.prefers_column_scans() {
             for (value, &original) in observations.iter_mut().zip(original) {
                 *value = original - *value;
             }
@@ -307,7 +396,7 @@ impl JointFiniteWorkspace {
                     Ok(())
                 })?;
             }
-        } else {
+        } else if !direct {
             controls.visit_rows(&mut self.column_scratch, |row, values| {
                 let mut residual = original[row] - observations[row];
                 for (j, &column) in selected.iter().enumerate() {
@@ -321,7 +410,18 @@ impl JointFiniteWorkspace {
         op.project_eliminated(observations, scratch);
         let mut maximum = op.transpose(observations, &mut self.residual[..p], true);
         self.residual[p..p + selected.len()].fill(0.);
-        if controls.prefers_column_scans() {
+        if direct {
+            // Scores are fresh original-column scans after eliminated-effect
+            // projection. Columns are independent; each keeps its row order.
+            self.residual[p..p + selected.len()].par_iter_mut()
+                .zip(selected.par_iter()).zip(self.scales[..selected.len()].par_iter())
+                .for_each(|((sum, &column), &scale)| {
+                    let values = controls.column_slice(column).expect("validated immutable column");
+                    for ((&value, &root), &residual) in values.iter().zip(roots).zip(observations.iter()) {
+                        *sum = (value * root / scale).mul_add(residual, *sum);
+                    }
+                });
+        } else if controls.prefers_column_scans() {
             for (j, &column) in selected.iter().enumerate() {
                 let sum = &mut self.residual[p + j];
                 controls.visit_column(column, |row, value| {

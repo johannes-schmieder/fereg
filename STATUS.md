@@ -10,7 +10,143 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Two-FE storage/checkpoint experiment closed; larger lifecycle redesign next — 2026-09-24
+## Bounded PPML reconstruction/moments adopted; projection lifecycle next — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. [ADR 0165](docs/adr/0165-bounded-ppml-reconstruction-and-moment-panels.md)
+adopts direct-column joint reconstruction and bounded scratch row partitions.
+The former preserves each residual/score recurrence while using existing workers;
+the latter reads/standardizes each observation once and merges complete partial
+moments inside the already admitted tile bank. Its structural storage/work gate
+has no benchmark-specific threshold. No runtime certificate or tolerance changes,
+no new heap bank and no weighted authority across frames.
+
+Accepted artifact **`jointpanels2`** is `d482395e` plus the captured two-file
+Rust overlay; all **546 computational inputs** match. Plugin SHA-256:
+`4d4c669d6716583b14be437e2732133d61f733840b610414429d8df5614168b1`.
+Baseline is accepted `a1bf9ce0` computation, artifact `threeschur3`.
+The [source-bound report](benchmarks/reports/development/ppml-joint-panels-local-2026-09-24/README.md)
+preserves all three artifact sources, declarations, full distributions, tests,
+initial failures and public audits. Its **10,298 logical receipts** were verified
+and restored; archive SHA-256
+`372c27c2a48c780c440d046a2af36e4913b9701044bee1ec03afccc97345dfc4`.
+All builds, tests, fits, audits and archive/restore processes are terminal.
+
+Fresh seed **202609377 is consumed/frozen**, five matched rotations, robust
+inference plus fitted means. Stock is pinned unmodified fixest 0.14.2 with
+`glm.tol=1e-10`, `fixef.tol=1e-11`; all comparisons in this block pass science.
+These are local development medians, milliseconds, not qualification claims:
+
+| Case | Baseline | Current | Stock | Current/stock |
+|---|---:|---:|---:|---:|
+| Wide low 2FE N19200/K30/T8 | 146 | 121 | 89 | 1.360 |
+| Serial low 2FE N13440/K18/T1 | 99 | 95 | 138 | 0.688 |
+| Unbalanced low 2FE N24960/K14/T4 | 104 | 95 | 63 | 1.508 |
+| Low 3FE N16800/K9/T4 | 74 | 73 | 278 | 0.263 |
+| Two slope partitions low N18240/K10/T4 | 98 | 92 | 95 | 0.968 |
+| Excluded narrow fast 2FE N14640/K5/T1 | 53 | 54 | 52 | 1.038 |
+| Excluded disconnected fast 2FE N23040/K13/T4 | 87 | 85 | 77 | 1.104 |
+| Excluded weak fast 2FE N10080/K5/T1 | 38 | 37 | 907 | 0.041 |
+| Excluded two slope partitions fast N18240/K8/T4 | 82 | 82 | 90 | 0.911 |
+| Excluded unbalanced fast 3FE N25440/K10/T4 | 90 | 92 | 96 | 0.958 |
+
+Wide low improves **17.1%**, unbalanced low **8.7%**, low slopes **6.1%**;
+every pair in those families improves. Every serial-low pair also improves.
+Narrow fast loses 1 ms and fast unbalanced three FE loses 2 ms; the latter
+confirms the small development loss. Cause is not established. Other excluded
+pairs include +1–3-ms losses. No universal non-regression claim. OLS scientific
+exports are exact: categorical medians 18→17 ms, slope medians 15→15 with one
++1-ms pair. Fresh ratios supersede no earlier source-bound results.
+
+All **309 timing applications** succeed, including intermediate development
+and OLS. Final-candidate PPML blocks pass **234 public-state checks, 71 native
+pairs and 71 direct stock comparisons**. Separate explicit Poisson/Hessian/
+sandwich oracles pass in **six final licensed fixture invocations**. **102
+distinct focused Rust tests** pass on the final source. Reconstruction-only
+exports are exact; combined maximum differences are coefficients 1.102e-16,
+V 1.001e-17 and means 2.132e-14. Large-cell public-state checks are independent
+sample/score/span/objective checks, not complete covariance oracles per cell.
+No complete-suite or release claim is made.
+
+**Newly recorded pre-existing test discrepancy:**
+`zero_active_control_lsmr_uses_joint_state_but_reports_fused_identity` fails the
+checkpoint-count assertion, actual 2 versus expected 3, on both isolated accepted
+`threeschur3` and candidate. It is unresolved and explicitly skipped by the final
+joint selector; both failures are archived. Initial moment-test recurrence/I/O
+assertions were replaced with the derived roundoff/page-count checks for the new
+organization. A generated fixture's filename/sentinel wrapper mismatch was
+corrected and all six rerun; original failure receipts remain visible.
+
+All 71 final PPML pairs have identical modeled selected bytes, tracked peak
+deltas, scratch bytes, outer and reported inner iterations. Fresh wide retains
+27,011,299 modeled bytes, 24,143,862 tracked peak delta and 4,608,000 scratch bytes.
+Warmed allocation fixtures pass. No physical-cap or Linux claim; static
+allocation-inventory drift remains an open failure.
+
+### Next bounded implementation plan: close the substantial remaining gaps
+
+1. **Measure the complete current-weight projection lifecycle.** Use wide and
+   unbalanced low two-FE anchors first, plus excluded fast, weak, slope and
+   three-FE controls. They need another **40.9 ms (33.8%)** and **38.3 ms (40.3%)**
+   to reach 0.90 stock. Instrument an isolated copy of this accepted source to
+   count geometry/group-total preparation, operator applications, observation
+   passes, active RHS work, reconstruction and certificates across initial,
+   ordinary, strict and final-Hessian states. Freeze identical weighted frames
+   for independent inner comparisons; keep diagnostics outside stock headline
+   timings. Separate setup/iteration/check/output costs and nested spans. Resolve
+   the baseline checkpoint-count discrepancy as a separate bounded test-policy
+   audit without changing scientific behavior to satisfy a count assertion.
+2. **Give compatible projections one explicit frame owner.** Current source
+   recomputes weighted group totals in `absorb_two_fe_pcg_reusing`; compiled
+   weighted-neighbor reuse is guarded to OLS and PPML uses observation operators.
+   This is a source-supported hypothesis, not measured attribution. If repeated
+   work is substantial, retain immutable topology and prepare weighted geometry
+   once per valid frame for compatible control tiles, response and checkpoint
+   consumers. Separate their RHS/convergence state. Reuse prior coefficients as
+   guesses only. Replace the call-owned organization where justified; do not
+   merely lift OLS guards or revive the rejected dense matrix/large allowance.
+   Require generation invalidation, complete live-memory admission, independent
+   current-weight acceptance and optional-state release before fallback. Aim for
+   **35–45% whole-command savings** on the low anchors, not another small kernel
+   improvement. Commit a successful coherent replacement and retire dead paths.
+3. **Eliminate duplicated canonical products/passes if they remain dominant.**
+   Compare at most one materially different second organization: raw weighted
+   moments plus certified FE coefficients, with cancellation bounds and canonical
+   rank/QR/span authority, materializing rows only for consumers that need them.
+   This algebraic design is unimplemented; the rejected lazy-row view did not
+   test it. Shared verification calculations may change only with an explicit
+   invariant/error-bound argument, successor ADR and adversarial tests. Fresh
+   residual, score, objective, reconstruction and final-Hessian acceptance remain.
+   Stop a candidate after a bounded public screen if its gain is small,
+   inconsistent or bought with disproportionate memory/complexity.
+4. **Close shared overhead and near-parity losses after the large redesign.**
+   Current disconnected and narrow anchors need 15.7 and 7.2 ms (18.5%/13.3%)
+   further savings; low slopes need 6.5 ms, fast three FE 5.6 ms, fast slopes 1 ms.
+   Remeasure these after steps 2–3, then consolidate input preparation,
+   original-input validation, inference and requested-output passes where the
+   measured cost supports it. Aim for a broad 15–25% reduction in small-fit
+   overhead. Avoid another isolated threshold-tuning cycle for a 1-ms residue.
+5. **Broaden successful mechanisms with fresh, predeclared tests.** Include
+   larger N, four-plus FE, multiple slopes, generated/wide controls, robust and
+   clustered/full outputs, imbalance, weak/disconnected topology, changing and
+   extreme weights, rank deficiency, T1/T4/T8, low budgets and optional refusal.
+   Screen adaptively rather than running a Cartesian campaign. Protect one-FE
+   PPML plus categorical/slope OLS with focused controls. Each adoption needs
+   independent WLS/Poisson/Hessian/weight oracles, alternating development pairs,
+   five fresh baseline/candidate/pinned-stock rotations, full loss/memory/failure
+   distributions and a coherent local commit. Scientifically unresolved stock
+   discrepancies remain unranked; 0.90 stock is evaluated per comparable cell.
+
+These are engineering targets, not promised speedups. Seeds through 202609377
+used in these experiments remain consumed controls, not new tuning inputs.
+Preserve 77/16/111 definitions, historical unresolved comparisons, weighted
+constrained-fit and nonretaining-CG span failures. No SCC authentication retry,
+stopped campaign restart, push, release or qualification. STATUS remains the
+sole mutable handover; accepted decisions and immutable evidence live in ADRs
+and reports.
+
+## Historical: two-FE storage/checkpoint experiment closed — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
 fixest wherever reasonably achievable with at least two FE partitions**. It is

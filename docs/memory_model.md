@@ -153,6 +153,15 @@ automatic alternatives and certified CG fallback, subject to their own admission
 
 ## Fast and low execution
 
+Retained PPML scratch moments can reuse their already admitted row-tile bank as
+complete partial Gram/RHS banks plus one stored row per partition (ADR 0165).
+The checked `D²+D+S` stride and partition count must fit the existing element
+bound, and a structural work comparison must favor the new organization.
+Otherwise the existing Gram-row calculation remains. No new heap allowance,
+scratch artifact or N-by-K copy is introduced. Joint reconstruction similarly
+borrows original columns through disjoint row panels; independent fresh score
+columns use the same worker team. Whole-process coverage limits remain open.
+
 Three-FE PPML checkpoints may substitute centered Schur geometry for the admitted
 LSMR transient frame (ADR 0163). The complete checked bound includes both reduced
 matrices, normalized weights, sparse couplings, group and worker state, and both
