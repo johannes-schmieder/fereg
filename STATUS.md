@@ -10,7 +10,131 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Component-aware warm checkpoint fix adopted; incremental solver redesign next — 2026-09-24
+## Incremental experiment closed; pursue whole-fit PPML cost reduction — 2026-09-24
+
+The objective remains **whole public PPML <=0.90 times comparable pinned stock
+fixest, per case wherever reasonably achievable**. It is unfinished. This opening
+supersedes the next-step instructions below. The production computation remains
+`e9c7f598` / `componentwarm3`, all 543 captured inputs unchanged, plugin SHA-256
+`5434193a5a9b0408ed9636c625f1d134996f2224bff2642049b129a47245ce52`.
+
+### Closed experiment and preserved evidence
+
+Under [ADR 0157](docs/adr/0157-incremental-coefficient-engine-closeout.md), reject
+the categorical coefficient-space incremental replacement and all three borrowed
+successors. Do not tune their width thresholds or adopt their isolated hoist.
+The [source-bound report](benchmarks/reports/development/ppml-incremental-coefficient-closeout-local-2026-09-24/README.md)
+preserves exact source, recipes, science, profiles, distributions and losses.
+The verified/restored experiment archive has 10,060 logical receipts, SHA-256
+`58970138922c04c29bcb53543b631176065b830f6e6495dbbc00fae93f4090b5`.
+The independently verified one-FE archive has 642 receipts, SHA-256
+`2c7c98df9b43e22a115c9c5164431adf2901aa72c69a03e87dad9ccd95f242ba`.
+All builds, tests, fits, profiles, audits and archive/restore work are terminal.
+There is no pending process to restart.
+
+The new owner borrows topology and original controls and avoids a redundant
+generic rank-one FE certificate. Nevertheless, original-control access and
+reconstruction consume its kernel advantage. Final prototype, three rotations:
+
+| Categorical case | Baseline | Rejected candidate | Stock | Paired candidate-minus-base ms |
+|---|---:|---:|---:|---|
+| Dense N16320/K16/T4 | 77 | 79 | 64 | +2, +2, -1 |
+| Unbalanced N15360/K10/T1 | 70 | 72 | 68 | +5, +4, +2 |
+| Narrow N12000/K3/T1 | 54 | 44 | 35 | -8, -11, -11 |
+| Weak N7680/K4/T1 | 35 | 33 | 428 | 0, 0, -6 |
+
+All 180 public experiment applications and 16 separate diagnostic applications
+pass their science checks. Ten licensed fixture executions cover four distinct
+contents. There are 86 distinct passing Rust tests across prototypes, **59 on
+the exact final prototype**, including a new independent analytic weighted
+direction oracle. Tracked peak falls on dense/unbalanced/narrow but rises on
+weak/small cases; modeled savings overstate physical savings. No production
+change or broad OLS non-regression claim follows. A zero-correction shortcut was
+also ruled out: all four accepted baseline states fail the unchanged strict
+1e-12 bound. Do not implement it or relax that bound.
+
+### Current opportunity and ambitious implementation plan
+
+New unchanged-source one-FE screen, seed 347, robust + means, strict stock:
+
+| Case | Current median | Stock | <=0.90 target | Required current-time cut |
+|---|---:|---:|---:|---:|
+| Fast one FE N16320/K12/T4 | 43 ms | 27 ms | 24.3 ms | 43.5% |
+| Unbalanced one FE N30720/K3/T1 | 57 ms | 26 ms | 23.4 ms | 58.9% |
+
+Fast N61440/K10 and low N49152/K12 have reproducible mean-envelope discrepancies
+(five coordinates each), so their 96/54 and 84/54 ms observations remain
+**unranked**. All own-state checks pass; origin is not adjudicated. Preserve
+these failures rather than weakening the comparison. Earlier current-source
+dense categorical 78/65 ms needs 25% and narrow two-slope 66/65 ms needs 11.4%
+to reach 0.90; these belong to the separate ADR 0156 time block. Older wide-slope
+wins remain tied to ADR 0155's artifact and need later remeasurement.
+
+1. **Redesign one-FE preparation and final checking as a coherent data flow.**
+   Profile the whole public unbalanced case and split still-unattributed native
+   and Stata overhead first. Existing concentrated Newton preparation is only
+   1.038/1.980 ms exclusive in the two instrumented cases. Canonical initial and
+   strict solves together take 12.591/30.389 ms inclusive; objective work takes
+   2.363/7.818 ms exclusive. Target repeated matrix/group traversals and repeated
+   current-frame normalization, with a separately checked final result. Consider
+   fused raw/within statistics during construction, one independent acceptance
+   pass, and direct one-FE group geometry shared by canonical products and final
+   inference. Keep canonical rank and dropped-span decisions; do not simply
+   remove the strict solve or revive the rejected fast implicit representation.
+   Reuse immutable Poisson terms where currently recomputed. A cheap broadly
+   useful improvement may be retained, but the milestone seeks a structural
+   30–50% reduction, not a string of 1-ms tweaks.
+2. **Reduce common public-command and checkpoint overhead.** Assign explicit
+   budgets to loading, preparation, separation, original-input checks, inference
+   and transactional output. The one-FE public/native difference is not solely
+   ado time without further instrumentation. Eliminate repeated metadata and
+   observation passes only after tracing ownership and validation purpose.
+   Keep computation native, SPI on the main thread and publication atomic.
+   Distinguish immutable sample/design facts from mutable weighted frames.
+3. **Return to dense categorical and narrow-slope losses with new organization.**
+   Preserve accepted categorical LSMR and slope joint coefficient engines.
+   Investigate operation-level batching, reconstruction/control access and
+   shared current-frame products rather than another blanket engine switch.
+   Compare at most two coherent alternatives on identical frozen inner inputs
+   and whole commands. Aim for at least 20–30% in dense categorical and 15–25%
+   in narrow slopes, then test carryover to multi-partition OLS. Do not revive
+   the rejected residual extrapolation or the now-closed borrowed route.
+4. **Broaden around demonstrated gains and close remaining substantial gaps.**
+   Cover generated/factor terms, weights, multiple slopes, rank deficiency,
+   disconnected/weak/unbalanced groups, wide regressors, robust/clustered VCE,
+   requested outputs, T1/T4/T8 and low-memory admission. Remeasure historical
+   wins on the final source. Preserve easy/weak cases already beating stock;
+   do not trade them away for an aggregate score. Adjudicate unresolved stock
+   mean discrepancies independently before ranking them.
+
+Each implementation milestone starts with measured avoidable cost and an
+explicit whole-command budget. Use development 347 for investigation, focused
+analytic/full-design WLS and Poisson/Hessian oracles plus relevant boundary and
+OLS/categorical controls. Only promising coherent candidates proceed to a
+predeclared fresh case set and alternating candidate/baseline/stock rotations,
+normally five for confirmation. Freeze case definitions before inspecting their
+results. Record distributions, individual losses, failures, exact source/plugin
+identity, tracked/modelled memory and all requested work. Stock remains pinned
+and unmodified; diagnostic builds remain separate and headline runs uncontended.
+
+Preserve current-weight projection, model-space, rank, finite-solve, original
+scores, objective, reconstruction and final-Hessian acceptance. Redesign their
+implementation and redundant scheduling only with an explicit successor ADR
+and independent tests. No tolerance, sample, weight, DoF or separation changes.
+Commit accepted changes and rejected evidence in bounded milestones. After two
+materially different unsuccessful candidates in a family, identify its residual
+cost floor and move to the next substantial opportunity. A remaining loss needs
+a quantified explanation; it does not justify endless threshold tuning or an
+unsupported promise of universal parity.
+
+Development seed 347 only was used here. Seeds 360/363/365 and protected 211/212
+stay frozen; 361 remains unused. Static allocation drift, weighted constrained
+fits, nonretaining-CG span instability, large one-FE stock-mean discrepancies,
+1e6-shift failure, synthetic exact-fit three-FE LSMR refusal and SCC/Linux/physical
+caps remain open. No SCC retry, stopped campaign, push, release or qualification.
+Frozen 77/16/111 definitions are unchanged.
+
+## Earlier checkpoint: component-aware warm checkpoint fix — 2026-09-24
 
 The broad **whole public PPML <=0.90 times comparable pinned stock fixest** goal
 remains active and unfinished. This opening supersedes earlier next-step orders.
