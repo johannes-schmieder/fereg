@@ -10,6 +10,139 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Wide canonical PPML coefficient storage adopted — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This opening supersedes earlier next-step instructions below.
+[ADR 0172](docs/adr/0172-streamed-canonical-group-coefficients.md) and the
+[source-bound report](benchmarks/reports/development/ppml-streamed-products-local-2026-09-24/README.md)
+record this bounded milestone and its rejected intermediate.
+
+Accepted artifact **canonicalstream3**, plugin SHA-256
+49df141053ad0e99603fb33147012a2e1cd2cd8157ca8d2c1470b3f7590b5399,
+is captured from 91fa4c7600cfc39002dff573f40ea30682039305 plus only
+ols/canonical_products.rs. All **548 captured inputs match** final source.
+The archive contains **14,972 logical receipts / 3,413 payloads**, all verified
+and restored, SHA-256
+8ae56185ff56c1e0b3cc89888983295fbc61c028893338f6eadb565b2f66f952.
+All agent-owned builds, tests, fixtures, fits, audits and archive/restore processes
+are terminal. No operation awaits an idle-window reply.
+
+### Adopted organization and fresh evidence
+
+The existing low two-categorical-FE canonical Schur product engine now selects
+coefficient lifetime from its complete memory plan. It retains group coefficients
+when all phase banks fit; otherwise it computes one eliminated group at a time
+through RHS assembly and the full original-input certificate. After reductions
+are dropped, streaming reconstructs the coefficient bank for retained-row writing
+using the same pure recurrence and immutable current-weight inputs. Both layouts
+share RHS assembly, factors, certificates and output code. No memory allowance,
+work hint, tolerance, rank policy or checking threshold increases. No weighted
+cache survives the call. Ordinary joint IRLS, fast mode, slopes, three-plus FE
+and OLS retain their engines.
+
+Always-streaming **canonicalstream1** improved newly admitted wide cases but
+regressed affordable cached cases, including unbalanced 104→109 ms. That policy
+is rejected and its evidence preserved. **canonicalstream2** introduces complete-
+budget-based retention; canonicalstream3 changes only two clarifying comments.
+Final fixtures and public comparisons use canonicalstream3. Seeds
+**202609385/386/387/388 are consumed/frozen**. Do not tune on them.
+
+Final five-rotation PPML medians, milliseconds, robust inference and fitted means,
+stock glm.tol=1e-10 / fixef.tol=1e-11, low mode unless stated:
+
+| Fresh case | Baseline | Accepted | Stock | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Connected N28800/K102/T4 | 694 | 557 | 870 | 0.640 |
+| Connected N53760/K106/T8 | 1128 | 759 | 1016 | 0.747 |
+| Serial admitted N18480/K98/T1 | 776 | 770 | 1717 | 0.448 |
+| Disconnected, refused N55200/K100/T8 | 1082 | 1087 | 944 | 1.151 |
+| Very wide, refused N21600/K140/T8 | 859 | 858 | 668 | 1.284 |
+| Admitted N27360/K72/T4 | 318 | 316 | 519 | 0.609 |
+| Narrow N22560/K2/T4 | 50 | 50 | 32 | 1.562 |
+| Unbalanced N24480/K26/T4 | 109 | 109 | 104 | 1.048 |
+| Fast N22560/K10/T4 | 66 | 67 | 58 | 1.155 |
+| Two slope partitions N22560/K10/T4 | 106 | 105 | 113 | 0.929 |
+| Three FE N24480/K10/T4 | 116 | 116 | 351 | 0.330 |
+| Weak graph N12480/K8/T1 | 53 | 51 | 1524 | 0.033 |
+
+The two newly admitted targets improve every native pair, about 20% and 33% at
+medians. Six selected medians reach the 10%-faster target; one more beats stock
+without that margin; five still lose. This is not a coverage-wide win rate.
+The report includes all ranges and paired losses, including disconnected +5 ms,
+fast +1 ms and the narrow 53 ms outlier. Close this storage experiment here.
+
+The gains come from projection, canonical finite work and strict final solving.
+Newly admitted whole-action tracked peaks rise 1,322,960 / 2,768,112 bytes inside
+the unchanged model; already-admitted serial/wide cases add 792 / 2,336 bytes.
+Other fresh peaks and all scratch sizes are unchanged. Maximum tracked/model
+ratio is 0.854394. RSS and physical constrained-memory qualification did not run.
+
+### Validation and preserved failures
+
+14 distinct focused core tests (eight canonical, six strict) and five licensed
+fixtures pass. The new 100-control independent nonzero-residual WLS construction
+covers changing weights, T1/T8, exact numerical equality of streamed/cached
+products, direct Gram reproduction and one-byte-below-minimum refusal. Existing
+rank, scale, generation and strict rollback tests remain. The initial missing
+boolean test-argument compile failure is preserved; correcting it changed no
+scientific tolerance. The plugin ABI/self-test passes.
+
+All 180 final fresh public states, 120 baseline pairs and 60 direct candidate/
+stock pairs pass. Six native/stock fits pass fresh independent explicit-design
+Poisson/Hessian/sandwich/means oracles at N6960/K96 and disconnected N6000/K88.
+The generated-term licensed fixture independently covers FW multiplicity and PW
+clustered scores. All 24 OLS applications and 12 science/output pairs pass:
+16→15 / 28→28 / 105→105 / 60→61 ms for one-FE/all-output, two-FE, low slopes and
+low three-FE controls. No broad Stata or qualification profile is claimed.
+
+All headline monitors report no overlaps/errors. The unrelated GUI was untouched.
+Changed-file formatting and final diff checks pass. The pre-existing canonical
+LSMR reporting assertion, static allocation-inventory source drift, weighted
+constrained/nonretaining-CG span failures, seed378 comparator issue, Linux
+T1/8/16/constrained-memory confirmation and SCC authentication remain open.
+No stopped campaign, SCC retry, push or qualification occurred.
+
+### Ambitious next plan: public PPML with at least two FE
+
+1. **Account for the narrow/fast public gap before choosing the next engine.**
+   N22560/K2 low needs 50→28.8 ms to beat stock by 10%, a 42.4% reduction.
+   Its reported FE/finite/strict phases are 8.18/3.85/8.01 ms; inference is only
+   0.30 ms. Fast K10 needs 67→52.2 ms, about 22%. Instrument an isolated native
+   build and Stata wrapper to distinguish first-command loading, warm calls,
+   preparation, ordinary directions, strict verification and publication.
+   Match stock cold/warm work and keep diagnostic timings separate. Do not
+   assign unaccounted public time to SPI or the wrapper without measurement.
+2. **Prototype a fused current-weight two-FE joint solve.** Compare component
+   Schur elimination of FE and finite coefficients with the existing ordinary
+   coefficient/Krylov direction on identical frozen IRLS frames. Share immutable
+   topology and current-frame factors across compatible RHS work, without
+   materializing unnecessary N-by-K panels. Evaluate both dense and scratch
+   consumers. All original-input projection, finite/rank/span, objective, score,
+   reconstruction and final-Hessian requirements remain. Changing weights only
+   permit prior solutions as guesses. Any cold-routing extension must follow
+   measured computational work, not another inflation of the closed work hint.
+3. **Keep the next experiment bounded and consequential.** Predeclare a small
+   current-baseline set, then fresh connected/disconnected/unbalanced cases at
+   narrow/moderate widths and larger N, T1/T4/T8, plus slope/three-FE/OLS controls.
+   Aim for a coherent 20–40% public improvement on losing two-FE families. Stop a
+   candidate when its measured phase ceiling cannot deliver a material gain;
+   do not keep tuning to favorable seeds. Commit accepted changes and losses.
+4. **Return to wide memory limits as the second subsystem.** Actual topology
+   gives disconnected P9200/Q920 a minimum solve bank of 8,968,720 bytes versus
+   8,832,000 allowed: bounded RHS reductions are the concrete next mechanism.
+   K140 needs 4,533,632 bytes for full coefficient reconstruction versus
+   3,456,000 allowed: tile that output stage without a full P-by-W bank. These
+   are structural calculations corroborated by unchanged runtime peaks/phases,
+   not instrumented route counters. Avoid budget increases or shape-specific
+   thresholds. Broaden only after an independently validated public gain.
+
+Preserve the 77/16/111 definitions and all frozen seeds. Keep one-FE work outside
+the goal except focused regression controls. Do not retry SCC or restart stopped
+reference/empirical campaigns. The target is broad practical speed; these results
+do not establish a universal 10% advantage.
+
 ## Observed-work canonical PPML routing adopted — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock

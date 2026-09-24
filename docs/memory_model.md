@@ -471,10 +471,10 @@ to the strict overlap charge, not a second permanent observation vector. The
 session row buffer is a separate K-double bank. Optional-cell validation during
 plugin publication uses predicates without allocating index vectors.
 
-For admitted low two-categorical-FE canonical products (ADRs 0168–0171), a
+For admitted low two-categorical-FE canonical products (ADRs 0168–0172), a
 checked current-call bank replaces the planned temporary projection panel and
-reusable projection block. The maximum setup, solve and certificate payload,
-plus live descriptors, must fit `16*N*pool` bytes. The initial topology plan
+reusable projection block. The maximum setup, solve, certificate and
+reconstruction payload, plus live descriptors, must fit `16*N*pool` bytes. The initial topology plan
 subtracts already-live projection-block capacity. Under
 [ADR 0171](adr/0171-observed-work-canonical-ppml-routing.md), only a complete
 work/memory plan may reclaim that obsolete block before weighted allocation.
@@ -493,6 +493,14 @@ the complete current-call geometry plan before any weighted numeric bank is
 allocated. Its work bound uses component cubes, and complete phase admission
 preserves already charged topology capacity. Independent scientific acceptance
 remains as in [ADR 0168](adr/0168-fused-canonical-ppml-products.md).
+[ADR 0172](adr/0172-streamed-canonical-group-coefficients.md) retains the current
+group coefficient bank when its complete phase peak fits. Otherwise it computes
+group coefficients in bounded worker scratch during RHS assembly and the full
+certificate. Their P-by-W bank is rebuilt only after the certificate reductions
+are consumed and released. This adds a separate reconstruction peak and bounded
+recomputation, avoiding overlap of the full coefficient bank with either set of
+worker reductions. Current normalized weights and masses remain live until that
+replay completes; all four phase peaks must fit the same reservation.
 
 ## PPML separation memory
 

@@ -126,7 +126,7 @@ impl Plan {
         let cross = q.checked_mul(width)?;
         let stride = square
             .checked_add(cross)?
-            .checked_add(width.checked_mul(5)?)?;
+            .checked_add(width.checked_mul(6)?)?;
         // Cold setup is bounded by a finite Gram. A later canonical call may
         // also spend the Schur operator work actually observed on its prior
         // completed projection. This predicts cost, not current-weight accuracy.
@@ -154,11 +154,11 @@ impl Plan {
             bytes: 0,
             factor_work_budget: work_allowance - work,
         };
-        plan.bytes = plan.storage_bytes(0, 0)?;
+        plan.bytes = plan.storage_bytes(0, 0, false)?;
         Some(plan)
     }
 
-    fn storage_bytes(&self, matrix: usize, factor: usize) -> Option<u128> {
+    fn storage_bytes(&self, matrix: usize, factor: usize, retain_centers: bool) -> Option<u128> {
         let Self {
             n,
             p,
@@ -171,8 +171,9 @@ impl Plan {
         let square = width.checked_mul(width)?;
         let cross = q.checked_mul(width)?;
         let coefficients = p.checked_mul(width)?;
+        let cached_coefficients = if retain_centers { coefficients } else { 0 };
         let reductions = workers.checked_mul(stride)?;
-        let rhs_reductions = workers.checked_mul(cross)?;
+        let rhs_reductions = workers.checked_mul(cross.checked_add(width.checked_mul(3)?)?)?;
         let words = |sizes: &[usize]| {
             sizes
                 .iter()
@@ -190,7 +191,7 @@ impl Plan {
             q,
             q,
             factor,
-            coefficients,
+            cached_coefficients,
             cross,
             width,
             width,
@@ -201,7 +202,7 @@ impl Plan {
             n,
             p,
             q,
-            coefficients,
+            cached_coefficients,
             cross,
             width,
             width,
@@ -209,9 +210,14 @@ impl Plan {
             square,
             reductions,
         ])?;
+        // Streaming rebuilds coefficients after the independent certificate
+        // releases its reductions. Both layouts retain them for the row writer;
+        // only retention overlaps them with RHS and certificate reductions.
+        let reconstruct = words(&[n, p, q, coefficients, cross, width, width, width, square])?;
         setup
             .max(solve)
             .max(certify)
+            .max(reconstruct)
             .checked_add((width as u128).checked_mul(32)?)?
             .checked_add(2048)
     }
@@ -251,6 +257,10 @@ pub(super) struct Products<'a, P: PreparedOlsFitView + ?Sized> {
     pub response: Vec<f64>,
     pub moments: CanonicalMoments,
     pub report: SolveReport,
+    #[cfg(test)]
+    minimum_workspace_bytes: u128,
+    #[cfg(test)]
+    retained_centers: bool,
 }
 
 impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
@@ -467,12 +477,19 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     if factor_work > factor_work_budget {
         return Err(declined());
     }
-    let bytes = plan
-        .storage_bytes(matrix_cells, factor_cells)
+    let minimum_bytes = plan
+        .storage_bytes(matrix_cells, factor_cells, false)
         .ok_or_else(declined)?;
-    if bytes > allowance {
+    if minimum_bytes > allowance {
         return Err(declined());
     }
+    // Retention avoids repeated original-column passes when the complete
+    // coexisting phase banks fit. Streaming is the same solve under tighter
+    // workspace, not a different numerical route or a threshold by width.
+    let (retain_centers, bytes) = match plan.storage_bytes(matrix_cells, factor_cells, true) {
+        Some(bytes) if bytes <= allowance => (true, bytes),
+        _ => (false, minimum_bytes),
+    };
     // The complete topology/work/memory plan is now known. Reclaim the old
     // temporary panel only if the new phase needs its reservation; numerical
     // refusal can still rebuild that panel through the ordinary fallible path.
@@ -625,16 +642,14 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     let started = Instant::now();
     let mut scales = budget.reserve(width, 0.)?;
     let mut means = budget.reserve(width, 0.)?;
-    let mut left = budget.reserve(p * width, 0.)?;
     let total: f64 = mass_a.iter().sum();
     if !total.is_finite() || total <= 0. {
         return Err(declined());
     }
-    left.par_chunks_mut(p)
-        .zip(scales.par_iter_mut())
-        .zip(means.par_iter_mut())
+    scales
+        .par_iter_mut()
         .enumerate()
-        .try_for_each(|(j, ((values, norm), mean))| -> Result<()> {
+        .try_for_each(|(j, norm)| -> Result<()> {
             let mut scale = 0_f64;
             let mut square = 1.;
             for i in 0..n {
@@ -657,48 +672,77 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             if !norm.is_finite() {
                 return Err(declined());
             }
-            let norm = nonzero(*norm);
-            let mut mean_sum = 0.;
-            let mut mean_correction = 0.;
-            for g in 0..p {
-                let mut sum = 0.;
-                let mut correction = 0.;
-                for &i in a.level_index().members(g) {
-                    let value = (w[i] / mass_a[g]) * (columns[j].value(i)? / norm);
-                    let term = value - correction;
-                    let next = sum + term;
-                    correction = (next - sum) - term;
-                    sum = next;
-                }
-                values[g] = sum;
-                let term = (mass_a[g] / total) * sum - mean_correction;
-                let next = mean_sum + term;
-                mean_correction = (next - mean_sum) - term;
-                mean_sum = next;
-            }
-            *mean = mean_sum * norm;
-            if !mean.is_finite() || values.iter().any(|x| !x.is_finite()) {
-                return Err(declined());
-            }
             Ok(())
         })?;
-    let rhs_stride = q * width;
+    let mut retained_left = if retain_centers {
+        let mut values = budget.reserve(p * width, 0.)?;
+        values
+            .par_chunks_mut(p)
+            .enumerate()
+            .try_for_each(|(j, values)| -> Result<()> {
+                for (g, value) in values.iter_mut().enumerate() {
+                    *value = group_coefficient(
+                        &columns[j],
+                        &w,
+                        nonzero(scales[j]),
+                        mass_a[g],
+                        a.level_index().members(g),
+                        None,
+                    )?;
+                }
+                Ok(())
+            })?;
+        Some(values)
+    } else {
+        None
+    };
+    // A streaming frame has only this worker-local group center bank.
+    let rhs_stride = q * width + 3 * width;
     let mut partials = budget.reserve(workers * rhs_stride, 0.)?;
-    let rows_per_worker = n.div_ceil(workers);
+    let groups_per_worker = p.div_ceil(workers);
     partials
         .par_chunks_mut(rhs_stride)
         .enumerate()
         .try_for_each(|(worker, partial)| -> Result<()> {
-            for i in worker * rows_per_worker..((worker + 1) * rows_per_worker).min(n) {
-                let g = a.codes()[i] as usize;
-                let h = b.codes()[i] as usize;
+            let (cross, rest) = partial.split_at_mut(q * width);
+            let (centers, rest) = rest.split_at_mut(width);
+            let (means, corrections) = rest.split_at_mut(width);
+            for g in worker * groups_per_worker..((worker + 1) * groups_per_worker).min(p) {
+                let members = a.level_index().members(g);
                 for j in 0..width {
-                    let value = columns[j].value(i)? / nonzero(scales[j]) - left[j * p + g];
-                    partial[h * width + j] = w[i].mul_add(value, partial[h * width + j]);
+                    centers[j] = if let Some(left) = &retained_left {
+                        left[j * p + g]
+                    } else {
+                        group_coefficient(
+                            &columns[j],
+                            &w,
+                            nonzero(scales[j]),
+                            mass_a[g],
+                            members,
+                            None,
+                        )?
+                    };
+                    let term = (mass_a[g] / total) * centers[j] - corrections[j];
+                    let next = means[j] + term;
+                    corrections[j] = (next - means[j]) - term;
+                    means[j] = next;
+                }
+                for &i in members {
+                    let h = b.codes()[i] as usize;
+                    for j in 0..width {
+                        let value = columns[j].value(i)? / nonzero(scales[j]) - centers[j];
+                        cross[h * width + j] = w[i].mul_add(value, cross[h * width + j]);
+                    }
                 }
             }
             Ok(())
         })?;
+    for j in 0..width {
+        means[j] = merge(&partials, rhs_stride, q * width + width + j) * nonzero(scales[j]);
+        if !means[j].is_finite() {
+            return Err(declined());
+        }
+    }
     let mut cross = budget.reserve(q * width, 0.)?;
     for slot in 0..cross.len() {
         cross[slot] = merge(&partials, rhs_stride, slot);
@@ -752,15 +796,25 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     budget.release(solved)?;
     budget.release(roots)?;
     budget.release(free)?;
-    left.par_chunks_mut(p).enumerate().for_each(|(j, values)| {
-        for g in 0..p {
-            let mut sum = 0.;
-            for &i in a.level_index().members(g) {
-                sum += (w[i] / mass_a[g]) * right[j * q + b.codes()[i] as usize];
-            }
-            values[g] -= sum;
-        }
-    });
+    if let Some(left) = retained_left.as_mut() {
+        left.par_chunks_mut(p)
+            .enumerate()
+            .try_for_each(|(j, values)| -> Result<()> {
+                for (g, value) in values.iter_mut().enumerate() {
+                    *value -= group_effect_mean(
+                        &w,
+                        mass_a[g],
+                        a.level_index().members(g),
+                        &right[j * q..(j + 1) * q],
+                        b.codes(),
+                    );
+                    if !value.is_finite() {
+                        return Err(declined());
+                    }
+                }
+                Ok(())
+            })?;
+    }
     let solve_seconds = started.elapsed().as_secs_f64();
     let started = Instant::now();
     // RHS reductions are already released. Certificate reductions also need
@@ -771,17 +825,32 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         |(worker, partial)| -> Result<()> {
             let (gram, rest) = partial.split_at_mut(width * width);
             let (scores, rest) = rest.split_at_mut(q * width);
+            let (centers, rest) = rest.split_at_mut(width);
             let (row, rest) = rest.split_at_mut(width);
             let (sums, rest) = rest.split_at_mut(width);
             let (maximum, rest) = rest.split_at_mut(width);
             let (squares, absolute) = rest.split_at_mut(width);
             for g in worker * groups_per_worker..((worker + 1) * groups_per_worker).min(p) {
+                for j in 0..width {
+                    centers[j] = if let Some(left) = &retained_left {
+                        left[j * p + g]
+                    } else {
+                        group_coefficient(
+                            &columns[j],
+                            &w,
+                            nonzero(scales[j]),
+                            mass_a[g],
+                            a.level_index().members(g),
+                            Some((&right[j * q..(j + 1) * q], b.codes())),
+                        )?
+                    };
+                }
                 sums.fill(0.);
                 for &i in a.level_index().members(g) {
                     let h = b.codes()[i] as usize;
                     for j in 0..width {
                         row[j] = columns[j].value(i)? / nonzero(scales[j])
-                            - left[j * p + g]
+                            - centers[j]
                             - right[j * q + h];
                         if !row[j].is_finite() {
                             return Err(declined());
@@ -862,6 +931,30 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         return Err(declined());
     }
     budget.release(partials)?;
+    // Streaming replays the certified group calculation with unchanged columns,
+    // normalized weights and right coefficients after reductions are released.
+    // Retention can move its already certified bank directly to the row writer.
+    let left = if let Some(left) = retained_left {
+        left
+    } else {
+        let mut left = budget.reserve(p * width, 0.)?;
+        left.par_chunks_mut(p)
+            .enumerate()
+            .try_for_each(|(j, values)| -> Result<()> {
+                for (g, value) in values.iter_mut().enumerate() {
+                    *value = group_coefficient(
+                        &columns[j],
+                        &w,
+                        nonzero(scales[j]),
+                        mass_a[g],
+                        a.level_index().members(g),
+                        Some((&right[j * q..(j + 1) * q], b.codes())),
+                    )?;
+                }
+                Ok(())
+            })?;
+        left
+    };
     budget.release(mass_a)?;
     budget.release(mass_b)?;
     // Every weight-dependent solve and acceptance check has finished. Each
@@ -922,7 +1015,55 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         response: within_response,
         moments,
         report,
+        #[cfg(test)]
+        minimum_workspace_bytes: minimum_bytes,
+        #[cfg(test)]
+        retained_centers: retain_centers,
     })
+}
+
+// Use an identical coefficient recurrence in the independent residual replay
+// and the later retained-row reconstruction; no weighted input changes between
+// those phases. Omitting right coefficients gives the eliminated-group center.
+fn group_coefficient<P: PreparedOlsFitView + ?Sized>(
+    column: &Column<'_, P>,
+    weights: &[f64],
+    scale: f64,
+    mass: f64,
+    members: &[usize],
+    right: Option<(&[f64], &[u32])>,
+) -> Result<f64> {
+    let mut sum = 0.;
+    let mut correction = 0.;
+    for &i in members {
+        let value = (weights[i] / mass) * (column.value(i)? / scale);
+        let term = value - correction;
+        let next = sum + term;
+        correction = (next - sum) - term;
+        sum = next;
+    }
+    if let Some((values, codes)) = right {
+        sum -= group_effect_mean(weights, mass, members, values, codes);
+    }
+    if sum.is_finite() {
+        Ok(sum)
+    } else {
+        Err(declined())
+    }
+}
+
+fn group_effect_mean(
+    weights: &[f64],
+    mass: f64,
+    members: &[usize],
+    values: &[f64],
+    codes: &[u32],
+) -> f64 {
+    let mut sum = 0.;
+    for &i in members {
+        sum += (weights[i] / mass) * values[codes[i] as usize];
+    }
+    sum
 }
 
 fn merge(partials: &[f64], stride: usize, slot: usize) -> f64 {
@@ -1154,7 +1295,7 @@ mod tests {
                     BorrowedMapWeights::Provided(&weights),
                     divisor,
                     config.absorb.map,
-                    products.report.solver_workspace_peak.bytes().unwrap() as u128 - 1,
+                    products.minimum_workspace_bytes - 1,
                     0,
                     &mut Vec::new()
                 )
@@ -1178,6 +1319,187 @@ mod tests {
                 assert!((coefficient.value.unwrap() - expected).abs() < 1e-10);
             }
             assert!(fit.fit().residuals().iter().all(|r| r.abs() < 1e-10));
+        }
+    }
+
+    #[test]
+    fn streamed_canonical_groups_admit_wide_nonzero_weighted_contrasts() {
+        use crate::ols::linear_session::{CertifiedLinearSession, LinearSessionGenerations};
+        use crate::ols::prepared_fit::LinearSolveFrame;
+        use crate::ols::{
+            PreparedOlsBreadWeightScale, PreparedOlsExecutionMode, PreparedOlsFitConfig,
+        };
+        let (n, k, q) = (8640, 100, 36);
+        let g: Vec<_> = (0..n).map(|i| (i / 6) as f64).collect();
+        let h: Vec<_> = (0..n)
+            .map(|i| ((i / 6 + 11 * ((i % 6) / 2)) % q) as f64)
+            .collect();
+        // Both rows in each pair share all FE and control coordinates. Their
+        // reciprocal-weight errors are orthogonal to the complete explicit
+        // design, giving a nonzero-residual WLS oracle without either solver.
+        let x: Vec<Vec<_>> = (0..k)
+            .map(|j| {
+                (0..n)
+                    .map(|i| {
+                        let row = (i / 2) as f64;
+                        (row * (j as f64 + 1.618)).sin()
+                            + 0.3 * ((row + j as f64) / (j + 1) as f64).cos()
+                    })
+                    .collect()
+            })
+            .collect();
+        let truth: Vec<_> = (0..k).map(|j| 0.002 * (j + 1) as f64).collect();
+        let predictor: Vec<_> = (0..n)
+            .map(|i| {
+                0.02 * g[i] - 0.03 * h[i] + x.iter().zip(&truth).map(|(x, b)| x[i] * b).sum::<f64>()
+            })
+            .collect();
+        let prepared = prepared(&predictor, &x, &g, &h);
+        let allowance = (n * 10 * 16) as u128;
+        for threads in [1, 8] {
+            let team = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            team.install(|| {
+                let design = prepared
+                    .fit_borrowed_intercept_map_design()
+                    .unwrap()
+                    .unwrap();
+                let plan = Plan::new(&design, k + 1, 0, threads, 0).unwrap();
+                let w = k + 1;
+                let previous_certificate = 8
+                    * (n + n / 6
+                        + q
+                        + n / 6 * w
+                        + q * w
+                        + 3 * w
+                        + w * w
+                        + threads * (w * w + q * w + 5 * w))
+                    + 32 * w
+                    + 2048;
+                assert!(previous_certificate as u128 > allowance);
+                assert!(plan.bytes <= allowance);
+                let mut config = PreparedOlsFitConfig::default();
+                config.absorb.solver = FeSolverKind::Map;
+                config.absorb.map.tolerance = 1e-12;
+                config.execution.mode = PreparedOlsExecutionMode::Low;
+                config.execution.poolsize = 10;
+                config.execution.threads =
+                    crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                for frame in [0, 1] {
+                    let ratio = 2. + frame as f64;
+                    let weights: Vec<_> = (0..n)
+                        .map(|i| {
+                            (0.3 + ((i / 2 + 7 * frame) % 31) as f64 * 0.02)
+                                * if i % 2 == 0 { 1. } else { ratio }
+                        })
+                        .collect();
+                    let errors: Vec<_> = (0..n)
+                        .map(|i| {
+                            0.01 * ((i / 2) % 7 + 1) as f64
+                                * if i % 2 == 0 { 1. } else { -1. / ratio }
+                        })
+                        .collect();
+                    let y: Vec<_> = predictor.iter().zip(&errors).map(|(a, b)| a + b).collect();
+                    let divisor = weights.iter().copied().fold(0_f64, f64::max);
+                    let scale = PreparedOlsBreadWeightScale {
+                        weight_kind: None,
+                        solver_weight_divisor: divisor,
+                        reference_weight_multiplier: divisor,
+                        reference_weight_sum: weights.iter().sum(),
+                    };
+                    let products = try_build(
+                        &prepared,
+                        &(0..k).collect::<Vec<_>>(),
+                        &y,
+                        BorrowedMapWeights::Provided(&weights),
+                        divisor,
+                        config.absorb.map,
+                        allowance,
+                        0,
+                        &mut Vec::new(),
+                    )
+                    .unwrap()
+                    .unwrap();
+                    assert!(products.report.certified());
+                    assert!(!products.retained_centers);
+                    let bytes = products.minimum_workspace_bytes;
+                    assert!(
+                        products.report.solver_workspace_peak.bytes().unwrap() as u128 <= allowance
+                    );
+                    let cached = try_build(
+                        &prepared,
+                        &(0..k).collect::<Vec<_>>(),
+                        &y,
+                        BorrowedMapWeights::Provided(&weights),
+                        divisor,
+                        config.absorb.map,
+                        u128::MAX,
+                        0,
+                        &mut Vec::new(),
+                    )
+                    .unwrap()
+                    .unwrap();
+                    assert!(cached.retained_centers);
+                    assert_eq!(products.left, cached.left);
+                    assert_eq!(products.right, cached.right);
+                    assert_eq!(products.response, cached.response);
+                    assert_eq!(products.moments.gram, cached.moments.gram);
+                    assert_eq!(products.means, cached.means);
+                    drop(cached);
+                    assert!(try_build(
+                        &prepared,
+                        &(0..k).collect::<Vec<_>>(),
+                        &y,
+                        BorrowedMapWeights::Provided(&weights),
+                        divisor,
+                        config.absorb.map,
+                        bytes - 1,
+                        0,
+                        &mut Vec::new()
+                    )
+                    .unwrap()
+                    .is_none());
+                    // The bank rebuilt after certification must reproduce the
+                    // very residuals whose direct products supplied the Gram.
+                    for j in [0, 1, k] {
+                        let norm = nonzero(products.scales[j]);
+                        let direct: f64 = (0..n)
+                            .map(|i| {
+                                let value = products.residual(i, j).unwrap() / norm;
+                                (weights[i] / divisor) * value * value
+                            })
+                            .sum();
+                        assert!((direct - products.moments.gram[j * (k + 1) + j]).abs() < 1e-11);
+                    }
+                    drop(products);
+                    let frame = LinearSolveFrame::from_parts(
+                        &y,
+                        BorrowedMapWeights::Provided(&weights),
+                        scale,
+                    )
+                    .unwrap();
+                    let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                        &prepared,
+                        frame,
+                        config,
+                        LinearSessionGenerations::default(),
+                        prepared.fit_owned_fe_design().unwrap(),
+                    )
+                    .unwrap();
+                    let result = session.solve_fresh().unwrap();
+                    assert_eq!(result.fit().absorption_report().iterations, 1);
+                    assert!(result.fit().score_certificate().passed);
+                    for (actual, expected) in result.fit().coefficients().iter().take(k).zip(&truth)
+                    {
+                        assert!((actual.value.unwrap() - expected).abs() < 1e-9);
+                    }
+                    for (actual, expected) in result.fit().residuals().iter().zip(&errors) {
+                        assert!((actual - expected).abs() < 1e-9);
+                    }
+                }
+            });
         }
     }
 
@@ -1516,7 +1838,7 @@ mod tests {
                             }
                         }
                         assert!(result.norms[3] / result.scales[3] < 2e-14);
-                        let bytes = result.report.solver_workspace_peak.bytes().unwrap() as u128;
+                        let bytes = result.minimum_workspace_bytes;
                         assert!(try_build(
                             &p,
                             &[0, 1, 2],
@@ -1625,7 +1947,7 @@ mod tests {
                         );
                         let allowance = (g.len() * 2 * 16) as u128;
                         assert!(
-                            plan.storage_bytes(plan.q * plan.q, plan.q * plan.q)
+                            plan.storage_bytes(plan.q * plan.q, plan.q * plan.q, false)
                                 .unwrap()
                                 > allowance
                         );
@@ -1673,7 +1995,7 @@ mod tests {
                             BorrowedMapWeights::Provided(&weights),
                             divisor,
                             MapConfig::default(),
-                            result.report.solver_workspace_peak.bytes().unwrap() as u128 - 1,
+                            result.minimum_workspace_bytes - 1,
                             0,
                             &mut Vec::new()
                         )

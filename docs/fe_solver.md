@@ -181,6 +181,13 @@ No weighted factor or certificate authority survives the call.
 compare factor setup against actual Schur operator work from the previous
 completed canonical projection. The performance hint has no weighted authority;
 complete memory admission and every current-weight certificate remain required.
+Under [ADR 0172](adr/0172-streamed-canonical-group-coefficients.md), group-local
+coefficient calculation replaces the P-by-W bank during RHS and independent
+certificate passes when retaining it would exceed the existing allowance.
+Affordable retention uses the same solver and certificate without recomputation.
+A streamed call rebuilds that bank for retained-row writing after certification
+releases its reductions, using the same coefficient recurrence on unchanged
+inputs. Work admission, factors and acceptance thresholds are unchanged.
 
 Under ADR 0139, admitted low one-FE PPML canonical products use immutable
 original columns minus freshly computed current-weight group centers. A separate
