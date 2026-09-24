@@ -10,6 +10,145 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Unified serial PPML products adopted; categorical finalization next — 2026-09-24
+
+The broad objective remains **whole public PPML <=0.90 times scientifically
+comparable pinned stock fixest wherever reasonably achievable, per case**.
+This opening supersedes prior next-step orders. The serial-product milestone
+is complete; broad performance is unfinished. Close product-kernel tuning and
+move to **fast categorical accepted-frame finalization**, measured below.
+
+Adopt `unifiedproduct1`, based on `48f9c7ef`, under
+[ADR 0151](docs/adr/0151-unified-streamed-joint-products.md) and the
+[source-bound report](benchmarks/reports/development/ppml-unified-products-local-2026-09-24/README.md).
+All **542 captured computational inputs** match plugin
+`8bc61627701864b4bd88c2ed7307c8014ea2cffbc47cd28a389f35e2d8db3bda`.
+The verified/restored archive contains **9,117 logical receipts**, SHA-256
+`ce38b636ea97b0239bf94585d326080e920c265d2d03093718c95f73d3e5c230`.
+All builds, tests, fits, diagnostics and archive operations are terminal.
+
+### What changed and passed
+
+All streamed joint PPML Hessian entries now use the existing resolved-column,
+eight-accumulator product helper. The serial direct-row loop and its temporary
+factor-bank borrowing are removed. Direct bindings previously still gathered
+the complete model row for every Hessian row. Norms, reconstruction and residual
+moments keep their separate storage policy. No new solver, threshold, heap bank,
+cache, normalized design or memory admission formula. Eligible serial reductions
+change order; independent scientific acceptance remains authoritative. No change
+to current-weight geometry, projection/model-space, finite scores, objective,
+reconstruction, strict agreement, canonical rank/bread/final Hessian, sample,
+weights, DoF, separation, check scheduling or transactional publication.
+
+**58 distinct final-source Rust tests**, production ABI/panic checks and **seven
+licensed fixtures** pass. Independent weighted-contrast tests cover both streamed
+layouts and dense directions, changed frames, disconnected/rank-deficient slopes,
+T1/T4, zero response and failure revocation. K8/K65 explicit Poisson/Hessian/
+sandwich checks cover unit/FW/PW × T1/T4 × robust/cluster. Further fixtures cover
+factors/products, FE shifts 0/1000, multipartition slopes, separation and checkpoint
+rollback. The changed direct-storage K24/T1 allocation window has zero events/
+growth over sixteen joint steps, stable capacities and fresh/warm equivalence.
+
+All **210 main applications plus 25 fixed-input repeats**, **213 public-state
+checks**, **nine small independent Python oracle results**, **82 native pairs**
+and **71 direct stock comparisons** pass. Thirty-four native export pairs are
+exact; the others pass unchanged envelopes (maximum coefficient difference
+1.11e-16, means 2.14e-14; native objectives exact). No application failure,
+timeout, scientific exclusion or detected contention. Eight diagnostic fits
+pass separately. A K1 development screen request failed before fits because
+the existing outcome generator requires x2. Its receipts remain; only that
+narrow case was corrected to K2 before retry, with source/seed/tolerances fixed.
+
+All 71 PPML pairs retain iteration/scientific metadata, modeled peaks and scratch
+bytes. Tracked peaks match in 68; three excluded fast categorical changes are
++1,100,983, +510,968 and -351,322 bytes. These allocator differences remain
+unattributed. No universal memory or timing non-regression claim. Physical caps
+and cross-platform checks remain deferred.
+
+### Current public timings and residual losses
+
+Fresh seed **202609357** is consumed, not tuning input. Five rotations, low mode,
+T1, robust inference and means. Medians in ms; full distributions and losses
+are in the report. Stock is pinned/unmodified with `glm.tol=1e-10`,
+`fixef.tol=1e-11`, matched threads and serial BLAS. Native low execution is not
+physical-memory-matched to stock.
+
+| Case | Baseline | Current | Stock | Current/stock | 0.90 target |
+|---|---:|---:|---:|---:|---:|
+| Two FE N17280/K62 | 1010 | 495 | 842 | 0.588 | 757.8 |
+| Disconnected two FE N20160/K32 | 451 | 289 | 427 | 0.677 | 384.3 |
+| Unbalanced two FE N15120/K12 | 114 | 96 | 79 | 1.215 | 71.1 |
+| Narrow two FE N12000/K3, dispersed | 69 | 56 | 47 | 1.191 | 42.3 |
+| Unbalanced three FE, multiple slopes, N19200/K10 | 201 | 185 | 449 | 0.412 | 404.1 |
+| Two FE N18240/K65, excluded product path | 580 | 579 | 944 | 0.613 | 849.6 |
+
+Four fresh cases clear the target; the first two are new stock wins on this
+seed. K62/disconnected K32 improve 51.0%/35.9%. Unbalanced K12 and multiple slopes
+improve 15.8%/8.0%. All twenty pairs across those four changed cases improve.
+The excluded K65 case is nearly unchanged, with mixed pairs. Development K24
+and K63 improve 29.6% and 54.7%; excluded K64 loses 2 ms with a +10-ms pair.
+
+Do not claim the dispersed K3 median improvement. Candidate times were 48–201,
+baseline 50–98 and stock 34–88 ms, with no detected overlap and no established
+cause. Five same-input/source repeats give **48→48 ms vs stock 35**, paired
+0/0/+1/0/-3. Its repeat-based target is **31.5 ms**, requiring another 34.4%.
+The original observations remain alongside the repeats.
+
+Current controls still lose to stock: fast categorical two FE **135 vs 61**, low
+one FE **42 vs 26**, fast slopes **125 vs 118**, threaded K64/T8 **326 vs 222 ms**.
+Weak barbell wins **35 vs 377** but loses 1 ms at the native median; threaded wide
+also loses 1 ms with mixed pairs. OLS categorical medians tie 36 ms. Initial OLS
+slopes lose 71→73 ms with an 83-ms outlier; five fixed-input repeats give 71→70 ms
+with no losing pair and exact exports. The outlier does not reproduce, but its
+cause remains unattributed. No universal timing non-regression claim, and the
+small one-FE control does not resolve its historical large stock discrepancy.
+
+### Next implementation milestone
+
+**Generalize accepted-frame finalization to fast categorical PPML.** The
+current-source diagnostic shows two canonical response/design reprojections at
+**47.662 ms**, versus **20.327 ms** for all five ordinary LSMR solves. There are
+three canonical rank constructions (12.722 ms, including initialization), and
+an 18.708-ms initial retained-design construction, within a 127.885-ms native root.
+These spans nest; do not sum them. The reprojection span has 36.927 ms exclusive
+of existing probes, so instrument its internals before labeling all of it
+removable. This evidence prioritizes finalization over blindly replacing the
+ordinary categorical LSMR engine.
+
+Investigate the existing categorical LSMR owner as a **strict current-weight
+Newton witness**, followed by one independent canonical final rank/bread/Hessian
+construction on the unchanged accepted state. Build on the already adopted
+joint finalization mechanism; verify current-weight projection/finite-score/
+reconstruction authority and bounded refusal first. Compare identical frozen
+frames and track exact sample, topology, basis, raw weights and generations.
+Ordinary products never acquire covariance/rank authority. Test forced witness
+refusal, state movement, changed basis, stale weights/generations, memory refusal
+and rollback with independent Poisson/Hessian/weighted oracles. Protect low,
+slope, explicit solver, generated, small-fit and OLS paths. Do not remove guards
+from the rejected all-coefficient canonical route or relax strict tolerances.
+
+Fast categorical needs about **59%** further reduction to reach 54.9 ms at its
+current stock median. One deleted projection alone cannot be promised to close
+that gap; coherent finalization ownership plus the remaining projection work is
+the next bounded subsystem. Then revisit narrow original-input passes, one-FE/
+public-output costs and threaded-wide losses on current evidence. Targets are
+31.5 ms for the repeated narrow case, 23.4 for one FE, 106.2 for fast slopes and
+199.8 for threaded K64.
+
+Close this product experiment. Isolated product tiles fall **100.272→27.269 ms
+at K24** and **693.088→138.319 at K63**, almost all of their native-root gains.
+Narrow K6 tiles are now 7.713 ms and exclusive recurrence 1.393 ms; neither can
+explain its remaining deficit. Its joint caller has 22.670 ms exclusive of the
+instrumented solve, including original-input work needing finer attribution.
+Do not tune accumulator counts or benchmark width guards. Seed 357 stays frozen.
+
+Known deferred boundaries remain: static allocation source drift; weighted
+constrained-fit failures; explicit/insufficient-budget nonretaining-CG span
+instability; historical large one-FE stock-mean discrepancy; separate 1e6-shift
+failure; SCC/Linux T1/8/16 and physical-cap confirmation. No SCC auth retry,
+stopped-campaign restart, push, release or qualification. Frozen 77/16/111 and
+protected cycle seeds 211/212 remain unchanged.
+
 ## Serial recipe-backed PPML products adopted; direct storage next — 2026-09-24
 
 The broad objective remains **whole public PPML <=0.90 times scientifically

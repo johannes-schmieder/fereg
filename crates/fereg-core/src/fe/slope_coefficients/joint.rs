@@ -723,8 +723,8 @@ impl JointFiniteWorkspace {
             }
         }
         // Only the admitted worker observation buffers hold projected columns.
-        // Each worker reads original columns directly for one Hessian row,
-        // retaining each dot product's observation/FMA order on every team.
+        // Each Hessian row reads resolved source columns and uses the same
+        // fixed product reduction, independent of the admitted team width.
         let width = owner.workers.len().min(k);
         self.hessian[..k * k].fill(0.);
         for first in (0..k).step_by(width) {
@@ -734,9 +734,8 @@ impl JointFiniteWorkspace {
                 .zip(self.cross[first * p..last * p].par_chunks_mut(p))
                 .zip(self.residual[p + first..p + last].par_iter_mut())
                 .zip(self.hessian[first * k..last * k].par_chunks_mut(k))
-                .zip(self.factor.par_chunks_mut(controls.ncols()))
                 .enumerate()
-                .try_for_each(|(local, ((((worker, cross), rhs), hessian_row), row_scratch))| {
+                .try_for_each(|(local, (((worker, cross), rhs), hessian_row))| {
                     let j = first + local;
                     let column = &mut worker.observations;
                     controls.visit_column(selected[j], |row, value| {
@@ -746,31 +745,11 @@ impl JointFiniteWorkspace {
                     op.project_eliminated(column, &mut worker.eliminated_scratch);
                     op.transpose(column, cross, false);
                     *rhs = dot(column, original);
-                    if width == 1 && !controls.prefers_column_scans() {
-                        // Direct rows share reads across independent entry
-                        // accumulators. Recipe-backed rows instead resolve each
-                        // source once in finite_product, even with one worker.
-                        // The factor bank is free until iterate prepares it.
-                        controls.visit_rows(row_scratch, |row, values| {
-                            for (entry, &selected) in hessian_row[j..]
-                                .iter_mut()
-                                .zip(&selected[j..])
-                            {
-                                let value = values[selected] * roots[row];
-                                *entry = value.mul_add(column[row], *entry);
-                            }
-                            Ok(())
-                        })?;
-                        for (entry, &scale) in hessian_row[j..].iter_mut().zip(&self.scales[j..k]) {
-                            *entry /= scale;
-                        }
-                    } else {
-                        for (entry, (&selected, &scale)) in hessian_row[j..]
-                            .iter_mut()
-                            .zip(selected[j..].iter().zip(&self.scales[j..k]))
-                        {
-                            *entry = finite_product(controls, selected, roots, column, scale)?;
-                        }
+                    for (entry, (&selected, &scale)) in hessian_row[j..]
+                        .iter_mut()
+                        .zip(selected[j..].iter().zip(&self.scales[j..k]))
+                    {
+                        *entry = finite_product(controls, selected, roots, column, scale)?;
                     }
                     Ok(())
                 })?;
