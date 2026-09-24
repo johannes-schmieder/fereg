@@ -87,6 +87,14 @@ remain direction-only. Optional-state refusal retains the previous categorical
 route without duplicating topology. This supersedes the categorical exclusions
 above for that bounded route; fast categorical LSMR and one-FE routing are unchanged.
 
+ADR 0152 extends accepted-frame finalization to an already admitted categorical
+LSMR owner. A fresh strict joint Newton witness is followed by one canonical
+final rank/bread/Hessian transaction on the unchanged accepted point. Only the
+final response refreshes the canonical session, preserving its response-delta
+history. Numerical refusal, movement or changed basis retains canonical retry;
+current-weight certificates and final inference authority remain independent.
+Ordinary LSMR, CMG, one-FE and OLS routing are unchanged.
+
 Under ADR 0146, reusable two-FE categorical initial checks and MAP pilot sweeps
 may borrow the idle PCG group banks when row-by-RHS work warrants parallel group
 reductions. A scoped owner restores both banks before current-weight PCG

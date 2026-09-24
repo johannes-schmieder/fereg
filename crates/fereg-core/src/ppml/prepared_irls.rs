@@ -2102,7 +2102,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             let strict_clock = PpmlPhaseClock::start();
             if !profile_rebuild_pending
                 && !checkpoint_refinement_pending
-                && session.supports_joint_ppml_direction()
+                && (session.supports_joint_ppml_direction() || joint_lsmr.is_some())
                 && try_joint_strict_final_frame(
                     &mut session,
                     &mut workspace,
@@ -2117,6 +2117,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     solver_report
                         .as_mut()
                         .ok_or_else(|| internal("joint strict solve lacks diagnostics"))?,
+                    joint_lsmr.as_mut().zip(joint_lsmr_engine),
                 )?
             {
                 two_consecutive_convergence = true;
@@ -3202,9 +3203,16 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     expected_rank: usize,
     accepted_objective: PoissonObjective,
     solver_report: &mut PpmlSolverReport,
+    mut categorical: Option<(&mut ReusableCategoricalJointLsmr, PpmlSolverEngine)>,
 ) -> Result<bool> {
     #[cfg(test)]
-    if JOINT_FINAL_TEST_MODE.get() == 1 {
+    if JOINT_FINAL_TEST_MODE.get() == 1
+        || categorical.is_some() && (STRICT_RESUME_INJECTION.get() != 0
+            || STRICT_BASIS_CHANGE_INJECTION.get() != 0
+            || REPEATED_STRICT_RESUME_INJECTION.get() != 0)
+    {
+        // Existing injections explicitly exercise canonical checkpoint/resume.
+        // Shared witness refusal and rollback have their own modes below.
         return Ok(false);
     }
     #[cfg(test)]
@@ -3213,32 +3221,70 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         JOINT_FINAL_TEST_COUNTS.get().1,
     ));
     workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
-    *frame_generation = next_frame_generation(*frame_generation)?;
-    refresh_linear_frame(session, workspace, *frame_generation)?;
-    session.set_config(ppml_linear_config(config, checkpoint_tolerance)?)?;
-    let direction = match session.solve_ordinary_ppml() {
-        Ok(output) => output,
-        Err(error) if classify_frozen_linear_fallback(&error).is_some() => return Ok(false),
-        Err(error) => return Err(error),
-    };
-    if !matches!(direction, PpmlOrdinaryLinearOutput::Joint(_)) || !direction.certified() {
-        return Ok(false);
+    if categorical.is_none() {
+        *frame_generation = next_frame_generation(*frame_generation)?;
+        refresh_linear_frame(session, workspace, *frame_generation)?;
     }
-    accumulate_inner_iterations(
-        total_inner_iterations,
-        direction.response_absorption_report(),
-    )?;
-    record_checkpoint_solver_observation(
-        solver_report,
-        direction.response_absorption_report(),
-        false,
-    )?;
-    fill_candidate_eta_from_frozen_output(&direction, offset, workspace.candidate_eta_mut())?;
-    fill_candidate_coefficients_from_frozen_output(
-        &direction,
-        workspace.candidate_coefficients_mut(),
-    )?;
-    let rank = direction.basis().kept_generated_columns().len();
+    session.set_config(ppml_linear_config(config, checkpoint_tolerance)?)?;
+    let rank = if let Some((joint, engine)) = categorical.as_mut() {
+        let result = joint.solve(
+            session.fe_design(), objective_inputs.outcome(), workspace.mean(),
+            workspace.hessian_weights(), checkpoint_tolerance,
+            config.linear.absorb.lsmr.max_iterations,
+        );
+        #[cfg(test)]
+        let result = if JOINT_FINAL_TEST_MODE.get() == 4 {
+            JOINT_FINAL_TEST_MODE.set(0);
+            Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                "injected strict LSMR witness refusal",
+            ))
+        } else {
+            result
+        };
+        let report = match result {
+            Ok(report) => report,
+            Err(error) if error.code == ErrorCode::NonConvergence => {
+                joint.reset_warm_start();
+                if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+                    super::categorical_lsmr::emit_solver_trace_line(
+                        "FEREG_SOLVER_TRACE|phase=joint_strict_direction|refusal=lsmr_nonconvergence",
+                    );
+                }
+                return Ok(false);
+            }
+            Err(error) => return Err(error),
+        };
+        *total_inner_iterations = total_inner_iterations.checked_add(report.iterations.max(1))
+            .ok_or_else(|| internal("strict LSMR iteration count overflowed"))?;
+        let mut observation = joint_solver_observation(report, *engine);
+        observation.frame = PpmlSolverFrameKind::Checkpoint;
+        solver_report.observe(observation)?;
+        joint.fill_candidate(workspace)?;
+        joint.active_rank()
+    } else {
+        let direction = match session.solve_ordinary_ppml() {
+            Ok(output) => output,
+            Err(error) if classify_frozen_linear_fallback(&error).is_some() => return Ok(false),
+            Err(error) => return Err(error),
+        };
+        if !matches!(direction, PpmlOrdinaryLinearOutput::Joint(_)) || !direction.certified() {
+            return Ok(false);
+        }
+        accumulate_inner_iterations(total_inner_iterations, direction.response_absorption_report())?;
+        record_checkpoint_solver_observation(
+            solver_report, direction.response_absorption_report(), false,
+        )?;
+        fill_candidate_eta_from_frozen_output(&direction, offset, workspace.candidate_eta_mut())?;
+        fill_candidate_coefficients_from_frozen_output(
+            &direction, workspace.candidate_coefficients_mut(),
+        )?;
+        direction.basis().kept_generated_columns().len()
+    };
+    // Categorical LSMR updates identified finite coordinates. Its inherited
+    // absorbed intercept is a normalization coordinate, as on the canonical
+    // specialized path; the final canonical fit independently normalizes it.
+    let coefficient_slots = categorical.as_ref().map(|(joint, _)| joint.active_slots());
     #[cfg(test)]
     if JOINT_FINAL_TEST_MODE.get() == 2 {
         JOINT_FINAL_TEST_MODE.set(0);
@@ -3262,7 +3308,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         workspace.candidate_coefficients(),
         objective,
         config.ppml,
-        None,
+        coefficient_slots,
     ) == FinalHessianSynchronization::Certified;
     if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
         super::categorical_lsmr::emit_solver_trace_line(&format!(
@@ -3278,7 +3324,12 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     // these exact weights before either result can authorize publication.
     workspace.prepare_final_hessian_response(offset)?;
     *frame_generation = next_frame_generation(*frame_generation)?;
-    if !refresh_final_linear_frame(session, workspace, *frame_generation)? {
+    if categorical.is_some() {
+        // The external LSMR witness read these same workspace weights. It did
+        // not project the session response, so refresh that response only now:
+        // two unsolved refreshes would break its retained response-delta seed.
+        refresh_linear_frame(session, workspace, *frame_generation)?;
+    } else if !refresh_final_linear_frame(session, workspace, *frame_generation)? {
         return Ok(false);
     }
     let transaction = session.strict_candidate()?;
@@ -3315,13 +3366,15 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         workspace.candidate_coefficients(),
         objective,
         config.ppml,
-        None,
+        coefficient_slots,
     ) == FinalHessianSynchronization::Certified
         && relative_infinity_difference(workspace.eta(), workspace.candidate_eta())
             <= config.ppml.tolerance
-        && relative_infinity_difference(
-            workspace.coefficients(),
-            workspace.candidate_coefficients(),
+        && coefficient_slots.map_or_else(
+            || relative_infinity_difference(workspace.coefficients(), workspace.candidate_coefficients()),
+            |slots| relative_infinity_difference_at_slots(
+                workspace.coefficients(), workspace.candidate_coefficients(), slots,
+            ),
         ) <= config.ppml.tolerance;
     if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
         super::categorical_lsmr::emit_solver_trace_line(&format!(
@@ -6599,6 +6652,61 @@ mod tests {
     }
 
     #[test]
+    fn fast_categorical_lsmr_strict_final_preserves_truth_and_canonical_retry() {
+        let n = 240;
+        let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
+        let h: Vec<_> = (0..n).map(|i| (i / 20 % 3) as f64).collect();
+        let x: Vec<_> = (0..n)
+            .map(|i| ((i % 5) as f64 - 2.).powi(2) + (i as f64 / 17.).sin())
+            .collect();
+        let eta: Vec<_> = (0..n)
+            .map(|i| 0.3 + 0.2 * x[i] + g[i] * 0.1 - h[i] * 0.05)
+            .collect();
+        let y: Vec<_> = eta.iter().map(|v| v.exp()).collect();
+        let prepared = prepared_two_fe_with_codes(&y, &x, &g, &h);
+        let weights: Vec<_> = (0..n).map(|i| 0.2 + (i % 13) as f64 / 7.).collect();
+        for threads in [1, 4] {
+            let mut config = PreparedPpmlIrlsConfig::default();
+            config.linear.execution.threads =
+                crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+            config.solver_plan = PpmlSolverPlan::new(super::super::PpmlSolverFamily::Lsmr);
+            for mode in [0, 1, 2, 3, 4] {
+                JOINT_FINAL_TEST_MODE.set(mode);
+                JOINT_FINAL_TEST_COUNTS.set((0, 0));
+                let fit = fit_prepared_ppml_irls(
+                    &prepared,
+                    &y,
+                    &weights,
+                    &vec![0.; n],
+                    config,
+                    plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                    None,
+                )
+                .unwrap();
+                assert!(
+                    fit.diagnostics().converged && fit.diagnostics().two_consecutive_convergence
+                );
+                assert!(fit.diagnostics().final_score.passed);
+                assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10);
+                assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+                validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
+                match mode {
+                    0 => {
+                        assert_eq!(JOINT_FINAL_TEST_COUNTS.get().1, 1);
+                        assert!(fit.diagnostics().solver.engines()[2].checkpoint_frames >= 1);
+                    },
+                    1 => assert_eq!(JOINT_FINAL_TEST_COUNTS.get(), (0, 0)),
+                    _ => {
+                        assert!(JOINT_FINAL_TEST_COUNTS.get().0 >= 1);
+                        assert_eq!(JOINT_FINAL_TEST_MODE.get(), 0);
+                    }
+                }
+            }
+        }
+        JOINT_FINAL_TEST_MODE.set(0);
+    }
+
+    #[test]
     fn low_categorical_joint_strict_final_preserves_truth_and_canonical_retry() {
         let n = 240;
         let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
@@ -6653,6 +6761,65 @@ mod tests {
         JOINT_FINAL_TEST_MODE.set(0);
     }
 
+    #[test]
+    fn fast_categorical_lsmr_three_fe_preserves_canonical_science_nested_rank_and_zero_control() {
+        for (order, nested, zero_control) in [
+            ([0, 1, 2], None, false),
+            ([2, 0, 1], Some(0), false),
+            ([1, 2, 0], Some(1), true),
+        ] {
+            let (prepared, _) = prepared_three_fe(order, zero_control, nested);
+            let design = prepared.fit_owned_fe_design().unwrap();
+            let n = design.nobs();
+            let offset: Vec<_> = (0..n).map(|i| (i as f64 / 17.).cos() * 0.1).collect();
+            let eta: Vec<_> = (0..n)
+                .map(|i| {
+                    let x = if zero_control {
+                        0.
+                    } else {
+                        (i as f64 * 0.173).sin() + (i as f64 * 0.071).cos()
+                    };
+                    offset[i]
+                        + 0.3
+                        + 0.2 * x
+                        + design
+                            .effects()
+                            .iter()
+                            .enumerate()
+                            .map(|(j, e)| 0.02 * (j + 1) as f64 * e.codes()[i] as f64)
+                            .sum::<f64>()
+                })
+                .collect();
+            let y: Vec<_> = eta.iter().enumerate().map(|(i, v)| v.exp() + 0.1 * (i as f64 / 11.).sin()).collect();
+            let weights: Vec<_> = (0..n).map(|i| 0.2 + (i % 17) as f64 / 7.).collect();
+            let mut config = PreparedPpmlIrlsConfig::default();
+            let reference = fit_prepared_ppml_irls(
+                &prepared, &y, &weights, &offset, config,
+                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(), None,
+            ).unwrap();
+            config.solver_plan = PpmlSolverPlan::new(super::super::PpmlSolverFamily::Lsmr);
+            JOINT_FINAL_TEST_COUNTS.set((0, 0));
+            let fit = fit_prepared_ppml_irls(
+                &prepared,
+                &y,
+                &weights,
+                &offset,
+                config,
+                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                None,
+            )
+            .unwrap();
+            assert!(fit.diagnostics().converged && fit.diagnostics().final_score.passed);
+            assert_eq!(JOINT_FINAL_TEST_COUNTS.get().1, 1);
+            let engine = if zero_control { 1 } else { 2 };
+            assert!(fit.diagnostics().solver.engines()[engine].checkpoint_frames >= 1);
+            assert!(relative_infinity_difference(fit.eta(), reference.eta()) < 1e-9);
+            if !zero_control {
+                assert!((fit.coefficients()[0].value.unwrap() - reference.coefficients()[0].value.unwrap()).abs() < 1e-10);
+            }
+            validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
+        }
+    }
     #[test]
     fn low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control() {
         for (order, nested, zero_control) in [

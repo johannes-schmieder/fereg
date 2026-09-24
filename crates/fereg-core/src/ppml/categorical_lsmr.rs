@@ -77,7 +77,7 @@ struct EffectTopologyIdentity {
 }
 
 /// Identity of the immutable categorical topology captured by a reusable
-/// ordinary-frame engine. Pointer identity is intentional: accepting an equal-
+/// Newton engine. Pointer identity is intentional: accepting an equal-
 /// shaped replacement would let cached offsets or factors operate on different
 /// memberships. `FeDesign` exposes no mutation of these backing allocations.
 #[derive(Debug, PartialEq, Eq)]
@@ -306,7 +306,8 @@ impl JointLsmrFirstPassPredictor {
     }
 }
 
-/// Fit-lifetime state for the ordinary (non-strict) IRLS Newton correction.
+/// Fit-lifetime state for an IRLS Newton correction. A strict solve can witness
+/// convergence, but canonical projection still owns final rank and inference.
 pub(crate) struct ReusableCategoricalJointLsmr {
     team: InstalledThreadTeam,
     active_design: DenseMatrix,

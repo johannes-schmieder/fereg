@@ -10,6 +10,128 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Categorical PPML accepted-frame finalization adopted; checkpoint batching next — 2026-09-24
+
+The active broad objective remains **whole public PPML <=0.90 times comparable
+pinned stock fixest wherever reasonably achievable, per case**. This opening
+supersedes earlier next-step orders. Finalization is a completed implementation
+milestone; broad performance is unfinished. Move to **canonical checkpoint batch
+organization**, not another finalization guard or product-kernel tuning cycle.
+
+Adopt `catfinal2`, based on `20d9b25c`, under
+[ADR 0152](docs/adr/0152-categorical-ppml-accepted-frame-finalization.md) and the
+[source-bound report](benchmarks/reports/development/ppml-categorical-finalization-local-2026-09-24/README.md).
+All **543 captured inputs** match production plugin
+`288e034239e08c623aa37364360ab794fbdb786106d10298002c5a0d29907307`.
+The verified/restored archive contains **9,537 logical receipts**, SHA-256
+`00395c9c88d1ed56e399473c991fc42a6c86752604a072f1fdea1fb682f22c07`.
+All builds, tests, fits, diagnostics and archive operations are terminal.
+
+### Adopted mechanism and validation
+
+An already admitted categorical joint LSMR owner now supplies a fresh strict
+current-weight Newton witness. The shared finalizer keeps the accepted point
+unchanged and performs one canonical final rank/bread/Hessian transaction.
+Active finite slots govern coefficient agreement; the final canonical fit owns
+intercept normalization. Only the final response refreshes the canonical session,
+preserving its response-delta history. Numerical refusal resets the warm start;
+movement/basis refusal rolls back and retains canonical retry. Existing low,
+slope, CMG, one-FE and OLS routes retain their behavior. No new heap bank, solver,
+threshold, memory formula, tolerance relaxation or publication exception.
+
+**79 distinct Rust tests**, production ABI/panic checks and **four licensed
+fixtures** pass. Independent two-/three-FE Poisson, Hessian and sandwich checks
+cover unit/FW/PW × T1/T4 × robust/cluster, plus means/residual/eta/xb/absorbed
+reconstruction. Other fixtures protect factors/products, shifts 0/1000,
+transaction rollback and separation. All **234 public applications**, **222
+public-state checks**, **nine independent Python oracles**, **80 native pairs**
+and **74 direct stock comparisons** pass. Twenty-three export pairs are exact,
+including every excluded PPML and OLS control; remaining differences pass the
+unchanged envelopes. Six isolated diagnostic fits pass. No timed application
+failure, timeout, scientific exclusion or detected contention.
+
+Preserved development failures: test-only compile/count mistakes; a caught and
+fixed double-refresh response-history error before timing; and an output oracle
+that initially subtracted the offset twice although xb includes it. Fresh
+N24576 generation failed before fits because it left a one-row worker; N24580
+completes the worker without changing the seed/design/sample policy. A separate
+synthetic exact-fit three-FE probe refuses the ordinary LSMR normal certificate
+before any shortcut attempt, including when the shortcut is disabled. That
+newly observed diagnostic remains open; no repair is claimed.
+
+All 74 PPML pairs retain outer iteration/scientific metadata, modeled peak and
+scratch bytes. Tracked peaks match in 58; other changes range from -549,071 to
++594,042 bytes and remain unattributed. Inner counts mix joint recurrences and
+batch maxima and are not comparable work units. No universal memory reduction,
+non-regression or physical-cap claim.
+
+### Current public timings and losses
+
+Fresh seed **202609358 is consumed and frozen**. Five rotations, fast mode,
+robust inference and means. Medians in ms. Stock is unmodified/pinned with
+`glm.tol=1e-10`, `fixef.tol=1e-11`, matched threads and serial BLAS. Full
+samples and losing pairs are in the report.
+
+| Case | Baseline | Current | Stock | Current/stock | 0.90 target |
+|---|---:|---:|---:|---:|---:|
+| Dense two FE N17280/K17/T4 | 88 | 81 | 67 | 1.209 | 60.3 |
+| Sparse three FE N24580/K7/T8 | 181 | 171 | 3453 | 0.050 | 3107.7 |
+| Disconnected two FE N20160/K12/T4 | 84 | 82 | 68 | 1.206 | 61.2 |
+| Unbalanced two FE N15120/K10/T1 | 138 | 106 | 72 | 1.472 | 64.8 |
+| Narrow two FE N12000/K3/T1 | 63 | 63 | 39 | 1.615 | 35.1 |
+| Weak barbell N7680/K4/T1 | 36 | 36 | 414 | 0.087 | 372.6 |
+
+Dense, sparse and unbalanced improve in all fifteen pairs; improvements are
+8.0%, 5.5% and 23.2%. Disconnected has one +3-ms losing pair; narrow has two
++1-ms losses and a tie; weak has one +2-ms loss. Two cases clear the stock target,
+both already stock wins. Four still lose. Development N16320/K16/T4 improves
+130→124 vs stock 66; unbalanced three FE 162→160 vs 115 has mixed pairs.
+
+Initial small pilots lose +2/+1/+3 ms, but five fixed-input repeats tie all three
+medians (11,18,13 ms; stock 14,17,13). Preserve both sets; cause is unattributed.
+Excluded slopes first tie at 118 with a +11-ms pair; repeats retain **115→116 vs
+145**, with +5/+2/+2-ms losing pairs and exact exports. Close that 1-ms tuning
+question. One-FE control ties 44 vs29; low K12 is 109→108 vs116; threaded low K64
+is 358→325 vs229, but this excluded-route gain is not attributed to finalization.
+OLS categorical ties 36; OLS slopes 74→72 includes one +3-ms pair. All excluded
+exports are exact. No universal timing non-regression claim.
+
+### Next bounded implementation milestone
+
+**Make canonical checkpoint batches efficient under a single current-weight
+frame.** On the accepted wide development diagnostic, four batch LSMR calls
+still consume **52.808 ms** within a 119.963-ms native root. Rank constructions
+fall 3→2, but the extra strict joint solve offsets much of that saving. A strict
+batch misses the unchanged 1e-12 certificate at 1.00461e-12 and triggers a full
+independent tighter batch: **13.404+14.131 ms recurrence**, duplicated setup and
+certification. This is concrete avoidable work, not a reason to weaken the check.
+
+The fresh unbalanced diagnostic explains the adopted gain: batch calls fall 5→3
+and 73.241→42.395 ms; response/control projections 61.739→26.113 ms; native root
+130.111→92.786 ms. These spans nest. The remaining projection is still material.
+
+Investigate **within-call current-weight setup reuse and selective failed-column
+refinement**. The canonical workspace already records per-RHS infinity norms;
+the pinned within solver exposes a prepared-batch interface. Preserve original
+inputs, fully recertify the combined result, explicitly admit overlap of retained
+candidate columns/retry transport/recurrences, and keep the current full retry/MAP
+fallback when optional work cannot fit. Geometry must not cross a changed
+sample, topology or weight frame. Do not tune on 358 or protected 211/212.
+
+Use development 347 and at most a small number of coherent candidates. If gains
+are small, move to an efficient coefficient-space categorical checkpoint engine
+using established Schur geometry, with measured work/memory admission rather than
+blindly removing guards. Then narrow original-input passes, one-FE/output costs
+and threaded-wide losses remain evidence-backed targets. Keep the <=0.90 stock
+budgets explicit; the adopted finalizer alone does not approach parity everywhere.
+
+Known deferred boundaries remain: static allocation source drift; weighted
+constrained-fit failures; explicit/insufficient-budget nonretaining-CG span
+instability; historical large one-FE stock-mean discrepancy; separate 1e6-shift
+failure; SCC/Linux T1/8/16 and physical-cap confirmation. No SCC auth retry,
+stopped-campaign restart, push, release or qualification. Frozen 77/16/111 and
+protected cycle seeds 211/212 remain unchanged.
+
 ## Unified serial PPML products adopted; categorical finalization next — 2026-09-24
 
 The broad objective remains **whole public PPML <=0.90 times scientifically
