@@ -10,7 +10,98 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Ambitious multi-FE PPML plan grounded in current profiles — 2026-09-24
+## Three-FE Schur prototype selected; production integration next — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable on designs with at least two FE
+partitions**. It is unfinished. This checkpoint preserves implementation
+experiments and selects a design; it does not adopt their experimental public
+route. Production computation remains `f6ed8db6`, artifact `multifeseed1`.
+
+[ADR 0162](docs/adr/0162-three-fe-schur-checkpoint-prototype.md) selects a centered
+three-FE Schur checkpoint solver. It eliminates the largest partition, prepares
+the current-weight reduced matrix once, solves RHSs independently, reconstructs
+from original inputs and retains the complete fresh original-weight certificate.
+Group-centered assembly preserves structural zero directions without clipping
+negative diagonals or choosing an artificial gauge. The competing coefficient
+GS/Irons–Tuck prototype is rejected: it loses on dense cases and exhausts its
+work cap on sparse cases. Do not tune that probe or start a third algorithm
+search before integrating the successful organization.
+
+The [source-bound report](benchmarks/reports/development/ppml-three-fe-schur-prototype-local-2026-09-24/README.md)
+preserves all three kernel builds, frozen inputs, operation traces, independent
+explicit-design/SVD oracles, public rotations and failures. Corrected Schur passes
+80/80 frozen calls; strict checkpoint medians improve about three- to sixfold.
+More reduced-matrix iterations replace expensive observation operators: nominal
+iteration counts are not comparable work. Stock's narrow strict inner result is
+unranked for residual-distance error; public stock comparisons pass. The oversized
+sparse stock loop was deliberately terminated, with its partial result and -15
+receipt preserved; do not restart it.
+
+Public prototype `threeprototype1` is `67af142c` plus the captured source overlay,
+plugin SHA-256
+`edeaaa98ac2a0961883d4b70a5eb3a9385e128a6329a9c308eca476a126ae8f3`.
+Three matched development rotations, robust inference plus fitted means:
+
+| Case | Baseline median ms | Prototype median ms | Stock median ms | Prototype/stock |
+|---|---:|---:|---:|---:|
+| Unbalanced three FE N23040/K8/T4 | 97 | 84 | 87 | 0.966 |
+| Low three FE N14400/K7/T4 | 90 | 61 | 120 | 0.508 |
+| Serial three FE N12000/K3/T1 | 82 | 55 | 195 | 0.282 |
+| Excluded narrow two FE N12000/K3/T1 | 41 | 48 | 39 | 1.231 |
+| Excluded two slope partitions N16320/K6/T4 | 68 | 69 | 65 | 1.062 |
+
+All nine target pairs improve, by 13–33% at the median. Unbalanced three FE still
+needs another 5.7 ms to reach this block's 0.90 target; ordinary projection still
+takes about 24–25 ms after the strict-final phase falls 31.18→17.36 ms. A separate
+five-pair excluded-path follow-up retains a narrow loss (45→48 ms); disconnected
+two FE improves 69→68. OLS exports are exact, but categorical OLS has an
+unexplained 143-ms tail against usual 17–18-ms runs; slope OLS loses 1 ms at the
+median. No universal non-regression or stock-win claim follows.
+
+All 77 public applications, 65 independent PPML public-state checks, 25 native
+PPML pairs, 15 direct stock comparisons and six OLS comparisons pass their
+scientific checks. There is no new production Rust unit-suite or licensed
+full-dummy Poisson/Hessian receipt in this selection milestone. Those checks
+remain required for integration. Tracked target peaks fall, but the prototype's
+unchanged forecasts do not admit its new quadratic matrices or other buffers.
+It still needs checked/fallible allocation, explicit peak admission, configured
+work limits, interruption and fatal-versus-numerical error handling, with rejected
+work accounted and original inputs preserved. Component-scaled paths are excluded.
+
+**Next bounded milestones, in order:**
+
+1. Integrate the selected checkpoint solver into production with structural
+   work/memory admission. Test null directions, changing/extreme weights, zero
+   RHSs, work caps, refused budgets and rollback; run independent Poisson/Hessian/
+   sandwich fixtures. Predeclare fresh five-rotation public confirmation and
+   excluded-path controls. Resolve the narrow loss and OLS tail before claiming
+   non-regression. The integrated route must earn its own source/artifact receipt.
+2. Close the remaining unbalanced three-FE gap by measuring the ordinary joint
+   direction and residual reconstruction on the integrated source. Reuse the
+   selected reduced operator only where geometry and independent acceptance
+   remain valid. Test shared current-state work before changing certificate
+   scheduling; any replacement check needs a mathematical equivalence argument.
+3. Attack wide low-memory two FE as a storage/solve lifecycle problem. The prior
+   fresh production block has 117 versus 82 ms, requiring 43.2 ms to reach 0.90.
+   Compare an admitted coefficient-backed projected design with current scratch
+   materialization and streamed products; target a 35–40% public reduction.
+   Measure G-by-K storage and all overlaps, retaining affordable certified refusal.
+4. Remeasure narrow/disconnected and slope losses on that source, then expand
+   adaptively to four-plus FE, generated/wide controls, multiple slopes, weights,
+   clustered/full outputs and T1/T4/T8. Keep existing weak/slope wins and OLS as
+   controls. Limit each milestone to two materially different candidates; commit
+   useful gains and move on when residual gains become small or inconsistent.
+
+The verified/restored archive has 5,415 logical receipts, SHA-256
+`4924a10d1b2e6596184ec732238a225fafe05fce4df421a47954de737488c66e`.
+All build, fit, oracle and archive processes are terminal. Development seed
+202609347 was reused; no fresh seed was consumed. Preserve 77/16/111 definitions,
+static allocation drift, constrained-fit/CG failures and unresolved scientific
+comparisons. No SCC retry, stopped campaign restart, push, release or broad
+qualification. STATUS remains the sole mutable handover record.
+
+## Historical: ambitious multi-FE PPML plan grounded in current profiles — 2026-09-24
 
 The active goal remains **whole-public-command PPML <=0.90 times comparable
 pinned stock fixest wherever reasonably achievable with at least two FE
