@@ -471,11 +471,14 @@ to the strict overlap charge, not a second permanent observation vector. The
 session row buffer is a separate K-double bank. Optional-cell validation during
 plugin publication uses predicates without allocating index vectors.
 
-For admitted low two-categorical-FE canonical products (ADRs 0168–0170), a
+For admitted low two-categorical-FE canonical products (ADRs 0168–0171), a
 checked current-call bank replaces the planned temporary projection panel and
 reusable projection block. The maximum setup, solve and certificate payload,
-plus live descriptors, must fit `16*N*pool` bytes less any already-live
-projection-block capacity. Actual capacity is charged before initialization;
+plus live descriptors, must fit `16*N*pool` bytes. The initial topology plan
+subtracts already-live projection-block capacity. Under
+[ADR 0171](adr/0171-observed-work-canonical-ppml-routing.md), only a complete
+work/memory plan may reclaim that obsolete block before weighted allocation.
+Actual capacity is charged before initialization;
 credit is granted only after consuming and dropping an owner. Setup factors and
 scratch end before later consumers, RHS and certificate reductions have separate
 lifetimes, and normalized weights become the response only after all current-

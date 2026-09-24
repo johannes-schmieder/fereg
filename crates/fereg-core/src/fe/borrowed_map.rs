@@ -1269,6 +1269,7 @@ struct TwoFePcgWorkspace {
     right_effect: usize,
     component_roots: Vec<usize>,
     component_scales: Vec<f64>,
+    ppml_operator_rhs_count: u128,
     left_weights: Vec<f64>,
     right_weights: Vec<f64>,
     left_rhs: Vec<f64>,
@@ -1301,6 +1302,7 @@ impl TwoFePcgWorkspace {
             right_effect,
             component_roots: Vec::new(),
             component_scales: Vec::new(),
+            ppml_operator_rhs_count: 0,
             left_weights: reserved_zeros(
                 left_levels,
                 reservation,
@@ -1439,6 +1441,14 @@ impl Drop for PcgPilotGroupScratch<'_> {
 }
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
+    /// Completed two-pass Schur products, in observation/RHS multiply-adds.
+    /// This is a routing observation, never weighted numerical authority.
+    pub(crate) fn ppml_operator_work(&self) -> Option<u128> {
+        let graph = self.two_fe_pcg.as_ref()?;
+        if !self.direct_two_fe { return None; }
+        graph.ppml_operator_rhs_count.checked_mul(self.design.nobs() as u128)?.checked_mul(2)
+    }
+
     pub(crate) fn new_ppml(
         design: BorrowedInterceptFeDesign<'a>, max_rhs: usize, parallel_threads: usize,
     ) -> Result<Self> {
@@ -2812,6 +2822,10 @@ fn absorb_two_fe_pcg_reusing(
         } else {
             graph.apply_schur(design, weights, rhs_count, stride)?;
         }
+        // Count actual operator lanes, including converged zeros. Only the
+        // PPML owner exposes this scalar as a later-call routing hint.
+        graph.ppml_operator_rhs_count = graph.ppml_operator_rhs_count
+            .saturating_add(rhs_count as u128);
         if scale_components {
             for (row, &scale) in graph.operator.chunks_mut(stride).zip(&graph.component_scales) {
                 for value in &mut row[..rhs_count] { *value /= scale; }
@@ -11989,8 +12003,10 @@ mod tests {
                 let design = || BorrowedInterceptFeDesign::new(cells.len(), sources.iter().map(|s| s.effect()).collect()).unwrap();
                 let ordinary = ReusableCategoricalMapAbsorber::new(design(), 8, threads).unwrap();
                 assert!(ordinary.two_fe_pcg.as_ref().unwrap().component_roots.is_empty());
+                assert_eq!(ordinary.ppml_operator_work(), None);
                 let mut owner = ReusableCategoricalMapAbsorber::new_ppml(design(), 8, threads).unwrap();
                 assert_eq!(owner.capacities().accelerator_state, ordinary.capacities().accelerator_state + 32);
+                assert_eq!(owner.ppml_operator_work(), Some(0));
                 if checkpoint { owner.enable_checkpoint_lsmr(); }
                 let capacities = owner.capacities();
                 for (frame, width) in [8, 3, 1, 8].into_iter().enumerate() {
@@ -12025,6 +12041,7 @@ mod tests {
                         MapConfig { tolerance: 1e-12, ..config() }).unwrap();
                     assert!(result.report().certified());
                     if checkpoint { assert_eq!(result.report().used_solver, FeSolverKind::Map); }
+                    assert!(owner.ppml_operator_work().unwrap() > 0);
                     assert_eq!(result.report().pilot_iterations, 0);
                     for (row, &(_, _, _, r)) in cells.iter().enumerate() {
                         for j in 0..width {

@@ -113,6 +113,7 @@ impl Plan {
         width: usize,
         left: usize,
         threads: usize,
+        prior_operator_work: u128,
     ) -> Option<Self> {
         let n = design.nobs();
         let p = design.effects()[left].n_levels();
@@ -126,9 +127,10 @@ impl Plan {
         let stride = square
             .checked_add(cross)?
             .checked_add(width.checked_mul(5)?)?;
-        // Pair assembly must fit before any weighted graph allocation. The
-        // remaining work allowance is checked against immutable component
-        // sizes before the weighted geometry is admitted.
+        // Cold setup is bounded by a finite Gram. A later canonical call may
+        // also spend the Schur operator work actually observed on its prior
+        // completed projection. This predicts cost, not current-weight accuracy.
+        // Complete weighted geometry and independent certification stay fresh.
         let mut work = 0_u128;
         for a in 0..p {
             let degree = design.effects()[left].level_index().members(a).len().min(q) as u128;
@@ -138,7 +140,8 @@ impl Plan {
             .checked_mul(width as u128)?
             .checked_mul(width as u128 + 1)?
             / 2;
-        if work > gram_work {
+        let work_allowance = gram_work.checked_add(prior_operator_work)?;
+        if work > work_allowance {
             return None;
         }
         let mut plan = Self {
@@ -149,7 +152,7 @@ impl Plan {
             workers,
             stride,
             bytes: 0,
-            factor_work_budget: gram_work - work,
+            factor_work_budget: work_allowance - work,
         };
         plan.bytes = plan.storage_bytes(0, 0)?;
         Some(plan)
@@ -292,6 +295,7 @@ fn root(parent: &mut [usize], mut i: usize) -> usize {
     i
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     prepared: &'a P,
     generated: &[usize],
@@ -300,6 +304,8 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     divisor: f64,
     config: MapConfig,
     allowance: u128,
+    prior_operator_work: u128,
+    obsolete_projection: &mut Vec<f64>,
 ) -> Result<Option<Products<'a, P>>> {
     if config.max_iterations == 0
         || config.check_every == 0
@@ -323,14 +329,26 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         generated.len() + 1,
         left,
         rayon::current_num_threads(),
+        prior_operator_work,
     ) else {
         return Ok(None);
     };
-    if plan.bytes > allowance {
+    let available = allowance.saturating_sub(obsolete_projection.capacity() as u128 * 8);
+    if plan.bytes > available {
         return Ok(None);
     }
     match build(
-        prepared, generated, response, weights, divisor, config, design, left, plan, allowance,
+        prepared,
+        generated,
+        response,
+        weights,
+        divisor,
+        config,
+        design,
+        left,
+        plan,
+        allowance,
+        obsolete_projection,
     ) {
         Ok(result) => Ok(Some(result)),
         Err(error) if error.code == ErrorCode::NonConvergence => Ok(None),
@@ -350,6 +368,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     left_effect: usize,
     plan: Plan,
     allowance: u128,
+    obsolete_projection: &mut Vec<f64>,
 ) -> Result<Products<'a, P>> {
     let started = Instant::now();
     let Plan {
@@ -453,6 +472,12 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         .ok_or_else(declined)?;
     if bytes > allowance {
         return Err(declined());
+    }
+    // The complete topology/work/memory plan is now known. Reclaim the old
+    // temporary panel only if the new phase needs its reservation; numerical
+    // refusal can still rebuild that panel through the ordinary fallible path.
+    if bytes > allowance.saturating_sub(obsolete_projection.capacity() as u128 * 8) {
+        drop(std::mem::take(obsolete_projection));
     }
     budget.set_limit(bytes - 2048 - width as u128 * 32)?;
     let mut local = budget.reserve(q, 0_usize)?;
@@ -1063,7 +1088,7 @@ mod tests {
             .fit_borrowed_intercept_map_design()
             .unwrap()
             .unwrap();
-        let plan = Plan::new(&design, k + 1, 0, workers).unwrap();
+        let plan = Plan::new(&design, k + 1, 0, workers, 0).unwrap();
         let (p, q, w) = (plan.p, plan.q, plan.width);
         let previous_sum = 8
             * (2 * n
@@ -1116,6 +1141,8 @@ mod tests {
                     divisor,
                     config.absorb.map,
                     allowance,
+                    0,
+                    &mut Vec::new(),
                 )
                 .unwrap()
                 .unwrap();
@@ -1127,7 +1154,9 @@ mod tests {
                     BorrowedMapWeights::Provided(&weights),
                     divisor,
                     config.absorb.map,
-                    products.report.solver_workspace_peak.bytes().unwrap() as u128 - 1
+                    products.report.solver_workspace_peak.bytes().unwrap() as u128 - 1,
+                    0,
+                    &mut Vec::new()
                 )
                 .unwrap()
                 .is_none());
@@ -1149,6 +1178,138 @@ mod tests {
                 assert!((coefficient.value.unwrap() - expected).abs() < 1e-10);
             }
             assert!(fit.fit().residuals().iter().all(|r| r.abs() < 1e-10));
+        }
+    }
+
+    #[test]
+    fn canonical_work_history_admits_changed_weights_and_reclaims_only_after_preflight() {
+        use crate::ols::linear_session::{CertifiedLinearSession, LinearSessionGenerations};
+        use crate::ols::prepared_fit::LinearSolveFrame;
+        use crate::ols::{
+            PreparedOlsBreadWeightScale, PreparedOlsExecutionMode, PreparedOlsFitConfig,
+        };
+        let n = 19200;
+        let g: Vec<_> = (0..n).map(|i| (i / 6) as f64).collect();
+        let h: Vec<_> = (0..n)
+            .map(|i| ((i / 6 + 13 * (i % 6)) % 160) as f64)
+            .collect();
+        let x: Vec<Vec<_>> = (0..2)
+            .map(|j| {
+                (0..n)
+                    .map(|i| (i as f64 * (0.17 + j as f64 * 0.09)).sin())
+                    .collect()
+            })
+            .collect();
+        let y: Vec<_> = (0..n)
+            .map(|i| 0.25 * x[0][i] - 0.4 * x[1][i] + 0.02 * g[i] - 0.03 * h[i])
+            .collect();
+        let prepared = prepared(&y, &x, &g, &h);
+        let allowance = (n * 2 * 16) as u128;
+        for threads in [1, 4] {
+            let team = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            team.install(|| {
+                let mut config = PreparedOlsFitConfig::default();
+                config.absorb.solver = FeSolverKind::Map;
+                config.absorb.map.tolerance = 1e-12;
+                config.execution.mode = PreparedOlsExecutionMode::Low;
+                config.execution.poolsize = 2;
+                config.execution.threads =
+                    crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                let mut scale = PreparedOlsBreadWeightScale {
+                    weight_kind: None,
+                    solver_weight_divisor: 1.,
+                    reference_weight_multiplier: 1.,
+                    reference_weight_sum: n as f64,
+                };
+                let frame =
+                    LinearSolveFrame::from_parts(&y, BorrowedMapWeights::Unit, scale).unwrap();
+                let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                    &prepared,
+                    frame,
+                    config,
+                    LinearSessionGenerations::default(),
+                    prepared.fit_owned_fe_design().unwrap(),
+                )
+                .unwrap();
+                let cold = session.solve_fresh().unwrap();
+                assert!(cold.fit().absorption_report().iterations > 1);
+                for (coefficient, expected) in
+                    cold.fit().coefficients().iter().take(2).zip([0.25, -0.4])
+                {
+                    assert!((coefficient.value.unwrap() - expected).abs() < 1e-9);
+                }
+                let observed = session.canonical_projection_work_hint_for_test();
+                assert!(observed > 0);
+                let mut old_panel = vec![42.; n * 2];
+                let old_capacity = old_panel.capacity();
+                for (budget, work) in [(allowance, 0), (allowance, u128::MAX), (1, observed)] {
+                    assert!(try_build(
+                        &prepared,
+                        &[0, 1],
+                        &y,
+                        BorrowedMapWeights::Unit,
+                        1.,
+                        config.absorb.map,
+                        budget,
+                        work,
+                        &mut old_panel
+                    )
+                    .unwrap()
+                    .is_none());
+                    assert_eq!(old_panel.capacity(), old_capacity);
+                    assert!(old_panel.iter().all(|&x| x == 42.));
+                }
+                let product = try_build(
+                    &prepared,
+                    &[0, 1],
+                    &y,
+                    BorrowedMapWeights::Unit,
+                    1.,
+                    config.absorb.map,
+                    allowance,
+                    observed,
+                    &mut old_panel,
+                )
+                .unwrap()
+                .unwrap();
+                assert!(product.report.certified());
+                assert_eq!(old_panel.capacity(), 0);
+                assert!(
+                    product.report.solver_workspace_peak.bytes().unwrap() as u128 > allowance / 2
+                );
+                drop(product);
+                let changed: Vec<_> = (0..n).map(|i| 0.3 + (i % 31) as f64 * 0.02).collect();
+                scale.solver_weight_divisor = changed.iter().copied().fold(0_f64, f64::max);
+                scale.reference_weight_multiplier = scale.solver_weight_divisor;
+                scale.reference_weight_sum = changed.iter().sum();
+                for commit in [false, true] {
+                    session
+                        .refresh_weights(
+                            BorrowedMapWeights::Provided(&changed),
+                            scale,
+                            1 + u64::from(commit),
+                        )
+                        .unwrap();
+                    let candidate = session.strict_candidate().unwrap();
+                    let fit = candidate.candidate();
+                    assert_eq!(fit.fit().absorption_report().iterations, 1);
+                    assert!(fit.fit().score_certificate().passed);
+                    for (coefficient, expected) in
+                        fit.fit().coefficients().iter().take(2).zip([0.25, -0.4])
+                    {
+                        assert!((coefficient.value.unwrap() - expected).abs() < 1e-9);
+                    }
+                    assert!(fit.fit().residuals().iter().all(|r| r.abs() < 1e-9));
+                    if commit {
+                        candidate.commit();
+                    }
+                }
+                session.refresh_basis(2).unwrap();
+                assert_eq!(session.canonical_projection_work_hint_for_test(), 0);
+            });
         }
     }
 
@@ -1326,6 +1487,8 @@ mod tests {
                             max,
                             config,
                             u128::MAX,
+                            0,
+                            &mut Vec::new(),
                         )
                         .unwrap()
                         .expect("admitted exact contrasts");
@@ -1361,7 +1524,9 @@ mod tests {
                             BorrowedMapWeights::Provided(&weights),
                             max,
                             config,
-                            bytes - 1
+                            bytes - 1,
+                            0,
+                            &mut Vec::new()
                         )
                         .unwrap()
                         .is_none());
@@ -1372,7 +1537,9 @@ mod tests {
                             BorrowedMapWeights::Provided(&weights),
                             max,
                             config,
-                            bytes
+                            bytes,
+                            0,
+                            &mut Vec::new()
                         )
                         .unwrap()
                         .is_some());
@@ -1451,7 +1618,7 @@ mod tests {
                         let left = usize::from(
                             design.effects()[1].n_levels() > design.effects()[0].n_levels(),
                         );
-                        let plan = Plan::new(&design, 3, left, threads).unwrap();
+                        let plan = Plan::new(&design, 3, left, threads, 0).unwrap();
                         assert!(
                             (plan.q as u128).pow(3) / 3 > plan.factor_work_budget,
                             "the global factor bound must reject this fixture"
@@ -1474,6 +1641,8 @@ mod tests {
                                 ..MapConfig::default()
                             },
                             allowance,
+                            0,
+                            &mut Vec::new(),
                         )
                         .unwrap()
                         .expect("component factors admitted");
@@ -1504,7 +1673,9 @@ mod tests {
                             BorrowedMapWeights::Provided(&weights),
                             divisor,
                             MapConfig::default(),
-                            result.report.solver_workspace_peak.bytes().unwrap() as u128 - 1
+                            result.report.solver_workspace_peak.bytes().unwrap() as u128 - 1,
+                            0,
+                            &mut Vec::new()
                         )
                         .unwrap()
                         .is_none());
@@ -1535,6 +1706,8 @@ mod tests {
                 1.,
                 MapConfig::default(),
                 u128::MAX,
+                0,
+                &mut Vec::new(),
             )
             .unwrap()
             .unwrap();
@@ -1550,7 +1723,9 @@ mod tests {
                 BorrowedMapWeights::Provided(&bad),
                 1.,
                 MapConfig::default(),
-                u128::MAX
+                u128::MAX,
+                0,
+                &mut Vec::new()
             )
             .unwrap()
             .is_none());
@@ -1564,7 +1739,9 @@ mod tests {
                     BorrowedMapWeights::Unit,
                     1.,
                     MapConfig::default(),
-                    u128::MAX
+                    u128::MAX,
+                    0,
+                    &mut Vec::new()
                 )
                 .err()
                 .unwrap()
@@ -1582,7 +1759,9 @@ mod tests {
                 BorrowedMapWeights::Unit,
                 1.,
                 config,
-                u128::MAX
+                u128::MAX,
+                0,
+                &mut Vec::new()
             )
             .unwrap()
             .is_none());
@@ -1598,7 +1777,9 @@ mod tests {
                 BorrowedMapWeights::Unit,
                 1.,
                 MapConfig::default(),
-                u128::MAX
+                u128::MAX,
+                0,
+                &mut Vec::new()
             )
             .unwrap()
             .is_some());
@@ -1612,7 +1793,9 @@ mod tests {
                 BorrowedMapWeights::Unit,
                 1.,
                 MapConfig::default(),
-                u128::MAX
+                u128::MAX,
+                0,
+                &mut Vec::new()
             )
             .unwrap()
             .is_none());

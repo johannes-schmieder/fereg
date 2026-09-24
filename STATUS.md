@@ -10,7 +10,122 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Componentwise canonical PPML geometry adopted — 2026-09-24
+## Observed-work canonical PPML routing adopted — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This opening supersedes earlier next-step instructions below.
+[ADR 0171](docs/adr/0171-observed-work-canonical-ppml-routing.md) and the
+[source-bound report](benchmarks/reports/development/ppml-canonical-work-local-2026-09-24/README.md)
+record this bounded milestone.
+
+Accepted artifact **canonicalwork1**, plugin SHA-256
+ae8859fd082e6aa6481ab814c893d5ff119a5c0ee2ff15350577002c893b5579,
+is captured from b78202b6a849b74b0b80235675273517609fee8b plus only
+fe/borrowed_map.rs, ols/canonical_products.rs and ols/linear_session.rs.
+All **548 captured inputs match** final source. The archive has **7,577 logical
+receipts / 2,005 payloads**, all verified and restored, SHA-256
+026080e6cdc116a630bed12a1b8316a968a2be3fd14f3c715fa73f3bb5fe2ab8.
+All agent-owned builds, tests, fits, audits and archive/restore processes are
+terminal. No operation awaits an idle-window reply.
+
+### Adopted behavior and fresh evidence
+
+Cold low two-categorical-FE canonical calls retain the finite-Gram work limit.
+Later calls may also spend actual two-pass Schur operator work observed in their
+previous completed canonical projection/rank stage. This is fixed-size performance
+metadata on the same prepared model, with no weighted authority. Every current
+frame still builds and certifies its own geometry and products. Only complete
+topology/work/memory admission can consume the obsolete temporary projection
+panel to reclaim its existing reservation. No data-sized cache or budget increase
+was introduced. Shared OLS arithmetic and all scientific tolerances are unchanged.
+
+The isolated identical-weight probe passed 24 explicit WLS projection/Gram
+configurations. Direct whole-product cost was 29–39% of PCG plus separate products
+on the narrow connected case and 56–73% on the disconnected case, including
+current-weight setup and full independent certification. Those kernel ratios
+are not whole-public speed claims. Public development medians improved
+52→49 ms and 131→122 ms, still about 1.6 times stock.
+
+Seeds **202609383 and 202609384 are consumed/frozen**. Fresh five-rotation medians,
+robust inference and fitted means, stock glm.tol=1e-10/fixef.tol=1e-11:
+
+| Fresh PPML case | Baseline | Accepted | Stock | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Connected N22320/K2/T4 low | 53 | 52 | 31 | 1.677 |
+| Disconnected N43200/K10/T8 low | 133 | 126 | 80 | 1.575 |
+| Connected N26400/K6/T4 low | 63 | 63 | 49 | 1.286 |
+| Disconnected N19680/K3/T1 low | 69 | 63 | 54 | 1.167 |
+| Unbalanced N23760/K16/T4 low | 83 | 84 | 73 | 1.151 |
+| Memory-refused N22320/K100/T8 low | 533 | 531 | 447 | 1.188 |
+| Connected N21600/K6/T4 fast | 65 | 64 | 43 | 1.488 |
+| Two slope partitions N22320/K10/T4 low | 108 | 110 | 114 | 0.965 |
+| Three FE N23760/K10/T4 low | 115 | 115 | 273 | 0.421 |
+| Weak graph N12240/K8/T1 low | 51 | 50 | 1873 | 0.027 |
+| Wide admitted N31920/K76/T8 low | 321 | 320 | 440 | 0.727 |
+
+The disconnected targets improve about 5% and 9% at their medians; the serial
+paired median gain is 7.4%. The connected narrow gain is only about 2%.
+These inexpensive bounded changes are retained, but this closes the current
+hint experiment: do not continue tuning its allowance. Three selected medians
+meet the 10%-faster target, and seven still lose to stock. Small unbalanced/slope
+losses and the fast-control outlier remain visible in full distributions.
+This is not a coverage-wide win rate.
+
+Targeted tracked peaks fall by 356,973 / 1,775,392 / 302,072 bytes. Most other
+paths add 24 bytes of fixed metadata; slope memory and all scratch sizes are
+unchanged. Maximum fresh tracked/model ratio is 0.85628; total RSS was not
+measured. Strict-final solving supplies the gains. Cold preparation and ordinary
+joint iterations remain on their established routes.
+
+### Validation and preserved failures
+
+32 distinct focused core tests and five licensed fixtures pass. All 165 fresh
+states, 55 native pairs and 55 direct candidate/stock pairs pass. Two independent
+explicit-design Poisson/Hessian/sandwich cases pass for all six native/stock
+fits. The custom generated-term fixture also independently covers FW multiplicity
+and PW clustered scores. All 24 OLS calls and 12 science/output pairs pass:
+medians 17→17 / 29→30 / 104→104 / 63→63 ms for one-FE/all-output, two-FE,
+low slopes and low three-FE controls.
+
+The initial test exposed a counter confined to disconnected scaling; actual
+operator counting fixes connected graphs. A second test incorrectly expected a
+new direct solve after exact-weight reuse; the corrected test advances weight
+generation before each strict drop/commit attempt. Original failures and probe
+build failures are preserved. The **pre-existing**
+initial_full_width_lsmr_preserves_canonical_multiway_rank_policy reporting
+assertion fails on both the b782 diagnostic snapshot and candidate
+(fallback_used=false versus used_solver=Map). It is not repaired or hidden here.
+The initial broad canonical filter is not a green test receipt.
+
+All headline calls use the corrected CPU-aware monitor and have no detected
+overlaps/errors. Two stale-process approval rejections were resolved by fresh
+process verification before retrying the same declared runs; neither rejected
+launch started measurements. The unrelated Stata GUI was untouched.
+The changed canonical file formatting and final diff check pass. No broad
+qualification or platform campaign ran.
+
+### Next bounded implementation milestone
+
+1. **Wide certificate storage and scheduling.** N22320/K100/T8 low still costs
+   531 versus 447 ms. Projection/strict-final phases are 119.4/152.8 ms;
+   inference is 35.6 ms. Direct products refuse the left-group coefficient bank
+   plus worker-private Gram/FE reductions. Prototype streamed/tiled left-group
+   coefficient reconstruction or a separately bounded certificate reduction
+   team within the same reservation. Keep shared current-weight factors and
+   full original-input independent certificates. This has a plausible path to
+   a substantial public gain rather than another small hint adjustment.
+2. **Cold and ordinary narrow PPML organization.** Initial canonical solving
+   lacks prior work evidence, and ordinary joint iterations remain expensive.
+   Any return to this area must change their computational organization or
+   establish comparable cold work, not simply inflate this work limit.
+3. Preserve the existing 77/16/111 definitions and all frozen seeds. Static
+   allocation inventory drift, weighted constrained-fit and insufficient-budget
+   nonretaining-CG span failures, prior seed378 comparator discrepancy, Linux
+   T1/8/16/constrained-memory confirmation and SCC authentication remain open.
+   Do not retry SCC or restart stopped reference/empirical campaigns.
+
+## Previous milestone: componentwise canonical PPML geometry — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
 fixest wherever reasonably achievable with at least two FE partitions**. It is

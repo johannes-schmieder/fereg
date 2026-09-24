@@ -424,6 +424,7 @@ struct StrictLinearRollbackState {
     reconstruction: Option<LinearReconstructionCertificate>,
     reuse: Option<LinearSessionReuseReport>,
     projection_refresh_required: bool,
+    canonical_projection_work_hint: u128,
 }
 
 /// RAII authority boundary for a speculative strict basis. Every exit that
@@ -1520,6 +1521,7 @@ pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Siz
     pending_response_buffer_reused: bool,
     pending_weight_buffer_reused: bool,
     projection_refresh_required: bool,
+    canonical_projection_work_hint: u128,
     phase_allocator_probe: Option<LinearSessionPhaseAllocatorProbe>,
     #[cfg(test)]
     fresh_rank_failure_injection: u8,
@@ -1544,6 +1546,14 @@ enum ReusableLinearMapProjector<'a> {
 }
 
 impl ReusableLinearMapProjector<'_> {
+    fn ppml_operator_work(&self) -> Option<u128> {
+        match self {
+            Self::PpmlCategorical { projector, .. }
+            | Self::PpmlCoefficients { canonical: Some(projector), .. } => projector.ppml_operator_work(),
+            _ => None,
+        }
+    }
+
     const fn design(&self) -> &FeDesign {
         match self {
             Self::Generic(projector) | Self::PpmlCoefficients { projector, .. } => projector.design(),
@@ -1883,6 +1893,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             pending_response_buffer_reused: false,
             pending_weight_buffer_reused: false,
             projection_refresh_required: false,
+            canonical_projection_work_hint: 0,
             phase_allocator_probe: None,
             #[cfg(test)]
             fresh_rank_failure_injection: 0,
@@ -2836,6 +2847,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             reconstruction: self.reconstruction.take(),
             reuse: self.reuse.take(),
             projection_refresh_required: self.projection_refresh_required,
+            canonical_projection_work_hint: self.canonical_projection_work_hint,
         };
         self.frozen_basis = None;
         let transaction = StrictLinearCandidateTransaction {
@@ -2870,6 +2882,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.reconstruction = rollback.reconstruction;
         self.reuse = rollback.reuse;
         self.projection_refresh_required = rollback.projection_refresh_required;
+        self.canonical_projection_work_hint = rollback.canonical_projection_work_hint;
     }
 
     #[cfg(test)]
@@ -3195,6 +3208,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.generations.basis = basis_generation;
         self.frozen_basis = None;
         self.within = None;
+        self.canonical_projection_work_hint = 0;
         self.fit = None;
         self.recycle_frozen_step();
         self.reconstruction = None;
@@ -3224,6 +3238,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     #[cfg(test)]
     fn invalidate_prepared_alignment(&mut self) {
         self.prepared_alignment_valid = false;
+        self.canonical_projection_work_hint = 0;
         self.frozen_basis = None;
         self.within = None;
         self.fit = None;
@@ -3268,6 +3283,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.install_retained_stage(stage)
     }
 
+    #[cfg(test)]
+    pub(crate) fn canonical_projection_work_hint_for_test(&self) -> u128 {
+        self.canonical_projection_work_hint
+    }
+
     fn try_canonical_products(&mut self) -> Result<Option<(Vec<f64>, SolveReport, CanonicalMoments)>> {
         if self.config.execution.mode != PreparedOlsExecutionMode::Low
             || self.config.absorb.solver != FeSolverKind::Map
@@ -3291,15 +3311,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         // The old low projection owns a temporary raw/within block and a
         // separate reusable projection block. The optional current-call banks
-        // replace those two reservations, with any already-live capacity
-        // subtracted. Nothing is added to the declared fit memory allowance.
+        // replace those two reservations. The builder charges already-live
+        // capacity until its complete plan permits releasing that obsolete
+        // temporary panel. Nothing is added to the fit memory allowance.
         let pool = self.config.execution.poolsize.max(1).min(generated.len());
         let allowance = (self.response.len() as u128).checked_mul(pool as u128)
-            .and_then(|x|x.checked_mul(16)).ok_or_else(|| allocation("canonical product allowance overflows"))?
-            .saturating_sub(self.projection_block.capacity() as u128*8);
+            .and_then(|x|x.checked_mul(16)).ok_or_else(|| allocation("canonical product allowance overflows"))?;
         let Some(products) = super::canonical_products::try_build(
             self.prepared, &generated, &self.response, self.weights.borrowed(),
             self.bread_weight_scale.solver_weight_divisor, self.config.absorb.map, allowance,
+            self.canonical_projection_work_hint,
+            &mut self.projection_block,
         )? else { return Ok(None); };
         if let Some(within) = self.within.as_mut() {
             let RetainedWithinStorage::Scratch(storage) = &mut within.storage else { unreachable!() };
@@ -3349,6 +3371,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         #[cfg(test)]
         let mut response_fused_with_design = false;
         let products_reuse_storage = self.within.is_some();
+        let operator_work_before = self.fe_projector.as_ref().and_then(ReusableLinearMapProjector::ppml_operator_work);
         let product_attempt = self.try_canonical_products()?;
         let mut canonical_moments = None;
         let (within_response, absorption_report) = if let Some((response, projection, moments)) = product_attempt {
@@ -3431,6 +3454,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             }
         };
         drop(projection_phase);
+        let observed_projection_work = self.fe_projector.as_ref()
+            .and_then(ReusableLinearMapProjector::ppml_operator_work)
+            .zip(operator_work_before)
+            .and_then(|(after, before)| after.checked_sub(before))
+            .filter(|&work| work > 0);
         let projection_seconds = projection_started.elapsed().as_secs_f64();
 
         let finite_started = Instant::now();
@@ -3484,6 +3512,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             finite_solve_seconds: Some(finite_solve_seconds),
         };
         report.phase_allocation = phase_allocation;
+        // Only completed canonical projection/rank work updates the hint.
+        // The next weight frame rebuilds and certifies its own geometry; this
+        // scalar only compares its setup with work already paid on this model.
+        if let Some(work) = observed_projection_work {
+            self.canonical_projection_work_hint = work;
+        }
         Ok(RetainedSolveStage {
             candidate,
             candidate_basis,

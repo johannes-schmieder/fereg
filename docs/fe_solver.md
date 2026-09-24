@@ -177,6 +177,10 @@ products go directly to canonical rank solving; retained rows are written once
 for unchanged QR/span, residual, inverse and inference consumers. Complete
 workspace and structural factor-work refusal preserve the existing projector.
 No weighted factor or certificate authority survives the call.
+[ADR 0171](adr/0171-observed-work-canonical-ppml-routing.md) lets later calls
+compare factor setup against actual Schur operator work from the previous
+completed canonical projection. The performance hint has no weighted authority;
+complete memory admission and every current-weight certificate remain required.
 
 Under ADR 0139, admitted low one-FE PPML canonical products use immutable
 original columns minus freshly computed current-weight group centers. A separate
