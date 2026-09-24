@@ -1350,6 +1350,29 @@ impl TwoFePcgWorkspace {
     }
 }
 
+/// The PCG group banks have no numerical authority before its current-weight
+/// initialization. Lend them to initial certification and MAP pilot work, then
+/// restore ownership before any recurrence, error return or unwinding.
+struct PcgPilotGroupScratch<'a> {
+    workspace: &'a mut BorrowedMapWorkspace,
+    graph: &'a mut TwoFePcgWorkspace,
+}
+
+impl<'a> PcgPilotGroupScratch<'a> {
+    fn new(workspace: &'a mut BorrowedMapWorkspace, graph: &'a mut TwoFePcgWorkspace) -> Self {
+        std::mem::swap(&mut workspace.parallel_group_means, &mut graph.left_work);
+        std::mem::swap(&mut workspace.parallel_group_weights, &mut graph.left_weights);
+        Self { workspace, graph }
+    }
+}
+
+impl Drop for PcgPilotGroupScratch<'_> {
+    fn drop(&mut self) {
+        std::mem::swap(&mut self.workspace.parallel_group_means, &mut self.graph.left_work);
+        std::mem::swap(&mut self.workspace.parallel_group_weights, &mut self.graph.left_weights);
+    }
+}
+
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
     pub(crate) fn new(
         design: BorrowedInterceptFeDesign<'a>,
@@ -1634,6 +1657,30 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         Ok((absorbed, true))
     }
 
+    fn with_pilot_group_scratch<T>(
+        &mut self,
+        rhs: usize,
+        work: impl FnOnce(&BorrowedInterceptFeDesign<'a>, &mut BorrowedMapWorkspace) -> Result<T>,
+    ) -> Result<T> {
+        // Group reductions scale with rows times RHSs. Below the ordinary
+        // row-only reservation boundary, a wide pilot can use the existing
+        // largest-partition banks without increasing its admitted memory.
+        let lend = rayon::current_num_threads() > 1
+            && self.design.nobs().saturating_mul(rhs) >= PARALLEL_PROJECTION_MIN_ROWS
+            && self.workspace.parallel_group_means.is_empty()
+            && self.workspace.parallel_group_weights.is_empty()
+            && self.two_fe_pcg.is_some();
+        if lend {
+            let loan = PcgPilotGroupScratch::new(
+                &mut self.workspace,
+                self.two_fe_pcg.as_mut().unwrap(),
+            );
+            work(&self.design, loan.workspace)
+        } else {
+            work(&self.design, &mut self.workspace)
+        }
+    }
+
     pub(crate) fn absorb(
         &mut self,
         weights: BorrowedMapWeights<'_>,
@@ -1670,13 +1717,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         let setup_seconds = setup_started.elapsed().as_secs_f64();
         let solve_started = Instant::now();
         let initial_certification_started = Instant::now();
-        let initial = certify_initial(
-            &self.design,
-            weights,
-            &values,
-            config.tolerance,
-            &mut self.workspace,
-        )?;
+        let initial = self.with_pilot_group_scratch(rhs_count, |design, workspace| {
+            certify_initial(design, weights, &values, config.tolerance, workspace)
+        })?;
         let initial_certification_seconds = initial_certification_started.elapsed().as_secs_f64();
         if initial.passed {
             return certified_result(
@@ -1844,25 +1887,18 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
 
         let pilot_limit = config.max_iterations.min(CATEGORICAL_MAP_PILOT_SWEEPS);
         for iteration in 1..=pilot_limit {
-            borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
-                &self.design,
-                weights,
-                &mut values,
-                &mut self.workspace,
-                None,
-                config.symmetric,
-            )?;
+            self.with_pilot_group_scratch(rhs_count, |design, workspace| {
+                borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+                    design, weights, &mut values, workspace, None, config.symmetric,
+                )
+            })?;
             if self.design.effects().len() == 1
                 || iteration % config.check_every == 0
                 || iteration == pilot_limit
             {
-                let certificate = certify(
-                    &self.design,
-                    weights,
-                    &values,
-                    config.tolerance,
-                    &mut self.workspace,
-                )?;
+                let certificate = self.with_pilot_group_scratch(rhs_count, |design, workspace| {
+                    certify(design, weights, &values, config.tolerance, workspace)
+                })?;
                 if certificate.passed {
                     return certified_result(
                         values,
@@ -1922,22 +1958,15 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             }
         }
         for iteration in pilot_limit.saturating_add(1)..=config.max_iterations {
-            borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
-                &self.design,
-                weights,
-                &mut values,
-                &mut self.workspace,
-                None,
-                config.symmetric,
-            )?;
+            self.with_pilot_group_scratch(rhs_count, |design, workspace| {
+                borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
+                    design, weights, &mut values, workspace, None, config.symmetric,
+                )
+            })?;
             if iteration % config.check_every == 0 || iteration == config.max_iterations {
-                let certificate = certify(
-                    &self.design,
-                    weights,
-                    &values,
-                    config.tolerance,
-                    &mut self.workspace,
-                )?;
+                let certificate = self.with_pilot_group_scratch(rhs_count, |design, workspace| {
+                    certify(design, weights, &values, config.tolerance, workspace)
+                })?;
                 if certificate.passed {
                     return certified_result(
                         values,
@@ -7631,7 +7660,7 @@ fn certify_with_current_norms(
         .checked_mul(residuals.ncols())
         .ok_or_else(|| allocation("borrowed MAP certificate dimensions overflow"))?;
     if !design.effects().is_empty()
-        && residuals.nrows() >= PARALLEL_PROJECTION_MIN_ROWS
+        && residuals.as_slice().len() >= PARALLEL_PROJECTION_MIN_ROWS
         && rayon::current_num_threads() > 1
         && workspace.parallel_group_weights.len() >= maximum_levels
         && workspace.parallel_group_means.len() >= maximum_mean_count
@@ -11474,6 +11503,100 @@ mod tests {
                 )
                 .is_err());
             assert_eq!(oversized, [-1.0; 3]);
+        }
+    }
+
+    #[test]
+    fn pilot_group_scratch_matches_weighted_ring_oracle_and_restores_on_failure() {
+        let mut left = Vec::new();
+        let mut right = Vec::new();
+        let mut cells = Vec::new();
+        for component in 0..2 {
+            for a in 0..16 {
+                for b in [a, (a + 1) % 16] {
+                    for replicate in 0..64 {
+                        left.push((component * 16 + a) as u32);
+                        right.push((component * 16 + b) as u32);
+                        cells.push((component, a, b, replicate));
+                    }
+                }
+            }
+        }
+        let n = cells.len();
+        let rhs = 8;
+        assert!(n < PARALLEL_PROJECTION_MIN_ROWS && n * rhs >= PARALLEL_PROJECTION_MIN_ROWS);
+        let left_index = LevelIndex::from_codes(&left, 32).unwrap();
+        let right_index = LevelIndex::from_codes(&right, 32).unwrap();
+        let left_source = ValidatedBorrowedInterceptSource::new(&left, 32, &left_index).unwrap();
+        let right_source = ValidatedBorrowedInterceptSource::new(&right, 32, &right_index).unwrap();
+        let design = || BorrowedInterceptFeDesign::new(
+            n, vec![left_source.effect(), right_source.effect()],
+        ).unwrap();
+        let input = DenseMatrix::from_row_major(n, rhs, cells.iter().flat_map(|&(_, a, b, r)| {
+            (0..rhs).map(move |j| {
+                if j == rhs - 1 { return 0.; }
+                let residual = if r % 2 == 0 { 1. } else { -1. }
+                    * 0.001 * (j + 1) as f64 * (r / 2 + 1) as f64;
+                ((a * (j + 1)) as f64 / 5.).sin()
+                    + ((b * (j + 2)) as f64 / 7.).cos() + residual
+            })
+        }).collect()).unwrap();
+        let serial_team = rayon::ThreadPoolBuilder::new().num_threads(1).build().unwrap();
+        let parallel_team = rayon::ThreadPoolBuilder::new().num_threads(4).build().unwrap();
+        let mut serial = ReusableCategoricalMapAbsorber::new(design(), rhs, 1).unwrap();
+        let mut parallel = ReusableCategoricalMapAbsorber::new(design(), rhs, 4).unwrap();
+        let capacities = parallel.capacities();
+        assert!(parallel.workspace.parallel_group_means.is_empty());
+        assert!(parallel.workspace.parallel_group_weights.is_empty());
+        let pointers = {
+            let graph = parallel.two_fe_pcg.as_ref().unwrap();
+            (graph.left_work.as_ptr(), graph.left_weights.as_ptr())
+        };
+        for panic in [false, true] {
+            let attempt = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                parallel_team.install(|| parallel.with_pilot_group_scratch(rhs, |_, workspace| {
+                    assert_eq!(workspace.parallel_group_means.len(), 32 * rhs);
+                    assert_eq!(workspace.parallel_group_weights.len(), 32);
+                    workspace.parallel_group_means.fill(f64::NAN);
+                    workspace.parallel_group_weights.fill(f64::NAN);
+                    if panic { panic!("injected pilot scratch unwind"); }
+                    Err::<(), _>(invalid_data("injected pilot scratch error"))
+                }))
+            }));
+            if panic { assert!(attempt.is_err()); }
+            else { assert_eq!(attempt.unwrap().unwrap_err().code, ErrorCode::InvalidData); }
+            assert_eq!(parallel.capacities(), capacities);
+            assert!(parallel.workspace.parallel_group_means.is_empty());
+            assert!(parallel.workspace.parallel_group_weights.is_empty());
+            let graph = parallel.two_fe_pcg.as_ref().unwrap();
+            assert_eq!((graph.left_work.as_ptr(), graph.left_weights.as_ptr()), pointers);
+        }
+        let config = MapConfig { tolerance: 1e-12, ..config() };
+        for frame in 0..3 {
+            let weights: Vec<_> = cells.iter().map(|&(component, a, b, r)| {
+                let mass = [[1., 1.], [0.03, 30.], [3., 0.2]][frame][component];
+                mass * (1. + a as f64 / 10.) * (1. + b as f64 / 17.)
+                    * (1. + (r / 2) as f64 / 13. + frame as f64 / 7.)
+            }).collect();
+            let solve = |owner: &mut ReusableCategoricalMapAbsorber<'_>| {
+                owner.absorb(BorrowedMapWeights::Provided(&weights), input.clone(), config).unwrap()
+            };
+            let a = serial_team.install(|| solve(&mut serial));
+            let b = parallel_team.install(|| solve(&mut parallel));
+            assert!(b.report().certified());
+            assert!(b.report().iterations > CATEGORICAL_MAP_PILOT_SWEEPS);
+            assert_eq!(a.residualized(), b.residualized());
+            assert_eq!(a.report().certificate, b.report().certificate);
+            for (row, &(_, _, _, r)) in cells.iter().enumerate() {
+                for j in 0..rhs {
+                    let expected = if j == rhs - 1 { 0. } else {
+                        (if r % 2 == 0 { 1. } else { -1. })
+                            * 0.001 * (j + 1) as f64 * (r / 2 + 1) as f64
+                    };
+                    assert!((b.residualized()[(row, j)] - expected).abs() < 1e-10);
+                }
+            }
+            assert_eq!(parallel.capacities(), capacities);
         }
     }
 

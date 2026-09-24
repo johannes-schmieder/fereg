@@ -10,6 +10,94 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Two-FE categorical pilot scratch reuse adopted — 2026-09-23
+
+The objective remains **whole public PPML <=0.90 times scientifically comparable
+pinned stock fixest wherever reasonably achievable**, per case. This opening
+supersedes earlier next-step orders. This bounded milestone is complete; the
+broader goal remains active.
+
+Adopt `canonloan1`, based on `f5351210`, under
+[ADR 0146](docs/adr/0146-two-fe-pilot-scratch-lending.md) and the
+[source-bound report](benchmarks/reports/development/ppml-two-fe-pilot-scratch-local-2026-09-23/README.md).
+All **542 captured computational inputs** match plugin
+`2176ca5412f88643a8b5c09f8ccdf5b0fdcff9a3471d71d61a3f9d5fa0f833ed`.
+The verified/restored archive contains **7,673 logical receipts**, SHA-256
+`2206eb5db6ee997399cf0cc15208997d031853da798f03bcca05a1193441e026`.
+All builds, fits, tests, diagnostics and archive operations are terminal.
+
+### Mechanism and validation
+
+Reusable two-FE categorical initial checks and MAP pilots temporarily lend idle
+PCG group banks to existing parallel kernels. The loan requires multiple workers,
+at least 16384 row-by-RHS entries, empty ordinary group banks and an admitted
+two-FE owner. A scoped destructor restores ownership before recurrence, error or
+unwind. PCG reconstructs its current-weight state; no numerical authority crosses
+weight frames. No new bank, memory formula, solver, tolerance, check schedule,
+rank/DoF, sample, separation or publication policy is added. One-shot OLS, slopes
+and three-FE algorithms remain unchanged.
+
+**156 distinct final-source Rust tests**, production ABI/panic checks and
+**five licensed fixtures** pass. New mathematical weighted-ring checks cover
+disconnection, unequal changing component masses, a zero RHS, exact serial/
+parallel results and poisoned-bank error/panic restoration. A local public
+N4800/K8/pool4 explicit Poisson/Hessian/sandwich oracle covers unit/FW/PW,
+robust/cluster and T1/T4. Allocation, multipartition slopes, separation and
+transaction fixtures also pass. The allocation window covers ordinary joint
+iterations, not canonical pilots; the Rust test covers loan capacity/ownership.
+
+All **189 headline applications**, **177 public-state checks**, **57 exact native
+export pairs**, **63 baseline/stock** and **51 direct candidate/stock pairs**
+pass. No scientific exclusions, application failures, timeouts or detected
+contention. Eight diagnostic applications are separate. All 51 PPML pairs retain
+iteration/halving/fallback, rank/DoF, modeled peak and scratch metadata. Tracked
+peaks match in 48; three fast-control differences include +61080 bytes and two
+decreases. Actual-plugin audited events/growth are zero, capacities stable and
+fresh/warm outputs equivalent. No physical-memory or cross-platform claim.
+
+### Timings and remaining work
+
+Development wide low two-FE N16320/K24/T8 improves **188→167 vs stock 68 ms**;
+N8160/K12/T4 improves **65→60 vs 37**. Larger-row controls have mixed pairs.
+Fresh seed **202609352**, five rotations, robust plus fitted means:
+
+| Low two-FE case | Baseline | Candidate | Stock | Candidate/stock |
+|---|---:|---:|---:|---:|
+| N10080/K10/T4 | 66 | 60 | 33 | 1.818 |
+| Unbalanced N15120/K24/T8 | 157 | 137 | 60 | 2.283 |
+| Disconnected N3840/K12/T4 | 42 | 40 | 26 | 1.538 |
+| Weak barbell N12480/K12/T4 | 89 | 78 | 902 | 0.086 |
+| Serial N10080/K10/T1 | 79 | 77 | 66 | 1.167 |
+| Larger-row N24960/K10/T4 | 121 | 121 | 61 | 1.984 |
+
+All twenty pairs in the first four rows improve; reductions in medians are
+9.1%, 12.7%, 4.8% and 12.4%. Serial/larger-row controls include losses and ties.
+Shared fast two-FE control is 93→91 vs 54; slope PPML is **101→102 vs 106**;
+three-FE PPML is 157→156 vs 219. OLS categorical/slope medians tie at 29/79 ms,
+with individual losses up to 4 ms. Full distributions remain in the report.
+
+The separate wide diagnostic changes 108 serial projections to 36 serial and
+72 parallel calls, retaining 28 certificates. Intrusive logging inflates the
+baseline wrapper; its 223→178-ms native-root difference is not a headline gain.
+Candidate canonical projection still costs about **60.55 ms**, including
+28.17-ms symmetric pilots, 18.90-ms PCG and 12.54-ms checks (nested). Joint work
+separately costs 60.17 ms; exclusive joint recurrence remains below 1 ms.
+
+Close scratch lending; do not tune its threshold to seed352. Next test **direct
+current-weight two-FE Schur absorption without mandatory four-sweep warmup**, and
+reuse compatible group geometry across canonical RHS tiles. Preserve independent
+original-weight acceptance and canonical rank authority; start with weighted,
+disconnected/unequal-mass and weak designs. This is a new experiment, not adoption
+of the previously rejected all-coefficient canonical route. One-FE preparation/
+objective work and wide inference remain subsequent measured targets. Do not
+declare the broad target complete from these gains.
+
+Historical stock-mean discrepancies, the shared 1e6-FE-shift failure, static
+allocation drift, weighted constrained-fit failures and nonretaining-CG instability
+retain their scope. Frozen 77/16/111 definitions, protected cycle seeds211/212
+and deferred SCC/physical-memory checks remain unchanged. No push, release,
+stopped-campaign restart or SCC retry. Keep the active goal unfinished.
+
 ## Column-oriented low PPML finite products adopted — 2026-09-23
 
 The objective remains **whole public PPML <=0.90 times scientifically comparable

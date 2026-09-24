@@ -87,6 +87,13 @@ remain direction-only. Optional-state refusal retains the previous categorical
 route without duplicating topology. This supersedes the categorical exclusions
 above for that bounded route; fast categorical LSMR and one-FE routing are unchanged.
 
+Under ADR 0146, reusable two-FE categorical initial checks and MAP pilot sweeps
+may borrow the idle PCG group banks when row-by-RHS work warrants parallel group
+reductions. A scoped owner restores both banks before current-weight PCG
+initialization or any error return. No new capacity is admitted; no numerical
+PCG state is reused. Projection arithmetic, check frequency and the full
+acceptance gates remain unchanged.
+
 Under ADRs 0127, 0132 and 0137, actual one-intercept-FE publication PPML can
 analytically concentrate group intercepts during ordinary MAP-owned steps.
 Fast execution borrows retained dense finite representatives; low execution
