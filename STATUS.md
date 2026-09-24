@@ -10,7 +10,58 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Multi-FE cold-start sweep adopted; canonical construction next — 2026-09-24
+## Ambitious multi-FE PPML plan grounded in current profiles — 2026-09-24
+
+The active goal remains **whole-public-command PPML <=0.90 times comparable
+pinned stock fixest wherever reasonably achievable with at least two FE
+partitions**. It is unfinished. Production remains `f6ed8db6`, artifact
+`multifeseed1`; this checkpoint changes documentation/evidence only.
+
+The [current-source profile and implementation plan](benchmarks/reports/development/ppml-canonical-work-plan-local-2026-09-24/README.md)
+supersedes the generic next-step wording below. Isolated diagnostic artifact
+`canonicalledger3` captures 546 computational inputs at `f6ed8db6` plus scoped
+timing instrumentation. Its plugin SHA-256 is
+`22f911713d66784b9fc738c6061113547e4f0369aaa8488ea7809e9122955951`.
+All six development diagnostic applications pass independent sample,
+stationarity, model-space and objective replay checks. ABI checks pass; no new
+Rust/Hessian-oracle suite or stock headline block was run. No fit failure,
+timeout or contention; the initial Python build-launch failure is preserved.
+The archive has 814 logical receipts, was verified/restored, and has SHA-256
+`a1356c85c5a30b45f99338ec5f4899bece132630ca72b345038472d144576fee`.
+All build/profile/audit/archive jobs are terminal; no active process handles.
+
+Current diagnostic attribution: fast unbalanced three-FE control absorption
+takes 27.237 ms, plus 6.249 ms for the final residual reabsorption. Low three FE
+has 24.432 ms control absorption, 7.468 ms final residual reabsorption and a
+separate 6.617-ms response absorption. Wide low two FE has eleven PCG calls
+(22.689 ms inclusive), four joint reconstructions (10.796 ms), two finite moment
+builds (9.817 ms), and only 2.672 ms in rank-residual construction. Parent/child
+spans overlap; these are diagnostic costs, not additive headline claims.
+
+**Next bounded experiment:** capture identical current-source initial/strict
+three-FE weighted batches and count geometry, per-column solve work, row passes
+and certificates. Compare at most two coherent coefficient-space checkpoint
+organizations, using current-weight reusable group factors, compatible RHS
+batching and independent stopping. Preserve original-input acceptance; investigate
+the separate final residual solve only with an explicit equivalent verification
+argument. Target 20–30% whole-command improvement on the three-FE loss.
+
+Then address the wide low-memory gap jointly: evaluate an admitted multi-FE
+coefficient-backed projected-design view against scratch materialization, coupled
+with efficient streamed reconstruction/products. Charge G-by-K state and every
+overlap; budget refusal retains an affordable certified route. Target 35–40%
+whole-command improvement. These are engineering targets, not predicted gains.
+Close narrow/disconnected and remaining slope losses afterward using measured
+outer/checking/output costs. Do not revive rejected wrappers/tiles or tune
+initializer sweep counts. Use fresh predeclared cases, independent mathematical
+oracles and paired stock rotations; protect OLS and existing weak/slope wins.
+The report gives adoption/stop criteria and a compact adaptive coverage plan.
+
+No new seed consumed. Preserve 77/16/111 definitions and all unresolved scientific,
+memory and platform failures. No SCC retry, stopped campaign, push, release or
+qualification. STATUS remains the sole mutable handover record.
+
+## Historical: multi-FE cold-start sweep adopted — 2026-09-24
 
 The active goal is **whole-public-command PPML <=0.90 times comparable pinned
 stock fixest wherever reasonably achievable on designs with at least two FE
