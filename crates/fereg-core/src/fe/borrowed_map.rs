@@ -1795,8 +1795,44 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         let initial = self.with_pilot_group_scratch(rhs_count, |design, workspace| {
             certify_initial(design, weights, &values, config.tolerance, workspace)
         })?;
+        // A global norm can hide projection drift in a small-mass component.
+        // The same component scaling used by the checkpoint recurrence must
+        // also govern its zero-iteration shortcut. This only tightens the
+        // shortcut; the original-weight certificate remains authoritative.
+        let balanced_weights = if self.checkpoint_lsmr_enabled
+            && self.checkpoint_component_scaling
+            && matches!(self.design.effects().len(), 2 | 3)
+        {
+            component_scaled_checkpoint_weights(&self.design, weights)?
+        } else {
+            None
+        };
+        let balanced_initial_passed = if initial.passed {
+            if let Some(scaled) = balanced_weights.as_deref() {
+                let scaled = validate_weights(BorrowedMapWeights::Provided(scaled), values.nrows())?;
+                weighted_column_norms(
+                    &values, scaled, &mut self.workspace.reference_norms,
+                    &mut self.workspace.value_scales, &mut self.workspace.group_sums,
+                )?;
+                let passed = self.with_pilot_group_scratch(rhs_count, |design, workspace| {
+                    certify_initial(design, scaled, &values, config.tolerance, workspace)
+                })?.passed;
+                // Retained norm handoff and every later certificate consume
+                // the original frame, even if this early return is admitted.
+                weighted_column_norms(
+                    &values, weights, &mut self.workspace.reference_norms,
+                    &mut self.workspace.value_scales, &mut self.workspace.group_sums,
+                )?;
+                self.workspace.residual_norms.copy_from_slice(&self.workspace.reference_norms);
+                passed
+            } else {
+                true
+            }
+        } else {
+            false
+        };
         let initial_certification_seconds = initial_certification_started.elapsed().as_secs_f64();
-        if initial.passed {
+        if initial.passed && balanced_initial_passed {
             return certified_result(
                 values,
                 SolveStopReason::Certified,
@@ -1812,11 +1848,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             if let Some(error) = self.take_checkpoint_lsmr_fatal_failure() {
                 return Err(error);
             }
-            let balanced_weights = if self.checkpoint_component_scaling {
-                component_scaled_checkpoint_weights(&self.design, weights)?
-            } else {
-                None
-            };
             let solver_weights = match balanced_weights.as_deref() {
                 Some(w) => validate_weights(BorrowedMapWeights::Provided(w), values.nrows())?,
                 None => weights,
@@ -12081,6 +12112,49 @@ mod tests {
             .zip(expected.residualized().as_slice())
         {
             assert!((left - right).abs() <= 1e-12, "{left} != {right}");
+        }
+    }
+
+    #[test]
+    fn component_checkpoint_rechecks_small_drift_before_accepting_warm_residuals() {
+        // A repeated-row contrast is exactly orthogonal to the explicit design.
+        // A tiny FE term in the low-weight component passes a global norm check
+        // despite a material predictor error; component scaling must also govern
+        // the zero-iteration shortcut, not just the iterative solve.
+        let codes: Vec<Vec<u32>> = (0..3).map(|effect| (0..16).map(|row| {
+            let component = row / 8;
+            let level = if effect == 1 { row / 2 % 2 } else { row / 4 % 2 };
+            (2 * component + level) as u32
+        }).collect()).collect();
+        let indices: Vec<_> = codes.iter().map(|c| LevelIndex::from_codes(c, 4).unwrap()).collect();
+        let sources: Vec<_> = codes.iter().zip(&indices).map(|(c, index)|
+            ValidatedBorrowedInterceptSource::new(c, 4, index).unwrap()).collect();
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                for dimensions in [2, 3] {
+                    let design = BorrowedInterceptFeDesign::new(16,
+                        sources[..dimensions].iter().map(|s| s.effect()).collect()).unwrap();
+                    let mut projector = ReusableCategoricalMapAbsorber::new(design, 2, threads).unwrap();
+                    projector.enable_checkpoint_lsmr();
+                    projector.enable_component_checkpoint_scaling();
+                    for hot in [0, 1, 0] {
+                        let weights: Vec<_> = (0..16).map(|row| if row / 8 == hot { 1e13 } else { 1. }).collect();
+                        let contrast: Vec<_> = (0..16).map(|row| if row % 2 == 0 { 1. } else { -1. }).collect();
+                        for drift in [1e-8, 0.] {
+                            let response: Vec<_> = (0..16).map(|row| contrast[row] +
+                                if row / 8 == hot { 0. } else { drift * (1. + codes[0][row] as f64) }).collect();
+                            let fit = projector.absorb(BorrowedMapWeights::Provided(&weights),
+                                DenseMatrix::from_columns(&[response, vec![0.; 16]]).unwrap(), config()).unwrap();
+                            assert!(fit.report().certified());
+                            assert_eq!(fit.report().iterations == 0, drift == 0.);
+                            for row in 0..16 {
+                                assert!((fit.residualized()[(row, 0)] - contrast[row]).abs() < 1e-12);
+                                assert_eq!(fit.residualized()[(row, 1)], 0.);
+                            }
+                        }
+                    }
+                }
+            });
         }
     }
 

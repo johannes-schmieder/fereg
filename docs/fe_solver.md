@@ -95,6 +95,14 @@ history. Numerical refusal, movement or changed basis retains canonical retry;
 current-weight certificates and final inference authority remain independent.
 Ordinary LSMR, CMG, one-FE and OLS routing are unchanged.
 
+ADR 0156 applies component scaling to an already configured PPML checkpoint's
+zero-iteration shortcut too. A global initial pass on disconnected components
+also requires a fresh component-scaled pass at the same tolerance. Original-
+weight norms are restored before return or iterative solving. This prevents a
+large component from hiding warm projection drift in a small component; finite
+regression and all canonical acceptance still use the original weight frame.
+No routing or memory admission is extended.
+
 ADR 0153 scopes prepared categorical checkpoint LSMR setup to one immutable
 weight/design/RHS call. A failed fresh canonical certificate may retry only its
 failing columns, provided retained-output overlap fits the existing full-batch

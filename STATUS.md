@@ -10,7 +10,95 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Dense PPML Gram improvement adopted; categorical joint replacement rejected — 2026-09-24
+## Component-aware warm checkpoint fix adopted; incremental solver redesign next — 2026-09-24
+
+The broad **whole public PPML <=0.90 times comparable pinned stock fixest** goal
+remains active and unfinished. This opening supersedes earlier next-step orders.
+The accuracy-localization milestone is closed. Do not spend another cycle tuning
+its check or revive the rejected generic fast coefficient-session wrapper.
+
+Adopt `componentwarm3`, based on `96676a68`, under
+[ADR 0156](docs/adr/0156-component-aware-ppml-warm-checkpoints.md) and the
+[source-bound report](benchmarks/reports/development/ppml-component-warm-boundary-local-2026-09-24/README.md).
+All **543 captured computational inputs** match plugin
+`5434193a5a9b0408ed9636c625f1d134996f2224bff2642049b129a47245ce52`.
+The verified/restored archive contains **2,413 logical receipts**, SHA-256
+`606a23a83b3475bb39b9e55a5ea1362ec3ebdced1a9300500a06a1c90407dde7`.
+All builds, tests, licensed fits, timings, audits and archive/restore jobs are
+terminal; there is no pending process to restart.
+
+### Diagnosed and fixed
+
+The rejected fast integration's fifth ordinary predictor was accurate to about
+9e-14 in the low-mass component. Its canonical strict initial certificate then
+accepted a warm residual without iteration and returned 1.2343253e-9 error.
+Component scaling ran only after that shortcut. Twenty-three independently
+solved 60-digit grounded explicit-design WLS frames localize the failure.
+
+Apply the existing component scaling to the shortcut too. Require both original
+and scaled initial certificates at the unchanged tolerance; restore original
+norms. A declined shortcut uses the existing scaled solve, independent original-
+weight acceptance and fallback. The isolated rejected source now returns about
+9e-14 final error. No fast route, generic wrapper or new memory bank is adopted.
+Production scope remains already admitted low three-FE categorical checkpoints.
+Baseline explicit LSMR separately fails the extreme fixture's six-iteration bound;
+baseline MAP passes. That distinct LSMR limitation is not repaired here.
+
+**53 distinct Rust tests**, ABI/panic checks and **three licensed fixtures** pass.
+The new analytic warm-residual regression is red on the parent and green here.
+All **42 public applications**, 36 public-state checks, 15 native pairs and 12
+direct stock comparisons pass. All 15 native export pairs are exact; all 12 PPML
+pairs retain iteration, tracked/modelled memory and scratch metadata exactly.
+The old full low-categorical fixture still fails its positive-scratch assertion
+for one FE on both baseline and candidate, after its numerical checks pass.
+Its unchanged multi-partition portion passes separately. Preserve that failure.
+The large Python explicit-Poisson audit refused its existing size bound; licensed
+explicit Poisson/Hessian fixtures supply independent authority. No tolerance or
+oracle size bound was changed, and no contention was detected.
+
+Fresh **202609365 is consumed and frozen**. Three rotations, robust + means,
+strict comparable stock, matched threads/serial BLAS; medians in milliseconds:
+
+| Case | Baseline | Current | Stock | Current/stock |
+|---|---:|---:|---:|---:|
+| Low three FE N14400/K7/T1 | 152 | 152 | 388 | 0.392 |
+| Low disconnected three FE N17280/K4/T4 | 144 | 146 | 231 | 0.632 |
+| Fast categorical two FE N16320/K16/T4 | 79 | 78 | 65 | 1.200 |
+| Fast two slope partitions N15360/K6/T4 | 66 | 66 | 65 | 1.015 |
+
+The disconnected accuracy check costs +1.4% at the median, paired +1/+5/0 ms.
+Other pairs include individual +4/+2 ms losses. OLS control is exact, 35→34 ms,
+paired -1/0/0. This is a correctness prerequisite, not a speed gain or completion
+of the requested replacement. Earlier wide-slope wins remain tied to their own
+captured artifact; no later-source universal timing claim is inferred.
+
+### Next bounded implementation
+
+Implement **coefficient-space Newton increments behind the incremental-direction
+boundary**, preserving independent canonical response history. The failure's
+origin is now established; move to the solver organization rather than repeating
+accuracy localization. Read ADRs 0130, 0152, 0155 and 0156. Reuse current-weight
+coefficient geometry and original-control products without generic absolute-WLS
+mean/reporting work. Do not component-rescale the full finite/FE objective: shared
+finite coefficients couple components. Fresh original-input scores, FE/model-space,
+rank, reconstruction, objective and final-Hessian acceptance remain mandatory.
+
+Use development 347 first, with dense/unbalanced/narrow/weak cases and whole-public
+phase attribution. Frozen inner coefficient wins (ADR 0155) justify the design;
+its public wrapper losses forbid simply removing guards. Preserve sparse/weak
+LSMR wins and low/OLS controls. Predeclare fresh validation only after a useful
+coherent candidate; then address separate one-FE and narrow-slope bottlenecks.
+The current diagnostic root is `target/ppml-newton-boundary-20260924`; its recipes
+and corrected `rejected2`/`rejected4` source maps are archived. The first unpatched
+`rejected` replay is invalid for attribution and explicitly excluded in the report.
+
+Seeds 360/363/365 and protected 211/212 stay frozen; 361 remains unused, not evidence.
+Static allocation drift, weighted constrained fits, nonretaining-CG span instability,
+historical one-FE stock-mean disagreement, 1e6-shift failure, synthetic exact-fit
+three-FE LSMR refusal and SCC/Linux/physical-cap confirmation remain open. No SCC
+retry, push, release, stopped campaign or qualification. Frozen 77/16/111 unchanged.
+
+## Earlier checkpoint: dense PPML Gram improvement — 2026-09-24
 
 The broad objective remains **whole public PPML <=0.90 times comparable pinned
 stock fixest wherever reasonably achievable, per case**. It is unfinished.
