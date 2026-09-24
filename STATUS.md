@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-23
+**Last updated:** 2026-09-24
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,132 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
+
+## Source-oriented joint PPML access adopted; serial products next — 2026-09-24
+
+The broad objective remains **whole public PPML <=0.90 times scientifically
+comparable pinned stock fixest wherever reasonably achievable, per case**.
+This opening supersedes earlier next-step orders. The column-access milestone
+is complete; broad performance is unfinished. The next target is the measured
+serial product bottleneck below.
+
+Adopt `columnflow2`, based on `4c2532a4`, under
+[ADR 0149](docs/adr/0149-source-oriented-joint-ppml-access.md) and the
+[source-bound report](benchmarks/reports/development/ppml-column-access-local-2026-09-23/README.md).
+All **542 captured computational inputs** match plugin
+`f2113d96c61794a6d8b2c77cccbf687697acd73c75bf8d741343f49ef77419cb`.
+The verified/restored archive contains **10,485 logical receipts**, SHA-256
+`19f12fd636ae693db5ab79549da23bdd8321332cabd1fde2baaebed9d032f8bf`.
+All builds, tests, fits, diagnostics and archive operations are terminal.
+
+### What changed and passed
+
+Current-source counters confirm that public K64 includes an intercept and
+exceeds the 64-column complete-model numeric binding. Joint PPML now borrows
+each numeric source or ordinary factor-code column independently. It uses
+column scans for stable norms, reconstruction and inner moments when row access
+would evaluate recipes repeatedly; direct numeric row bindings retain fused
+scans. Original-input finite scores and products use the new column visitor.
+Dense retained representatives keep their row organization. Canonical binding,
+OLS and other consumers keep their admission rules.
+
+The first candidate's unconditional column scans improved K64 but regressed
+serial and narrow slope cases; its source-bound evidence is preserved. The
+adopted successor chooses by available direct storage, without a new thread/
+width threshold or solver route. Current-weight geometry, fresh independent
+scores, objective, reconstruction, strict agreement, rank/bread/final-Hessian,
+sample, weights, DoF, separation and failure atomicity remain unchanged.
+
+**58 distinct final-source Rust tests**, production ABI/panic checks and **seven
+licensed fixtures** pass. Independent weighted-contrast tests exercise both
+scan organizations, changing frames, disconnected/rank-deficient slopes, T1/T4,
+zero response and failure revocation. Separate K8 and K65 explicit Poisson/
+Hessian/sandwich fixtures each cover unit/FW/PW, T1/T4 and robust/cluster inference.
+Further fixtures cover factors and a numeric product, separation, transaction
+failure and K65 allocation auditing. The latter records zero events/growth over
+sixteen ordinary joint steps, stable capacities and fresh/warm equivalence.
+
+All **192 final headline applications**, **180 public-state checks**, **nine
+small independent Python oracle results**, **66 native pairs** and **60 direct
+candidate/stock pairs** pass. All 66 native exports are exact. No application
+failure, timeout, scientific exclusion or detected contention. Nine diagnostic
+applications are separate. One initial diagnostic preflight failed because
+sandboxed process inventory was denied; zero fits started and the authorized
+retry retained that check. Preserve its failure receipt.
+
+There is no new heap bank, N-by-K copy, worker team or admission formula. All
+sixty PPML pairs retain iteration/scientific metadata, modeled peaks and scratch
+metadata. Tracked peaks match in 59; one excluded fast categorical control rises
+by **374,095 bytes**. No universal peak-memory or timing non-regression claim.
+Physical memory-cap and cross-platform checks remain deferred.
+
+### Current timing and remaining budgets
+
+Fresh seed **202609355** is consumed. Five rotations, robust inference and fitted
+means, low mode. Medians in ms; full distributions and paired losses are in the
+report. Stock is pinned/unmodified with `glm.tol=1e-10`, `fixef.tol=1e-11` and
+matched threads. Low execution is not physical-memory-matched to stock.
+
+| Case | Baseline | Current | Stock | Current/stock | 0.90 target |
+|---|---:|---:|---:|---:|---:|
+| Two FE N17280/K63/T8 | 281 | 283 | 204 | 1.387 | 183.6 |
+| Disconnected two FE N20160/K65/T8 | 511 | 360 | 251 | 1.434 | 225.9 |
+| Two FE N15360/K96/T8 | 714 | 497 | 306 | 1.624 | 275.4 |
+| Serial two FE N12000/K65/T1 | 1322 | 1286 | 601 | 2.140 | 540.9 |
+| Unbalanced two FE N15120/K24/T4 | 98 | 97 | 71 | 1.366 | 63.9 |
+| Unbalanced three FE, multiple slopes, N28800/K10/T4 | 192 | 194 | 212 | 0.915 | 190.8 |
+
+Threaded above-limit cases improve **29.5% and 30.4%**, with all ten pairs
+improving. Wide serial improves **2.7%**, with all five pairs improving. K63 and
+multiple-slope medians lose 0.7% and 1.0%. None of these six fresh cases reaches
+the 0.90 target. Do not transfer earlier source/seed wins to this table.
+
+The weak barbell control clears the target at **29 vs 160 ms**. Other current
+controls still lose to stock: fast categorical **117 vs 65**, one-FE **39 vs 26**,
+fast slopes **123 vs 122 ms**. OLS categorical/slope medians both lose 1 ms
+(34→35 and 66→67) with exact exports; retain those losses and mixed paired
+distributions. The small one-FE comparison does not adjudicate the historical
+large one-FE stock-mean discrepancy.
+
+### Next implementation milestone
+
+**First address recipe-backed serial finite products.** The isolated development-
+seed diagnostic measures threaded K64 joint work at **193.961→70.058 ms**:
+norms 28.016→3.812, product tiles 92.810→23.056, reconstruction 54.656→25.826.
+The serial K65 case still spends **1003.853 ms** in finite-product tiles, about
+**79%** of its 1267.387-ms diagnostic native root. Its exclusive recurrence is
+only 2.107 ms. The source explains the omission: `width == 1` still selects the
+complete-row Hessian kernel even when those rows require recipe dispatch.
+
+Evaluate source-oriented or bounded product formation for that storage layout,
+using the same distinction between direct and recipe-backed access. Preserve
+the efficient fused row kernel where it is supported by direct storage. This
+is a measured large avoidable-cost candidate, not an invitation to tune the
+fixed accumulator width or introduce thread/width thresholds keyed to cases.
+Use development seed347 and new predeclared confirmation; seed355 stays frozen.
+Keep current independent acceptance and protect directly bound serial, threaded,
+generated, slope, fast, low, one-FE and OLS controls. Do not claim an expected
+speedup before full-command measurement.
+
+Then resume **accepted-frame canonical/product ownership**: threaded K64 still
+spends about 39 ms in canonical rank, 38 ms in retained reprojection, 28 ms in
+outer score certification and 23 ms in inference. These diagnostic rows nest;
+do not sum them as an exclusive budget. Preserve scientific purposes while
+removing duplicated access and sharing valid current-frame work. Fast
+categorical routing/organization and one-FE/public-output work remain next in
+the broader plan. Do not spend a long separate cycle closing the small residual
+three-FE slope gap while categorical cases need 34–58% further reductions.
+
+Continue bounded implementation milestones with independent WLS and Poisson/
+Hessian oracles, uncontended baseline/candidate/pinned-stock rotations, fresh
+confirmation and explicit reporting of failures, losses and memory. Commit
+accepted work and rejected evidence; keep the broad goal active.
+
+Frozen 77/16/111 definitions and protected cycle seeds 211/212 remain unchanged.
+Static allocation drift, weighted constrained-fit failures, nonretaining-CG
+instability, historical stock-mean discrepancies and the separate 1e6-FE-shift
+failure remain open. SCC/Linux and physical-memory checks stay deferred without
+auth retries. No push, release, qualification or stopped-campaign restart.
 
 ## Triangular PPML products adopted; next close dataflow and finalization gaps — 2026-09-23
 

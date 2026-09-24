@@ -1727,6 +1727,28 @@ mod tests {
 
     #[test]
     fn streamed_joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frames() {
+        check_streamed_joint_slope_directions::<false>();
+    }
+
+    #[test]
+    fn column_oriented_joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frames() {
+        check_streamed_joint_slope_directions::<true>();
+    }
+
+    fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
+        use super::super::slope_coefficients::joint::JointFiniteDesign;
+        struct Layout<'a, const COLUMNS: bool>(&'a DenseMatrix);
+        impl<const COLUMNS: bool> JointFiniteDesign for Layout<'_, COLUMNS> {
+            fn prefers_column_scans(&self) -> bool { COLUMNS }
+            fn nrows(&self) -> usize { self.0.nrows() }
+            fn ncols(&self) -> usize { self.0.ncols() }
+            fn visit_column(&self, column: usize, visit: impl FnMut(usize, f64) -> Result<()>) -> Result<()> {
+                self.0.visit_column(column, visit)
+            }
+            fn visit_rows(&self, scratch: &mut [f64], visit: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> {
+                self.0.visit_rows(scratch, visit)
+            }
+        }
         let mut f = Vec::new();
         let mut g = Vec::new();
         let mut slope = Vec::new();
@@ -1748,6 +1770,7 @@ mod tests {
         }
         let n = f.len();
         let controls = DenseMatrix::from_row_major(n, 3, raw).unwrap();
+        let streamed = Layout::<COLUMNS>(&controls);
         let design = FeDesign::new(
             n,
             vec![
@@ -1817,7 +1840,7 @@ mod tests {
                     pool.install(|| {
                         owner.solve_joint_slopes_streamed(
                             &weights,
-                            &controls,
+                            &streamed,
                             &[2, 0],
                             &y,
                             config,
@@ -1837,7 +1860,7 @@ mod tests {
                     pool.install(|| {
                         owner.solve_joint_slopes_streamed(
                             &weights,
-                            &controls,
+                            &streamed,
                             &[2, 0],
                             &changed,
                             config,
@@ -1850,7 +1873,7 @@ mod tests {
                     pool.install(|| {
                         owner.solve_joint_slopes_streamed(
                             &weights,
-                            &controls,
+                            &streamed,
                             &[2, 0],
                             &zero,
                             config,
@@ -1879,7 +1902,7 @@ mod tests {
                         .install(|| {
                             owner.solve_joint_slopes_streamed(
                                 &weights,
-                                &controls,
+                                &streamed,
                                 &[2, 0],
                                 &y,
                                 short,
@@ -1894,7 +1917,7 @@ mod tests {
                         .install(|| {
                             owner.solve_joint_slopes_streamed(
                                 &weights,
-                                &controls,
+                                &streamed,
                                 &[2, 2],
                                 &y,
                                 config,
@@ -1913,7 +1936,7 @@ mod tests {
                     pool.install(|| {
                         owner.solve_joint_slopes_streamed(
                             &weights,
-                            &controls,
+                            &streamed,
                             &[2, 0],
                             &y,
                             config,
@@ -1926,7 +1949,7 @@ mod tests {
                     assert!(owner
                         .solve_joint_slopes_streamed(
                             &bad,
-                            &controls,
+                            &streamed,
                             &[2, 0],
                             &y,
                             config,

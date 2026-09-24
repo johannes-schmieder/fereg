@@ -111,6 +111,14 @@ current-weight geometry, fresh FE/finite scores, reconstruction and canonical
 rank/final-Hessian authority remain. No previous-frame factor or new solver route
 is retained from the rejected matrix-free experiments.
 
+ADR 0149 resolves original joint PPML columns independently of complete-model
+numeric binding. Direct numeric row bindings retain fused scans; recipe-backed
+rows use column-oriented norms, reconstruction and inner moments. Finite products
+and independent original-input scores borrow each numeric source or ordinary
+factor code column separately. The existing current-weight arithmetic and
+acceptance remain, with no new heap storage or cross-frame products. Other
+consumers retain their numeric-binding admission rules.
+
 Under ADRs 0127, 0132 and 0137, actual one-intercept-FE publication PPML can
 analytically concentrate group intercepts during ordinary MAP-owned steps.
 Fast execution borrows retained dense finite representatives; low execution

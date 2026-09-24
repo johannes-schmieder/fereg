@@ -7,6 +7,9 @@ use crate::fe::SolveReport;
 /// An immutable finite representative. Row and column access let preparation
 /// follow the source layout without materializing another normalized design.
 pub(crate) trait JointFiniteDesign: Sync {
+    // Direct row storage can fuse independent accumulators; recipe-backed
+    // rows benefit from resolving one column before scanning observations.
+    fn prefers_column_scans(&self) -> bool { false }
     fn nrows(&self) -> usize;
     fn ncols(&self) -> usize;
     fn column_slice(&self, _column: usize) -> Option<&[f64]> {
@@ -262,25 +265,50 @@ impl JointFiniteWorkspace {
     ) -> Result<f64> {
         let p = op.coefficients;
         op.forward(&self.coefficients[..p], observations);
-        controls.visit_rows(&mut self.column_scratch, |row, values| {
-            let mut residual = original[row] - observations[row];
-            for (j, &column) in selected.iter().enumerate() {
-                residual = (-self.coefficients[p + j])
-                    .mul_add(values[column] * roots[row] / self.scales[j], residual);
+        if controls.prefers_column_scans() {
+            for (value, &original) in observations.iter_mut().zip(original) {
+                *value = original - *value;
             }
-            observations[row] = residual;
-            Ok(())
-        })?;
+            // Reading one source at a time preserves each residual's finite-
+            // coefficient FMA order without per-observation recipe resolution.
+            for (j, &column) in selected.iter().enumerate() {
+                controls.visit_column(column, |row, value| {
+                    observations[row] = (-self.coefficients[p + j])
+                        .mul_add(value * roots[row] / self.scales[j], observations[row]);
+                    Ok(())
+                })?;
+            }
+        } else {
+            controls.visit_rows(&mut self.column_scratch, |row, values| {
+                let mut residual = original[row] - observations[row];
+                for (j, &column) in selected.iter().enumerate() {
+                    residual = (-self.coefficients[p + j])
+                        .mul_add(values[column] * roots[row] / self.scales[j], residual);
+                }
+                observations[row] = residual;
+                Ok(())
+            })?;
+        }
         op.project_eliminated(observations, scratch);
         let mut maximum = op.transpose(observations, &mut self.residual[..p], true);
         self.residual[p..p + selected.len()].fill(0.);
-        controls.visit_rows(&mut self.column_scratch, |row, values| {
+        if controls.prefers_column_scans() {
             for (j, &column) in selected.iter().enumerate() {
-                self.residual[p + j] = (values[column] * roots[row] / self.scales[j])
-                    .mul_add(observations[row], self.residual[p + j]);
+                let sum = &mut self.residual[p + j];
+                controls.visit_column(column, |row, value| {
+                    *sum = (value * roots[row] / self.scales[j]).mul_add(observations[row], *sum);
+                    Ok(())
+                })?;
             }
-            Ok(())
-        })?;
+        } else {
+            controls.visit_rows(&mut self.column_scratch, |row, values| {
+                for (j, &column) in selected.iter().enumerate() {
+                    self.residual[p + j] = (values[column] * roots[row] / self.scales[j])
+                        .mul_add(observations[row], self.residual[p + j]);
+                }
+                Ok(())
+            })?;
+        }
         for &sum in &self.residual[p..p + selected.len()] {
             if !sum.is_finite() {
                 return Ok(f64::INFINITY);
@@ -644,27 +672,50 @@ impl JointFiniteWorkspace {
             *value /= scale_y;
         }
         let roots = roots.as_slice();
-        // Norm state and row scratch occupy existing banks before their solve
-        // lifetimes. Visit each scratch row once for all current-weight scales.
+        // Norm state occupies existing banks before their solve lifetimes.
+        // Each column retains its stable row-order reduction; source-oriented
+        // inputs let independent columns use the admitted worker team.
         self.scales[..k].fill(0.);
         self.beta[..k].fill(1.);
-        controls.visit_rows(&mut self.factor[..controls.ncols()], |row, values| {
-            for (j, &column) in selected.iter().enumerate() {
-                let absolute = (values[column] * roots[row]).abs();
-                if absolute == 0. {
-                    continue;
+        if controls.prefers_column_scans() {
+            self.scales[..k].par_iter_mut()
+                .zip(self.beta[..k].par_iter_mut())
+                .zip(selected.par_iter())
+                .try_for_each(|((scale, square), &column)| {
+                    controls.visit_column(column, |row, value| {
+                        let absolute = (value * roots[row]).abs();
+                        if absolute != 0. {
+                            if *scale < absolute {
+                                let ratio = *scale / absolute;
+                                *square = 1. + *square * ratio * ratio;
+                                *scale = absolute;
+                            } else {
+                                let ratio = absolute / *scale;
+                                *square += ratio * ratio;
+                            }
+                        }
+                        Ok(())
+                    })
+                })?;
+        } else {
+            controls.visit_rows(&mut self.factor[..controls.ncols()], |row, values| {
+                for (j, &column) in selected.iter().enumerate() {
+                    let absolute = (values[column] * roots[row]).abs();
+                    if absolute == 0. {
+                        continue;
+                    }
+                    if self.scales[j] < absolute {
+                        let ratio = self.scales[j] / absolute;
+                        self.beta[j] = 1. + self.beta[j] * ratio * ratio;
+                        self.scales[j] = absolute;
+                    } else {
+                        let ratio = absolute / self.scales[j];
+                        self.beta[j] += ratio * ratio;
+                    }
                 }
-                if self.scales[j] < absolute {
-                    let ratio = self.scales[j] / absolute;
-                    self.beta[j] = 1. + self.beta[j] * ratio * ratio;
-                    self.scales[j] = absolute;
-                } else {
-                    let ratio = absolute / self.scales[j];
-                    self.beta[j] += ratio * ratio;
-                }
-            }
-            Ok(())
-        })?;
+                Ok(())
+            })?;
+        }
         for j in 0..k {
             self.scales[j] *= self.beta[j].sqrt();
             if !self.scales[j].is_finite() || self.scales[j] <= 0. {

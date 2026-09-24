@@ -658,6 +658,10 @@ struct JointOriginalColumns<'a, P: PreparedOlsFitView + ?Sized> {
 impl<P: PreparedOlsFitView + Sync + ?Sized>
     crate::fe::slope_coefficients::joint::JointFiniteDesign for JointOriginalColumns<'_, P>
 {
+    fn prefers_column_scans(&self) -> bool {
+        self.numeric.is_none()
+    }
+
     fn nrows(&self) -> usize {
         self.prepared.fit_sample().n_active()
     }
@@ -667,7 +671,11 @@ impl<P: PreparedOlsFitView + Sync + ?Sized>
     }
 
     fn column_slice(&self, column: usize) -> Option<&[f64]> {
-        self.numeric.as_ref()?.raw_columns()[self.generated[column]]
+        let generated = *self.generated.get(column)?;
+        let super::PreparedOlsColumnKind::Continuous { prepared_source_index, .. } =
+            self.prepared.fit_model().columns.get(generated)?.kind else { return None; };
+        self.prepared.fit_sample().regressors.get(prepared_source_index)
+            .filter(|values| values.len() == self.nrows()).map(Vec::as_slice)
     }
 
     fn visit_column(
@@ -675,21 +683,35 @@ impl<P: PreparedOlsFitView + Sync + ?Sized>
         column: usize,
         mut visit: impl FnMut(usize, f64) -> Result<()>,
     ) -> Result<()> {
-        let generated = self.generated[column];
-        match &self.numeric {
-            Some(numeric) => match numeric.raw_columns()[generated] {
-                Some(values) => {
-                    for (row, &value) in values.iter().enumerate() {
-                        visit(row, value)?;
-                    }
+        let generated = *self.generated.get(column)
+            .ok_or_else(|| invalid_argument("joint original column is out of range"))?;
+        if let Some(values) = self.column_slice(column) {
+            for (row, &value) in values.iter().enumerate() {
+                visit(row, value)?;
+            }
+            return Ok(());
+        }
+        let kind = &self.prepared.fit_model().columns.get(generated)
+            .ok_or_else(|| invalid_argument("joint generated column is out of range"))?.kind;
+        match kind {
+            super::PreparedOlsColumnKind::Intercept => {
+                for row in 0..self.nrows() { visit(row, 1.)?; }
+            }
+            super::PreparedOlsColumnKind::Categorical { level_code: None, .. } => {
+                for row in 0..self.nrows() { visit(row, 0.)?; }
+            }
+            super::PreparedOlsColumnKind::Categorical {
+                categorical_source_index, level_code: Some(level), ..
+            } => {
+                let codes = self.prepared.fit_categorical_codes(*categorical_source_index)?;
+                if codes.len() != self.nrows() {
+                    return Err(invalid_argument("joint factor column is not aligned"));
                 }
-                None => {
-                    for row in 0..self.nrows() {
-                        visit(row, 1.)?;
-                    }
+                for (row, code) in codes.iter().enumerate() {
+                    visit(row, f64::from(code == level))?;
                 }
-            },
-            None => {
+            }
+            _ => {
                 for row in 0..self.nrows() {
                     visit(row, self.prepared.fit_column_value(generated, row)?)?;
                 }
@@ -2469,10 +2491,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         )?;
         let prepared = self.prepared;
         let weights = &self.map_weights;
-        let numeric = super::prepared_rhs::NumericOlsColumns::bind_score_means(
-            prepared.fit_model(),
-            prepared.fit_sample(),
-        )?;
+        let originals = JointOriginalColumns {
+            prepared,
+            generated: basis.kept_generated_columns(),
+            numeric: None,
+        };
+        use crate::fe::slope_coefficients::joint::JointFiniteDesign;
         let mut weight_sum = 0.;
         let mut weight_correction = 0.;
         for &weight in weights {
@@ -2483,20 +2507,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .scores
             .par_iter_mut()
             .zip(self.frozen_workspace.rhs.par_iter_mut())
-            .zip(basis.kept_generated_columns().par_iter())
-            .try_for_each(|((score, mean), &generated)| -> Result<()> {
+            .enumerate()
+            .try_for_each(|(column, (score, mean))| -> Result<()> {
                 let mut scale = 0.;
                 let mut square = 1.;
                 let mut sum = 0.;
                 let mut correction = 0.;
                 let mut mean_sum = 0.;
                 let mut mean_correction = 0.;
-                for row in 0..n {
-                    let value = if let Some(numeric) = numeric.as_ref() {
-                        numeric.raw_columns()[generated].map_or(1., |column| column[row])
-                    } else {
-                        prepared.fit_column_value(generated, row)?
-                    };
+                originals.visit_column(column, |row, value| {
                     update_scaled_square(weights[row].sqrt() * value, &mut scale, &mut square)?;
                     compensated_add(
                         weights[row] * value * residuals[row],
@@ -2504,7 +2523,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         &mut correction,
                     )?;
                     compensated_add(weights[row] * value, &mut mean_sum, &mut mean_correction)?;
-                }
+                    Ok(())
+                })?;
                 let norm = stable_norm(scale, square)?;
                 let moment = (sum + correction).abs();
                 *score = if moment == 0. {
