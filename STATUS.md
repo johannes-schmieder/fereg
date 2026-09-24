@@ -10,7 +10,87 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Work-balanced inference adopted; scope now at least two FE — 2026-09-24
+## Multi-FE cold-start sweep adopted; canonical construction next — 2026-09-24
+
+The active goal is **whole-public-command PPML <=0.90 times comparable pinned
+stock fixest wherever reasonably achievable on designs with at least two FE
+partitions**. It remains unfinished. One-FE-specific work stops; historical
+next-step instructions below are superseded by this opening.
+
+Adopt [ADR 0161](docs/adr/0161-categorical-multife-poisson-start.md): cold
+publication fits with multiple categorical intercept-only partitions take one
+Poisson group-coordinate sweep from the global start. It uses existing predictor
+storage, finalized memberships and current prior weights. Nonrepresentable,
+zero-group or out-of-bounds updates restore the entire global start. Explicit
+starts, Mu exploration, slopes and one-FE behavior are unchanged. Initial rank,
+IRLS, two consecutive score/deviance checks, strict/final-Hessian, inference and
+transactional publication retain every original requirement and tolerance.
+
+Artifact **`multifeseed1`**, based on `dda2983f` plus the captured
+`ppml/prepared_irls.rs` overlay, matches all **545 computational inputs**.
+Plugin SHA-256:
+`bbb28cd029cf0eb77e9f8a0b0c206412b663cb2e641fe050395152082f96a744`.
+The [source-bound report](benchmarks/reports/development/ppml-multife-initialization-local-2026-09-24/README.md)
+contains current-source inventory, two separate diagnostic profiles, exact
+source, tests, oracles and complete timing/loss distributions. Its verified/
+restored archive has 6,607 logical receipts, SHA-256
+`2b08dffd91a82e1b3969432cc21626acc0a8b17c937032b0bc35ec73ffe2f3f4`.
+All builds, tests, fits, profiles and archive/restore jobs are terminal.
+
+Fresh seed **202609374 is consumed/frozen**. Three matched rotations, robust
+inference + fitted means, milliseconds:
+
+| Case | Baseline | Current | Strict stock | Current/stock | 0.90 target |
+|---|---:|---:|---:|---:|---:|
+| Narrow two FE N13200/K4/T1 | 57 | 49 | 47 | 1.043 | 42.3 |
+| Disconnected two FE N22080/K14/T4 | 94 | 76 | 73 | 1.041 | 65.7 |
+| Unbalanced three FE N24960/K10/T4 | 121 | 115 | 97 | 1.186 | 87.3 |
+| Low two FE N18000/K28/T8 | 134 | 117 | 82 | 1.427 | 73.8 |
+| Weak two FE N9600/K5/T1 | 41 | 42 | 838 | 0.050 | 754.2 |
+| Two slope partitions N17280/K8/T4 | 76 | 75 | 88 | 0.852 | 79.2 |
+
+Every pair improves on the four loss targets, by 3–21 ms. Median gains are
+14.0%, 19.1%, 5.0%, 12.7%. Most categorical fits drop six outer iterations to
+four. Weak pairs are -3/+6/0 ms despite one fewer outer iteration; keep that
+loss visible. Excluded development slopes lose 1 ms; fresh slopes improve 1 ms.
+OLS medians tie at 17 and 15 ms, with individual +1-ms losses. No universal
+non-regression or universal stock win is claimed. Earlier artifact ratios are
+not transferred to this source.
+
+All **48 prepared-IRLS Rust tests**, **four licensed fixtures**, **144 headline
+applications**, 132 independent public-state checks, 36 native PPML pairs,
+36 direct candidate-stock comparisons and six OLS pairs pass. The new independent
+separable Poisson truth tests cover two/three effects and weight scaling;
+licensed full-dummy Poisson/Hessian/sandwich checks cover unit/FW/PW,
+robust/clustered, T1/T4 and saved outputs. The low-memory fixed-process allocation
+audit retains zero events/growth and warm/fresh parity. Existing strict, rank,
+dynamic-range and rollback tests remain green. Native maximum absolute errors:
+coefficient 2.666e-10, V 3.391e-15, means 8.469e-8, likelihood zero, deviance
+3.638e-12; all inside unchanged envelopes. OLS exports are exact. No application
+failures, timeouts, scientific exclusions or detected contention in this block.
+
+No initializer heap/cache is added; all modeled selected/scratch bytes stay
+unchanged. Tracked peak deltas range -1,327,056 to +25,136 bytes, 18/36 exact,
+as different solve histories change temporary peaks. No physical-cap claim.
+
+**Next bounded milestone:** canonical full-design construction and streamed
+reconstruction, beginning with wide low-memory and unbalanced three-FE losses.
+Fresh final phases still take about 32 and 36 ms. The separate deep baseline
+profile attributes low K32 costs to eleven Schur calls (24.7 ms), two full-rank
+constructions (18.9 ms) and six streamed reconstructions (16.4 ms); these are
+nested diagnostic totals, not additive headline times or current-candidate
+phase claims. Loading and input preparation are too small to close these gaps.
+Compare identical frozen current-weight batches before changing data flow;
+count geometry construction, scratch reads, row passes and fresh certificates.
+The four fresh loss cases need another 6.7/10.3/27.7/43.2 ms to reach the target.
+Do not tune initialization sweep counts, revive ADRs 0155/0157's rejected wrappers
+or reopen serial weighted-slope OLS micro-tuning. Protect slope/weak/sparse wins
+and OLS. Keep 77/16/111 frozen definitions and the existing scientific/platform
+failures, including static allocation drift, constrained fits/CG spans and
+synthetic exact-fit three-FE LSMR refusal. No SCC retry, stopped campaign,
+push, release or broad qualification.
+
+## Historical: work-balanced inference adopted — 2026-09-24
 
 The user has narrowed the active goal to **beating comparable stock fixest as
 much as reasonably possible on designs with at least two FE partitions**,

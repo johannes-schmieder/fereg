@@ -20,6 +20,12 @@ sample-ledger/singleton ordering are fixed independently by
 inherit OLS correction or reporting rules merely because both estimators use
 the shared mechanisms of ADR 0015.
 
+Cold publication initialization uses the bounded group optimum for one
+categorical FE (ADR 0028) and one conditional-coordinate sweep for multiple
+categorical FEs (ADR 0161). An unusable seed restores the full global start.
+These starting guesses have no rank, convergence or final-Hessian authority;
+all independent acceptance requirements remain unchanged.
+
 The exact pinned `ppmlhdfe` closure is the compatibility reference, and small
 explicit-dummy Poisson and recession-cone calculations are the independent
 authority. The prepared PPML transaction is the sole production estimator;

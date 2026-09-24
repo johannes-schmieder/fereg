@@ -3729,7 +3729,66 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
             ));
         }
     }
+    if purpose == PreparedPpmlIrlsPurpose::Publication
+        && !seed_multi_effect_predictor(outcome, prior_weights, fe_design, config.ppml, &mut eta)
+    {
+        // A rejected provisional sweep may have updated earlier groups. No
+        // accepted state exists yet; restore the entire original seed.
+        for row in 0..outcome.len() {
+            eta[row] = offset[row] + shift;
+        }
+    }
     Ok((coefficient_values, eta))
+}
+
+fn seed_multi_effect_predictor(
+    outcome: &[f64],
+    weights: &[f64],
+    design: &FeDesign,
+    config: PpmlConfig,
+    eta: &mut [f64],
+) -> bool {
+    if design.effects().len() < 2 || design.effects().iter()
+        .any(|effect| !effect.has_intercept() || !effect.slopes().is_empty())
+    {
+        return true;
+    }
+    // With finite coefficients fixed at zero, a categorical group has an
+    // exact conditional Poisson update. One sweep supplies a model-space
+    // initial guess; it has no rank, convergence or final-Hessian authority.
+    for effect in design.effects() {
+        for level in 0..effect.n_levels() {
+            let members = effect.level_index().members(level);
+            let mut observed = CompensatedSum::default();
+            let mut fitted = CompensatedSum::default();
+            for &row in members {
+                let y = weights[row] * outcome[row];
+                let mu = weights[row] * eta[row].exp();
+                if !y.is_finite() || !mu.is_finite() || mu <= 0.0
+                    || (y == 0.0 && outcome[row] > 0.0)
+                {
+                    return false;
+                }
+                observed.add(y);
+                fitted.add(mu);
+            }
+            let (observed, fitted) = (observed.total(), fitted.total());
+            if !observed.is_finite() || observed <= 0.0
+                || !fitted.is_finite() || fitted <= 0.0
+            {
+                return false;
+            }
+            let shift = observed.ln() - fitted.ln();
+            for &row in members {
+                let value = eta[row] + shift;
+                if !usable_seed_value(value, config) {
+                    return false;
+                }
+                eta[row] = value;
+            }
+        }
+    }
+    true
 }
 
 fn seed_one_effect_predictor(
@@ -5960,6 +6019,74 @@ mod tests {
             &mut repeated
         ));
         assert!(relative_infinity_difference(&eta, &repeated) < 1e-12);
+    }
+
+    #[test]
+    fn multi_effect_seed_matches_separable_poisson_truth_and_weight_scaling() {
+        for dimensions in [2, 3] {
+            let n = 4 * 5 * 3 * 2;
+            let codes: Vec<Vec<u32>> = (0..dimensions).map(|d| (0..n).map(|r|
+                match d { 0 => (r / 2) % 4, 1 => (r / 8) % 5, _ => (r / 40) % 3 } as u32
+            ).collect()).collect();
+            let effects = codes.iter().enumerate().map(|(d, c)|
+                crate::fe::EffectTerm::new(c.clone(), [4, 5, 3][d], true, Vec::new()).unwrap()
+            ).collect();
+            let design = FeDesign::new(n, effects).unwrap();
+            let truth: Vec<f64> = (0..n).map(|r| (0..dimensions)
+                .map(|d| 0.2 * (d + 1) as f64 * codes[d][r] as f64).sum::<f64>().exp()).collect();
+            // Paired deviations have zero weighted score for every explicit
+            // dummy. The independent optimum is the prescribed product mean.
+            let outcome: Vec<_> = truth.iter().enumerate().map(|(r, m)|
+                m * if r % 2 == 0 { 0.8 } else { 1.2 }).collect();
+            for scale in [1e-50, 1.0, 1e50] {
+                let weights: Vec<_> = (0..n).map(|r| scale * (0..dimensions)
+                    .map(|d| 1.0 + 0.25 * codes[d][r] as f64).product::<f64>()).collect();
+                let total: f64 = outcome.iter().zip(&weights).map(|(y,w)| y*w).sum();
+                let initial = (total / weights.iter().sum::<f64>()).ln();
+                let mut eta = vec![initial; n];
+                assert!(seed_multi_effect_predictor(&outcome, &weights, &design, PpmlConfig::default(), &mut eta));
+                for (value, expected) in eta.iter().zip(&truth) {
+                    assert!((value.exp()-expected).abs() <= 1e-12*(1.0+expected));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn multi_effect_seed_improves_objective_and_refusal_restores_global_start() {
+        let design = FeDesign::new(8, vec![
+            crate::fe::EffectTerm::new(vec![0,0,0,0,1,1,1,1],2,true,vec![]).unwrap(),
+            crate::fe::EffectTerm::new(vec![0,0,1,1,0,0,1,1],2,true,vec![]).unwrap(),
+        ]).unwrap();
+        let weights = [1.,2.,3.,4.,5.,6.,7.,8.];
+        let offset = [0.2,-0.3,0.7,-0.1,0.4,-0.5,0.1,0.9];
+        let outcome = [1.,3.,4.,2.,7.,5.,8.,9.];
+        let mut eta = offset;
+        let objective = |e: &[f64]| (0..8).map(|r| weights[r]*(outcome[r]*e[r]-e[r].exp())).sum::<f64>();
+        let before = objective(&eta);
+        assert!(seed_multi_effect_predictor(&outcome, &weights, &design, PpmlConfig::default(), &mut eta));
+        assert!(objective(&eta) > before);
+        for group in [vec![0,1,4,5],vec![2,3,6,7]] {
+            let score: f64 = group.iter().map(|&r| weights[r]*(outcome[r]-eta[r].exp())).sum();
+            assert!(score.abs() < 1e-11);
+        }
+        // Each replica within a cell differs only by its original offset.
+        for r in (0..8).step_by(2) {
+            assert!(((eta[r]-offset[r])-(eta[r+1]-offset[r+1])).abs() < 1e-14);
+        }
+        let outcome = [1.,2.,3.,4.,0.,0.,0.,0.];
+        let prepared = prepared(&outcome, &[]);
+        let config = PreparedPpmlIrlsConfig::default();
+        let (_, global) = initialize(&prepared,&outcome,&weights,&offset,&design,config,None,
+            PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance: 1e-4 }).unwrap();
+        let (_, publication) = initialize(&prepared,&outcome,&weights,&offset,&design,config,None,
+            PreparedPpmlIrlsPurpose::Publication).unwrap();
+        assert_eq!(publication,global);
+        let mut unusable = [0.;8];
+        assert!(!seed_multi_effect_predictor(&[2.;8],&[1e308;8],&design,config.ppml,&mut unusable));
+        let mut bounded = PpmlConfig::default();
+        bounded.bounds.eta_max = 0.01;
+        assert!(!seed_multi_effect_predictor(&[2.;8],&[1.;8],&design,bounded,&mut unusable));
     }
 
     #[test]
