@@ -157,8 +157,13 @@ also use the current weight frame. Strict rank and score checks consume those
 norms even when the preceding frozen-basis solve did not need them; advancing
 design generations cannot make old norms authoritative.
 One-FE fused projections copy norms certified by that same call into retained
-storage when the frame and projector weight divisors match. Multi-FE handoffs
-and alternative frame divisors retain the stable current-frame scan; see
+storage when the frame and projector weight divisors match. Under ADR 0168,
+admitted low two-categorical-FE canonical PPML calls also hand off their freshly
+certified norms and direct Gram/RHS together. One current-weight Schur factor
+serves all original response/control columns; retained scratch rows are written
+once for subsequent QR and inference consumers. The factors and products have
+no cross-call authority. Other multi-FE handoffs and alternative frame divisors
+retain the stable current-frame scan; see
 [ADR 0052](adr/0052-ppml-same-call-projection-norms.md).
 Fresh retained construction selects these same-call norms using its stored
 generated-column mapping, avoiding duplicate norm arithmetic during matrix

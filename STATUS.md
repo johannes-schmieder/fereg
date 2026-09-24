@@ -10,6 +10,105 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Fused canonical PPML products integrated — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This milestone **adopts the production implementation**, superseding
+the pending integration instructions below. The implementation commit containing
+this entry carries [ADR 0168](docs/adr/0168-fused-canonical-ppml-products.md) and
+its [source-bound report](benchmarks/reports/development/ppml-canonical-products-integration-local-2026-09-24/README.md).
+
+Accepted artifact **`canonicalproducts1`**, plugin SHA-256
+`04dc0eb35f02afd0bcc874e7b46368569411ec05d31f1e49e71ec7ee9d7f8418`, is captured
+from `432d5a6d` plus five overlays. All **548 captured source inputs match** the
+final working sources. It replaces accepted computation `2c34503d` /
+`jointpanels2`; earlier timings remain attached to their own artifacts.
+The archive contains **8,775 logical receipts**, all verified and restored,
+SHA-256 `e002bf02e6b8a197986f42d88e883cb7f395a79c0f754f97be372a85c2c204f3`.
+All builds, tests, fits, audits and archive/restore processes are terminal.
+
+The admitted low two-categorical-FE canonical path prepares one current-weight
+grounded/scaled Schur factor and solves response/controls together. A fused
+original-input residual pass forms direct Gram/RHS/norms and independent FE
+moments. The finite rank consumer uses these products directly. Retained scratch
+rows are written once without old-tile reads for the unchanged QR/span, inverse,
+residual and inference consumers. No factor/product authority survives a call.
+Complete memory and structural work refusal preserves the prior solver. Ordinary
+joint directions, fast mode, slopes, one/three-plus FE and OLS retain their
+existing algorithms; all scientific and transactional acceptance remains.
+
+### Fresh public evidence and remaining losses
+
+Seed **202609379 is consumed/frozen**, with cases declared and candidate frozen
+before generation. Five baseline/candidate/stock rotations include robust
+inference and fitted means, stock fixest 0.14.2 at `glm.tol=1e-10` and
+`fixef.tol=1e-11`. Medians in milliseconds:
+
+| Fresh case | Baseline | Accepted | Stock | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Wide low 2FE N23040/K36/T8 | 160 | 112 | 129 | 0.868 |
+| Unbalanced low 2FE N28800/K18/T4 | 115 | 104 | 88 | 1.182 |
+| Larger low 2FE N51840/K24/T8 | 226 | 168 | 200 | 0.840 |
+| Wider low 2FE N26880/K72/T8 | 399 | 406 | 352 | 1.153 |
+| Serial low 2FE N16320/K22/T1 | 130 | 108 | 213 | 0.507 |
+| Narrow fast 2FE N16800/K7/T1 | 67 | 68 | 80 | 0.850 |
+| Two slope partitions low N21120/K12/T4 | 108 | 110 | 133 | 0.827 |
+| Two slope partitions fast N21120/K10/T4 | 100 | 98 | 109 | 0.899 |
+| Low 3FE N19200/K12/T4 | 88 | 89 | 279 | 0.319 |
+| Weak low 2FE N11520/K8/T1 | 55 | 50 | 1,420 | 0.035 |
+| Disconnected low 2FE N21120/K14/T4 | 89 | 88 | 70 | 1.257 |
+| Excluded one FE N19200/K6/T4 | 35 | 34 | 22 | 1.545 |
+
+All five native pairs improve in the wide, unbalanced, larger, serial and weak
+families. The report retains all marginal/paired ranges and small control losses.
+Eight of eleven in-scope medians reach the goal, partly through previously
+accepted paths; the wide paired stock ratio ranges 0.840–0.918, so the target
+margin does not hold in every repetition. All 252 development/fresh PPML public
+states, 84 native pairs and 84 direct candidate/stock comparisons pass.
+The new disconnected comparison does not resolve the earlier seed-378 stock
+scientific discrepancy.
+
+Thirty-three distinct focused core tests, one plugin budget/publication test,
+and ten successful licensed fixture identities pass. Independent contrast,
+Poisson/Hessian/sandwich, rank/rollback, changing/extreme weights, generated
+factors, FW/PW, cluster, outputs, scratch poisoning/cleanup and refusal boundaries
+are covered. The first generated-factor fixture accidentally aliased its factor
+with an FE; the failed draft and corrected passing design are preserved. Two
+intermediate test-only slice-method compilation errors are also retained.
+
+All 24 OLS control calls and 12 scientific/output pairs pass. Two-FE and slope
+medians are unchanged; small one-FE/all-output and low-three-FE controls each add
+1 ms. Do not claim zero regression or transfer historical 93-cell wins here.
+Whole-action tracked peaks fall on admitted anchors; modeled budgets and scratch
+sizes remain unchanged. Fresh maximum tracked/model ratio is 0.892. These are
+local development checks, not a full suite or constrained-memory qualification.
+
+### Next bounded implementation milestone
+
+Improve **temporary ownership in canonical products**, then disconnected-factor
+organization. Do not tune thresholds on consumed seeds.
+
+- K72 remains on the old path because the conservative all-live sum requires
+  4,421,888 bytes versus 4,300,800 in the existing reservation. End setup/solve
+  lifetimes explicitly before final products/output and derive a reviewed peak
+  bound. This targets a concrete ownership cost without raising budgets or
+  fitting a width threshold. Its fallback still records about 95 ms projection
+  and 121 ms strict final solving.
+- Disconnected Q352 fails global dense-factor work admission (14.59 million
+  estimated operations versus 2.53 million Gram work). Separate grounded factors
+  by immutable components could change that cost materially. Compare on a new
+  declared design; preserve old fallback and original-design certificates.
+- Unbalanced is admitted but remains 104 versus stock 88 ms. Recorded phases:
+  projection 23.96, finite 8.98, strict final 22.31, preparation 11.23, inference
+  2.35 ms. Inference alone cannot close this loss. Investigate remaining
+  canonical/joint/preparation work after the ownership milestone.
+
+Preserve the 77/16/111 frozen definitions, all consumed seeds, static allocation-
+inventory drift, weighted constrained-fit and nonretaining-CG failures, prior
+stock discrepancies and platform deferrals. No SCC retry, stopped campaign,
+push, release or qualification is authorized by this handover.
+
 ## Standalone paper repository — 2026-09-24
 
 The paper moved to sibling `../fereg-paper` with fresh history, frozen evidence
@@ -23,7 +122,7 @@ Original evidence and benchmark execution remain here; only the paper-specific
 figure assertion moved out of the implementation test suite. No estimator,
 benchmark result, qualification claim, or remote state changed.
 
-## Fused canonical PPML products selected for integration — 2026-09-24
+## Historical: fused canonical PPML products selected for integration — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
 fixest wherever reasonably achievable with at least two FE partitions**. It is

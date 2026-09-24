@@ -167,6 +167,15 @@ matching weight normalization. Low control tiles use their own column axis.
 Other cases retain explicit norm scans; no later generation borrows these norms.
 See [ADR 0138](adr/0138-retained-scratch-standardization-and-norms.md).
 
+Under [ADR 0168](adr/0168-fused-canonical-ppml-products.md), admitted low
+two-categorical-FE PPML canonical calls share one current-weight grounded Schur
+factor across response and controls. A fused original-input residual pass forms
+direct fully absorbed Gram/RHS/norms and independent FE moments. Same-call
+products go directly to canonical rank solving; retained rows are written once
+for unchanged QR/span, residual, inverse and inference consumers. Complete
+workspace and structural factor-work refusal preserve the existing projector.
+No weighted factor or certificate authority survives the call.
+
 Under ADR 0139, admitted low one-FE PPML canonical products use immutable
 original columns minus freshly computed current-weight group centers. A separate
 original-input residual-moment replay certifies the projection; finite moments,

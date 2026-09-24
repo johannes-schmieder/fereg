@@ -10,6 +10,7 @@ use std::fs::{remove_file, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
+use rayon::prelude::*;
 
 use crate::error::{ErrorCode, FeregError, Result};
 
@@ -300,6 +301,38 @@ impl PreparedOlsScratch {
         }
         let offset = self.column_element_offset(column, start_row)?;
         self.read_values_at(offset, values)
+    }
+
+    /// Replace a complete current-frame design with one contiguous write per
+    /// existing tile. Publication callers must certify before this mutation;
+    /// any callback or I/O failure poisons the private file until it is dropped.
+    pub(crate) fn rewrite_row_major_with(
+        &mut self,
+        value: impl Fn(usize, usize) -> Result<f64> + Sync,
+    ) -> Result<()> {
+        if self.layout != ScratchLayout::RowMajor || self.poisoned {
+            return Err(invalid("prepared OLS rewrite requires valid row-major scratch"));
+        }
+        if self.rows == 0 || self.columns == 0 { return Ok(()); }
+        let tile_rows = self.row_major_tile_rows()?;
+        let row_bytes = self.row_bytes()?;
+        self.poisoned = true;
+        for first in (0..self.rows).step_by(tile_rows) {
+            let count = (self.rows-first).min(tile_rows);
+            let byte_count = count.checked_mul(row_bytes).ok_or_else(|| allocation("prepared OLS rewrite tile overflows"))?;
+            self.io_buffer[..byte_count].par_chunks_mut(row_bytes).enumerate()
+                .try_for_each(|(local, bytes)| -> Result<()> {
+                    for (column, target) in bytes.chunks_exact_mut(8).enumerate() {
+                        let x = value(first+local,column)?;
+                        if !x.is_finite() {return Err(invalid("prepared OLS rewrite value is nonfinite"));}
+                        target.copy_from_slice(&x.to_le_bytes());
+                    }
+                    Ok(())
+                })?;
+            self.write_encoded_tile(first*self.columns,byte_count)?;
+        }
+        self.poisoned = false;
+        Ok(())
     }
 
     /// Patch a row-major `rows x block_columns` block into canonical column
@@ -924,6 +957,33 @@ fn io_error(context: &str, error: std::io::Error) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn complete_row_rewrite_has_no_reads_and_poisoned_failure_cleans_up() {
+        let rows = IO_BUFFER_BYTES / 24 + 7;
+        let path;
+        {
+            let mut scratch = PreparedOlsScratch::create_row_major(rows, 3).unwrap();
+            path = scratch.path.clone();
+            let capacity = scratch.io_buffer_capacity();
+            scratch.rewrite_row_major_with(|i, j| Ok((i * 3 + j) as f64)).unwrap();
+            assert_eq!(scratch.encoded_tile_reads, 0);
+            assert_eq!(scratch.encoded_tile_writes, rows.div_ceil(scratch.row_major_tile_rows().unwrap()) as u64);
+            assert_eq!(scratch.io_buffer_capacity(), capacity);
+            let mut row = [0.; 3];
+            scratch.read_linear_shared((rows - 1) * 3, &mut row).unwrap();
+            assert_eq!(row, [((rows - 1) * 3) as f64, ((rows - 1) * 3 + 1) as f64, ((rows - 1) * 3 + 2) as f64]);
+            assert!(scratch.rewrite_row_major_with(|i, _| if i == rows - 1 { Err(invalid("injected callback refusal")) } else { Ok(0.) }).is_err());
+            assert!(scratch.poisoned);
+            assert!(scratch.read_linear_shared(0, &mut row).is_err());
+            assert!(scratch.rewrite_row_major_with(|_, _| Ok(1.)).is_err());
+        }
+        assert!(!path.exists());
+        let mut scratch = PreparedOlsScratch::create_row_major(2, 3).unwrap();
+        scratch.file = Some(File::open(&scratch.path).unwrap());
+        assert!(scratch.rewrite_row_major_with(|_, _| Ok(1.)).is_err());
+        assert!(scratch.poisoned);
+    }
 
     #[test]
     fn retained_columns_survive_working_mutation_without_another_io_bank() {

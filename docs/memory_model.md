@@ -471,6 +471,17 @@ to the strict overlap charge, not a second permanent observation vector. The
 session row buffer is a separate K-double bank. Optional-cell validation during
 plugin publication uses predicates without allocating index vectors.
 
+For admitted low two-categorical-FE canonical products (ADR 0168), a checked
+current-call bank replaces the planned temporary projection panel and reusable
+projection block. Its complete allocation sum must fit `16*N*pool` bytes less
+any already-live projection-block capacity. It includes normalized weights,
+response, factors, coefficients, private reductions and source bindings; no
+lifetime subtraction is used. Existing retained metadata, scratch I/O, finite
+workspace and rollback charges remain. Optional budget refusal precedes scratch
+mutation. Complete scratch rewrites use the existing I/O buffer, perform no
+reads, and poison the private file on callback, numeric or I/O failure. See
+[ADR 0168](adr/0168-fused-canonical-ppml-products.md) for the payload and work bounds.
+
 ## PPML separation memory
 
 The prepared singleton fixed point uses one N-capacity machine-word queue

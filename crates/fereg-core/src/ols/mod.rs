@@ -2,6 +2,7 @@
 
 mod dof;
 mod finite_wls_kernel;
+mod canonical_products;
 mod fit;
 mod linear_session;
 mod implicit_centered;

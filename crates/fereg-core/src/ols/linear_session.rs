@@ -17,6 +17,7 @@ use crate::metadata::CoefficientSlot;
 use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
 use super::implicit_centered::ImplicitCenteredDesign;
+use super::canonical_products::CanonicalMoments;
 use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
 #[cfg(test)]
@@ -3267,6 +3268,67 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.install_retained_stage(stage)
     }
 
+    fn try_canonical_products(&mut self) -> Result<Option<(Vec<f64>, SolveReport, CanonicalMoments)>> {
+        if self.config.execution.mode != PreparedOlsExecutionMode::Low
+            || self.config.absorb.solver != FeSolverKind::Map
+            || !self.fe_projector.as_ref().is_some_and(|projector| matches!(projector,
+                ReusableLinearMapProjector::PpmlCategorical { .. }
+                | ReusableLinearMapProjector::PpmlCoefficients { canonical: Some(_), .. })) {
+            return Ok(None);
+        }
+        if let Some(within) = &self.within {
+            if !matches!(within.storage, RetainedWithinStorage::Scratch(_))
+                || within.generations.sample != self.generations.sample
+                || within.generations.topology != self.generations.topology
+                || (!self.projection_refresh_required && within.generations.same_design(self.generations)) {
+                return Ok(None);
+            }
+        }
+        let generated = self.full_retained_generated_columns()?;
+        if generated.is_empty() { return Ok(None); }
+        if let Some(within) = &self.within {
+            if within.stored_generated_columns != generated { return Ok(None); }
+        }
+        // The old low projection owns a temporary raw/within block and a
+        // separate reusable projection block. The optional current-call banks
+        // replace those two reservations, with any already-live capacity
+        // subtracted. Nothing is added to the declared fit memory allowance.
+        let pool = self.config.execution.poolsize.max(1).min(generated.len());
+        let allowance = (self.response.len() as u128).checked_mul(pool as u128)
+            .and_then(|x|x.checked_mul(16)).ok_or_else(|| allocation("canonical product allowance overflows"))?
+            .saturating_sub(self.projection_block.capacity() as u128*8);
+        let Some(products) = super::canonical_products::try_build(
+            self.prepared, &generated, &self.response, self.weights.borrowed(),
+            self.bread_weight_scale.solver_weight_divisor, self.config.absorb.map, allowance,
+        )? else { return Ok(None); };
+        if let Some(within) = self.within.as_mut() {
+            let RetainedWithinStorage::Scratch(storage) = &mut within.storage else { unreachable!() };
+            products.write_controls(storage)?;
+            within.reference_norms.copy_from_slice(&products.scales[1..]);
+            within.reference_means.copy_from_slice(&products.means[1..]);
+            within.within_norms.copy_from_slice(&products.norms[1..]);
+            within.generations = WithinGenerations::from_session(self.generations);
+            within.certificate.passed = false;
+        } else {
+            let mut scratch = PreparedOlsScratch::create_row_major(self.response.len(), generated.len())?;
+            products.write_controls(&mut scratch)?;
+            self.within = Some(RetainedWithinDesign {
+                storage: RetainedWithinStorage::Scratch(scratch),
+                stored_generated_columns: generated,
+                active_positions: Vec::new(),
+                reference_norms: fallible_copy(&products.scales[1..], "unable to retain canonical product scales")?,
+                reference_means: fallible_copy(&products.means[1..], "unable to retain canonical product means")?,
+                within_norms: fallible_copy(&products.norms[1..], "unable to retain canonical product norms")?,
+                generations: WithinGenerations::from_session(self.generations),
+                certificate: LinearWithinDesignCertificate {
+                    left_inverse_relative_infinity_norm: f64::INFINITY,
+                    right_inverse_relative_infinity_norm: f64::INFINITY, passed: false,
+                },
+            });
+        }
+        Ok(Some((products.response, products.report, products.moments)))
+    }
+
     fn prepare_retained_solve(
         &mut self,
         kind: LinearSessionSolveKind,
@@ -3286,7 +3348,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         );
         #[cfg(test)]
         let mut response_fused_with_design = false;
-        let (within_response, absorption_report) = if self.group_centered_source.is_some() && self.within.is_some() {
+        let products_reuse_storage = self.within.is_some();
+        let product_attempt = self.try_canonical_products()?;
+        let mut canonical_moments = None;
+        let (within_response, absorption_report) = if let Some((response, projection, moments)) = product_attempt {
+            canonical_moments = Some(moments);
+            report.within_design_reused = products_reuse_storage;
+            report.warm_projection_attempted = products_reuse_storage;
+            report.warm_projection_certified = products_reuse_storage;
+            (response, projection)
+        } else if self.group_centered_source.is_some() && self.within.is_some() {
             report.warm_projection_attempted = true;
             let refreshed = self.refresh_group_centered_design()?;
             report.warm_projection_certified = true;
@@ -3375,6 +3446,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 &within_response,
                 absorption_report,
                 prior_active_positions,
+                canonical_moments,
             ),
         };
         #[cfg(not(test))]
@@ -3382,6 +3454,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             &within_response,
             absorption_report,
             prior_active_positions,
+            canonical_moments,
         );
         // `absorb_current_response` transfers the session-owned response
         // allocation into `within_response`.  Return that exact allocation to
@@ -4144,6 +4217,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         within_response: &[f64],
         absorption_report: SolveReport,
         prior_active_positions: Option<&[usize]>,
+        canonical_moments: Option<CanonicalMoments>,
     ) -> Result<RetainedRankSolveDraft> {
         let rows = self.response.len();
         let generated_count = self.prepared.fit_model().columns.len();
@@ -4290,13 +4364,25 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 candidate_count,
                 "unable to reserve retained weighted-linear RHS",
             )?;
-            fill_finite_wls_moments(
-                source,
-                layout,
-                &mut workspace.moment_partials,
-                &mut workspace.rhs,
-                &mut workspace.gram,
-            )?;
+            if let Some(products) = canonical_moments {
+                if products.width != stored_columns+1 || products.gram.len() != products.width*products.width {
+                    return Err(invalid_argument("canonical moment handoff has an incompatible column axis"));
+                }
+                for (j,&position) in workspace.candidate_positions.iter().enumerate() {
+                    workspace.rhs[j] = products.gram[(position+1)*products.width]*products.response_scale;
+                    for (k,&other) in workspace.candidate_positions.iter().enumerate() {
+                        workspace.gram[j*candidate_count+k] = products.gram[(position+1)*products.width+other+1];
+                    }
+                }
+            } else {
+                fill_finite_wls_moments(
+                    source,
+                    layout,
+                    &mut workspace.moment_partials,
+                    &mut workspace.rhs,
+                    &mut workspace.gram,
+                )?;
+            }
             resize_zeroed(
                 &mut workspace.factor,
                 candidate_square,
