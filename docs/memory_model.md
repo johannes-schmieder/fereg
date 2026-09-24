@@ -768,6 +768,17 @@ released before certification; actual capacities and rejected-attempt peaks
 remain checked. A tighter budget can retain the existing MAP fallback. See
 [ADR 0088](adr/0088-direct-single-partition-slope-recovery.md).
 
+## PPML robust score workspace
+
+Robust PPML inference partitions its two independent score meats by matrix work
+under [ADR 0160](adr/0160-work-balanced-ppml-robust-reduction.md). Its plan adds
+the complete partial-bank bound for every possible rank up to the admitted
+finite width, including the existing single-partial exception to the 32-MiB
+policy cap. Runtime allocation is fallible; deterministic block partitioning
+does not depend on requested threads. Clustered PPML and OLS retain their
+existing policies. This conservative addition can change memory admission;
+unchanged tracked whole-fit peaks do not imply zero inference memory cost.
+
 ## PPML multipartition slope workspace
 
 ADR 0123 admits a coefficient-space Schur solver instead of the optional repeated

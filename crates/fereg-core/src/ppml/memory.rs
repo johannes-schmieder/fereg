@@ -1704,6 +1704,11 @@ fn estimate_route(
         bytes_f64(checked_mul(square, 6, "PPML sandwich square workspaces")?)?,
         bytes_f64(checked_mul(subset_groups, k, "PPML cluster subset scores")?)?,
         bytes_f64(checked_mul(k, threads.max(1), "PPML sandwich reductions")?)?,
+        // Retain the prior square envelope and conservatively add the complete
+        // robust partial bank, including any smaller final numerical rank.
+        if clusters == 0 {
+            super::vce::dense_score_partials_bound(dimensions.observations, dimensions.finite_columns)?
+        } else { 0 },
     ])?;
     // A clustered zero-dimensional sandwich does not construct score/meat
     // workspaces. It counts exact joint groups by sorting one fallibly owned

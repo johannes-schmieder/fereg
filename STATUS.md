@@ -10,7 +10,68 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Dense moment tile rejected; split final inference next — 2026-09-24
+## Work-balanced inference adopted; scope now at least two FE — 2026-09-24
+
+The user has narrowed the active goal to **beating comparable stock fixest as
+much as reasonably possible on designs with at least two FE partitions**,
+retaining the 0.90-times-stock target. One-FE-specific optimization stops. This
+opening supersedes earlier next-step instructions. The broad goal remains active
+and unfinished; do not reopen closed solver wrappers or small threshold probes.
+
+Adopt [ADR 0160](docs/adr/0160-work-balanced-ppml-robust-reduction.md): robust
+PPML's existing independent score reductions now partition by matrix work as
+well as rows. The deterministic tree is independent of requested threads. Both
+meats, separate merges, sandwich, PSD, score and publication checks remain.
+Clustered PPML and OLS routes are unchanged. No scientific policy is weakened.
+
+Artifact **`inferwork1`**, based on `0abf50fa` plus the three captured overlays,
+matches all **545 computational inputs**. Plugin SHA-256:
+`685bb0102fca0e95f6645c63449b3c8ba1ae383de8ac7a7634dab13f4a58d894`.
+The [source-bound report](benchmarks/reports/development/ppml-work-balanced-inference-local-2026-09-24/README.md)
+preserves full distributions and source identities. Its verified/restored archive
+has 6,200 logical receipts, SHA-256
+`4b93fd77244f4e46a294909214bd9fbe4aa10c2e9ed087665e7ef769072cc79f`.
+All builds, tests, fits, profiles and archive/restore jobs are terminal.
+
+New scoped results, three rotations, robust + means, milliseconds:
+
+| Case | Baseline | Candidate | Strict stock | Candidate/stock |
+|---|---:|---:|---:|---:|
+| Development two FE N16320/K12/T4 | 68 | 68 | 54 | 1.259 |
+| Development two slope partitions N16320/K6/T4 | 69 | 68 | 65 | 1.046 |
+| Fresh two FE N20160/K20/T4 | 104 | 100 | 88 | 1.136 |
+| Fresh two slope partitions N20160/K16/T4 | 112 | 109 | 155 | 0.703 |
+| Fresh weak two FE N10080/K4/T1 | 42 | 39 | 713 | 0.055 |
+
+Fresh K20 pairs are 0/-6/-6 ms; slopes are +1/+2/-4, weak -5/-6/+5.
+Do not generalize median gains to every pair. Already-running one-FE wide cases
+improve 93→89 and 152→143 ms in development; other controls include small losses.
+The profiled K32/K64 meats improve about threefold, while independent PSD costs
+remain. K32/K64 partial banks grow to 523,776/4,259,840 bytes; conservative
+rank-aware admission explicitly includes them. Whole-fit tracked peaks are
+unchanged, but K64 selected forecast rises 2,658,799 bytes. No physical-cap claim.
+
+All **104 focused Rust tests**, **five licensed fixtures**, **120 headline
+applications**, 108 PPML state checks, 36 direct stock comparisons and six OLS
+pairs pass. Native coefficients/means remain exact; covariance has small bounded
+rounding changes. OLS exports are exact, with noisy medians 11→13 and 18→17 ms.
+The initial diagnostic CLI argument failure before any fit is preserved.
+Fresh seed **202609373 is consumed/frozen**; no scientific discrepancy is ranked
+in this block. Existing unrelated failures remain open.
+
+**Next:** refresh the multi-FE categorical cost inventory and profile common
+native loading/preparation alongside ordinary operator work on the remaining
+serial/narrow, dense, disconnected and low-memory losses. Use the current
+accepted artifact; historical timings below belong to their own sources.
+ADRs 0155/0157 close the generic/borrowed coefficient replacements. Their kernel
+advantages did not yield broad public gains; do not resume those exact probes.
+Choose a materially different organization only from measured dominant cost.
+Protect accepted slope engines, weak/sparse wins and OLS. Keep frozen 77/16/111
+controls. No push, release, broad qualification, stopped campaign restart or
+SCC authentication retry. Static allocation drift, constrained fits/CG span
+failures and previously documented scientific discrepancies remain unresolved.
+
+## Historical: dense moment tile rejected — 2026-09-24
 
 The whole-public-command **<=0.90 times comparable stock fixest** objective
 remains active and unfinished. Production is the accepted implementation

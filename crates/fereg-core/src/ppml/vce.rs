@@ -23,6 +23,35 @@ const PPML_SANDWICH_REDUCTION: FixedBlockReductionPolicy = FixedBlockReductionPo
     partial_budget_bytes: 32 << 20,
 };
 
+// Count both independently accumulated triangles. Partitioning depends on
+// matrix work, not the requested team, so every team retains the same merge tree.
+const DENSE_SCORE_PRODUCTS_PER_BLOCK: u128 = 1 << 20;
+
+fn dense_score_reduction(dimension: usize) -> FixedBlockReductionPolicy {
+    let k = dimension as u128;
+    let products_per_row = (k * (k + 1)).max(1);
+    FixedBlockReductionPolicy {
+        rows_per_block: (DENSE_SCORE_PRODUCTS_PER_BLOCK / products_per_row)
+            .clamp(1, PPML_SANDWICH_REDUCTION.rows_per_block as u128) as usize,
+        ..PPML_SANDWICH_REDUCTION
+    }
+}
+
+/// Bound every possible final rank below the admitted finite width. The byte
+/// cap can change the number of blocks after rank drops, so bound its complete
+/// budget rather than assuming the maximum-rank block count stays authoritative.
+pub(super) fn dense_score_partials_bound(rows: usize, dimension: usize) -> Result<u128> {
+    if rows == 0 || dimension == 0 { return Ok(0); }
+    let k = dimension as u128;
+    let stride = k.checked_mul(k + 1).and_then(|n| n.checked_mul(16))
+        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "PPML score partial dimensions overflow"))?;
+    let policy = dense_score_reduction(dimension);
+    let blocks = rows.div_ceil(policy.rows_per_block).min(policy.maximum_blocks) as u128;
+    let requested = stride.checked_mul(blocks)
+        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "PPML score partial bank overflows"))?;
+    Ok(requested.min((policy.partial_budget_bytes as u128).max(stride)))
+}
+
 /// Translate only numerical failures emitted by the estimator-neutral
 /// sandwich kernels into PPML's failed-publication-certificate code. The
 /// shared kernels retain their historical OLS error behavior, and arbitrary
@@ -337,7 +366,7 @@ where
                     ppml_sandwich_result(reduce_dense_score_meats(
                         design,
                         multipliers,
-                        PPML_SANDWICH_REDUCTION,
+                        dense_score_reduction(rank),
                         &mut reservation,
                     ))
                 })??;
@@ -1603,6 +1632,73 @@ mod tests {
             prepared_weight_sum: effective as f64,
             raw_to_prepared_multiplier: Some(1.0),
             log_raw_to_prepared_multiplier: 0.0,
+        }
+    }
+
+    #[test]
+    fn dense_score_work_blocks_bound_all_reduced_ranks() {
+        assert_eq!(dense_score_reduction(3).rows_per_block, 16_384);
+        assert!(dense_score_reduction(32).rows_per_block < 1024);
+        for columns in [1, 8, 17, 32, 64, 129, 512, 1449, 4096] {
+            for rows in [1_usize, 8193, 16_384, 1_000_000] {
+                let bound = dense_score_partials_bound(rows, columns).unwrap();
+                for rank in 1..=columns {
+                    let policy = dense_score_reduction(rank);
+                    let stride = 16 * rank * (rank + 1);
+                    let blocks = rows.div_ceil(policy.rows_per_block)
+                        .min(policy.maximum_blocks)
+                        .min((policy.partial_budget_bytes / stride).max(1));
+                    assert!((blocks * stride) as u128 <= bound);
+                }
+            }
+        }
+        assert_eq!(dense_score_partials_bound(10, 0).unwrap(), 0);
+        assert!(dense_score_partials_bound(10, usize::MAX).is_err());
+    }
+
+    #[test]
+    fn wide_robust_work_blocks_match_literal_weighted_sandwich_and_teams() {
+        let rows = 8193;
+        let columns = 24;
+        let columns_data: Vec<Vec<f64>> = (0..columns).map(|column|
+            (0..rows).map(|row| ((row * 17 + column * 31) % 103) as f64 / 31.0
+                + ((row + 1) as f64 / (column + 7) as f64).sin()).collect()).collect();
+        let design = DenseMatrix::from_columns(&columns_data).unwrap();
+        let residuals: Vec<_> = (0..rows).map(|i| ((i * 13 % 37) as f64 - 18.0) / 7.0).collect();
+        let bread: Vec<_> = (0..columns*columns).map(|i| f64::from(i / columns == i % columns)).collect();
+        let slots: Vec<_> = (0..columns).collect();
+        for frequency in [false, true] {
+            let weights: Vec<_> = (0..rows).map(|i| if frequency { (i % 7 + 1) as f64 } else { 1.0 }).collect();
+            let weight_report = if frequency { frequency_report(&weights) } else { unweighted_report(rows) };
+            let correction = weight_report.effective_observations as f64 / (weight_report.effective_observations - 1) as f64;
+            let mut expected = vec![0.; columns*columns];
+            for left in 0..columns {
+                for right in 0..columns {
+                    // Full scalar outer products, independent of block policy,
+                    // score multipliers, triangular storage and compensated merge.
+                    for row in 0..rows {
+                        expected[left*columns+right] += weights[row] * residuals[row].powi(2)
+                            * columns_data[left][row] * columns_data[right][row];
+                    }
+                    expected[left*columns+right] *= correction;
+                }
+            }
+            let mut serial = None;
+            for threads in [1, 4] {
+                let report = compute_ppml_inference_interruptible_with_threads(PpmlInferenceInput {
+                    coefficients: &vec![0.; columns], full_dimension: columns, within_design: &design,
+                    reported_finite_rank: columns, score_residuals: &residuals, prior_weights: &weights,
+                    weight_report, identified_bread: &bread, kept_full_slots: &slots,
+                    absorbed_rank: 0, connected_components: 0, absorbed_rank_is_approximate: false,
+                    clusters: &[], requested_vce: PpmlVceRequest::Robust, wald_columns: &[], certificate_tolerance: 1e-10,
+                }, ThreadConfig::from_requested(threads, true).unwrap(), &mut || Ok(())).unwrap();
+                assert!(report.vce.certificate.passed);
+                for (actual, oracle) in report.vce.covariance.iter().zip(&expected) {
+                    assert!((actual - oracle).abs() <= 1e-11 * (1.0 + oracle.abs()));
+                }
+                if let Some(prior) = &serial { assert_eq!(&report.vce.covariance, prior); }
+                serial = Some(report.vce.covariance);
+            }
         }
     }
 
