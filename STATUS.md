@@ -23,7 +23,114 @@ Original evidence and benchmark execution remain here; only the paper-specific
 figure assertion moved out of the implementation test suite. No estimator,
 benchmark result, qualification claim, or remote state changed.
 
-## Frame-owned PPML operator rejected; canonical products next — 2026-09-24
+## Fused canonical PPML products selected for integration — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This milestone implements and measures a new fixed-frame product
+organization; **production integration is next, not completed**. Production
+computation remains **`2c34503d` / `jointpanels2`**, plugin SHA-256
+`4d4c669d6716583b14be437e2732133d61f733840b610414429d8df5614168b1`.
+The production Rust, Stata and bridge diff from starting HEAD `2b656097` is empty.
+
+[ADR 0167](docs/adr/0167-fused-canonical-ppml-product-design.md) selects one candidate
+from the new [development probe](benchmarks/ppml_canonical_products/README.md).
+The [source-bound report](benchmarks/reports/development/ppml-canonical-products-local-2026-09-24/README.md)
+preserves complete source captures, failures, declarations, distributions,
+independent oracles and terminal receipts. Its **580 logical receipts** were
+verified and restored; archive SHA-256
+`cff116d4187f9b677bea8b57b4c748211c00c6062bc8d9d1efcf2d8c30983ab6`.
+Final isolated test binary SHA-256 is
+`6c8c6a549941ff337f964b4f75868527649d555b5f7deffd46c84db0102c14a8`.
+All build/test/probe/oracle/archive/restore processes are terminal. The initial
+capture omitted a compile-time fixture and failed to build; corrected snapshots
+include it. All 182 final snapshot source inputs match their captured hashes.
+
+### What changed and what the experiment proves
+
+Both candidates eliminate the larger categorical partition, prepare a grounded,
+scaled current-weight Schur factor and solve all compatible RHSs against it.
+Algebraic products subtract `U'U` from a centered Gram; the **selected fused
+candidate instead reconstructs each row once in group-disjoint work**, forming
+the direct full Gram/RHS, within norms and independent original-design FE scores
+together. It avoids nearly equal Gram subtraction and does not retain an N-by-K
+result panel merely to compute products. The existing joint Hessian is only
+partially absorbed and cannot substitute for these final products.
+
+Eight declared frames use four existing lifecycle designs plus deterministic
+positive weight perturbations; no fresh validation seed was consumed. At
+T1/T4/T8, seven alternating B/A/C rotations compare the accepted low-memory
+response/control-panel/scratch-moment pipeline with both candidates. These are
+**fixed weighted-linear product calls**, excluding canonical rank/QR, final
+inference, requested outputs and public transactions. Required later row
+materialization must still be charged in the public integration.
+
+Representative final-block medians (milliseconds):
+
+| Frame | Accepted panels | Fused products | Candidate setup | Preparation-charged C/B |
+|---|---:|---:|---:|---:|
+| Wide N16320/K32/T8 | 19.177 | 2.267 | 0.352 | 0.136 |
+| Unbalanced N16320/K12/T4 | 7.270 | 1.204 | 0.997 | 0.299 |
+| Narrow N12000/K3/T1 | 3.982 | 0.503 | 0.235 | 0.182 |
+| Disconnected N20160/K12/T4 | 8.257 | 2.786 | 5.255 | 0.961 |
+
+All 168 warm pairs improve for each final candidate. Preparation-charged ratios
+are estimates from separately observed setup, not repeated cold-call timings.
+Disconnected T4 is a weak result: its two fused estimates are 0.961/0.976 and
+the preceding algebraic-only block loses at 1.043/1.019 after setup. Dense-factor
+assembly/factorization work therefore needs structural admission. Fused products
+are sometimes slower than algebraic products, but retain the large baseline
+gains while removing that subtraction's extra numerical proof burden. Select
+only the fused candidate for production, not overlapping alternatives.
+
+All **72 independent projection/Gram configurations** (1,134 column checks),
+**72 separate explicit-FE/QR finite coefficient/inverse configurations**, and
+**three final-source Rust boundary tests** pass. Maximum fused projection error
+is 1.169e-14, original-design score 3.322e-16, Gram error 1.554e-14 and inverse
+error 1.621e-14. Boundaries cover near-FE-collinearity, changing weights, threads,
+disconnected component mass ratios of 160 orders, column scales spanning 140
+orders and invalid inputs. This does not replace public Poisson/Hessian,
+rank/omission, memory or transactional validation.
+
+Illustrative explicit payload estimates are 1,373,408 bytes wide T8 and 259,520
+unbalanced T4; these exclude source/allocator/export overhead and are not tracked
+public peaks or production admission. Prototype allocations are ordinary vectors.
+No public, stock, licensed-Stata, OLS timing, memory-cap or platform campaign was
+run here. Existing public ratios and unresolved disconnected stock science remain
+those in the preceding closeout below.
+
+### Next bounded implementation milestone
+
+Implement the selected owner in the canonical PPML session and measure the
+**whole public command early**. Start from the exact probe, but replace its
+row-major source assumption with borrowed original numeric/generated columns,
+ordinary allocations with checked fallible storage, and per-object weight
+ownership with explicit sample/topology/weight/response/basis lifetimes.
+
+1. Add structural assembly/factor-work and complete live-memory admission.
+   Decline unsuitable reduced systems or budgets transactionally; preserve the
+   established solver. Keep immutable topology separate from current factors.
+2. Hand direct fully absorbed Gram/RHS/norm products to canonical consumers in
+   `ols/linear_session.rs`, particularly `build_full_retained_design`, strict
+   refresh and `solve_full_retained_rank`. Preserve canonical rank/status policy,
+   strong guarded factorization, independent inverse/finite/model-space/score
+   checks and materialized QR/span fallback. Do not recompute these products by
+   routing them back through the old panel pipeline.
+3. Supply bounded reconstructed rows only where subsequent canonical/inference
+   consumers need them. Charge those costs and failure fallback. Document the
+   fused reduction's error argument and actual checking schedule in the
+   production successor ADR; no tolerance or acceptance condition is weakened.
+4. Run independent WLS/Poisson/Hessian, near-collinearity, changing/extreme
+   weight/generation, allocation/refusal/interruption and output tests. Then
+   compare public baseline/candidate/pinned-stock on wide/unbalanced anchors;
+   confirm promising gains with fresh predeclared cases and OLS/slope/one-FE
+   controls before production adoption and a coherent implementation commit.
+
+Preserve 77/16/111 definitions, all consumed seeds, allocation-inventory drift,
+constrained-fit/nonretaining-CG failures, unresolved stock comparisons and
+platform deferrals. No SCC retry, stopped-campaign restart, push or qualification.
+
+## Historical: frame-owned PPML operator rejected — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
 fixest wherever reasonably achievable with at least two FE partitions**. It is
