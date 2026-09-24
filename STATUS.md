@@ -10,7 +10,72 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Fast one-FE centered preparation accepted; target dense products next — 2026-09-24
+## Dense moment tile rejected; split final inference next — 2026-09-24
+
+The whole-public-command **<=0.90 times comparable stock fixest** objective
+remains active and unfinished. Production is the accepted implementation
+checkpoint **`fb617b80`**, artifact `onefecentereddense5`, plugin SHA-256
+`887001e476148c757b10362e09bc5ae7349b147d0129ed1ad00e5e3f6dcefbfc`.
+All 544 captured computational inputs match; no rejected tile code remains.
+This opening supersedes the earlier next-step instructions.
+
+Under [ADR 0159](docs/adr/0159-dense-moment-tile-closeout.md), close the bounded
+eight-observation dense moment tile experiment. Its isolated kernel improves
+19–41% across six frozen-input cases, preserving every product bit. Public
+development gains are only 1–3%, and fresh results are mixed. Do not tune its
+width/thread/partition guards or pursue repeated small residual experiments.
+The [source-bound report](benchmarks/reports/development/ppml-dense-moment-tile-closeout-local-2026-09-24/README.md)
+preserves full distributions, sources, exact tests, oracle fixtures and failures.
+Its independently verified/restored archive has 4,985 logical receipts, SHA-256
+`6cf721557837d9b7c70757c9c2453da527947d5d7ddf173f0845ee991a98cf46`.
+All builds, tests, fits, audits and archive/restore processes are terminal.
+
+Fresh seed 371, three rotations, robust + fitted means, milliseconds:
+
+| Case | Accepted baseline | Rejected tile | Strict stock | Baseline/stock |
+|---|---:|---:|---:|---:|
+| One FE N24960/K24/T4 | 70 | 70 | 61 | 1.148 |
+| Unbalanced one FE N40320/K16/T8 | 81 | 77 | 52 | 1.558 |
+| One FE N18000/K4/T1 | 44 | 45 | 20 | 2.200 |
+| Two FE N20160/K12/T4 | 77 | 78 | 57 | 1.351 |
+| Two slope partitions N20160/K8/T4 | 85 | 87 | 96 | 0.885 |
+| Protected low one FE N24960/K12/T4 | 52 | 52 | 32 | 1.625 |
+| Weak two FE N10080/K4/T1 | 41 | 43 | 688 | 0.060 |
+
+Fresh slopes lose +1,+1,+3 ms pairwise; weak loses -3,+5,+6. The unbalanced
+case improves -3,-4,-4, but that is insufficient for broad adoption. These
+small losses may include noise; they are not scientific failures. Accepted
+baseline development wide N30720/K32/T8 is 92/stock 107 ms, ratio 0.860. Thus
+three newly measured cases clear 0.90 on accepted source, while substantial
+other gaps remain. Do not generalize those wins to whole families.
+
+All 120 headline applications pass, including 108 PPML states and six OLS pairs.
+All 36 direct candidate-stock PPML comparisons pass; native coefficients,
+covariance and means are byte-identical. Seventy-one distinct focused Rust
+tests pass in the diagnostic tree containing the exact candidate computation;
+four licensed candidate fixtures pass, including independent full-dummy
+Poisson/Hessian/sandwich, multipartition slopes, generated terms, outputs and
+allocation checks. The first test build's missing-fixture capture error is
+preserved; its corrected build passes. OLS science is exact, with noisy medians
+12→10 and 16→17 ms. PPML tracked/modelled peaks are unchanged; candidate stack
+payload would have risen 512→4,224 bytes per active partition. OLS RSS varies
+both ways. No qualification claim follows. Seed 371 is consumed/frozen.
+
+**Next:** split final inference into design-row access/score construction,
+independent meats, covariance products, PSD and Wald before choosing a coherent
+replacement. The prior source-bound wide profile places 6.46 ms in that total,
+but does not establish which part dominates. Existing robust reduction uses
+16,384-row blocks, limiting task count at these N; verify its actual impact
+before changing scheduling. Preserve independent fresh score/covariance checks
+and exact memory admission. Common loading/preparation is the next larger
+shared target. Keep accepted group-centered dense preparation and slope engines.
+
+All earlier deferred scientific/platform items below remain open, including
+large one-FE stock-mean discrepancies, static inventory drift and constrained
+fits/CG span failures. Preserve frozen 77/16/111 definitions. No push, release,
+full qualification, stopped campaign restart or SCC authentication retry.
+
+## Historical: fast one-FE centered preparation accepted — 2026-09-24
 
 The objective remains **whole public PPML <=0.90 times comparable pinned stock
 fixest, per case wherever reasonably achievable**. It is unfinished. This
