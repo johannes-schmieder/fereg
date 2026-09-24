@@ -1,0 +1,8 @@
+{
+  "archive_sha256": "bfc7c9b9207dc11e23039190007c8246dd352e3dca710835e0b8571e6c9fabbe",
+  "archive_bytes": 21965644,
+  "logical_files": 7925,
+  "distinct_payloads": 2059,
+  "every_logical_hash_verified": true,
+  "restoration_completed": true
+}

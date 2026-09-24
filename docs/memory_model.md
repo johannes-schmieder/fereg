@@ -471,16 +471,21 @@ to the strict overlap charge, not a second permanent observation vector. The
 session row buffer is a separate K-double bank. Optional-cell validation during
 plugin publication uses predicates without allocating index vectors.
 
-For admitted low two-categorical-FE canonical products (ADR 0168), a checked
-current-call bank replaces the planned temporary projection panel and reusable
-projection block. Its complete allocation sum must fit `16*N*pool` bytes less
-any already-live projection-block capacity. It includes normalized weights,
-response, factors, coefficients, private reductions and source bindings; no
-lifetime subtraction is used. Existing retained metadata, scratch I/O, finite
-workspace and rollback charges remain. Optional budget refusal precedes scratch
-mutation. Complete scratch rewrites use the existing I/O buffer, perform no
-reads, and poison the private file on callback, numeric or I/O failure. See
-[ADR 0168](adr/0168-fused-canonical-ppml-products.md) for the payload and work bounds.
+For admitted low two-categorical-FE canonical products (ADRs 0168–0169), a
+checked current-call bank replaces the planned temporary projection panel and
+reusable projection block. The maximum setup, solve and certificate payload,
+plus live descriptors, must fit `16*N*pool` bytes less any already-live
+projection-block capacity. Actual capacity is charged before initialization;
+credit is granted only after consuming and dropping an owner. Setup factors and
+scratch end before later consumers, RHS and certificate reductions have separate
+lifetimes, and normalized weights become the response only after all current-
+weight checks pass. Existing retained metadata, scratch I/O, finite workspace
+and rollback charges remain. Optional budget refusal precedes scratch mutation.
+Complete scratch rewrites use the existing I/O buffer, perform no reads, and
+poison the private file on callback, numeric or I/O failure. See
+[ADR 0169](adr/0169-canonical-products-phase-ownership.md) for the phase bounds and
+[ADR 0168](adr/0168-fused-canonical-ppml-products.md) for the unchanged work and
+scientific contracts.
 
 ## PPML separation memory
 

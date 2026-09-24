@@ -10,7 +10,96 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Fused canonical PPML products integrated — 2026-09-24
+## Canonical PPML phase ownership adopted — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This milestone completes the temporary-ownership work named below;
+[ADR 0169](docs/adr/0169-canonical-products-phase-ownership.md) and the
+[source-bound report](benchmarks/reports/development/ppml-canonical-ownership-local-2026-09-24/README.md)
+are authoritative for this change.
+
+Accepted artifact **`canonicalownership2`**, plugin SHA-256
+`3fcc35a1759e78d451cda4dc01a9d22d167cc46a79af848ba3a29c9ccea5bc0b`, is captured
+from `341477b5` plus only `ols/canonical_products.rs`. All **548 captured inputs
+match** final working sources. It replaces `canonicalproducts1` computation;
+all older timings remain attached to their own artifacts. The archive contains
+**7,925 logical receipts / 2,059 payloads**, all verified and restored, SHA-256
+`bfc7c9b9207dc11e23039190007c8246dd352e3dca710835e0b8571e6c9fabbe`.
+All builds, tests, fits, audits and archive/restore processes are terminal.
+
+The private allocation ledger now credits capacity only after consuming and
+dropping its owner. Setup/solve scratch ends at explicit phase boundaries;
+RHS and certificate reductions use separate banks. After every current-weight
+certificate passes, normalized-weight storage becomes the returned response.
+The maximum phase payload replaces the conservative all-live sum. Structural
+work admission, whole-action budgets, arithmetic, tolerances and all scientific
+acceptance remain unchanged. The existing direct-product engine can now serve
+wider low two-categorical-FE canonical calls. Other FE engines and OLS retain
+their algorithms; no weighted authority survives the call.
+
+### Fresh results and controls
+
+Seed **202609380 is consumed/frozen**, declared before generation on the frozen
+candidate. Five baseline/candidate/pinned-stock rotations include robust
+inference and fitted means at stock `glm.tol=1e-10`, `fixef.tol=1e-11`.
+Medians in milliseconds:
+
+| Fresh case | Baseline | Accepted | Stock | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Low 2FE N30720/K74/T8 | 459 | 306 | 449 | 0.682 |
+| Low 2FE N57600/K84/T8 | 904 | 586 | 830 | 0.706 |
+| Serial low 2FE N48000/K92/T1 | 1,782 | 1,700 | 3,968 | 0.428 |
+| Low 2FE N19200/K72/T8 | 314 | 208 | 267 | 0.779 |
+| Memory-refused low 2FE N20160/K98/T8 | 472 | 477 | 402 | 1.187 |
+| Previously admitted low 2FE N20160/K32/T4 | 101 | 101 | 135 | 0.748 |
+| Unbalanced low 2FE N23040/K16/T4 | 80 | 80 | 70 | 1.143 |
+| Disconnected low 2FE N21120/K14/T4 | 88 | 88 | 68 | 1.294 |
+| Two slope partitions low N19200/K12/T4 | 100 | 101 | 122 | 0.828 |
+| Low 3FE N20160/K10/T4 | 85 | 85 | 254 | 0.335 |
+
+Every native pair improves on the four newly admitted wide cases; their paired
+stock ratios are all below 0.90. Seven of ten selected fresh medians reach the
+goal, including existing fast paths. Small control losses and all distributions
+remain visible in the report. This is not a coverage-wide win rate or zero-
+regression claim. Previously admitted/excluded fresh scientific CSV exports
+are byte-identical; newly admitted recurrences pass numerical envelopes.
+
+All **198** oracle/development/fresh public-state checks, **66 native pairs**,
+65 direct candidate/stock comparisons and the independent explicit-design
+Poisson/Hessian/sandwich oracle pass. Thirty-five distinct focused core tests,
+one plugin one-byte budget/publication test and five licensed fixtures pass.
+The first public oracle generation failed because N6144 did not preserve the
+shared generator's 240-row dimensions; original evidence is retained and the
+corrected N6240 oracle passes. No failed estimator fit was hidden. Intermediate
+`canonicalownership1` was superseded before any headline timing.
+
+All 24 OLS control calls and 12 science/output pairs pass: one-FE/all-output
+17→17, categorical two-FE 29→29, low slopes 105→104, low three-FE 62→62 ms.
+Newly admitted direct solves increase whole-action tracked peaks by 0.83–3.03 MB
+over their prior iterative fallback, within unchanged budgets; already-admitted
+cases use less memory. Maximum fresh tracked/model ratio is 0.8753 and scratch
+sizes are unchanged. This is local development evidence, not qualification.
+
+### Next bounded implementation milestone
+
+1. **Disconnected component factors first.** The global dense Q³ work bound still
+   refuses a design at 88 versus stock 68 ms. Organize actual factorization and
+   storage by immutable component, derive matching work/memory bounds, preserve
+   original-design certificates and test fresh graphs. Do not just loosen a guard.
+2. **Wide certificate ownership.** K98 still needs 4,193,648 bytes versus
+   3,225,600 available. A narrower reduction organization may help; raising the
+   existing low-memory allowance would not solve this constraint.
+3. **Unbalanced canonical/joint and preparation costs.** Current 80 versus stock
+   70 ms includes about 17 ms projection, 16 ms strict final, 8 ms preparation,
+   and only 1.2 ms inference. Target the substantial passes, not covariance alone.
+
+Preserve frozen 77/16/111 definitions and every consumed seed. The old seed-378
+stock discrepancy, static allocation-inventory drift, weighted constrained-fit
+and nonretaining-CG failures, and platform deferrals remain unresolved. No SCC
+retry, stopped campaign, push, release or qualification is authorized.
+
+## Historical: fused canonical PPML products integrated — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
 fixest wherever reasonably achievable with at least two FE partitions**. It is
