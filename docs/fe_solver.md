@@ -103,6 +103,14 @@ smaller-partition level. Ordinary OLS construction and checkpoint-LSMR policy
 retain their prior behavior; a PPML checkpoint's MAP fallback may use the direct
 engine.
 
+ADR 0148 prepares the joint PPML finite Hessian from one symmetric triangle.
+Streamed entries delay right-column normalization until after the weighted inner
+product, using fixed independent accumulators and borrowed numeric slices where
+available. Dense entries retain their projected-column dot arithmetic. Existing
+current-weight geometry, fresh FE/finite scores, reconstruction and canonical
+rank/final-Hessian authority remain. No previous-frame factor or new solver route
+is retained from the rejected matrix-free experiments.
+
 Under ADRs 0127, 0132 and 0137, actual one-intercept-FE publication PPML can
 analytically concentrate group intercepts during ordinary MAP-owned steps.
 Fast execution borrows retained dense finite representatives; low execution

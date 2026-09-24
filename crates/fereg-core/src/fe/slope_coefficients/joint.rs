@@ -9,6 +9,9 @@ use crate::fe::SolveReport;
 pub(crate) trait JointFiniteDesign: Sync {
     fn nrows(&self) -> usize;
     fn ncols(&self) -> usize;
+    fn column_slice(&self, _column: usize) -> Option<&[f64]> {
+        None
+    }
     fn visit_column(
         &self,
         column: usize,
@@ -74,6 +77,83 @@ fn failed() -> FeregError {
         ErrorCode::NonConvergence,
         "joint slope direction failed current-weight certification",
     )
+}
+
+fn finite_product<C: JointFiniteDesign>(
+    controls: &C,
+    selected: usize,
+    roots: &[f64],
+    projected: &[f64],
+    scale: f64,
+) -> Result<f64> {
+    // The current weighted column has a finite, already checked norm.
+    // Normalize the dot product once, rather than dividing every observation.
+    let mut sums = [0.0_f64; 8];
+    if let Some(values) = controls.column_slice(selected) {
+        let blocks = values.len() / sums.len();
+        for block in 0..blocks {
+            let start = block * sums.len();
+            for lane in 0..sums.len() {
+                let row = start + lane;
+                sums[lane] = (values[row] * roots[row]).mul_add(projected[row], sums[lane]);
+            }
+        }
+        for row in blocks * sums.len()..values.len() {
+            sums[0] = (values[row] * roots[row]).mul_add(projected[row], sums[0]);
+        }
+    } else {
+        controls.visit_column(selected, |row, value| {
+            let lane = row % sums.len();
+            sums[lane] = (value * roots[row]).mul_add(projected[row], sums[lane]);
+            Ok(())
+        })?;
+    }
+    Ok(sums.iter().sum::<f64>() / scale)
+}
+
+#[cfg(test)]
+mod product_tests {
+    use super::*;
+
+    struct Column {
+        values: Vec<f64>,
+        contiguous: bool,
+    }
+
+    impl JointFiniteDesign for Column {
+        fn nrows(&self) -> usize { self.values.len() }
+        fn ncols(&self) -> usize { 1 }
+        fn column_slice(&self, _: usize) -> Option<&[f64]> {
+            self.contiguous.then_some(self.values.as_slice())
+        }
+        fn visit_column(&self, _: usize, mut visit: impl FnMut(usize, f64) -> Result<()>) -> Result<()> {
+            for (row, &value) in self.values.iter().enumerate() { visit(row, value)?; }
+            Ok(())
+        }
+        fn visit_rows(&self, _: &mut [f64], mut visit: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> {
+            for (row, value) in self.values.iter().enumerate() { visit(row, std::slice::from_ref(value))?; }
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn finite_products_preserve_scaled_weighted_inner_products_across_layouts() {
+        for n in [1, 7, 8, 17, 8192] {
+            for scale in [1e-300, 1., 1e300] {
+                // Powers of two give a separately evaluable normalized column
+                // even when its unscaled magnitude is near floating-point limits.
+                let roots: Vec<_> = (0..n).map(|r| [0.25, 0.5, 1., 2.][r % 4]).collect();
+                let projected: Vec<_> = (0..n).map(|r| ((r * 7) as f64).cos() / (n as f64).sqrt()).collect();
+                let normalized: Vec<_> = (0..n).map(|r| ((r % 5) as f64 - 2.) / (4. * (n as f64).sqrt())).collect();
+                let expected: f64 = normalized.iter().zip(&projected).map(|(a,b)| a*b).sum();
+                for contiguous in [false, true] {
+                    let controls = Column { values: normalized.iter().zip(&roots).map(|(x,w)| x * scale / w).collect(), contiguous };
+                    let actual = finite_product(&controls, 0, &roots, &projected, scale).unwrap();
+                    assert!((actual - expected).abs() < 1e-13, "n={n} scale={scale} contiguous={contiguous}: {actual} != {expected}");
+                }
+            }
+        }
+    }
 }
 
 impl JointFiniteWorkspace {
@@ -304,10 +384,15 @@ impl JointFiniteWorkspace {
             .par_chunks_mut(k)
             .enumerate()
             .for_each(|(i, row)| {
-                for j in 0..k {
+                for j in i..k {
                     row[j] = dot(&z[i * n..(i + 1) * n], &z[j * n..(j + 1) * n]);
                 }
             });
+        for i in 0..k {
+            for j in 0..i {
+                self.hessian[i * k + j] = self.hessian[j * k + i];
+            }
+        }
         self.iterate(
             &op,
             controls,
@@ -616,25 +701,24 @@ impl JointFiniteWorkspace {
                         // otherwise dominate even contiguous numeric reads.
                         // The factor bank is free until iterate prepares it.
                         controls.visit_rows(row_scratch, |row, values| {
-                            for (entry, (&selected, &scale)) in hessian_row
+                            for (entry, &selected) in hessian_row[j..]
                                 .iter_mut()
-                                .zip(selected.iter().zip(&self.scales[..k]))
+                                .zip(&selected[j..])
                             {
-                                let value = values[selected] * roots[row] / scale;
+                                let value = values[selected] * roots[row];
                                 *entry = value.mul_add(column[row], *entry);
                             }
                             Ok(())
                         })?;
+                        for (entry, &scale) in hessian_row[j..].iter_mut().zip(&self.scales[j..k]) {
+                            *entry /= scale;
+                        }
                     } else {
-                        for (entry, (&selected, &scale)) in hessian_row
+                        for (entry, (&selected, &scale)) in hessian_row[j..]
                             .iter_mut()
-                            .zip(selected.iter().zip(&self.scales[..k]))
+                            .zip(selected[j..].iter().zip(&self.scales[j..k]))
                         {
-                            controls.visit_column(selected, |row, value| {
-                                let value = value * roots[row] / scale;
-                                *entry = value.mul_add(column[row], *entry);
-                                Ok(())
-                            })?;
+                            *entry = finite_product(controls, selected, roots, column, scale)?;
                         }
                     }
                     Ok(())
@@ -645,9 +729,7 @@ impl JointFiniteWorkspace {
         let scratch = &mut worker.eliminated_scratch;
         for i in 0..k {
             for j in 0..i {
-                let mean = 0.5 * self.hessian[i * k + j] + 0.5 * self.hessian[j * k + i];
-                self.hessian[i * k + j] = mean;
-                self.hessian[j * k + i] = mean;
+                self.hessian[i * k + j] = self.hessian[j * k + i];
             }
         }
         self.iterate(

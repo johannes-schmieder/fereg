@@ -10,6 +10,183 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Triangular PPML products adopted; next close dataflow and finalization gaps — 2026-09-23
+
+The objective remains **whole public PPML <=0.90 times scientifically comparable
+pinned stock fixest wherever reasonably achievable, per case**. This opening
+supersedes the prior implementation plan. The finite-product milestone is
+complete; broad PPML performance remains an active objective. Preserve the wins
+already established and pursue the remaining large losses through coherent
+dataflow and solver changes, not repeated tuning of the completed kernels.
+
+Adopt `jointtri1`, based on `d9e9d2f7`, under
+[ADR 0148](docs/adr/0148-triangular-blocked-ppml-finite-products.md) and the
+[source-bound report](benchmarks/reports/development/ppml-joint-triangular-products-local-2026-09-23/README.md).
+All **542 captured computational inputs** match plugin
+`481755f5ee9d42fa417f810d8373095506e05f21dc80e27b8bc2d5e64f968d7c`.
+The verified/restored archive contains **11,449 logical receipts**, SHA-256
+`420d6eed3af4b49620b21e54410283928845c6b5506b7aba5c81179457b299f1`.
+All builds, tests, fits, diagnostics and archive operations are terminal.
+
+### Adopted change and evidence
+
+The current-weight joint finite/FE solver prepares only one symmetric half of
+the finite Hessian. Streamed products normalize the right column after their
+reduction and use eight independent accumulators with borrowed numeric slices
+where available. Dense products keep their existing dot arithmetic. Existing
+geometry, reconstructed residuals, independent FE/original-input finite scores,
+objective, strict agreement and canonical rank/bread/final-Hessian authority
+remain. No tolerance, sample, weight, DoF, separation or transactional policy
+changes. No new heap bank, persistent cache, worker team or admission formula.
+
+Two competing matrix-free prototypes were tested and rejected. The first had
+large public losses despite a promising frozen row-major K64 result. Correcting
+its source access repaired most of the loss, but K6 and K64 remained slower;
+K24 improved only modestly. Their previous-factor state and alternate recurrence
+are absent from production. Their exact sources, measurements and scientific
+checks remain in the archive. Do not resume width/aging guard tuning on those
+cases, or further accumulator-width tuning of the adopted product kernel.
+
+**156 distinct final-source Rust tests**, production ABI/panic checks and **six
+licensed fixtures** pass. Coverage includes independent weighted-contrast and
+explicit Poisson/Hessian/sandwich oracles, unit/FW/PW at T1/T4, changing weights,
+rank deficiency, extreme finite scales, rollback, separation, generated terms
+and the actual-plugin allocation audit. The audit has zero allocator events or
+growth during sixteen ordinary joint steps, including changed product work.
+
+All **192 final headline applications**, **180 public-state checks**, **9 small
+independent Python oracle results**, **66 native scientific pairs**, **60
+baseline/stock** and **60 direct candidate/stock pairs** pass. Twenty native
+exports are exact. No application failure, timeout, scientific exclusion or
+detected contention. Six instrumented applications are separate. All sixty
+PPML pairs retain iteration/scientific metadata and modeled peaks. Tracked peaks
+match in 59; one fast categorical control decreases by 766,352 bytes. No physical
+memory-cap, cross-platform or qualification claim.
+
+### Remaining per-case budgets
+
+Fresh seed **202609354** is consumed. Five rotations with robust inference and
+fitted means, compared with unmodified pinned fixest at `glm.tol=1e-10` and
+`fixef.tol=1e-11`. These are medians in milliseconds; distributions and paired
+losses are in the report. Low mode unless marked fast; it is not physical-memory-
+matched to stock.
+
+| Case | Previous | Current | Stock | Current/stock | 0.90 target | Further reduction needed |
+|---|---:|---:|---:|---:|---:|---:|
+| Two FE N18240/K32/T8 | 204 | 158 | 94 | 1.681 | 84.6 | 46.5% |
+| Unbalanced two FE N15120/K24/T8 | 127 | 109 | 59 | 1.847 | 53.1 | 51.3% |
+| Serial two FE N12000/K12/T1 | 101 | 92 | 89 | 1.034 | 80.1 | 12.9% |
+| Disconnected two FE N20160/K12/T4 | 109 | 95 | 63 | 1.508 | 56.7 | 40.3% |
+| Unbalanced three FE, multiple slopes, N28800/K10/T4 | 199 | 180 | 220 | 0.818 | 198.0 | Already met |
+| Fast two FE, slopes on both, N30720/K12/T4 | 154 | 151 | 207 | 0.729 | 186.3 | Already met |
+
+All twenty-five fresh low pairs improve; low medians fall 8.9–22.5%. Fast slopes
+have four improving pairs and one +1-ms loss. Selected controls retain substantial
+losses: fast categorical two-FE **115 vs 63 ms**, and low one-FE **40 vs 26 ms**.
+The weak barbell control wins **30 vs 221 ms**. OLS categorical is 36→34 ms;
+OLS slopes lose 66→67 ms with mixed pairs and exact exports. No universal
+non-regression claim. The passing small one-FE case does not adjudicate the
+historical large one-FE stock-mean discrepancy.
+
+The isolated diagnostic attributes finite tiles **29.922→5.110 ms at K24** and
+**206.597→91.346 ms at K64**, across six calls each. Exclusive joint recurrence
+remains below 3 ms. At K64, norms plus reconstruction still cost about **83 ms**;
+canonical projection and rank cost about **54.5 and 40.5 ms**. These are nested,
+single-run diagnostic spans, not additive headline budgets. The K64 publication
+wrapper rises by 12.4 ms in that single run; the cause remains unattributed.
+
+### Ambitious implementation plan, in priority order
+
+1. **Remove whole-model access cliffs and repeated original-control passes.**
+   Verify actual binding decisions with isolated counters: `NumericOlsColumns`
+   currently rejects the complete model above 64 columns or when any recipe is
+   generated. A public K64 model may include an intercept and cross that limit;
+   this is a source lead, not yet measured attribution. Compare per-column
+   binding with bounded block binding so numeric columns stay direct in wide
+   and mixed models. Preserve fallible generated access and bounded memory.
+
+   Carry this organization through stable norms, products, reconstruction and
+   original-input score scans. Share statistics only within a valid current
+   frame; avoid another full observation matrix or a stack array sized by the
+   complete design. Count recipe dispatches, bytes read and complete passes.
+   Target a material whole-fit reduction on wide models, including K63/64/65
+   boundaries and mixed generated/numeric controls. A threshold increase alone
+   is not the intended redesign. This cannot by itself be presumed to close the
+   40–51% remaining dense losses.
+
+2. **Make accepted-frame finalization one coherent computation.** Trace exact
+   duplicated geometry, projection, normalized products and reconstruction
+   across strict validation, canonical rank, bread/Hessian and inference. Give
+   compatible current-frame products one explicit owner keyed by sample,
+   topology, generated basis, raw weights and generation; invalidate on every
+   dependency change. Borrow the established final design and products rather
+   than recreate them. Use independent RHS stopping and compatible response/
+   control fusion where projection work remains dominant.
+
+   Separate cheap speculative diagnostics from independent accepted-result
+   checks. Change check scheduling only with a successor ADR demonstrating the
+   preserved invariant and focused failure-injection tests. Current-weight
+   original-input projection/model-space/score, objective, rank and final-Hessian
+   acceptance remain mandatory. Neither old-frame factors nor ordinary Newton
+   products acquire rank/covariance authority. Do not revive the rejected
+   all-coefficient canonical route by simply removing its guard.
+
+3. **Replace the fast categorical bottleneck and unify successful routes.**
+   The current fast categorical case needs about a **51%** reduction to reach
+   its 56.7-ms target. Compare its full LSMR organization with the adopted
+   coefficient/joint route on identical frozen weight frames, measuring setup,
+   products, observation passes, reconstruction and acceptance. If joint
+   directions win, introduce a shared ordinary engine with explicit memory
+   admission and one certified fallback; retire the displaced duplication.
+   Otherwise identify the measured dominant fast cost and redesign that stage.
+   Do not force a solver based on the name of a benchmark or reinterpret the
+   low-mode timings as proof that a fast-mode substitution will win.
+
+   Carry the winning dataflow through categorical and multiple-slope designs,
+   fast and low storage, while protecting weak/disconnected winners. Recheck
+   the historical large slopes and selected higher-FE cases on the resulting
+   source. Apply common improvements to OLS only with independent projection,
+   inference, admission and timing controls. The adopted coefficient-space
+   slope engine is the starting point, not a proposal for a new experiment.
+
+4. **Close one-FE and public-output costs.** Use the already profiled one-FE
+   concentrated Poisson owner; identify what still costs 40 ms against stock's
+   26-ms control and a 23.4-ms target. Measure loading/control-plane, concentrated
+   solve, final inference and publication independently. Share accepted means,
+   bounded score blocks and certified products where valid. Include small fits,
+   robust/clustered inference, generated terms and requested saved effects.
+   Investigate the large one-FE scientific discrepancy independently before
+   ranking it. A different estimand, separation sample or omitted output cannot
+   count as a speedup. Keep main-thread SPI, one substantive call and atomic
+   publication; do not offload native computation into ado/Mata.
+
+5. **Demand per-case success and stop low-value loops.** For each milestone,
+   first establish its avoidable-cost ceiling. Test at most two coherent
+   designs, then reassess rather than fitting more thresholds. Seek compound
+   gains large enough to halve the remaining dense runtimes where the measured
+   work supports that ambition. Retain smaller broad, inexpensive improvements,
+   but do not treat them as completion of the target.
+
+   Freeze candidates before predeclaring 4–6 fresh cases and excluded-path
+   controls. Cover imbalance, weak connectivity, disconnection, widths, multiple
+   slopes, rank deficiency, changing/dynamic-range weights, T1/T4/T8, memory
+   modes and requested outputs across these bounded milestones. Require
+   independent WLS and Poisson/Hessian/sandwich oracles, then alternating
+   baseline/candidate/pinned-stock rotations with at least five fresh
+   confirmations. No builds, profiling, archiving or competing fits beside
+   headline clocks. Report distributions, every paired loss, failures, memory
+   costs and exact source/artifact identities. Cases with scientific
+   discrepancies stay unranked. Repeatable <=0.90 whole-command ratios are the
+   target; aggregate win rates and inner-kernel wins are insufficient.
+
+Commit accepted changes and rejected evidence at each boundary. Where a target
+remains unmet, record the remaining measured phase costs and tested alternatives.
+Preserve frozen 77/16/111 definitions and protected seeds 211/212. Static allocation
+source drift, weighted constrained-fit failures, nonretaining-CG instability,
+historical stock-mean discrepancies and the separate 1e6-FE-shift failure retain
+their scope. SCC/Linux and physical-memory checks remain deferred without auth
+retries. No push, release or stopped-campaign restart.
+
 ## Direct two-FE PPML adopted; close whole-command budgets next — 2026-09-23
 
 The objective remains **whole public PPML <=0.90 times scientifically comparable

@@ -666,6 +666,10 @@ impl<P: PreparedOlsFitView + Sync + ?Sized>
         self.generated.len()
     }
 
+    fn column_slice(&self, column: usize) -> Option<&[f64]> {
+        self.numeric.as_ref()?.raw_columns()[self.generated[column]]
+    }
+
     fn visit_column(
         &self,
         column: usize,
