@@ -94,6 +94,15 @@ initialization or any error return. No new capacity is admitted; no numerical
 PCG state is reused. Projection arithmetic, check frequency and the full
 acceptance gates remain unchanged.
 
+ADR 0147 gives publication PPML a direct two-FE Schur entry after initial
+certification, replacing its mandatory four-sweep warmup. Disconnected Schur
+blocks and their preconditioners are scaled by current component group masses;
+immutable level-component roots are prepared once per owner. Reconstruction and
+acceptance still use original weights. The PPML planner admits two words per
+smaller-partition level. Ordinary OLS construction and checkpoint-LSMR policy
+retain their prior behavior; a PPML checkpoint's MAP fallback may use the direct
+engine.
+
 Under ADRs 0127, 0132 and 0137, actual one-intercept-FE publication PPML can
 analytically concentrate group intercepts during ordinary MAP-owned steps.
 Fast execution borrows retained dense finite representatives; low execution

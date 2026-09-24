@@ -10,6 +10,191 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Direct two-FE PPML adopted; close whole-command budgets next — 2026-09-23
+
+The objective remains **whole public PPML <=0.90 times scientifically comparable
+pinned stock fixest wherever reasonably achievable, per case**. The user asks
+for an ambitious plan. This opening supplies that plan and supersedes earlier
+next-step orders. The direct-Schur milestone is complete; the broad objective
+remains active. Do not declare it complete after another preparatory cache change.
+
+Adopt `directtwo3`, based on `432808e4`, under
+[ADR 0147](docs/adr/0147-direct-component-scaled-ppml-schur.md) and the
+[source-bound report](benchmarks/reports/development/ppml-direct-two-fe-local-2026-09-23/README.md).
+All **542 captured computational inputs** match plugin
+`9b027385d827c8e71ee4997ef10dc94d3c5a626c4666a7344e74090488122bd9`.
+The verified/restored archive contains **9,134 logical receipts**, SHA-256
+`9c1c08a4ce809fbfcebeae69652dc56f4bbd61d71464012cfe42cb21e66b2cc7`.
+All milestone builds, tests, fits, diagnostics and archive operations are terminal.
+
+### Adopted solver and scientific evidence
+
+A PPML-specific reusable two-FE owner enters Schur PCG after its initial
+certificate, without four mandatory symmetric MAP pilots. Disconnected blocks
+and their Jacobi diagonals are scaled by the largest current right-group mass
+within each component. Immutable roots are prepared per owner; masses/scales
+refresh under every weight frame. Original-weight reconstruction and independent
+acceptance remain, as do canonical rank, score, objective, strict-profile,
+final-Hessian and publication requirements. Ordinary OLS construction/admission,
+checkpoint-LSMR policy and one-/three-FE/slope algorithms retain their behavior.
+
+Direct entry alone failed an existing six-step dynamic-range PPML boundary.
+A finishing sweep and centered-RHS probe also failed. Component balancing repairs
+that boundary without tolerance changes. A shared-constructor prototype was
+replaced by the PPML-specific constructor to protect exact OLS memory admission.
+All rejected experiments and their failures are preserved in the report.
+
+**163 distinct final-source Rust tests**, production ABI/panic checks and **six
+licensed fixtures** pass. They cover independent weighted-contrast, explicit
+Poisson/Hessian/sandwich oracles, changing component masses, RHS widths, T1/T4,
+unit/FW/PW, robust/cluster inference, exact memory formulas, OLS admission, slopes,
+separation, transaction failure and generated terms with FE shifts 0/1000.
+One duplicate expensive test execution was intentionally cancelled after its
+same-source passing receipt; this is recorded, not a claim that every controller
+exited successfully. The unrelated 1e6-shift failure remains open.
+
+All **218 headline applications**, **186 public-state checks**, **9 independent
+Python oracle results**, **72 native scientific pairs**, **65 baseline/stock**
+and **56 direct candidate/stock pairs** pass. Thirty native exports are exact.
+No scientific exclusions, application failures, timeouts or detected contention.
+Four diagnostic applications are separate. All 56 PPML pairs retain outer
+iterations, halvings, fallback/strict rejections, rank/DoF and scratch metadata;
+42 reduce reported inner iterations. Different iteration units are not comparable
+operation counts. Original scientific envelopes apply to the new recurrence.
+
+PPML admits up to **16R bytes** for roots/scales, where R is the smaller partition.
+Connected owners discard temporary roots. Idle operator storage holds union ranks
+and component maxima; no new N-vector or RHS matrix. Whole-route modeled peak
+increases range from 48 to 5,424 bytes in these cases. Threaded tracked peaks also
+vary independently; see per-pair receipts. The allocator audit records zero events/
+growth during sixteen ordinary joint steps, not canonical PCG construction.
+No physical-cap or cross-platform claim.
+
+### Current opportunity and target budgets
+
+Fresh seed **202609353** is now consumed. Five rotations, robust inference and
+fitted means, low categorical two-FE unless marked otherwise. Milliseconds are
+medians; full distributions and paired changes are in the report.
+
+| Case | Baseline | Current | Stock | Current/stock | 0.90 target | Further native reduction |
+|---|---:|---:|---:|---:|---:|---:|
+| Wide N16320/K32/T8 | 224 | 200 | 86 | 2.326 | 77.4 | 61.3% |
+| N34560/K10/T4 | 161 | 149 | 82 | 1.817 | 73.8 | 50.5% |
+| Serial N12000/K10/T1 | 95 | 85 | 80 | 1.063 | 72.0 | 15.3% |
+| Disconnected N20160/K8/T4 | 95 | 87 | 53 | 1.642 | 47.7 | 45.2% |
+| Unbalanced N15120/K20/T8 | 120 | 112 | 51 | 2.196 | 45.9 | 59.0% |
+| Weak barbell N7680/K4/T4 | 36 | 31 | 174 | 0.178 | 156.6 | Already met |
+
+All thirty fresh target pairs improve, with median reductions 6.7–13.9%.
+The weak case is covered and competitive. Dense, disconnected and unbalanced
+cases are measured current-source losses. Historical wider slope and one-FE
+scores belong to their captured artifacts and need targeted remeasurement before
+ranking current opportunities. Existing large one-FE comparator discrepancies
+remain scientifically unranked. Physical constrained-memory, deferred Linux and
+untested width/topology/output combinations retain their unresolved scope.
+
+Current excluded-path controls show low three-FE **234→225 vs stock 242 ms**
+(three rotations; 217.8-ms target), and two slope partitions **137→139 vs 116**
+(104.4-ms target). Fast two-FE first loses 127→133 vs 61; the five-rotation fixed-input
+follow-up is **128→130 vs 65**, with paired changes +5/-1/+1/+4/+4 ms. The loss
+shrinks but remains. OLS categorical/slope medians are 34→35 and 68→69 ms, with
+mixed follow-up pairs and exact exports. No universal non-regression claim.
+
+### Ambitious implementation plan, in priority order
+
+1. **Remove repeated finite-product construction from ordinary IRLS.** Close
+   direct-Schur/pilot tuning now. The final wide diagnostic attributes 58.94 ms
+   to six joint directions: 29.69 ms finite tiles, 5.69 ms norms and 11.14 ms
+   reconstruction, with exclusive recurrence below 1 ms. Source confirms that
+   `JointFiniteWorkspace::solve_streamed` rebuilds all K-by-K Hessian and FE/control
+   cross-products under every frame. Its current dense operator makes recurrence
+   cheap but charges O(NK²) preparation repeatedly.
+
+   Compare two coherent candidates on identical frozen frames: (a) an exact
+   current-weight matrix-free joint operator, with compatible previous factors
+   used only as preconditioners and previous solutions only as initial guesses;
+   (b) blocked/batched current-weight products with admitted bounded scratch and
+   vectorized independent accumulators. Candidate (a) must explicitly transport
+   coordinates/scales, preserve symmetric positive preconditioning and invalidate
+   reuse on sample/topology/basis changes. Current-weight geometry and acceptance
+   remain fresh. Measure total preparation plus operator passes, not iteration
+   count alone. Use operation/memory cost and conditioning to select a policy;
+   do not key it to benchmark names or seeds. Retire a superseded ordinary path
+   after evidence establishes replacement; retain one certified fallback.
+
+   Aim for a substantial whole-fit reduction, around 25–40% on the dense/wide
+   targets, rather than a few percent in the recurrence. This is an experiment
+   target, not a promised result or enough by itself to reach 77.4 ms.
+
+2. **Unify current-frame projection and canonical products.** The same wide
+   diagnostic still spends 28.13 ms in canonical projection and 17.22 ms in rank
+   work; the narrower case spends 15.88 and 10.61 ms. Track exact duplicated group
+   masses/factors, normalization, RHS passes and retained products across tiles,
+   strict candidates and final inference. Introduce one explicit owner for
+   compatible current-frame geometry/products, keyed to sample, design, basis,
+   raw weights and generation. Separate immutable topology from weighted state.
+   Share compatible RHS work and stop columns independently. Reconstruct each
+   accepted state once and share established products with downstream consumers.
+
+   Redesign intermediate diagnostics where they duplicate a separately proven
+   invariant; retain independent original-input projection/model-space/score,
+   objective and final-Hessian acceptance. Document any changed check schedule
+   in a successor ADR with failure-injection tests. Prior-frame preconditioners
+   must never become current rank or covariance authority. The prior rejected
+   all-coefficient canonical route is not adopted by removing its guard.
+
+3. **Carry the best mechanism through fast, low and slope PPML.** Use the existing
+   coefficient-space slope/joint engine as the starting point; do not propose it
+   as new work. Rebaseline the original two-slope and unbalanced three-FE designs
+   on the adopted source, including multiple slopes and larger K. Explain why
+   fast execution still loses on the current categorical control, then replace
+   duplicated dense/streamed organization when one shared implementation is
+   better. Protect weak/disconnected cases already winning. Bring the current
+   slope control from 139 toward 104.4 ms and the three-FE control below 217.8 ms;
+   do not spend a long separate cycle on the last 3% of one case while dense
+   categorical cases require 50–61% reductions. Generalize to OLS only when a
+   focused independent projection oracle, memory admission and timing controls
+   support it.
+
+4. **Close one-FE, inference and public-command overhead.** Reuse the earlier
+   source-bound inventory to choose a small current-source one-FE screen. Do not
+   restart broad campaigns. Profile robust/cluster score products, final means,
+   saved effects, loading, metadata parsing and publication separately from IRLS.
+   Apply accepted-frame ownership, bounded batching and fewer complete row passes
+   where evidence supports them. Include generated/factor controls and small
+   fits. Improve the Stata control-plane portion when it is measured as dominant,
+   preserving main-thread SPI, one substantive native call and atomic publication.
+
+5. **Finish with per-case evidence, not an aggregate win rate.** After a candidate
+   freezes, predeclare a new validation seed and 4–6 cases around the affected
+   family plus excluded-path controls. Include imbalance, weak connectivity,
+   disconnection, wide controls, multiple slopes, changing/dynamic-range weights,
+   rank deficiency, T1/T4/T8, low/fast execution and requested robust/cluster/saved
+   outputs across the bounded milestones. Use independent explicit-design WLS
+   and Poisson/Hessian/sandwich oracles. Keep comparator sample/separation/
+   objective discrepancies unranked and preserve failures and timeouts.
+
+   Use alternating baseline/candidate/pinned-stock rotations, typically three
+   for development and at least five fresh confirmations. No builds/profiling/
+   archiving or competing fits beside headline clocks. Report all paired losses,
+   distributions, operation counts, memory costs and exact artifacts. A 10% claim
+   needs <=0.90 per comparable case and repeatable fresh evidence; a tiny or noisy
+   timing does not establish it. Do not loosen accuracy or omit requested outputs.
+   Leave the frozen 77/16/111 definitions intact. SCC and physical-memory checks
+   remain deferred until access is renewed, without authentication retries.
+
+Each milestone gets at most two materially different candidate designs before
+reassessing its measured savings ceiling. Retain reliable smaller gains when
+broad and inexpensive, but do not substitute them for closing the large gaps.
+Commit accepted implementations and rejected evidence, then move to the next
+largest avoidable cost. If a case remains above target, record the residual
+phase budget and tested alternatives that explain the limit. Neither current
+certification costs nor fixest parity are assumed to be unavoidable ceilings.
+
+Static allocation source drift, weighted constrained-fit failures, nonretaining
+CG instability, historical stock-mean discrepancies and the 1e6-FE-shift failure
+retain their scope. No push, release, stopped-campaign restart or SCC retry.
+
 ## Two-FE categorical pilot scratch reuse adopted — 2026-09-23
 
 The objective remains **whole public PPML <=0.90 times scientifically comparable

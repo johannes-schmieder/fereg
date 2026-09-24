@@ -1199,6 +1199,7 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     cg_ratio: Vec<f64>,
     max_rhs: usize,
     max_level_members: usize,
+    direct_two_fe: bool,
     checkpoint_lsmr_enabled: bool,
     checkpoint_component_scaling: bool,
     #[cfg(test)]
@@ -1264,6 +1265,8 @@ fn component_scaled_checkpoint_weights(
 struct TwoFePcgWorkspace {
     left_effect: usize,
     right_effect: usize,
+    component_roots: Vec<usize>,
+    component_scales: Vec<f64>,
     left_weights: Vec<f64>,
     right_weights: Vec<f64>,
     left_rhs: Vec<f64>,
@@ -1294,6 +1297,8 @@ impl TwoFePcgWorkspace {
         Ok(Self {
             left_effect,
             right_effect,
+            component_roots: Vec::new(),
+            component_scales: Vec::new(),
             left_weights: reserved_zeros(
                 left_levels,
                 reservation,
@@ -1337,6 +1342,62 @@ impl TwoFePcgWorkspace {
         })
     }
 
+    fn prepare_component_topology(&mut self, design: &BorrowedInterceptFeDesign<'_>) -> Result<()> {
+        fn root(parents: &mut [usize], mut node: usize) -> usize {
+            while parents[node] != node {
+                parents[node] = parents[parents[node]];
+                node = parents[node];
+            }
+            node
+        }
+        let count = self.right_weights.len();
+        let mut parents = Vec::new();
+        parents.try_reserve_exact(count)
+            .map_err(|_| allocation("unable to reserve two-FE component topology"))?;
+        parents.extend(0..count);
+        // Operator storage has no numerical authority during construction.
+        // Union ranks need at most log2(levels), exactly representable in f64.
+        let ranks = &mut self.operator[..count];
+        ranks.fill(0.0);
+        let left = &design.effects()[self.left_effect];
+        let codes = design.effects()[self.right_effect].codes();
+        for level in 0..left.n_levels() {
+            let members = left.level_index().checked_members(level)?;
+            if let Some((&first, rest)) = members.split_first() {
+                for &row in rest {
+                    let mut a = root(&mut parents, codes[first] as usize);
+                    let mut b = root(&mut parents, codes[row] as usize);
+                    if a == b { continue; }
+                    if ranks[a] < ranks[b] { std::mem::swap(&mut a, &mut b); }
+                    parents[b] = a;
+                    if ranks[a] == ranks[b] { ranks[a] += 1.0; }
+                }
+            }
+        }
+        let mut components = 0;
+        for level in 0..count {
+            parents[level] = root(&mut parents, level);
+            components += usize::from(parents[level] == level);
+        }
+        if components > 1 {
+            self.component_scales = reserved_zeros(count, &mut SystemWorkspaceReservation,
+                "unable to reserve two-FE component scales")?;
+            self.component_roots = parents;
+        }
+        Ok(())
+    }
+
+    fn refresh_component_scales(&mut self) {
+        let maxima = &mut self.operator[..self.right_weights.len()];
+        maxima.fill(0.0);
+        for (&root, &weight) in self.component_roots.iter().zip(&self.right_weights) {
+            maxima[root] = maxima[root].max(weight);
+        }
+        for (scale, &root) in self.component_scales.iter_mut().zip(&self.component_roots) {
+            *scale = maxima[root];
+        }
+    }
+
     fn capacity_elements(&self) -> usize {
         self.left_weights
             .capacity()
@@ -1347,6 +1408,8 @@ impl TwoFePcgWorkspace {
             .saturating_add(self.residual.capacity())
             .saturating_add(self.direction.capacity())
             .saturating_add(self.operator.capacity())
+            .saturating_add(self.component_roots.capacity())
+            .saturating_add(self.component_scales.capacity())
     }
 }
 
@@ -1374,6 +1437,17 @@ impl Drop for PcgPilotGroupScratch<'_> {
 }
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
+    pub(crate) fn new_ppml(
+        design: BorrowedInterceptFeDesign<'a>, max_rhs: usize, parallel_threads: usize,
+    ) -> Result<Self> {
+        let mut owner = Self::new(design, max_rhs, parallel_threads)?;
+        if let Some(graph) = owner.two_fe_pcg.as_mut() {
+            graph.prepare_component_topology(&owner.design)?;
+        }
+        owner.direct_two_fe = true;
+        Ok(owner)
+    }
+
     pub(crate) fn new(
         design: BorrowedInterceptFeDesign<'a>,
         max_rhs: usize,
@@ -1463,6 +1537,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             )?,
             max_rhs,
             max_level_members,
+            direct_two_fe: false,
             checkpoint_lsmr_enabled: false,
             checkpoint_component_scaling: false,
             #[cfg(test)]
@@ -1885,6 +1960,15 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             };
         }
 
+        // This owner always selects the two-FE Schur engine. Its equations
+        // eliminate the left partition directly from untouched inputs; a MAP
+        // warmup adds observation passes without supplying routing evidence.
+        // Reconstruction and the full current-weight certificate remain the
+        // acceptance gate, with the existing MAP continuation on a miss.
+        if self.direct_two_fe && self.two_fe_pcg.is_some() {
+            return self.absorb_two_fe_pcg(weights, values, config, 0, 1.0, setup_seconds, solve_started);
+        }
+
         let pilot_limit = config.max_iterations.min(CATEGORICAL_MAP_PILOT_SWEEPS);
         for iteration in 1..=pilot_limit {
             self.with_pilot_group_scratch(rhs_count, |design, workspace| {
@@ -1920,15 +2004,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                         )?);
                 if pilot_limit == CATEGORICAL_MAP_PILOT_SWEEPS {
                     if self.two_fe_pcg.is_some() {
-                        return self.absorb_two_fe_pcg_after_pilot(
-                            weights,
-                            values,
-                            config,
-                            pilot_limit,
-                            contraction,
-                            setup_seconds,
-                            solve_started,
-                        );
+                        return self.absorb_two_fe_pcg(weights, values, config, pilot_limit,
+                            contraction, setup_seconds, solve_started);
                     }
                     if self.accelerator_x0.is_none() {
                         continue;
@@ -2107,7 +2184,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn absorb_two_fe_pcg_after_pilot(
+    fn absorb_two_fe_pcg(
         &mut self,
         weights: ValidatedWeights<'_>,
         values: DenseMatrix,
@@ -2117,9 +2194,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         setup_seconds: f64,
         solve_started: Instant,
     ) -> Result<CertifiedBorrowedMap> {
-        let mut graph = self
+        let graph = self
             .two_fe_pcg
-            .take()
+            .as_mut()
             .ok_or_else(|| invalid_data("two-FE categorical MAP PCG workspace is unavailable"))?;
         let result = absorb_two_fe_pcg_reusing(
             &self.design,
@@ -2131,7 +2208,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             setup_seconds,
             solve_started,
             self.max_rhs,
-            &mut graph,
+            graph,
             &mut self.workspace,
             &mut self.cg_residual_square,
             &mut self.cg_initial_residual_square,
@@ -2142,7 +2219,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             false,
             None,
         );
-        self.two_fe_pcg = Some(graph);
         match result? {
             SchurAttempt::Certified(result) => Ok(result),
             SchurAttempt::Continue { .. } => {
@@ -2486,6 +2562,7 @@ fn absorb_two_fe_pcg_reusing(
     let mut operator_seconds = 0.0;
     let mut recurrence_seconds = 0.0;
     let rhs_count = values.ncols();
+    let scale_components = ols_cap.is_none() && !graph.component_roots.is_empty();
     let left = &design.effects()[graph.left_effect];
     let right = &design.effects()[graph.right_effect];
     let left_levels = left.n_levels();
@@ -2596,8 +2673,18 @@ fn absorb_two_fe_pcg_reusing(
                 }
                 Ok(())
             })?;
+        if scale_components {
+            // A positive scalar per disconnected block leaves the projected
+            // solution unchanged, while keeping low-mass blocks visible to CG.
+            // Only the recurrence is scaled; all acceptance uses original weights.
+            graph.refresh_component_scales();
+            for (row, &scale) in graph.residual.chunks_mut(stride).zip(&graph.component_scales) {
+                for value in &mut row[..rhs_count] { *value /= scale; }
+            }
+        }
         for level in 0..right_levels {
-            let denominator = graph.right_weights[level];
+            let denominator = graph.right_weights[level]
+                / if scale_components { graph.component_scales[level] } else { 1.0 };
             for (rhs, residual_sum) in residual_square.iter_mut().enumerate() {
                 let index = level * stride + rhs;
                 let residual = graph.residual[index];
@@ -2633,7 +2720,7 @@ fn absorb_two_fe_pcg_reusing(
             || rayon::current_num_threads() <= TWO_FE_PCG_PARALLEL_RECURRENCE_MAX_THREADS);
     active_rhs_state.fill(0.0);
     for rhs in 0..rhs_count {
-        if two_fe_pcg_rhs_ready(graph, certificate_workspace, rhs, stride, config.tolerance)? {
+        if two_fe_pcg_rhs_ready(graph, certificate_workspace, rhs, stride, config.tolerance, scale_components)? {
             residual_square[rhs] = 0.0;
             for level in 0..right_levels {
                 let index = level * stride + rhs;
@@ -2685,6 +2772,11 @@ fn absorb_two_fe_pcg_reusing(
             graph.apply_schur_parallel(design, weights, rhs_count, stride, left, Some(right))?;
         } else {
             graph.apply_schur(design, weights, rhs_count, stride)?;
+        }
+        if scale_components {
+            for (row, &scale) in graph.operator.chunks_mut(stride).zip(&graph.component_scales) {
+                for value in &mut row[..rhs_count] { *value /= scale; }
+            }
         }
         operator_seconds += op_start.elapsed().as_secs_f64();
         let rec_start = Instant::now();
@@ -2746,7 +2838,8 @@ fn absorb_two_fe_pcg_reusing(
             // serial in canonical level/RHS order so thread count cannot alter
             // the recurrence or its stopping decision.
             for level in 0..right_levels {
-                let denominator = graph.right_weights[level];
+                let denominator = graph.right_weights[level]
+                    / if scale_components { graph.component_scales[level] } else { 1.0 };
                 for (rhs, residual_square) in next_residual_square.iter_mut().enumerate() {
                     let index = level * stride + rhs;
                     let preconditioned = graph.residual[index] / denominator;
@@ -2756,7 +2849,8 @@ fn absorb_two_fe_pcg_reusing(
             }
         } else {
             for level in 0..right_levels {
-                let denominator = graph.right_weights[level];
+                let denominator = graph.right_weights[level]
+                    / if scale_components { graph.component_scales[level] } else { 1.0 };
                 for (rhs, &step) in ratio.iter().enumerate() {
                     let index = level * stride + rhs;
                     graph.solution[index] =
@@ -2785,6 +2879,7 @@ fn absorb_two_fe_pcg_reusing(
                     rhs,
                     stride,
                     config.tolerance,
+                    scale_components,
                 )?
             {
                 active_rhs_state[rhs] = 0.0;
@@ -2827,6 +2922,7 @@ fn absorb_two_fe_pcg_reusing(
                 .checked_mul(stride)
                 .ok_or_else(|| allocation("two-FE PCG direction chunk dimensions overflow"))?;
             let right_weights = &graph.right_weights;
+            let component_scales = &graph.component_scales;
             let residual = &graph.residual;
             graph
                 .direction
@@ -2835,7 +2931,9 @@ fn absorb_two_fe_pcg_reusing(
                 .for_each(|(chunk, direction)| {
                     let first_level = chunk * level_chunk;
                     for local_level in 0..direction.len() / stride {
-                        let denominator = right_weights[first_level + local_level];
+                        let level = first_level + local_level;
+                        let denominator = right_weights[level]
+                            / if scale_components { component_scales[level] } else { 1.0 };
                         for rhs in 0..rhs_count {
                             if active_rhs_state[rhs] == 0.0 {
                                 continue;
@@ -2850,7 +2948,8 @@ fn absorb_two_fe_pcg_reusing(
                 });
         } else {
             for level in 0..right_levels {
-                let denominator = graph.right_weights[level];
+                let denominator = graph.right_weights[level]
+                    / if scale_components { graph.component_scales[level] } else { 1.0 };
                 for rhs in 0..rhs_count {
                     if active_rhs_state[rhs] == 0.0 {
                         continue;
@@ -3464,10 +3563,13 @@ fn two_fe_pcg_rhs_ready(
     rhs: usize,
     stride: usize,
     tolerance: f64,
+    scale_components: bool,
 ) -> Result<bool> {
     for level in 0..graph.right_weights.len() {
         let denominator = graph.right_weights[level];
-        let mean = graph.residual[level * stride + rhs] / denominator;
+        let scaled_denominator = denominator
+            / if scale_components { graph.component_scales[level] } else { 1.0 };
+        let mean = graph.residual[level * stride + rhs] / scaled_denominator;
         let reference = certificate_workspace.reference_norms[rhs];
         let relative = if reference == 0.0 {
             if mean == 0.0 {
@@ -9482,7 +9584,7 @@ fn schur_probe_narrow_continuation(
             discarded |= 1 << rhs;
         }
         if !selected.contains(&rhs) && (discarded & (1 << rhs) != 0
-            || two_fe_pcg_rhs_ready(graph, workspace, rhs, stride, tolerance)?) {
+            || two_fe_pcg_rhs_ready(graph, workspace, rhs, stride, tolerance, false)?) {
             square[rhs] = 0.0;
             for level in 0..right.n_levels() {
                 graph.residual[level * stride + rhs] = 0.0;
@@ -9579,7 +9681,7 @@ fn schur_probe_narrow_continuation(
     }
     for rhs in 0..rhs_count {
         if graph.direction.chunks(stride).all(|row| row[rhs] == 0.0)
-            && !two_fe_pcg_rhs_ready(graph, workspace, rhs, stride, tolerance)? {
+            && !two_fe_pcg_rhs_ready(graph, workspace, rhs, stride, tolerance, false)? {
             // The probe's relative-energy cutoff can stop a selected lane
             // before the stricter full certificate. Restart that lane from its
             // current residual; keep its already-computed solution.
@@ -10839,9 +10941,9 @@ mod tests {
         graph.residual[0] = 2e-7;
         workspace.reference_norms[0] = 1.0;
         // The mean-only rule would accept 2e-9 at tolerance 1e-8.
-        assert!(!two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-8).unwrap());
+        assert!(!two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-8, false).unwrap());
         graph.residual[0] = 2e-8;
-        assert!(two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-8).unwrap());
+        assert!(two_fe_pcg_rhs_ready(&graph, &workspace, 0, 1, 1e-8, false).unwrap());
     }
 
     #[test]
@@ -11601,6 +11703,77 @@ mod tests {
     }
 
     #[test]
+    fn direct_two_fe_schur_matches_weighted_contrasts_across_frames_and_widths() {
+        // Paired rows share both FE labels and have reciprocal weighted
+        // contrasts. The exact WLS residual is known without either solver.
+        let mut cells = Vec::new();
+        for component in 0..2 {
+            for a in 0..8 {
+                for b in [a, (a + 1) % 8] {
+                    for replicate in 0..8 { cells.push((component, a, b, replicate)); }
+                }
+            }
+        }
+        let left: Vec<_> = cells.iter().map(|&(c, a, _, _)| (8 * c + a) as u32).collect();
+        let right: Vec<_> = cells.iter().map(|&(c, _, b, _)| (8 * c + b) as u32).collect();
+        let indices = [LevelIndex::from_codes(&left, 16).unwrap(), LevelIndex::from_codes(&right, 16).unwrap()];
+        let sources = [
+            ValidatedBorrowedInterceptSource::new(&left, 16, &indices[0]).unwrap(),
+            ValidatedBorrowedInterceptSource::new(&right, 16, &indices[1]).unwrap(),
+        ];
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                let design = || BorrowedInterceptFeDesign::new(cells.len(), sources.iter().map(|s| s.effect()).collect()).unwrap();
+                let ordinary = ReusableCategoricalMapAbsorber::new(design(), 8, threads).unwrap();
+                assert!(ordinary.two_fe_pcg.as_ref().unwrap().component_roots.is_empty());
+                let mut owner = ReusableCategoricalMapAbsorber::new_ppml(design(), 8, threads).unwrap();
+                assert_eq!(owner.capacities().accelerator_state, ordinary.capacities().accelerator_state + 32);
+                let capacities = owner.capacities();
+                for (frame, width) in [8, 3, 1, 8].into_iter().enumerate() {
+                    let pair_ratio = 2. + frame as f64;
+                    let masses = [[1., 1.], [1e-8, 1.], [1., 1e-10], [3., 0.2]][frame];
+                    let weights: Vec<_> = cells.iter().map(|&(c, a, b, r)| {
+                        masses[c] * (1. + a as f64 / 3.) * (1. + b as f64 / 7.)
+                            * (1. + (r / 2) as f64) * if r % 2 == 0 { 1. } else { pair_ratio }
+                    }).collect();
+                    let expected = |r: usize, j: usize| {
+                        if j == 7 { return 0.; }
+                        let scale = if r % 2 == 0 { 1. } else { -1. / pair_ratio };
+                        scale * 0.01 * (j + 1) as f64 * (r / 2 + 1) as f64
+                    };
+                    let mut input = DenseMatrix::zeros(cells.len(), width).unwrap();
+                    for (row, &(_, a, b, r)) in cells.iter().enumerate() {
+                        for j in 0..width {
+                            let scale = if j == 1 { 1000. } else { 1. };
+                            input[(row, j)] = if j == 7 { 0. } else {
+                                scale * (((a * (j + 1)) as f64).sin() + ((b * (j + 2)) as f64).cos())
+                                    + expected(r, j)
+                            };
+                        }
+                    }
+                    if frame == 0 {
+                        let attempt = owner.absorb(BorrowedMapWeights::Provided(&weights), input.clone(),
+                            MapConfig { tolerance: 1e-12, max_iterations: 1, ..config() });
+                        assert_eq!(attempt.unwrap_err().code, ErrorCode::InvalidData);
+                        assert_eq!(owner.capacities(), capacities);
+                    }
+                    let result = owner.absorb(BorrowedMapWeights::Provided(&weights), input,
+                        MapConfig { tolerance: 1e-12, ..config() }).unwrap();
+                    assert!(result.report().certified());
+                    assert_eq!(result.report().pilot_iterations, 0);
+                    for (row, &(_, _, _, r)) in cells.iter().enumerate() {
+                        for j in 0..width {
+                            assert!((result.residualized()[(row, j)] - expected(r, j)).abs() < 1e-8,
+                                "frame={frame} row={row} rhs={j}");
+                        }
+                    }
+                    assert_eq!(owner.capacities(), capacities);
+                }
+            });
+        }
+    }
+
+    #[test]
     fn reusable_categorical_map_matches_one_shot_across_weight_frames_and_rhs_widths() {
         let first_codes = [0_u32, 0, 1, 1, 2, 2, 0, 1, 2];
         let second_codes = [0_u32, 1, 0, 1, 0, 1, 2, 2, 2];
@@ -12330,7 +12503,7 @@ mod tests {
                         BorrowedInterceptFeDesign::new(rows, vec![first.effect(), second.effect()])
                             .expect("design");
                     let mut reusable =
-                        ReusableCategoricalMapAbsorber::new(design, columns.len(), threads)
+                        ReusableCategoricalMapAbsorber::new_ppml(design, columns.len(), threads)
                             .expect("reusable map");
                     assert!(reusable.two_fe_pcg.is_some());
                     reusable

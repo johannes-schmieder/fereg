@@ -146,6 +146,13 @@ automatic alternatives and certified CG fallback, subject to their own admission
 
 ## Fast and low execution
 
+Publication PPML's direct two-FE categorical Schur owner admits component roots
+and refreshed component scales: at most 16 bytes per smaller-partition level on
+supported 64-bit platforms (ADR 0147). Connected owners discard their temporary
+root bank. Union ranks and current component maxima use idle operator storage;
+there is no observation-sized weight copy. These PPML banks do not enter
+ordinary OLS construction or its exact Schur admission.
+
 Ordinary fast OLS robust/clustered inference uses a packed score cache up to
 32 MiB. Larger eligible Cholesky fits retain the existing solve matrix through a
 strided view instead of adding a second score-value matrix. QR score rebuilding

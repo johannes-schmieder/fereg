@@ -1801,7 +1801,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 (
                     None,
                     Some(ReusableLinearMapProjector::PpmlCategorical {
-                        projector: Box::new(ReusableCategoricalMapAbsorber::new(
+                        projector: Box::new(ReusableCategoricalMapAbsorber::new_ppml(
                             categorical,
                             maximum_fe_rhs,
                             config.execution.threads.resolved(),
@@ -2144,7 +2144,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 .fit_borrowed_intercept_map_design()?
                 .filter(|d| matches!(d.effects().len(), 2 | 3))
                 .map(|d| {
-                    ReusableCategoricalMapAbsorber::new(
+                    ReusableCategoricalMapAbsorber::new_ppml(
                         d,
                         self.fe_projector.as_ref().expect("MAP owner").max_rhs(),
                         threads,

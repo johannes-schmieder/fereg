@@ -1505,6 +1505,7 @@ fn estimate_route(
             let right_levels = (dimensions.fe_total_levels - dimensions.fe_max_levels) as u128;
             checked_sum(&[
                 dimensions.fe_total_levels as u128,
+                checked_mul(right_levels, 2, "PPML two-FE component roots and scales")?,
                 checked_mul(
                     checked_mul(left_levels, projection_rhs, "PPML two-FE PCG left state")?,
                     2,
@@ -4037,6 +4038,7 @@ mod tests {
                 + 20_000
                 + 100_000_u128.div_ceil(PARALLEL_DOT_CHUNK_ROWS as u128) * 21
                 + 30_000
+                + 2 * 10_000 // component roots and current-weight scales
                 + 2 * 20_000 * 21
                 + 4 * 10_000 * 21
                 + 5 * 21)
@@ -4054,6 +4056,7 @@ mod tests {
                 + 20_000
                 + 100_000_u128.div_ceil(PARALLEL_DOT_CHUNK_ROWS as u128) * 4
                 + 30_000
+                + 2 * 10_000 // component roots and current-weight scales
                 + 2 * 20_000 * 4
                 + 4 * 10_000 * 4
                 + 5 * 4)
@@ -4100,7 +4103,7 @@ mod tests {
         assert_eq!(small.low.peak_bytes, large.low.peak_bytes);
         let rhs = 3_u128;
         let generic = rhs * 7 + 1 + rhs + 2 * 20 + 100_000 * rhs;
-        let graph = 30_000 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
+        let graph = 30_000 + 2 * 10_000 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
         assert_eq!(large.low.fe_workspace_bytes, (generic + graph) * 8);
     }
 
@@ -4115,7 +4118,7 @@ mod tests {
             .expect("narrow categorical estimate");
         let rhs = 4_u128;
         let generic_map_cells = rhs * 7 + 1 + rhs + 2 * 20;
-        let accelerator_cells = 30_000_u128 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
+        let accelerator_cells = 30_000_u128 + 2 * 10_000 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
         assert_eq!(
             estimate.fast.fe_workspace_bytes,
             (generic_map_cells + accelerator_cells) * size_of::<f64>() as u128,
@@ -4142,7 +4145,7 @@ mod tests {
             .expect("sparse two-FE categorical estimate");
         let rhs = 2_u128;
         let generic_map_cells = rhs * 7 + 1 + rhs + 2 * 4;
-        let graph_cells = 144 + 2 * 80 * rhs + 4 * 64 * rhs + 5 * rhs;
+        let graph_cells = 144 + 2 * 64 + 2 * 80 * rhs + 4 * 64 * rhs + 5 * rhs;
         assert_eq!(
             estimate.fast.fe_workspace_bytes,
             (generic_map_cells + graph_cells) * size_of::<f64>() as u128,
