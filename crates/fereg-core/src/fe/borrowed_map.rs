@@ -1836,6 +1836,15 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             let force_rejection = false;
             #[cfg(test)]
             let force_rejection = std::mem::take(&mut self.checkpoint_lsmr_certificate_failure);
+            let lsmr = LsmrConfig {
+                tolerance: config.tolerance,
+                max_iterations: config.max_iterations,
+                threads: crate::options::ThreadConfig::from_requested(
+                    rayon::current_num_threads(), false,
+                )?,
+                ..LsmrConfig::default()
+            };
+            let mut batch = CheckpointLsmrBatch::new(&self.design, solver_weights, &values, lsmr)?;
             let mut accumulated: Option<SolveReport> = None;
             let mut recurrence_tolerance = config.tolerance;
             let report = loop {
@@ -1845,34 +1854,16 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                         return Err(FeregError::new(code, "injected checkpoint retry failure"));
                     }
                 }
-                let lsmr = LsmrConfig {
-                    tolerance: recurrence_tolerance,
-                    max_iterations: config.max_iterations,
-                    threads: crate::options::ThreadConfig::from_requested(
-                        rayon::current_num_threads(), false,
-                    )?,
-                    ..LsmrConfig::default()
-                };
-                let (candidate, mut report, owned_setup_seconds, _) = run_borrowed_lsmr(
-                    &self.design,
-                    solver_weights,
-                    &values,
+                let mut report = batch.solve_attempt(
                     recurrence_tolerance,
-                    config.max_iterations,
-                    lsmr,
-                    if balanced_weights.is_some() {
-                        None
-                    } else {
-                        Some(&self.workspace.reference_norms)
-                    },
-                    false,
+                    accumulated.as_ref().map(|_| self.workspace.rhs_relative_infinity_norms.as_slice()),
+                    config.tolerance,
                 )?;
-                report.setup_seconds += owned_setup_seconds;
                 let certification_started = Instant::now();
                 let mut canonical_certificate = certify(
                     &self.design,
                     weights,
-                    &candidate,
+                    batch.candidate.as_ref().expect("checkpoint attempt has output"),
                     config.tolerance,
                     &mut self.workspace,
                 )?;
@@ -1905,22 +1896,24 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 if canonical_passed {
                     report.stop_reason = SolveStopReason::Certified;
                     schur_cost.add_to(&mut report);
-                    return CertifiedBorrowedMap::from_certified_parts(candidate, report);
+                    return CertifiedBorrowedMap::from_certified_parts(
+                        batch.candidate.take().expect("certified checkpoint output"), report,
+                    );
                 }
                 report.stop_reason = SolveStopReason::Uncertified;
-                drop(candidate);
                 let tighter = (config.tolerance * 0.01).max(1e-14);
                 if report.checkpoint_retries != 0 || tighter >= recurrence_tolerance {
                     break report;
                 }
-                // Only a failed fresh canonical certificate authorizes this
-                // retry. Both independent batches use untouched inputs, and
-                // their transient peaks are serial; publication tolerance,
-                // fallback inputs, rank policy, and downstream checks do not change.
+                // Only a failed original-weight certificate authorizes retry.
+                // The scoped owner may retain certified columns if the partial
+                // retry fits the admitted full-batch allowance. Every solved
+                // RHS still starts from untouched original inputs.
                 recurrence_tolerance = tighter;
                 accumulated = Some(report);
             };
 
+            drop(batch);
             // The LSMR candidate never aliases `values`. A numerical failure
             // therefore leaves the authoritative checkpoint inputs untouched
             // and permits the existing MAP projector to certify them. Other
@@ -5344,6 +5337,194 @@ fn borrowed_weights(weights: ValidatedWeights<'_>) -> BorrowedMapWeights<'_> {
     match weights.values {
         Some(values) => BorrowedMapWeights::Provided(values),
         None => BorrowedMapWeights::Unit,
+    }
+}
+
+/// A checkpoint's original RHSs, topology and solver weights are immutable for
+/// this entire scope. Numerical setup is released before another weight frame
+/// or MAP fallback; only fresh original-weight certification can accept output.
+struct CheckpointLsmrBatch<'s, 'a> {
+    design: &'s BorrowedInterceptFeDesign<'a>,
+    values: &'s DenseMatrix,
+    weights: ValidatedWeights<'s>,
+    config: LsmrConfig,
+    prepared: BorrowedLsmrPrepared<'a>,
+    candidate: Option<DenseMatrix>,
+    memory: BorrowedLsmrCallMemory,
+    allowance: u128,
+    #[cfg(test)]
+    selective_allowance: Option<u128>,
+    #[cfg(test)]
+    attempted_rhs: Vec<usize>,
+}
+
+impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
+    fn new(
+        design: &'s BorrowedInterceptFeDesign<'a>,
+        weights: ValidatedWeights<'s>,
+        values: &'s DenseMatrix,
+        config: LsmrConfig,
+    ) -> Result<Self> {
+        let levels: Vec<_> = design.effects().iter().map(|effect| effect.n_levels()).collect();
+        let estimate = estimate_fe_solver_memory(
+            values.nrows(), values.ncols(), &levels,
+            rayon::current_num_threads(), config.local_size,
+        )?;
+        let preconditioner = resolve_borrowed_lsmr_preconditioner(
+            levels.len(), design.total_term_slots(), config.preconditioner,
+        );
+        let allowance = estimate.lsmr_bytes(preconditioner);
+        Ok(Self {
+            design, values, weights, config,
+            prepared: BorrowedLsmrPrepared::default(), candidate: None,
+            memory: BorrowedLsmrCallMemory::new(
+                estimate, preconditioner,
+                Some(FeSolverMemoryBudget { execution_bytes: 0, usable_bytes: allowance }), 0,
+            )?,
+            allowance,
+            #[cfg(test)]
+            selective_allowance: None,
+            #[cfg(test)]
+            attempted_rhs: Vec::new(),
+        })
+    }
+
+    fn selected_retry(&self, norms: &[f64], tolerance: f64) -> Result<Option<Vec<usize>>> {
+        if norms.len() != self.values.ncols()
+            || norms.iter().any(|v| !v.is_finite() || *v < 0.)
+        {
+            return Err(invalid_argument("checkpoint retry certificate axis is invalid"));
+        }
+        let count = norms.iter().filter(|&&norm| norm > tolerance).count();
+        if count == 0 || count == norms.len() { return Ok(None); }
+        let retained = self.candidate.as_ref().ok_or_else(||
+            invalid_argument("selective checkpoint retry has no candidate"))?
+            .storage_capacity() as u128 * 8;
+        let levels: Vec<_> = self.design.effects().iter().map(|effect| effect.n_levels()).collect();
+        let estimate = estimate_fe_solver_memory(
+            self.values.nrows(), count, &levels,
+            rayon::current_num_threads(), self.config.local_size,
+        )?;
+        let preconditioner = resolve_borrowed_lsmr_preconditioner(
+            levels.len(), self.design.total_term_slots(), self.config.preconditioner,
+        );
+        // The narrow model already charges one current-weight solver. Keep the
+        // full result metadata allowance and explicitly add retained columns
+        // plus the selection axis. If that cannot fit, release the candidate
+        // before the established full retry instead of raising its memory peak.
+        let without_positions = estimate.lsmr_bytes(preconditioner)
+            .checked_add(retained)
+            .and_then(|v| v.checked_add(self.memory.metadata_bytes
+                .saturating_sub(estimate.lsmr_result_metadata_bytes)))
+            .ok_or_else(|| allocation("selective checkpoint overlap overflows"))?;
+        let fits = |capacity: usize| without_positions
+            .checked_add(capacity as u128 * std::mem::size_of::<usize>() as u128)
+            .is_some_and(|bytes| bytes <= self.allowance);
+        #[cfg(test)]
+        if self.selective_allowance.is_some_and(|limit| without_positions > limit) {
+            return Ok(None);
+        }
+        if !fits(count) { return Ok(None); }
+        let mut positions = Vec::new();
+        if positions.try_reserve_exact(count).is_err() { return Ok(None); }
+        if !fits(positions.capacity()) { return Ok(None); }
+        positions.extend(norms.iter().enumerate().filter_map(|(rhs, &norm)|
+            (norm > tolerance).then_some(rhs)));
+        Ok(Some(positions))
+    }
+
+    fn solve_attempt(
+        &mut self,
+        recurrence_tolerance: f64,
+        retry_norms: Option<&[f64]>,
+        canonical_tolerance: f64,
+    ) -> Result<SolveReport> {
+        let started = Instant::now();
+        let selected = retry_norms.map(|norms|
+            self.selected_retry(norms, canonical_tolerance)).transpose()?.flatten();
+        if selected.is_none() {
+            // Full retries never overlap the rejected output bank.
+            self.candidate = None;
+        }
+        let rhs = match &selected {
+            Some(positions) => super::lsmr_batch::selected_rhs_columns(self.values, positions)?,
+            None => super::lsmr_batch::rhs_columns(self.values)?,
+        };
+        let views: Vec<_> = rhs.iter().map(Vec::as_slice).collect();
+        let resolved = resolve_borrowed_lsmr_preconditioner(
+            self.design.effects().len(), self.design.total_term_slots(), self.config.preconditioner,
+        );
+        let (mut solved, preconditioner_fallback) = self.prepared.solve(
+            self.design, self.weights, &views,
+            &LsmrOptions { tol: recurrence_tolerance, maxiter: self.config.max_iterations,
+                local_size: self.config.local_size },
+            self.config.preconditioner, borrowed_within_preconditioner(resolved),
+            self.memory.batch_policy,
+        )?;
+        #[cfg(test)]
+        self.attempted_rhs.push(rhs.len());
+        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+            emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=checkpoint_batch|rhs={}|full_rhs={}|selective={}|builds={}|batches={}",
+                rhs.len(), self.values.ncols(), u8::from(selected.is_some()),
+                self.prepared.builds, self.prepared.batches,
+            ));
+            for rhs in 0..solved.iterations.len() {
+                let position = selected.as_ref().map_or(rhs, |positions| positions[rhs]);
+                emit_solver_trace(&format!(
+                    "FEREG_SOLVER_TRACE|phase=checkpoint_batch_rhs|rhs={position}|converged={}|iterations={}|within_normal={:.17e}",
+                    solved.converged[rhs], solved.iterations[rhs], solved.residual[rhs],
+                ));
+            }
+        }
+        drop(views);
+        drop(rhs);
+        let position_bytes = selected.as_ref().map_or(0, |v|
+            v.capacity() as u128 * std::mem::size_of::<usize>() as u128);
+        let candidate_cells = self.candidate.as_ref().map_or(
+            self.values.nrows() as u128 * self.values.ncols() as u128,
+            |values| values.storage_capacity() as u128,
+        );
+        self.memory.include_payload(self.prepared.retained_bytes,
+            (candidate_cells + solved.demeaned.capacity() as u128 + solved.x.capacity() as u128) * 8
+                + position_bytes)?;
+        if self.candidate.is_none() {
+            self.candidate = Some(DenseMatrix::zeros(self.values.nrows(), self.values.ncols())?);
+        }
+        let candidate = self.candidate.as_mut().expect("checkpoint result was allocated");
+        self.memory.include_payload(self.prepared.retained_bytes,
+            (candidate.storage_capacity() as u128 + solved.demeaned.capacity() as u128
+                + solved.x.capacity() as u128) * 8 + position_bytes)?;
+        if let Some(positions) = &selected {
+            super::lsmr_batch::copy_selected_demeaned(&solved.demeaned, candidate, positions);
+        } else {
+            super::lsmr_batch::copy_demeaned(&solved.demeaned, candidate);
+        }
+        drop(std::mem::take(&mut solved.demeaned));
+        drop(std::mem::take(&mut solved.x));
+        let mut warnings: Vec<_> = solved.warnings.iter()
+            .map(|warning| format!("within preconditioner: {warning:?}")).collect();
+        if preconditioner_fallback {
+            warnings.insert(0, "automatic checkpoint LSMR preconditioner failed its positive-definiteness guard; retried unpreconditioned".to_owned());
+        }
+        Ok(SolveReport {
+            checkpoint_retries: 0,
+            solver_workspace_peak: self.memory.peak,
+            requested_solver: FeSolverKind::Lsmr, used_solver: FeSolverKind::Lsmr,
+            iterations: solved.iterations.iter().copied().max().unwrap_or(0),
+            stop_reason: SolveStopReason::Uncertified,
+            // The caller replaces this only with its fresh original-weight
+            // certificate. A recurrence stop never authorizes this checkpoint.
+            certificate: FeCertificate { passed: false, ..zero_certificate() },
+            normal_equation_residual: solved.residual.iter().copied().fold(0., f64::max),
+            setup_seconds: solved.time_setup
+                + (started.elapsed().as_secs_f64() - solved.time_total).max(0.),
+            solve_seconds: (solved.time_total - solved.time_setup).max(0.),
+            certification_seconds: 0., fallback_used: preconditioner_fallback,
+            requested_preconditioner: Some(self.config.preconditioner),
+            used_preconditioner: Some(if preconditioner_fallback { LsmrPreconditioner::Off } else { resolved }),
+            pilot_iterations: 0, pilot_contraction: 0., warnings,
+        })
     }
 }
 
@@ -11925,6 +12106,85 @@ mod tests {
                         for r in 0..rows {
                             assert!((fit.residualized()[(r, 0)] - expected[r]).abs() < 1e-10);
                             assert_eq!(fit.residualized()[(r, 1)], 0.);
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    #[test]
+    fn selective_checkpoint_retry_preserves_weighted_oracle_and_bounded_full_fallback() {
+        let mut codes = [Vec::new(), Vec::new(), Vec::new()];
+        for component in 0..2_u32 {
+            for a in 0..2_u32 { for b in 0..3_u32 { for c in 0..4_u32 {
+                for _ in 0..2 {
+                    codes[0].push(a + 2 * component);
+                    codes[1].push(b + 3 * component);
+                    codes[2].push(c + 4 * component);
+                }
+            } } }
+        }
+        let indices = [LevelIndex::from_codes(&codes[0], 4).unwrap(),
+            LevelIndex::from_codes(&codes[1], 6).unwrap(),
+            LevelIndex::from_codes(&codes[2], 8).unwrap()];
+        let sources = [ValidatedBorrowedInterceptSource::new(&codes[0], 4, &indices[0]).unwrap(),
+            ValidatedBorrowedInterceptSource::new(&codes[1], 6, &indices[1]).unwrap(),
+            ValidatedBorrowedInterceptSource::new(&codes[2], 8, &indices[2]).unwrap()];
+        let rows = codes[0].len();
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                for dimensions in [2, 3] {
+                    let design = BorrowedInterceptFeDesign::new(rows,
+                        sources[..dimensions].iter().map(|s| s.effect()).collect()).unwrap();
+                    for frame in 0..3 {
+                        let weights: Vec<_> = (0..rows).map(|r|
+                            (1. + (r / 2 % 7) as f64) * if r % 2 == 0 { 1. } else { 2. + frame as f64 }).collect();
+                        // Each paired contrast is orthogonal to every explicit
+                        // FE column under these weights, independent of LSMR.
+                        let contrast: Vec<_> = (0..rows).map(|r|
+                            if r % 2 == 0 { 0.5 } else { -0.5 / (2. + frame as f64) }).collect();
+                        let columns: Vec<Vec<_>> = (0..8).map(|k| (0..rows).map(|r| {
+                            if k == 7 { 0. } else {
+                                contrast[r] * (k + 1) as f64
+                                    + 0.3 * codes[0][r] as f64 - 0.2 * codes[1][r] as f64
+                            }
+                        }).collect()).collect();
+                        let original = DenseMatrix::from_columns(&columns).unwrap();
+                        let weight_frame = validate_weights(BorrowedMapWeights::Provided(&weights), rows).unwrap();
+                        for refuse in [false, true] {
+                            let mut workspace = BorrowedMapWorkspace::new(&design, rows, 8,
+                                &mut SystemWorkspaceReservation).unwrap();
+                            weighted_column_norms(&original, weight_frame,
+                                &mut workspace.reference_norms, &mut workspace.value_scales,
+                                &mut workspace.group_sums).unwrap();
+                            let mut batch = CheckpointLsmrBatch::new(&design, weight_frame, &original,
+                                LsmrConfig::default()).unwrap();
+                            batch.solve_attempt(1e-12, None, 1e-10).unwrap();
+                            let builds = batch.prepared.builds;
+                            assert!(builds > 0);
+                            let before = batch.candidate.as_ref().unwrap().as_slice().to_vec();
+                            for row in 0..rows { batch.candidate.as_mut().unwrap()[(row, 3)] += 0.125; }
+                            let failed = certify(&design, weight_frame, batch.candidate.as_ref().unwrap(),
+                                1e-10, &mut workspace).unwrap();
+                            assert!(!failed.passed);
+                            assert_eq!(workspace.rhs_relative_infinity_norms.iter()
+                                .filter(|&&v| v > 1e-10).count(), 1);
+                            if refuse { batch.selective_allowance = Some(0); }
+                            batch.solve_attempt(1e-14, Some(&workspace.rhs_relative_infinity_norms), 1e-10).unwrap();
+                            assert_eq!(batch.prepared.builds, builds);
+                            assert_eq!(batch.attempted_rhs, vec![8, if refuse { 8 } else { 1 }]);
+                            let candidate = batch.candidate.as_ref().unwrap();
+                            assert!(certify(&design, weight_frame, candidate, 1e-10, &mut workspace).unwrap().passed);
+                            for row in 0..rows { for k in 0..8 {
+                                let expected = if k == 7 { 0. } else { contrast[row] * (k + 1) as f64 };
+                                assert!((candidate[(row, k)] - expected).abs() < 1e-10);
+                                if !refuse && k != 3 {
+                                    assert_eq!(candidate[(row, k)].to_bits(), before[row * 8 + k].to_bits());
+                                }
+                            } }
+                            assert_eq!(original.as_slice(), DenseMatrix::from_columns(&columns).unwrap().as_slice());
+                            assert!(batch.memory.peak.bytes().unwrap() as u128 <= batch.allowance);
                         }
                     }
                 }

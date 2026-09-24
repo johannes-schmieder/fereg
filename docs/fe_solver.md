@@ -95,6 +95,15 @@ history. Numerical refusal, movement or changed basis retains canonical retry;
 current-weight certificates and final inference authority remain independent.
 Ordinary LSMR, CMG, one-FE and OLS routing are unchanged.
 
+ADR 0153 scopes prepared categorical checkpoint LSMR setup to one immutable
+weight/design/RHS call. A failed fresh canonical certificate may retry only its
+failing columns, provided retained-output overlap fits the existing full-batch
+allowance; otherwise the rejected output is released before a full retry.
+Every attempt receives one complete fresh original-weight canonical certificate.
+The generic adapter's duplicate certificate is removed only at this boundary.
+Other canonical checks, the tighter retry limit and untouched-input MAP fallback
+remain unchanged. No prepared numerical state crosses a weight frame.
+
 Under ADR 0146, reusable two-FE categorical initial checks and MAP pilot sweeps
 may borrow the idle PCG group banks when row-by-RHS work warrants parallel group
 reductions. A scoped owner restores both banks before current-weight PCG

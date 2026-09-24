@@ -10,6 +10,121 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Selective PPML checkpoints adopted; efficient full checkpoint solves next — 2026-09-24
+
+The active broad objective remains **whole public PPML <=0.90 times comparable
+pinned stock fixest wherever reasonably achievable, per case**. This opening
+supersedes earlier next-step orders. The selective-retry milestone is complete;
+the broad objective is unfinished. Move to the **remaining full categorical
+checkpoint solves**, not another retry-threshold or tiny certificate experiment.
+
+Adopt `selective1`, based on `950aa44a`, under
+[ADR 0153](docs/adr/0153-selective-current-frame-ppml-checkpoints.md) and the
+[source-bound report](benchmarks/reports/development/ppml-selective-checkpoint-local-2026-09-24/README.md).
+All **543 captured computational inputs** match plugin
+`aab5ad93a4a43cf49cf8b6a72e91723e8ef65fc268082f7827bf28cd47224b3f`.
+The verified/restored archive contains **7,968 logical receipts**, SHA-256
+`ce5d9200c4fd93a24ce8832a37706017e1dd820634fc6a419fba4ee4004c6949`.
+All builds, tests, public fits, diagnostics and archive/restore operations are
+terminal. There is no pending process to restart.
+
+### Adopted mechanism, science and memory
+
+Retain existing prepared LSMR setup only within one immutable checkpoint call.
+After a fresh canonical failure, refine only failed RHSs from original inputs
+when retained-output overlap fits the existing full-batch allowance. Otherwise
+release the candidate and perform the existing full retry. Recheck the complete
+combined result under original weights at the unchanged canonical tolerance.
+Drop scoped state before another frame or untouched-input MAP fallback.
+
+The old temporary helper certificate was overwritten by the owning canonical
+check and was not another acceptance gate. Its duplicate workspace, norm scan
+and certificate are removed at this boundary. Ordinary joint LSMR, one-FE,
+slopes, other explicit engines and OLS keep their routes. All downstream rank,
+finite solve, model-space, score/objective, reconstruction, final Hessian,
+inference and transactional publication requirements remain unchanged.
+
+**55 distinct Rust tests**, production ABI/panic checks, **four licensed fixtures**,
+**198 public applications**, **186 public-state checks**, **nine independent
+Python oracles**, **68 native pairs** and **62 direct stock comparisons** pass.
+Six separate diagnostic applications pass. Independent weighted contrasts test
+partial refinement, changed frames, memory refusal and preserved column bits;
+Poisson/Hessian/sandwich fixtures cover unit/FW/PW, T1/T4 and robust/cluster.
+Generated terms, reconstruction, separation, rollback and OLS controls pass.
+No application failure, timeout, scientific exclusion or detected contention.
+
+Fifty-nine native export pairs are exact, including every excluded PPML and OLS
+control. Maximum remaining differences: coefficient 3.631e-12, covariance
+3.300e-16, mean 2.265e-9, likelihood/deviance each 2.274e-13. All 62 PPML pairs
+retain outer iteration/scientific metadata, modeled peak and scratch bytes.
+Tracked peaks match in 22; changes range -329,592 to +73,232 bytes. Longer setup
+and accepted-output lifetimes stay within the admitted allowance, but no
+universal physical-memory reduction or allocator attribution is claimed.
+
+### Current public timings and remaining losses
+
+Fresh seed **202609359 is consumed and frozen**. Five rotations, robust inference
+and fitted means, fast mode. Stock is pinned/unmodified with `glm.tol=1e-10`,
+`fixef.tol=1e-11`, matched threads and serial BLAS. Medians in milliseconds;
+the report preserves all distributions and losing pairs.
+
+| Case | Baseline | Current | Stock | Current/stock | 0.90 target |
+|---|---:|---:|---:|---:|---:|
+| Dense two FE N18000/K13/T4 | 81 | 79 | 58 | 1.362 | 52.2 |
+| Sparse three FE N27000/K8/T8 | 233 | 231 | 5411 | 0.043 | 4869.9 |
+| Disconnected two FE N21600/K9/T4 | 82 | 81 | 54 | 1.500 | 48.6 |
+| Unbalanced two FE N15840/K11/T1 | 135 | 111 | 79 | 1.405 | 71.1 |
+| Narrow two FE N12960/K3/T1 | 68 | 66 | 35 | 1.886 | 31.5 |
+| Weak barbell N8640/K4/T1 | 37 | 36 | 595 | 0.061 | 535.5 |
+
+Unbalanced improves 17.8%, with all five pairs down 23–25 ms. Narrow and weak
+also improve every pair. Dense has two +1-ms losses, sparse one +15-ms loss,
+disconnected one +2-ms loss and two ties. Four fresh cases still lose to stock;
+sparse and weak already cleared its target. Development wide N16320/K16/T4 is
+130→107 vs61 (17.7%); unbalanced three FE 165→161 vs112; narrow ties66 vs35.
+
+Excluded controls: one FE 45→44 vs24; low two FE 108→109 vs118 with two +2-ms pairs;
+multiple slopes 124→123 vs144; low K64/T8 321→318 vs222. OLS medians 35→35 and 72→71
+include +1/+2-ms losing pairs. Small pilots include 11→12 vs13; no timing claim
+from one shot. Low three FE initially 100→99 vs70 has +60/-83-ms spikes in both
+artifacts; identical-input follow-up is 102→99 vs72 with all five pairs improving.
+Science/iteration metadata and exports are exact. Preserve the original spikes
+as unexplained; close that bounded timing check, not an endless repeat loop.
+
+### Next bounded implementation milestone
+
+The wide diagnostic proves selective retry: strict 17-RHS failure becomes a
+one-RHS retry with one setup build, solve 15.196→2.058 ms. Across checkpoints,
+RHS solves 53→37 and summed column recurrences 555→334. Duplicate certificate
+calls 12→8 and weighted-norm calls 16→8. Native root 122.334→98.475 ms; checkpoint
+adapter 53.849→30.951 ms; reprojection 42.817→22.615 ms. These spans nest.
+Six joint solves still cost 22.985 ms and two canonical rank constructions 10.052 ms.
+
+**Compare current LSMR checkpoints with an efficient component-scaled coefficient
+Schur engine on identical frozen frames**, reusing existing PPML graph/operator
+mechanisms. Generalize the accepted direct two-FE owner and current-weight setup
+where evidence supports it; preserve original-weight acceptance, dynamic-range
+behavior and sparse/weak wins. Do not just remove ADR 0067 size guards or revive
+the rejected all-coefficient canonical route without repairing its failure.
+The wide public 107-ms median still needs about 49% reduction to reach 54.9 ms;
+checkpoint improvements alone cannot be assumed sufficient. Measure setup,
+per-RHS operations, certification, reconstruction and whole public cost.
+
+Use development 347 and at most a small number of coherent candidates. Confirm
+promising gains on a newly predeclared unused seed; do not tune on 359 or protected
+211/212. Keep fresh cases and excluded controls proportionate. Commit successful
+replacement and remove superseded machinery. Then address narrow original-input
+passes, one-FE costs and threaded-wide low-memory work. One-FE control borrowing
+and shared products already exist under ADRs 0132/0137/0139; inspect current code
+before repeating earlier hypotheses.
+
+Known boundaries remain: static allocation source drift; weighted constrained
+fits; explicit/insufficient-budget nonretaining-CG span instability; historical
+large one-FE stock-mean discrepancy; separate 1e6-shift failure; synthetic exact-fit
+three-FE ordinary-LSMR normal-certificate refusal; SCC/Linux T1/8/16 and physical
+caps. No SCC auth retry, stopped campaign, push, release or qualification. Frozen
+77/16/111 definitions remain unchanged.
+
 ## Categorical PPML accepted-frame finalization adopted; checkpoint batching next — 2026-09-24
 
 The active broad objective remains **whole public PPML <=0.90 times comparable

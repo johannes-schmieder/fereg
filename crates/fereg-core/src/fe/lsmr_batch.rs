@@ -56,9 +56,27 @@ const TRANSPORT_ROWS: usize = 32;
 const TRANSPORT_COLUMNS: usize = 8;
 
 pub(super) fn rhs_columns(values: &DenseMatrix) -> crate::error::Result<Vec<Vec<f64>>> {
+    rhs_columns_mapped(values, values.ncols(), |column| column)
+}
+
+pub(super) fn selected_rhs_columns(
+    values: &DenseMatrix,
+    positions: &[usize],
+) -> crate::error::Result<Vec<Vec<f64>>> {
+    if positions.iter().any(|&column| column >= values.ncols()) {
+        return Err(FeregError::new(ErrorCode::InvalidArgument, "LSMR selected RHS is out of bounds"));
+    }
+    rhs_columns_mapped(values, positions.len(), |column| positions[column])
+}
+
+fn rhs_columns_mapped(
+    values: &DenseMatrix,
+    width: usize,
+    position: impl Fn(usize) -> usize + Sync,
+) -> crate::error::Result<Vec<Vec<f64>>> {
     let mut columns = Vec::new();
-    reserve(&mut columns, values.ncols()).map_err(|e| e.into_fereg("LSMR RHS transport"))?;
-    for _ in 0..values.ncols() {
+    reserve(&mut columns, width).map_err(|e| e.into_fereg("LSMR RHS transport"))?;
+    for _ in 0..width {
         let mut column = Vec::new();
         reserve(&mut column, values.nrows()).map_err(|e| e.into_fereg("LSMR RHS transport"))?;
         column.resize(values.nrows(), 0.0);
@@ -71,7 +89,7 @@ pub(super) fn rhs_columns(values: &DenseMatrix) -> crate::error::Result<Vec<Vec<
             for start in (0..values.nrows()).step_by(TRANSPORT_ROWS) {
                 let end = (start + TRANSPORT_ROWS).min(values.nrows());
                 for (offset, column) in columns.iter_mut().enumerate() {
-                    let c = tile * TRANSPORT_COLUMNS + offset;
+                    let c = position(tile * TRANSPORT_COLUMNS + offset);
                     for (row, destination) in column[start..end].iter_mut().enumerate() {
                         *destination = values[(start + row, c)];
                     }
@@ -97,6 +115,31 @@ pub(super) fn copy_demeaned(columns: &[f64], values: &mut DenseMatrix) {
             for column in 0..width {
                 let source = &columns
                     [column * rows + start..column * rows + start + destination.len() / width];
+                for (row, value) in source.iter().enumerate() {
+                    destination[row * width + column] = *value;
+                }
+            }
+        });
+}
+
+/// Patch independently solved columns while retaining every already-certified
+/// RHS. Only bitwise transport happens here; the owner recertifies the full bank.
+pub(super) fn copy_selected_demeaned(
+    columns: &[f64],
+    values: &mut DenseMatrix,
+    positions: &[usize],
+) {
+    let rows = values.nrows();
+    let width = values.ncols();
+    assert_eq!(columns.len(), rows * positions.len());
+    assert!(positions.iter().all(|&column| column < width));
+    if width == 0 { return; }
+    values.as_mut_slice().par_chunks_mut(TRANSPORT_ROWS * width)
+        .enumerate().for_each(|(tile, destination)| {
+            let start = tile * TRANSPORT_ROWS;
+            for (source_column, &column) in positions.iter().enumerate() {
+                let source = &columns[source_column * rows + start
+                    ..source_column * rows + start + destination.len() / width];
                 for (row, value) in source.iter().enumerate() {
                     destination[row * width + column] = *value;
                 }
@@ -195,6 +238,36 @@ pub(super) fn solve_prepared_batch(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn selected_transport_preserves_other_columns_and_bits_at_tile_edges() {
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                for rows in [1, 31, 32, 33, 257] {
+                    for width in [3, 8, 17, 67] {
+                        let mut values = DenseMatrix::from_row_major(rows, width,
+                            (0..rows * width).map(|i| f64::from_bits(
+                                (i as u64).wrapping_mul(0x9e3779b97f4a7c15))).collect()).unwrap();
+                        let original = values.as_slice().to_vec();
+                        let positions = [width - 1, 0, width / 2];
+                        let mut rhs = selected_rhs_columns(&values, &positions).unwrap();
+                        for (j, column) in rhs.iter_mut().enumerate() {
+                            for (row, value) in column.iter_mut().enumerate() {
+                                assert_eq!(value.to_bits(), original[row * width + positions[j]].to_bits());
+                                *value = f64::from_bits(value.to_bits() ^ 0x8000000000000000);
+                            }
+                        }
+                        copy_selected_demeaned(&rhs.concat(), &mut values, &positions);
+                        for row in 0..rows { for column in 0..width {
+                            let expected = original[row * width + column].to_bits()
+                                ^ if positions.contains(&column) { 0x8000000000000000 } else { 0 };
+                            assert_eq!(values[(row, column)].to_bits(), expected);
+                        } }
+                    }
+                }
+            });
+        }
+    }
 
     #[test]
     fn transport_preserves_bits_at_tile_edges_and_across_threads() {
