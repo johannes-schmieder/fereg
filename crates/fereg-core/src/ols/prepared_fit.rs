@@ -12474,9 +12474,13 @@ mod tests {
                 .solve_fresh()
                 .expect("fatal injection must leave the session reusable");
             assert_eq!(
-                retry.fit().absorption_report().used_solver,
+                retry.fit().absorption_report().requested_solver,
                 FeSolverKind::Lsmr
             );
+            // With the fault consumed, the admitted two-FE Schur accelerator
+            // can again certify the requested checkpoint before LSMR runs.
+            assert_eq!(retry.fit().absorption_report().used_solver, FeSolverKind::Map);
+            assert!(!retry.fit().absorption_report().fallback_used);
             assert!(retry.certified());
         }
 

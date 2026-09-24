@@ -153,6 +153,14 @@ automatic alternatives and certified CG fallback, subject to their own admission
 
 ## Fast and low execution
 
+Three-FE PPML checkpoints may substitute centered Schur geometry for the admitted
+LSMR transient frame (ADR 0163). The complete checked bound includes both reduced
+matrices, normalized weights, sparse couplings, group and worker state, and both
+output layouts; actual capacities consume that allowance. Geometry is current-call
+only and is dropped before any LSMR fallback. Optional refusal leaves the existing
+plan affordable, with no increase in modeled selected or scratch bytes. This
+does not close the documented whole-action inventory or physical-cap gaps.
+
 Publication PPML's direct two-FE categorical Schur owner admits component roots
 and refreshed component scales: at most 16 bytes per smaller-partition level on
 supported 64-bit platforms (ADR 0147). Connected owners discard their temporary

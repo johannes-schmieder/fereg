@@ -18,6 +18,8 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 
 use super::map::ReusableMapCapacities;
 
+mod three_fe_schur;
+
 pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
 pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
 // Fixed row partitions make the compensated dot reduction independent of the
@@ -1852,8 +1854,22 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 Some(w) => validate_weights(BorrowedMapWeights::Provided(w), values.nrows())?,
                 None => weights,
             };
-            let (schur, schur_cost) = if balanced_weights.is_none() {
-                self.try_checkpoint_schur(weights, &values, config)?
+            #[cfg(not(test))]
+            let allow_schur = true;
+            #[cfg(test)]
+            // A solver-specific fault must reach LSMR unless the test also
+            // explicitly requests a preceding Schur rejection. Otherwise an
+            // accepted accelerator silently bypasses the boundary under test.
+            let allow_schur = !(self.checkpoint_lsmr_certificate_failure
+                || self.checkpoint_lsmr_retry_error.is_some())
+                || self.checkpoint_schur_iteration_cap.is_some()
+                || self.checkpoint_schur_certificate_failure;
+            let (schur, schur_cost) = if balanced_weights.is_none() && allow_schur {
+                if self.design.effects().len() == 3 {
+                    self.try_checkpoint_three_fe_schur(weights, &values, config)?
+                } else {
+                    self.try_checkpoint_schur(weights, &values, config)?
+                }
             } else {
                 (None, CheckpointSchurCost::default())
             };
@@ -9377,6 +9393,7 @@ struct CheckpointSchurCost {
     contraction: f64,
     setup_seconds: f64,
     solve_seconds: f64,
+    certification_seconds: f64,
     rejected: bool,
 }
 
@@ -9390,6 +9407,7 @@ impl CheckpointSchurCost {
             .saturating_add(self.iterations);
         report.setup_seconds += self.setup_seconds;
         report.solve_seconds += self.solve_seconds;
+        report.certification_seconds += self.certification_seconds;
         report.pilot_iterations = 0;
         report.pilot_contraction = self.contraction;
         report.checkpoint_retries += usize::from(self.rejected);

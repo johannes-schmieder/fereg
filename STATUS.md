@@ -10,7 +10,94 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Three-FE Schur prototype selected; production integration next — 2026-09-24
+## Admitted three-FE Schur checkpoints adopted — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This checkpoint adopts [ADR 0163](docs/adr/0163-admitted-three-fe-schur-checkpoints.md),
+completing production integration of the selected centered Schur solver.
+
+The current-call owner eliminates the largest categorical partition, builds one
+weighted reduced matrix and solves RHSs independently before original-input
+reconstruction and the unchanged full fresh certificate. Structural work
+admission requires q² <= 6N; its complete checked temporary bound must fit the
+already admitted checkpoint LSMR allowance. All reservations are fallible and
+actual capacities are checked. Rejected work is reported, inputs survive
+refusal, fatal errors propagate, and all state is dropped before LSMR fallback.
+No geometry persists across weight frames. Ordinary joint IRLS and OLS algorithms
+are unchanged. Mixed certified low-memory tiles now merge correctly without
+mislabeling successful Schur work as an LSMR failure.
+
+Artifact **`threeschur3`**, based on `145ab6d2` plus the captured five-file overlay,
+matches all **546 computational inputs**. Plugin SHA-256:
+`a8366911510287757fb4644ff47ab04030521991a2067c3964abbf8c52ef4df0`.
+The [source-bound report](benchmarks/reports/development/ppml-three-fe-schur-integration-local-2026-09-24/README.md)
+preserves exact sources, rejected integration states, all distributions, scientific
+exclusions and memory costs. Its archive has 7,761 logical receipts, was verified
+and restored, and has SHA-256
+`18476514a1f36bb423ee8ca53306db8cb222ae99690747ba43457d788404f355`.
+All builds, tests, fits, audits and archive/restore processes are terminal.
+
+Fresh seed **202609375 is consumed/frozen**, five matched rotations, robust
+inference plus fitted means, medians in milliseconds:
+
+| Case | Baseline | Current | Stock | Current/stock |
+|---|---:|---:|---:|---:|
+| Unbalanced 3FE N24960/K10/T4 | 121 | 95 | 100 | 0.950 |
+| Low 3FE N15840/K9/T4 | 109 | 73 | 201 | 0.363 |
+| Serial 3FE N13200/K4/T1 | 101 | 61 | 254 | 0.240 |
+| Sparse 3FE N26880/K12/T8 | 223 | 162 | 7305 | Unranked |
+| Excluded narrow 2FE N13200/K4/T1 | 48 | 46 | 47 | 0.979 |
+| Excluded disconnected 2FE N22080/K14/T4 | 79 | 79 | 74 | Unranked |
+| Excluded low 2FE N18000/K28/T8 | 118 | 118 | 80 | 1.475 |
+| Excluded weak 2FE N9600/K5/T1 | 39 | 39 | 765 | 0.051 |
+| Excluded two slope partitions N17280/K8/T4 | 75 | 75 | 87 | 0.862 |
+
+All twenty fresh three-FE target pairs improve; median reductions are
+21.5%/33.0%/39.6%/27.4%. Development target medians improve 15.8%/34.1%/32.1%.
+Sparse stock means and disconnected stock coefficients exceed the pairwise
+envelopes in every fresh repetition, against both native artifacts; neither is
+ranked or adjudicated as reference error. Excluded native medians improve/tie,
+with individual +1–3-ms losses. OLS scientific exports are exact: categorical
+medians tie at 17 ms; slope OLS retains a one-ms median loss, 14→15. The earlier
+143-ms prototype tail does not recur; its cause is still unknown. No universal
+non-regression or universal stock win is claimed.
+
+All **200 public applications**, **180 independent PPML public-state checks**,
+**60 native PPML pairs** and **ten OLS comparisons** pass. Direct stock comparison
+passes 15/15 development and 35/45 fresh, with the ten exclusions above. Native
+maximum absolute differences: coefficient 1.925e-12, V 6.001e-17, means 2.402e-9,
+likelihood 7.276e-12, deviance zero. **65 distinct focused Rust tests** pass on the
+final source; the unchanged full-width two-FE control also passed on the preceding
+artifact before a test-only assertion correction. **Four licensed fixtures** pass
+on the final artifact, including explicit Poisson/Hessian/sandwich oracles and the
+pool1/T4 low-memory allocation audit with zero events/growth and warm/fresh parity.
+The source-bound report distinguishes early integration failures and a baseline
+fault-injection coverage bug, repaired in the test seam without changing science.
+
+Modeled selected/scratch and actual scratch bytes are unchanged; new storage is
+now explicitly bounded by the existing LSMR allowance. Fresh target tracked peaks
+fall about 0.8–6.7 MB, with excluded peaks unchanged. No whole-process physical-cap
+claim. q² storage and dense group-covariance setup remain costs to evaluate on
+larger dense-group designs; the structural gate is not a universal timing proof.
+
+**Next bounded milestone: wide low-memory two-FE canonical storage/products and
+joint reconstruction.** Its current 118 versus 80 ms requires another 46 ms to
+reach the 72-ms target; first-run projection/strict-final phases are 31.71/32.26 ms.
+Start the frozen-frame coefficient-backed-view versus scratch-materialization
+comparison from the prior scoped attribution. Charge G-by-K state and every
+overlap; preserve independent canonical rank/Hessian and affordable refusal.
+Retain the new three-FE wins, weak/slope wins and OLS as controls. The unbalanced
+three-FE residue is now 5 ms, with ordinary projection about 32 ms; avoid another
+long tuning cycle there before the larger storage gap. Do not tune solver gates
+on seed375 or reopen the rejected GS/residual-extrapolation probes.
+
+Preserve 77/16/111 definitions, static allocation-inventory drift, constrained-fit/
+nonretaining-CG failures and existing unresolved comparisons. No SCC retry,
+stopped campaign restart, push, release or broad qualification. STATUS remains
+the sole mutable handover record.
+
+## Historical: three-FE Schur prototype selected; production integration next — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
 fixest wherever reasonably achievable on designs with at least two FE

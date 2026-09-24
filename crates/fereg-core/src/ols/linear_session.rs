@@ -1389,8 +1389,7 @@ fn merge_canonical_projection_reports(
     };
     let checkpoint = |r: &SolveReport| {
         r.requested_solver == FeSolverKind::Lsmr
-            && (r.used_solver == FeSolverKind::Lsmr
-                || (r.used_solver == FeSolverKind::Map && r.fallback_used))
+            && matches!(r.used_solver, FeSolverKind::Lsmr | FeSolverKind::Map)
     };
     if target.certified()
         && source.certified()
@@ -1399,7 +1398,8 @@ fn merge_canonical_projection_reports(
         && (checkpoint(&source) || no_work(&source))
     {
         // A zero-iteration input certificate is neutral to the aggregate
-        // engine. Any actual MAP fallback governs the combined row. Preserve
+        // engine. Any actual coefficient-MAP solve or fallback governs the row.
+        // A successful Schur accelerator is not a failed LSMR attempt. Preserve
         // a uniform preconditioner; a heterogeneous aggregate has no single one.
         let used = if (target.used_solver == FeSolverKind::Map && !no_work(target))
             || (source.used_solver == FeSolverKind::Map && !no_work(&source))
@@ -7040,6 +7040,28 @@ mod checkpoint_report_tests {
             assert_eq!(a.used_preconditioner, lsmr.used_preconditioner);
             assert_eq!(a.certification_seconds, 6.);
             assert_eq!(a.iterations, 12);
+        }
+        let mut schur = report(FeSolverKind::Lsmr);
+        schur.used_solver = FeSolverKind::Map;
+        for reports in [
+            [zero.clone(), lsmr.clone(), schur.clone()],
+            [lsmr.clone(), schur.clone(), zero.clone()],
+            [schur.clone(), zero.clone(), lsmr.clone()],
+            [zero.clone(), schur.clone(), lsmr.clone()],
+            [lsmr.clone(), zero.clone(), schur.clone()],
+            [schur, lsmr.clone(), zero.clone()],
+        ] {
+            let mut merged = reports[0].clone();
+            for source in &reports[1..] {
+                merge_canonical_projection_reports(&mut merged, source.clone()).unwrap();
+            }
+            assert!(merged.certified() && !merged.fallback_used);
+            assert_eq!(merged.requested_solver, FeSolverKind::Lsmr);
+            assert_eq!(merged.used_solver, FeSolverKind::Map);
+            assert_eq!(merged.used_preconditioner, None);
+            assert_eq!(merged.checkpoint_retries, 0);
+            assert_eq!(merged.certification_seconds, 9.);
+            assert_eq!(merged.iterations, 12);
         }
         let mut fallback = report(FeSolverKind::Lsmr);
         fallback.used_solver = FeSolverKind::Map;

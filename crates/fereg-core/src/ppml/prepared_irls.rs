@@ -6672,7 +6672,7 @@ mod tests {
     }
 
     #[test]
-    fn low_three_fe_audit_certifies_map_window_independently_of_lsmr_final_checkpoint() {
+    fn low_three_fe_audit_certifies_map_window_independently_of_checkpoint_engine() {
         fn stable_probe() -> PpmlAllocatorSnapshot {
             PpmlAllocatorSnapshot { current_bytes: 16384, peak_bytes: 32768, allocation_events: 41 }
         }
@@ -6692,7 +6692,12 @@ mod tests {
         let audit = memory.steady_state_allocation_certificate.unwrap();
         assert!(audit.passed && audit.fresh_warm_equivalent);
         assert_eq!(audit.linear_route, FeSolverKind::Map);
-        assert_eq!(memory.linear_route, Some(FeSolverKind::Lsmr));
+        // The admitted centered Schur checkpoint is a coefficient-space MAP
+        // accelerator. Its allocating canonical work is outside the audited
+        // ordinary window; the separately certified LSMR alternative remains
+        // an allowed final route if Schur declines.
+        assert_eq!(memory.linear_route, Some(FeSolverKind::Map));
+        assert!(memory.plan.audit_route_matches_final(FeSolverKind::Map, FeSolverKind::Lsmr));
         for route in [FeSolverKind::Auto, FeSolverKind::Cg, FeSolverKind::Cmg] {
             assert!(!memory.plan.audit_route_matches_final(FeSolverKind::Map, route));
         }

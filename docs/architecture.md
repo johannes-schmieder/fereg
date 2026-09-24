@@ -72,7 +72,11 @@ checkpoints may instead use the existing coefficient Schur accelerator under [AD
 one current-weight preparation, useful full-batch progress and PPML component
 scaling replace the separate probe. A bounded original-input copy preserves
 selective LSMR fallback, and the fresh original-weight canonical certificate
-retains its exact tolerance. Ordinary joint LSMR remains separate. The ownership,
+retains its exact tolerance. Three-FE checkpoints can use a current-call centered
+Schur matrix under [ADR 0163](adr/0163-admitted-three-fe-schur-checkpoints.md),
+subject to reduced-operator work and complete transient-memory admission.
+Original-input reconstruction and fresh certification still govern acceptance;
+optional refusal preserves LSMR. Ordinary joint LSMR remains separate. The ownership,
 invalidation, and zero-cost OLS rules are fixed by
 [ADR 0015](adr/0015-shared-prepared-weighted-linear-boundary.md), and PPML
 memory/routing rules by
