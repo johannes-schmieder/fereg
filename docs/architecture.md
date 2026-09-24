@@ -49,6 +49,13 @@ Poisson steps. Full outer, strict and final-Hessian acceptance remains independe
 the optional owner and exact-state reuse boundary are specified in
 [ADR 0127](adr/0127-profiled-one-fe-poisson.md).
 
+Admitted fast one-FE canonical preparation uses the independently certified
+group-center builder and materializes its result once into dense storage;
+strict refresh rewrites that same bank from current weights and immutable
+originals. Finite products and inference retain contiguous dense access.
+Low mode retains implicit rows. See
+[ADR 0158](adr/0158-group-centered-fast-one-fe-ppml.md).
+
 The public PPML path reuses the prepared model,
 certified weighted-linear kernels, and sandwich reductions below the
 estimator-policy boundary. OLS remains a one-shot caller; PPML owns separation

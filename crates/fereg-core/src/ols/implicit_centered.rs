@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use super::linear_session::{compensated_add, stable_norm, update_scaled_square};
 use super::{PreparedOlsColumnKind, PreparedOlsExecutionMode};
+use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
     BorrowedInterceptEffect, BorrowedMapWeights, FeCertificate, FeSolverKind, SolveReport,
@@ -217,6 +218,29 @@ impl ImplicitCenteredDesign {
     }
     pub(super) fn invalidate(&mut self) {
         self.valid = false;
+    }
+
+    /// Materialize the independently certified differences into the fast
+    /// session's one retained bank. Geometry is temporary on this route;
+    /// finite products and inference continue to read contiguous dense rows.
+    pub(super) fn write_dense(&self, output: &mut DenseMatrix) -> Result<()> {
+        let view = self.view()?;
+        if output.nrows() != view.rows() || output.ncols() != view.columns() {
+            return Err(invalid());
+        }
+        if view.columns() == 0 {
+            return Ok(());
+        }
+        let columns = view.bind_columns()?;
+        output.as_mut_slice().par_chunks_mut(view.columns()).enumerate()
+            .try_for_each(|(row, values)| -> Result<()> {
+                let group = view.codes()[row] as usize;
+                for (column, value) in values.iter_mut().enumerate() {
+                    *value = columns[column].value(row)? - view.center(column, group);
+                    if !value.is_finite() { return Err(numerical()); }
+                }
+                Ok(())
+            })
     }
     pub(super) fn compact(&mut self, positions: &[usize]) -> Result<()> {
         if !self.valid

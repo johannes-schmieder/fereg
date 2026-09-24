@@ -1074,11 +1074,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         false
     };
-    // Group centers remove the low route's projected scratch artifact. The
-    // dense route's contiguous finite moments remain faster on measured narrow
-    // designs, so it retains its existing representation.
-    let implicit_one_fe_admitted = if one_fe_profile_admitted
-        && config.linear.execution.mode == PreparedOlsExecutionMode::Low
+    // Low mode retains group centers; fast mode uses the same certified
+    // construction, then writes the result once into its retained dense bank.
+    // Admit the extra geometry without crediting the replaced projector.
+    let group_centered_one_fe_admitted = if one_fe_profile_admitted
         && shared_prepared.is_some()
     {
         let bytes = crate::ols::ImplicitCenteredDesign::bytes(
@@ -1340,8 +1339,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             fe_design,
         )?
     };
-    if implicit_one_fe_admitted {
-        session.enable_implicit_one_fe(
+    if group_centered_one_fe_admitted {
+        session.enable_group_centered_one_fe(
             shared_prepared.ok_or_else(|| invalid_argument("implicit prepared owner is absent"))?,
         )?;
     }

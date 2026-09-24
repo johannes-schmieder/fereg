@@ -150,6 +150,8 @@ fn implicit_refresh_matches_independent_group_sums_and_revokes_failed_frames() {
                             )
                             .unwrap();
                         assert!(report.certified());
+                        let mut dense = crate::data::DenseMatrix::zeros(response.len(), ids.len()).unwrap();
+                        frame.write_dense(&mut dense).unwrap();
                         let view = frame.view().unwrap();
                         let mut row = vec![0.; ids.len()];
                         for observation in 0..response.len() {
@@ -172,6 +174,7 @@ fn implicit_refresh_matches_independent_group_sums_and_revokes_failed_frames() {
                                     prepared.fit_column_value(ids[column], observation).unwrap()
                                         - mean;
                                 assert!((value - expected).abs() < 1e-12);
+                                assert!((dense[(observation, column)] - expected).abs() < 1e-12);
                                 assert!(value.is_finite());
                             }
                         }
@@ -191,6 +194,9 @@ fn implicit_refresh_matches_independent_group_sums_and_revokes_failed_frames() {
                     )
                     .is_err());
                 assert!(frame.view().is_err());
+                let mut unpublished = crate::data::DenseMatrix::zeros(response.len(), ids.len()).unwrap();
+                assert!(frame.write_dense(&mut unpublished).is_err());
+                assert!(unpublished.as_slice().iter().all(|&v| v == 0.0));
                 frame
                     .refresh(
                         &response,
@@ -255,8 +261,8 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
         )
         .unwrap();
         let other = fixture(true);
-        assert!(session.enable_implicit_one_fe(other).is_err());
-        session.enable_implicit_one_fe(source.clone()).unwrap();
+        assert!(session.enable_group_centered_one_fe(other).is_err());
+        session.enable_group_centered_one_fe(source.clone()).unwrap();
         let output = session.solve_fresh().unwrap();
         assert!(output.certified());
         assert_eq!(output.fit().kept_generated_columns().len(), 2);
@@ -273,6 +279,18 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
             1,
             "exact duplicate loses one finite rank direction"
         );
+        for generation in 2..=4 {
+            let next_weights: Vec<_> = (0..y.len()).map(|i| 0.5 + ((i * 7 + generation as usize) % 13) as f64).collect();
+            let maximum = next_weights.iter().copied().fold(0.0_f64, f64::max);
+            session.refresh_weights(BorrowedMapWeights::Provided(&next_weights), PreparedOlsBreadWeightScale {
+                weight_kind: None, solver_weight_divisor: maximum,
+                reference_weight_multiplier: maximum, reference_weight_sum: next_weights.iter().sum(),
+            }, generation).unwrap();
+            let strict = session.strictify().unwrap();
+            assert!(strict.certified());
+            assert_eq!(strict.fit().kept_generated_columns().len(), 2);
+            assert!(strict.fit().residuals().iter().all(|r| r.abs() < 1e-10));
+        }
         let products = session.into_current_products().unwrap();
         assert!(products.fit().residuals().iter().all(|r| r.abs() < 1e-10));
         let SharedPreparedOlsData::Categorical(arc) = &source else {
@@ -280,10 +298,8 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
         };
         let weak = Arc::downgrade(arc);
         drop(source);
-        assert!(
-            weak.upgrade().is_some(),
-            "certified product must retain its input owner"
-        );
+        assert_eq!(weak.upgrade().is_some(), mode == PreparedOlsExecutionMode::Low,
+            "implicit products retain the input owner; dense products own every projected value");
         let design = products.finite_within_design();
         use crate::sandwich::SandwichDesign;
         let mut row = vec![0.; design.dimension()];

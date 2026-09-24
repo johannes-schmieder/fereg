@@ -10,7 +10,113 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
-## Incremental experiment closed; pursue whole-fit PPML cost reduction — 2026-09-24
+## Fast one-FE centered preparation accepted; target dense products next — 2026-09-24
+
+The objective remains **whole public PPML <=0.90 times comparable pinned stock
+fixest, per case wherever reasonably achievable**. It is unfinished. This
+opening supersedes the earlier resume instructions. Adopt
+[ADR 0158](docs/adr/0158-group-centered-fast-one-fe-ppml.md): use the existing
+independently certified current-weight group-center construction for admitted
+fast one-FE PPML, then materialize once into the retained dense bank. Strict
+refresh rebuilds geometry from immutable originals. Low mode keeps its implicit
+representation; fast rank, finite products, concentrated steps and inference
+keep dense access. No tolerance, sample, weight, separation, DoF or publication
+rules change, and no width/thread/seed guard is added.
+
+### Checkpoint and measured outcome
+
+Accepted artifact `onefecentereddense5`, based on `c490fef1` plus captured
+overlays, matches all **544 computational inputs**. Plugin SHA-256:
+`887001e476148c757b10362e09bc5ae7349b147d0129ed1ad00e5e3f6dcefbfc`.
+Baseline is `componentwarm3` / numerical source `e9c7f598`, plugin
+`5434193a5a9b0408ed9636c625f1d134996f2224bff2642049b129a47245ce52`.
+The [source-bound report](benchmarks/reports/development/ppml-centered-dense-one-fe-local-2026-09-24/README.md)
+preserves exact lineage, distributions, profiles, oracles, rejected experiments
+and failures. Its independently verified/restored archive has 17,779 logical
+receipts, SHA-256
+`f22aca1d8f35134a80f3084f8338067e994d59c854ab495494decc5d146858ad`.
+All builds, fits, tests, audits, archive and restore processes are terminal.
+
+Final compiled artifact, three uncontended rotations, robust + fitted means,
+strict unmodified stock, milliseconds:
+
+| Case | Baseline | Final | Stock | Final/stock | Paired final-minus-base |
+|---|---:|---:|---:|---:|---|
+| One FE N23040/K8/T4 | 44 | 43 | 26 | 1.654 | -2,-3,-1 |
+| Wide one FE N21504/K32/T8 | 87 | 74 | 65 | 1.138 | -10,-12,-15 |
+| Unbalanced one FE N26880/K4/T1 | 56 | 56 | 23 | 2.435 | +6,-2,0 |
+| Protected two FE N16800/K12/T4 | 71 | 68 | 57 | 1.193 | +3,-2,-6 |
+
+The wide reduction is 14.9%, but it still needs a further 20.9% current-time cut
+to reach 58.5 ms (0.90 times stock). Serial gains are not established. The
+protected route's noisy median is not a claimed algorithmic gain. All 36
+applications and 12 direct candidate-stock scientific comparisons pass.
+
+The broader fresh five-rotation block belongs to **artifact4**, whose numerical
+implementation is identical to final5 (three comment lines changed before the
+final independent rebuild). Wide 85→74/stock69, unbalanced threaded 63→57/39 and
+narrow threaded 44→42/26 ms; 14/15 paired threaded improvements and one tie.
+Serial 55→51/25 is mixed; small serial 31→32/14 and protected slopes 70→71/65 lose
+1 ms at their medians. Low 39→38/22 and two-FE 67→66/53 are essentially unchanged.
+All 120 applications and 40 direct candidate-stock comparisons pass. Six focused
+OLS native pairs have byte-identical science. The 77/16/111 frozen definitions
+remain unchanged; no full matrix or broad non-regression claim follows.
+
+Tracked memory falls in four changed fresh cases but rises **471,968 bytes**
+(about 1.8%) on the wide case. Optional geometry is conservatively admitted on
+top of the existing fast plan. Excluded low/two-FE/slope peaks are unchanged.
+This does not qualify physical caps or resolve static-inventory source drift.
+
+### Science, rejected probes and remaining failures
+
+The numeric source2 implementation passes 64 distinct Rust tests, including
+independent analytic weighted projections, invalidation, changing/extreme
+weights, T1/T4, rank deficiency and ownership. Final5 passes ABI checks and
+three licensed fixtures: the new generated-term/interaction-FE/output explicit
+Poisson oracle, existing full-dummy Poisson/Hessian/sandwich oracle and one-FE
+profile allocation audit. Numeric source2 passes the transactional rollback
+prefix. The old full fixture still fails its stale protocol-minor assertion
+on baseline too. Do not claim that full fixture passes.
+
+New-oracle failures were adjudicated: unsupported continuous-by-factor terms
+fail closed, while raw-PW Stata likelihood differs from ADR0016's normalized-q
+objective. Independently replaying normalized q resolves the latter; means
+already agreed to 1.31e-14 relative error. Failed fixture versions are preserved.
+Large development one-FE fast/low stock mean discrepancies remain **unranked**.
+
+Close the Mata view validator, fused Stata expression validator and isolated
+raw-norm handoff/direct-projection probes. Their small gains fail protected
+cases or serial consistency; no prototype machinery remains in production.
+Their sources, diagnostics and failures are archived. Seeds 367 and 369 are
+consumed/frozen, never tuning seeds. The fresh generator refusal was corrected
+in a preserved declaration before any timed fit (N32256→32255; OLS10000→10080).
+Do not reopen earlier rejected coefficient/residual extrapolation or serial
+weighted-slope micro-tuning without materially new organization and evidence.
+
+### Resume: canonical products and inference
+
+The independent development wide profile attributes candidate native 80.587 ms
+to dense retained moments 12.112 ms, inference 6.461, group refresh 6.912, core
+preparation 6.889, plugin loading 5.530, cached objective 4.429, and other work.
+Concentrated direction is only 3.361 ms exclusive. A single baseline moments
+span of 7.125 ms makes repeated fixed-input attribution necessary; it is not
+evidence of a new regression by itself.
+
+Next investigate **dense weighted products and robust sandwich inference** on
+identical frozen frames, then common loading/preparation. Trace repeated row
+binding, normalization and traversals; consider bounded symmetric blocked
+products with independent cancellation/rank/inverse/score/Hessian safeguards.
+Do not reflexively replace concentrated Newton again or tune one-FE case guards.
+Measure whole public commands with fresh predeclared cases and OLS, categorical,
+slope and low-memory controls. The broader 0.90 objective remains active.
+
+Linux T1/8/16 and physical caps still await SCC access; do not retry known
+authentication failure. Static allocation source drift, weighted constrained
+fits, nonretaining CG span instability, large one-FE stock means, the 1e6-shift
+failure and synthetic exact-fit three-FE LSMR refusal remain open. Older wins
+belong to their recorded artifacts. No push, release or full qualification.
+
+## Historical: incremental experiment closed — 2026-09-24
 
 The objective remains **whole public PPML <=0.90 times comparable pinned stock
 fixest, per case wherever reasonably achievable**. It is unfinished. This opening

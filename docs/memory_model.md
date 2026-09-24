@@ -35,6 +35,13 @@ Optional refusal retains the existing certified route. This conservative plan
 can rise even when tracked peak allocation and actual scratch fall; it does not
 claim a universal memory reduction or physical-cap qualification.
 
+Fast one-FE PPML can admit the same extra group/binding/worker bound for temporary
+canonical construction (ADR 0158). It materializes one certified dense bank and
+reuses that bank at strict refresh, then releases the temporary centers. The
+existing fast plan and projector remain charged; no speculative savings enter
+admission. A wide case's tracked peak can rise despite lower retained dense
+capacity. Refusal preserves the previous certified construction.
+
 On macOS, automatic availability uses free plus inactive pages from
 `HOST_VM_INFO64`. Mach's free count already includes speculative pages.
 The original statistics prefix supports older kernel revisions, and each

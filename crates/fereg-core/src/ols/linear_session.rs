@@ -1494,7 +1494,7 @@ impl CertifiedLinearSessionProducts {
 /// topology.  Sample or topology changes require a new session by design.
 pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Sized> {
     prepared: &'a P,
-    implicit_source: Option<SharedPreparedOlsData>,
+    group_centered_source: Option<SharedPreparedOlsData>,
     config: PreparedOlsFitConfig,
     response: Vec<f64>,
     weights: OwnedLinearWeights,
@@ -1857,7 +1857,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         };
         Ok(Self {
             prepared,
-            implicit_source: None,
+            group_centered_source: None,
             config,
             response,
             weights,
@@ -1890,19 +1890,19 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     /// The caller admits all extra group/binding/worker storage before sharing
     /// the prepared owner. Object identity proves the immutable sample/model axis.
-    pub(crate) fn enable_implicit_one_fe(&mut self, source: SharedPreparedOlsData) -> Result<()> {
+    pub(crate) fn enable_group_centered_one_fe(&mut self, source: SharedPreparedOlsData) -> Result<()> {
         if self.within.is_some() || self.config.absorb.solver != FeSolverKind::Map
             || !self.prepared.fit_has_one_ordinary_intercept_effect()
             || !std::ptr::eq(self.prepared.fit_sample(), source.fit_view().sample())
             || !std::ptr::eq(self.prepared.fit_model(), source.fit_view().model()) {
             return Err(invalid_argument("implicit prepared owner does not match the linear session"));
         }
-        self.implicit_source = Some(source);
+        self.group_centered_source = Some(source);
         Ok(())
     }
 
     pub(crate) fn has_implicit_one_fe(&self) -> bool {
-        self.implicit_source.is_some()
+        self.group_centered_source.is_some() && self.config.execution.mode == PreparedOlsExecutionMode::Low
     }
 
     pub(crate) const fn fe_design(&self) -> &FeDesign {
@@ -3286,9 +3286,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         );
         #[cfg(test)]
         let mut response_fused_with_design = false;
-        let (within_response, absorption_report) = if self.within.as_ref().is_some_and(|w| matches!(w.storage, RetainedWithinStorage::Implicit(_))) {
+        let (within_response, absorption_report) = if self.group_centered_source.is_some() && self.within.is_some() {
             report.warm_projection_attempted = true;
-            let refreshed = self.refresh_implicit_design()?;
+            let refreshed = self.refresh_group_centered_design()?;
             report.warm_projection_certified = true;
             report.within_design_reused = true;
             refreshed
@@ -5002,10 +5002,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     /// Own one complete current-weight projected representation. Admitted
-    /// one-FE sessions retain group centers; other fast/low sessions retain
-    /// their existing dense bank or row-readable scratch artifact.
+    /// one-FE sessions construct group centers, materializing fast dense rows
+    /// or retaining low implicit rows; other sessions keep their prior storage.
     fn build_full_retained_design(&mut self) -> Result<(RetainedWithinDesign, Vec<f64>, SolveReport)> {
-        if self.has_implicit_one_fe() && (self.config.absorb.map.max_iterations == 0 || self.config.absorb.map.check_every == 0) {
+        if self.group_centered_source.is_some() && (self.config.absorb.map.max_iterations == 0 || self.config.absorb.map.check_every == 0) {
             return Err(invalid_argument("implicit MAP iteration and check budgets must be positive"));
         }
         let rows = self.response.len();
@@ -5027,11 +5027,18 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             "unable to reserve weighted-linear retained within norms",
         )?;
 
-        let (storage, within_response, absorption_report) = if let Some(source) = &self.implicit_source {
+        let (storage, within_response, absorption_report) = if let Some(source) = &self.group_centered_source {
             let mut values = ImplicitCenteredDesign::new(source.clone(), &stored_generated_columns, self.config.execution.mode)?;
             let (response, report) = values.refresh(&self.response, self.weights.borrowed(), self.bread_weight_scale.solver_weight_divisor,
                 self.config.absorb.map.tolerance, &mut reference_norms, &mut reference_means, &mut within_norms)?;
-            (RetainedWithinStorage::Implicit(values), response, report)
+            let storage = if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
+                let mut dense = DenseMatrix::zeros(rows, stored_columns)?;
+                values.write_dense(&mut dense)?;
+                RetainedWithinStorage::Dense(dense)
+            } else {
+                RetainedWithinStorage::Implicit(values)
+            };
+            (storage, response, report)
         } else { match self.config.execution.mode {
             PreparedOlsExecutionMode::Fast => {
                 let raw = self.prepared.fit_build_rhs_with_response(&self.response)?;
@@ -5254,7 +5261,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         ))
     }
 
-    fn refresh_implicit_design(&mut self) -> Result<(Vec<f64>, SolveReport)> {
+    fn refresh_group_centered_design(&mut self) -> Result<(Vec<f64>, SolveReport)> {
         if self.config.absorb.map.max_iterations == 0 || self.config.absorb.map.check_every == 0 {
             return Err(invalid_argument("implicit MAP iteration and check budgets must be positive"));
         }
@@ -5262,11 +5269,23 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         if retained.generations.sample != self.generations.sample || retained.generations.topology != self.generations.topology {
             return Err(invalid_argument("implicit within sample or topology is stale"));
         }
-        let RetainedWithinStorage::Implicit(values) = &mut retained.storage else {
-            return Err(invalid_argument("implicit refresh requires its owned representation"));
+        let refreshed = match &mut retained.storage {
+            RetainedWithinStorage::Implicit(values) => values.refresh(
+                &self.response, self.weights.borrowed(), self.bread_weight_scale.solver_weight_divisor,
+                self.config.absorb.map.tolerance, &mut retained.reference_norms,
+                &mut retained.reference_means, &mut retained.within_norms)?,
+            RetainedWithinStorage::Dense(dense) => {
+                let source = self.group_centered_source.as_ref().ok_or_else(|| invalid_argument("centered preparation source is absent"))?;
+                let mut values = ImplicitCenteredDesign::new(source.clone(), &retained.stored_generated_columns, self.config.execution.mode)?;
+                let refreshed = values.refresh(
+                    &self.response, self.weights.borrowed(), self.bread_weight_scale.solver_weight_divisor,
+                    self.config.absorb.map.tolerance, &mut retained.reference_norms,
+                    &mut retained.reference_means, &mut retained.within_norms)?;
+                values.write_dense(dense)?;
+                refreshed
+            }
+            RetainedWithinStorage::Scratch(_) => return Err(invalid_argument("centered refresh requires its owned representation")),
         };
-        let refreshed = values.refresh(&self.response, self.weights.borrowed(), self.bread_weight_scale.solver_weight_divisor,
-            self.config.absorb.map.tolerance, &mut retained.reference_norms, &mut retained.reference_means, &mut retained.within_norms)?;
         retained.generations = WithinGenerations::from_session(self.generations);
         retained.certificate.passed = false;
         self.within = Some(retained);
@@ -5401,7 +5420,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     fn refresh_retained_norms(&mut self) -> Result<()> {
-        if self.has_implicit_one_fe() {
+        if self.group_centered_source.is_some() {
             let retained = self.within.as_ref().ok_or_else(|| invalid_argument("implicit norms are absent"))?;
             if !retained.generations.same_design(self.generations) { return Err(invalid_argument("implicit norms are stale")); }
             return Ok(());
@@ -5748,9 +5767,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// yields exactly the same within coordinate as projecting raw `X`, while
     /// preserving the already-owned dense buffer or scratch-file identity.
     fn reproject_retained_within_in_place(&mut self) -> Result<bool> {
-        if self.has_implicit_one_fe() {
-            self.refresh_implicit_design()?;
-            // The group buffers are retained, but refresh allocates a response.
+        if self.group_centered_source.is_some() {
+            self.refresh_group_centered_design()?;
+            // Refresh allocates a response and may rebuild temporary group state.
             return Ok(false);
         }
         let prior = self.within.take().ok_or_else(|| {
@@ -5899,8 +5918,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// and compacted in place, so warmed PPML iterations need no second
     /// observation-sized projection matrix.
     fn reproject_retained_with_response_in_place(&mut self) -> Result<(bool, SolveReport)> {
-        if self.has_implicit_one_fe() {
-            let (response, report) = self.refresh_implicit_design()?;
+        if self.group_centered_source.is_some() {
+            let (response, report) = self.refresh_group_centered_design()?;
             self.frozen_workspace.response = response;
             return Ok((false, report));
         }
