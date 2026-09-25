@@ -82,6 +82,22 @@ fixture that exercises the changed boundary:
 `ppml-hidden` and `fereg-regression` remain useful focused regression profiles,
 but they are not standing requirements or substitutes for the public surface.
 
+### PPML compiled transport helpers
+
+After changing `stata/_fereg_ppml_result_mata.ado`, rebuild its three `.mo`
+objects and source-binding receipt with the actual Stata 18 compiler:
+
+```bash
+python3 scripts/build_ppml_mata.py --stata "$STATA18_BIN"
+```
+
+A `version 18.0` statement under a newer compiler is insufficient for older
+object compatibility. Release staging verifies the helper source and every
+object hash against the receipt. Commit source, objects and receipt together;
+there is no runtime source-compilation fallback. Run the focused runtime-validator
+and transaction checks after changing this boundary. See
+[ADR 0201](adr/0201-compiled-ppml-transport.md).
+
 ### PPML solver development
 
 Use the public `solver(auto|map|lsmr|cmg)` surface and its versioned solver

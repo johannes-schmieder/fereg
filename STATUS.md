@@ -9,8 +9,85 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-The [current implementation plan](#further-ppml-development-plan--revised-after-adr-0200-2026-09-25)
-uses the accepted seed432 comparison and starts with the complete narrow lifecycle.
+The [current implementation plan](#further-ppml-development-plan--revised-after-adr-0201-2026-09-25)
+uses final controlplane3 seed434 evidence and continues with native lifecycle work.
+
+## Compiled PPML transport accepted — 2026-09-25
+
+Retain **controlplane3** (parent **19ab41ce**) with **564 captured computational
+inputs** matching the worktree. Native computation remains **e3ef1757 /
+slopetopology1**, plugin SHA-256
+`1c598ce6ecbdea8e1a6e0ffcc9dfcd655c89165750a8d2b02d8189ec15b9ae1e`.
+[ADR 0201](docs/adr/0201-compiled-ppml-transport.md) and the
+[source-bound report](benchmarks/reports/development/ppml-compiled-transport-local-2026-09-25/README.md)
+preserve implementation, final/earlier distributions, cold losses and source-bound
+receipts. The multi-FE <=0.90-stock objective remains active and unfinished.
+
+Bounded result validation now executes the same ordered predicates in compiled
+Mata, loading sixteen result tables once; scalar publication preserves every
+name/value/absence rule. Observation checks, scientific certificates, native
+solving and rollback are unchanged. Package-owned objects use actual Stata18
+compilation, source/object hashes and a fail-closed staging gate. No runtime
+compilation fallback or retained result cache remains. Rebuild instructions are
+in the development workflow. The production interpreted copies are retired.
+
+Fresh seed **202609434**, five alternating B/C/stock rotations, robust inference
+and means, matched threads, stock glm.tol=1e-10/fixef.tol=1e-11:
+
+| Case; N/K/T; mode | Baseline / candidate / stock ms | Candidate/stock |
+|---|---:|---:|
+|Disconnected categorical; 61440/6/4; low|112 / 109 / 97|1.124|
+|Serial categorical; 38400/10/1; low|141 / 136 / 242|0.562|
+|Narrow categorical; 24960/2/4; fast|41 / 38 / 30|1.267|
+|Wide categorical; 23040/36/8; low|97 / 93 / 128|0.727|
+|Two slope partitions; 30720/6/8; low|77 / 74 / 79|0.937|
+|Two slope partitions; 30720/6/8; fast|74 / 71 / 79|0.899|
+|Unbalanced three-FE slopes; 61440/10/8; low|195 / 194 / 233|0.833|
+|Three slopes on two partitions; 38400/8/4; low|139 / 138 / 303|0.455|
+
+**35 paired wins, four losses, one tie.** All eight medians improve 1–5 ms;
+the first six cases win every pair. Five medians reach 0.90, but fast T8 slopes
+have only 0.1-ms headroom and miss in two of five stock pairs: **provisional**.
+Remaining median savings are **21.7 ms low categorical, 11.0 ms narrow and
+2.9 ms low T8 slopes**. Do not pool with seed433/432 or earlier artifacts.
+Seeds 433/434 are consumed/frozen; no source tuning follows final validation.
+
+Runtime source compilation was rejected after cold median penalties of 183/187 ms.
+Precompiled first-fit medians still lose **130→132** and **58→60 ms**, with a
+visible **459-ms** low-case candidate outlier. Separate cold clones have large
+pre-plugin first-use delays in both arms; that does not establish the outlier's
+cause or erase normal small cold losses. Final one-FE PPML controls improve
+24→21 and 80→77 ms. Final OLS medians are **8/7, 60/61, 108/111 ms**; all three final
+slope pairs lose. Called OLS source/plugin are identical, but neither those
+losses nor the earlier six-ms concern are declared resolved. No universal
+non-regression claim.
+
+**28 focused Python tests**, Stata18/19 helper/runtime/weight fixtures, 3,496
+old/new validator mutations, full/missing/signed scalar equivalence, six
+independent PPML scientific fixtures, current-wire transaction replay, missing
+object rollback and licensed interruption pass. All **358 PPML public states,
+228 baseline-anchored pairs, 98 direct stock pairs and 33 OLS pairs** pass audits.
+All 130 native PPML pairs have exact coefficient/covariance/mean exports and
+unchanged iterations/fallbacks; all 33 OLS coefficient/covariance pairs are exact.
+Native peak/scratch deltas are zero; selected telemetry spans -144 to +144 bytes.
+Objects add 129,124 file bytes and bounded local O(K^2) validation copies; Mata RSS
+is unmeasured. No N-by-K bank, new Rust build, physical-cap or allocation campaign.
+
+All **17,355 logical receipts** are restored and hash/privacy verified. Failed
+fixture/build/invocation attempts, interrupted broad Python tests and earlier
+candidate clocks remain visible. Frozen 77/16/111 definitions, static-inventory
+drift, weighted constrained-fit/nonretaining-CG failures, older three-FE science
+discrepancy and deferred platforms remain unchanged. No push, release, SCC retry
+or stopped campaign occurred.
+
+**Next implementation:** the compiled control-plane part of Milestone 1 is closed;
+continue with **native ownership and complete command lifecycle**, using the
+existing nonoverlapping ledger. Demonstrate and remove repeated original-column
+preparation, same-state products or accepted-state reconstruction across stages.
+The remaining 11/21.7-ms gaps require substantial work removal; another isolated
+canonical matvec or packaging tweak will not suffice. Preserve fresh independent
+acceptance and exact final q*mu Hessian. Let shared improvements cover near-target
+T8 slopes; carry cold-start and OLS controls forward.
 
 ## Canonical incidence replacement rejected — 2026-09-25
 
@@ -526,7 +603,7 @@ released before certification. Final fresh tracked peaks change by -2,681,856 to
 +48 bytes. All frozen benchmark definitions are preserved. Seeds **202609428/429
 are now consumed/frozen** and cannot become tuning seeds.
 
-## Further PPML development plan — revised after ADR 0200, 2026-09-25
+## Further PPML development plan — revised after ADR 0201, 2026-09-25
 
 This is the current execution plan and supersedes earlier plans in this file.
 Scope remains **at least two FE partitions**. Target complete public `feppml`
@@ -535,34 +612,35 @@ with **0.80–0.85** useful engineering headroom. Preserve winning families whil
 closing actual losses. Neither a pooled win rate nor a fast inner solver is
 completion. Proposed savings below are targets, not measured improvements.
 
-The repository checkpoint is **225ffa21**; accepted computation remains
-**e3ef1757 / slopetopology1**. The worktree was clean when planning began.
-No new benchmark or implementation is claimed by this plan revision. ADR0199's
-seed432 block is the current accepted-source comparison; ADR0200's rejected
-incidence prototypes do not change that baseline.
+The retained artifact is **controlplane3**, parent **19ab41ce**, with unchanged
+slopetopology1 native computation. ADR0201's seed434 block is the current
+accepted-source comparison. Compiled bounded validation/publication is complete;
+the broader native lifecycle milestone remains active. Prior rejected prototypes
+and earlier validation seeds do not redefine this baseline.
 
 ### Targets and priority
 
-The [accepted-source report](benchmarks/reports/development/ppml-slope-source-preparation-local-2026-09-25/README.md)
+The [accepted-source report](benchmarks/reports/development/ppml-compiled-transport-local-2026-09-25/README.md)
 has five alternating baseline/candidate/stock rotations, robust inference and
 fitted means, matched threads, and pinned unmodified fixest with glm.tol=1e-10
-and fixef.tol=1e-11. Startup and data import are outside both public clocks.
-All requested estimation, validation, inference and outputs remain inside.
+and fixef.tol=1e-11. Startup and data import are outside public clocks. All
+requested estimation, validation, inference and outputs remain inside. Cold
+first-use clocks are separate and retain small losses plus one large outlier.
 
 | Remaining miss; N/K/T; mode | fereg / stock ms | Ratio | 0.90-stock ceiling | Saving needed |
 |---|---:|---:|---:|---:|
-|Disconnected categorical; 61440/6/4; low|113 / 98|1.153|88.2 ms|24.8 ms / 21.9%|
-|Narrow categorical; 24960/2/4; fast|42 / 31|1.355|27.9 ms|14.1 ms / 33.6%|
-|Two slope partitions; 30720/6/8; low|74 / 80|0.925|72.0 ms|2.0 ms / 2.7%|
-|Two slope partitions; 30720/6/8; fast|72 / 79|0.911|71.1 ms|0.9 ms / 1.3%|
+|Disconnected categorical; 61440/6/4; low|109 / 97|1.124|87.3 ms|21.7 ms / 19.9%|
+|Narrow categorical; 24960/2/4; fast|38 / 30|1.267|27.0 ms|11.0 ms / 28.9%|
+|Two slope partitions; 30720/6/8; low|74 / 79|0.937|71.1 ms|2.9 ms / 3.9%|
+|Two slope partitions; 30720/6/8; fast|71 / 79|0.899|71.1 ms|Provisional; two of five pairs miss|
 
-Seven of eleven medians already meet the target: serial/wide categorical,
-T4 slopes, both larger three-FE slope cases, multiple slopes and weak barbell
-slopes. Their ratios range from 0.039 to 0.807 in this block. They remain controls,
-not proof of universal coverage. Engineering ambitions are **24–25 ms narrow**,
-**75–80 ms disconnected low categorical**, and **60–65 ms T8 slopes** on these
-shapes. Do not optimize the last two slope misses through case-specific guards.
-Shared lifecycle savings should reach them naturally.
+Five of eight final medians meet the target; the fast T8 crossing lacks reliable
+headroom. Serial/wide categorical, three-FE slopes and multiple slopes remain
+strong controls. Earlier seed432 also covered T4, weak barbell and larger slopes;
+its results remain attached to that artifact, not a current-source universal
+claim. Engineering ambitions remain **24–25 ms narrow**, **75–80 ms disconnected
+low categorical**, and **60–65 ms T8 slopes**. Do not optimize small misses through
+case-specific guards. Shared lifecycle savings should reach them naturally.
 
 The older three-categorical-FE coefficient discrepancy remains unranked.
 Four-plus FE, factor/generated terms, clustered/saved-effect output and larger N
@@ -578,22 +656,19 @@ must materially change organization and have a measured public savings budget.
 
 ### Milestone 1: implement a smaller complete public-command lifecycle
 
-**Start here.** The narrow inner recurrence occupies only about three ms.
-The captured public command is about 42 ms, with roughly 33 ms inside the plugin;
-the ado phase sum is about 8.5 ms. These rounded diagnostic spans are not exact
+**Resume at step 2.** Step 1 is retained under ADR0201. The earlier native
+ledger places the narrow inner recurrence at only about three ms.
+That earlier diagnostic public command was about 42 ms, with roughly 33 ms
+inside the plugin; the ado phase sum is about 8.5 ms. These rounded diagnostic spans are not exact
 additive medians. Even eliminating all wrapper time would miss the target.
 This milestone therefore includes both the control plane and native lifetime
 boundaries, not a claim that faster publication alone closes the gap.
 
-1. Prototype compiled bounded result validation and batched scalar publication
-   within the Stata control plane. The current validator interprets hundreds of
-   predicates across sixteen bounded result matrices; publication repeatedly
-   extracts and posts individual fields. Load each bounded result once, evaluate
-   the same predicates, and publish the same scalars/matrices. Preserve layout
-   checks before indexing, wire versions, missing/absent distinctions, diagnostic
-   error codes, independent covariance evidence and COMPLETE-last authority.
-   Observation-level output checks and transaction rollback retain their purpose.
-   Do not put estimation or large design construction in Mata.
+1. **Completed:** compiled bounded result validation and scalar publication
+   remain in the Stata control plane under ADR0201. The same ordered predicates,
+   wire identities, missing/absent distinctions, covariance evidence and
+   COMPLETE-last authority are preserved. Stata18-built objects avoid runtime
+   compilation; first-fit losses remain visible. No further packaging tuning.
 2. Use the existing native ledger to identify actual duplicated preparation and
    state transitions around initialization, canonical rank construction, ordinary
    directions, accepted trials and finalization. Trace each required product to
@@ -603,10 +678,9 @@ boundaries, not a claim that faster publication alone closes the gap.
    changed weights still require fresh numeric geometry and acceptance. Preserve
    independent final objective replay rather than reopening ADR0195.
 3. Combine only demonstrated shared savings in one complete-command candidate.
-   The narrow target needs roughly fourteen ms total; bounded validation and
-   posting together account for only about 4.5 ms of the diagnostic budget.
-   Obtain the remaining saving from native organization or report the quantified
-   shortfall. Do not extrapolate a subphase speedup into an achieved public gain.
+   The narrow target still needs eleven ms after the compiled transport change.
+   Obtain that saving from native organization or report the quantified shortfall.
+   Do not extrapolate a subphase speedup into an achieved public gain.
    Avoid thread/tile thresholds fitted to this shape. A compact execution route
    needs a general work/memory justification and must honor explicit solvers.
 
@@ -622,8 +696,8 @@ useful checkpoint if warranted, then continue toward the complete target.
 
 The existing lifecycle ledger assigns approximately **28.4 ms to initial/strict
 canonical work** and **19.6 ms to ordinary joint directions** on the disconnected
-low case. The required public saving is 24.8 ms. ADR0200's roughly four-ms solver
-saving cannot meet that budget and did not justify its added representation.
+low case. The current public saving required is 21.7 ms. ADR0200's roughly
+four-ms solver saving cannot meet that budget and did not justify its added representation.
 Do not resume its packing, operator crossover or component-threshold experiments.
 
 First complete the same-state ownership change only where Milestone 1 identifies

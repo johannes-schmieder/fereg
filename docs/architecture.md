@@ -43,6 +43,13 @@ over the guarded PPML transaction; it neither reparses nor posts results.
 
 ## Public PPML architecture
 
+Stata validates bounded native result tables through package-owned compiled Mata
+helpers and publishes e() scalars inside the existing held-estimate transaction.
+The helpers retain no result state; observation outputs, stripes and final commit
+remain in the ado transaction. No estimation or observation design construction
+moves into Mata. Source-bound Stata18 objects and staging checks are specified in
+[ADR 0201](adr/0201-compiled-ppml-transport.md).
+
 After the canonical initial rank solve, fast one-categorical-FE publication
 fits may use analytic group-intercept elimination and concentrated finite
 Poisson steps. Full outer, strict and final-Hessian acceptance remains independent;

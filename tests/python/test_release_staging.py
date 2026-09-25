@@ -15,7 +15,9 @@ class ReleaseStagingTests(unittest.TestCase):
     PRODUCTION_STATA_FILES = (
         "fereg.ado", "fereg_run.ado", "_fereg_estimate_public.ado",
         "_fereg_ols.ado", "_fereg_estimate_ols.ado", "_fereg_load.ado", "_fereg_memory_baseline.ado", "_fereg_memory_validate.ado",
-        "feppml.ado", "_fereg_ppml.ado", "_fereg_estimate_ppml.ado",
+        "feppml.ado", "_fereg_ppml.ado", "_fereg_estimate_ppml.ado", "_fereg_ppml_result_mata.ado",
+        "_fereg_ppml_result_mata.json", "_fereg_ppml_validation_error.mo",
+        "_fereg_ppml_validate_result.mo", "_fereg_ppml_post_scalars.mo",
         "feppml_p.ado", "fereg_parse.ado", "fereg_p.ado", "fereg_estat.ado",
         "fereg.sthlp", "feppml.sthlp", "fereg_parse.sthlp",
         "fereg_postestimation.sthlp", "fereg.pkg", "stata.toc",
@@ -27,6 +29,28 @@ class ReleaseStagingTests(unittest.TestCase):
             self.PRODUCTION_STATA_FILES,
         )
         self.assertEqual(stage_release.VERSION, "0.5.0")
+    def test_ppml_objects_are_bound_to_source_and_oldest_compiler(self):
+        stage_release.validate_ppml_mata_objects(ROOT / "stata")
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            names = [name for name in self.PRODUCTION_STATA_FILES
+                     if name.startswith("_fereg_ppml_") and name != "_fereg_ppml.ado"]
+            for name in names:
+                (target / name).write_bytes((ROOT / "stata" / name).read_bytes())
+            for changed in ("_fereg_ppml_result_mata.ado", "_fereg_ppml_validate_result.mo"):
+                path = target / changed
+                original = path.read_bytes()
+                path.write_bytes(original + b"changed")
+                with self.assertRaises(RuntimeError):
+                    stage_release.validate_ppml_mata_objects(target)
+                path.write_bytes(original)
+            path = target / "_fereg_ppml_result_mata.json"
+            receipt = json.loads(path.read_text())
+            receipt["compiler_release"] = "19"
+            path.write_text(json.dumps(receipt))
+            with self.assertRaises(RuntimeError):
+                stage_release.validate_ppml_mata_objects(target)
+
     def make_plugins(self, directory: Path) -> None:
         for index, name in enumerate(stage_release.EXPECTED_PLUGINS, start=1):
             plugin = directory / name

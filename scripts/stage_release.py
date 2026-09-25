@@ -39,6 +39,11 @@ PRODUCTION_STATA_FILES = (
     "feppml.ado",
     "_fereg_ppml.ado",
     "_fereg_estimate_ppml.ado",
+    "_fereg_ppml_result_mata.ado",
+    "_fereg_ppml_result_mata.json",
+    "_fereg_ppml_validation_error.mo",
+    "_fereg_ppml_validate_result.mo",
+    "_fereg_ppml_post_scalars.mo",
     "feppml_p.ado",
     "fereg_parse.ado",
     "fereg_p.ado",
@@ -254,11 +259,23 @@ def write_sbom(source: Path, output: Path, source_sha: str) -> None:
     )
 
 
+def validate_ppml_mata_objects(stata: Path) -> None:
+    receipt = json.loads((stata / "_fereg_ppml_result_mata.json").read_text())
+    expected = {name for name in PRODUCTION_STATA_FILES if name.endswith(".mo")}
+    if (receipt.get("schema") != "fereg-ppml-mata-v1"
+            or receipt.get("compiler_release") != "18"
+            or set(receipt.get("objects", {})) != expected
+            or receipt.get("source_sha256") != digest(stata / "_fereg_ppml_result_mata.ado")
+            or any(receipt["objects"][name] != digest(stata / name) for name in expected)):
+        raise RuntimeError("PPML Mata objects are stale or lack a Stata 18 source binding")
+
+
 def copy_release_files(
     source: Path,
     staging: Path,
     plugins: list[tuple[Path, Path]],
 ) -> None:
+    validate_ppml_mata_objects(source / "stata")
     for name in PRODUCTION_STATA_FILES:
         path = source / "stata" / name
         if not path.is_file():

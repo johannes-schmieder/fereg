@@ -1,0 +1,9 @@
+{
+  "logical_receipts_verified": 17355,
+  "unique_payloads_verified": 3227,
+  "actual_home_absent": true,
+  "licensed_headers_absent": true,
+  "user_path_audit_passed": true,
+  "restored": true,
+  "adjudication": "Initial scanner matched its own regex and two explicit synthetic fixture-path allowlists; exact verifier-source literals exempted, archive unchanged."
+}

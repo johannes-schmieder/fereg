@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TRANSACTION = ROOT / "stata/_fereg_estimate_ppml.ado"
+RESULT_MATA = ROOT / "stata/_fereg_ppml_result_mata.ado"
 ADAPTER = ROOT / "stata/_fereg_ppml.ado"
 PREDICT = ROOT / "stata/feppml_p.ado"
 PUBLIC = ROOT / "stata/feppml.ado"
@@ -22,7 +23,8 @@ BREAK_RUNNER = ROOT / "scripts/run_stata_break_test.py"
 
 class PpmlStataTransactionContractTests(unittest.TestCase):
     def test_hidden_transaction_is_additive_and_receipt_guarded(self) -> None:
-        text = TRANSACTION.read_text(encoding="utf-8")
+        text = (TRANSACTION.read_text(encoding="utf-8")
+                + RESULT_MATA.read_text(encoding="utf-8"))
         self.assertEqual(text.count('`"estimate-ppml"\''), 1)
         self.assertEqual(text.count("plugin call __fereg_estimate_plugin"), 1)
         for field in (
@@ -43,17 +45,18 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertIn("restore nullok", text)
         self.assertIn("nobreak {", text)
         self.assertIn("_estimates unhold `held_estimates', not", text)
-        self.assertIn("`receipt'[1,33] != 1", text)
+        self.assertIn("receipt[1,33] != 1", text)
         self.assertIn("syntax namelist(min=16 max=16)", text)
         self.assertIn("REQUESTEDVCECODE(integer) DROPSINGLETONS(integer)", text)
-        self.assertIn("`coefficients' != `capacity'", text)
-        self.assertIn("tempname finite_result covariance_scale", text)
+        self.assertIn("coefficients != capacity", text)
+        self.assertIn("real scalar checkpoint_family, cluster_dimension, coefficients, column, covariance_scale", text)
         self.assertIn("PPML covariance eigenvalue evidence exceeds its certified scale", text)
         self.assertNotIn("__fereg_ppml_finite_result", text)
         self.assertNotIn("__fereg_ppml_fit", text)
 
     def test_transaction_preserves_ppml_public_policy(self) -> None:
-        text = TRANSACTION.read_text(encoding="utf-8")
+        text = (TRANSACTION.read_text(encoding="utf-8")
+                + RESULT_MATA.read_text(encoding="utf-8"))
         self.assertIn('local memory_mode "auto"', text)
         self.assertIn('local separation_wire "fe simplex ir"', text)
         self.assertIn("TOLerance(real 1e-8)", text)
@@ -102,7 +105,8 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertNotIn("FEREG_PPML_EXPERIMENTAL_SOLVERS", transaction)
 
     def test_outputs_are_private_until_final_commit(self) -> None:
-        text = TRANSACTION.read_text(encoding="utf-8")
+        text = (TRANSACTION.read_text(encoding="utf-8")
+                + RESULT_MATA.read_text(encoding="utf-8"))
         plugin_call = text.index("plugin call __fereg_estimate_plugin")
         receipt_check = text.index("_fereg_eppml_validate", plugin_call)
         commit = text.index("nobreak {", receipt_check)
@@ -158,7 +162,8 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             self.assertIn(token, protocol)
 
     def test_result_12_evidence_layout_and_publication_are_exact(self) -> None:
-        text = TRANSACTION.read_text(encoding="utf-8")
+        text = (TRANSACTION.read_text(encoding="utf-8")
+                + RESULT_MATA.read_text(encoding="utf-8"))
 
         for token in (
             "matrix `inference_shadow' = J(16, 1, 0)",
@@ -166,13 +171,13 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "matrix `separation_sequence_shadow' = J(5, 13, 0)",
             "matrix `solver_shadow' = J(4, 22, .)",
             "matrix `receipt_shadow' = J(1, 33, 0)",
-            "rowsof(`inference') != 16 | colsof(`inference') != 1",
-            "rowsof(`drop_counts') != 14 | colsof(`drop_counts') != 2",
-            "rowsof(`separation_sequence') != 5 | colsof(`separation_sequence') != 13",
-            "rowsof(`solver') != 4 | colsof(`solver') != 22",
-            "rowsof(`receipt') != 1 | colsof(`receipt') != 33",
-            "`receipt'[1,3] != 3",
-            "`receipt'[1,33] != 1",
+            "rows(inference) != 16 | cols(inference) != 1",
+            "rows(drop_counts) != 14 | cols(drop_counts) != 2",
+            "rows(separation_sequence) != 5 | cols(separation_sequence) != 13",
+            "rows(solver) != 4 | cols(solver) != 22",
+            "rows(receipt) != 1 | cols(receipt) != 33",
+            "receipt[1,3] != 3",
+            "receipt[1,33] != 1",
         ):
             self.assertIn(token, text)
 
@@ -369,12 +374,12 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "feppml_hash_digest_hi",
             "feppml_hash_digest_lo",
         ):
-            self.assertIn(f"ereturn scalar {scalar_name} =", text)
+            self.assertIn(f'st_numscalar("e({scalar_name})",', text)
 
     def test_solver_fallback_reason_is_engine_row_local(self) -> None:
         native = PLUGIN_RESULT.read_text(encoding="utf-8")
         plugin = PLUGIN.read_text(encoding="utf-8")
-        stata = TRANSACTION.read_text(encoding="utf-8")
+        stata = RESULT_MATA.read_text(encoding="utf-8")
         self.assertIn("solver_row_fallback_reason(", native)
         self.assertIn("engine.fallback_count,", native)
         self.assertIn("let cmg_start = 3 * SOLVER_COLUMNS;", plugin)
@@ -383,13 +388,13 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             plugin,
         )
         self.assertIn(
-            "(`solver'[`row',11] == 0) != (`solver'[`row',12] == 0)",
+            "(solver[row,11] == 0) != (solver[row,12] == 0)",
             stata,
         )
-        self.assertIn("local failed_attempt", stata)
-        self.assertIn("!`failed_attempt'", stata)
-        self.assertIn("(`solver'[1,12] == 1) | `solver'[4,12] == 2", stata)
-        self.assertIn("(`solver'[1,12] == 3 & `solver'[4,12] != 3)", stata)
+        self.assertIn("failed_attempt =", stata)
+        self.assertIn("!failed_attempt", stata)
+        self.assertIn("(solver[1,12] == 1) | solver[4,12] == 2", stata)
+        self.assertIn("(solver[1,12] == 3 & solver[4,12] != 3)", stata)
 
     def test_public_command_is_the_one_call_wrapper(self) -> None:
         public = PUBLIC.read_text(encoding="utf-8")
@@ -492,7 +497,8 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             self.assertIn(token, fixture)
 
     def test_native_tables_are_bound_back_to_parser_owned_metadata(self) -> None:
-        text = TRANSACTION.read_text(encoding="utf-8")
+        text = (TRANSACTION.read_text(encoding="utf-8")
+                + RESULT_MATA.read_text(encoding="utf-8"))
         for token in (
             "fixed-effect intercept identity disagrees with absorb()",
             "fixed-effect slope identity disagrees with absorb()",
@@ -501,18 +507,19 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "omitted covariance row was not exactly zero-filled",
         ):
             self.assertIn(token, text)
-        self.assertIn("if `fit_shadow'[11,1] < . {", text)
-        self.assertEqual(text.count("ereturn scalar chi2 ="), 1)
-        self.assertEqual(text.count("ereturn scalar df_chi2 ="), 1)
+        self.assertIn("if (fit_shadow[11,1] < .) {", text)
+        self.assertEqual(text.count('st_numscalar("e(chi2)",'), 1)
+        self.assertEqual(text.count('st_numscalar("e(df_chi2)",'), 1)
         self.assertNotIn("fvexpand `indepvars' if `sample_shadow'", text)
         self.assertIn('local posted_names `"`coefficient_names\' _cons"\'', text)
 
     def test_runtime_row_stripe_is_the_exact_frozen_108_row_layout(self) -> None:
-        text = TRANSACTION.read_text(encoding="utf-8")
+        text = (TRANSACTION.read_text(encoding="utf-8")
+                + RESULT_MATA.read_text(encoding="utf-8"))
         native = PLUGIN_RESULT.read_text(encoding="utf-8")
         self.assertIn("const RUNTIME_ROWS: usize = 108;", native)
         self.assertIn("matrix `runtime_shadow' = J(108, 1, .)", text)
-        self.assertIn("rowsof(`runtime') != 108", text)
+        self.assertIn("rows(runtime) != 108", text)
         match = re.search(
             r"matrix rownames `runtime_shadow' = (?P<body>.*?)\n\s*"
             r"matrix colnames `runtime_shadow'",
@@ -655,38 +662,18 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         ):
             self.assertIn(token, native)
 
-        scalar_match = re.search(
-            r"local audit_scalar_names (?P<body>.*?)\n\s*"
-            r"forvalues runtime_row = 41/82",
-            text,
-            re.DOTALL,
-        )
-        self.assertIsNotNone(scalar_match)
-        scalar_names = scalar_match.group("body").replace("///", " ").split()
-        self.assertEqual(len(scalar_names), 42)
-        self.assertTrue(all(len(f"feppml_{name}") <= 32 for name in scalar_names))
-        phase_scalar_match = re.search(
-            r"local phase_names (?P<body>.*?)\n\s*"
-            r"forvalues phase_row = 28/40",
-            text,
-            re.DOTALL,
-        )
-        self.assertIsNotNone(phase_scalar_match)
-        phase_scalar_names = (
-            phase_scalar_match.group("body").replace("///", " ").split()
-        )
-        self.assertEqual(len(phase_scalar_names), 13)
-        self.assertTrue(
-            all(len(f"feppml_time_{name}") <= 32 for name in phase_scalar_names)
-        )
-        literal_scalar_names = re.findall(
-            r"ereturn scalar ([A-Za-z_][A-Za-z0-9_]*)\s*=", text
-        )
+        post = RESULT_MATA.read_text().split("void _fereg_ppml_post_scalars()", 1)[1]
+        tables = [
+            "".join(re.findall(r'"([^"\n]*)"', body)).split()
+            for body in re.findall(r"names = tokens\((.*?)\)\n", post, re.DOTALL)
+        ]
+        self.assertEqual([len(table) for table in tables], [7, 13, 42, 13])
+        self.assertTrue(all(len("feppml_" + name) <= 32 for name in tables[2]))
+        self.assertTrue(all(len("feppml_time_" + name) <= 32 for name in tables[1]))
+        literal_scalar_names = re.findall(r'st_numscalar\("e\((\w+)\)"', post)
         self.assertTrue(literal_scalar_names)
-        self.assertTrue(
-            all(len(name) <= 32 for name in literal_scalar_names),
-            [name for name in literal_scalar_names if len(name) > 32],
-        )
+        self.assertEqual(len(literal_scalar_names), len(set(literal_scalar_names)))
+        self.assertTrue(all(len(name) <= 32 for name in literal_scalar_names))
         for prefix in ("feppml_modeled_peak_", "feppml_observed_peak_"):
             self.assertTrue(
                 all(
@@ -710,7 +697,8 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             )
 
     def test_fit_row_stripe_is_the_exact_frozen_27_row_layout(self) -> None:
-        text = TRANSACTION.read_text(encoding="utf-8")
+        text = (TRANSACTION.read_text(encoding="utf-8")
+                + RESULT_MATA.read_text(encoding="utf-8"))
         match = re.search(
             r"matrix rownames `fit_shadow' = (?P<body>.*?)\n\s*"
             r"matrix colnames `fit_shadow'",
@@ -753,11 +741,11 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         )
         for token in (
             "matrix `fit_shadow' = J(27, 1, .)",
-            "rowsof(`fit') != 27",
-            "if `fit_shadow'[20,1] < . ereturn scalar weight_multiplier",
-            "if `fit_shadow'[25,1] < . ereturn scalar log_raw_sumweights",
-            "ereturn scalar log_weight_multiplier = `fit_shadow'[26,1]",
-            "ereturn scalar feppml_objective_scale_code = `fit_shadow'[27,1]",
+            "rows(fit) != 27",
+            'if (fit_shadow[20,1] < .) st_numscalar("e(weight_multiplier)",',
+            'if (fit_shadow[25,1] < .) st_numscalar("e(log_raw_sumweights)",',
+            'st_numscalar("e(log_weight_multiplier)", fit_shadow[26,1])',
+            'st_numscalar("e(feppml_objective_scale_code)", fit_shadow[27,1])',
         ):
             self.assertIn(token, text)
 
@@ -938,7 +926,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "requestedsolvercode(7)",
             "matrix `runtime' = J(108,1,.)",
             "matrix `receipt' = J(1,33,0)",
-            "matrix `receipt'[1,3] = 2",
+            "matrix `receipt'[1,3] = 3",
             "matrix `receipt'[1,33] = 1",
             "requestedvcecode(2)",
             "dropsingletons(1)",

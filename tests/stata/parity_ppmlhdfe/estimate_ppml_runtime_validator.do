@@ -491,4 +491,11 @@ foreach simplex_status in 4 5 7 {
 scalar drop __fereg_ppml_finite_result
 mata: mata drop __fereg_ppml_fit
 
+* Reload after clearing Mata, once the global-scratch preservation checks finish.
+mata: mata clear
+_fereg_eppml_validate `b' `V' `status' `fit' `dof' `fe' `cluster' ///
+    `subset' `separation_ir' `inference' `drop_counts' `sequence_ir' ///
+    `certificate' `solver' `runtime' `receipt_ir', capacity(2) `ir_options'
+assert r(coefficients) == 2
+
 display as result "END_FIXTURE|estimate_ppml_runtime_validator|rc=0"
