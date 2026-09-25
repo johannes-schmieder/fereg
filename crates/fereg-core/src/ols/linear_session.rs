@@ -3656,8 +3656,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         )
     }
 
-    /// Borrow norms from this call's fresh categorical certificate only when
-    /// its weight normalization matches the finite solve. Scratch tiles carry
+    /// Borrow norms from this call's fresh certificate only when its weight
+    /// normalization matches the finite solve. Scratch tiles carry
     /// their own column axis; no cached norm survives a projection call.
     fn absorb_reusable_map_with_norms(
         &mut self,
@@ -3685,8 +3685,41 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 0..norms.len(),
                 norms,
             ),
+            Some(ReusableLinearMapProjector::PpmlCoefficients { projector, canonical: None, .. }) =>
+                Ok((projector.absorb_coefficient_with_selected_norms(
+                    &self.map_weights, values, self.config.absorb.map,
+                    self.generations.map_geometry(), 0..norms.len(), None, norms,
+                )?, true)),
             _ => Ok((self.absorb_reusable_map(values)?, false)),
         }
+    }
+
+    fn absorb_slope_with_selected_norms(
+        &mut self,
+        values: DenseMatrix,
+        positions: impl ExactSizeIterator<Item = usize> + Clone,
+        reference: Option<&mut [f64]>,
+        residual: &mut [f64],
+    ) -> Result<CertifiedBorrowedMap> {
+        let Some(ReusableLinearMapProjector::PpmlCoefficients {
+            projector,
+            canonical: None,
+            ..
+        }) = self.fe_projector.as_mut()
+        else {
+            return Err(invalid_argument(
+                "slope norm handoff requires its coefficient owner",
+            ));
+        };
+        projector.absorb_coefficient_with_selected_norms(
+            &self.map_weights,
+            values,
+            self.config.absorb.map,
+            self.generations.map_geometry(),
+            positions,
+            reference,
+            residual,
+        )
     }
 
     fn reusable_map_max_rhs(&self) -> Result<usize> {
@@ -5184,6 +5217,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             "unable to reserve weighted-linear retained within norms",
         )?;
 
+        let slope_norms = self.config.absorb.solver == FeSolverKind::Map
+            && matches!(self.fe_projector, Some(ReusableLinearMapProjector::PpmlCoefficients { canonical: None, .. }));
+
         let (storage, within_response, absorption_report) = if let Some(source) = &self.group_centered_source {
             let mut values = ImplicitCenteredDesign::new(source.clone(), &stored_generated_columns, self.config.execution.mode)?;
             let (response, report) = values.refresh(&self.response, self.weights.borrowed(), self.bread_weight_scale.solver_weight_divisor,
@@ -5211,10 +5247,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         "weighted-linear combined retained design is inconsistent",
                     ));
                 }
-                let raw_norms = self.weighted_dense_column_norms(&raw)?;
+                let raw_norms = if slope_norms { None } else { Some(self.weighted_dense_column_norms(&raw)?) };
                 let raw_means = self.weighted_dense_column_means(&raw)?;
                 for (position, generated) in stored_generated_columns.iter().copied().enumerate() {
-                    reference_norms[position] = raw_norms[generated + 1];
+                    if let Some(raw_norms) = &raw_norms {
+                        reference_norms[position] = raw_norms[generated + 1];
+                    }
                     reference_means[position] = raw_means[generated + 1];
                 }
                 drop(raw_norms);
@@ -5222,7 +5260,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 let mut norms_reused = false;
                 let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
                     self.fill_reusable_map_weights()?;
-                    if let Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) =
+                    if slope_norms {
+                        norms_reused = true;
+                        self.absorb_slope_with_selected_norms(
+                            raw, stored_generated_columns.iter().map(|column| column + 1),
+                            Some(&mut reference_norms), &mut within_norms,
+                        )?
+                    } else if let Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) =
                         self.fe_projector.as_mut()
                     {
                         let (absorbed, reused) = projector.absorb_with_selected_norms(
@@ -5360,13 +5404,19 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         }
                     }
                     let raw = DenseMatrix::from_row_major(rows, block, raw_values)?;
-                    let norms = self.weighted_dense_column_norms(&raw)?;
+                    if !slope_norms {
+                        let norms = self.weighted_dense_column_norms(&raw)?;
+                        reference_norms[start..end].copy_from_slice(&norms);
+                    }
                     let means = self.weighted_dense_column_means(&raw)?;
-                    reference_norms[start..end].copy_from_slice(&norms);
                     reference_means[start..end].copy_from_slice(&means);
-                    drop(norms);
                     drop(means);
-                    let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map {
+                    let (absorbed, norms_reused) = if slope_norms {
+                        (self.absorb_slope_with_selected_norms(
+                            raw, 0..block, Some(&mut reference_norms[start..end]),
+                            &mut within_norms[start..end],
+                        )?, true)
+                    } else if self.config.absorb.solver == FeSolverKind::Map {
                         self.absorb_reusable_map_with_norms(raw, &mut within_norms[start..end])?
                     } else {
                         (
@@ -6160,8 +6210,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 self.weights.borrowed(), combined, self.config.absorb.map,
                 self.bread_weight_scale.solver_weight_divisor, &mut within_norms)?,
             Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) =>
-                (projector.absorb_in_generation(&self.map_weights, combined, self.config.absorb.map, false,
-                    Some(self.generations.map_geometry()))?, false),
+                (projector.absorb_coefficient_with_selected_norms(
+                    &self.map_weights, combined, self.config.absorb.map,
+                    self.generations.map_geometry(), 1..stride, None, &mut within_norms,
+                )?, true),
             _ => return Err(invalid_argument("fused projection requires an admitted PPML projector")),
         };
         if !absorbed.report().certified() {

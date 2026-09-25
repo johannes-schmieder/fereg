@@ -674,6 +674,77 @@ impl ReusableMapAbsorber {
         self.absorb_in_generation(weights, values, config, structural_constant_if_empty, None)
     }
 
+    /// Hand off statistics from this completed coefficient projection only.
+    /// Both the consumer and solver use the supplied normalized weights. No
+    /// statistic from a previous RHS, weight frame or failed call is exposed.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn absorb_coefficient_with_selected_norms(
+        &mut self,
+        weights: &[f64],
+        values: DenseMatrix,
+        config: MapConfig,
+        generation: MapGeometryGeneration,
+        positions: impl ExactSizeIterator<Item = usize> + Clone,
+        reference: Option<&mut [f64]>,
+        residual: &mut [f64],
+    ) -> Result<CertifiedBorrowedMap> {
+        let previous = self
+            .certificate_geometry
+            .as_mut()
+            .and_then(|geometry| geometry.generation.take());
+        if self.coefficient_solver.is_none()
+            || self.design.effects().is_empty()
+            || positions.len() != residual.len()
+            || reference
+                .as_ref()
+                .is_some_and(|norms| norms.len() != residual.len())
+            || positions.clone().any(|position| position >= values.ncols())
+        {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "coefficient projection norm handoff is not aligned",
+            ));
+        }
+        // Restore only at the delegated entry, which immediately takes this
+        // authority itself. Selection validation and output publication keep it
+        // revoked, including if an iterator panics.
+        self.certificate_geometry
+            .as_mut()
+            .expect("coefficient geometry")
+            .generation = previous;
+        let result = self.absorb_in_generation(weights, values, config, false, Some(generation))?;
+        let completed = self
+            .certificate_geometry
+            .as_mut()
+            .expect("coefficient geometry")
+            .generation
+            .take();
+        // That route always computes input norms before solving and residual
+        // norms in its mandatory independent final certificate. Validate the
+        // whole selection before publishing either caller-owned output.
+        if positions.clone().any(|column| {
+            !self.reference_norms[column].is_finite() || !self.residual_norms[column].is_finite()
+        }) {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "coefficient projection norms are not finite",
+            ));
+        }
+        if let Some(reference) = reference {
+            for (out, column) in reference.iter_mut().zip(positions.clone()) {
+                *out = self.reference_norms[column];
+            }
+        }
+        for (out, column) in residual.iter_mut().zip(positions) {
+            *out = self.residual_norms[column];
+        }
+        self.certificate_geometry
+            .as_mut()
+            .expect("coefficient geometry")
+            .generation = completed;
+        Ok(result)
+    }
+
     pub(crate) fn absorb_in_generation(
         &mut self,
         weights: &[f64],
@@ -2037,6 +2108,207 @@ mod tests {
                         }
                     }
                     assert_eq!(candidate.capacities(), capacities);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn coefficient_norm_handoff_tracks_current_columns_weights_and_failures() {
+        let n = 6 * 4 * 3;
+        let codes_i: Vec<_> = (0..n).map(|row| (row / 12) as u32).collect();
+        let codes_j: Vec<_> = (0..n).map(|row| ((row / 3) % 4) as u32).collect();
+        let t: Vec<_> = (0..n).map(|row| (row % 3) as f64 - 1.).collect();
+        let design = FeDesign::new(
+            n,
+            vec![
+                EffectTerm::new(
+                    codes_i.clone(),
+                    6,
+                    true,
+                    vec![t.clone(), t.iter().map(|v| 2. * v).collect(), vec![0.; n]],
+                )
+                .unwrap(),
+                EffectTerm::new(
+                    codes_j.clone(),
+                    4,
+                    true,
+                    vec![codes_i.iter().map(|&i| i as f64).collect()],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        let config = MapConfig {
+            tolerance: 1e-12,
+            ..MapConfig::default()
+        };
+        for threads in [1, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            let mut owner = ReusableMapAbsorber::new(design.clone(), 4).unwrap();
+            owner.enable_certificate_geometry().unwrap();
+            owner.enable_coefficient_solver(threads).unwrap();
+            owner.enable_coefficient_coupling().unwrap();
+            let capacities = owner.capacities();
+            for (frame, scale) in [1., 1e-120, 1e120].into_iter().enumerate() {
+                let generation = MapGeometryGeneration {
+                    sample: 1,
+                    topology: 1,
+                    weights: frame as u64 + 1,
+                };
+                let jw: Vec<_> = (0..4).map(|j| 0.4 + j as f64 + frame as f64).collect();
+                let mean_j = (0..4).map(|j| jw[j] * j as f64).sum::<f64>() / jw.iter().sum::<f64>();
+                let weights: Vec<_> = (0..n)
+                    .map(|row| scale * (1. + codes_i[row] as f64) * jw[codes_j[row] as usize])
+                    .collect();
+                let mut last_reference = 0.;
+                for rhs_frame in 0..2 {
+                    let mut raw = DenseMatrix::zeros(n, 4).unwrap();
+                    let mut expected = DenseMatrix::zeros(n, 4).unwrap();
+                    let value_scale = [1., 1e-60, 1e60][frame] * (rhs_frame + 1) as f64;
+                    for row in 0..n {
+                        let i = codes_i[row] as f64;
+                        let j = codes_j[row] as f64;
+                        let remainder = (i + 1.).sin() * (j - mean_j) * t[row];
+                        let fitted = i.sin() + i.cos() * t[row] + j.cos() + j.sin() * i;
+                        for col in 0..3 {
+                            let c = (col + 1) as f64;
+                            raw[(row, col)] = value_scale * (c * fitted + remainder / c);
+                            expected[(row, col)] = value_scale * remainder / c;
+                        }
+                    }
+                    let selected = [2, 0, 3, 2];
+                    let input_norm: Vec<_> = selected
+                        .iter()
+                        .map(|&col| {
+                            (0..n)
+                                .map(|row| weights[row] * raw[(row, col)] * raw[(row, col)])
+                                .sum::<f64>()
+                                .sqrt()
+                        })
+                        .collect();
+                    let mut references = [f64::NAN; 4];
+                    let mut residuals = [f64::NAN; 4];
+                    let actual = pool
+                        .install(|| {
+                            owner.absorb_coefficient_with_selected_norms(
+                                &weights,
+                                raw.clone(),
+                                config,
+                                generation,
+                                selected.into_iter(),
+                                Some(&mut references),
+                                &mut residuals,
+                            )
+                        })
+                        .unwrap();
+                    assert!(actual.report().certified());
+                    for (a, e) in actual
+                        .residualized()
+                        .as_slice()
+                        .iter()
+                        .zip(expected.as_slice())
+                    {
+                        assert!((a - e).abs() <= 1e-9 * value_scale);
+                    }
+                    for (out, &col) in selected.iter().enumerate() {
+                        // Direct sums use an independent arithmetic path, within
+                        // ranges that cannot overflow or underflow in this oracle.
+                        let norm = (0..n)
+                            .map(|row| weights[row] * actual.residualized()[(row, col)].powi(2))
+                            .sum::<f64>()
+                            .sqrt();
+                        assert!(
+                            (references[out] - input_norm[out]).abs() <= 2e-14 * input_norm[out]
+                        );
+                        assert!((residuals[out] - norm).abs() <= 2e-14 * norm);
+                    }
+                    if rhs_frame == 1 {
+                        assert!(references[1] > last_reference);
+                    }
+                    last_reference = references[1];
+                    let preparations = owner.certificate_geometry.as_ref().unwrap().preparations;
+                    for failure in 0..3 {
+                        references.fill(-1.);
+                        residuals.fill(-2.);
+                        let mut bad_weights = weights.clone();
+                        if failure == 1 {
+                            bad_weights[0] = f64::NAN;
+                        }
+                        let positions = if failure == 0 { [2, 0, 4, 2] } else { selected };
+                        let budget = if failure == 2 {
+                            MapConfig {
+                                max_iterations: 0,
+                                ..config
+                            }
+                        } else {
+                            config
+                        };
+                        assert!(pool
+                            .install(|| owner.absorb_coefficient_with_selected_norms(
+                                &bad_weights,
+                                raw.clone(),
+                                budget,
+                                generation,
+                                positions.into_iter(),
+                                Some(&mut references),
+                                &mut residuals,
+                            ))
+                            .is_err());
+                        assert_eq!(references, [-1.; 4]);
+                        assert_eq!(residuals, [-2.; 4]);
+                        assert!(owner
+                            .certificate_geometry
+                            .as_ref()
+                            .unwrap()
+                            .generation
+                            .is_none());
+                    }
+                    pool.install(|| {
+                        owner.absorb_coefficient_with_selected_norms(
+                            &weights,
+                            raw,
+                            config,
+                            generation,
+                            selected.into_iter(),
+                            None,
+                            &mut residuals,
+                        )
+                    })
+                    .unwrap();
+                    assert_eq!(
+                        owner.certificate_geometry.as_ref().unwrap().preparations,
+                        preparations + 1
+                    );
+                    assert_eq!(owner.capacities(), capacities);
+                    if frame == 2 && rhs_frame == 1 {
+                        let values = DenseMatrix::zeros(n, 4).unwrap();
+                        let failure =
+                            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                let positions = selected
+                                    .into_iter()
+                                    .map(|_| panic!("injected selection unwind"));
+                                owner.absorb_coefficient_with_selected_norms(
+                                    &weights,
+                                    values,
+                                    config,
+                                    generation,
+                                    positions,
+                                    Some(&mut references),
+                                    &mut residuals,
+                                )
+                            }));
+                        assert!(failure.is_err());
+                        assert!(owner
+                            .certificate_geometry
+                            .as_ref()
+                            .unwrap()
+                            .generation
+                            .is_none());
+                    }
                 }
             }
         }
