@@ -9,10 +9,46 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-The [current implementation plan](#further-ppml-development-plan--revised-after-adr-0203-2026-09-25)
-uses higherdim1 seed435 evidence. Fast four-plus categorical PPML now uses the
-admitted coefficient/joint engine. Earlier closeouts below are historical; their
-source-bound timings do not transfer to this checkpoint.
+The [current implementation plan](#further-ppml-development-plan--revised-after-the-sparse-factor-pilot-2026-09-25)
+uses higherdim1 seed435 evidence and a separate current-source development screen.
+Fast four-plus categorical PPML uses the admitted coefficient/joint engine.
+The sparse-factor experiment remains isolated and unfinished; its first public
+integration loses. Earlier closeouts below are historical; their source-bound
+timings do not transfer to this checkpoint.
+
+## Current experiment and revised priorities — 2026-09-25
+
+Production remains **3e1d9120 / higherdim1**, with all **565 captured computational
+inputs** matching. The [interim source-bound report](benchmarks/reports/development/ppml-sparse-factor-interim-local-2026-09-25/README.md)
+preserves the completed baseline, sparse-kernel oracle and first public pilot.
+All original work remains in `target/ppml-sparse-fe-factor-20260925` and its isolated
+artifacts. This planning checkpoint changes no runtime code and consumes no fresh
+seed. The full experiment archive and production decision are still pending.
+
+Three current-source baseline/stock rotations on reused development seed347 give
+**106/101 ms** disconnected low two-FE categorical, **37/34 ms** narrow two-FE,
+and **71/81 ms** low T8 slopes. Required median savings to reach 0.90 stock are
+**15.1 ms**, **6.4 ms**, and zero, respectively. The slope margin is still small.
+All eighteen public states and nine science comparisons pass; no monitor overlap
+is recorded. These clocks do not replace older seed434/435 evidence.
+
+The sparse grounded-Laplacian kernel passes independent weighted explicit-design
+oracles for seven actual frames/41 RHSs. Its first public integration replaces
+ordinary joint directions and fused canonical products with full WLS, losing
+**106->155 ms** on the large case and **37->43 ms** narrow. The excluded slope
+median ties at 72 ms. All 27 public states, eighteen baseline pairs, nine stock
+pairs and three licensed scientific fixtures pass. Separate diagnostic profiling
+also passes four states/two pairs; it confirms factor kernels run at T4 and that
+the first integration adds substantial projection and finite work. Its incomplete
+memory/fallback lifecycle precludes production adoption regardless of timing.
+
+**Next action:** allow one corrected integration that keeps ordinary joint steps
+and fused canonical certificates/products, replacing only their coefficient solve
+with exact-current-weight sparse factors. Include symbolic setup and all consumers
+in the public clock. If that does not give worthwhile savings, close this candidate
+and move to narrow-fit lifecycle or a larger measured gap from the bounded coverage
+screen. Do not tune the losing full-WLS integration. The revised plan below sets
+concrete targets, science gates, coverage priorities and stopping rules.
 
 ## Fast higher-dimensional PPML adopted — 2026-09-25
 
@@ -84,13 +120,11 @@ Budget refusal and excluded routes retain their prior implementation. Physical
 caps, Linux T1/8/16, allocation-inventory drift and existing constrained-fit/CG
 failures remain open. No qualification, SCC retry, push or release occurred.
 
-**Next subsystem:** remeasure the remaining low two-way categorical loss on this
-checkpoint, then compare a materially different exact-weight sparse FE-block
-factor with actual initial/ordinary/strict workloads before public integration.
-The prior lifecycle trace did not reveal an untreated ten-ms duplication; do not
-restart topology-transfer, packaging or incidence micro-probes. Keep narrow
-whole-command overhead, the disconnected mean discrepancy and OLS slope losses
-as explicit remaining work. The plan below specifies the bounded gates.
+**Next subsystem at this checkpoint:** the current experiment update above now
+supersedes this handoff's remeasurement instruction. The prior lifecycle trace
+did not reveal an untreated ten-ms duplication; do not restart topology-transfer,
+packaging or incidence micro-probes. Keep narrow whole-command overhead, the
+disconnected mean discrepancy and OLS slope losses as explicit remaining work.
 
 ## Multi-partition topology transfer rejected — 2026-09-25
 
@@ -720,7 +754,7 @@ released before certification. Final fresh tracked peaks change by -2,681,856 to
 +48 bytes. All frozen benchmark definitions are preserved. Seeds **202609428/429
 are now consumed/frozen** and cannot become tuning seeds.
 
-## Further PPML development plan — revised after ADR 0203, 2026-09-25
+## Further PPML development plan — revised after the sparse-factor pilot, 2026-09-25
 
 Scope is **at least two FE partitions**. Target complete public `feppml` time
 **<=0.90 times scientifically comparable pinned stock fixest per case**, with
@@ -747,34 +781,37 @@ dense-factor probes remain closed. Do not propose those mechanisms as new work.
 
 | Remaining target | Source-bound evidence | Required next action |
 |---|---|---|
-|Low disconnected two-FE categorical|Historical controlplane3: 109/97 ms; 21.7-ms deficit to 0.90|Remeasure higherdim1 before claiming a current loss|
-|Narrow two-FE fast|Current-source pilot: 38/32 ms; 9.2-ms deficit|Remove substantial whole-command work outside its roughly three-ms historical inner recurrence|
-|T8 two-partition slopes|Current fresh low: 71/80 ms; one pair misses 0.90|Build headroom through shared improvements; no isolated threshold tuning|
+|Low disconnected two-FE categorical|Current baseline 106/101 ms; separate pilot 106/98 ms|Save 15.1–17.8 ms; aim for 80–85 ms to provide headroom|
+|Narrow two-FE fast|Current baseline and pilot 37/34 ms|Save at least 6.4 ms; aim for 27–29 ms through whole-command work removal|
+|T8 two-partition slopes|Current baseline 71/81 ms; prior fresh 71/80 ms with one pair missing 0.90|Aim for about 65–68 ms through shared improvements; no isolated threshold tuning|
 |Disconnected five-FE|Current means disagree; tighter stock still leaves fifteen discrepancies|Independent scientific localization before any timing rank|
 |OLS slopes|Current control loses two ms in all three pairs; older larger losses also exist|Carry exact-output and public-time controls through the next implementation|
 
-Earlier seed434's 11/21.7-ms targets remain historical measurements, not current
-higherdim1 clocks. The new low four-FE control also loses three ms to baseline;
-all excluded-path distributions remain visible.
+The new targets use separate seed347 development blocks; do not pool them. They
+are implementation budgets, not promises of attainable speed. Earlier seed434's
+11/21.7-ms deficits are historical. The low four-FE control also loses three ms
+to baseline; all excluded-path distributions remain visible. Zero-/one-FE PPML
+are regression controls; the active speed objective starts at two FE partitions.
 
 ### Milestone 1: exact-weight canonical work on weak/disconnected designs
 
-1. Run a small current-source baseline/stock screen of the known low two-way loss,
-   narrow control and an established slope win. Match robust inference, means and
-   threads. Do not repeat the just-completed four/five-FE campaign. Preserve
-   failure/science classifications before timing ranks.
-2. Use actual frozen initial, ordinary and strict weight/RHS frames to evaluate
-   **one sparse factorization of the grounded categorical FE block**. Reuse
-   symbolic ordering/fill only; rebuild numeric factors on every changed weight
-   frame. Measure whether one factor can serve compatible response/control RHSs
-   and finite-block elimination. Include the already-cheap warm ordinary calls.
-   ADR0183's dense-factor failure is a required comparison, not a reason to
-   benchmark only favorable strict cold solves.
-3. Compare complete setup, solve, independent checks and live-memory costs against
-   the current coefficient engine. The historical low-case ledger assigns about
-   28.4 ms to initial/strict canonical work and 19.6 ms to ordinary directions;
-   this is the potential savings budget, not a current-source performance claim.
-   Reject before integration if fill/setup or complete storage consumes the gain.
+1. Baseline, actual-frame feasibility and the first public pilot are complete;
+   use the interim report rather than repeating them. The first integration is
+   unsuitable: a fast factor does not justify replacing cheap joint steps with
+   full response/control absorption on every ordinary iteration.
+2. Implement the one remaining correction in the existing canonical product owner.
+   Retain ordinary joint directions, direct residual Gram construction, fused
+   original-input certification and output reconstruction. Replace only the
+   coefficient proposal with the sparse grounded FE factor. Retain symbolic
+   ordering per immutable design; rebuild numeric factors for every changed
+   current weight frame. Solve compatible group RHSs together without allocating
+   another N-by-K observation bank. Do not restore cancellation-sensitive Gram
+   subtraction rejected in ADR0167.
+3. Charge symbolic setup, numeric preparation, all RHS solves, independent checks,
+   row reconstruction and every downstream consumer in the early public pilot.
+   The 7.3-ms symbolic setup and extra factor storage may erase kernel savings.
+   Preserve the already-cheap ordinary calls. A worthwhile complete-command gain
+   is the gate for further integration, not a strict cold-kernel speedup.
 4. Integrate only a candidate with a credible substantial public saving. Admit
    every factor, owner and overlap before allocation. Low mode must not gain a
    second N-by-K bank. Keep canonical rank and exact final q*mu Hessian independent;
@@ -782,34 +819,74 @@ all excluded-path distributions remain visible.
    checking schedule by mapping every scientific purpose to its independent
    authority. No relaxed tolerances or reference-weight inverse.
 
-Use one coherent candidate and at most one evidence-led correction. If it fails,
+The first candidate has used its initial pilot; allow only this evidence-led
+correction. If it fails,
 archive the negative evidence, remove its machinery and move to Milestone 2.
 Do not accumulate dormant solver layers or another long Krylov-threshold search.
 
 ### Milestone 2: complete-command overhead and output consumers
 
-Narrow PPML needs roughly nine ms against its current pilot ceiling. A three-ms
-inner recurrence cannot provide that saving alone. Assign a proposed saved pass
+Narrow PPML needs at least 6.4 ms against the current stock median, preferably
+8–10 ms for headroom. Its roughly three-ms historical inner recurrence cannot
+provide that saving alone. Assign a proposed saved pass
 to one nonoverlapping ledger entry in preparation, canonical setup, finalization,
-inference or publication. An integrated compact-session design must eliminate a
-complete stage or demonstrated repeated ownership/pass, with a credible ten-ms
-public budget; a shared constructor or another small cache is insufficient.
+inference or publication. First compare fresh and repeated complete public fits
+with their native totals to locate the gap. An integrated compact-session design
+must eliminate a complete stage or demonstrated repeated ownership/pass, with
+a credible public savings budget; a shared constructor or another small cache
+is insufficient. List each proposed omission's current-state authority, owner,
+consumer and invalidation conditions before implementation. Expensive consumers
+should share one accepted current-frame result where scientifically valid.
 Honor explicit solvers and establish general memory/work eligibility rather than
 benchmark-specific guards. Stata18 compiled transport remains accepted; runtime
 compilation and more packaging tuning stay closed.
 
-Selectively screen larger N, generated/factor controls, clustered inference and
-saved-effect outputs on the current source. These are coverage opportunities,
-not asserted losses. Use roughly six to eight cases covering relevant imbalance,
-weak connectivity, widths and threads. If a measured inference or reconstruction
-consumer has a larger avoidable cost, implement that consumer next. Do not let a
-small narrow deficit prevent a substantially broader gain.
+This is a redesign of work performed, not permission to drop independent checks.
+Preserve the accepted convergence schedule: ADR0191/0192's earlier checkpoint
+variants and ADR0197's reference-weight/nonlinear proposals stay closed without
+materially new evidence. If the measured removable budget cannot cover the gap,
+record the remaining command/verification floor and move to the next family.
+
+### Milestone 3: find and remove the next large practical bottleneck
+
+Run one adaptive six-to-eight-case screen before another narrow tuning cycle.
+Include larger observation counts (start at 100k, then about one million where
+locally feasible), generated/factor controls, wider designs, clustered inference,
+saved FE and means, and a harder outer-IRLS path with offsets/zeros/separation.
+Use two-, three- and higher-dimensional designs across the small screen, mixing
+unbalanced, weak and disconnected topology; do not form a Cartesian product.
+These are untested opportunities, not assertions of current losses. Preserve
+comparable samples, outputs, inference and reference accuracy before ranking.
+
+Select the largest measured avoidable public cost and implement one coherent
+replacement. Candidate boundaries are direct source-column access and batched
+finite products, component scheduling, final inference, or saved-effect recovery.
+For a solver-routing gap, generalize an existing efficient owner using topology,
+RHS width, observed work and complete memory eligibility, as ADR0203 did. Do not
+add a solver merely because a kernel looks faster. For a bandwidth-bound case,
+remove a demonstrated full observation/design pass before tuning arithmetic.
+For expensive output recovery, reuse valid accepted coefficients and reconstruct
+requested outputs once, with their independent reconstruction checks intact.
+
+Prioritize changes with a plausible 20–30% family improvement or a broad shared
+saving; this is a selection target, not an adoption threshold. Shared inexpensive
+gains can be smaller. Source-specific guards, overlapping dormant engines and
+unbounded threshold searches remain excluded. A selected shared mechanism must
+also be checked for benefit or regressions in multi-partition OLS.
+
+### Scientific discrepancies and coverage completion
 
 Localize the disconnected five-FE mean discrepancy independently, for example
 with an explicit-design solve of a bounded problematic component. The tighter
 stock diagnostic is evidence of sensitivity, not an accuracy oracle. Neither it
 nor fresh seed435 licenses source tuning on those validation cases. Earlier
 three-FE discrepancies remain distinct scientific work.
+
+Keep these diagnoses bounded and separate from optimization data. A rankable
+result requires independently established science; passing an individual score
+check alone does not resolve disagreement. Record unknown/incomparable cells
+alongside wins and losses. No claim of broad 10% superiority follows while the
+relevant family is untested or scientifically unresolved.
 
 ### Acceptance and stopping gates
 
@@ -823,6 +900,10 @@ three-FE discrepancies remain distinct scientific work.
 - Report every distribution, pairwise loss, timeout and application failure.
   Scientific discrepancies stay unranked. A median barely crossing 0.90 is
   provisional when pairs miss; seek 0.80–0.85 headroom where practical.
+- Maintain a per-family scoreboard of public time, ratio to matched stock,
+  remaining milliseconds to 0.90, tail/outlier behavior, scientific status and
+  memory. Repeat a predeclared confirmation block when an apparent improvement
+  is too close to measurement variation; do not rerun until a favorable median.
 - Protect two-/three-FE, slopes, wide/serial and OLS with focused controls. Check
   complete memory admission, warmed allocations and tracked peak/scratch changes
   when affected. A model is not a physical-cap test. Preserve static-inventory
