@@ -10,23 +10,48 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
-## Active plan and unfinished experiment — 2026-09-25
+## Reference-operator PPML experiment closed — 2026-09-25
 
-The [development plan below](#further-ppml-development-plan--revised-2026-09-25)
-now prioritizes eliminating repeated weighted-system construction with a
-safeguarded modified-Newton proposal, then shared preparation/certification,
-narrow-fit lifecycle costs, and a selective broader-family screen. Aim for
-75–80 ms on the recorded 112-ms low case and 26–28 ms on the 39-ms narrow case;
-these are engineering ambitions, not measured results or promised speedups.
+Reject **chord2** and retain **e7731129/finalreplay1** runtime. The four-file
+integrated modified-Newton prototype, its fixed-frame product prerequisite,
+and earlier nonlinear diagnostics are preserved in
+[ADR 0197](docs/adr/0197-ppml-reference-operator-closeout.md) and its
+[source-bound report](benchmarks/reports/development/ppml-chord-closeout-local-2026-09-25/README.md).
+All four production files are restored; all **558 accepted computational inputs**
+match. No proposal policy, cache or tolerance change is retained.
 
-At this planning update, `map.rs` and `slope_coefficients/joint.rs` contain an
-uncommitted fixed-frame product-reuse prototype. It has no production PPML
-caller yet. The existing focused fixed-frame test passes; this is not public
-estimator acceptance. Preserve these edits and the local diagnostic evidence
-under `target/ppml-nonlinear-block-20260925` and
-`target/ppml-fixed-joint-20260925`. Production remains finalreplay1. The next
-implementation milestone must integrate, validate and measure the complete
-proposal or reject it; merely committing its cache prerequisite is insufficient.
+The candidate reuses one reference-weight joint operator for fresh-gradient
+proposals, while strict/final construction restores exact current q*mu. Native
+traces confirm actual reuse. Three development rotations give B/C/stock medians
+**112/110/98 ms** low categorical, **39/39/34** narrow, **80/75/79** low slopes,
+and **80/80/78** fast slopes. A frozen-source extension gives **86/85/127** wide
+controls, but **196/310/231** unbalanced three-FE slopes. The latter loses all
+three pairs; outer iterations rise **4→7**, inner work **54→137**. The strict
+checkpoint correctly rejects the reference trajectory after two outer score
+passes, and exact Newton must resume. Do not weaken that check or fit an
+exclusion guard to the losing topology. These development clocks do not replace
+seed430's savings budgets or constitute fresh confirmation.
+
+Fourteen distinct final Rust tests and six licensed scientific fixtures pass;
+all **64 public states, 41 baseline comparisons and 18 direct stock pairs** pass
+in the candidate's two timing and two trace blocks. The first integrated draft's
+checkpoint-routing failure is preserved; requiring canonical-final leaves its
+existing assertion unchanged and passing. Peak telemetry rises 96/128/336 bytes
+for K6/K10/K36 joint owners, with unchanged scratch; no observation bank is added.
+No OLS campaign, physical-cap, warmed-allocation or qualification result is claimed.
+All **4,365 logical receipts** are restored and hash/privacy checked. Seed431
+remains unused. Known scientific, memory-inventory and platform gaps remain open.
+
+**Next implementation: Milestone 3, exact-weight preparation and independent
+checking.** Avoiding repeated operator construction alone saved only about
+3.7 ms of projection work on the principal categorical case while adding about
+1.5 ms of response-refresh work. It leaves ordinary checking/reconstruction and
+canonical initial/strict construction substantially intact. Consolidate their
+repeated original-column normalization, norms/means, scores and reconstruction
+with explicit current-state ownership. Keep direct residual products and fresh
+independent acceptance. The narrow fast-path lifecycle remains a separate target.
+Do not restart reference-age tuning, the nonlinear block probe, coarse CG or
+final-replay micro-tuning. The broad >=2-FE <=0.90-stock goal is still active.
 
 ## Coarse canonical CG experiment closed — 2026-09-25
 
@@ -61,9 +86,10 @@ inclusive diagnostic spans, not stock headlines. Narrow RHS work is **0.177 ms**
 The original accepted-source clocks and remaining 27.4/8.4-ms gaps below remain
 the active planning budget. Do not pool the pilot with that fresh block.
 
-**Next implementation:** the active plan's modified-Newton experiment and shared
-preparation/reconstruction/checking boundary. Ordinary recurrence occupies about
-5.8 ms inside 23.8 ms of joint work; geometry alone is about 1.5 ms. Reduce full
+**Next implementation:** the modified-Newton experiment is now also closed
+under ADR 0197. Continue with exact-weight preparation/reconstruction/checking.
+Ordinary recurrence occupies about 5.8 ms inside 23.8 ms of joint work;
+geometry alone is about 1.5 ms. Reduce full
 weighted-system constructions and independently necessary row passes together.
 Do not resume the rejected coarse correction or another recurrence-only tuning
 cycle. Known scientific, allocation-inventory, constrained-memory and platform
@@ -289,8 +315,9 @@ wherever practical. Judge each family and its losses, not an aggregate win rate.
 Aim for additional margin so a noisy 0.90 median is not mistaken for a reliable
 advantage. This is an implementation plan; none of its proposed savings is an
 achieved result. Current accepted runtime is **e7731129/finalreplay1**. The
-unfinished two-file prototype in the opening record is preserved separately;
-its core test is not evidence of a production speed improvement.
+rejected four-file reference-operator prototype is archived under ADR 0197 and
+fully restored out of production. It supplies negative evidence, not a retained
+speed improvement.
 
 ### Current savings budgets and coverage
 
@@ -323,46 +350,20 @@ The finer canonical diagnostic and the proposed current-weight coarse
 preconditioner are closed under ADR 0196 and its immutable receipts. Scientific
 checks pass and iteration work decreases, but the full-public pilot has only
 1-ms target improvements and a narrow-control loss. The prototype is rejected;
-no fresh validation seed is consumed. Continue with Milestone 2, preserving this
-negative result instead of retuning the correction.
+no fresh validation seed is consumed. Milestone 2 is now also closed; continue
+with Milestone 3, preserving both negative results instead of retuning them.
 
-### Milestone 2: replace repeated Newton setup with certified surrogate proposals
+### Milestone 2: reference-operator proposals — closed
 
-Finish the materially different candidate already under development: use a
-fixed reference-weight joint operator for several modified-Newton (chord)
-proposals, driven by the fresh current Poisson gradient. Establish the operator
-after a successful current-weight step. Reuse its FE geometry, finite products
-and factors only under exact sample, topology, weight, finite-design, basis and
-selected-column identities. A changed response alone may reuse those products;
-changed dependencies or a failed solve revoke reuse. Start with the existing
-low-mode original-column owner, then generalize only after public gains.
-
-The local `chord.json` diagnostic uses actual first-accepted states. It needs
-four steps with one setup instead of three steps with three setups on the large
-case, and three steps with one setup instead of three setups on the narrow case.
-These are mathematical feasibility observations, not production timings. Its
-dense reduced matrix is diagnostic only and cannot become the low-memory
-implementation. The alternative nonlinear block-coordinate probe needs 13/9
-accelerated sweeps and is not selected for integration. Preserve both probes,
-including unsuccessful drafts, in the milestone's source-bound report.
-
-A reference-weight solve certifies its surrogate problem; it must never claim
-to solve the current q*mu Newton equations. Fresh current objective, finite/FE
-scores and model-space checks govern accepted proposals. Rebuild the operator
-on failed progress or numerical refusal using a documented, case-independent
-rule, with bounded recovery. A strict checkpoint first restores exact current
-q*mu weights and the canonical response. Initial/final rank policy, independent
-strict projection and reconstruction, and exact final Hessian/inference remain
-authoritative. Document the revised proposal policy and diagnostics in a
-successor ADR; do not silently change the meaning of a current-weight certificate.
-
-Measure preparations, RHS work, gradient/score passes, exponentials, rejected
-trials and strict/final work across the complete fit. Extra cheap steps are
-acceptable only if their total cost is lower. The first delivery is a complete
-public-command pilot plus independent changing-weight Poisson/Hessian and
-rollback evidence, not just a reusable-factor commit. Admit only on fresh
-whole-command evidence. If it fails, close it without repeated age/threshold
-tuning and continue to Milestone 3.
+ADR 0197 closes the integrated modified-Newton experiment and preserves the
+pending nonlinear block/dense chord diagnostics. Fixed-frame product reuse
+works and passes focused independent science, but saves only 2 ms low categorical
+and 5 ms low two-partition slopes in the pilot. Wide controls have a 1-ms median
+improvement and a losing pair. Unbalanced three-FE slopes regress by 114 ms,
+with additional ordinary steps and a correctly rejected strict checkpoint.
+The final candidate is rejected, including its cache prerequisite. No fresh
+validation seed is consumed. Continue with Milestone 3 inside the exact-weight
+algorithm; do not tune reference ages, score thresholds or case-specific guards.
 
 ### Milestone 3: consolidate weighted-linear preparation and independent checking
 
@@ -492,9 +493,9 @@ Linux/T1/T8/T16 and constrained-platform confirmation remain deferred; no SCC re
   release, stopped campaign restart or qualification claim.
 
 This planning revision changes no estimator source and consumes no fresh
-validation seed. Milestone 1 is closed. Milestone 2's prerequisite remains
-uncommitted and without public integration; preserve it and its diagnostics.
-The broad goal remains active. Each implementation milestone ends with a
+validation seed. Milestones 1 and 2 are closed with rejected implementations
+and immutable evidence. Production is restored. The broad goal remains active;
+continue implementation at Milestone 3. Each implementation milestone ends with a
 coherent tested commit and evidence of adopted improvements or a bounded
 rejection, not a declaration that a promising prototype completed the task.
 

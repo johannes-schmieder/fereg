@@ -1,0 +1,14 @@
+{
+  "logical_receipts": 4365,
+  "payloads": 1149,
+  "bytes": 11966371,
+  "sha256": "f7755c419ef7eff9368dfa324b4bb47ead24f3a73b9462965d1e8a011b9b5a3b",
+  "restored_receipts": 4365,
+  "all_payload_hashes_checked": true,
+  "privacy_checked": true,
+  "raw_licensed_logs_excluded": true,
+  "privacy_pattern_exceptions": [
+    "standard /Users/Shared reference roots",
+    "two existing synthetic path-redaction test literals"
+  ]
+}
