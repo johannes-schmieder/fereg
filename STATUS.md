@@ -10,6 +10,103 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Profiled two-partition slope trials accepted — 2026-09-25
+
+[ADR 0187](docs/adr/0187-profiled-slope-poisson-trials.md) and the
+[source-bound report](benchmarks/reports/development/ppml-profiled-slope-trials-local-2026-09-25/README.md)
+retain **slopecurve3**, based on `a3bd6dc6` plus `ppml/prepared_irls.rs` and
+`ppml/profiled_intercept_curve.rs`. All **555 captured inputs** match this
+checkpoint; the new licensed allocation fixture is separately hash-bound.
+Plugin SHA-256:
+`ebfca50ca203293d14e3b710951276b14d4221ff550b610a3c171bb1a7e22fe8`.
+The multi-FE <=0.90-times-comparable-stock goal remains active and unfinished.
+
+Publication PPML with exactly two intercept-containing partitions now extends
+the existing profiled trial to slopes. Select the slope partition with most
+groups, profile its intercept exactly, then make one safeguarded Newton proposal
+per slope. Immutable prior-weight outcome moments/scales are retained; all
+current-mean curvature and trial masses are fresh. The original objective,
+current-weight solves, canonical rank, full score/reconstruction and exact final-
+Hessian boundaries retain authority. A rejected strict slope checkpoint revokes
+the optional curve before established recovery continues. No tolerance changed.
+One FE, slope-only, Mu and three-plus-FE routes retain their prior algorithms.
+
+The broader **slopecurve2** candidate added 1.1–3.4% to three-FE medians without
+saving an iteration, so that scope is rejected. An initial 1e-12 disconnected
+unit case with component weight disparity 1e13 exposed persistent canonical
+predictor disagreement despite a passing score. The corrected fallback passes
+that unchanged test; failed drafts and the incomplete-overlay build failure
+remain in the receipts. Do not resume guard or sweep-count tuning here.
+
+Fresh **seed202609422**, five baseline/candidate/stock rotations:
+
+| Case | N/K/T; mode | Baseline / candidate / stock ms | Candidate / stock |
+|---|---|---:|---:|
+|Unbalanced three-FE slopes|69120/10/8; fast|217 / 217 / 264|0.822|
+|Same, low|69120/10/8; low|236 / 233 / 262|0.889|
+|Two slope partitions|36480/6/8; fast|99 / 95 / 83|1.145|
+|Smaller three-FE slopes|34560/6/4; fast|100 / 100 / 131|0.763|
+|Serial two-slope|36480/6/1; fast|154 / 147 / 332|0.443|
+|Narrow categorical|24000/2/4; fast|41 / 40 / 33|1.212|
+|Weak slope barbell|14400/4/4; fast|40 / 40 / 1028|0.039|
+|Disconnected slopes|24960/8/4; low|96 / 93 / 147|0.633|
+|Two slopes per partition|28800/10/8; fast|142 / 137 / 192|0.714|
+|Four categorical FE|30000/8/4; low|171 / 174 / 494|0.352|
+
+All five affected fresh slope cases remove one outer iteration. Four medians
+improve **3.1–4.5%**, with **22 wins/three ties** in 25 pairs. The retained
+artifact's development two-slope medians improve 7.4% threaded / 8.3% serial,
+removing two iterations. Eight of ten fresh medians meet 0.90 stock. The full
+fresh block has 35 wins/ten losses/five ties; all ten losses are excluded
+three-plus-FE controls. Initial four-FE +3-ms and OLS three-FE +2-ms losses remain
+visible. Their one same-input five-pair confirmation gives 171/170 ms and
+52/52 ms respectively. All 14 OLS scientific pairs are exact. No universal
+non-regression or parity claim follows.
+
+All **274 PPML public states**, **177 baseline comparisons**, **86 direct stock
+comparisons** and **14 licensed fixture executions** pass. Final focused Rust:
+**56 distinct passes / one known baseline assertion failure**, expecting one
+strict rejection but observing zero in the dynamic-range test. All three curve
+tests pass, including independent Newton formulas, weights 1e±200, slopes 1e±80,
+constants/duplicates and refused proposals. Fast/low T1/T4 two-partition compact
+allocation windows have zero events/growth, stable capacities and fresh/warm
+agreement. Affected tracked peaks add **139,232–535,088 bytes**; the principal
+case adds 535,088 bytes, selected-model admission 535,336 bytes. Scratch is
+unchanged. This is not physical-cap/RSS qualification.
+
+The archive was privacy-checked, verified and restored: **10,844 logical
+receipts / 2,381 payloads / 21,380,934 bytes**, SHA-256
+`70a103d080b3c3f108441d4d83ee3eaf85d1cc526f53aff304087073d6f47007`.
+Work root: target/ppml-ordinary-correction-20260925. All operations are terminal.
+Seeds **202609422/423** are consumed validation, not tuning inputs.
+
+### Next bounded implementation
+
+The current fresh gaps to 0.90 stock are **20.3 ms** for threaded two-slope PPML
+and **10.3 ms** for narrow categorical PPML. The accepted trial cuts FE projection
+26.19→21.98 ms and finite solving 8.49→7.52 ms, while line search grows
+4.85→6.09 ms. Preparation remains **17.55 ms**, strict final **13.32 ms** and
+publication **6.21 ms**. Further small trial arithmetic changes cannot account
+for the whole remaining gap.
+
+Prioritize canonical current-weight construction and reconstruction shared by
+initial rank setup and final certification. Isolate original-input observation
+passes, geometry ownership and retained products in those two stages; generalize
+only work valid under exact current weights/generations. Use frozen identical
+frames and an independent explicit-design oracle before another public rotation.
+Seek a coherent reduction in those roughly 31 ms of preparation/final cost,
+with categorical PPML and OLS controls, rather than relaxing strict acceptance.
+
+The separate current-source six-phase ADO diagnostic passed all six scientific
+states. Narrow N21120/K2/T4 phases are approximately 1.5/1.5/27/2/1.5/2 ms
+(metadata/request/native/bounded validation/output validation/publication).
+There is no single 10-ms wrapper phase to remove. Keep isolated metadata tuning
+closed; any shared native improvement should also be checked on narrow fits.
+
+Frozen definitions, static allocation drift, constrained-fit/CG failures and
+deferred platforms remain unchanged. No push, release, qualification, SCC retry
+or stopped campaign occurred. Earlier next-step entries are historical.
+
 ## Profiled slope-coordinate Poisson starts accepted — 2026-09-25
 
 [ADR 0186](docs/adr/0186-profiled-slope-poisson-start.md) and the

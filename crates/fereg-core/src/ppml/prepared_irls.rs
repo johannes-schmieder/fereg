@@ -1133,13 +1133,14 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // Charge their complete lifetime beside the existing solver and checkpoints.
     let profiled_curve_admitted = if profile_curve_enabled()
         && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-        && fe_design.effects().len() == 2
-        && fe_design.effects().iter().all(|e| e.has_intercept() && e.slopes().is_empty())
+        && ProfiledInterceptCurve::selected_effect(&fe_design).is_some()
     {
+        let effect = &fe_design.effects()[ProfiledInterceptCurve::selected_effect(&fe_design).unwrap()];
         let bytes = ProfiledInterceptCurve::bytes(
             fe_design.nobs(),
             prepared.fit_model().columns.len(),
-            fe_design.effects().iter().map(|e| e.n_levels()).max().unwrap(),
+            effect.n_levels(),
+            effect.slopes().len(),
         );
         match memory_plan.solver_workspace_bytes.checked_add(bytes)
             .map(|total| memory_plan.with_solver_workspace(total))
@@ -2656,6 +2657,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 break;
             }
             if profile_rejected {
+                // A slope correction is an optional nonlinear trial, not
+                // authority to contest a rejected canonical checkpoint.
+                if session.fe_design().effects().iter().any(|e| !e.slopes().is_empty()) {
+                    profiled_curve = None;
+                }
                 let refined = refined_checkpoint_tolerance(checkpoint_tolerance);
                 checkpoint_refinement_pending = refined < checkpoint_tolerance;
                 if checkpoint_refinement_pending && std::env::var_os("FEREG_SOLVER_TRACE").is_some()
@@ -7012,6 +7018,7 @@ mod tests {
 
     #[test]
     fn joint_strict_final_preserves_truth_current_hessian_and_canonical_retry() {
+        let _curve = ProfileCurveTestGuard::disabled();
         let _canonical = CanonicalFinalTestGuard::disabled();
         let n = 240;
         let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
@@ -7110,6 +7117,7 @@ mod tests {
                     config.linear.execution.threads = crate::options::ThreadConfig::from_requested(threads, true).unwrap();
                     {
                         let _canonical = CanonicalFinalTestGuard::disabled();
+                        let _curve = ProfileCurveTestGuard::disabled();
                         let baseline = fit_prepared_ppml_irls(&prepared, &y, &weights, &vec![0.;n], config,
                             plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(), None).unwrap();
                         assert!(relative_infinity_difference(baseline.eta(), &eta) < 1e-10);

@@ -1,5 +1,5 @@
-//! Analytic optimization of one intercept partition along a certified Newton
-//! direction. Only immutable prior-weight/outcome totals survive a trial.
+//! Conditional Poisson correction of one partition along a certified Newton
+//! direction. Only immutable prior-weight/outcome moments survive a trial.
 use super::family::{CompensatedSum, PreparedPoissonInputs};
 use super::{PoissonObjective, PpmlConfig, PpmlIterationWorkspace, PpmlLineSearchAcceptance};
 use crate::error::{ErrorCode, FeregError, Result};
@@ -16,6 +16,9 @@ pub(super) struct ProfiledInterceptCurve {
     log_weights: Vec<f64>,
     log_outcomes: Vec<f64>,
     shifts: Vec<f64>,
+    slope_steps: Vec<f64>,
+    slope_scales: Vec<f64>,
+    slope_targets: Vec<f64>,
 }
 fn numerical() -> FeregError {
     FeregError::new(
@@ -41,10 +44,31 @@ fn filled<T: Clone>(n: usize, value: T) -> Result<Vec<T>> {
 impl ProfiledInterceptCurve {
     // The active-column identity temporarily coexists with the retained slots
     // during construction. Neither bank is credited to the existing solver.
-    pub(super) fn bytes(n: usize, k: usize, g: usize) -> u128 {
+    pub(super) fn selected_effect(design: &FeDesign) -> Option<usize> {
+        let effects = design.effects();
+        if effects.len() != 2 || effects.iter().any(|e| !e.has_intercept()) {
+            return None;
+        }
+        let has_slopes = effects.iter().any(|e| !e.slopes().is_empty());
+        // Preserve the categorical choice. For slopes, correct the eligible
+        // slope partition with most groups, breaking ties in design order.
+        let mut selected = None;
+        for (index, effect) in effects.iter().enumerate() {
+            if has_slopes && effect.slopes().is_empty() {
+                continue;
+            }
+            if selected.map_or(true, |old: usize| {
+                effect.n_levels() > effects[old].n_levels()
+            }) {
+                selected = Some(index);
+            }
+        }
+        selected
+    }
+    pub(super) fn bytes(n: usize, k: usize, g: usize, slopes: usize) -> u128 {
         std::mem::size_of::<Self>() as u128
             + std::mem::size_of::<usize>() as u128 * 2 * k as u128
-            + 8 * (n as u128 + 2 * g as u128)
+            + 8 * (n as u128 + (2 + 2 * slopes as u128 + u128::from(slopes > 0)) * g as u128)
     }
     fn from_inputs(
         design: &FeDesign,
@@ -53,18 +77,13 @@ impl ProfiledInterceptCurve {
         threads: ThreadConfig,
         k: usize,
     ) -> Result<Self> {
-        if design.effects().len() != 2
-            || y.len() != design.nobs()
-            || q.len() != y.len()
-            || design
-                .effects()
-                .iter()
-                .any(|e| !e.has_intercept() || !e.slopes().is_empty())
-        {
+        if y.len() != design.nobs() || q.len() != y.len() {
             return Err(numerical());
         }
-        let effect = usize::from(design.effects()[1].n_levels() > design.effects()[0].n_levels());
+        let effect = Self::selected_effect(design).ok_or_else(numerical)?;
         let g = design.effects()[effect].n_levels();
+        let slopes = design.effects()[effect].slopes().len();
+        let moments = g.checked_mul(slopes).ok_or_else(allocation)?;
         let mut result = Self {
             team: ThreadTeam::new(threads).acquire()?,
             effect,
@@ -72,6 +91,9 @@ impl ProfiledInterceptCurve {
             log_weights: filled(y.len(), 0.)?,
             log_outcomes: filled(g, 0.)?,
             shifts: filled(g, 0.)?,
+            slope_steps: filled(if slopes == 0 { 0 } else { g }, 0.)?,
+            slope_scales: filled(moments, 0.)?,
+            slope_targets: filled(moments, 0.)?,
         };
         for (target, &weight) in result.log_weights.iter_mut().zip(q) {
             if !weight.is_finite() || weight <= 0. {
@@ -104,6 +126,34 @@ impl ProfiledInterceptCurve {
                 return Err(numerical());
             }
         }
+        for (channel, slope) in design.effects()[effect].slopes().iter().enumerate() {
+            for group in 0..g {
+                let rows = design.effects()[effect].level_index().members(group);
+                let first = slope[rows[0]];
+                if rows.iter().all(|&r| slope[r] == first) {
+                    continue;
+                }
+                let scale = rows.iter().map(|&r| slope[r].abs()).fold(0.0_f64, f64::max);
+                if !scale.is_finite() || scale <= 0.0 {
+                    return Err(numerical());
+                }
+                let mut target = CompensatedSum::default();
+                for &r in rows {
+                    if y[r] > 0.0 {
+                        target.add(
+                            (result.log_weights[r] + y[r].ln() - result.log_outcomes[group]).exp()
+                                * (slope[r] / scale),
+                        );
+                    }
+                }
+                let index = channel * g + group;
+                result.slope_scales[index] = scale;
+                result.slope_targets[index] = target.total();
+                if !target.total().is_finite() {
+                    return Err(numerical());
+                }
+            }
+        }
         Ok(result)
     }
     pub(super) fn new<P: PreparedOlsFitView + ?Sized>(
@@ -131,15 +181,19 @@ impl ProfiledInterceptCurve {
             && self.log_outcomes.capacity() == self.log_outcomes.len()
             && self.shifts.capacity() == self.shifts.len()
             && self.shifts.len() == self.log_outcomes.len()
+            && self.slope_steps.capacity() == self.slope_steps.len()
+            && self.slope_scales.capacity() == self.slope_scales.len()
+            && self.slope_targets.capacity() == self.slope_targets.len()
+            && self.slope_scales.len() == self.slope_targets.len()
     }
     pub(super) fn active_slots(&self) -> &[usize] {
         &self.slots
     }
-    fn project(&mut self, design: &FeDesign, eta: &mut [f64]) -> Result<()> {
+    fn project(&mut self, design: &FeDesign, eta: &mut [f64], config: PpmlConfig) -> Result<()> {
         if eta.len() != self.log_weights.len() || design.nobs() != eta.len() {
             return Err(numerical());
         }
-        if design.effects().len() != 2
+        if Self::selected_effect(design) != Some(self.effect)
             || design.effects()[self.effect].n_levels() != self.shifts.len()
             || !self.capacities_unchanged()
         {
@@ -184,7 +238,38 @@ impl ProfiledInterceptCurve {
                     } else {
                         Err(numerical())
                     }
-                })
+                })?;
+            let groups = effect.n_levels();
+            for (channel, slope) in effect.slopes().iter().enumerate() {
+                let scales = &self.slope_scales[channel * groups..(channel + 1) * groups];
+                let targets = &self.slope_targets[channel * groups..(channel + 1) * groups];
+                self.shifts
+                    .par_iter_mut()
+                    .zip(self.slope_steps.par_iter_mut())
+                    .enumerate()
+                    .for_each(|(g, (shift, step))| {
+                        (*step, *shift) = slope_proposal(
+                            effect.level_index().members(g),
+                            slope,
+                            scales[g],
+                            targets[g],
+                            log_weights,
+                            log_outcomes[g],
+                            eta,
+                            config,
+                        );
+                    });
+                eta.par_iter_mut()
+                    .zip(effect.codes().par_iter())
+                    .enumerate()
+                    .for_each(|(r, (value, &g))| {
+                        let g = g as usize;
+                        if scales[g] > 0.0 {
+                            *value += self.slope_steps[g] * (slope[r] / scales[g]) + self.shifts[g];
+                        }
+                    });
+            }
+            Ok(())
         })
     }
     pub(super) fn accept(
@@ -203,9 +288,12 @@ impl ProfiledInterceptCurve {
             if step < config.minimum_step {
                 break;
             }
-            match workspace
-                .fill_prepared_line_search_trial_with(step, config.bounds, inputs, |eta| self.project(design, eta))
-            {
+            match workspace.fill_prepared_line_search_trial_with(
+                step,
+                config.bounds,
+                inputs,
+                |eta| self.project(design, eta, config),
+            ) {
                 Ok(()) => {}
                 Err(e) if e.code == ErrorCode::NonConvergence => {
                     step *= 0.5;
@@ -230,6 +318,76 @@ impl ProfiledInterceptCurve {
         }
         Err(numerical())
     }
+}
+
+// Normalize all moments by the immutable group outcome mass: this cancels the
+// arbitrary prior-weight scale without retaining changing Hessian geometry.
+#[allow(clippy::too_many_arguments)]
+fn slope_proposal(
+    rows: &[usize],
+    slope: &[f64],
+    scale: f64,
+    target: f64,
+    log_weights: &[f64],
+    log_outcome: f64,
+    eta: &[f64],
+    config: PpmlConfig,
+) -> (f64, f64) {
+    if scale == 0.0 {
+        return (0.0, 0.0);
+    }
+    let mut mass = CompensatedSum::default();
+    let mut first = CompensatedSum::default();
+    for &r in rows {
+        let w = (log_weights[r] + eta[r] - log_outcome).exp();
+        mass.add(w);
+        first.add(w * (slope[r] / scale));
+    }
+    let center = first.total() / mass.total();
+    let mut curvature = CompensatedSum::default();
+    for &r in rows {
+        let z = slope[r] / scale - center;
+        curvature.add((log_weights[r] + eta[r] - log_outcome).exp() * z * z);
+    }
+    let curvature = curvature.total() / mass.total();
+    if !curvature.is_finite() || curvature <= 0.0 {
+        return (0.0, 0.0);
+    }
+    let mut step = (target - center) / curvature;
+    if !step.is_finite() {
+        return (0.0, 0.0);
+    }
+    for _ in 0..=config.max_step_halvings {
+        let maximum = rows
+            .iter()
+            .map(|&r| log_weights[r] + eta[r] + step * (slope[r] / scale))
+            .fold(f64::NEG_INFINITY, f64::max);
+        let mut sum = CompensatedSum::default();
+        for &r in rows {
+            sum.add((log_weights[r] + eta[r] + step * (slope[r] / scale) - maximum).exp());
+        }
+        let shift = log_outcome - (maximum + sum.total().ln());
+        let change = step * target + shift - (1.0 - mass.total());
+        if change.is_finite()
+            && change >= 0.0
+            && rows.iter().all(|&r| {
+                let value = eta[r] + step * (slope[r] / scale) + shift;
+                let mu = value.exp();
+                value.is_finite()
+                    && value >= config.bounds.eta_min
+                    && value <= config.bounds.eta_max
+                    && mu.is_finite()
+                    && mu >= config.bounds.mu_min
+                    && mu <= config.bounds.mu_max
+            })
+        {
+            return (step, shift);
+        }
+        step *= 0.5;
+    }
+    // The exact intercept correction remains usable when an optional slope
+    // coordinate is numerically unrepresentable or fails its local safeguard.
+    (0.0, 0.0)
 }
 
 #[cfg(test)]
@@ -270,13 +428,17 @@ mod tests {
                 )
                 .unwrap();
                 let mut eta = base.clone();
-                owner.project(&design, &mut eta).unwrap();
+                owner
+                    .project(&design, &mut eta, PpmlConfig::default())
+                    .unwrap();
                 let mut shifted: Vec<_> = base
                     .iter()
                     .enumerate()
                     .map(|(r, &v)| v + (r % 12) as f64 * 0.7 - 3.)
                     .collect();
-                owner.project(&design, &mut shifted).unwrap();
+                owner
+                    .project(&design, &mut shifted, PpmlConfig::default())
+                    .unwrap();
                 for r in 0..n {
                     assert!((eta[r] - shifted[r]).abs() < 1e-12);
                 }
@@ -300,5 +462,168 @@ mod tests {
             0
         )
         .is_err());
+    }
+    #[test]
+    fn slope_trial_matches_independent_profiled_newton_and_preserves_group_mass() {
+        let n = 96;
+        let base: Vec<f64> = (0..n).map(|r| (r as f64 / 11.).sin() * 0.3).collect();
+        let y: Vec<f64> = (0..n).map(|r| 1.0 + (r % 7) as f64 / 8.0).collect();
+        for slope_scale in [1e-80, 1.0, 1e80] {
+            let z: Vec<f64> = (0..n)
+                .map(|r| ((r / 12) as f64 - 3.5) * slope_scale)
+                .collect();
+            let design = FeDesign::new(
+                n,
+                vec![
+                    EffectTerm::new(
+                        (0..n).map(|r| (r % 12) as u32).collect(),
+                        12,
+                        true,
+                        vec![z.clone()],
+                    )
+                    .unwrap(),
+                    EffectTerm::new(
+                        (0..n).map(|r| ((r / 12) % 4) as u32).collect(),
+                        4,
+                        true,
+                        vec![],
+                    )
+                    .unwrap(),
+                ],
+            )
+            .unwrap();
+            for weight_scale in [1e-200, 1.0, 1e200] {
+                let q: Vec<f64> = (0..n)
+                    .map(|r| weight_scale * (1.0 + (r % 3) as f64))
+                    .collect();
+                for threads in [1, 4] {
+                    let mut owner = ProfiledInterceptCurve::from_inputs(
+                        &design,
+                        &y,
+                        &q,
+                        ThreadConfig::from_requested(threads, true).unwrap(),
+                        0,
+                    )
+                    .unwrap();
+                    let mut eta = base.clone();
+                    owner
+                        .project(&design, &mut eta, PpmlConfig::default())
+                        .unwrap();
+                    for group in 0..12 {
+                        let rows = design.effects()[0].level_index().members(group);
+                        let mass: f64 = rows
+                            .iter()
+                            .map(|&r| q[r] / weight_scale * base[r].exp())
+                            .sum();
+                        let observed: f64 = rows.iter().map(|&r| q[r] / weight_scale * y[r]).sum();
+                        let first: f64 = rows
+                            .iter()
+                            .map(|&r| q[r] / weight_scale * base[r].exp() * (z[r] / slope_scale))
+                            .sum();
+                        let center = first / mass;
+                        let variance: f64 = rows
+                            .iter()
+                            .map(|&r| {
+                                q[r] / weight_scale
+                                    * base[r].exp()
+                                    * (z[r] / slope_scale - center).powi(2)
+                            })
+                            .sum::<f64>()
+                            / mass;
+                        let target: f64 = rows
+                            .iter()
+                            .map(|&r| q[r] / weight_scale * y[r] * (z[r] / slope_scale))
+                            .sum::<f64>()
+                            / observed;
+                        let step = (target - center) / variance;
+                        let trial_mass: f64 = rows
+                            .iter()
+                            .map(|&r| {
+                                q[r] / weight_scale * (base[r] + step * z[r] / slope_scale).exp()
+                            })
+                            .sum();
+                        let shift = (observed / trial_mass).ln();
+                        for &r in rows {
+                            assert!(
+                                (eta[r] - base[r] - step * z[r] / slope_scale - shift).abs()
+                                    < 2e-12
+                            );
+                        }
+                        let actual: f64 = rows
+                            .iter()
+                            .map(|&r| q[r] / weight_scale * eta[r].exp())
+                            .sum();
+                        assert!((actual / observed - 1.0).abs() < 2e-12);
+                    }
+                    assert!(owner.capacities_unchanged());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn constant_duplicate_and_refused_slope_trials_remain_finite() {
+        let n = 96;
+        let z: Vec<f64> = (0..n).map(|r| ((r / 12) as f64 - 3.5) / 8.).collect();
+        let design = FeDesign::new(
+            n,
+            vec![
+                EffectTerm::new(
+                    (0..n).map(|r| (r % 12) as u32).collect(),
+                    12,
+                    true,
+                    vec![vec![0.; n], vec![7.; n], z.clone(), z],
+                )
+                .unwrap(),
+                EffectTerm::new(
+                    (0..n).map(|r| ((r / 12) % 4) as u32).collect(),
+                    4,
+                    true,
+                    vec![],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        let y: Vec<f64> = (0..n)
+            .map(|r| (0.2 + (r / 12) as f64 / 16.).exp())
+            .collect();
+        let q = vec![1.; n];
+        let mut owner =
+            ProfiledInterceptCurve::from_inputs(&design, &y, &q, ThreadConfig::default(), 0)
+                .unwrap();
+        let mut eta = vec![0.; n];
+        let objective = |eta: &[f64]| {
+            eta.iter()
+                .zip(&y)
+                .map(|(&v, &y)| y * v - v.exp())
+                .sum::<f64>()
+        };
+        for _ in 0..6 {
+            let old = objective(&eta);
+            owner
+                .project(&design, &mut eta, PpmlConfig::default())
+                .unwrap();
+            assert!(eta.iter().all(|v| v.is_finite()));
+            assert!(objective(&eta) >= old - 1e-12);
+        }
+        for (&value, &outcome) in eta.iter().zip(&y) {
+            assert!((value - outcome.ln()).abs() < 1e-10);
+        }
+        let rows = design.effects()[0].level_index().members(0);
+        let mut config = PpmlConfig::default();
+        config.bounds.eta_max = -10.;
+        let proposal = slope_proposal(
+            rows,
+            &design.effects()[0].slopes()[2],
+            1.,
+            1e200,
+            &owner.log_weights,
+            owner.log_outcomes[0],
+            &eta,
+            config,
+        );
+        assert_eq!(proposal, (0., 0.));
+        assert!(owner.capacities_unchanged());
     }
 }
