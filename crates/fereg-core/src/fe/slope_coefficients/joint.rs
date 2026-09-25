@@ -350,6 +350,14 @@ impl JointFiniteWorkspace {
         &self.beta[..self.active]
     }
 
+    /// Norms of this successful call's input columns, in selected-column order.
+    /// Dense representatives and streamed originals have different meanings;
+    /// the caller must retain that input identity. No failed call exposes norms.
+    pub(crate) fn input_norms(&self) -> Option<&[f64]> {
+        self.report.as_ref().filter(|report| report.certified())
+            .map(|_| &self.scales[..self.active])
+    }
+
     fn precondition(&mut self, p: usize, k: usize) {
         self.preconditioned[..p + k].copy_from_slice(&self.residual[..p + k]);
         for i in 0..k {

@@ -10,38 +10,72 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
-## Active delivery plan — 2026-09-25
+## Current-call joint checks accepted — 2026-09-25
 
-The next implementation sequence is **finish the pending joint-check experiment,
-redesign exact-weight preparation/check ownership, reduce the narrow-fit
-lifecycle, then extend current-source coverage around the remaining losses**.
-The detailed plan and per-case budgets are below. Aim for 0.80–0.85 times stock
-during development where feasible, so the required 0.90 advantage has margin.
-Success is per comparable family and requested output, not an aggregate win rate.
+Retain **jointchecks1**, based on **181735c6** plus `fe/map.rs`,
+`fe/slope_coefficients/joint.rs` and `ols/linear_session.rs`. All **558 captured
+computational inputs** match. Plugin SHA-256:
+`515e1fa04ca6c62338001a033eb71ca5c5da0a2fe1d6769e91374b350e913a9d`.
+[ADR 0198](docs/adr/0198-current-call-joint-ppml-checks.md) and the
+[source-bound report](benchmarks/reports/development/ppml-joint-checks-local-2026-09-25/README.md)
+record the implementation, distributions, independent science and immutable receipts.
+The pending experiment is now finished and accepted; the broad multi-FE goal is
+still active and unfinished.
 
-At this planning checkpoint, main is based on **41d43465** and the worktree
-contains an unfinished two-file candidate in `fe/slope_coefficients/joint.rs`
-and `ols/linear_session.rs`. It hands off original-column norms from the same
-successful joint call and consolidates/concurrently executes fresh response,
-score and reconstruction checks. These edits are preserved. They have no accepted
-public timing or completed validation claim; the accepted runtime remains
-**e7731129/finalreplay1**. This planning update changes no estimator source.
+Successful streamed joint calls hand off immutable current-input norms to score
+acceptance; dense representatives still require original norms. All score/mean
+numerators remain fresh original-input scans. Shared response moments keep their
+scalar arithmetic order, and bounded reconstruction tiles merge the unchanged
+certificate's maxima/predicates. Independent checks overlap on the existing team.
+The candidate reuses admitted finite-solve scratch, with no new retained bank,
+weighted cache, solver policy, tolerance or final-Hessian shortcut.
 
-The candidate is a bounded first step, not the main redesign's completion.
-Existing diagnostics put ordinary joint recurrence near 5.8 ms and group geometry
-near 1.5 ms, whereas the fresh low-mode loss needs 27.4 ms removed from its full
-command. These are different diagnostic/headline blocks, not an additive time
-decomposition, but their scale rules out recurrence-only tuning as an adequate
-program. Initial/final canonical preparation and the surrounding row passes must
-also contribute. The narrow case independently needs 8.4 ms removed. Both budgets
-and the source-bound timing distributions appear in the detailed plan below.
+Fresh seed **202609431**, five alternating B/C/stock rotations, robust inference
+and means, pinned unmodified stock at glm.tol=1e-10/fixef.tol=1e-11:
 
-Each structural candidate must name the whole phase or repeated passes it removes,
-its numerical authority and complete memory cost before implementation. Finish a
-bounded pilot and make an adopt/reject decision, then move to the next substantial
-cost. Keep rejected reference-weight proposals, coarse CG, early-checkpoint
-schedules and final-replay micro-tuning closed. No fresh seed is consumed by this
-planning update; seed431 remains unused.
+| Case; N/K/T; mode | Baseline / candidate / stock ms | Candidate/stock |
+|---|---:|---:|
+|Disconnected categorical; 61440/6/4; low|117 / 113 / 98|1.153|
+|Serial categorical; 38400/10/1; low|143 / 140 / 242|0.579|
+|Narrow categorical; 24960/2/4; fast|41 / 41 / 30|1.367|
+|Wide categorical; 23040/36/8; low|89 / 88 / 129|0.682|
+|Two slope partitions; 38400/8/4; fast|107 / 106 / 180|0.589|
+|Two slope partitions; 30720/6/8; low|83 / 82 / 78|1.051|
+|Two slope partitions; 30720/6/8; fast|82 / 78 / 79|0.987|
+|Unbalanced three-FE slopes; 61440/10/8; low|201 / 196 / 229|0.856|
+
+**32 paired wins, five losses, three ties; four of eight medians meet 0.90.**
+Seven medians improve and narrow ties. T4 slopes and wide retain losing pairs;
+narrow has two four-ms losses. The separately declared development pilot has
+14 wins/two losses/two ties, with all nine principal low-mode pairs improving.
+Do not pool either block with older seeds. Remaining fresh-block savings to
+0.90 are **24.8 ms low categorical, 14.0 ms narrow, 11.8 ms low T8 slopes and
+6.9 ms fast T8 slopes**. No new family crosses the ten-percent target here.
+
+Thirteen distinct Rust tests and six independent licensed scientific fixtures
+pass. All **182 public states, 120 baseline-anchored comparisons and 58 direct
+stock pairs** pass. All **62 native PPML pairs** have byte-identical coefficient,
+covariance and mean exports, with unchanged iterations/fallback counts. Four
+fixed-configuration allocation audits pass, each with sixteen measured warmed
+iterations, zero events/growth and stable capacities. Tracked peak/scratch deltas
+are zero; selected telemetry varies -112 to +112 bytes.
+
+OLS controls have nine exact-export pairs and medians **9/10, 60/60, 116/116 ms**;
+two pairs win, three lose and four tie. The small-fit loss stays visible. All
+applications and sampled monitors pass. All **6,769 logical receipts** have been
+restored and hash/privacy checked. Seed431 is consumed/frozen. Static inventory
+drift, constrained-fit/nonretaining-CG failures, the baseline checkpoint-count
+assertion, older three-FE discrepancy and deferred platforms remain open.
+
+**Next implementation:** move to the larger canonical/preparation ownership and
+narrow lifecycle boundaries in Milestones 3/4 below. The joint-check experiment is
+closed; do not tune its tile size or thresholds. Native phase evidence locates
+about 4.1 ms of savings in the low categorical finite-solve/checking span while
+FE projection and strict/final costs persist. A larger replacement needs a
+nonoverlapping whole-command cost budget; another recurrence-only or reference-
+weight experiment cannot be inferred from this result. Preserve the rejected
+coarse-CG, reference-weight and early-checkpoint closeouts. Aim for useful shared
+work removal and a reliable per-family advantage, not another planning-only turn.
 
 ## Reference-operator PPML experiment closed — 2026-09-25
 
@@ -347,35 +381,35 @@ Scope remains **at least two FE partitions**. The goal is complete public
 wherever practical. Judge each family and its losses, not an aggregate win rate.
 Aim for additional margin so a noisy 0.90 median is not mistaken for a reliable
 advantage. This is an implementation plan; none of its proposed savings is an
-achieved result. Current accepted runtime is **e7731129/finalreplay1**. The
+achieved result. Current accepted runtime is **jointchecks1 / ADR 0198**. The
 rejected four-file reference-operator prototype is archived under ADR 0197 and
-fully restored out of production. It supplies negative evidence, not a retained
+excluded from production. It supplies negative evidence, not a retained
 speed improvement.
 
 ### Current savings budgets and coverage
 
-Use the latest five-rotation seed430 block in the
-[source-bound report](benchmarks/reports/development/ppml-final-replay-local-2026-09-25/README.md).
+Use the latest five-rotation seed431 block in the
+[source-bound report](benchmarks/reports/development/ppml-joint-checks-local-2026-09-25/README.md).
 These are comparable warm public commands, including robust inference and means,
 not process startup or data import. No older block is pooled with these clocks.
 
 | Case; N/K/T; mode | fereg / stock ms | fereg/stock | 0.90-stock ceiling | Further saving needed |
 |---|---:|---:|---:|---:|
-|Disconnected categorical; 61440/6/4; low|112 / 94|1.191|84.6 ms|27.4 ms / 24.5%|
-|Disconnected categorical; 38400/10/1; low|144 / 243|0.593|218.7 ms|Target met in this block|
-|Narrow categorical; 24960/2/4; fast|39 / 34|1.147|30.6 ms|8.4 ms / 21.5%|
-|Wide categorical; 23040/36/8; low|86 / 128|0.672|115.2 ms|Target met in this block|
-|Two slope partitions; 38400/8/4; fast|105 / 181|0.580|162.9 ms|Target met in this block|
+|Disconnected categorical; 61440/6/4; low|113 / 98|1.153|88.2 ms|24.8 ms / 21.9%|
+|Serial categorical; 38400/10/1; low|140 / 242|0.579|217.8 ms|Target met in this block|
+|Narrow categorical; 24960/2/4; fast|41 / 30|1.367|27.0 ms|14.0 ms / 34.1%|
+|Wide categorical; 23040/36/8; low|88 / 129|0.682|116.1 ms|Target met in this block|
+|Two slope partitions; 38400/8/4; fast|106 / 180|0.589|162.0 ms|Target met in this block|
+|Two slope partitions; 30720/6/8; low|82 / 78|1.051|70.2 ms|11.8 ms / 14.4%|
+|Two slope partitions; 30720/6/8; fast|78 / 79|0.987|71.1 ms|6.9 ms / 8.8%|
+|Unbalanced three-FE slopes; 61440/10/8; low|196 / 229|0.856|206.1 ms|Target met in this block|
 
-Engineering targets for the two current losses are **75–80 ms low** and
-**26–28 ms narrow**: about 29–33% and 28–33% below their current medians. These
-are ambitions, not predictions. The same report's separate threaded-slope pilot
-is 79/81 ms at N30720/K6/T8 and does not meet 0.90; the fresh T4 slope win cannot
-close that boundary. Remeasure it on the next accepted source with three-FE
-unbalanced slopes in both modes. The older dense three-categorical-FE coefficient
-discrepancy remains unresolved and unranked. Four-plus FE, generated terms,
-clustered/saved-FE outputs, weight extremes and larger N need selective current-
-source coverage, not inherited historical claims.
+Engineering ambitions are **75–80 ms low categorical** and **24–25 ms narrow**,
+providing margin below these particular stock medians. They are not predictions.
+Current T8 slope losses require 7–12 ms; the T4 win does not close them. The older
+dense three-categorical-FE coefficient discrepancy remains unresolved/unranked.
+Four-plus FE, generated terms, clustered/saved-FE outputs, weight extremes and
+larger N need selective current-source coverage, not inherited historical claims.
 
 ### Milestone 1: bounded canonical-solver experiment — closed
 
@@ -400,20 +434,13 @@ algorithm; do not tune reference ages, score thresholds or case-specific guards.
 
 ### Milestone 3: consolidate weighted-linear preparation and independent checking
 
-**First bounded checkpoint: the preserved joint-check candidate.** Validate
-same-call norm identity for streamed original columns, continued original-norm
-scans for dense representatives, revocation on every failed solve, and fresh
-current-input scores/reconstruction. Check extreme scales, changed frames,
-rank-deficient slopes, T1/T4/T8, low/fast storage and existing scratch admission.
-Measure it on the two principal losses plus low/fast threaded slopes, wide and
-three-FE controls. A reliable inexpensive shared gain can be retained, but this
-candidate cannot by itself close the low-mode savings budget. Do not expand it
-into repeated tile-size or threshold tuning.
-
-This is the principal shared implementation target. The accepted diagnostic
-still records about 23.8 ms inside ordinary joint directions with only 5.8 ms
-in recurrence; group geometry is about 1.5 ms. Do not revive the old diagnosis
-that repeated group factors alone explain the remaining loss.
+**First bounded checkpoint completed:** ADR 0198 accepts the preserved joint-check
+candidate after independent science, allocation checks, full-public pilots and
+fresh confirmation. Its 1–5-ms fresh median gains are useful, but do not complete
+this milestone. Do not resume tile-size or threshold tuning. The accepted source's
+checking cost is lower; establish its updated ledger before choosing the larger
+ownership change. Historical 23.8-ms ordinary/5.8-ms recurrence and 1.5-ms geometry
+spans are diagnostic context, not exact remaining costs on jointchecks1.
 
 Trace original-column reads, weight normalization, norms/means, predictor and
 residual reconstruction, finite/FE score passes, canonical rank assembly and
@@ -444,7 +471,7 @@ accepted/rejected checkpoint work. Mark measured costs separately from inferred
 savings. The implementation budget must include canonical and surrounding work,
 not project a small recurrence gain onto the whole command. Recompute the remaining
 0.90-stock deficit after each accepted checkpoint; target 75–80 ms on the current
-112-ms low case without treating that aspiration as measured feasibility.
+113-ms low case without treating that aspiration as measured feasibility.
 
 Design one fresh original-input acceptance pass to share compatible loads and
 reductions for projection, finite scores, reconstruction and direct products.
@@ -484,7 +511,7 @@ already cheap. Separate public preparation/loading/output from native topology,
 initialization, rank and verification. Reuse immutable design/metadata preparation,
 avoid redundant session construction and unnecessary worker scheduling only where
 measured. Preserve one substantive plugin call, main-thread SPI and atomic results.
-The 26–28-ms engineering target requires more than moving output outside the clock.
+The 24–25-ms engineering target requires more than moving output outside the clock.
 
 Start this next if the first shared checkpoint leaves the larger ownership
 replacement without a credible savings budget. Attribute native entry/loading,
@@ -500,8 +527,8 @@ topology owner, and serial execution of phases too small to amortize scheduling.
 Route by measured operation counts and complete memory cost, not benchmark
 identity or favorable seeds. Preserve explicit solver-family requests. Retire a
 superseded path after its replacement passes; do not accumulate specialized
-owners for individual cases. Aim to remove at least 8.4 ms across the command,
-with 11–13 ms as the engineering ambition on this captured block.
+owners for individual cases. Aim to remove at least 14 ms across the command,
+with 16–17 ms as the engineering ambition on this captured block.
 
 ### Milestone 5: extend the advantage across multi-FE families
 
@@ -566,13 +593,12 @@ Linux/T1/T8/T16 and constrained-platform confirmation remain deferred; no SCC re
   allocation-inventory, constrained-fit/CG and platform gaps remain open. No push,
   release, stopped campaign restart or qualification claim.
 
-This planning revision changes no estimator source and consumes no fresh
-validation seed. Milestones 1 and 2 are closed with rejected implementations
-and immutable evidence. The pending two-file joint-check candidate is preserved
-and remains unaccepted; production timing claims refer to finalreplay1. The broad
-goal remains active; continue implementation at Milestone 3. Each milestone ends with a
-coherent tested commit and evidence of adopted improvements or a bounded
-rejection, not a declaration that a promising prototype completed the task.
+Milestones 1 and 2 are closed with rejected implementations and immutable
+evidence. Milestone 3's joint-check checkpoint is accepted, with seed431 frozen;
+the larger ownership redesign and narrow lifecycle work remain. The broad goal
+remains active. Each implementation milestone ends with a coherent tested commit
+and evidence of adopted improvements or a bounded rejection, not a declaration
+that a promising prototype completed the task.
 
 ## Canonical residual certificate gate accepted — 2026-09-25
 

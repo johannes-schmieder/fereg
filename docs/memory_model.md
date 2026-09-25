@@ -914,6 +914,15 @@ Fixed-configuration process audits remain exact-zero; the documented delayed
 Crossbeam frees in mixed-thread audits remain unresolved. Static allocation
 drift and physical-cap/platform gates remain separate.
 
+[ADR 0198](adr/0198-current-call-joint-ppml-checks.md) borrows current-call original
+norms from the existing joint scale bank and temporarily stores acceptance norms
+in finite-solve scratch already reserved by initial canonical rank construction.
+That scratch has no live solve consumer during joint acceptance. Concurrent
+response/column checks use the installed team and bounded stack reductions;
+there is no new retained bank or admission allowance. Four fixed-configuration
+categorical/slope audits measure zero warmed events and growth; this does not
+repair static inventory drift or establish a physical-cap guarantee.
+
 [ADR 0136](adr/0136-low-memory-categorical-joint-ppml.md) admits the same joint
 owner for low categorical MAP. For two/three effects, the canonical borrowed
 projector coexists with the generic joint owner. The base session envelope

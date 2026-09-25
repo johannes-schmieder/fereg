@@ -164,6 +164,16 @@ factor code column separately. The existing current-weight arithmetic and
 acceptance remain, with no new heap storage or cross-frame products. Other
 consumers retain their numeric-binding admission rules.
 
+Under [ADR 0198](adr/0198-current-call-joint-ppml-checks.md), a successful streamed
+joint call hands its immutable original-input norms directly to finite-score
+acceptance. Dense FE-equivalent representatives still require fresh original
+norms. Score/mean numerators remain independent original-input scans. A shared
+response pass retains each stable norm and compensated sum's scalar order;
+bounded reconstruction tiles merge the unchanged maxima and predicates. These
+independent checks overlap on the existing team, using idle finite-solve scratch.
+No failed call or changed frame inherits norm authority, and no acceptance bound,
+certificate frequency, solver route or final-Hessian requirement changes.
+
 ADR 0151 supersedes the remaining single-worker product exception of ADRs
 0148–0150: all streamed Hessian entries use the same resolved-column, fixed-
 accumulator product kernel. The separate direct-row product loop and its factor-

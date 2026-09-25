@@ -2502,11 +2502,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let checking = Instant::now();
         let joint = projector.joint_slopes().expect("joint direction");
         let residuals = joint.residuals.as_slice();
-        let reference =
-            stable_weighted_norm(n, |row| Ok((self.response[row], self.map_weights[row])))?.max(
-                stable_weighted_norm(n, |row| Ok((residuals[row], self.map_weights[row])))?,
-            );
+        // Only the streamed route supplied untouched original columns. These
+        // current-call norms precede the recurrence and are never modified by it;
+        // the score numerators below still rescan the original inputs freshly.
+        let input_norms = match &within.storage {
+            RetainedWithinStorage::Dense(_) => None,
+            RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => {
+                Some(joint.input_norms().ok_or_else(|| invalid_argument(
+                    "joint input norms lack a successful current-call certificate",
+                ))?)
+            }
+        };
         let rank = basis.kept_generated_columns().len();
+        if input_norms.is_some_and(|norms| norms.len() != rank) {
+            return Err(invalid_argument("joint input norm columns are misaligned"));
+        }
         resize_zeroed(
             &mut self.frozen_workspace.scores,
             rank,
@@ -2517,62 +2527,64 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             rank,
             "unable to reserve joint current means",
         )?;
-        let prepared = self.prepared;
-        let weights = &self.map_weights;
+        // The finite-solve scratch is dead during joint acceptance; it holds
+        // per-column norms until the independent response scale is available.
+        resize_zeroed(&mut self.frozen_workspace.solve, rank,
+            "unable to reserve joint current norms")?;
         let originals = JointOriginalColumns {
-            prepared,
+            prepared: self.prepared,
             generated: basis.kept_generated_columns(),
             numeric: None,
         };
         use crate::fe::slope_coefficients::joint::JointFiniteDesign;
-        let mut weight_sum = 0.;
-        let mut weight_correction = 0.;
-        for &weight in weights {
-            compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
-        }
-        let weight_sum = weight_sum + weight_correction;
-        self.frozen_workspace
-            .scores
-            .par_iter_mut()
-            .zip(self.frozen_workspace.rhs.par_iter_mut())
-            .enumerate()
-            .try_for_each(|(column, (score, mean))| -> Result<()> {
-                let mut scale = 0.;
-                let mut square = 1.;
-                let mut sum = 0.;
-                let mut correction = 0.;
-                let mut mean_sum = 0.;
-                let mut mean_correction = 0.;
-                originals.visit_column(column, |row, value| {
-                    update_scaled_square(weights[row].sqrt() * value, &mut scale, &mut square)?;
-                    compensated_add(
-                        weights[row] * value * residuals[row],
-                        &mut sum,
-                        &mut correction,
-                    )?;
-                    compensated_add(weights[row] * value, &mut mean_sum, &mut mean_correction)?;
+        let weights = &self.map_weights;
+        let response = &self.response;
+        let needs_mean = basis.slots().iter().any(|slot|
+            slot.status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept);
+        let (response_checks, column_checks) = rayon::join(
+            || check_joint_response(response, residuals, weights, needs_mean),
+            || self.frozen_workspace.scores.par_iter_mut()
+                .zip(self.frozen_workspace.rhs.par_iter_mut())
+                .zip(self.frozen_workspace.solve.par_iter_mut())
+                .enumerate()
+                .try_for_each(|(column, ((score, mean), norm))| -> Result<()> {
+                    let mut scale = 0.;
+                    let mut square = 1.;
+                    let mut sum = 0.;
+                    let mut correction = 0.;
+                    let mut mean_sum = 0.;
+                    let mut mean_correction = 0.;
+                    originals.visit_column(column, |row, value| {
+                        if input_norms.is_none() {
+                            update_scaled_square(weights[row].sqrt() * value, &mut scale, &mut square)?;
+                        }
+                        compensated_add(weights[row] * value * residuals[row], &mut sum, &mut correction)?;
+                        compensated_add(weights[row] * value, &mut mean_sum, &mut mean_correction)?;
+                        Ok(())
+                    })?;
+                    *norm = match input_norms {
+                        Some(norms) => norms[column],
+                        None => stable_norm(scale, square)?,
+                    };
+                    *score = (sum + correction).abs();
+                    *mean = mean_sum + mean_correction;
                     Ok(())
-                })?;
-                let norm = stable_norm(scale, square)?;
-                let moment = (sum + correction).abs();
-                *score = if moment == 0. {
-                    0.
-                } else {
-                    moment / norm / reference
-                };
-                *mean = (mean_sum + mean_correction) / weight_sum;
-                if !score.is_finite()
-                    || *score > self.config.absorb.map.tolerance
-                    || !mean.is_finite()
-                {
-                    return Err(FeregError::new(
-                        ErrorCode::NonConvergence,
-                        "joint original-input finite score failed",
-                    ));
-                }
-                Ok(())
-            })?;
-        let reconstruction = certify_frozen_combined_predictor(&self.response, residuals)?;
+                }),
+        );
+        let response_checks = response_checks?;
+        column_checks?;
+        for ((score, mean), &norm) in self.frozen_workspace.scores.iter_mut()
+            .zip(self.frozen_workspace.rhs.iter_mut())
+            .zip(self.frozen_workspace.solve.iter())
+        {
+            if *score != 0. { *score = *score / norm / response_checks.reference_norm; }
+            *mean /= response_checks.weight_sum;
+            if !score.is_finite() || *score > self.config.absorb.map.tolerance || !mean.is_finite() {
+                return Err(FeregError::new(ErrorCode::NonConvergence,
+                    "joint original-input finite score failed"));
+            }
+        }
+        let reconstruction = response_checks.reconstruction;
         let within = self.within.as_mut().expect("joint retained controls");
         for (&position, &mean) in within
             .active_positions
@@ -2594,6 +2606,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             basis.kept_generated_columns(),
             joint.beta(),
             &mut reported,
+            response_checks.response_mean,
         );
         self.frozen_workspace.reported_coefficients = reported;
         reporting?;
@@ -4018,6 +4031,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     &kept,
                     &frozen.coefficients,
                     &mut reported_coefficients,
+                    None,
                 )?;
             }
         }
@@ -4230,6 +4244,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         kept: &[usize],
         coefficients: &[f64],
         reported: &mut Vec<Option<f64>>,
+        current_response_mean: Option<f64>,
     ) -> Result<()> {
         if kept.len() != coefficients.len() {
             return Err(invalid_argument(
@@ -4251,11 +4266,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     "frozen PPML retained means are inconsistent",
                 ));
             }
-            let outcome_mean = weighted_mean_slice(
-                &self.response,
-                self.weights.borrowed(),
-                self.bread_weight_scale,
-            )?;
+            let outcome_mean = match current_response_mean {
+                Some(mean) => mean,
+                None => weighted_mean_slice(
+                    &self.response, self.weights.borrowed(), self.bread_weight_scale,
+                )?,
+            };
             let mut finite_mean = 0.0_f64;
             let mut finite_mean_correction = 0.0_f64;
             for ((position, generated), coefficient) in within
@@ -6737,6 +6753,62 @@ fn normalized_solver_weight(
     }
 }
 
+struct JointResponseChecks {
+    reference_norm: f64,
+    weight_sum: f64,
+    response_mean: Option<f64>,
+    reconstruction: LinearReconstructionCertificate,
+}
+
+fn check_joint_response(
+    response: &[f64], residuals: &[f64], weights: &[f64], needs_mean: bool,
+) -> Result<JointResponseChecks> {
+    if response.len() != residuals.len() || response.len() != weights.len() {
+        return Err(invalid_argument("joint response check dimensions differ"));
+    }
+    // Each norm and compensated sum preserves its original row order. Only
+    // independent work overlaps; reconstruction combines maxima and predicates.
+    let (moments, reconstruction) = rayon::join(
+        || -> Result<(f64, f64, Option<f64>)> {
+            let (mut response_scale, mut residual_scale) = (0., 0.);
+            let (mut response_square, mut residual_square) = (1., 1.);
+            let (mut weight_sum, mut weight_correction) = (0., 0.);
+            let (mut response_sum, mut response_correction) = (0., 0.);
+            for ((&value, &residual), &weight) in response.iter().zip(residuals).zip(weights) {
+                let root = weight.sqrt();
+                if !root.is_finite() || root <= 0. {
+                    return Err(invalid_data("weighted-linear norm weight is not finite and positive"));
+                }
+                update_scaled_square(root * value, &mut response_scale, &mut response_square)?;
+                update_scaled_square(root * residual, &mut residual_scale, &mut residual_square)?;
+                compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
+                if needs_mean {
+                    compensated_add(weight * value, &mut response_sum, &mut response_correction)?;
+                }
+            }
+            let reference = stable_norm(response_scale, response_square)?
+                .max(stable_norm(residual_scale, residual_square)?);
+            let weight_sum = weight_sum + weight_correction;
+            let mean = needs_mean.then(|| (response_sum + response_correction) / weight_sum);
+            if !weight_sum.is_finite() || weight_sum <= 0. || mean.is_some_and(|value| !value.is_finite()) {
+                return Err(invalid_data("frozen weighted-linear mean is not finite"));
+            }
+            Ok((reference, weight_sum, mean))
+        },
+        || response.par_chunks(4096).zip(residuals.par_chunks(4096))
+            .map(|(response, residuals)| certify_frozen_combined_predictor(response, residuals))
+            .try_reduce(LinearReconstructionCertificate::new, |left, right| Ok(
+                LinearReconstructionCertificate {
+                    relative_infinity_norm: left.relative_infinity_norm.max(right.relative_infinity_norm),
+                    passed: left.passed && right.passed,
+                }
+            )),
+    );
+    let (reference_norm, weight_sum, response_mean) = moments?;
+    Ok(JointResponseChecks { reference_norm, weight_sum, response_mean,
+        reconstruction: reconstruction? })
+}
+
 fn weighted_mean_slice(
     values: &[f64],
     weights: BorrowedMapWeights<'_>,
@@ -6971,6 +7043,51 @@ fn invalid_data(message: &'static str) -> FeregError {
 #[cfg(test)]
 mod reconstruction_tests {
     use super::{certify_frozen_combined_predictor, LinearReconstructionCertificate};
+
+    #[test]
+    fn joint_response_checks_match_separate_fresh_passes_and_reject_invalid_inputs() {
+        use super::{check_joint_response, stable_weighted_norm, weighted_mean_slice};
+        let n = 12_291;
+        for threads in [1, 4] {
+            let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+            for response_scale in [0., 1e-150, 1., 1e150] {
+                for weight_scale in [1e-150, 1., 1e150] {
+                    let response: Vec<_> = (0..n).map(|i|
+                        ((i % 17) as f64 - 8.) * response_scale).collect();
+                    let residuals: Vec<_> = (0..n).map(|i|
+                        ((i % 13) as f64 - 6.) * response_scale).collect();
+                    let weights: Vec<_> = (0..n).map(|i|
+                        (0.5 + (i % 7) as f64) * weight_scale).collect();
+                    let expected = stable_weighted_norm(n, |i| Ok((response[i], weights[i]))).unwrap()
+                        .max(stable_weighted_norm(n, |i| Ok((residuals[i], weights[i]))).unwrap());
+                    let scale = super::super::PreparedOlsBreadWeightScale {
+                        weight_kind: None,
+                        solver_weight_divisor: 1.,
+                        reference_weight_multiplier: 1.,
+                        reference_weight_sum: n as f64,
+                    };
+                    for needs_mean in [false, true] {
+                        let result = pool.install(|| check_joint_response(
+                            &response, &residuals, &weights, needs_mean,
+                        )).unwrap();
+                        assert_eq!(result.reference_norm.to_bits(), expected.to_bits());
+                        assert_eq!(result.reconstruction,
+                            certify_frozen_combined_predictor(&response, &residuals).unwrap());
+                        assert_eq!(result.response_mean, needs_mean.then(|| weighted_mean_slice(
+                            &response, crate::fe::BorrowedMapWeights::Provided(&weights), scale,
+                        ).unwrap()));
+                    }
+                }
+            }
+        }
+        for bad in [0., -1., f64::NAN, f64::INFINITY] {
+            assert!(check_joint_response(&[1.], &[0.], &[bad], true).is_err());
+        }
+        assert!(check_joint_response(&[f64::NAN], &[0.], &[1.], false).is_err());
+        assert!(check_joint_response(&[1.], &[f64::INFINITY], &[1.], false).is_err());
+        assert!(check_joint_response(&[f64::MAX], &[0.], &[4.], true).is_err());
+        assert!(check_joint_response(&[1.], &[], &[1.], false).is_err());
+    }
 
     #[test]
     fn reconstruction_matches_exact_rational_oracle_and_rejects_corruption() {

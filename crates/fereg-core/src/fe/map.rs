@@ -1988,6 +1988,12 @@ mod tests {
                     .unwrap();
                     let out = owner.joint_slopes().unwrap();
                     assert!(out.report.as_ref().unwrap().certified());
+                    for (&column, &norm) in [2, 0].iter().zip(out.input_norms().unwrap()) {
+                        let squared: f64 = weights.iter().enumerate()
+                            .map(|(row, &weight)| weight * controls[(row, column)].powi(2))
+                            .sum();
+                        assert!((norm / squared.sqrt() - 1.).abs() < 2e-14);
+                    }
                     assert!((out.beta()[0] - 0.7).abs() < 1e-10);
                     assert!((out.beta()[1] + 3e-6).abs() < 1e-13);
                     for (&a, &b) in out.residuals.as_slice().iter().zip(&residual) {
@@ -2050,6 +2056,7 @@ mod tests {
                         .unwrap_err();
                     assert_eq!(short_error.code, ErrorCode::NonConvergence);
                     assert!(owner.joint_slopes().unwrap().report.is_none());
+                    assert!(owner.joint_slopes().unwrap().input_norms().is_none());
 
                     let error = pool
                         .install(|| {
@@ -2065,6 +2072,7 @@ mod tests {
                         .unwrap_err();
                     assert_eq!(error.code, ErrorCode::NonConvergence);
                     assert!(owner.joint_slopes().unwrap().report.is_none());
+                    assert!(owner.joint_slopes().unwrap().input_norms().is_none());
                     assert!(owner
                         .certificate_geometry
                         .as_ref()
@@ -2095,6 +2103,7 @@ mod tests {
                         )
                         .is_err());
                     assert!(owner.joint_slopes().unwrap().report.is_none());
+                    assert!(owner.joint_slopes().unwrap().input_norms().is_none());
                     assert!(owner
                         .certificate_geometry
                         .as_ref()
