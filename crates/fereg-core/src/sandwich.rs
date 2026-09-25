@@ -56,6 +56,9 @@ pub(crate) trait SandwichDesign {
     fn dimension(&self) -> usize;
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()>;
 
+    /// Scratch sources can amortize positional I/O across an immutable scan.
+    fn prefers_sequential_scan(&self) -> bool { false }
+
     /// A reducer owns its row buffer and order; a source may retain a bounded
     /// reader for this immutable scan without sharing cursor state with workers.
     fn visit_range(

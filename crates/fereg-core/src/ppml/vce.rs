@@ -194,6 +194,9 @@ pub trait PpmlInferenceDesign {
     fn dimension(&self) -> usize;
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()>;
 
+    /// Whether bounded consecutive scans avoid expensive pointwise access.
+    fn prefers_sequential_scan(&self) -> bool { false }
+
     /// Visit an immutable contiguous block using caller-owned row storage.
     /// Sources may keep bounded reader state local to this call; the callback
     /// may overwrite the row after consuming its unscaled values.
@@ -241,6 +244,10 @@ impl PpmlInferenceDesign for &DenseMatrix {
 }
 
 impl PpmlInferenceDesign for CertifiedLinearWithinDesign<'_> {
+    fn prefers_sequential_scan(&self) -> bool {
+        SandwichDesign::prefers_sequential_scan(self)
+    }
+
     fn nrows(&self) -> usize {
         SandwichDesign::nrows(self)
     }
@@ -658,6 +665,10 @@ impl<D> SandwichDesign for PpmlSandwichDesign<D>
 where
     D: PpmlInferenceDesign,
 {
+    fn prefers_sequential_scan(&self) -> bool {
+        self.source.prefers_sequential_scan()
+    }
+
     fn nrows(&self) -> usize {
         self.source.nrows()
     }

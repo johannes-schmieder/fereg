@@ -980,6 +980,10 @@ pub(crate) struct CertifiedLinearWithinDesign<'a> {
 }
 
 impl SandwichDesign for CertifiedLinearWithinDesign<'_> {
+    fn prefers_sequential_scan(&self) -> bool {
+        matches!(self.storage, RetainedWithinStorage::Scratch(_))
+    }
+
     fn nrows(&self) -> usize {
         self.storage.rows()
     }

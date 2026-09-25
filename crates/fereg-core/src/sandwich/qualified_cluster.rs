@@ -17,8 +17,7 @@ use crate::error::Result;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum QualifiedClusterCertificateRoute<'a> {
-    /// Existing PPML paired-score route. Its exact five-vector workspace and
-    /// merge order remain the accepted implementation.
+    /// PPML retains independently constructed production/certificate scores.
     PairedIndependent(FixedBlockReductionPolicy),
     /// OLS scratch certification transforms every completed group by bread.
     OlsPerGroupBread(&'a [f64]),
@@ -90,6 +89,13 @@ where
             ));
         }
         if let QualifiedClusterCertificateRoute::PairedIndependent(blocks) = certificate {
+            if dense.prefers_sequential_scan() {
+                if let Some(plan) = paired_subset_plan(dimensions, mask, nobs, dimension) {
+                    return aggregate_paired_scan(
+                        dense, multipliers, dimensions, mask, plan, reservation,
+                    );
+                }
+            }
             let reduced = super::reduce_one_cluster_subset(
                 dense,
                 multipliers,
@@ -146,6 +152,113 @@ where
         policy.maximum_dimensions,
         reservation,
     )
+}
+
+// The complete scan workspace replaces the two simultaneous radix row orders.
+// Its bound also implies the old route admits radix counts, rather than using
+// the sparse-label single-order fallback. No bank coexists with a row ordering.
+fn paired_subset_plan(
+    dimensions: &[&[u32]], mask: usize, nobs: usize, dimension: usize,
+) -> Option<DenseSubsetPlan> {
+    let plan = dense_subset_plan(dimensions, mask, nobs, dimension.checked_mul(2)?, 16)
+        .ok()??;
+    let bytes = paired_workspace_bytes(plan.group_slots, dimension)?;
+    (bytes <= nobs.checked_mul(2 * std::mem::size_of::<usize>())?).then_some(plan)
+}
+
+fn paired_workspace_bytes(groups: usize, dimension: usize) -> Option<usize> {
+    groups.checked_mul(dimension.checked_mul(32)?.checked_add(1)?)?
+        .checked_add(dimension.checked_mul(dimension)?.checked_mul(24)?)?
+        .checked_add(dimension.checked_mul(8)?)?
+        .checked_add(std::mem::size_of::<DenseSubsetPlan>())?
+        .checked_add(6 * std::mem::size_of::<Vec<f64>>())
+}
+
+fn aggregate_paired_scan<D, M, R>(
+    design: D, multipliers: M, dimensions: &[&[u32]], mask: usize,
+    plan: DenseSubsetPlan, reservation: &mut R,
+) -> Result<QualifiedClusterSubsetResult>
+where
+    D: SandwichDesign,
+    M: SandwichScoreMultiplier,
+    R: SandwichReservation,
+{
+    let dimension = design.dimension();
+    let slots = plan.group_slots.checked_mul(dimension)
+        .ok_or_else(|| allocation("paired cluster score slots overflow"))?;
+    let bank_elements = slots.checked_mul(4)
+        .ok_or_else(|| allocation("paired cluster score bank overflows"))?;
+    let mut bank = reserved_filled(reservation, bank_elements, 0.0_f64,
+        "unable to reserve paired cluster score bank")?;
+    let mut seen = reserved_filled(reservation, plan.group_slots, 0_u8,
+        "unable to reserve paired cluster presence")?;
+    let actual_bytes = paired_workspace_bytes(plan.group_slots, dimension)
+        .ok_or_else(|| allocation("paired cluster workspace overflows"))? as u128
+        + (bank.capacity() - bank_elements) as u128 * 8
+        + (seen.capacity() - plan.group_slots) as u128;
+    if actual_bytes > design.nrows() as u128 * 2 * std::mem::size_of::<usize>() as u128 {
+        return Err(allocation("paired cluster bank exceeds displaced ordering"));
+    }
+    let mut row_values = reserved_filled(reservation, dimension, 0.0_f64,
+        "unable to reserve paired cluster row")?;
+    let (production, tail) = bank.split_at_mut(slots);
+    let (production_correction, tail) = tail.split_at_mut(slots);
+    let (certificate, certificate_correction) = tail.split_at_mut(slots);
+    design.visit_range(0..design.nrows(), &mut row_values, |row, values| {
+        let group = dense_group(dimensions, mask, plan, row)?;
+        seen[group] = 1;
+        let pair = multipliers.score_pair(row)?;
+        for (coordinate, value) in values.iter().copied().enumerate() {
+            let position = group * dimension + coordinate;
+            compensated_add(pair.production * value,
+                &mut production[position], &mut production_correction[position])?;
+            compensated_add(pair.certificate * value,
+                &mut certificate[position], &mut certificate_correction[position])?;
+        }
+        Ok(())
+    })?;
+    let square = dimension.checked_mul(dimension)
+        .ok_or_else(|| allocation("paired cluster meat dimensions overflow"))?;
+    let mut production_meat = reserved_filled(reservation, square, 0.0_f64,
+        "unable to reserve paired cluster production meat")?;
+    let mut certificate_meat = reserved_filled(reservation, square, 0.0_f64,
+        "unable to reserve paired cluster certificate meat")?;
+    let mut correction = reserved_filled(reservation, square, 0.0_f64,
+        "unable to reserve paired cluster meat correction")?;
+    for group in 0..plan.group_slots {
+        if seen[group] == 0 { continue; }
+        let offset = group * dimension;
+        for left in 0..dimension {
+            let a = production[offset + left] + production_correction[offset + left];
+            for right in left..dimension {
+                let b = production[offset + right] + production_correction[offset + right];
+                let position = left * dimension + right;
+                compensated_add(a * b, &mut production_meat[position], &mut correction[position])?;
+            }
+        }
+    }
+    super::finalize_symmetric_triangle(&mut production_meat, correction, dimension)?;
+    let mut correction = reserved_filled(reservation, square, 0.0_f64,
+        "unable to reserve paired cluster certificate correction")?;
+    // Independent multipliers, group storage, arithmetic and reverse merge;
+    // the certificate never reads production sums or its meat.
+    for group in (0..plan.group_slots).rev() {
+        if seen[group] == 0 { continue; }
+        let offset = group * dimension;
+        for left in 0..dimension {
+            let a = certificate_correction[offset + left] + certificate[offset + left];
+            for right in left..dimension {
+                let b = certificate_correction[offset + right] + certificate[offset + right];
+                let position = left * dimension + right;
+                compensated_add(b * a, &mut certificate_meat[position], &mut correction[position])?;
+            }
+        }
+    }
+    super::finalize_symmetric_triangle(&mut certificate_meat, correction, dimension)?;
+    Ok(QualifiedClusterSubsetResult {
+        production: production_meat, certificate: certificate_meat,
+        groups: seen.iter().filter(|&&present| present != 0).count(),
+    })
 }
 
 fn dense_subset_plan(
@@ -1729,5 +1842,137 @@ mod scratch_table_tests {
                 assert_eq!(*design.reads.borrow(), expected);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod paired_scan_tests {
+    use super::*;
+    use super::super::{SandwichScorePair, SystemSandwichReservation};
+
+    #[derive(Clone, Copy)]
+    struct Scan { rows: usize, width: usize }
+    impl SandwichDesign for Scan {
+        fn nrows(&self) -> usize { self.rows }
+        fn dimension(&self) -> usize { self.width }
+        fn prefers_sequential_scan(&self) -> bool { true }
+        fn fill_row(&self, _: usize, _: &mut [f64]) -> Result<()> {
+            panic!("admitted paired scan must retain its range reader")
+        }
+        fn visit_range(&self, rows: std::ops::Range<usize>, out: &mut [f64],
+            mut visit: impl FnMut(usize, &mut [f64]) -> Result<()>) -> Result<()> {
+            for row in rows {
+                for (j, v) in out.iter_mut().enumerate() {
+                    *v = ((row * (2*j+1) % 19) as i64 - 9) as f64 / 8.;
+                }
+                visit(row, out)?;
+            }
+            Ok(())
+        }
+    }
+    #[derive(Clone, Copy)]
+    struct Scores { rows: usize, mode: usize, poison: bool }
+    impl SandwichScoreMultiplier for Scores {
+        fn nrows(&self) -> usize { self.rows }
+        fn score_pair(&self, row: usize) -> Result<SandwichScorePair> {
+            let weight = match self.mode {
+                0 => 1., 1 => (1+row%4) as f64 / 4.,
+                2 => if row%17 == 0 { 8. } else { 0.125 },
+                _ => (1+row%5) as f64,
+            };
+            Ok(SandwichScorePair {
+                production: weight * ((row%11) as i64 - 5) as f64,
+                certificate: if self.poison && row==19 { f64::NAN }
+                    else { weight * ((row%7) as i64 - 3) as f64 },
+            })
+        }
+    }
+    fn policy() -> QualifiedClusterRoutePolicy {
+        QualifiedClusterRoutePolicy { maximum_dimensions: 5, reduction_maximum_blocks: 64,
+            partial_budget_bytes: 32<<20, ordered_rows_per_block: 16384, dense_groups_per_block: 1024 }
+    }
+    fn certificate() -> QualifiedClusterCertificateRoute<'static> {
+        QualifiedClusterCertificateRoute::PairedIndependent(FixedBlockReductionPolicy {
+            rows_per_block: 16384, maximum_blocks: 64, partial_budget_bytes: 32<<20 })
+    }
+
+    #[test]
+    fn paired_scan_matches_separate_integer_group_oracles_and_teams() {
+        let rows = 4097;
+        let a: Vec<u32> = (0..rows).map(|r| if r%7==0 {4} else {(r%2) as u32}).collect();
+        let b: Vec<u32> = (0..rows).map(|r| ((r/13)%5) as u32).collect();
+        let dimensions = [&a[..], &b[..]];
+        for width in [1, 6, 21] {
+            for mode in 0..4 {
+                for mask in 1..4 {
+                    let mut groups = std::collections::BTreeMap::<(u32,u32), (Vec<i64>,Vec<i64>)>::new();
+                    for row in 0..rows {
+                        let pair = groups.entry((if mask&1!=0 {a[row]} else {0},
+                            if mask&2!=0 {b[row]} else {0})).or_insert_with(|| (vec![0;width],vec![0;width]));
+                        let w = match mode {0=>8,1=>2*(1+row%4) as i64,
+                            2=>if row%17==0 {64} else {1}, _=>8*(1+row%5) as i64};
+                        for j in 0..width {
+                            let x = (row*(2*j+1)%19) as i64 - 9;
+                            pair.0[j] += x*w*((row%11) as i64-5);
+                            pair.1[j] += x*w*((row%7) as i64-3);
+                        }
+                    }
+                    let mut expected = [vec![0i64;width*width],vec![0i64;width*width]];
+                    for (p,c) in groups.values() {
+                        for (arm, scores) in [p,c].iter().enumerate() {
+                            for i in 0..width { for j in 0..width {
+                                expected[arm][i*width+j] += scores[i]*scores[j];
+                            }}
+                        }
+                    }
+                    for threads in [1,4] {
+                        let pool=rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+                        let design=Scan {rows,width};
+                        let result=pool.install(|| reduce_qualified_cluster_subset(&design,Some(design),
+                            Scores {rows,mode,poison:false}, &dimensions,mask,certificate(),policy(),
+                            &mut SystemSandwichReservation)).unwrap();
+                        assert_eq!(result.groups,groups.len());
+                        for (actual, expected) in [&result.production,&result.certificate].iter().zip(&expected) {
+                            assert_eq!(**actual,expected.iter().map(|&v|v as f64/4096.).collect::<Vec<_>>());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn paired_scan_budget_refuses_sparse_products_and_checks_complete_bank() {
+        let dense = [0,1,2,3];
+        let sparse = [0,u32::MAX,1,2];
+        let bytes = paired_workspace_bytes(4,6).unwrap();
+        let minimum_rows=bytes.div_ceil(2 * std::mem::size_of::<usize>());
+        assert!(paired_subset_plan(&[&dense],1,minimum_rows,6).is_some());
+        assert!(paired_subset_plan(&[&dense],1,minimum_rows-1,6).is_none());
+        assert!(paired_subset_plan(&[&sparse,&sparse,&sparse],7,4096,6).is_none());
+        assert!(paired_subset_plan(&[&dense],1,usize::MAX,usize::MAX).is_none());
+    }
+
+    #[test]
+    fn paired_scan_allocation_and_independent_certificate_fail_closed() {
+        struct Fail(usize);
+        impl SandwichReservation for Fail {
+            fn reserve<T>(&mut self,v:&mut Vec<T>,n:usize,label:&'static str)->Result<()> {
+                if self.0==0 {return Err(allocation(label));}
+                self.0-=1;
+                v.try_reserve_exact(n).map_err(|_|allocation(label))
+            }
+        }
+        let rows=4096;
+        let codes=vec![0;rows];
+        let design=Scan {rows,width:2};
+        for fail in 0..7 {
+            let result=reduce_qualified_cluster_subset(&design,Some(design),Scores {rows,mode:0,poison:false},
+                &[&codes],1,certificate(),policy(),&mut Fail(fail));
+            assert_eq!(result.unwrap_err().code,crate::error::ErrorCode::Allocation);
+        }
+        let result=reduce_qualified_cluster_subset(&design,Some(design),Scores {rows,mode:0,poison:true},
+            &[&codes],1,certificate(),policy(),&mut SystemSandwichReservation);
+        assert!(result.is_err());
     }
 }

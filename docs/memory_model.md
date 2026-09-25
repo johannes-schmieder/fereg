@@ -950,3 +950,16 @@ before core preflight, rather than assuming a fixed platform-specific size.
 The real T1/T4 warmed audits and a 256-cycle executor test retain exact-zero
 allocation requirements. Static allocation-inventory drift and physical-cap
 qualification remain separate open issues.
+
+## PPML sequential cluster scores
+
+ADR 0205 permits a scratch-backed positive-rank PPML subset to replace radix
+ordering with one original-row scan. Its complete planned workspace—four
+compensated group-score arrays, presence, row, three square banks and owner
+descriptors—must fit within the displaced two N-word radix arrays. Mixed-radix
+holes count toward admission. Overflow or refusal retains ordered reduction;
+allocation and read errors fail closed. Actual score-bank capacities are checked.
+No bank coexists with fallback ordering or survives the inference call, and the
+scan reuses the existing bounded immutable page. Dense/robust PPML and OLS retain
+their policies. This relative workspace bound does not qualify physical caps or
+repair the documented static inventory drift.
