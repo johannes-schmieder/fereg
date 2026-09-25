@@ -10,56 +10,69 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 The [current implementation plan](#further-ppml-development-plan--revised-after-generated-column-validation-2026-09-25)
-prioritizes completing the three-FE joint-engine comparison, followed by canonical
-construction and large-N traversal. **Correction:** accepted fast two-/three-FE
+prioritizes finite-control conditioning within existing joint LSMR, followed by
+canonical construction and large-N traversal. The blanket coefficient-engine
+replacement is rejected; its runtime changes have been restored. **Correction:** accepted fast two-/three-FE
 auto already uses joint LSMR. Absence of calls to the coefficient joint helper
 did not establish repeated ordinary full-control projection.
 Earlier handoffs below are historical; their timings do not transfer to later
 artifacts. The sparse-factor and earlier small threshold probes remain closed.
 
-## Ambitious PPML plan; current experiment remains unaccepted — 2026-09-25
+## Three-FE replacement rejected; canonical boundary tested — 2026-09-25
 
-The target is a reliable **10% complete-command lead per scientifically comparable
-multi-FE case**, aiming for **15–20% headroom**. Accepted computation remains
-**df0472d6 / generatedscan1**. The existing three-file worktree experiment is
-preserved; this planning update neither accepts it nor changes its runtime code.
+Accepted runtime remains **df0472d6 / generatedscan1**. Of 565 captured inputs,
+only two expanded Stata fixtures differ; all runtime/build inputs match that
+artifact. No production speedup is accepted at this checkpoint. The **10%
+complete-command lead per comparable multi-FE case** goal remains open; aim for
+15–20% headroom. [ADR 0207](docs/adr/0207-fast-three-fe-joint-directions.md) and the
+[immutable report](benchmarks/reports/development/ppml-fast-joint-closeout-local-2026-09-25/README.md)
+preserve the full implementation, source identities, all distributions and failures.
 
-Local evidence is under `target/ppml-fast-joint-comparison-20260925/`:
-`capture-declaration.json`, `capture-audit.json`, `core-second-checks.json`,
-`fixtures.json`, and the per-run `capture/runs/*/stderr.txt` traces. Diagnostic
-**jointcompare2** compares existing joint LSMR with the coefficient joint engine
-on identical frozen ordinary weighted frames. On the large three-FE factor
-case, coefficient calls take roughly **23–26 ms**, versus LSMR setup/solve/check
-totals of **80–126 ms**. Extra independent LSMR-form checks take **7–8 ms** and
-first coefficient-owner construction takes **7 ms**. The million-row two-FE
-coefficient calls instead cost **63–64 ms**, versus LSMR **54–55 ms**, before
-extra cross-check and first-owner costs. These fixed-order diagnostic timings
-are attribution evidence, not public speedup claims or stock comparisons.
+The frozen-frame diagnostic confirms a real hard-factor opportunity: coefficient
+calls **23–26 ms** versus joint LSMR **80–126 ms**, before extra cross-check/owner
+costs. It does not justify blanket replacement. Candidate **fastjoint3** improves
+hard fast three-FE public median **843 -> 640 ms**, stock **725 ms**, but fresh
+serial/sparse/disconnected regress **37%/82%/164%** against baseline. A fused
+strict-projection dispatch defect bypassed the retained canonical owner. Its
+red/green test and corrected **fastjoint4** restore canonical costs, but ordinary
+losses remain: corrected development medians **187/186**, **203/178**, **396/248 ms**
+candidate/baseline. Reject without another fresh campaign or fitted routing guard.
+The corrected candidate cannot inherit the earlier artifact's factor win.
 
-Candidate **fastjoint1**, based on df0472d6 plus the three worktree overlays,
-therefore targets admitted fast three-categorical-FE automatic ordinary
-directions, retaining canonical LSMR/Schur authority; the shared owner also
-reaches explicit MAP three-FE fits. Automatic two-FE stays unchanged. Eleven
-focused core tests pass. Two licensed fixtures pass; the categorical final oracle fails **r(3499)**
-at native solver-report validation. Its MAP-ordinary/LSMR-checkpoint combination
-is currently permitted only for low storage by that validator. The next step is
-a precise successor routing/report contract and positive/negative publication
-tests, including the Stata boundary, followed by public science and timings.
-Do not bypass the validator or count this candidate as accepted. Its conservative
-admission still charges the full old LSMR envelope plus optional coefficient
-storage; actual memory and budget refusal must be measured.
+All **240 public states pass**, but only **145/162 baseline-anchored pairs**,
+**4/6 explicit-design oracles** and **62/75 direct candidate/stock pairs** pass.
+Small baseline near-zero coefficients and fresh/corrected sparse or disconnected
+stock means fail registered envelopes; affected comparisons remain unranked.
+All 17 diagnostic frames pass independent original-input cross-certification.
+**16 distinct Rust tests** pass across candidate snapshots. Existing checkpoint-
+count drift also fails on baseline; perfect-fit fallback and test-authoring
+failures remain visible. No scientific tolerance was relaxed.
 
-The earlier checkpoint-count test failure (`strict_profile_rejections` expected
-one, observed zero) also occurs on accepted generatedscan1 in the isolated
-`baseline-refinement.log`; it is separate existing test drift. The original
-perfect-fit fallback failure and corrected noisy fallback fixture remain in the
-local evidence. No headline candidate/stock rotation or fresh validation has
-run for fastjoint1. Preserve these outcomes when sealing the eventual report.
+**Five licensed fixtures pass against the restored accepted plugin**, including
+the expanded 72-fit MAP/LSMR/auto two-/three-FE explicit Poisson/Hessian/sandwich
+oracle and automatic publication rollback checks. Retain that fixture and the
+transaction's stale wire-minor assertion correction to existing protocol 1.3.
+The rejected validator and engine changes are not retained. OLS timings were not
+rerun after restoring byte-identical runtime; no new timing non-regression claim.
 
-The plan below targets **171 ms** on hard fast three-FE, **70–93 ms** on hard low
-three-FE, and **449 ms** across the million-row two-FE pipeline. Another small
-cache optimization cannot close the last budget. No new benchmark, test, build,
-validation seed, release or qualification was run for this planning update.
+Candidate modeled additions reach **77.3 MB**; tracked peak changes are mixed and
+scratch unchanged. No physical-cap, warmed-allocation, platform or qualification
+claim. Static allocation drift, constrained fits and nonretaining-CG failures stay
+open. Frozen77/16/111 definitions and historical receipts are unchanged.
+
+The archive contains **10,056 restored hash/privacy-verified receipts**; SHA-256
+`6c1cddaf97d93d4afcdbb03f9bba6c9d824e66b90dcf004d8261d43fb366fad0`.
+Source snapshots and failed candidates are recoverable from it. Fresh seed
+**202609438 is consumed/frozen**; 439 is unconsumed. Do not tune on fresh results.
+
+**Next implementation:** strengthen finite-control conditioning inside existing
+joint LSMR while retaining its FE preconditioner and independent original-input
+certificate. Compare a current-weight full finite block and canonical FE-equivalent
+control representatives as at most two coherent alternatives on development frames.
+The factor advantage may come from these differences; that remains a hypothesis.
+Do not repeat the blanket engine swap or infer that ordinary two-FE replacement can
+close the million-row gap: its roughly 110 ms cannot supply the full savings budget.
+The revised bounded milestones below govern the next work.
 
 ## Generated-column scans adopted; 10% target still open — 2026-09-25
 
@@ -1008,7 +1021,8 @@ and accuracy govern the comparison; an aggregate win rate cannot close a loss.
 ### Current evidence and savings budgets
 
 Accepted production is **df0472d6 / generatedscan1 / ADR 0206**, bound to
-5d84eb9d plus six Rust overlays; the worktree candidate is unaccepted. The opening
+5d84eb9d plus six Rust overlays. The blanket three-FE replacement was rejected
+under ADR 0207; accepted runtime is restored. The opening
 report contains full distributions and exact artifact
 identities. The factor-scan milestone removes 360 ms from the large low case and
 152 ms from fast, with no added tracked peak or scratch. It is accepted; no more
@@ -1027,46 +1041,49 @@ factor levels must not erase the much faster stock results on the original desig
 |Fresh numeric N737280: 986/772 ms|695 ms|Confirms the large-N loss on another frozen input; do not tune on that seed|
 
 These are savings budgets, not promised speedups or measured lower bounds.
-Fresh seed **202609437** is consumed/frozen, as are all prior validation seeds.
+Fresh seeds through **202609438** are consumed/frozen. Seed439 is unconsumed.
 Use existing development seed347 or distinct development inputs; choose a new
 predeclared validation seed only after freezing the next candidate. The four-
 case original inventory is already complete; do not repeat it as preparation.
 
-### Milestone 1: finish the three-FE joint-engine replacement
+### Milestone 1: improve finite conditioning while preserving the joint LSMR FE solve
 
-The actual comparison is **ordinary joint LSMR versus the existing coefficient
-Schur joint engine**, with the established borrowed categorical projector for
-canonical rank and strict/final construction. Accepted fast two-/three-FE auto
-already uses joint LSMR (ADR 0029). The earlier inference from a missing helper
-call was wrong. Identical-frame diagnostic evidence supports testing the new
-organization for three FE and retaining current two-FE auto; it does not prove
-a complete-command improvement. The original residual-space extrapolation and
-all-coefficient canonical route remain closed.
+The blanket coefficient Schur engine replacement is closed under ADR 0207.
+Accepted automatic fast two-/three-FE already uses joint LSMR. The failed candidate
+showed a genuine hard-factor advantage but unacceptable sparse/disconnected losses
+even after fixing fused canonical ownership. Do not repeat it with a seed-, size-
+or thread-fitted guard. Keep the existing FE core-pair/Schwarz preconditioner.
 
-Finish the already implemented candidate before another solver experiment:
+The next concrete hypothesis is that the coefficient engine's full finite block
+and FE-equivalent control representatives account for useful hard-factor gains.
+Existing joint LSMR uses a diagonal finite preconditioner and original active
+controls. Verify source and measure those differences on identical frozen frames;
+the preceding experiment did not isolate their causal contributions.
 
-1. Specify the new automatic route, ordinary engine and canonical checkpoint
-   identities in a successor ADR. Align native and Stata validation with that
-   exact admitted combination; test malformed reports and transaction rollback.
-   Resolve the current r(3499) without weakening publication validation.
-2. Prove complete owner admission and fallback. Charge current-weight geometry,
-   finite workspace, response guesses and concurrently live canonical buffers;
-   test budget/allocation refusal, rank zero and changing weights. Retain one
-   owned topology. Measure the conservative extra memory charged by fastjoint1.
-3. Complete independent weighted WLS and public Poisson/Hessian/sandwich checks,
-   including explicit MAP/LSMR, weights, generated terms, disconnected/extreme
-   masses, threads and all outputs. Keep the pre-existing checkpoint-count
-   failure and the separate perfect-fit LSMR failure visible.
-4. Run the declared small science screen and eight-case B/C/stock pilot. Only a
-   scientific pass earns timing ranking. Freeze the successful source before
-   fresh cases; archive diagnostics and failed attempts in the milestone report.
+1. Implement at most two coherent alternatives: current-weight full finite-block
+   conditioning, then canonical FE-equivalent control representatives if required.
+   Preserve the FE preconditioner and LSMR recurrence. Explicitly derive the
+   coefficient/FE mapping, operator/adjoint consistency and original-input
+   residual certificate. Canonical rank/bread remains separate.
+2. Bind reusable topology and numerical factors to their actual dependencies.
+   Rebuild factors for current weights; prior factors/solutions are guesses only.
+   Cover changing weights, rank deficiency, extreme masses, disconnected groups,
+   zero finite rank, memory refusal and strict transaction restoration.
+3. Compare development frozen frames before public integration. Require useful
+   hard-factor savings without the previous sparse/disconnected losses. Account
+   for setup, original-input checks, mapping/reconstruction and all live memory.
+   Do not equate iteration counts across algorithms or hide setup in a cache.
+4. Advance one candidate to independent weighted WLS/Poisson/Hessian checks and
+   three complete B/C/pinned-stock rotations. Freeze promising source before five
+   rotations on newly predeclared fresh inputs. Protect low/slopes/two-/four-FE,
+   numeric/generated/wide/serial/OLS controls, inference and all outputs.
 
-Aim to save **170–250 ms** on the hard fast factor case and reach **<=646 ms**
-whole-command time. The ordinary direction has no rank or bread authority;
-current-weight validation and exact final q*mu Hessian remain independent.
-Carry low/numeric/two-FE/slopes/four-FE/OLS controls. One coherent correction
-after the current candidate is the bound; if complete-command gains disappoint,
-close the experiment and move to its largest measured remaining stage.
+Target roughly **170–250 ms** savings on the original hard fast factor case,
+reaching approximately **<=650 ms** complete command (stock varies by measured
+block). Retain a candidate only if useful beyond one seed and justified in memory
+and complexity. If both coherent alternatives fail, seal their evidence and move
+to canonical weighted-frame construction. Do not accumulate solver layers or
+spend another cycle searching for a routing threshold.
 
 ### Milestone 2: build one efficient canonical weighted-frame pipeline
 

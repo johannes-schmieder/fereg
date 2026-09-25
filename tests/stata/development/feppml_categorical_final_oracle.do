@@ -59,6 +59,7 @@ void joint_column_sandwich(string scalar covariance, string scalar kind, real sc
 }
 end
 
+foreach solver in lsmr map auto {
 foreach dimensions in 2 3 {
 local effects "g h"
 local dummies "ibn.g i.h"
@@ -78,7 +79,10 @@ foreach kind in unit fw pw {
         local vce "robust"
         if "`covariance'" == "cluster" local vce "cluster cl"
         feppml y x1 x2 x3 x4 x5 x6 x7 x8 `weight', absorb(`effects') offset(off) ///
-            vce(`vce') separation(none) keepsingletons threads(`threads') memory(fast) solver(lsmr) mu(mu_native) eta(eta_native) xb(xb_native) d(d_native) residuals(res_native)
+            vce(`vce') separation(none) keepsingletons threads(`threads') memory(fast) solver(`solver') mu(mu_native) eta(eta_native) xb(xb_native) d(d_native) residuals(res_native)
+        local selected "lsmr"
+        if "`solver'" == "map" local selected "map"
+        assert "`e(feppml_solver_selected)'" == "`selected'"
         assert abs(eta_native - ln(mu_native)) <= 1e-10
         assert abs(res_native - (y - mu_native)) <= 1e-10
         assert abs(eta_native - xb_native - d_native) <= 1e-9
@@ -105,6 +109,30 @@ foreach kind in unit fw pw {
 
 }
 
+}
+
+}
+
+* The automatic three-FE route must preserve the held estimate and output names
+* when publication fails after the certified fit has completed.
+quietly regress y x1 x2
+matrix held_b = e(b)
+matrix held_V = e(V)
+generate byte held_sample = e(sample)
+foreach stage in postplugin postpublic mutatesolver {
+    capture noisily _fereg_estimate_ppml y x1 x2, absorb(g h j) offset(off) ///
+        vce(robust) separation(none) keepsingletons threads(4) memory(fast) ///
+        solver(auto) mu(__hybrid_mu) eta(__hybrid_eta) residual(__hybrid_resid) ///
+        publicmode publiccmdline("feppml hybrid transaction") inject(`stage')
+    local expected_rc = cond("`stage'" == "mutatesolver", 3499, 3498)
+    assert _rc == `expected_rc'
+    assert "`e(cmd)'" == "regress"
+    assert mreldif(e(b), held_b) == 0
+    assert mreldif(e(V), held_V) == 0
+    assert e(sample) == held_sample
+    foreach output in __hybrid_mu __hybrid_eta __hybrid_resid {
+        confirm new variable `output'
+    }
 }
 
 display as result "END_FIXTURE|feppml_categorical_final_oracle|rc=0"

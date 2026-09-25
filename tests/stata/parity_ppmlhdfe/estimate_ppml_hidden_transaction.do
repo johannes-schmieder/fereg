@@ -165,7 +165,7 @@ _fereg_estimate_ppml y c.x, memory(fast) separation(none) ///
 assert `"`e(cmd)'"' == "_fereg_estimate_ppml"
 assert e(feppml_receipt)[1,1] == 5354602
 assert e(feppml_receipt)[1,2] == 1
-assert e(feppml_receipt)[1,3] == 2
+assert e(feppml_receipt)[1,3] == 3
 assert e(feppml_receipt)[1,4] == 2
 assert e(feppml_receipt)[1,13] == 1
 assert e(feppml_receipt)[1,14] == 1
