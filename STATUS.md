@@ -1168,18 +1168,23 @@ Rust overlay; all 565 input hashes match. Original-control full Gram conditionin
 is implemented and validated. The blanket coefficient-engine switch is rejected
 under ADR 0207. Keep these distinct decisions and their exact source-bound reports.
 
-|Priority; current development C/stock medians|Required C time for 10% lead|Remaining budget and evidence|
+|Priority; accepted fereg/stock medians|Required fereg time for 10% lead|Remaining budget and evidence|
 |---|---:|---|
-|Fast three-FE factors,153600/K19/T8:726/732 ms|659 ms; prefer586–622|Save 67 ms; ordinary projection 290, strict 132 and preparation 80 ms remain|
-|Low three-FE factors:727/733 ms|660 ms|Save 67 ms; this route is unchanged by the finite block|
-|Fast numeric K19:588/646 ms|581 ms|About 7 ms; extra Gram setup loses 11 ms versus baseline; seek broad carryover|
-|Fast three-FE numeric,30720/K6/T4:87/83 ms|75 ms|Save about 12 ms; protect this ordinary-width case when conditioning factors|
+|Fast three-FE factors,153600/K19/T8:705/709 ms|638 ms; prefer567–603|Save 67 ms (9.5% of fereg); representative-closeout corrected block|
+|Low three-FE factors:714/714 ms|643 ms|Save 71 ms (10%); representative-closeout first block|
+|Fast numeric K19:578/632 ms|569 ms|Save 9 ms; representative-closeout corrected block; seek broad carryover|
+|Fast three-FE numeric,30720/K6/T4:82/84 ms|76 ms|Save 6 ms; representative-closeout corrected block; protect ordinary widths|
 |Low numeric K19: historical 664/634 ms|Historical571 ms|Not remeasured at finiteblock1; preserve the earlier artifact's 93-ms budget until entering this path|
-|Two-FE numeric,983040/K6/T8:1268/907 ms|816 ms|Save 452 ms across preparation 239, projection 266, strict 265, finite 106 and publication 123 ms|
+|Two-FE numeric,983040/K6/T8:1241/867 ms|780 ms; prefer694–737|Save 461 ms (37.1% of fereg); representative-closeout corrected block; requires changes across stages|
 |Fresh numeric,737280/K6/T8:985/813 ms|732 ms|Save 253 ms; confirms the scaling gap on a frozen input|
 |Fresh two-FE factors,153600/K19/T8:432/535 ms|482 ms|All five ratios 0.790–0.814; preserve this new lead|
 |Fresh three-FE/four slopes:128/120 ms|108 ms|Save 20 ms via shared work; simple slopes are near the 10% boundary|
 
+The accepted-baseline columns of the
+[representative closeout](benchmarks/reports/development/ppml-representatives-closeout-local-2026-09-25/README.md)
+provide the newer development clocks above. Fresh rows remain from the finite-block
+report. These blocks are not pooled, and rejected candidate clocks are not current
+performance. Targets are rounded milliseconds; acceptance uses unrounded ratios.
 These are measured-block savings budgets, not lower bounds or promises. All seeds
 through **202609439** are consumed/frozen; **440 is unconsumed**. Development
 seed 347 remains available. Do not repeat the completed inventory as preparation.
@@ -1211,7 +1216,7 @@ complete computational organization and independently earn its costs.
 ### Milestone 2: build one efficient canonical weighted-frame pipeline
 
 Target **70–100 ms** on hard low three-FE and a substantial contribution to the
-million-row **452-ms** budget. Initial rank construction and strict/final
+million-row **461-ms** budget. Initial rank construction and strict/final
 Hessian work must be timed separately from ordinary directions. Existing
 two-FE direct products and three-FE Schur checkpoint mechanisms are starting
 points; their guards encode mathematical and memory assumptions, not arbitrary
@@ -1236,6 +1241,30 @@ layer: ADRs 0166, 0188 and 0200 already bound those unsuccessful approaches.
 The chosen organization must reduce total construction, certification and
 handoff cost, including scratch I/O in low mode.
 
+The first implementation slice is explicit:
+
+1. Capture one exclusive initial/strict timeline on the existing hard low
+   three-FE factor case and million-row two-FE numeric control. Count original
+   column reads, normalization/mean passes, geometry builds, RHS/operator work,
+   independent acceptance passes, retained-row writes and rank-product scans.
+   Reuse the frozen-frame harness; no new broad inventory or tuning seed.
+2. Trace `ols/linear_session.rs::prepare_retained_solve` through
+   `try_canonical_products` and its fallback. The current builder in
+   `ols/canonical_products.rs` explicitly requires two intercept partitions;
+   three-FE Schur checkpoint support does not already provide that fused product
+   handoff. Specify a current-weight construction result with certified norms,
+   moments and one retained-row owner before changing either route.
+3. Implement the organization with the larger measured removable cost first.
+   Account for cancellation in direct products, independently reconstruct from
+   original inputs, and test rank refusal, changing weights, strict rollback and
+   dense/scratch equivalence. The second organization is a fallback experiment,
+   not permission to maintain two new overlapping engines.
+4. Run the small public science screen and three matched timing rotations.
+   Require a meaningful complete-command gain before consuming fresh seed440.
+   Commit the replacement with its memory/lifetime proof, or close it after at
+   most two materially different prototypes. A failed candidate moves work to
+   the large-N stage ledger, rather than another cache or threshold experiment.
+
 Redesign checking alongside production: distinguish inexpensive progress tests
 from independent acceptance, reuse valid certificate geometry, and identify
 duplicate full scans by the invariant they establish. Replace a check only with
@@ -1252,7 +1281,7 @@ Hessian is part of this plan.
 
 ### Milestone 3: make large-N cost scale with necessary passes
 
-The current million-row target is **1268 -> <=816 ms**, preferably **725–770 ms**.
+The current million-row target is **1241 -> <=780 ms**, preferably **694–737 ms**.
 The frozen-frame comparison finds only roughly 110 ms in its two ordinary LSMR
 calls; even eliminating those calls cannot supply the whole savings budget.
 An ordinary-engine swap is therefore not the large-N strategy. Combine the
@@ -1265,9 +1294,11 @@ Track each buffer's owner, generation, copies and consumer. Measure several N
 values; distinguish setup savings from throughput. Preserve Rust computation and
 main-thread SPI with transactional output publication.
 
-Current native phase medians include preparation (239 ms), finite work (106 ms),
-strict/final work (265 ms) and publication (123 ms); these fields are not an
-exhaustive public-time decomposition. Use the ledger to allocate
+The earlier finite-block timing block reports preparation (239 ms), finite work
+(106 ms), strict/final work (265 ms) and publication (123 ms). These illustrate
+substantial costs outside ordinary directions; they are neither an exhaustive
+decomposition nor additive attribution for the newer 1,241-ms block. Use the
+exclusive current-source ledger to allocate
 the remaining savings after milestone 2; do not sum overlapping timers or count
 one saving twice. Transfer compatible buffer ownership, eliminate proven full
 design copies and repeated normalization, and fuse compatible reductions on the
@@ -1277,7 +1308,7 @@ SPI, private shadows and receipt-last publication. Bound low storage without
 silently adding a resident N-by-K bank. Compare throughput at several N and K
 values so a fixed setup win cannot masquerade as a scaling improvement.
 
-The deliverable is a measured path from 1,268 ms toward 750–800 ms, with each
+The deliverable is a measured path from 1,241 ms to at most 780 ms, with each
 saved pass or owner transfer assigned once. Permit replacing internal storage
 and construction APIs when their coexistence forces redundant observation-sized
 banks. Keep small-fit setup bounded and low mode genuinely bounded. Distinguish
@@ -1285,6 +1316,17 @@ necessary SPI cost from avoidable staging/validation copies; if a remaining
 boundary cannot be improved within the architecture, quantify its contribution
 instead of claiming the whole residual gap is unavoidable. A candidate saving
 only a few milliseconds does not close this milestone.
+
+Treat this as an ownership and data-movement redesign with an explicit savings
+budget, not a collection of kernel tweaks. Follow one observation from ingestion
+through final output and remove representations that exist only to feed another
+copy. Keep one authoritative original design and the minimum current-weight state;
+share compatible same-frame products across consumers without sharing acceptance
+authority. Measure bytes traversed and scratch traffic as well as time. After the
+canonical milestone, publish the remaining milliseconds needed for 0.90 and the
+specific removable stages that could supply them. If their measured total is
+insufficient, identify the next computational boundary that must change before
+starting another implementation. A fast inner solve alone cannot meet this target.
 
 ### Milestone 4: turn carryover gains into broad 10% leads
 
