@@ -1,3 +1,4 @@
+use super::family::replay_final_objectives;
 use super::prepared_model::PreparedPpmlModel;
 use super::prepared_separation::candidate_ledger_hash_candidate_axis;
 use super::prepared_separation::CertifiedSeparationSeal;
@@ -7,9 +8,9 @@ use super::psd::inspect_published_ppml_covariance;
 use super::residuals::{ppml_residuals, PpmlResidualKind};
 use super::vce::{compute_ppml_wald, validate_weight_report};
 #[cfg(test)]
-use super::PpmlIterationWorkspace;
+use super::{poisson_objective, PpmlIterationWorkspace};
 use super::{
-    poisson_null_objective, poisson_objective, PoissonObjective, PpmlAllocationTelemetry,
+    poisson_null_objective, PoissonNullObjective, PoissonObjective, PpmlAllocationTelemetry,
     PpmlAllocatorSnapshot, PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlInferenceResult,
     PpmlMemoryTelemetry, PpmlPhase, PpmlPhaseClock, PpmlPsdState, PpmlSolverReport,
     PpmlTestDistribution, PpmlVceKind, PpmlVceRequest, PreparedPpmlAdjustmentKind,
@@ -64,7 +65,15 @@ impl PpmlLikelihoodStatistics {
                 "PPML final objective is not publishable",
             ));
         }
-        let null = poisson_null_objective(outcome, prior_weights)?;
+        Self::from_replayed_null(objective, poisson_null_objective(outcome, prior_weights)?)
+    }
+
+    fn from_replayed_null(objective: PoissonObjective, null: PoissonNullObjective) -> Result<Self> {
+        if !objective.deviance.is_finite() || objective.deviance < 0.0
+            || !objective.log_likelihood.is_finite() {
+            return Err(FeregError::new(ErrorCode::NonConvergence,
+                "PPML final objective is not publishable"));
+        }
         if null.log_likelihood == 0.0 {
             return Err(FeregError::new(
                 ErrorCode::NonConvergence,
@@ -1544,8 +1553,8 @@ impl CertifiedPpmlResult {
             memory.plan.preflight_dimensions.fe_total_levels,
         )?;
 
-        let recomputed_objective =
-            poisson_objective(sample.outcome(), output.mean(), sample.prior_weights()).map_err(
+        let (recomputed_objective, null_objective) =
+            replay_final_objectives(sample.outcome(), output.mean(), sample.prior_weights()).map_err(
                 |error| composed_result_error("PPML final objective replay failed", error),
             )?;
         let objective_deviance_relative_error =
@@ -1554,11 +1563,7 @@ impl CertifiedPpmlResult {
             objective.log_likelihood,
             recomputed_objective.log_likelihood,
         );
-        let likelihood = PpmlLikelihoodStatistics::from_final_state(
-            objective,
-            sample.outcome(),
-            sample.prior_weights(),
-        )
+        let likelihood = PpmlLikelihoodStatistics::from_replayed_null(objective, null_objective)
         .map_err(|error| {
             composed_result_error("PPML final likelihood publication failed", error)
         })?;
@@ -2782,9 +2787,15 @@ fn validate_separation_report(
             "PPML separation reason counts do not equal singleton/separated totals",
         ));
     }
+    // Both lists were independently checked for strict order and range above.
+    // Advancing them together checks the complete partition without N searches.
+    let mut retained_rows = report.retained_observations.iter().peekable();
+    let mut dropped_rows = report.dropped_observations.iter().peekable();
     for row in 0..report.candidate_observations {
-        let retained = report.retained_observations.binary_search(&row).is_ok();
-        let dropped = report.dropped_observations.binary_search(&row).is_ok();
+        let retained = retained_rows.peek().is_some_and(|value| **value == row);
+        let dropped = dropped_rows.peek().is_some_and(|value| **value == row);
+        if retained { retained_rows.next(); }
+        if dropped { dropped_rows.next(); }
         if retained == dropped
             || report.active[row] != retained
             || report.drop_reasons[row].is_some() != dropped
@@ -4790,6 +4801,29 @@ mod tests {
             0,
         )
         .is_err());
+    }
+
+    #[test]
+    fn separation_sorted_lists_still_require_a_disjoint_complete_partition() {
+        let input = certified_composite_input();
+        let original_rows = (0..input.separation.candidate_observations).collect::<Vec<_>>();
+        let check = |report: &SeparationReport| validate_separation_report(
+            report, input.separation_config, &original_rows, 1, &[], 0);
+        assert!(check(&input.separation).unwrap());
+        for overlap in [1, input.separation.candidate_observations - 1] {
+            let mut report = input.separation.clone();
+            // Both lists remain sorted and their lengths/counts agree, but row
+            // zero is missing and another row belongs to both partitions.
+            report.retained_observations.remove(0);
+            report.dropped_observations.push(overlap);
+            report.active[overlap] = false;
+            report.drop_reasons[overlap] = Some(SeparationDropReason::InitialSingleton);
+            report.singleton_count = 1;
+            assert_eq!(check(&report).unwrap_err().code, ErrorCode::Internal);
+        }
+        let mut mask = input.separation.clone();
+        mask.active[0] = false;
+        assert_eq!(check(&mask).unwrap_err().code, ErrorCode::Internal);
     }
 
     #[test]

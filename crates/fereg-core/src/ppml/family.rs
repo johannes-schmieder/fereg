@@ -128,23 +128,95 @@ pub fn poisson_null_objective(
     outcome: &[f64],
     prior_weights: &[f64],
 ) -> Result<PoissonNullObjective> {
-    if outcome.is_empty() || outcome.len() != prior_weights.len() {
-        return Err(FeregError::new(
-            ErrorCode::InvalidArgument,
-            "Poisson null-likelihood inputs are empty or misaligned",
-        ));
+    let (mean, log_mean) = poisson_null_mean(outcome, prior_weights)?;
+    let mut likelihood = CompensatedSum::default();
+    for row in 0..outcome.len() {
+        likelihood.add(null_likelihood_row(outcome[row], prior_weights[row], mean, log_mean,
+            log_gamma(outcome[row] + 1.0), row)?);
     }
+    finish_null_objective(mean, likelihood)
+}
+
+// Both published likelihoods are replayed from original outcomes and weights.
+// Fresh immutable terms are shared within a row, never borrowed from IRLS state.
+pub(super) fn replay_final_objectives(
+    outcome: &[f64], mean: &[f64], prior_weights: &[f64],
+) -> Result<(PoissonObjective, PoissonNullObjective)> {
+    if outcome.len() != mean.len() || outcome.len() != prior_weights.len() {
+        return Err(FeregError::new(ErrorCode::InvalidArgument,
+            "Poisson objective inputs have inconsistent lengths"));
+    }
+    let (null_mean, null_log_mean) = poisson_null_mean(outcome, prior_weights)?;
+    let mut deviance = CompensatedSum::default();
+    let mut likelihood = CompensatedSum::default();
+    let mut null_likelihood = CompensatedSum::default();
+    for row in 0..outcome.len() {
+        let y = outcome[row];
+        let terms = [if y > 0.0 { y.ln() } else { 0.0 }, log_gamma(y + 1.0)];
+        let values = objective_row_values(y, mean[row], prior_weights[row], None, Some(terms), row)?;
+        deviance.add(values[0]);
+        likelihood.add(values[1]);
+        null_likelihood.add(null_likelihood_row(y, prior_weights[row], null_mean, null_log_mean,
+            terms[1], row)?);
+    }
+    Ok((finish_objective(deviance, likelihood)?, finish_null_objective(null_mean, null_likelihood)?))
+}
+
+fn poisson_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<(f64, f64)> {
+    if outcome.is_empty() || outcome.len() != prior_weights.len() {
+        return Err(FeregError::new(ErrorCode::InvalidArgument,
+            "Poisson null-likelihood inputs are empty or misaligned"));
+    }
+    let mut maximum_weight = 0.0_f64;
+    let mut maximum_outcome = 0.0_f64;
+    for row in 0..outcome.len() {
+        let y = outcome[row];
+        let weight = prior_weights[row];
+        if !y.is_finite() || y < 0.0 || !weight.is_finite() || weight <= 0.0 {
+            return Err(FeregError::new(ErrorCode::InvalidData,
+                format!("invalid Poisson null-likelihood input at observation {row}")));
+        }
+        maximum_weight = maximum_weight.max(weight);
+        maximum_outcome = maximum_outcome.max(y);
+    }
+    if maximum_outcome == 0.0 {
+        return Err(FeregError::new(ErrorCode::InsufficientObservations,
+            "Poisson null model has no positive weighted outcome"));
+    }
+    if let Some(mean) = scaled_null_mean(outcome, prior_weights, maximum_weight, maximum_outcome) {
+        return Ok((mean, mean.ln()));
+    }
+    log_scaled_null_mean(outcome, prior_weights)
+}
+
+// Separate scaling avoids q*y overflow. Refuse subnormal intermediate products:
+// their lost digits can matter again after restoring the outcome scale.
+fn scaled_null_mean(outcome: &[f64], prior_weights: &[f64], maximum_weight: f64,
+    maximum_outcome: f64) -> Option<f64> {
+    let mut weights = CompensatedSum::default();
+    let mut outcomes = CompensatedSum::default();
+    for row in 0..outcome.len() {
+        let weight = prior_weights[row] / maximum_weight;
+        if !weight.is_normal() { return None; }
+        weights.add(weight);
+        if outcome[row] > 0.0 {
+            let y = outcome[row] / maximum_outcome;
+            let product = weight * y;
+            if !y.is_normal() || !product.is_normal() { return None; }
+            outcomes.add(product);
+        }
+    }
+    let ratio = outcomes.total() / weights.total();
+    let mean = maximum_outcome * ratio;
+    (ratio.is_normal() && mean.is_normal()).then_some(mean)
+}
+
+fn log_scaled_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<(f64, f64)> {
     let mut maximum_weight_log = f64::NEG_INFINITY;
     let mut maximum_outcome_term_log = f64::NEG_INFINITY;
     for row in 0..outcome.len() {
         let y = outcome[row];
         let weight = prior_weights[row];
-        if !y.is_finite() || y < 0.0 || !weight.is_finite() || weight <= 0.0 {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                format!("invalid Poisson null-likelihood input at observation {row}"),
-            ));
-        }
         let weight_log = weight.ln();
         maximum_weight_log = maximum_weight_log.max(weight_log);
         if y > 0.0 {
@@ -175,27 +247,26 @@ pub fn poisson_null_objective(
             "Poisson null mean is not finitely representable",
         ));
     }
-    let mut likelihood = CompensatedSum::default();
-    for row in 0..outcome.len() {
-        let term =
-            prior_weights[row] * (outcome[row] * log_mean - mean - log_gamma(outcome[row] + 1.0));
-        if !term.is_finite() {
-            return Err(numerical_nonconvergence(format!(
-                "Poisson null likelihood overflowed at observation {row}"
-            )));
-        }
-        likelihood.add(term);
+    Ok((mean, log_mean))
+}
+
+#[inline]
+fn null_likelihood_row(y: f64, weight: f64, mean: f64, log_mean: f64,
+    log_factorial: f64, row: usize) -> Result<f64> {
+    let term = weight * (y * log_mean - mean - log_factorial);
+    if !term.is_finite() {
+        return Err(numerical_nonconvergence(format!(
+            "Poisson null likelihood overflowed at observation {row}")));
     }
+    Ok(term)
+}
+
+fn finish_null_objective(mean: f64, likelihood: CompensatedSum) -> Result<PoissonNullObjective> {
     let log_likelihood = likelihood.total();
     if log_likelihood.is_finite() {
-        Ok(PoissonNullObjective {
-            mean,
-            log_likelihood,
-        })
+        Ok(PoissonNullObjective { mean, log_likelihood })
     } else {
-        Err(numerical_nonconvergence(
-            "Poisson null likelihood is not finite",
-        ))
+        Err(numerical_nonconvergence("Poisson null likelihood is not finite"))
     }
 }
 
@@ -373,9 +444,13 @@ fn poisson_objective_with_terms(
 
 #[inline]
 fn objective_row(outcome: &[f64], eta: Option<&[f64]>, mean: &[f64], prior_weights: &[f64], terms: Option<&[[f64; 2]]>, row: usize) -> Result<[f64; 2]> {
-    let y = outcome[row];
-    let mu = mean[row];
-    let weight = prior_weights[row];
+    objective_row_values(outcome[row], mean[row], prior_weights[row], eta.map(|values| values[row]),
+        terms.map(|values| values[row]), row)
+}
+
+#[inline]
+fn objective_row_values(y: f64, mu: f64, weight: f64, eta: Option<f64>,
+    terms: Option<[f64; 2]>, row: usize) -> Result<[f64; 2]> {
     if !y.is_finite() || y < 0.0 {
         return Err(FeregError::new(
             ErrorCode::InvalidData,
@@ -393,15 +468,15 @@ fn objective_row(outcome: &[f64], eta: Option<&[f64]>, mean: &[f64], prior_weigh
             "Poisson mean at observation {row} is outside the finite positive computational domain"
         )));
     }
-    let log_mean = eta.map_or_else(|| mu.ln(), |values| values[row]);
+    let log_mean = eta.unwrap_or_else(|| mu.ln());
     if !log_mean.is_finite() {
         return Err(numerical_nonconvergence(format!(
             "Poisson linear predictor at observation {row} is nonfinite"
         )));
     }
-    let half_deviance = poisson_half_deviance_with_logs(y, mu, log_mean, terms.map(|values| values[row][0]))?;
+    let half_deviance = poisson_half_deviance_with_logs(y, mu, log_mean, terms.map(|values| values[0]))?;
     let deviance_term = 2.0 * weight * half_deviance;
-    let log_likelihood_term = weight * (y * log_mean - mu - terms.map_or_else(|| log_gamma(y + 1.0), |values| values[row][1]));
+    let log_likelihood_term = weight * (y * log_mean - mu - terms.map_or_else(|| log_gamma(y + 1.0), |values| values[1]));
     if !deviance_term.is_finite() || !log_likelihood_term.is_finite() {
         return Err(numerical_nonconvergence(format!(
             "Poisson objective overflowed at observation {row}"
@@ -651,6 +726,77 @@ fn log_gamma(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fresh_joint_replay_matches_analytic_likelihoods_and_independent_calls() {
+        let y = [0.0_f64, 1.0, 2.0, 0.5];
+        let q = [4.0_f64, 2.0, 3.0, 5.0];
+        let mu = [0.25_f64, 1.25, 2.5, 0.75];
+        let (actual, null) = replay_final_objectives(&y, &mu, &q).unwrap();
+        assert_eq!(actual, poisson_objective(&y, &mu, &q).unwrap());
+        assert_eq!(null, poisson_null_objective(&y, &q).unwrap());
+        // Gamma(3/2) = sqrt(pi)/2; the other terms are integer factorials.
+        let factorial = [0.0, 0.0, 2.0_f64.ln(), (std::f64::consts::PI.sqrt() / 2.0).ln()];
+        let expected_mean = 10.5 / 14.0;
+        assert!((null.mean - expected_mean).abs() <= 2.0 * f64::EPSILON * expected_mean);
+        let mut expected_ll = 0.0;
+        let mut expected_null_ll = 0.0;
+        let mut expected_deviance = 0.0;
+        for i in 0..y.len() {
+            expected_ll += q[i] * (y[i] * mu[i].ln() - mu[i] - factorial[i]);
+            expected_null_ll += q[i] * (y[i] * expected_mean.ln() - expected_mean - factorial[i]);
+            expected_deviance += 2.0 * q[i] * (if y[i] == 0.0 { mu[i] }
+                else { y[i] * (y[i] / mu[i]).ln() - y[i] + mu[i] });
+        }
+        assert!((actual.log_likelihood - expected_ll).abs() < 3e-14);
+        assert!((null.log_likelihood - expected_null_ll).abs() < 3e-14);
+        assert!((actual.deviance - expected_deviance).abs() < 3e-14);
+    }
+
+    #[test]
+    fn null_mean_scaling_preserves_replication_and_extreme_support() {
+        let y = [0.0, 1.0, 2.0, 4.0];
+        let q = [1.0, 3.0, 2.0, 4.0];
+        for scale in [1e-250, 1.0, 1e250] {
+            let weights = q.map(|w| w * scale);
+            let actual = poisson_null_objective(&y, &weights).unwrap();
+            assert!((actual.mean - 2.3).abs() < 1e-15);
+            let (legacy, _) = log_scaled_null_mean(&y, &weights).unwrap();
+            assert!((actual.mean - legacy).abs() < 3e-13);
+        }
+        let expanded = [0.0, 1.0, 1.0, 1.0, 2.0, 2.0, 4.0, 4.0, 4.0, 4.0];
+        let compact = poisson_null_objective(&y, &q).unwrap();
+        let replicated = poisson_null_objective(&expanded, &[1.0; 10]).unwrap();
+        assert!((compact.mean - replicated.mean).abs() < 1e-15);
+        assert!((compact.log_likelihood - replicated.log_likelihood).abs() < 3e-14);
+
+        // Independent algebra: sum(q*y)=1 and sum(q) rounds to 1e300.
+        // Separately normalized q*y underflows; the log path must retain it.
+        let y = [0.0, 1e300];
+        let q = [1e300, 1e-300];
+        assert!(scaled_null_mean(&y, &q, 1e300, 1e300).is_none());
+        let (mean, _) = poisson_null_mean(&y, &q).unwrap();
+        assert!((mean / 1e-300 - 1.0).abs() < 2e-13);
+        let subnormal = f64::from_bits(17);
+        assert!(scaled_null_mean(&[subnormal], &[1.0], 1.0, subnormal).is_none());
+        assert_eq!(poisson_null_mean(&[subnormal], &[1.0]).unwrap().0, subnormal);
+    }
+
+    #[test]
+    fn fresh_joint_replay_rejects_domains_and_nonrepresentable_states() {
+        for (y, mu, q, expected) in [
+            (-1.0, 1.0, 1.0, ErrorCode::InvalidData),
+            (1.0, 1.0, 0.0, ErrorCode::InvalidData),
+            (1.0, 0.0, 1.0, ErrorCode::NonConvergence),
+            (1.0, f64::INFINITY, 1.0, ErrorCode::NonConvergence),
+            (0.0, 1.0, 1.0, ErrorCode::InsufficientObservations),
+            (1e307, 1.0, 1.0, ErrorCode::NonConvergence),
+        ] {
+            assert_eq!(replay_final_objectives(&[y], &[mu], &[q]).unwrap_err().code, expected);
+        }
+        assert_eq!(replay_final_objectives(&[1.0], &[], &[1.0]).unwrap_err().code,
+            ErrorCode::InvalidArgument);
+    }
 
     #[test]
     fn scheduled_family_rows_preserve_scalar_bits_across_tiles_and_teams() {

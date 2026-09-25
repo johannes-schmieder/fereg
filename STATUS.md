@@ -10,6 +10,72 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Fresh final verification retained; larger gaps remain — 2026-09-25
+
+Retain **finalreplay1**, `f97c9dbe` plus `ppml/family.rs` and `ppml/result.rs`.
+All **558 captured inputs** match this source checkpoint. Plugin SHA-256:
+`84db18f8e91f31eb64f26c854df98609b3722a3d49828edbad040118b3f188b3`.
+[ADR 0195](docs/adr/0195-fresh-ppml-final-replay.md) and the
+[source-bound report](benchmarks/reports/development/ppml-final-replay-local-2026-09-25/README.md)
+contain the implementation, mixed pilot, fresh distributions and restored receipts.
+This is a modest shared verification improvement, not completion of the broad
+multi-FE <=0.90-times-stock objective.
+
+Final fitted/null likelihoods now share one fresh original-input replay and
+log-Gamma evaluation per row. A separately scaled compensated null mean uses the
+old log-space method whenever intermediate/result arithmetic is nonnormal.
+Ordered separation ledgers are checked together in linear time after independent
+order/range validation. IRLS cached terms never certify themselves; reported
+objective drift, seals, current-weight scores/reconstruction, rank and exact final
+Hessian remain checked. No new cache, observation bank or heap allocation.
+
+The original pilot is mixed (low -1 ms, narrow/slopes +1 ms). A separate closing
+diagnostic measures result certification at **8.101 -> 5.728 ms** low and
+**3.346 -> 2.491 ms** narrow, motivating one frozen-source fresh confirmation.
+Fresh seed **202609430**, five B/C/stock rotations, robust inference and means,
+unmodified stock at glm.tol=1e-10/fixef.tol=1e-11:
+
+| Case; N/K/T; mode | Baseline / candidate / stock ms | Candidate/stock |
+|---|---:|---:|
+|Disconnected categorical; 61440/6/4; low|114 / 112 / 94|1.191|
+|Disconnected categorical; 38400/10/1; low|144 / 144 / 243|0.593|
+|Narrow categorical; 24960/2/4; fast|39 / 39 / 34|1.147|
+|Wide categorical; 23040/36/8; low|86 / 86 / 128|0.672|
+|Two slope partitions; 38400/8/4; fast|106 / 105 / 181|0.580|
+
+Twelve paired wins, six losses, seven ties; three of five medians meet 0.90.
+Low still needs **27.4 ms** off 112 to reach 84.6; narrow needs **8.4 ms** off 39
+to reach 30.6. These ceilings belong to this block. Do not pool older seeds or
+infer that every fit is faster. This isolated publication experiment is closed;
+do not tune it further to chase another millisecond.
+
+Fifty-two Rust tests and six licensed fixtures pass. All 114 diagnostic/headline
+public states, 74 baseline-anchored comparisons and 34 direct stock pairs pass.
+Production PPML coefficient/covariance/mean exports match exactly in all 34 native
+pairs; an independent fsum/SciPy audit validates 68 null-statistic states. The
+new draft test's one-ulp rational-mean failure is preserved; the new assertion
+now permits two machine epsilons, without changing any existing acceptance bound.
+OLS controls have nine exact-export pairs and medians 11/10, 59/58, 108/108 ms;
+four pairs still lose. All measured applications complete with clean process
+monitors. Scratch and tracked peak deltas are zero; selected telemetry varies
+-48 to +48 bytes. No new allocation or physical-cap campaign is claimed.
+
+All 6,129 logical archive receipts are restored and hash/privacy checked. Seed430
+is consumed/frozen. Known checkpoint-count assertion failure, allocation-inventory
+drift, constrained-fit/nonretaining-CG failures, older three-FE discrepancy and
+deferred platforms remain open. No push, release or qualification performed.
+
+**Next implementation boundary:** canonical preparation and the ordinary-direction
+boundary. The new low diagnostic retains **27.193 ms canonical**, **23.836 ms
+ordinary**, and **5.784 ms recurrence**. Group-geometry preparation is only
+**1.485 ms**, with coupling preparation **0.951 ms**; do not equate worker sums or
+all boundary overhead with geometry rebuilding. The next ledger should split
+canonical product construction, RHS solves, materialization/scratch transport,
+original-input reconstruction, finite-rank assembly and checking into disjoint
+work before selecting a coherent ownership change. Reuse existing grounded Schur
+and column-oriented engines; keep the earlier standalone matrix-cache and
+checkpoint-schedule experiments closed. The larger plan below remains active.
+
 ## Mean comparison adjudicated; remaining cost measured — 2026-09-25
 
 Runtime remains **canonicalcg3 / 30d1c23d**. This milestone changes only the
@@ -170,12 +236,14 @@ Scope remains **at least two FE partitions**. The target is complete public
 for each covered family wherever practical. Ratios above the target remain open
 losses; an aggregate win rate cannot close them. This is a development plan, not
 a claim that the target is attained or a new qualification campaign. Current
-runtime remains canonicalcg3; this revision changes no estimator source.
+runtime is finalreplay1 as recorded above; the larger implementation priorities
+below remain unfinished.
 
 ### Measured targets and priority
 
-These are separate source-bound blocks, not a pooled distribution. Robust
-inference and fitted means are included. The first two rows use the corrected
+The following planning baselines are separate source-bound blocks, not a pooled
+distribution; the newest candidate block is recorded above. Robust inference and
+fitted means are included. The first two rows use the corrected
 reference accuracy of ADR 0194; the other rows use ADR 0193's rankable comparisons.
 
 | Current case | fereg / stock median | Target ceiling | Required fereg reduction |
@@ -202,11 +270,10 @@ canonical preparation is 27.406 ms and result certification is 7.785 ms. These
 are inclusive scopes, not additive exclusive savings. Narrow recurrence is only
 3.131 ms, so a recurrence-only improvement cannot close its 11.3-ms public gap.
 
-Finish the pending isolated `target/ppml-final-replay-20260925` diagnostic audit
-and preserve its source/trace receipts before relying on it. It measures final
-objective/null publication and sample-ledger checking; it is not a stock benchmark
-or an accepted runtime change. A cheap shared fresh replay may be retained if it
-wins, but it cannot substitute for the larger redesign below.
+The isolated final-replay diagnostic and implementation are now closed under
+ADR 0195 with restored receipts. Their modest gain cannot substitute for the
+larger redesign below. Continue with the remaining canonical/direction operation
+ledger; do not repeat or extend this publication micro-tuning experiment.
 
 Build one exclusive operation ledger per target: original-row passes, generated
 column evaluations, current-weight geometry/factors, bytes read/written, RHS
