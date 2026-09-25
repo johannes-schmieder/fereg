@@ -1,0 +1,29 @@
+{
+  "production_commit": "711802bfdd37947cf42be732e68b172c21d67ba1",
+  "source_inputs": {
+    "familyrows2": 554,
+    "currentframeprofile1": 555
+  },
+  "screens": {
+    "profile": {
+      "calls": 8,
+      "states": 8,
+      "pairs": 0,
+      "all_pass": true
+    },
+    "baseline": {
+      "calls": 24,
+      "states": 24,
+      "pairs": 12,
+      "all_pass": true
+    }
+  },
+  "logical_receipts": 1991,
+  "payloads": 835,
+  "archive_bytes": 6812930,
+  "archive_sha256": "931678fb12c1783d1034f365c8328a38e77d6b5aa56217daab200c25cd180653",
+  "restore": {
+    "passed": true,
+    "logical_receipts": 1991
+  }
+}

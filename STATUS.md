@@ -10,6 +10,104 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Multi-FE PPML implementation plan and current-frame diagnosis — 2026-09-24
+
+The user requests an ambitious plan for **at least two FE partitions**, targeting
+whole-public-command time <=0.90 times scientifically comparable pinned stock
+fixest wherever reasonably achievable. The goal remains unfinished. This section
+supersedes the previous suggestion to prioritize a standalone original-statistics
+cache. It does not adopt a new algorithm or authorize weaker acceptance.
+
+The [current-source diagnostic report](benchmarks/reports/development/ppml-current-frame-diagnosis-local-2026-09-24/README.md)
+completes the pending screen at computational checkpoint **711802bf**. All 554
+accepted artifact inputs match that checkpoint. Separate instrumentation captures
+555 inputs. Thirty-two public-state checks and twelve stock comparisons pass;
+all fits and isolation monitors pass. No estimator source changed. Its verified
+archive preserves 1,991 logical receipts, 835 payloads and 6,812,930 bytes.
+Development seed 202609347 remains a tuning seed; no fresh seed was consumed.
+
+On the existing low-slope N61440/K10/T8 development case, uninstrumented fereg
+is 243 [241,246] ms versus stock 231 [226,231], requiring another **35.1 ms**
+for the target. Diagnostic initial/strict canonical solves total **92.37 ms**
+inclusive; original-column statistics refresh is only **4.02 ms**. Fast canonical
+work is 77.56 ms. These nested instrumented costs are prioritization evidence,
+not additive phase accounting or headline speed claims.
+
+### Ordered implementation milestones
+
+1. **Generalize direct canonical products to absorbed slopes and then three-plus
+   partitions.** Start with the current low/fast slope losses. The first candidate
+   should fuse the existing coefficient-space projection's final original-input
+   reconstruction with direct Gram/RHS, norms and independent FE moments, handing
+   those products to canonical consumers and writing required retained rows once.
+   Reuse current-weight group QR geometry across compatible RHS work under explicit
+   frame ownership. Existing rank/QR/span fallbacks remain authoritative. Avoid
+   cancellation-prone raw-minus-absorbed Gram subtraction. A second candidate is
+   justified only if operation counts favor a different bounded block factor or
+   preconditioner over the existing recurrence. Aim to halve the measured canonical
+   work; this is an engineering target, not a forecast. Do not reintroduce the
+   rejected lazy-row or frame-matvec organizations.
+2. **Close narrow categorical whole-command losses.** The accepted fresh cases
+   still need 25–33% total savings, and the new narrow development block needs 37%.
+   Instrument Stata preparation/publication and native setup within matched public
+   calls before attributing their gap. Then remove repeated metadata/topology,
+   normalization, ownership conversion or output passes actually demonstrated by
+   that trace. Reuse validated state through one transaction; retain main-thread
+   SPI and all sample checks. Reduce fixed workspace/factor setup where it dominates
+   small K. Existing conditional Poisson group optimization, deferred Schwarz and
+   canonical-first finalization are already adopted, not new candidate ideas.
+3. **Improve difficult ordinary solves only where they still dominate.** Compare
+   identical frozen current-weight systems with stock operation counts. Investigate
+   component/block elimination, effective block preconditioning and compatible
+   coefficient warm starts. Separate topology from weighted geometry and current
+   RHSs; warm starts never grant acceptance. Charge setup and fallback costs. Use
+   mathematical size/connectivity/work and complete memory bounds for routing;
+   never tune to case names, seeds or favorable timing outcomes. Retire superseded
+   code after a replacement is established.
+4. **Extend the winning mechanisms and close remaining output/memory costs.**
+   Predeclare a compact fresh screen across dense, sparse, disconnected, weakly
+   connected and unbalanced two/three/four-FE designs; numeric/generated widths;
+   multiple slopes, changing weights and rank deficiency; T1/T4/T8; fast/low and
+   refusal boundaries; robust/cluster inference and requested outputs. Expand
+   around losses rather than run a Cartesian product. Investigate inference or
+   publication as a primary target only if the refreshed whole-command profile
+   supports it. Weighted-reference comparability must be adjudicated separately;
+   ordinary fixest weights are not a frequency-weight inference oracle.
+
+### Milestone acceptance and stopping rules
+
+Each implementation milestone has one measured dominant-cost hypothesis and at
+most two coherent candidate organizations before reassessment. Start with focused
+independent WLS/Poisson/Hessian/sandwich oracles and adversarial frame/rank/memory
+checks. Keep fresh residual, model-space, score, objective, reconstruction and
+final-Hessian authority; verification fusion/rescheduling needs a successor ADR
+and tests proving its scientific purpose. Preserve samples, weights, DoF,
+separation, tolerances, interruption and failure atomicity.
+
+Use three alternating baseline/candidate/stock rotations for an initial screen,
+then predeclared fresh cases and seven rotations for promising candidates. Record
+median/range, paired ratios and losses, iterations/operations, setup/solve/output
+costs, tracked/modeled memory, timeouts and scientific failures. Marginal target
+crossings need a separate predeclared confirmation block; do not repeat until a
+win appears. Instrumented stock/native builds never supply headline timings.
+No competing work may accompany those timings.
+
+Protect accepted wins and excluded routes with focused categorical/slope OLS,
+categorical/slope PPML, serial, low-memory, generated/weighted/cluster and saved-
+output controls appropriate to each changed boundary. Keep the frozen 77/16/111
+definitions intact. Retain small inexpensive shared gains when reliable, but do
+not spend another milestone tuning a few milliseconds while larger gaps remain.
+Commit each adopted implementation with durable ADR and source-bound evidence;
+preserve rejected experiments and finish each milestone clean. No push, full
+qualification, SCC retry or stopped campaign follows this plan.
+
+The prior fresh source-bound block has four of ten cases below 0.90 stock and six
+remaining losses: narrow fast/low 1.312/1.344, disconnected 1.244, unbalanced 1.205,
+large low slopes 1.138 and two slope partitions 0.976. These ratios are case-bound,
+not a global win rate. Existing allocation-inventory, constrained-fit, comparator
+and deferred-platform failures remain open. Next action: fixed-frame prototype
+of fused slope canonical products, with current cold/strict work as baseline.
+
 ## Scoped PPML execution and family rows adopted — 2026-09-24
 
 [ADR 0179](docs/adr/0179-scoped-ppml-family-execution.md) and the
