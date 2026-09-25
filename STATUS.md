@@ -10,6 +10,46 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Coarse canonical CG experiment closed — 2026-09-25
+
+Production remains **e7731129/finalreplay1**. Reject **canonicalcoarse1**, based
+on a4792e9d plus canonical_products.rs. The complete source and patch are preserved
+in [ADR 0196](docs/adr/0196-canonical-coarse-cg-closeout.md) and its
+[source-bound closeout](benchmarks/reports/development/ppml-coarse-cg-closeout-local-2026-09-25/README.md).
+The production file is restored exactly; no new solver or acceptance policy is
+retained. This is useful negative implementation evidence, not target completion.
+
+The current-weight rank-one preconditioner shares one component correction across
+RHSs and reuses assembly scratch. It reduces initial/strict canonical maximum
+iterations **15/23 -> 11/19** on both large targets. Three development rotations,
+robust inference and means, produce B/C/stock medians **113/112/101 ms low**,
+**99/98/101 fast**, **39/40/33 narrow**, and **77/76/79 slopes**. The two iterative
+targets together have three wins, two losses and one tie. Narrow has two losses;
+the excluded slope improvement has no changed solver work. These modest mixed
+clocks do not justify adoption or a fresh holdout. Seed431 is **not consumed**.
+
+Thirteen Rust tests and six independent licensed scientific fixtures pass. All
+52 public states, 32 baseline comparisons and 12 direct stock pairs pass across
+the new pilot/trace and pending canonical diagnostic. Tracked peak/scratch changes
+are zero; selected telemetry varies by -48 bytes. The prototype conservatively
+charges the prolonged Q-double scratch lifetime; no memory allowance is increased.
+No physical-cap, cross-platform or full qualification campaign is claimed. All
+3,312 logical receipts are restored and hash/privacy checked. All 558 captured
+accepted-baseline computational inputs match the restored production tree.
+
+The pending canonical ledger is now preserved with this closeout: low canonical
+build **18.106 ms**, RHS solves **7.426**, writing controls **2.257**; these are
+inclusive diagnostic spans, not stock headlines. Narrow RHS work is **0.177 ms**.
+The original accepted-source clocks and remaining 27.4/8.4-ms gaps below remain
+the active planning budget. Do not pool the pilot with that fresh block.
+
+**Next implementation:** Milestone 2's shared preparation/reconstruction/checking
+boundary. Ordinary recurrence occupies about 5.8 ms inside 23.8 ms of joint work;
+geometry alone is about 1.5 ms. Trace the ownership and independently necessary
+row passes, then replace duplicated work coherently. Do not resume the rejected
+coarse correction or another recurrence-only tuning cycle. Known scientific,
+allocation-inventory, constrained-memory and platform gaps remain unchanged.
+
 ## Fresh final verification retained; larger gaps remain — 2026-09-25
 
 Retain **finalreplay1**, `f97c9dbe` plus `ppml/family.rs` and `ppml/result.rs`.
@@ -65,12 +105,9 @@ is consumed/frozen. Known checkpoint-count assertion failure, allocation-invento
 drift, constrained-fit/nonretaining-CG failures, older three-FE discrepancy and
 deferred platforms remain open. No push, release or qualification performed.
 
-**Next implementation boundary:** use the completed finer canonical diagnostic
-below to test one current-weight coarse preconditioner, then address the larger
-ordinary/canonical lifecycle. A faster recurrence alone cannot close the current
-27.4-ms low-mode gap. The revised plan below supersedes its older timing budgets;
-production remains e7731129/finalreplay1. The user requested this planning update;
-it introduces no solver change or new benchmark run.
+**Next implementation boundary:** the coarse preconditioner described in the
+opening closeout is rejected. Continue with the larger ordinary/canonical
+preparation and verification boundary in Milestone 2 below.
 
 ## Mean comparison adjudicated; remaining cost measured — 2026-09-25
 
@@ -260,40 +297,14 @@ discrepancy remains unresolved and unranked. Four-plus FE, generated terms,
 clustered/saved-FE outputs, weight extremes and larger N need selective current-
 source coverage, not inherited historical claims.
 
-### Milestone 1: one bounded canonical-solver experiment
+### Milestone 1: bounded canonical-solver experiment — closed
 
-The pending finer diagnostic is now complete under
-`target/ppml-canonical-ledger-20260925`: accepted baseline finalreplay1 versus
-isolated canonicalstages1, two rotations on three designs, development seed347.
-Its audit has 12 passing public states and six passing native comparisons.
-The instrumented plugin SHA-256 is
-`6ee7bf77ab77e5df302a13521e72d509ad12220af0b0b46f7187b902a40770d7`.
-Recipes, declarations, controller, audit and phase-summary remain there pending
-sanitized immutable closeout. These are preliminary diagnostic spans, not stock
-headline clocks; inclusive scopes overlap and worker sums are not wall time.
-
-On N61440/K6/T4 low, canonical build is 18.106 ms, including 7.426 ms RHS solves;
-writing controls is 2.257 ms. The scaled grounded systems reach 15 iterations
-initially and 23 at strict precision. Narrow canonical RHS solves take only
-0.177 ms. Therefore this candidate can help low/large canonical work but cannot
-by itself close either whole-command target. Scratch transport is not the first
-large cost to redesign.
-
-Prototype **current-weight component coarse preconditioning** in the existing
-canonical CG engine. Grounding creates a plausible slowly varying direction;
-verify it with frozen-state operation counts rather than assume it explains
-all iterations. Prepare one positive rank-one correction per component from
-its current matrix and diagonal scaling, reuse it across independently stopping
-RHSs, and retain the unchanged original-input projection certificate/direct Gram.
-Reclaim existing setup scratch where possible and charge its longer lifetime.
-No previous-frame factor authority, new N-by-K bank or increased allowance.
-Direct Cholesky/narrow and unrelated engines remain controls.
-
-Run analytic nonzero-residual WLS, changed-weight, rank/scale, iteration-refusal
-and exact-budget checks, followed by an early full-public B/C/stock pilot. Give
-this prototype one evidence-led correction at most. Reject if the public gain
-is negligible, inconsistent or bought with disproportionate memory. An accepted
-small coherent gain may be committed, but it does not complete this plan.
+The finer canonical diagnostic and the proposed current-weight coarse
+preconditioner are closed under ADR 0196 and its immutable receipts. Scientific
+checks pass and iteration work decreases, but the full-public pilot has only
+1-ms target improvements and a narrow-control loss. The prototype is rejected;
+no fresh validation seed is consumed. Continue with Milestone 2, preserving this
+negative result instead of retuning the correction.
 
 ### Milestone 2: remove repeated work across the weighted-linear lifecycle
 
@@ -406,10 +417,10 @@ Linux/T1/T8/T16 and constrained-platform confirmation remain deferred; no SCC re
   allocation-inventory, constrained-fit/CG and platform gaps remain open. No push,
   release, stopped campaign restart or qualification claim.
 
-This planning update changes no estimator source, consumes no fresh validation
-seed and runs no new performance or scientific campaign. The broad goal remains
-active; the next implementation begins with Milestone 1 and must progress beyond
-that bounded preparatory experiment.
+The original planning update changed no estimator source and consumed no fresh
+validation seed. Milestone 1 has since completed as recorded above. The broad
+goal remains active; implementation continues with Milestone 2 after the rejected
+bounded preconditioning experiment.
 
 ## Canonical residual certificate gate accepted — 2026-09-25
 
