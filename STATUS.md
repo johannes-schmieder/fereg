@@ -163,96 +163,169 @@ released before certification. Final fresh tracked peaks change by -2,681,856 to
 +48 bytes. All frozen benchmark definitions are preserved. Seeds **202609428/429
 are now consumed/frozen** and cannot become tuning seeds.
 
-## Further PPML development plan
+## Further PPML development plan — revised 2026-09-25
 
-### 1. Close the remaining low-mode gap after the completed mean adjudication
+Scope remains **at least two FE partitions**. The target is complete public
+`feppml` runtime **<=0.90 times scientifically comparable pinned stock fixest**
+for each covered family wherever practical. Ratios above the target remain open
+losses; an aggregate win rate cannot close them. This is a development plan, not
+a claim that the target is attained or a new qualification campaign. Current
+runtime remains canonicalcg3; this revision changes no estimator source.
 
-The two new mean discrepancies are adjudicated above. Do not repeat that task
-or reinterpret the old clocks. Keep the older three-FE coefficient discrepancy
-separate; resolve it independently before assigning a speed ranking.
+### Measured targets and priority
 
-The comparable current low T4 case needs **23.1 ms (20.3%)** off 114 ms to reach
-90.9 ms. Aim for a **30–35% complete-command reduction** with useful margin.
-The previous cold factor-work refusal is addressed; do not build another fused
-canonical engine or remove its memory/assembly guards.
+These are separate source-bound blocks, not a pooled distribution. Robust
+inference and fitted means are included. The first two rows use the corrected
+reference accuracy of ADR 0194; the other rows use ADR 0193's rankable comparisons.
 
-Use the accepted-code ledger above to localize repeated row passes and ownership
-across current-frame preparation, original-input score/reconstruction checks,
-canonical preparation and result certification. The low recurrence is only
-5.743 ms; its whole boundary is 23.981 ms. Do not attribute the entire difference
-to certificates or sum overlapping spans. Source inspection also confirms final
-objective replay and null-objective publication each scan original outcomes;
-investigate their shared immutable terms without making cached IRLS values
-certify themselves. Their exclusive cost has not yet been measured.
+| Current case | fereg / stock median | Target ceiling | Required fereg reduction |
+|---|---:|---:|---:|
+|Disconnected two FE, low, N49920/K12/T8|107 / 102 ms|91.8 ms|15.2 ms / 14.2%|
+|Same design, fast|90 / 103 ms|92.7 ms|Target met in this block|
+|Disconnected two FE, low, N61440/K6/T4|114 / 101 ms|90.9 ms|23.1 ms / 20.3%|
+|Narrow two FE, fast, N24960/K2/T4|41 / 33 ms|29.7 ms|11.3 ms / 27.6%|
+|Two slope partitions, fast, N38400/K8/T4|107 / 177 ms|159.3 ms|Target met in this block|
 
-Implement one coherent current-frame owner only where a new ledger shows repeated
-work: borrow original columns, prepare normalized weights/stable norms once for
-a valid frame, share compatible row passes, and transfer buffers between direction
-construction and reporting. Preserve freshly accumulated original-input scores
-and independent reconstruction. Initial/final canonical frames retain their own
-rank and exact-weight Hessian authority. Measure whole-command savings before
-expanding the change. At most two materially different prototypes at this boundary;
-if they fail, retain the cost ledger and move on.
+The first implementation priority is low-mode preparation and verification;
+narrow complete-command cost follows. Aim for **30–35%** and **35–40%** reductions,
+respectively, to leave useful margin. These are engineering targets, not measured
+savings or promises. Preserve existing fast, serial, wide, weak-connectivity and
+slope wins. The older threaded slope loss needs current-source remeasurement;
+the older dense three-FE coefficient discrepancy needs independent adjudication
+before any timing ranking.
 
-### 2. Redesign narrow fits across the complete command
+### Milestone 1: finish attribution and freeze the implementation experiment
 
-Current narrow fast needs **11.3 ms (27.6%)** off 41 ms to reach 29.7 ms. Aim for
-**35–40%**, carrying the benefit to low mode. The accepted-code diagnostic finds
-only 3.131 ms in recurrence, so eliminating it alone cannot close this gap.
-Reprofile accepted code and prioritize canonical preparation, initialization,
-independent result certification and public loading/output costs.
+Use the existing accepted-source ledger; do not restart a broad profiling campaign.
+For low T4, ordinary recurrence is 5.743 ms inside a 23.981-ms direction boundary;
+canonical preparation is 27.406 ms and result certification is 7.785 ms. These
+are inclusive scopes, not additive exclusive savings. Narrow recurrence is only
+3.131 ms, so a recurrence-only improvement cannot close its 11.3-ms public gap.
 
-A fit-local owner should avoid demonstrated generic-session reconstruction and
-repeated scans without retaining stale weighted authority. Consider a single
-independent replay for final and null objectives when it shares immutable inputs;
-it must not accept cached IRLS values as its own certificate. If operator work
-still matters after lifecycle savings, the bounded algorithmic candidate is a
-matrix-free profiled Newton solve eliminating one categorical partition jointly
-with finite controls. Establish a work reduction on frozen current-weight frames
-before integration; do not launch another isolated recurrence-tuning cycle.
+Finish the pending isolated `target/ppml-final-replay-20260925` diagnostic audit
+and preserve its source/trace receipts before relying on it. It measures final
+objective/null publication and sample-ledger checking; it is not a stock benchmark
+or an accepted runtime change. A cheap shared fresh replay may be retained if it
+wins, but it cannot substitute for the larger redesign below.
 
-### 3. Extend margin and coverage where current evidence finds a miss
+Build one exclusive operation ledger per target: original-row passes, generated
+column evaluations, current-weight geometry/factors, bytes read/written, RHS
+work, original-input checks, allocations, and ordinary/strict/final invocations.
+Inspect matching pinned fixest work only where attribution remains uncertain.
+For each proposed removal identify the duplicate operation, its dependencies,
+and the independent invariant that remains. Freeze at most two coherent designs
+before testing them; do not accumulate speculative cache layers.
 
-The final fresh slope control is already below 0.90, but the older threaded
-N30720/K6/T8 anchor missed (81/78 ms). Remeasure that anchor on the accepted source
-before choosing a new slope change. Keep accepted coefficient-space/Schur and
-joint-direction engines. Generic residual-space projection is no longer the
-current diagnosis. The original large slope gap and old serial weighted-slope
-micro-tuning campaigns are not instructions to revive retired machinery.
+### Milestone 2: consolidate current-weight preparation, solve and verification
 
-Three-plus-FE, weights, zeros/separation, offsets/exposure, generated/factor terms,
-clustered inference, saved residual/effect costs and small fits need adaptive
-coverage. Existing science fixtures do not prove performance across that surface.
-Use a small current-source screen before selecting another subsystem. Keep
-frequency-expansion and probability-weight scaling oracles; ordinary fixest
-weights are not a Stata frequency-inference oracle. Preserve categorical and
-slope OLS, one-FE PPML and excluded-path controls proportionately.
+The principal candidate is a narrower ownership boundary inside the existing
+PPML engine. Borrow immutable original columns/topology; prepare each required
+weight-dependent quantity once per valid state; transfer existing scratch and
+products between compatible consumers. Consolidate repeated normalization,
+geometry construction, residual reconstruction and moment passes only where the
+ledger demonstrates duplication. Existing weight roots and finite column scales
+already have owners: do not add second caches for them.
 
-### Acceptance and stopping rules
+Give ordinary, canonical and inference consumers explicit dependency identities
+(sample, design/basis, weight state, response where relevant). A product may be
+shared only when those dependencies match exactly. Changed weights rebuild numeric
+authority; prior solutions remain guesses. Initial rank and strict/final Hessian
+work retain their required original-input/current-state checks. No new N-by-K bank
+in low mode; account for simultaneously live fallbacks before admission.
 
-- Preserve sample, rank/status, weight, DoF, projection, model-space, score,
-  objective, reconstruction, exact final-Hessian and failure-atomicity requirements.
-  Checking implementations may change through an explicit ADR and independent
-  evidence; tolerances may not be loosened for speed.
-- Keep [ADRs 0191/0192](docs/adr/0192-accepted-point-witness-closeout.md) early-checkpoint
-  experiments closed. Their accurate version lost public performance; do not add
-  a favorable size/thread guard or revive the same schedule.
-- Declare new fresh seeds before generation; all previously frozen seeds remain
-  unavailable for tuning. Start with three alternating development rotations,
-  then five predeclared fresh rotations for promising source-frozen candidates.
-  Stock remains unmodified at `glm.tol=1e-10` / `fixef.tol=1e-11` with matched work/threads.
-- No builds, profiles, archives or competing fits alongside headline benchmarks.
-  Report full distributions, paired losses/ties, science discrepancies, failures
-  and remaining ratios. Do not pool unrelated blocks or repeat favorable reruns.
-- Charge complete allocation lifetimes and fallback overlaps; report selected,
-  scratch and tracked peaks. Low execution mode is not physical-memory proof.
-  Keep small reliable improvements when broadly useful and inexpensive, but
-  prioritize material whole-command gaps and retire unsuccessful candidates.
-- Commit each accepted implementation or rejected experiment with immutable
-  evidence. STATUS remains the only mutable handover. No push/release, SCC
-  authentication retry or stopped-campaign restart. Static allocation drift,
-  constrained weighted-fit/nonretaining-CG failures and deferred Linux/physical-
-  memory confirmation remain open. Preserve frozen 77/16/111 definitions.
+Restructure acceptance work alongside computation. Cheap recurrence diagnostics
+may decide when to attempt an independent check. Fresh original-row passes may
+share loads, immutable terms and compatible reductions without trusting solver
+residuals or cached objectives as their own proof. Keep the canonical rank,
+projection, model-space, finite-score, objective, reconstruction and exact final
+q*mu Hessian conditions. Any replacement of checking work requires an explicit
+successor ADR and adversarial oracle tests, not a tolerance change.
+
+Integrate only after frozen-current-weight comparisons show the proposed work
+reduction, then test full public fits. A few percent from final publication can
+be a small accepted commit; completion of this milestone requires reporting how
+much of the 15–23-ms low-mode gap remains and where it resides. After two
+materially different failed prototypes, preserve the evidence and move on.
+
+### Milestone 3: close narrow-fit overhead across the public command
+
+Measure the remaining public Stata preparation/loading/output cost separately
+from native initialization, canonical construction, checking and inference.
+Remove repeated metadata/design setup and generic-session reconstruction when
+proven redundant. Preserve one substantive plugin call, main-thread SPI, bounded
+native workers and transactional publication. Do not move estimation into ado or
+hide requested outputs outside the measured command.
+
+If remaining operator work justifies an algorithmic candidate, start from existing
+joint directions and grounded Schur products. Compare a genuinely reduced system
+that shares current-weight preparation across consumers against the accepted
+route on identical frozen states before public integration. Require a credible
+whole-command saving; a new recurrence alone is insufficient. The chosen design
+must explicitly distinguish itself from ADR 0148's rejected previous-factor
+matrix-free prototype, ADR 0174's rejected dense ordinary system, ADR 0166's
+standalone matrix cache and ADRs 0191/0192's rejected early checkpoints.
+
+Analytic categorical trial profiling and two-partition slope trial corrections
+already exist under ADRs 0174/0187. Do not propose them again as new features or
+attribute their benefits to a future artifact. Replace superseded machinery when
+a new path earns adoption rather than retaining overlapping engines indefinitely.
+
+### Milestone 4: expand the margin to further multi-FE families
+
+Run a small accepted-source screen to select the next substantial miss: three and
+four categorical partitions, multiple slopes on multiple partitions, unbalanced
+or weakly connected groups, wide/generated controls, changing-weight extremes,
+zeros/separation, offsets/exposure, and clustered or saved-effect output costs. Cover fast/low and serial/threaded
+execution without a Cartesian product. Resolve the known three-FE coefficient
+discrepancy independently; passing means/objectives alone does not rank it.
+
+For measured three-plus-FE losses, evaluate whether the existing block coefficient
+operator and reusable current-weight group factors can replace the expensive
+path, with current-state preconditioning and independent column stopping where
+appropriate. Choose explicit versus operator products from complete measured work
+and memory, not topology names or seeds. For slopes, remeasure the older T8 anchor
+first and retain the accepted joint/coefficient-space engines. The original
+five-to-eightfold gap is historical and is not the current diagnosis.
+
+After family-level gains, use a bounded larger-N confirmation on local Mac to
+check bandwidth, allocation and scratch behavior. Do not extrapolate small-N wins
+to large data or call low mode proof of physical-memory feasibility. Linux and
+constrained-platform confirmation remain deferred pending renewed access.
+
+### Acceptance, measurement and stopping rules for every milestone
+
+- Freeze a scientific baseline before implementation. Use explicit-design WLS
+  and Poisson/Hessian/sandwich oracles, frequency expansion, pweight rescaling,
+  changed-weight/generation, rank-deficient, extreme-scale and refusal cases as
+  relevant. Protect categorical/slope OLS, one-FE PPML and excluded routes with
+  focused controls. Preserve all frozen 77/16/111 definitions.
+- Begin with three alternating baseline/candidate/stock development rotations.
+  Only promising source-frozen candidates get five predeclared fresh rotations;
+  declare unused seeds before generating data. Frozen validation seeds never
+  become tuning inputs. Repeat noisy results only under a declared rule, keeping
+  the original block visible.
+- Use unmodified pinned stock with matched sample, weights, threads, inference
+  and outputs. Default strict settings remain glm.tol=1e-10/fixef.tol=1e-11;
+  independently established reference failures require separately declared
+  stronger-accuracy comparisons, as in ADR 0194. Failed-accuracy clocks stay
+  unranked. Never make stock do gratuitous work to manufacture a win.
+- No builds, profiles, archives or competing fits alongside headline timings.
+  Report full distributions, paired losses/ties, per-family ratios, timeouts,
+  failures and discrepancies. A 0.90 point estimate with unstable paired results
+  needs confirmation; it is not a broad claim. Keep setup/import outside the
+  clock explicitly distinct from loading/estimation/certification/output inside it.
+- Report modeled and tracked allocation peaks, scratch bytes and complete fallback
+  overlaps. Check warm allocation stability for changed owners. Use an explicit
+  local cap experiment before claiming constrained-memory improvement.
+- Prefer substantial gains. Keep smaller reliable gains only when inexpensive and
+  broadly useful; do not spend another long cycle on a small residual miss. At
+  each closeout give the remaining milliseconds to 0.90, the measured cost that
+  prevents it, and the next materially different action or an evidence-backed
+  reason to deprioritize it. Scientific guarantees are not bargaining variables.
+- Commit accepted changes and source-bound rejected evidence in bounded milestones.
+  STATUS remains the sole mutable handover. No push/release, SCC retry or stopped
+  campaign restart. Known checkpoint-count test failure, static allocation drift,
+  constrained-fit/nonretaining-CG failures and deferred platforms remain open.
 
 ## Canonical residual certificate gate accepted — 2026-09-25
 
