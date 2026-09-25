@@ -68,7 +68,7 @@ preserved; large binary/data and raw licensed-log artifacts have hashes.
 Work roots: target/ppml-slope-batches-20260925 and
 target/ppml-slope-batch-public-20260925. All operations are terminal.
 
-### Next bounded implementation
+### Next bounded implementation sequence
 
 Move to **narrow categorical whole-command preparation/publication and native
 setup**, using the existing source-bound phase diagnosis as the starting point.
@@ -84,6 +84,117 @@ Accepted large low slopes are **322/288=1.118 times stock**, needing 62.8 ms
 302/286=1.056. Returning to slopes requires an intervention large enough to
 address canonical construction or surrounding repeated work, not another
 coefficient-retention or pair-width adjustment.
+
+The renewed plan targets **complete public PPML time <=0.90 times comparable
+stock on designs with at least two FE**, with robust/clustered inference and
+requested outputs charged. It is a per-family objective, not an aggregate win
+rate. This is a planning update at `5dfe7cfb`; no new benchmark or implementation
+claim accompanies it. The accepted baseline columns in the fresh410 report give
+these concrete budgets:
+
+| Remaining family | Accepted / stock ms | Target ms | Required saving |
+|---|---:|---:|---:|
+| Two categorical FE, N27360/K2/T4 |47 / 34|30.6|16.4 ms / 34.9%|
+| Two slope partitions, N32160/K6/T8 |109 / 75|67.5|41.5 ms / 38.1%|
+| Unbalanced three FE with slopes, N74880/K10/T8 fast |302 / 286|257.4|44.6 ms / 14.8%|
+| Same, low |322 / 288|259.2|62.8 ms / 19.5%|
+
+Other fresh410 slope families already clear the target, including serial,
+weakly connected, multiple-slope and disconnected examples. Preserve those
+advantages. These sizes/seeds remain frozen observations, not tuning inputs.
+
+1. **Close whole-command attribution before choosing the first edit.** Use
+   existing development designs for narrow categorical, disconnected wider
+   categorical, the two-partition slope thread-count loss, and large fast/low
+   slopes. Instrument Stata preparation/validation/publication, native setup,
+   initial rank, ordinary directions, strict finalization, inference and output
+   within the same diagnostic command. Count observation passes, geometry builds,
+   useful operator work, current-frame checks, worker submissions, main-thread
+   interrupt exchanges and scratch traffic. Keep mutually exclusive phase totals
+   separate from nested function spans. The existing current-frame diagnostic has
+   about 32 ms inside the narrow plugin, including 7.1 ms canonical preparation
+   and 6.2 ms ordinary joint solves; its uninstrumented command is 40 ms. Those
+   separate runs cannot establish an 8 ms Stata-overhead estimate. They do show
+   that boundary work alone is not an established explanation. Reuse the exact
+   pinned reference's existing source analysis; instrument an isolated reference
+   only to answer a remaining operation-count question. Deliver one cost ledger
+   and a quantified savings hypothesis, then start implementation.
+
+2. **Remove repeated work across the narrow public command.** Trace ownership
+   from prepared immutable data through the current weighted frame and final
+   publication. Consolidate demonstrated duplicate loading, normalization,
+   reconstruction, metadata handling and repeated scans; include scheduling and
+   interrupt-exchange cost if measured. Batch compatible work using the existing
+   team and bounded storage. A publication receipt does not replace independent
+   output validation, and cached input facts do not certify new weighted results.
+   Preserve the main-thread SPI boundary and interruption/rollback behavior.
+   Profile the complete candidate early: neither a faster kernel nor eliminating
+   a one-millisecond phase can explain the required 16.4 ms saving alone. A simple
+   reliable partial gain can be retained, but it does not close this family.
+
+3. **Make canonical construction a larger computational intervention.** The
+   two-categorical-FE fused product engine already exists. For three FE and slopes,
+   investigate a common current-weight factorization serving all canonical RHSs,
+   followed by bounded direct residual products, independently formed projection
+   witnesses and one required retained-row write. The materially different solver
+   candidate is rank-aware block elimination/factorization of the reduced system,
+   with symbolic structure prepared once per sample and fresh numerical factors
+   per weight frame. Compare complete setup, solve, certification, rank and
+   inference costs against existing per-column Krylov work. Bound fill, factor
+   work and all coexisting memory before allocation; large or ill-conditioned
+   systems retain certified iterative solving. Local slope rank deficiency and
+   component null spaces must follow the current policy. Do not revive the rejected
+   retained-coefficient layouts, paired operators, lazy repeated row reconstruction
+   or cancellation-sensitive Gram subtraction. Avoid adding another permanent
+   solver unless full public gains justify it; integrate through the existing
+   coefficient owner and remove superseded consumers after validation.
+
+4. **Redesign verification as part of the computation, with explicit proofs.**
+   Build a dependency table for every check: mathematical purpose, original inputs,
+   valid sample/basis/weight generation and acceptance boundary. Share immutable
+   geometry and compatible original-input scans; distinguish cheap recurrence
+   diagnostics from independent acceptance. A new schedule needs a successor ADR,
+   reduction-error argument and adversarial tests, not an assertion that two
+   checks look redundant. Keep fresh current-weight projection, finite/FE scores,
+   model space, rank/span, both inverse sides, objective, reconstruction and final
+   Hessian acceptance. Measure required verification separately after solve costs
+   fall. Do this alongside steps 2–3, rather than adding expensive full checks to
+   every speculative solver update.
+
+5. **Address the ordinary-direction/thread-count loss next if still dominant.**
+   The current slope engine already solves finite and FE directions jointly;
+   categorical PPML already has joint LSMR, warm starts and guarded preconditioning.
+   First distinguish useful arithmetic from repeated products, synchronization,
+   certificate scans and underused workers on identical frozen weighted frames.
+   Compare at most two coherent organizations: retain the existing joint Krylov
+   method with the new frame/product ownership, or use the reduced block solve
+   from step 3 when measured factor work makes it cheaper. Prior-frame factors or
+   solutions may be preconditioners/guesses only. Validate against current weights.
+   Routing must follow structural work, conditioning and memory, never seeds,
+   benchmark names or a guard chosen to hide the T8 loss.
+
+6. **Expand evidence adaptively and consolidate production.** Once a candidate
+   passes a small explicit WLS and Poisson/Hessian/sandwich oracle, run an early
+   public baseline/candidate/stock rotation before expensive validation. Freeze
+   promising code before declaring fresh cases: dense/sparse, disconnected/weak,
+   unbalanced, multiple and deficient slopes, widths, weights, threads, fast/low,
+   robust/cluster and saved outputs. Include focused categorical PPML and OLS
+   controls, rank/separation/offset boundaries, changing-frame/rollback failures,
+   and exact memory refusal. Remeasure older three-/four-plus-FE, wide/generated,
+   inference and saved-output losses only as relevant; unresolved science remains
+   unranked. Use at least five rotations for fresh confirmation, preserving every
+   loss, tie, timeout and failed fit, paired distributions, source identities,
+   tracked allocation peaks and process isolation. No competing work during
+   headline timing. Commit accepted improvements with their evidence, delete
+   rejected production code, and update this opening after each bounded milestone.
+
+Each candidate gets one initial implementation and at most one materially
+justified correction before an adopt/reject decision. Repeated 2–3% kernel or
+whole-call gains with additional solver banks are not a reason to reopen the
+closed experiments. Small broadly useful changes remain acceptable when cheap
+in code and memory. If a family still misses 0.90, record the residual millisecond
+budget and measured responsible phase; move to the next substantial opportunity
+instead of indefinite threshold tuning. No universal parity promise follows.
 
 Seeds **202609409 and 202609410 are consumed frozen validation**, not tuning seeds.
 Seed202609411 is declared/unrun. The frozen 77/16/111 definitions, prior receipts,
