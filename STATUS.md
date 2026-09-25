@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-09-25
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,88 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
+
+## Paired slope operators closed; production unchanged — 2026-09-25
+
+[ADR 0181](docs/adr/0181-paired-slope-coupling-closeout.md) and the
+[source-bound report](benchmarks/reports/development/ppml-paired-coupling-local-2026-09-25/README.md)
+close the active-RHS implementation experiment below. **No candidate is adopted.**
+All runtime edits were restored after preserving their sources and receipts;
+all **554** accepted `familyrows2` inputs still match computational checkpoint
+**711802bf**. The <=0.90-times-comparable-stock goal remains active.
+
+### What was implemented and learned
+
+Two-/four-lane coefficient operators share current-weight coupling loads while
+keeping independent CG recurrences, stopping, reconstruction and full fresh
+certification. Eight frozen compact-coupling WLS frames, T1/T4/T8 and five rotating
+B/C2/C4 sequences produce 360 native calls. Two lanes reduce the main three-FE/
+K10/T8 full projection/product calls from about 34 to 22 ms. All 72 explicit-
+design configurations pass; all 144 candidate exports match scalar bits. Maximum
+and total iterations, useful lane work and reconstructed checks agree in all
+240 pairs. About 11% of evaluated lanes are inactive/padded. These cold compact
+frames do not establish dense-Schur or public-command gains.
+
+Three public organizations were implemented, built and measured. Generalizing
+the scalar kernel caused an 8–10% large-case ordinary joint-iteration slowdown
+in matching diagnostic builds. Restoring it and using paired arrays removed
+that source change, but fresh409 exposed a 4.5% serial loss. The final correction
+restored four-row dense unrolling. All checks pass, but fresh410 still yields
+only 2.5–3% large three-FE gains and a repeatable multiple-slope loss in all five
+pairs. Across its 45 B/C pairs there are **15 losses and 5 ties**. Added solver
+code and coefficient banks are not justified by these public results. Close
+this layout/width experiment; do not tune more thresholds or guards on its seeds.
+
+### Validation and exact scope
+
+All **414 headline public states**, **12 diagnostic states**, **276 headline
+baseline comparisons**, **138 direct candidate/stock comparisons** and six
+diagnostic pairs pass. Final `batchrhs4` passes **99 distinct Rust tests**, four
+licensed scientific fixture executions and two real T1/T4 allocation-audit
+executions. The audits cover 16 ordinary warmed iterations with zero allocation
+events/growth, stable capacities and cold/warm agreement; they do not separately
+measure allocation inside every canonical paired call. Independent explicit WLS
+and Poisson/Hessian/sandwich oracles accompany strict pinned-stock agreement.
+These remain development observations, not qualification.
+
+The pair owner adds coefficient-sized storage; in the early large fast case,
+modeled and tracked peak each rise **349,992 bytes**. Existing scalar workspaces,
+observation buffers and normalized storage remain. Current-generation authority,
+scientific requirements and the scalar fallback were preserved in the prototypes.
+No source or memory-policy change is adopted. A four-plus categorical low-mode
+boundary control at seed202609411 was declared but not run after rejection.
+
+The verified/restored archive holds **15,222 logical receipts / 2,953 payloads /
+26,657,853 bytes**, SHA-256
+`0cc7f6236836882b8c94a3f4fea07c815c647f0e12fa0bcc7da0a200b3f6c7bf`.
+All sources, variants, declarations, comparisons, regressions and checks are
+preserved; large binary/data and raw licensed-log artifacts have hashes.
+Work roots: target/ppml-slope-batches-20260925 and
+target/ppml-slope-batch-public-20260925. All operations are terminal.
+
+### Next bounded implementation
+
+Move to **narrow categorical whole-command preparation/publication and native
+setup**, using the existing source-bound phase diagnosis as the starting point.
+On fresh410, the accepted N27360/K2/T4 baseline is **47 ms versus stock 34 ms**;
+it needs 16.4 ms (35%) total savings for the goal. Attribute the public Stata
+boundary and native costs within the same command before changing ownership,
+loading or repeated validation/normalization work. Then implement one coherent
+removal of demonstrated duplicate work and test categorical, slope and OLS controls.
+Do not equate the public gap with an inner solver cost.
+
+Accepted large low slopes are **322/288=1.118 times stock**, needing 62.8 ms
+(19.5%) savings; the rejected pairing recovered only 8 ms. Large fast slopes are
+302/286=1.056. Returning to slopes requires an intervention large enough to
+address canonical construction or surrounding repeated work, not another
+coefficient-retention or pair-width adjustment.
+
+Seeds **202609409 and 202609410 are consumed frozen validation**, not tuning seeds.
+Seed202609411 is declared/unrun. The frozen 77/16/111 definitions, prior receipts,
+allocation-inventory drift, constrained weighted-fit/nonretaining-CG failures,
+comparator limitations and deferred platform gates remain unchanged. No push,
+release, SCC retry, stopped campaign or qualification occurred. The older next-
+step paragraphs below are historical and superseded by this opening.
 
 ## Retained slope canonical products rejected — 2026-09-24
 

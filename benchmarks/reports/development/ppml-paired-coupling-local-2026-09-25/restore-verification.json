@@ -1,0 +1,12 @@
+{
+  "status": "pass",
+  "logical_receipts": 15222,
+  "container_sha256": "0cc7f6236836882b8c94a3f4fea07c815c647f0e12fa0bcc7da0a200b3f6c7bf",
+  "restore_log_sha256": "2c15e3816ed272a43ac54bc30f27c30e3ef406d3923cdc9d48d9025ee7b347cb",
+  "checks": [
+    "container SHA-256",
+    "logical index equals hash manifest",
+    "safe relative paths",
+    "every restored receipt SHA-256"
+  ]
+}
