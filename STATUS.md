@@ -10,15 +10,61 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 The [current implementation plan](#further-ppml-development-plan--revised-after-generated-column-validation-2026-09-25)
-now prioritizes fast two-/three-FE ordinary joint directions with retained
-canonical projection, followed by canonical construction and large-N traversal.
+prioritizes completing the three-FE joint-engine comparison, followed by canonical
+construction and large-N traversal. **Correction:** accepted fast two-/three-FE
+auto already uses joint LSMR. Absence of calls to the coefficient joint helper
+did not establish repeated ordinary full-control projection.
 Earlier handoffs below are historical; their timings do not transfer to later
 artifacts. The sparse-factor and earlier small threshold probes remain closed.
+
+## Ambitious PPML plan; current experiment remains unaccepted — 2026-09-25
+
+The target is a reliable **10% complete-command lead per scientifically comparable
+multi-FE case**, aiming for **15–20% headroom**. Accepted computation remains
+**df0472d6 / generatedscan1**. The existing three-file worktree experiment is
+preserved; this planning update neither accepts it nor changes its runtime code.
+
+Local evidence is under `target/ppml-fast-joint-comparison-20260925/`:
+`capture-declaration.json`, `capture-audit.json`, `core-second-checks.json`,
+`fixtures.json`, and the per-run `capture/runs/*/stderr.txt` traces. Diagnostic
+**jointcompare2** compares existing joint LSMR with the coefficient joint engine
+on identical frozen ordinary weighted frames. On the large three-FE factor
+case, coefficient calls take roughly **23–26 ms**, versus LSMR setup/solve/check
+totals of **80–126 ms**. Extra independent LSMR-form checks take **7–8 ms** and
+first coefficient-owner construction takes **7 ms**. The million-row two-FE
+coefficient calls instead cost **63–64 ms**, versus LSMR **54–55 ms**, before
+extra cross-check and first-owner costs. These fixed-order diagnostic timings
+are attribution evidence, not public speedup claims or stock comparisons.
+
+Candidate **fastjoint1**, based on df0472d6 plus the three worktree overlays,
+therefore targets admitted fast three-categorical-FE automatic ordinary
+directions, retaining canonical LSMR/Schur authority; the shared owner also
+reaches explicit MAP three-FE fits. Automatic two-FE stays unchanged. Eleven
+focused core tests pass. Two licensed fixtures pass; the categorical final oracle fails **r(3499)**
+at native solver-report validation. Its MAP-ordinary/LSMR-checkpoint combination
+is currently permitted only for low storage by that validator. The next step is
+a precise successor routing/report contract and positive/negative publication
+tests, including the Stata boundary, followed by public science and timings.
+Do not bypass the validator or count this candidate as accepted. Its conservative
+admission still charges the full old LSMR envelope plus optional coefficient
+storage; actual memory and budget refusal must be measured.
+
+The earlier checkpoint-count test failure (`strict_profile_rejections` expected
+one, observed zero) also occurs on accepted generatedscan1 in the isolated
+`baseline-refinement.log`; it is separate existing test drift. The original
+perfect-fit fallback failure and corrected noisy fallback fixture remain in the
+local evidence. No headline candidate/stock rotation or fresh validation has
+run for fastjoint1. Preserve these outcomes when sealing the eventual report.
+
+The plan below targets **171 ms** on hard fast three-FE, **70–93 ms** on hard low
+three-FE, and **449 ms** across the million-row two-FE pipeline. Another small
+cache optimization cannot close the last budget. No new benchmark, test, build,
+validation seed, release or qualification was run for this planning update.
 
 ## Generated-column scans adopted; 10% target still open — 2026-09-25
 
 Retain **generatedscan1**, based on **5d84eb9d** plus six Rust overlays. All
-**565 captured computational input hashes** match current source. Plugin SHA-256:
+**565 captured computational input hashes** match **df0472d6**. Plugin SHA-256:
 `4443226a78caa96a264b9dd8e6d7e9a72b5551aec99e349bd7e22895ffd2b469`.
 [ADR 0206](docs/adr/0206-bounded-generated-column-scans.md) and the
 [source-bound report](benchmarks/reports/development/ppml-generated-scans-local-2026-09-25/README.md)
@@ -73,14 +119,14 @@ needed and removes the predictor's 128-double tile. No new warmed-allocation
 audit, physical-cap/platform run or qualification is claimed. Static inventory
 drift and constrained-fit/nonretaining-CG failures remain open. No push/release.
 
-**Next action:** on development inputs, capture identical fast-factor ordinary
-weighted frames and compare full-control projection with joint finite/FE
-directions. Generalize fast two-/three-FE ownership/admission only while retaining
-the borrowed canonical projector and exact final-Hessian transaction. Trace
-budget/allocation refusal and disconnected extreme-mass fallback explicitly.
-Aim to remove at least 171 ms from the 817-ms fast case; do not reopen ADR 0136's
-rejected all-coefficient canonical route. Carry low/numeric/million/slopes/OLS
-controls. The detailed bounded milestones below supersede the earlier plan.
+**Next action:** finish the pending three-FE engine comparison described above.
+The identical-frame diagnostic is complete; do not recapture it as preparation.
+Correct the precise hybrid solver-report boundary, validate public science, then
+measure the whole command before accepting a new automatic route. Aim to remove
+at least 171 ms from the 817-ms fast case. Preserve the two-FE route, borrowed
+canonical projector and exact final-Hessian transaction. Carry budget refusal,
+disconnected extreme masses, low/numeric/million/slopes/OLS controls. The detailed
+bounded milestones below supersede the earlier plan.
 
 ## Current-source gaps and revised implementation plan — 2026-09-25
 
@@ -961,8 +1007,9 @@ and accuracy govern the comparison; an aggregate win rate cannot close a loss.
 
 ### Current evidence and savings budgets
 
-Current production is **generatedscan1 / ADR 0206**, bound to 5d84eb9d plus six
-Rust overlays. The opening report contains full distributions and exact artifact
+Accepted production is **df0472d6 / generatedscan1 / ADR 0206**, bound to
+5d84eb9d plus six Rust overlays; the worktree candidate is unaccepted. The opening
+report contains full distributions and exact artifact
 identities. The factor-scan milestone removes 360 ms from the large low case and
 152 ms from fast, with no added tracked peak or scratch. It is accepted; no more
 threshold tuning on it. Fresh generated families improve 1.9–38.5%, but the
@@ -985,51 +1032,75 @@ Use existing development seed347 or distinct development inputs; choose a new
 predeclared validation seed only after freezing the next candidate. The four-
 case original inventory is already complete; do not repeat it as preparation.
 
-### Milestone 1: eliminate repeated ordinary control-matrix projection
+### Milestone 1: finish the three-FE joint-engine replacement
 
-The next concrete candidate is **joint finite/FE ordinary directions in fast
-MAP two-/three-categorical-FE sessions, retaining the established borrowed
-categorical projector for canonical rank and strict/final construction**.
-Low mode already separates these duties; fast four-plus FE already uses the
-coefficient/joint owner. The current fast two-/three-FE public profiles have no
-ordinary `solve_joint_ppml_internal` calls and still pay full-control projection.
-This is a measured route gap, not proof that admission alone will be faster.
+The actual comparison is **ordinary joint LSMR versus the existing coefficient
+Schur joint engine**, with the established borrowed categorical projector for
+canonical rank and strict/final construction. Accepted fast two-/three-FE auto
+already uses joint LSMR (ADR 0029). The earlier inference from a missing helper
+call was wrong. Identical-frame diagnostic evidence supports testing the new
+organization for three FE and retaining current two-FE auto; it does not prove
+a complete-command improvement. The original residual-space extrapolation and
+all-coefficient canonical route remain closed.
 
-First capture the actual initial/ordinary/strict weighted frames from the hard
-fast-factor case and numeric counterpart. Compare the existing fused projection
-with the joint engine on identical weights, controls and responses. Count passes,
-geometry construction, Krylov/operator work, independent acceptance and final
-reconstruction; keep diagnostic builds separate from stock headline clocks.
-Investigate enough pinned stock work to explain the remaining difference, using
-an isolated instrumented clone only if source and phase accounting are insufficient.
+Finish the already implemented candidate before another solver experiment:
 
-This requires coherent ownership and admission, not just removing a guard:
+1. Specify the new automatic route, ordinary engine and canonical checkpoint
+   identities in a successor ADR. Align native and Stata validation with that
+   exact admitted combination; test malformed reports and transaction rollback.
+   Resolve the current r(3499) without weakening publication validation.
+2. Prove complete owner admission and fallback. Charge current-weight geometry,
+   finite workspace, response guesses and concurrently live canonical buffers;
+   test budget/allocation refusal, rank zero and changing weights. Retain one
+   owned topology. Measure the conservative extra memory charged by fastjoint1.
+3. Complete independent weighted WLS and public Poisson/Hessian/sandwich checks,
+   including explicit MAP/LSMR, weights, generated terms, disconnected/extreme
+   masses, threads and all outputs. Keep the pre-existing checkpoint-count
+   failure and the separate perfect-fit LSMR failure visible.
+4. Run the declared small science screen and eight-case B/C/stock pilot. Only a
+   scientific pass earns timing ranking. Freeze the successful source before
+   fresh cases; archive diagnostics and failed attempts in the milestone report.
 
-- Extend borrowed canonical ownership and charge coexisting descriptors/banks
-  for fast two-/three-FE sessions before constructing the optional joint owner.
-- Preserve direct two-FE canonical products and three-FE checkpoint engines.
-  The rejected all-coefficient canonical route in ADR 0136 remains rejected;
-  disconnected unequal-mass arithmetic is an explicit boundary test.
-- Admit current-weight geometry, finite workspace, prior-response guesses and
-  concurrent canonical storage; prove allocation/budget refusal restores the
-  original route without cloned topology or stale response state.
-- Treat ordinary joint output only as a direction. It supplies neither rank nor
-  bread authority. Changed weights invalidate numerical geometry; strict Newton
-  validation and the independent exact final q*mu construction remain mandatory.
+Aim to save **170–250 ms** on the hard fast factor case and reach **<=646 ms**
+whole-command time. The ordinary direction has no rank or bread authority;
+current-weight validation and exact final q*mu Hessian remain independent.
+Carry low/numeric/two-FE/slopes/four-FE/OLS controls. One coherent correction
+after the current candidate is the bound; if complete-command gains disappoint,
+close the experiment and move to its largest measured remaining stage.
 
-Aim to remove **at least170–250 ms** from the hard fast case, with a credible
-route to <=646 ms complete time. Carry low factors/numeric, multiple slopes,
-large-N, disconnected/extreme masses, T1/T4/T8 and output controls through the
-same milestone. One coherent candidate plus one evidence-led correction is the
-bound. If it does not reduce complete-command work, close it and use its
-operation ledger to choose the next design; do not fit dispatch to benchmark names.
+### Milestone 2: build one efficient canonical weighted-frame pipeline
 
-### Milestone 2: reduce canonical construction and large-N traversal
+Target **70–100 ms** on hard low three-FE and a substantial contribution to the
+million-row **449-ms** budget. Initial rank construction and strict/final
+Hessian work must be timed separately from ordinary directions. Existing
+two-FE direct products and three-FE Schur checkpoint mechanisms are starting
+points; their guards encode mathematical and memory assumptions, not arbitrary
+obstacles to remove.
 
-After the ordinary solve is efficient, target the remaining low three-FE
-initial/strict construction and million-row data movement. The ambition is
-**another70–100 ms** on hard low cases and a combined **450-ms** reduction on the
-million-row case. An isolated faster kernel is insufficient for the latter.
+Prepare numerical geometry once per valid current-weight frame, share it across
+response/control work, stop converged columns independently, and hand certified
+products directly to rank/bread/inference consumers. Keep symbolic topology
+across compatible frames; invalidate factors when weights or design change.
+Warm starts remain guesses. Reconstruct retained rows once for consumers that
+actually need them. Derive and independently test any three-FE generalization
+of direct two-FE products. Compare at most two coherent organizations on the
+same frozen frames; retain one, removing any superseded implementation.
+
+Redesign checking alongside production: distinguish inexpensive progress tests
+from independent acceptance, reuse valid certificate geometry, and identify
+duplicate full scans by the invariant they establish. Replace a check only with
+an explicit equivalence argument, successor ADR and independent boundary tests.
+Preserve current-weight FE/finite/model-space/rank/score/objective/reconstruction
+and final-Hessian requirements and tolerances. Report the residual milliseconds
+of required checking after optimizing it; do not declare today's cost inevitable.
+
+### Milestone 3: make large-N cost scale with necessary passes
+
+The million-row target is **1244 -> <=795 ms**, preferably **705–750 ms**.
+The frozen-frame comparison finds only roughly 110 ms in its two ordinary LSMR
+calls; even eliminating those calls cannot supply the whole savings budget.
+An ordinary-engine swap is therefore not the large-N strategy. Combine the
+canonical improvement above with a coherent preparation-to-publication redesign.
 
 Build a nonoverlapping byte/pass ledger: SPI loading/native preparation, weighted
 normalization, retained design construction, response/control projection, rank
@@ -1038,30 +1109,18 @@ Track each buffer's owner, generation, copies and consumer. Measure several N
 values; distinguish setup savings from throughput. Preserve Rust computation and
 main-thread SPI with transactional output publication.
 
-Choose at most two coherent organizations based on that ledger:
+Preparation (234 ms), finite solves (109 ms), strict/final work (264 ms) and
+publication (121 ms) show why this must span stages. Use the ledger to allocate
+the remaining savings after milestone 2; do not sum overlapping timers or count
+one saving twice. Transfer compatible buffer ownership, eliminate proven full
+design copies and repeated normalization, and fuse compatible reductions on the
+existing worker team. Test whether loading, finite products or output validation
+is bandwidth-bound before changing layout or parallelism. Preserve main-thread
+SPI, private shadows and receipt-last publication. Bound low storage without
+silently adding a resident N-by-K bank. Compare throughput at several N and K
+values so a fixed setup win cannot masquerade as a scaling improvement.
 
-1. **One canonical weighted-frame product pipeline.** Extend the established
-   multi-partition checkpoint/Schur mechanism to share prepared geometry and
-   compatible response/control work, independently stopping completed columns.
-   Hand valid retained products directly to rank, bread and inference consumers.
-   Keep fresh original-input residual and score checks. The direct two-FE product
-   algorithm is mathematically specific; any three-FE successor needs its own
-   derivation and oracle, not deletion of its two-FE guard.
-2. **A single traversal/ownership pipeline across PPML phases.** Remove full
-   observation/design copies, repeated normalization and repeated reconstruction
-   demonstrated by the ledger. Fuse compatible independent reductions on the
-   existing team and transfer valid owners instead of adding another cache. Low
-   mode stays bounded and never acquires an implicit resident N-by-K design.
-
-Verification is part of the redesign: separate cheap progress diagnostics from
-fresh independent acceptance, and compute reusable current-frame certificate
-geometry once. Replace a duplicate check only with a documented independently
-established invariant and successor ADR/tests. Do not relax tolerances, skip the
-strict/final Hessian or treat prior-frame solutions as current authority. Report
-remaining required-check milliseconds after optimizing the solve; do not assume
-all current checking implementation cost is scientifically unavoidable.
-
-### Milestone 3: turn carryover gains into broad 10% leads
+### Milestone 4: turn carryover gains into broad 10% leads
 
 Recheck disconnected clustering, multiple slopes, serial/narrow fits, generated
 and wide controls, and higher-dimensional FE after the shared replacements.
@@ -1079,7 +1138,7 @@ regression controls. Current OLS low/generated median losses of 1/2 ms and the
 fresh PPML four-FE 4-ms loss remain visible; exact exports do not prove timing
 non-regression. No universal-win claim follows from a few favorable cases.
 
-### Milestone 4: establish science before ranking untested hard cases
+### Milestone 5: establish science before ranking untested hard cases
 
 Expand adaptively to zeros, offsets, harder IRLS and separation, prior weights,
 several slopes per partition, rank deficiency and weak/disconnected topology.
