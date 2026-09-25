@@ -114,6 +114,15 @@ Schwarz memory remains admitted, and every direction still needs recurrence
 convergence plus independent original-input finite/FE certificates. Canonical
 checkpoints, three-plus-FE core-pair, slopes and OLS retain their policies.
 
+ADR 0208 replaces the ordinary joint LSMR finite diagonal with a full
+standardized current-weight Gram factor when numerically usable. One admitted
+K-squared bank is rebuilt per call and shared by its recurrence attempts;
+nonfinite or nearly singular factors retain the diagonal without changing rank.
+The FE core-pair/Schwarz policies and original-input certificates are unchanged.
+The factor has no canonical rank, bread or final-Hessian authority. Numeric
+controls may pay extra setup without fewer iterations; source-bound development
+receipts retain those losses alongside the generated-control gains.
+
 ADR 0156 applies component scaling to an already configured PPML checkpoint's
 zero-iteration shortcut too. A global initial pass on disconnected components
 also requires a fresh component-scaled pass at the same tolerance. Original-

@@ -10,13 +10,85 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 The [current implementation plan](#further-ppml-development-plan--revised-after-generated-column-validation-2026-09-25)
-prioritizes finite-control conditioning within existing joint LSMR, followed by
-canonical construction and large-N traversal. The blanket coefficient-engine
-replacement is rejected; its runtime changes have been restored. **Correction:** accepted fast two-/three-FE
-auto already uses joint LSMR. Absence of calls to the coefficient joint helper
+prioritizes canonical FE-equivalent controls within existing joint LSMR, followed
+by canonical construction and large-N traversal. Full finite-block conditioning
+is now adopted. The blanket coefficient-engine replacement remains rejected.
+Fast two-/three-FE auto already uses joint LSMR. Absence of calls to the coefficient joint helper
 did not establish repeated ordinary full-control projection.
 Earlier handoffs below are historical; their timings do not transfer to later
 artifacts. The sparse-factor and earlier small threshold probes remain closed.
+
+## Full finite blocks adopted; generated-control gains carry to two FE — 2026-09-25
+
+Retain **finiteblock1**, based on **fb785e45** plus the single Rust overlay
+`crates/fereg-core/src/ppml/categorical_lsmr.rs`. All **565 computational inputs**
+match the current source. Plugin SHA-256:
+`d50517fc00792d26d6e78e62f54266ee42263abb1381ff87aa7c6b6060bf2b20`.
+[ADR 0208](docs/adr/0208-joint-lsmr-finite-block.md) and the
+[source-bound report](benchmarks/reports/development/ppml-finite-block-local-2026-09-25/README.md)
+preserve distributions, all failures, source identities and **9,394 restored
+hash/privacy-verified receipts**. Archive SHA:
+`7166868c576da7c141149f62f2d6183890feec4a2e18146f22977307fe28f2c6`.
+
+Keep joint LSMR and its FE preconditioner; replace only the finite diagonal with
+a standardized current-weight Gram/Cholesky block. Rebuild it once per call and
+reuse it across recurrence attempts. Numerical refusal retains the diagonal;
+canonical rank/inference, original-input certificates, outer checks, tolerances
+and publication are unchanged. One additional K-squared array is admitted;
+there is no new observation-sized bank, public option or fitted routing guard.
+
+Three matched development rotations (B=generatedscan1 / C=finiteblock1 / strict
+pinned stock), robust or two-way clustering and means:
+
+|Case; N/finite K/T; mode|B / C / stock median ms|C/stock|
+|---|---:|---:|
+|Three unbalanced FE, factors;153600/19/8;fast|850 /726 /732|0.992|
+|Matched numeric controls;fast|577 /588 /646|0.910|
+|Three unbalanced FE, factors;low|734 /727 /733|0.992|
+|Two FE numeric;983040/6/8;fast|1242 /1268 /907|1.398|
+|Two slope partitions;30720/6/8;low|71 /72 /81|0.889|
+
+The hard factor improvement is **14.6%**, predominantly projection **413 -> 290
+ms**. It still needs about **67 ms** for a reliable 10% stock lead. Numeric
+projection rises 220->229 ms; million-row projection 249->266 ms. Those losses
+remain visible. The simple-slope median clears 0.90 but one repetition is 0.9012;
+low/slopes are excluded paths and their timing variation is not attributed to
+this change. The million-row gap still needs roughly **452 ms** across stages.
+
+Frozen **seed 202609439**, five rotations: three-FE factors improve **1067 -> 867
+ms (18.7%)**; a new two-FE factor case improves **696 -> 432 ms (37.9%)** versus
+**535 ms stock**. All five two-FE candidate/stock ratios are **0.790–0.814**.
+All ten generated-case B/C pairs improve. Fresh numeric/serial/sparse/wide median
+losses are roughly 2–4%; disconnected improves 214->199 ms. Large numeric remains
+985/813 ms; low factors 398/425 and four slopes 128/120 miss 0.90. Six of ten fresh
+families clear 0.90 in every pair; sparse is scientifically unranked. No source
+or guard tuning follows seed439; **440 is unconsumed**.
+
+**33 distinct Rust tests, 102 frozen-frame certified solves, five licensed
+fixtures and both candidate explicit Poisson/Hessian/sandwich checks pass.**
+All **264 public states** and **86 pilot/fresh B/C pairs** pass. Across small
+science/pilot/fresh, anchored pairs pass 164/176, direct candidate/stock 80/88 and
+independent oracles 4/6: small baseline near-zero coefficient failures and eight
+sparse stock mean comparisons remain unranked. All 12 OLS export pairs are exact;
+slope/narrow timing medians lose 2/1 ms, low/numeric and generated medians tie.
+No blanket scientific-reference or timing non-regression claim is made.
+
+The bank is **2,888 bytes at K19 /33,800 at K65**. Across pilot/fresh, selected
+modeled deltas range -48 to +34,848 bytes; tracked peak deltas -22.1 MB to +185 KB,
+with unchanged scratch. No RSS/physical-cap or warmed-allocation qualification.
+Static inventory drift, constrained fits, nonretaining CG and prior unresolved
+comparisons stay open. Frozen 77/16/111 definitions are unchanged. No push/release.
+
+**Next implementation:** use canonical FE-equivalent finite representatives in
+joint LSMR while retaining original inputs for independent certification, the
+existing FE preconditioner and exact final-Hessian authority. Derive coefficient/
+FE mapping and invalidate recurrence guesses when the representation or basis
+changes. This is the second coherent conditioning candidate in milestone 1, not
+another engine swap. Compare identical development frames first. Aim to remove
+the remaining roughly 67 ms on the hard fast factor case; if it fails, close this
+conditioning experiment and move to canonical weighted-frame construction, then
+the large-N pass budget. Do not repeat the blanket switch or tune guards to fresh
+seeds. Historical evidence below does not transfer to later artifacts.
 
 ## Three-FE replacement rejected; canonical boundary tested — 2026-09-25
 
@@ -1020,75 +1092,61 @@ and accuracy govern the comparison; an aggregate win rate cannot close a loss.
 
 ### Current evidence and savings budgets
 
-Accepted production is **df0472d6 / generatedscan1 / ADR 0206**, bound to
-5d84eb9d plus six Rust overlays. The blanket three-FE replacement was rejected
-under ADR 0207; accepted runtime is restored. The opening
-report contains full distributions and exact artifact
-identities. The factor-scan milestone removes 360 ms from the large low case and
-152 ms from fast, with no added tracked peak or scratch. It is accepted; no more
-threshold tuning on it. Fresh generated families improve 1.9–38.5%, but the
-original hard cases remain the target. Strong fresh wins on more imbalanced
-factor levels must not erase the much faster stock results on the original design.
+Accepted computation is **finiteblock1 / ADR 0208**, based on fb785e45 plus one
+Rust overlay; all 565 input hashes match. Original-control full Gram conditioning
+is implemented and validated. The blanket coefficient-engine switch is rejected
+under ADR 0207. Keep these distinct decisions and their exact source-bound reports.
 
-|Priority; current development medians, native/stock|Required native time for 10% lead|Remaining budget and evidence|
+|Priority; current development C/stock medians|Required C time for 10% lead|Remaining budget and evidence|
 |---|---:|---|
-|Fast three-FE factor cross, N153600/K19/T8: 817/718 ms|646 ms; prefer 575–610|Save 171 ms. Ordinary projection 408 ms remains unchanged by the accepted scan work|
-|Low three-FE factor cross: 717/719 ms|647 ms; prefer 575–610|Save 70 ms. Projection 223 and strict 185 ms remain; inference 40 ms is too small to solve it alone|
-|Low matched-width numeric: 664/634 ms|571 ms; prefer 505–540|Save 93 ms. Projection 225 and strict 194 ms test whether a shared solve change extends beyond factors|
-|Two-FE N983040/K6/T8: 1244/883 ms|795 ms; prefer 705–750|Save 449 ms. Preparation 234, projection 246, strict 264, finite 109 and publication 121 ms require work across phases|
-|Disconnected two-FE clustering: 59/63 ms|57 ms|About 2.3 ms remains; seek carryover, not a new size/thread guard|
-|Fresh three-FE with four slopes: 124/118 ms|106 ms|About 18 ms remains. Protect the simpler two-slope pilot's 69/81-ms lead; neither transfers to all slope layouts|
-|Fresh numeric N737280: 986/772 ms|695 ms|Confirms the large-N loss on another frozen input; do not tune on that seed|
+|Fast three-FE factors,153600/K19/T8:726/732 ms|659 ms; prefer586–622|Save 67 ms; ordinary projection 290, strict 132 and preparation 80 ms remain|
+|Low three-FE factors:727/733 ms|660 ms|Save 67 ms; this route is unchanged by the finite block|
+|Fast numeric K19:588/646 ms|581 ms|About 7 ms; extra Gram setup loses 11 ms versus baseline; seek broad carryover|
+|Low numeric K19: historical 664/634 ms|Historical571 ms|Not remeasured at finiteblock1; preserve the earlier artifact's 93-ms budget until entering this path|
+|Two-FE numeric,983040/K6/T8:1268/907 ms|816 ms|Save 452 ms across preparation 239, projection 266, strict 265, finite 106 and publication 123 ms|
+|Fresh numeric,737280/K6/T8:985/813 ms|732 ms|Save 253 ms; confirms the scaling gap on a frozen input|
+|Fresh two-FE factors,153600/K19/T8:432/535 ms|482 ms|All five ratios 0.790–0.814; preserve this new lead|
+|Fresh three-FE/four slopes:128/120 ms|108 ms|Save 20 ms via shared work; simple slopes are near the 10% boundary|
 
-These are savings budgets, not promised speedups or measured lower bounds.
-Fresh seeds through **202609438** are consumed/frozen. Seed439 is unconsumed.
-Use existing development seed347 or distinct development inputs; choose a new
-predeclared validation seed only after freezing the next candidate. The four-
-case original inventory is already complete; do not repeat it as preparation.
+These are measured-block savings budgets, not lower bounds or promises. All seeds
+through **202609439** are consumed/frozen; **440 is unconsumed**. Development
+seed 347 remains available. Do not repeat the completed inventory as preparation.
 
-### Milestone 1: improve finite conditioning while preserving the joint LSMR FE solve
+### Milestone 1: complete finite conditioning with canonical representatives
 
-The blanket coefficient Schur engine replacement is closed under ADR 0207.
-Accepted automatic fast two-/three-FE already uses joint LSMR. The failed candidate
-showed a genuine hard-factor advantage but unacceptable sparse/disconnected losses
-even after fixing fused canonical ownership. Do not repeat it with a seed-, size-
-or thread-fitted guard. Keep the existing FE core-pair/Schwarz preconditioner.
+The full current-weight finite block is accepted. It preserves FE preconditioning,
+removes substantial generated-control iteration work and transfers to two FE.
+Raw finite/FE coupling remains a plausible removable cost. Do not repeat the
+rejected whole-engine switch or fit a guard to numeric losses or fresh seeds.
 
-The next concrete hypothesis is that the coefficient engine's full finite block
-and FE-equivalent control representatives account for useful hard-factor gains.
-Existing joint LSMR uses a diagonal finite preconditioner and original active
-controls. Verify source and measure those differences on identical frozen frames;
-the preceding experiment did not isolate their causal contributions.
+1. Test canonical FE-equivalent control representatives in the existing joint
+   LSMR operator. Preserve original controls for independent acceptance and the
+   existing FE core-pair/Schwarz block. Derive coefficient/FE mapping and adjoint
+   consistency; prior projection does not certify the new weighted problem.
+2. Borrow already retained canonical storage where ownership permits, rather
+   than adding an unconditional N-by-K bank. Validate sample/topology/basis and
+   representative lifetimes; reset or correctly map recurrence guesses after
+   strict refresh, rank change or rollback. Preserve canonical authority in
+   both fused and nonfused paths. Factors still need valid current-call inputs.
+3. Compare identical frozen development frames, including numeric, two-/three-FE,
+   sparse/disconnected and wide controls. Count setup, solve, original-input
+   checks, mapping/reconstruction and complete live memory. Require useful
+   hard-case savings without the previous topology regressions.
+4. Advance a promising frozen implementation through independent WLS/Poisson/
+   Hessian boundaries, three public B/C/stock rotations, then five predeclared
+   fresh rotations. Carry low/slopes/four-FE, serial/OLS, weight/rank/refusal,
+   robust/cluster and saved-output controls. Keep discrepancies unranked.
 
-1. Implement at most two coherent alternatives: current-weight full finite-block
-   conditioning, then canonical FE-equivalent control representatives if required.
-   Preserve the FE preconditioner and LSMR recurrence. Explicitly derive the
-   coefficient/FE mapping, operator/adjoint consistency and original-input
-   residual certificate. Canonical rank/bread remains separate.
-2. Bind reusable topology and numerical factors to their actual dependencies.
-   Rebuild factors for current weights; prior factors/solutions are guesses only.
-   Cover changing weights, rank deficiency, extreme masses, disconnected groups,
-   zero finite rank, memory refusal and strict transaction restoration.
-3. Compare development frozen frames before public integration. Require useful
-   hard-factor savings without the previous sparse/disconnected losses. Account
-   for setup, original-input checks, mapping/reconstruction and all live memory.
-   Do not equate iteration counts across algorithms or hide setup in a cache.
-4. Advance one candidate to independent weighted WLS/Poisson/Hessian checks and
-   three complete B/C/pinned-stock rotations. Freeze promising source before five
-   rotations on newly predeclared fresh inputs. Protect low/slopes/two-/four-FE,
-   numeric/generated/wide/serial/OLS controls, inference and all outputs.
-
-Target roughly **170–250 ms** savings on the original hard fast factor case,
-reaching approximately **<=650 ms** complete command (stock varies by measured
-block). Retain a candidate only if useful beyond one seed and justified in memory
-and complexity. If both coherent alternatives fail, seal their evidence and move
-to canonical weighted-frame construction. Do not accumulate solver layers or
-spend another cycle searching for a routing threshold.
+Aim to remove at least **67 ms** on the hard fast factor case and obtain headroom
+beyond 0.90 stock. This is the second coherent conditioning organization, not an
+open-ended threshold search. If it fails to repay its costs, seal the evidence
+and move to milestone 2. Do not accumulate overlapping solver layers or claim
+that the full-block success itself closes the broad goal.
 
 ### Milestone 2: build one efficient canonical weighted-frame pipeline
 
 Target **70–100 ms** on hard low three-FE and a substantial contribution to the
-million-row **449-ms** budget. Initial rank construction and strict/final
+million-row **452-ms** budget. Initial rank construction and strict/final
 Hessian work must be timed separately from ordinary directions. Existing
 two-FE direct products and three-FE Schur checkpoint mechanisms are starting
 points; their guards encode mathematical and memory assumptions, not arbitrary
@@ -1113,7 +1171,7 @@ of required checking after optimizing it; do not declare today's cost inevitable
 
 ### Milestone 3: make large-N cost scale with necessary passes
 
-The million-row target is **1244 -> <=795 ms**, preferably **705–750 ms**.
+The current million-row target is **1268 -> <=816 ms**, preferably **725–770 ms**.
 The frozen-frame comparison finds only roughly 110 ms in its two ordinary LSMR
 calls; even eliminating those calls cannot supply the whole savings budget.
 An ordinary-engine swap is therefore not the large-N strategy. Combine the

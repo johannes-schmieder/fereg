@@ -1,0 +1,22 @@
+{
+  "logical_receipts": 9394,
+  "payloads": 2510,
+  "bytes": 12220036,
+  "sha256": "7166868c576da7c141149f62f2d6183890feec4a2e18146f22977307fe28f2c6",
+  "omitted_files": 582,
+  "omission_policy": "Hash but omit generated DTA, binary row outputs and saved_outputs.csv; retain controllers, input fingerprints, complete scientific summaries and all attempt outcomes. Raw generated outputs remain local.",
+  "restored_logical_receipts": 9394,
+  "restored_hashes_verified": true,
+  "privacy_scan_passed": true,
+  "privacy_known_source_files": [
+    "artifacts/finiteblock1/scripts/resolve_reference_root.py",
+    "artifacts/finiteblock1/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/finiteblock1/tests/python/test_ols_reference_harness.py",
+    "artifacts/generatedscan1/scripts/resolve_reference_root.py",
+    "artifacts/generatedscan1/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/generatedscan1/tests/python/test_ols_reference_harness.py",
+    "diagnostic-source/tests/python/test_ols_hidden_numeric.py",
+    "diagnostic-source/tests/python/test_ols_reference_harness.py"
+  ],
+  "privacy_scope": "Public shared-reference paths and two synthetic redaction-test literals are distinguished from private run metadata."
+}

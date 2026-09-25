@@ -323,6 +323,8 @@ pub(crate) struct ReusableCategoricalJointLsmr {
     residual: Vec<f64>,
     warm_start: Vec<f64>,
     finite_inverse: Vec<f64>,
+    finite_factor: Vec<f64>,
+    finite_factor_ready: bool,
     fe_inverse: Vec<f64>,
     finite_certificate: Vec<DirectionCertificate>,
     fe_certificate: Vec<DirectionCertificate>,
@@ -460,6 +462,13 @@ impl ReusableCategoricalJointLsmr {
                 0.0,
                 "joint PPML finite diagonal preconditioner",
             )?,
+            finite_factor: fallible_filled(
+                active_generated.len().checked_mul(active_generated.len())
+                    .ok_or_else(|| allocation("joint PPML finite factor dimensions overflow"))?,
+                0.0,
+                "joint PPML finite factor",
+            )?,
+            finite_factor_ready: false,
             fe_inverse: fallible_filled(
                 fe_coefficients,
                 0.0,
@@ -540,6 +549,12 @@ impl ReusableCategoricalJointLsmr {
             &mut self.finite_inverse,
             weight_change_valid,
         )?;
+        self.finite_factor_ready = prepare_finite_factor(
+            &self.active_design,
+            hessian_weights,
+            &self.finite_inverse,
+            &mut self.finite_factor,
+        );
         let warm_start_attempted = self.warm_start_valid;
         let first_pass_policy = self.first_pass_predictor.policy(
             tolerance,
@@ -977,6 +992,7 @@ impl ReusableCategoricalJointLsmr {
         };
         Ok(BlockPreconditioner {
             finite_inverse: &self.finite_inverse,
+            finite_factor: self.finite_factor_ready.then_some(self.finite_factor.as_slice()),
             fe,
         })
     }
@@ -1092,6 +1108,55 @@ fn prepare_frame_and_finite_diagonal(
         }
     }
     Ok(max_abs_log_hessian_weight_change)
+}
+
+// The optional finite preconditioner is rebuilt for every current-weight call.
+// A nonfinite or nearly singular standardized Gram declines to the original
+// diagonal; it cannot drop a control or change the canonical kept basis.
+fn prepare_finite_factor(
+    active: &DenseMatrix,
+    weights: &[f64],
+    inverse_diagonal: &[f64],
+    factor: &mut [f64],
+) -> bool {
+    let k = active.ncols();
+    if k < 2 || factor.len() != k.saturating_mul(k)
+        || inverse_diagonal.len() != k || weights.len() != active.nrows()
+        || inverse_diagonal.iter().any(|value| !value.is_finite() || *value <= 0.0)
+    {
+        return false;
+    }
+    factor.par_chunks_mut(k).enumerate().for_each(|(i, destination)| {
+        destination.fill(0.0);
+        let scale_i = inverse_diagonal[i].sqrt();
+        for (row, &weight) in weights.iter().enumerate() {
+            let values = &active.as_slice()[row * k..(row + 1) * k];
+            let left = weight * values[i] * scale_i;
+            for j in 0..i {
+                destination[j] = left.mul_add(values[j], destination[j]);
+            }
+        }
+        for j in 0..i {
+            destination[j] *= inverse_diagonal[j].sqrt();
+        }
+        destination[i] = 1.0;
+    });
+    for i in 0..k {
+        for j in 0..=i {
+            let mut value = factor[i * k + j];
+            for a in 0..j {
+                value -= factor[i * k + a] * factor[j * k + a];
+            }
+            if !value.is_finite() { return false; }
+            if i == j {
+                if value <= 32.0 * f64::EPSILON { return false; }
+                factor[i * k + j] = value.sqrt();
+            } else {
+                factor[i * k + j] = value / factor[j * k + j];
+            }
+        }
+    }
+    true
 }
 
 fn build_active_design<P: PreparedOlsFitView + Sync + ?Sized>(
@@ -1282,6 +1347,7 @@ enum FePreconditioner<'a> {
 
 struct BlockPreconditioner<'a> {
     finite_inverse: &'a [f64],
+    finite_factor: Option<&'a [f64]>,
     fe: FePreconditioner<'a>,
 }
 
@@ -1304,8 +1370,31 @@ impl Operator for BlockPreconditioner<'_> {
             return Err(solve_shape_error("preconditioner apply"));
         }
         let finite = self.finite_inverse.len();
-        for column in 0..finite {
-            y[column] = self.finite_inverse[column] * x[column];
+        if let Some(factor) = self.finite_factor {
+            // H = S^-1 L L' S^-1. Applying S L'^-1 L^-1 S is symmetric
+            // positive definite; no finite-rank or inference authority is given
+            // to this ordinary-direction preconditioner.
+            for i in 0..finite {
+                let mut value = x[i] * self.finite_inverse[i].sqrt();
+                for j in 0..i {
+                    value -= factor[i * finite + j] * y[j];
+                }
+                y[i] = value / factor[i * finite + i];
+            }
+            for i in (0..finite).rev() {
+                let mut value = y[i];
+                for j in i + 1..finite {
+                    value -= factor[j * finite + i] * y[j];
+                }
+                y[i] = value / factor[i * finite + i];
+            }
+            for i in 0..finite {
+                y[i] *= self.finite_inverse[i].sqrt();
+            }
+        } else {
+            for column in 0..finite {
+                y[column] = self.finite_inverse[column] * x[column];
+            }
         }
         match &self.fe {
             FePreconditioner::Diagonal(inverse) => {
@@ -1936,6 +2025,7 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     // Fit-lifetime allocations owned directly by ReusableCategoricalJointLsmr.
     let retained_values = checked_sum_memory(&[
         checked_mul_memory(n, k, "joint PPML retained active design")?,
+        checked_mul_memory(k, k, "joint PPML finite factor")?,
         checked_mul_memory(n, 5, "joint PPML retained observation buffers")?,
         p,
         k,
@@ -2474,6 +2564,7 @@ mod tests {
         let scratch = Mutex::new(CorePairBridgeScratch::new(core_width).expect("scratch"));
         let preconditioner = BlockPreconditioner {
             finite_inverse: &[],
+            finite_factor: None,
             fe: FePreconditioner::CorePair {
                 core: &core,
                 core_effects,
@@ -2579,6 +2670,57 @@ mod tests {
             .all(|(adjoint, forward)| (adjoint - forward).abs() <= 2e-13));
         let quadratic = input.iter().zip(&actual).map(|(a, b)| a * b).sum::<f64>();
         assert!(quadratic >= -2e-12);
+    }
+
+    #[test]
+    fn full_finite_preconditioner_inverts_current_weight_gram_independently() {
+        let active = DenseMatrix::from_row_major(5, 3,
+            vec![1., -2., 0.5, 0.25, 3., -1.5, -0.75, 1.25, 2.,
+                 4., -0.5, 0.125, 1.5, 2.5, -3.]).unwrap();
+        let mut factor = vec![0.; 9];
+        let truth = [0.7, -1.2, 0.4];
+        let mut prior = Vec::new();
+        for weights in [vec![1.; 5], vec![0.01, 4., 2., 0.7, 9.]] {
+            let mut gram = [0.; 9];
+            for i in 0..3 { for j in 0..3 {
+                gram[3*i+j] = (0..5).map(|r| weights[r]*active[(r,i)]*active[(r,j)]).sum();
+            }}
+            let diagonal: Vec<_> = (0..3).map(|i| 1./gram[3*i+i]).collect();
+            assert!(prepare_finite_factor(&active, &weights, &diagonal, &mut factor));
+            assert_ne!(factor, prior);
+            prior = factor.clone();
+            let rhs: Vec<_> = (0..3).map(|i| (0..3).map(|j| gram[3*i+j]*truth[j]).sum()).collect();
+            let preconditioner = BlockPreconditioner {
+                finite_inverse: &diagonal, finite_factor: Some(&factor),
+                fe: FePreconditioner::Diagonal(&[]),
+            };
+            let mut solved = vec![0.; 3];
+            preconditioner.apply(&rhs, &mut solved).unwrap();
+            for j in 0..3 { assert!((solved[j]-truth[j]).abs() < 2e-12); }
+            let mut adjoint = vec![0.; 3];
+            preconditioner.apply_adjoint(&rhs, &mut adjoint).unwrap();
+            assert_eq!(solved, adjoint);
+            assert!(rhs.iter().zip(&solved).map(|(x,y)| x*y).sum::<f64>() > 0.);
+        }
+    }
+
+    #[test]
+    fn full_finite_preconditioner_declines_singular_or_nonfinite_frames() {
+        let active = DenseMatrix::from_row_major(3, 2,
+            vec![1., 2., -1., -2., 2., 4.]).unwrap();
+        let diagonal = [1./6., 1./24.];
+        let mut factor = vec![0.; 4];
+        assert!(!prepare_finite_factor(&active, &[1.; 3], &diagonal, &mut factor));
+        assert!(!prepare_finite_factor(&active, &[f64::INFINITY; 3], &diagonal, &mut factor));
+        assert!(!prepare_finite_factor(&active, &[1.; 3], &[0., 1.], &mut factor));
+        assert!(!prepare_finite_factor(&active, &[1.; 3], &diagonal, &mut []));
+        let preconditioner = BlockPreconditioner {
+            finite_inverse: &diagonal, finite_factor: None,
+            fe: FePreconditioner::Diagonal(&[]),
+        };
+        let mut result = [0.; 2];
+        preconditioner.apply(&[6., 24.], &mut result).unwrap();
+        assert_eq!(result, [1., 1.]);
     }
 
     #[test]
@@ -2790,6 +2932,8 @@ mod tests {
             residual: vec![0.0; 4],
             warm_start: vec![0.0; 2],
             finite_inverse: Vec::new(),
+            finite_factor: Vec::new(),
+            finite_factor_ready: false,
             fe_inverse: vec![0.0; 2],
             finite_certificate: Vec::new(),
             fe_certificate: vec![DirectionCertificate::default(); 2],
@@ -2882,6 +3026,8 @@ mod tests {
                 residual: vec![0.0; 12],
                 warm_start: vec![0.0; 7],
                 finite_inverse: vec![0.0; 1],
+                finite_factor: Vec::new(),
+                finite_factor_ready: false,
                 // A Schwarz frame must never inspect or overwrite the unused FE
                 // diagonal. NaNs make an accidental read fail the solve, while an
                 // accidental refresh is visible below.
@@ -3035,6 +3181,8 @@ mod tests {
                 residual: vec![0.0; 12],
                 warm_start: vec![0.0; 7],
                 finite_inverse: vec![0.0; 1],
+                finite_factor: Vec::new(),
+                finite_factor_ready: false,
                 fe_inverse: vec![0.0; 6],
                 finite_certificate: vec![DirectionCertificate::default(); 1],
                 fe_certificate: vec![DirectionCertificate::default(); 6],
@@ -3098,6 +3246,8 @@ mod tests {
             residual: vec![0.0; rows],
             warm_start: vec![0.0; 12],
             finite_inverse: Vec::new(),
+            finite_factor: Vec::new(),
+            finite_factor_ready: false,
             fe_inverse: vec![0.0; 12],
             finite_certificate: Vec::new(),
             fe_certificate: vec![DirectionCertificate::default(); 12],
