@@ -4744,6 +4744,12 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
     } else {
         numeric
     };
+    let generated_parallel = numeric.is_none() && rows >= 4096
+        && prepared.fit_model().columns.iter().any(|c| matches!(c.kind,
+            crate::ols::PreparedOlsColumnKind::Categorical { .. }
+            | crate::ols::PreparedOlsColumnKind::CategoricalInteraction { .. }));
+    #[cfg(test)]
+    let generated_parallel = generated_parallel && !FORCE_GENERIC_OUTER_SCORE.get();
     let mut numeric_moments = [(0.0_f64, 0.0_f64); crate::ols::MAX_BOUND_NUMERIC_COLUMNS];
     if let Some(numeric) = numeric.as_ref() {
         // Each column keeps the original observation order and arithmetic.
@@ -4768,7 +4774,29 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
         });
     }
     for column in 0..prepared.fit_model().columns.len() {
-        let (moment, basis_square) = if numeric.is_some() {
+        // Reuse the numeric path's bounded scalar bank for arbitrary generated
+        // width. Each job reads originals in row order; canonical reduction
+        // order below and every independently formed score remain unchanged.
+        if generated_parallel && column % numeric_moments.len() == 0 {
+            let width = numeric_moments.len().min(prepared.fit_model().columns.len() - column);
+            workspace.team.install(|| {
+                use rayon::prelude::*;
+                numeric_moments[..width].par_iter_mut().enumerate().try_for_each(|(local, target)| -> Result<()> {
+                    let mut moment = CompensatedSum::default();
+                    let mut square = CompensatedSum::default();
+                    crate::prepared_fit_view::visit_prepared_column_range(prepared, column + local, 0..rows, |row, basis| {
+                        moment.add(prior_weights[row] * (outcome[row] - mean[row]) * basis);
+                        square.add(prior_weights[row] * mean[row] * basis * basis);
+                        Ok(())
+                    })?;
+                    *target = (moment.total(), square.total());
+                    Ok(())
+                })
+            })?;
+        }
+        let (moment, basis_square) = if generated_parallel {
+            numeric_moments[column % numeric_moments.len()]
+        } else if numeric.is_some() {
             numeric_moments[column]
         } else {
             let mut moment = CompensatedSum::default();
@@ -5212,6 +5240,64 @@ mod tests {
                     assert_eq!(actual, baseline);
                     assert_eq!(workspace.fe_moments, expected.fe_moments);
                     assert_eq!(workspace.fe_basis_squares, expected.fe_basis_squares);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn generated_outer_scores_preserve_fresh_certificates_across_tiles_frames_and_teams() {
+        use crate::ols::{PreparedCategoricalSource, PreparedOlsColumnKind, PreparedOlsCategoricalComponent};
+        for rows in [4095, 4097] {
+            for width in [8, 65, 71] {
+                let y: Vec<_> = (0..rows).map(|r| (r % 13) as f64 / 3.).collect();
+                let x: Vec<Vec<_>> = (0..width).map(|j| (0..rows).map(|r|
+                    if j < 2 { ((r / (j+1)) % (j+3)) as f64 }
+                    else { (r as f64 / (j+3) as f64).sin() }).collect()).collect();
+                let mut prepared = prepared(&y, &x);
+                for j in 0..2 {
+                    prepared.categorical_sources.push(PreparedCategoricalSource {
+                        source: SourceId::new((j+1) as u32).unwrap(), prepared_source_index: j,
+                        encoded: crate::factorize::factorize_f64(&x[j]).unwrap(),
+                    });
+                }
+                for j in 2..width {
+                    let component = |source_index: usize, code| PreparedOlsCategoricalComponent {
+                        source: SourceId::new((source_index+1) as u32).unwrap(),
+                        categorical_source_index: source_index, level_bits: 1f64.to_bits(), level_code: code,
+                    };
+                    prepared.model.columns[j].kind = match j % 3 {
+                        0 => PreparedOlsColumnKind::Categorical {
+                            source: SourceId::new(1).unwrap(), prepared_source_index: 0,
+                            categorical_source_index: 0, level_bits: 1f64.to_bits(), level_code: Some(1),
+                        },
+                        1 => PreparedOlsColumnKind::CategoricalInteraction {
+                            components: vec![component(0, Some(1)), component(1, Some(2)),
+                                component(0, if j % 7 == 0 { None } else { Some(1) })],
+                        },
+                        _ => prepared.model.columns[j].kind.clone(),
+                    };
+                }
+                let design = FeDesign::new(rows, vec![crate::fe::EffectTerm::new(
+                    (0..rows).map(|r| (r % 17) as u32).collect(), 17, true, vec![x[2].clone()],
+                ).unwrap()]).unwrap();
+                for frame in [1, 7] {
+                    let mu: Vec<_> = (0..rows).map(|r| (0.4 * (r as f64 / (91*frame) as f64).sin()).exp()).collect();
+                    let q: Vec<_> = (0..rows).map(|r| [1e-30, 1., 1e30][r % 3] * (0.25 + ((r*frame) % 11) as f64)).collect();
+                    let mut reference = PpmlScoreWorkspace::new(&design,
+                        crate::options::ThreadConfig::from_requested(1, true).unwrap()).unwrap();
+                    FORCE_GENERIC_OUTER_SCORE.set(true);
+                    let expected = prepared_score_certificate(&prepared, &design, &y, &mu, &q, 1e-8, &mut reference);
+                    FORCE_GENERIC_OUTER_SCORE.set(false);
+                    let expected = expected.unwrap();
+                    for threads in [1, 4, 8] {
+                        let mut workspace = PpmlScoreWorkspace::new(&design,
+                            crate::options::ThreadConfig::from_requested(threads, true).unwrap()).unwrap();
+                        let actual = prepared_score_certificate(&prepared, &design, &y, &mu, &q, 1e-8, &mut workspace).unwrap();
+                        assert_eq!(actual, expected);
+                        assert_eq!(workspace.fe_moments, reference.fe_moments);
+                        assert_eq!(workspace.fe_basis_squares, reference.fe_basis_squares);
+                    }
                 }
             }
         }

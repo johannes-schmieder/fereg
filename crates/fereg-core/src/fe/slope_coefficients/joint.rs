@@ -19,6 +19,14 @@ pub(crate) trait JointFiniteDesign: Sync {
         &self,
         column: usize,
         visit: impl FnMut(usize, f64) -> Result<()>,
+    ) -> Result<()> {
+        self.visit_column_range(column, 0..self.nrows(), visit)
+    }
+    fn visit_column_range(
+        &self,
+        column: usize,
+        range: std::ops::Range<usize>,
+        visit: impl FnMut(usize, f64) -> Result<()>,
     ) -> Result<()>;
     fn visit_rows(
         &self,
@@ -34,12 +42,13 @@ impl JointFiniteDesign for DenseMatrix {
     fn ncols(&self) -> usize {
         self.ncols()
     }
-    fn visit_column(
+    fn visit_column_range(
         &self,
         column: usize,
+        range: std::ops::Range<usize>,
         mut visit: impl FnMut(usize, f64) -> Result<()>,
     ) -> Result<()> {
-        for row in 0..self.nrows() {
+        for row in range {
             visit(row, self[(row, column)])?;
         }
         Ok(())
@@ -181,8 +190,8 @@ mod product_tests {
         fn column_slice(&self, _: usize) -> Option<&[f64]> {
             self.contiguous.then_some(self.values.as_slice())
         }
-        fn visit_column(&self, _: usize, mut visit: impl FnMut(usize, f64) -> Result<()>) -> Result<()> {
-            for (row, &value) in self.values.iter().enumerate() { visit(row, value)?; }
+        fn visit_column_range(&self, _: usize, range: std::ops::Range<usize>, mut visit: impl FnMut(usize, f64) -> Result<()>) -> Result<()> {
+            for row in range { visit(row, self.values[row])?; }
             Ok(())
         }
         fn visit_rows(&self, _: &mut [f64], mut visit: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> {
@@ -202,7 +211,7 @@ mod product_tests {
         fn column_slice(&self, column: usize) -> Option<&[f64]> {
             (self.missing != Some(column)).then(|| self.values[column].as_slice())
         }
-        fn visit_column(&self, _: usize, _: impl FnMut(usize, f64) -> Result<()>) -> Result<()> { unreachable!() }
+        fn visit_column_range(&self, _: usize, _: std::ops::Range<usize>, _: impl FnMut(usize, f64) -> Result<()>) -> Result<()> { unreachable!() }
         fn visit_rows(&self, _: &mut [f64], _: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> { unreachable!() }
     }
 
@@ -392,18 +401,23 @@ impl JointFiniteWorkspace {
             &self.scales[..selected.len()], roots, original, observations,
         );
         if !direct && controls.prefers_column_scans() {
-            for (value, &original) in observations.iter_mut().zip(original) {
-                *value = original - *value;
-            }
-            // Reading one source at a time preserves each residual's finite-
-            // coefficient FMA order without per-observation recipe resolution.
-            for (j, &column) in selected.iter().enumerate() {
-                controls.visit_column(column, |row, value| {
-                    observations[row] = (-self.coefficients[p + j])
-                        .mul_add(value * roots[row] / self.scales[j], observations[row]);
-                    Ok(())
-                })?;
-            }
+            // Each worker owns disjoint residual rows. Recipe tiles preserve
+            // finite-coordinate FMA order without serial full-vector passes.
+            observations.par_chunks_mut(1024).enumerate().try_for_each(|(panel, target)| -> Result<()> {
+                let start = panel * 1024;
+                let end = start + target.len();
+                for (value, &input) in target.iter_mut().zip(&original[start..end]) {
+                    *value = input - *value;
+                }
+                for (j, &column) in selected.iter().enumerate() {
+                    controls.visit_column_range(column, start..end, |row, value| {
+                        target[row-start] = (-self.coefficients[p+j])
+                            .mul_add(value * roots[row] / self.scales[j], target[row-start]);
+                        Ok(())
+                    })?;
+                }
+                Ok(())
+            })?;
         } else if !direct {
             controls.visit_rows(&mut self.column_scratch, |row, values| {
                 let mut residual = original[row] - observations[row];
@@ -430,13 +444,14 @@ impl JointFiniteWorkspace {
                     }
                 });
         } else if controls.prefers_column_scans() {
-            for (j, &column) in selected.iter().enumerate() {
-                let sum = &mut self.residual[p + j];
-                controls.visit_column(column, |row, value| {
-                    *sum = (value * roots[row] / self.scales[j]).mul_add(observations[row], *sum);
-                    Ok(())
+            self.residual[p..p + selected.len()].par_iter_mut()
+                .zip(selected.par_iter()).zip(self.scales[..selected.len()].par_iter())
+                .try_for_each(|((sum, &column), &scale)| -> Result<()> {
+                    controls.visit_column(column, |row, value| {
+                        *sum = (value * roots[row] / scale).mul_add(observations[row], *sum);
+                        Ok(())
+                    })
                 })?;
-            }
         } else {
             controls.visit_rows(&mut self.column_scratch, |row, values| {
                 for (j, &column) in selected.iter().enumerate() {

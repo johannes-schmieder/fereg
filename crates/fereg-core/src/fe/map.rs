@@ -1877,8 +1877,8 @@ mod tests {
             fn prefers_column_scans(&self) -> bool { COLUMNS }
             fn nrows(&self) -> usize { self.0.nrows() }
             fn ncols(&self) -> usize { self.0.ncols() }
-            fn visit_column(&self, column: usize, visit: impl FnMut(usize, f64) -> Result<()>) -> Result<()> {
-                self.0.visit_column(column, visit)
+            fn visit_column_range(&self, column: usize, range: std::ops::Range<usize>, visit: impl FnMut(usize, f64) -> Result<()>) -> Result<()> {
+                self.0.visit_column_range(column, range, visit)
             }
             fn visit_rows(&self, scratch: &mut [f64], visit: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> {
                 self.0.visit_rows(scratch, visit)

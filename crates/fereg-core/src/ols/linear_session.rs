@@ -680,46 +680,15 @@ impl<P: PreparedOlsFitView + Sync + ?Sized>
             .filter(|values| values.len() == self.nrows()).map(Vec::as_slice)
     }
 
-    fn visit_column(
+    fn visit_column_range(
         &self,
         column: usize,
-        mut visit: impl FnMut(usize, f64) -> Result<()>,
+        range: std::ops::Range<usize>,
+        visit: impl FnMut(usize, f64) -> Result<()>,
     ) -> Result<()> {
         let generated = *self.generated.get(column)
             .ok_or_else(|| invalid_argument("joint original column is out of range"))?;
-        if let Some(values) = self.column_slice(column) {
-            for (row, &value) in values.iter().enumerate() {
-                visit(row, value)?;
-            }
-            return Ok(());
-        }
-        let kind = &self.prepared.fit_model().columns.get(generated)
-            .ok_or_else(|| invalid_argument("joint generated column is out of range"))?.kind;
-        match kind {
-            super::PreparedOlsColumnKind::Intercept => {
-                for row in 0..self.nrows() { visit(row, 1.)?; }
-            }
-            super::PreparedOlsColumnKind::Categorical { level_code: None, .. } => {
-                for row in 0..self.nrows() { visit(row, 0.)?; }
-            }
-            super::PreparedOlsColumnKind::Categorical {
-                categorical_source_index, level_code: Some(level), ..
-            } => {
-                let codes = self.prepared.fit_categorical_codes(*categorical_source_index)?;
-                if codes.len() != self.nrows() {
-                    return Err(invalid_argument("joint factor column is not aligned"));
-                }
-                for (row, code) in codes.iter().enumerate() {
-                    visit(row, f64::from(code == level))?;
-                }
-            }
-            _ => {
-                for row in 0..self.nrows() {
-                    visit(row, self.prepared.fit_column_value(generated, row)?)?;
-                }
-            }
-        }
-        Ok(())
+        crate::prepared_fit_view::visit_prepared_column_range(self.prepared, generated, range, visit)
     }
 
     fn visit_rows(
@@ -5425,13 +5394,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         0.0_f64,
                         "unable to reserve weighted-linear row-major scratch block",
                     )?;
-                    for row in 0..rows {
+                    raw_values.par_chunks_mut(128 * block).enumerate().try_for_each(|(tile, values)| -> Result<()> {
+                        let start_row = tile * 128;
+                        let end_row = start_row + values.len() / block;
                         for local in 0..block {
-                            raw_values[row * block + local] = self
-                                .prepared
-                                .fit_column_value(stored_generated_columns[start + local], row)?;
+                            crate::prepared_fit_view::visit_prepared_column_range(
+                                self.prepared, stored_generated_columns[start + local], start_row..end_row,
+                                |row, value| { values[(row-start_row) * block + local] = value; Ok(()) },
+                            )?;
                         }
-                    }
+                        Ok(())
+                    })?;
                     let raw = DenseMatrix::from_row_major(rows, block, raw_values)?;
                     if !slope_norms {
                         let norms = self.weighted_dense_column_norms(&raw)?;
@@ -5707,18 +5680,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             // Bind them once, but recompute every statistic with this frame's
             // weights. Column ownership preserves row order and needs no new
             // bank; its work depends on N*K, not the number of absorbed effects.
-            let numeric_parallel_work = numeric.is_some() && rows >= 16_384
-                && rows.saturating_mul(columns) >= 65_536 * 8;
+            let column_work = rows >= 16_384 && rows.saturating_mul(columns) >= 65_536 * 8;
+            let generated_work = column_work && self.prepared.fit_model().columns.iter().any(|c|
+                matches!(c.kind, super::PreparedOlsColumnKind::Categorical { .. }
+                    | super::PreparedOlsColumnKind::CategoricalInteraction { .. }));
             let parallel_columns = columns >= 8
-                && self.config.execution.mode == PreparedOlsExecutionMode::Fast
-                && matches!(
-                    self.fe_projector.as_ref(),
-                    Some(ReusableLinearMapProjector::PpmlCategorical { score_design, .. })
-                        if numeric_parallel_work
-                            || rows >= 65_536 && score_design.effects().len() == 1
-                )
                 && rayon::current_thread_index().is_some()
-                && rayon::current_num_threads() > 1;
+                && rayon::current_num_threads() > 1
+                && (generated_work && matches!(self.fe_projector.as_ref(),
+                        Some(ReusableLinearMapProjector::PpmlCategorical { .. }
+                            | ReusableLinearMapProjector::PpmlCoefficients { .. }))
+                    || self.config.execution.mode == PreparedOlsExecutionMode::Fast
+                        && matches!(self.fe_projector.as_ref(),
+                            Some(ReusableLinearMapProjector::PpmlCategorical { score_design, .. })
+                                if numeric.is_some() && column_work
+                                    || rows >= 65_536 && score_design.effects().len() == 1));
             if parallel_columns {
                 for row in 0..rows {
                     let weight = normalized_solver_weight(weights, weight_scale, row)?;
@@ -5742,16 +5718,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     .try_for_each(
                         |(column, (((scale, sum), mean), correction))| -> Result<()> {
                             let generated = generated_columns[column];
-                            for row in 0..rows {
+                            crate::prepared_fit_view::visit_prepared_column_range(prepared, generated, 0..rows, |row, raw_value| {
                                 let weight = normalized_solver_weight(weights, weight_scale, row)?;
-                                let raw_value = if let Some(numeric) = numeric.as_ref() {
-                                    numeric.raw_columns()[generated].map_or(1.0, |values| values[row])
-                                } else {
-                                    prepared.fit_column_value(generated, row)?
-                                };
                                 update_scaled_square(weight.sqrt() * raw_value, scale, sum)?;
                                 compensated_add(weight * raw_value, mean, correction)?;
-                            }
+                                Ok(())
+                            })?;
                             Ok(())
                         },
                     )?;

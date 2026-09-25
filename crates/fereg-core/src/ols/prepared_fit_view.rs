@@ -68,6 +68,65 @@ impl SharedPreparedOlsData {
     }
 }
 
+/// Scan an immutable prepared column in observation order. Interaction recipes
+/// resolve source slices once per bounded tile; no expanded observation bank or
+/// current-weight statistic is retained. Callers own all numerical reductions.
+pub(crate) fn visit_prepared_column_range<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    column: usize,
+    range: std::ops::Range<usize>,
+    mut visit: impl FnMut(usize, f64) -> Result<()>,
+) -> Result<()> {
+    use crate::ols::PreparedOlsColumnKind;
+    let invalid = || FeregError::new(ErrorCode::InvalidArgument,
+        "prepared column scan is not aligned on the active row axis");
+    if range.start > range.end || range.end > prepared.fit_sample().n_active() {
+        return Err(invalid());
+    }
+    let kind = &prepared.fit_model().columns.get(column).ok_or_else(invalid)?.kind;
+    match kind {
+        PreparedOlsColumnKind::Intercept => {
+            for row in range { visit(row, 1.)?; }
+        }
+        PreparedOlsColumnKind::Continuous { prepared_source_index, .. } => {
+            let values = prepared.fit_sample().regressors.get(*prepared_source_index)
+                .and_then(|v| v.get(range.clone())).ok_or_else(invalid)?;
+            for (offset, &value) in values.iter().enumerate() { visit(range.start + offset, value)?; }
+        }
+        PreparedOlsColumnKind::Categorical { categorical_source_index, level_code, .. } => {
+            if let Some(level) = level_code {
+                let codes = prepared.fit_categorical_codes(*categorical_source_index)?;
+                let codes = codes.get(range.clone()).ok_or_else(invalid)?;
+                for (offset, code) in codes.iter().enumerate() {
+                    visit(range.start + offset, f64::from(code == level))?;
+                }
+            } else {
+                for row in range { visit(row, 0.)?; }
+            }
+        }
+        PreparedOlsColumnKind::CategoricalInteraction { components } => {
+            const ROWS: usize = 128;
+            let mut present = [true; ROWS];
+            for start in (range.start..range.end).step_by(ROWS) {
+                let end = (start + ROWS).min(range.end);
+                let values = &mut present[..end-start];
+                values.fill(true);
+                for component in components {
+                    let Some(level) = component.level_code else {
+                        values.fill(false);
+                        break;
+                    };
+                    let codes = prepared.fit_categorical_codes(component.categorical_source_index)?;
+                    let codes = codes.get(start..end).ok_or_else(invalid)?;
+                    for (value, &code) in values.iter_mut().zip(codes) { *value &= code == level; }
+                }
+                for (offset, &value) in values.iter().enumerate() { visit(start + offset, f64::from(value))?; }
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Accumulate generated finite predictors without per-cell recipe lookup.
 /// Each row keeps coefficient-slot FMA order, including multiplication by zero
 /// for absent indicators. Ordinary OLS subtraction has different zero handling
@@ -116,64 +175,13 @@ pub(crate) fn add_generated_predictor<P: PreparedOlsFitView + ?Sized>(
     let fill = |(tile, destination): (usize, &mut [f64])| -> Result<()> {
         let start = tile * TILE_ROWS;
         let end = start + destination.len();
-        let mut tile_values = [0.0_f64; TILE_ROWS];
-        let values = &mut tile_values[..destination.len()];
-        for c in coefficients
-            .iter()
-            .filter(|c| c.status == PreparedOlsFitStatus::Kept)
-        {
+        for c in coefficients.iter().filter(|c| c.status == PreparedOlsFitStatus::Kept) {
             let column = c.generated_column_index.ok_or_else(invalid)?;
             let coefficient = c.value.ok_or_else(invalid)?;
-            match &model.columns[column].kind {
-                PreparedOlsColumnKind::Intercept => values.fill(1.0),
-                PreparedOlsColumnKind::Continuous {
-                    prepared_source_index,
-                    ..
-                } => {
-                    let source = prepared
-                        .fit_sample()
-                        .regressors
-                        .get(*prepared_source_index)
-                        .and_then(|source| source.get(start..end))
-                        .ok_or_else(invalid)?;
-                    values.copy_from_slice(source);
-                }
-                PreparedOlsColumnKind::Categorical {
-                    categorical_source_index,
-                    level_code,
-                    ..
-                } => {
-                    if let Some(level) = level_code {
-                        let codes = prepared.fit_categorical_codes(*categorical_source_index)?;
-                        let codes = codes.get(start..end).ok_or_else(invalid)?;
-                        for (target, code) in values.iter_mut().zip(codes) {
-                            *target = f64::from(code == level);
-                        }
-                    } else {
-                        values.fill(0.0);
-                    }
-                }
-                PreparedOlsColumnKind::CategoricalInteraction { components } => {
-                    values.fill(1.0);
-                    for component in components {
-                        let Some(level) = component.level_code else {
-                            values.fill(0.0);
-                            break;
-                        };
-                        let codes =
-                            prepared.fit_categorical_codes(component.categorical_source_index)?;
-                        let codes = codes.get(start..end).ok_or_else(invalid)?;
-                        for (target, code) in values.iter_mut().zip(codes) {
-                            if *code != level {
-                                *target = 0.0;
-                            }
-                        }
-                    }
-                }
-            }
-            for (target, value) in destination.iter_mut().zip(values.iter()) {
-                *target = coefficient.mul_add(*value, *target);
-            }
+            visit_prepared_column_range(prepared, column, start..end, |row, value| {
+                destination[row-start] = coefficient.mul_add(value, destination[row-start]);
+                Ok(())
+            })?;
         }
         if destination.iter().any(|v| !v.is_finite()) {
             return Err(FeregError::new(

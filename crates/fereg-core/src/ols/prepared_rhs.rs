@@ -1441,6 +1441,27 @@ mod tests {
                     })
                     .collect();
                 assert_eq!(expected.len(), n * (width + 1));
+                for column in 0..width {
+                    for range in [0..n, 127..260, n-1..n, n..n] {
+                        let mut actual = Vec::new();
+                        crate::prepared_fit_view::visit_prepared_column_range(prepared, column, range.clone(), |row, value| {
+                            actual.push((row, value.to_bits())); Ok(())
+                        }).unwrap();
+                        let wanted: Vec<_> = range.map(|row|
+                            (row, expected[row * (width + 1) + column + 1].to_bits())).collect();
+                        assert_eq!(actual, wanted);
+                    }
+                }
+                assert!(crate::prepared_fit_view::visit_prepared_column_range(prepared, width, 0..1, |_,_| Ok(())).is_err());
+                assert!(crate::prepared_fit_view::visit_prepared_column_range(prepared, 0, 0..n+1, |_,_| Ok(())).is_err());
+                let mut visits = 0;
+                let error = crate::prepared_fit_view::visit_prepared_column_range(prepared, 0, 0..n, |_,_| {
+                    visits += 1;
+                    Err(FeregError::new(ErrorCode::Interrupted, "column scan interrupted"))
+                }).unwrap_err();
+                assert_eq!(error.code, ErrorCode::Interrupted);
+                assert_eq!(visits, 1);
+
                 let selection = [
                     (width - 1, -0.0),
                     (1, 1e100),

@@ -1,0 +1,24 @@
+{
+  "logical_receipts": 8443,
+  "payloads": 2114,
+  "bytes": 11034253,
+  "sha256": "a5aef383ab52b8e76a0e65d51872126277049e426425cfce8dbae94b521805d9",
+  "omitted_files": 505,
+  "omission_policy": "Hash but omit generated DTA, binary row outputs and saved_outputs.csv; retain controllers, input fingerprints, complete scientific summaries and all attempt outcomes. Raw generated outputs remain local.",
+  "restored_logical_receipts": 8443,
+  "restored_hashes_verified": true,
+  "privacy_scan_passed": true,
+  "privacy_known_source_literals": "Shared reference paths, synthetic alice/licensed redaction test inputs, and the scanner regex are source-code literals, not private run metadata.",
+  "privacy_known_source_files": [
+    "artifacts/factorprof1/scripts/resolve_reference_root.py",
+    "artifacts/factorprof1/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/factorprof1/tests/python/test_ols_reference_harness.py",
+    "artifacts/generatedscan1/scripts/resolve_reference_root.py",
+    "artifacts/generatedscan1/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/generatedscan1/tests/python/test_ols_reference_harness.py",
+    "artifacts/pairedscan2/scripts/resolve_reference_root.py",
+    "artifacts/pairedscan2/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/pairedscan2/tests/python/test_ols_reference_harness.py",
+    "package_summary.py"
+  ]
+}
