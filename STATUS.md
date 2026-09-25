@@ -10,6 +10,39 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Active delivery plan — 2026-09-25
+
+The next implementation sequence is **finish the pending joint-check experiment,
+redesign exact-weight preparation/check ownership, reduce the narrow-fit
+lifecycle, then extend current-source coverage around the remaining losses**.
+The detailed plan and per-case budgets are below. Aim for 0.80–0.85 times stock
+during development where feasible, so the required 0.90 advantage has margin.
+Success is per comparable family and requested output, not an aggregate win rate.
+
+At this planning checkpoint, main is based on **41d43465** and the worktree
+contains an unfinished two-file candidate in `fe/slope_coefficients/joint.rs`
+and `ols/linear_session.rs`. It hands off original-column norms from the same
+successful joint call and consolidates/concurrently executes fresh response,
+score and reconstruction checks. These edits are preserved. They have no accepted
+public timing or completed validation claim; the accepted runtime remains
+**e7731129/finalreplay1**. This planning update changes no estimator source.
+
+The candidate is a bounded first step, not the main redesign's completion.
+Existing diagnostics put ordinary joint recurrence near 5.8 ms and group geometry
+near 1.5 ms, whereas the fresh low-mode loss needs 27.4 ms removed from its full
+command. These are different diagnostic/headline blocks, not an additive time
+decomposition, but their scale rules out recurrence-only tuning as an adequate
+program. Initial/final canonical preparation and the surrounding row passes must
+also contribute. The narrow case independently needs 8.4 ms removed. Both budgets
+and the source-bound timing distributions appear in the detailed plan below.
+
+Each structural candidate must name the whole phase or repeated passes it removes,
+its numerical authority and complete memory cost before implementation. Finish a
+bounded pilot and make an adopt/reject decision, then move to the next substantial
+cost. Keep rejected reference-weight proposals, coarse CG, early-checkpoint
+schedules and final-replay micro-tuning closed. No fresh seed is consumed by this
+planning update; seed431 remains unused.
+
 ## Reference-operator PPML experiment closed — 2026-09-25
 
 Reject **chord2** and retain **e7731129/finalreplay1** runtime. The four-file
@@ -367,6 +400,16 @@ algorithm; do not tune reference ages, score thresholds or case-specific guards.
 
 ### Milestone 3: consolidate weighted-linear preparation and independent checking
 
+**First bounded checkpoint: the preserved joint-check candidate.** Validate
+same-call norm identity for streamed original columns, continued original-norm
+scans for dense representatives, revocation on every failed solve, and fresh
+current-input scores/reconstruction. Check extreme scales, changed frames,
+rank-deficient slopes, T1/T4/T8, low/fast storage and existing scratch admission.
+Measure it on the two principal losses plus low/fast threaded slopes, wide and
+three-FE controls. A reliable inexpensive shared gain can be retained, but this
+candidate cannot by itself close the low-mode savings budget. Do not expand it
+into repeated tile-size or threshold tuning.
+
 This is the principal shared implementation target. The accepted diagnostic
 still records about 23.8 ms inside ordinary joint directions with only 5.8 ms
 in recurrence; group geometry is about 1.5 ms. Do not revive the old diagnosis
@@ -379,6 +422,29 @@ response and generation dependencies. Consolidate demonstrated duplicate work
 within one current state, and transfer ownership of already necessary products
 instead of adding overlapping caches. Existing grouped geometry, retained norms,
 fused canonical products and exact-state final-product reuse already exist.
+
+**Structural deliverable:** make the current weighted frame the explicit owner
+of reusable preparation and its consumers. Separate immutable topology/column
+recipes, current-weight geometry, response-specific solutions and independently
+computed acceptance products. Map the existing owners first; replace duplicated
+ownership only where it causes measured repeated work. In particular, examine
+normalization and source binding at the ordinary/canonical boundary, reconstruction
+before retained-row writing, and which rank/inverse/inference consumers reread
+already available current-frame products. Reuse existing fused builders rather
+than introduce a second canonical builder. Prefer a dependency-valid handoff and
+bounded tiles over another persistent cache. Delete the superseded path once its
+replacement is independently established.
+
+Before choosing the larger replacement, record a nonoverlapping full-command
+ledger on the exact accepted artifact and the comparable stock implementation.
+Use an isolated diagnostic stock build only when its phase attribution is needed;
+the pinned unmodified library remains the headline comparator. Count current-weight
+setups, RHS/operator applications, original-input passes, scratch traffic and
+accepted/rejected checkpoint work. Mark measured costs separately from inferred
+savings. The implementation budget must include canonical and surrounding work,
+not project a small recurrence gain onto the whole command. Recompute the remaining
+0.90-stock deficit after each accepted checkpoint; target 75–80 ms on the current
+112-ms low case without treating that aspiration as measured feasibility.
 
 Design one fresh original-input acceptance pass to share compatible loads and
 reductions for projection, finite scores, reconstruction and direct products.
@@ -419,6 +485,14 @@ initialization, rank and verification. Reuse immutable design/metadata preparati
 avoid redundant session construction and unnecessary worker scheduling only where
 measured. Preserve one substantive plugin call, main-thread SPI and atomic results.
 The 26–28-ms engineering target requires more than moving output outside the clock.
+
+Start this next if the first shared checkpoint leaves the larger ownership
+replacement without a credible savings budget. Attribute native entry/loading,
+sample/topology preparation, initial rank, ordinary solves, strict/final work,
+inference and Stata publication separately. Instrument the public wrapper as well
+as Rust so an estimator-only improvement cannot hide unchanged command overhead.
+Keep data import/startup outside the existing headline definition and all requested
+estimation/output work inside it.
 
 Build a distinct narrow-fit execution plan if the existing general session
 demonstrably does unnecessary work: bounded small-system kernels, one prepared
@@ -494,8 +568,9 @@ Linux/T1/T8/T16 and constrained-platform confirmation remain deferred; no SCC re
 
 This planning revision changes no estimator source and consumes no fresh
 validation seed. Milestones 1 and 2 are closed with rejected implementations
-and immutable evidence. Production is restored. The broad goal remains active;
-continue implementation at Milestone 3. Each implementation milestone ends with a
+and immutable evidence. The pending two-file joint-check candidate is preserved
+and remains unaccepted; production timing claims refer to finalreplay1. The broad
+goal remains active; continue implementation at Milestone 3. Each milestone ends with a
 coherent tested commit and evidence of adopted improvements or a bounded
 rejection, not a declaration that a promising prototype completed the task.
 
