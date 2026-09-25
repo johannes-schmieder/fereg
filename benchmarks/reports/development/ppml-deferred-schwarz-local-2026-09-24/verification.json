@@ -1,0 +1,28 @@
+{
+  "archive_sha256": "8077e6a52fa7709cd762ef0cdfc0cf4a0a97c5b99a62974708e613e637e759ec",
+  "bytes": 22236663,
+  "logical_receipts": 9699,
+  "payloads": 2339,
+  "all_payloads_verified": true,
+  "all_restored_receipts_verified": true,
+  "baseline": {
+    "base": "ab21c9b3343d49d0b25f9d5afd84becfb9b07863",
+    "captured_inputs": 551,
+    "all_match": true,
+    "plugin": "d653f5b858554ed237623de828624b6a88d638cecfc40653350bbb344e54a4ac"
+  },
+  "candidate": {
+    "plugin": "91e59cd5fee3413d9e12eaf47494c1ec374e43a50352db8a89ed57f8d9a108bc",
+    "base": "ab21c9b3343d49d0b25f9d5afd84becfb9b07863",
+    "captured_inputs": 552,
+    "all_match": true
+  },
+  "rust_passes": 135,
+  "inherited_rust_failure": "refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model",
+  "licensed_science_fixtures": 6,
+  "ols_exact_pairs": 6,
+  "ppml_public_states": 260,
+  "native_ppml_pairs": 76,
+  "direct_stock_pairs": 76,
+  "direct_stock_unranked": 5
+}

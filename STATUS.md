@@ -10,6 +10,105 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Deferred two-FE PPML Schwarz adopted — 2026-09-24
+
+The active whole-public **multi-FE PPML <=0.90 times comparable pinned stock**
+goal remains unfinished. This opening supersedes previous next-step directions.
+[ADR 0178](docs/adr/0178-deferred-two-fe-ppml-schwarz.md) and the
+[source-bound report](benchmarks/reports/development/ppml-deferred-schwarz-local-2026-09-24/README.md)
+record the accepted lifecycle change, current inventory, profiles, distributions,
+losses, independent science and rejected attempts.
+
+Accepted **lazygraph2**, plugin SHA-256
+`91e59cd5fee3413d9e12eaf47494c1ec374e43a50352db8a89ed57f8d9a108bc`, captures
+**ab21c9b3343d49d0b25f9d5afd84becfb9b07863** plus
+ppml/categorical_lsmr.rs. All **552 captured inputs match final computational
+source**. Baseline canonicalfinal1's 551 inputs are verified against ab21c9b3.
+The new licensed fast-LSMR oracle is preserved separately as a recipe.
+The verified/restored archive has **9,699 logical receipts / 2,339 payloads /
+22,236,663 bytes**, SHA-256
+`8077e6a52fa7709cd762ef0cdfc0cf4a0a97c5b99a62974708e613e637e759ec`.
+The report's verification.json binds source and restore checks. All builds,
+tests, fits, audits, archive and restore processes are terminal. Work root:
+`target/ppml-frame-statistics-20260924`.
+
+### Adopted mechanism and measurements
+
+Two-categorical-FE joint LSMR starts with its already allocated current-weight
+diagonal. Existing stalled-progress, exhausted-recurrence or failed-certificate
+handling constructs Schwarz when needed, then retains its old reuse/refresh
+policy. Promotion from the uncertified diagonal iterate starts cold; carrying
+that iterate into the stronger metric failed the strict-final/fallback truth
+test. Cold promotion passes the unchanged accuracy and fallback checks at T1/T4.
+Every direction still needs recurrence convergence and fresh original-input
+finite/FE certification; canonical rank, reconstruction, score, objective,
+consecutive convergence and final-Hessian requirements remain unchanged.
+
+The first factor was the avoidable cost; it was already reused across weights,
+and its clone is O(1). Development disconnected joint setup falls 16.96→0.83 ms,
+recurrence rises 8.62→9.60, and whole-public time falls 111→96. No new workspace
+or admission credit: complete Schwarz fallback remains charged. Development
+tracked peak falls 111.67→33.77 MB; fresh weak tracked peak instead rises 6,784
+bytes during promotion. All modeled peaks are unchanged. No physical-cap/RSS or
+allocation-inventory repair claim.
+
+Fresh seed **202609401**, five B/C/stock rotations, robust inference and fitted
+means; pinned stock glm.tol=1e-10/fixef.tol=1e-11. Fast unless stated.
+
+| Case | B ms | Accepted ms | Stock ms | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Two FE N23040/K2/T4 |45|44|32|1.375|
+| Disconnected N46080/K12/T8 |113|107|96|1.115|
+| Two FE N34560/K10/T1 |108|93|209|0.445|
+| Two FE N38400/K32/T4 |131|127|281|0.452|
+| Weak barbell N19200/K8/T4 |43|43|926|0.046|
+| Unbalanced N26880/K6/T4 |57|55|41|1.341|
+| Sparse N28800/K6/T4 |132|133|7537|unranked|
+| Three FE unbalanced N33600/K8/T4 |98|97|165|0.588|
+| Two FE N23040/K2/T4, low |45|44|33|1.333|
+| Three FE unbalanced slopes N65280/K12/T8, low |338|338|349|0.968|
+
+Serial improves 13.9%, wide 3.1%, disconnected 5.3%, unbalanced 3.5%, narrow
+2.2%. Narrow outer count grows three→four; serial falls four→three. The weak
+median is unchanged but one candidate call takes 57 versus baseline 42–46 ms.
+Development weak loses every pair and 2 ms at the median. Small oracle calls
+lose 1–2 ms. All losses and ranges are retained, including unchanged controls;
+this targeted inventory supplies no global win-rate claim.
+
+### Science and remaining work
+
+All **260 PPML public states**, **76 native pairs**, and six small independent
+explicit-design Poisson/Hessian/sandwich/mean states pass. Of 76 direct stock
+pairs, 71 pass; five fresh sparse comparisons are unranked. Both baseline and
+candidate disagree with stock fitted means (max 1.0720e-5; tolerance ratio 53.33;
+101 coordinates), while coefficients, covariance, objective and each state's
+own checks pass. This discrepancy is unresolved; do not rank its speed.
+
+**135 distinct focused Rust tests pass.** The inherited checkpoint-count
+assertion still fails zero versus one rejection and remains unchanged; old
+baseline evidence is retained. **Six licensed science fixtures** pass, including
+new fast-LSMR FW/PW/cluster/saved-output coverage, plus **six exact OLS export
+pairs**. OLS medians are 57→58 and 42→42 ms; individual losses remain visible.
+No blanket green-suite or non-regression claim. Initial warm-promotion failure,
+pre-fit declaration/build errors and summary-parser errors are preserved.
+
+Seeds **202609401/402/403 are consumed and frozen**. Stop tuning this pilot's
+thresholds. The next coherent boundary is shared **current-frame original-input
+statistics, reconstruction and family evaluation**, serving ordinary/canonical
+work and low slopes. Independent fresh acceptance and generation validity must
+remain explicit. Candidate phase budgets in the report are the starting point.
+
+To reach 0.90x stock, fresh narrow still needs 15.2 ms (34.5%), disconnected
+20.6 ms (19.3%), unbalanced 18.1 ms (32.9%), low narrow 14.3 ms (32.5%), low large
+slopes 23.9 ms (7.1%). Low large slopes spend 138.55 ms in FE projection and
+74.88 in strict final; categorical disconnected spends 25.74 and 14.24.
+Do not infer these gaps are irreducible or resume closed threshold experiments.
+
+Static allocation inventory drift, weighted constrained/nonretaining-CG failures,
+older comparator/reporting issues, SCC access and Linux/thread/physical-memory
+confirmation remain open. Frozen 77/16/111 definitions are unchanged. No push,
+release, SCC retry, stopped campaign or full qualification occurred.
+
 ## Canonical-first multi-FE PPML finalization adopted — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock

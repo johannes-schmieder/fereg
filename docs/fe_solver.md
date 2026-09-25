@@ -95,6 +95,15 @@ history. Numerical refusal, movement or changed basis retains canonical retry;
 current-weight certificates and final inference authority remain independent.
 Ordinary LSMR, CMG, one-FE and OLS routing are unchanged.
 
+Under ADR 0178, the ordinary two-categorical-FE joint LSMR owner defers its
+Schwarz factor until existing progress diagnostics or a fresh certificate
+require it. Before promotion, the current-weight diagonal is refreshed each
+frame. Promotion discards the uncertified pilot iterate and restarts under
+the stronger factor; subsequent factor reuse retains its prior policy. Full
+Schwarz memory remains admitted, and every direction still needs recurrence
+convergence plus independent original-input finite/FE certificates. Canonical
+checkpoints, three-plus-FE core-pair, slopes and OLS retain their policies.
+
 ADR 0156 applies component scaling to an already configured PPML checkpoint's
 zero-iteration shortcut too. A global initial pass on disconnected components
 also requires a fresh component-scaled pass at the same tolerance. Original-
