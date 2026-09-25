@@ -19,6 +19,34 @@ from ppml_explicit_dummy_oracle import fit_explicit_ppml
 
 
 class IntervalTests(unittest.TestCase):
+    def test_forest_bound_is_sum_of_independent_component_flow_energies(self):
+        component = np.array([[0,0],[0,1],[1,0],[1,1]])
+        groups = np.vstack((component, component + 10))
+        loads = [point(v) for v in (0.1,-0.2,0.3,-0.4)]
+        weights = [point(v) for v in (1.,2.,3.,4.)]
+        separate = accuracy.HIGH.multiply(accuracy.Decimal(2),
+            energy_bound(tree(component), loads, weights))
+        together = energy_bound(accuracy.forest(groups), loads*2, weights*2)
+        self.assertLessEqual(abs(together-separate), accuracy.Decimal('1e-57'))
+
+    def test_general_two_fe_encloses_independent_nonzero_residual_truth(self):
+        rng = np.random.default_rng(195)
+        worker = np.repeat(np.arange(24), 6)
+        firm = (worker//12)*7 + (worker+np.tile(np.arange(6),24))%7
+        groups = np.repeat(np.column_stack((worker,firm)), 2, axis=0)
+        x = np.repeat(rng.normal(size=(len(worker),2)), 2, axis=0)
+        beta = np.array([.2,-.3])
+        mu = np.exp(x@beta + .01*groups[:,0] - .03*groups[:,1])
+        residual = np.tile([.01,-.01], len(worker))
+        result = accuracy.two_fe_coefficient_accuracy(mu+residual, x, beta, mu, groups)
+        self.assertTrue(result['coefficient_accuracy_certified'], result)
+        self.assertEqual(result['components'], 2)
+        self.assertLess(float(result['public_to_optimum_log_mean_upper']),1e-10)
+        bad = accuracy.two_fe_coefficient_accuracy(mu+residual, x, beta+.001, mu, groups)
+        self.assertFalse(bad['coefficient_accuracy_certified'])
+        with self.assertRaises(MemoryError):
+            accuracy.two_fe_coefficient_accuracy(mu+residual, x, beta, mu, groups, memory_bytes=1)
+
     def test_arithmetic_encloses_exact_binary_rationals(self):
         rng = random.Random(39)
         for _ in range(1000):

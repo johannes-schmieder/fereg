@@ -2,6 +2,7 @@
 import datetime
 import hashlib
 import json
+import math
 
 import numpy as np
 import pandas as pd
@@ -16,6 +17,12 @@ def configure(cell):
         raise ValueError('PPML surface currently requires saved means and robust inference')
     if not isinstance(cell.get('fixest_strict', False), bool):
         raise ValueError('Strict stock diagnostic flag must be Boolean')
+    if 'fixest_glm_tol' in cell:
+        tolerance = cell['fixest_glm_tol']
+        if (not cell.get('fixest_strict') or isinstance(tolerance, bool)
+                or not isinstance(tolerance, (int, float)) or not math.isfinite(tolerance)
+                or not 0 < tolerance <= 1e-10):
+            raise ValueError('Explicit stock outer tolerance may only strengthen the strict comparison')
     # Share only validated syntax construction, not OLS outcome or output policy.
     result = configure_ols(dict(cell, model='ols', outputs='none', vce='robust'))
     result.update(model='ppml', outputs='mu')
@@ -66,7 +73,9 @@ local command `"`arm' y''')
     text=replace(text,'fit_model <- function(data) {','''fit_model <- function(data) {
     if (isTRUE(cell$fixest_strict)) {
         return(fepois(formula, data=data, nthreads=cell$threads, vcov="hetero",
-                      ssc=ssc(K.adj=FALSE), notes=FALSE, glm.tol=1e-10, fixef.tol=1e-11))
+                      ssc=ssc(K.adj=FALSE), notes=FALSE,
+                      glm.tol=if (is.null(cell$fixest_glm_tol)) 1e-10 else cell$fixest_glm_tol,
+                      fixef.tol=1e-11))
     }''')
     text=replace(text,'invisible(fit_model(warm))','invisible(predict(fit_model(warm), type="response"))')
     text=replace(text,'seconds <- proc.time()[["elapsed"]] - start','''fit_seconds <- proc.time()[["elapsed"]] - start

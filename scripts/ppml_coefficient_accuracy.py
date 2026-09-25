@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 import scipy
 from scipy import sparse
+from scipy.sparse.csgraph import connected_components
 from scipy.linalg import cholesky_banded, cho_solve_banded, cho_factor, cho_solve
 
 LOW = Context(prec=60, rounding=ROUND_FLOOR)
@@ -49,6 +50,10 @@ def exp(a):
 
 
 def tree(groups):
+    return forest(groups, require_connected=True)
+
+
+def forest(groups, *, require_connected=False):
     _, worker = np.unique(groups[:, 0], return_inverse=True)
     _, firm = np.unique(groups[:, 1], return_inverse=True)
     nw = int(worker.max())+1
@@ -57,14 +62,17 @@ def tree(groups):
     adjacency = [[] for _ in range(vertices)]
     for i, (u, v) in enumerate(zip(worker, firm)):
         adjacency[u].append((int(v), i)); adjacency[v].append((int(u), i))
-    parent = [-1]*vertices; edge = [-1]*vertices; order = [0]
-    parent[0] = 0; queue = deque([0])
-    while queue:
-        u = queue.popleft()
-        for v, i in adjacency[u]:
-            if parent[v] == -1:
-                parent[v] = u; edge[v] = i; order.append(v); queue.append(v)
-    if len(order) != vertices:
+    parent = [-1]*vertices; edge = [-1]*vertices; order = []; roots = 0
+    for root in range(vertices):
+        if parent[root] != -1:
+            continue
+        roots += 1; parent[root] = root; order.append(root); queue = deque([root])
+        while queue:
+            u = queue.popleft()
+            for v, i in adjacency[u]:
+                if parent[v] == -1:
+                    parent[v] = u; edge[v] = i; order.append(v); queue.append(v)
+    if require_connected and roots != 1:
         raise ValueError('tree certificate requires connected graph')
     return worker, firm, parent, edge, order
 
@@ -78,7 +86,9 @@ def energy_bound(topology, edge_loads, weights):
         loads[u] = add(loads[u], value)
         loads[v] = sub(loads[v], value)
     energy = Decimal(0)
-    for vertex in reversed(order[1:]):
+    for vertex in reversed(order):
+        if parent[vertex] == vertex:
+            continue
         value = loads[vertex]
         absolute = max(value[0].copy_abs(), value[1].copy_abs())
         lower_weight = weights[edge[vertex]][0]
@@ -86,8 +96,9 @@ def energy_bound(topology, edge_loads, weights):
             raise ValueError('nonpositive tree weight enclosure')
         energy = HIGH.add(energy, HIGH.divide(HIGH.multiply(absolute, absolute), lower_weight))
         loads[parent[vertex]] = add(loads[parent[vertex]], value)
-    if not loads[0][0] <= 0 <= loads[0][1]:
-        raise ValueError('edge divergence does not balance')
+    for vertex in order:
+        if parent[vertex] == vertex and not loads[vertex][0] <= 0 <= loads[vertex][1]:
+            raise ValueError('component edge divergence does not balance')
     return energy
 
 
@@ -142,6 +153,56 @@ def _ring_project(groups, weights, values, firm_multiplier, memory_bytes):
 
 def coefficient_accuracy(y, x, beta, public_mu, groups, *, firm_multiplier,
                          memory_bytes=1024**3):
+    return _coefficient_accuracy(y, x, beta, public_mu, groups,
+        firm_multiplier=firm_multiplier, memory_bytes=memory_bytes,
+        project=_ring_project, topology_builder=tree)
+
+
+def two_fe_coefficient_accuracy(y, x, beta, public_mu, groups, *, memory_bytes=1024**3):
+    """Bound arbitrary bounded two-FE graphs, including disconnected components.
+
+    LAPACK supplies approximate potentials only; the same outward residual,
+    forest-flow, curvature and Newton-ball calculations certify their accuracy.
+    This is an independent diagnostic, never a comparator exception policy.
+    """
+    return _coefficient_accuracy(y, x, beta, public_mu, groups,
+        firm_multiplier=1, memory_bytes=memory_bytes,
+        project=_dense_reduced_project, topology_builder=forest)
+
+
+def _dense_reduced_project(groups, weights, values, firm_multiplier, memory_bytes):
+    n, k = values.shape
+    _, worker = np.unique(groups[:, 0], return_inverse=True)
+    _, firm = np.unique(groups[:, 1], return_inverse=True)
+    nw, nf = int(worker.max())+1, int(firm.max())+1
+    if firm_multiplier != 1 or nf > 1200:
+        raise ValueError('unsupported general two-FE projection size or relabeling')
+    if 8*(20*n + 12*(nw+nf)*(k+3) + 5*nf*nf) > memory_bytes:
+        raise MemoryError('general two-FE projection exceeds workspace envelope')
+    mass = np.bincount(worker, weights=weights)
+    cross = sparse.coo_matrix((weights, (worker, firm)), shape=(nw, nf)).tocsr()
+    schur = np.diag(np.bincount(firm, weights=weights))
+    schur -= (cross.T @ cross.multiply((1/mass)[:,None])).toarray()
+    # Components come from incidence, not a threshold on weighted arithmetic.
+    pattern = cross.copy(); pattern.data.fill(1.)
+    count, labels = connected_components(pattern.T @ pattern)
+    keep = np.ones(nf, dtype=bool)
+    for component in range(count):
+        keep[np.flatnonzero(labels == component)[0]] = False
+    worker_rhs = np.column_stack([np.bincount(worker, weights=weights*values[:,j], minlength=nw) for j in range(k)])
+    firm_rhs = np.column_stack([np.bincount(firm, weights=weights*values[:,j], minlength=nf) for j in range(k)])
+    rhs = firm_rhs - cross.T @ (worker_rhs/mass[:,None])
+    potentials = np.zeros((nf,k))
+    if keep.any():
+        factor = cho_factor(schur[np.ix_(keep,keep)], lower=True)
+        potentials[keep] = cho_solve(factor, rhs[keep])
+    worker_potentials = (worker_rhs - cross @ potentials)/mass[:,None]
+    residual = values-worker_potentials[worker]-potentials[firm]
+    return residual, worker_potentials[worker], potentials[firm]
+
+
+def _coefficient_accuracy(y, x, beta, public_mu, groups, *, firm_multiplier,
+                          memory_bytes, project, topology_builder):
     y, x, beta, public_mu, g = (np.asarray(a, dtype=np.float64)
                                 for a in (y, x, beta, public_mu, groups))
     if (x.ndim != 2 or not 1 <= x.shape[1] <= 50 or x.shape[0] > 75000
@@ -157,10 +218,12 @@ def coefficient_accuracy(y, x, beta, public_mu, groups, *, firm_multiplier,
     n, k = x.shape
     vertices = sum(len(np.unique(g[:,j])) for j in range(2))
     modeled_bytes = 8*(200*n + 10*n*k + 12*vertices*(k+3))
+    if project is _dense_reduced_project:
+        modeled_bytes += 8*5*len(np.unique(g[:,1]))**2
     if modeled_bytes > memory_bytes:
         raise MemoryError('coefficient-accuracy workspace exceeds budget')
     z = np.log(public_mu)-x@beta
-    _, worker_alpha, firm_alpha = _ring_project(g, np.ones(len(y)), z[:,None], firm_multiplier,
+    _, worker_alpha, firm_alpha = project(g, np.ones(len(y)), z[:,None], firm_multiplier,
                                               memory_bytes)
     start = time.monotonic()
     beta_intervals = [point(b) for b in beta]
@@ -177,12 +240,12 @@ def coefficient_accuracy(y, x, beta, public_mu, groups, *, firm_multiplier,
         log_error = sub(public_log, eta)
         public_feasible_log_error = max(public_feasible_log_error,
             log_error[0].copy_abs(), log_error[1].copy_abs())
-    topology = tree(g)
+    topology = topology_builder(g)
     fe_energy = energy_bound(topology, residual, weights)
     midpoint_mu = np.array([float((a+b)/2) for a,b in weights])
     # These are arbitrary floating approximations; later residual intervals certify
     # their projections against the true feasible state's enclosing weights.
-    r, ax, fx = _ring_project(g, midpoint_mu, x, firm_multiplier, memory_bytes)
+    r, ax, fx = project(g, midpoint_mu, x, firm_multiplier, memory_bytes)
 
 
     n, k = x.shape
@@ -288,4 +351,6 @@ def coefficient_accuracy(y, x, beta, public_mu, groups, *, firm_multiplier,
         report['arrays_sha256'][name] = {'shape': list(a.shape), 'dtype': a.dtype.str,
             'sha256': hashlib.sha256(a.tobytes()).hexdigest()}
     report['firm_multiplier'] = firm_multiplier
+    report['projection_proposal'] = project.__name__
+    report['components'] = sum(i == parent for i, parent in enumerate(topology[2]))
     return report

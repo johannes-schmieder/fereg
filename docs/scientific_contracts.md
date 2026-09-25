@@ -129,6 +129,12 @@ reference error for each excepted discrepancy. A fixed-returned-mean covariance
 check alone is insufficient. This does not admit the candidate, alter runtime
 certificates, or reinterpret historical campaign receipts.
 
+Bounded disconnected two-FE predictor enclosures under
+[ADR 0194](adr/0194-disconnected-ppml-mean-adjudication.md) can independently
+diagnose mean discrepancies. They grant no mean-comparison exception: historical
+failed pairs remain unranked, and any comparison at stronger reference accuracy
+requires a separately declared and scientifically checked measurement.
+
 For bounded LSMR fixtures, the authoritative target is the sealed 100-digit
 explicit-design oracle, with one grounded FE coordinate per connected
 component. It seals residuals, fitted values, weighted objectives, and

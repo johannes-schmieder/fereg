@@ -10,6 +10,79 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Mean comparison adjudicated; remaining cost measured — 2026-09-25
+
+Runtime remains **canonicalcg3 / 30d1c23d**. This milestone changes only the
+independent Python accuracy instrument, its tests and the private benchmark
+surface. Of cg3's 557 captured inputs, 555 still match; the two differences are
+`scripts/ppml_coefficient_accuracy.py` and its tests. Rust/ado estimator source
+and the measured plugin are unchanged. The broad multi-FE 0.90-times-stock goal
+remains active and unfinished.
+
+[ADR 0194](docs/adr/0194-disconnected-ppml-mean-adjudication.md) and the
+[adjudication/corrected-comparison report](benchmarks/reports/development/ppml-mean-adjudication-local-2026-09-25/README.md)
+resolve the two seed429 disconnected **mean** discrepancies. A separate full
+explicit-design Poisson solve, certified with 60-digit outward arithmetic and
+per-component forest-flow energies, bounds its log-mean error by 1.50227e-11.
+Every baseline/candidate mean is proven within the existing envelope in both
+modes/all repetitions. Six stock means are proven outside it, with maximum error
+ratio at least 1.54294. This is reference outer stopping: five IRLS iterations
+at glm.tol=1e-10 versus six at 1e-12. Tightening FE tolerance alone does not help.
+The older dense three-FE **coefficient** discrepancy remains unresolved.
+
+Original failed stock pairs stay unranked; there is no mean-comparison exception.
+A separately declared five-rotation block uses the same byte-identical seed429
+inputs and unmodified pinned stock library at **glm.tol=1e-12, fixef.tol=1e-11**,
+with unchanged fereg options, T8, robust inference and means:
+
+| N49920/K12, disconnected two FE | resgate1 / cg3 / comparable stock median | cg3/stock |
+|---|---:|---:|
+|low|136 / 107 / 102 ms|1.049|
+|fast|111 / 90 / 103 ms|0.874|
+
+Fast meets the 10% target in this block. Low still needs **15.2 ms** to reach
+91.8 ms. All ten cg3/baseline pairs improve; cg3 wins all five fast stock pairs
+and loses all five low stock pairs. All 30 public states, 20 baseline comparisons
+and ten direct candidate/stock comparisons pass. These are corrected-accuracy
+reruns, not another fresh holdout or performance tuning on seed429.
+
+The private optional `fixest_glm_tol` field may only strengthen strict reference
+accuracy. Omission preserves 1e-10, and all frozen definitions remain unchanged.
+The actual harness uses OpenMP/Rayon at the requested thread count and BLAS at
+one. The prior report's OpenMP-one prose was incorrect; its captured controller
+and effective-thread receipts were correct. Historical archives are unchanged.
+
+A separate accepted-source ledger (two diagnostic rotations each, development
+seed347) has 12 passing public states and six passing native pairs. Inclusive
+median spans in milliseconds; do not add nested scopes or worker-time sums:
+
+| Phase | Disconnected low N61440/K6/T4 | Narrow fast N24960/K2/T4 | Two slopes fast N30720/K6/T8 |
+|---|---:|---:|---:|
+|Whole plugin|102.596|33.025|71.921|
+|Canonical preparation|27.406|5.844|19.364|
+|Ordinary direction boundary|23.981|5.657 (LSMR solve)|16.680|
+|Ordinary recurrence|5.743|3.131|3.817|
+|Independent result certification|7.785|3.145|3.837|
+
+In low mode, original norms/score setup/scores/reconstruction-report total
+7.121 ms; the ordinary inner solve is 11.840 ms inside its 23.981-ms boundary.
+Geometry occupies part of the remaining gap. Next implementation should remove
+repeated **current-frame preparation and checking work together**, while retaining
+fresh original-input score/reconstruction authority. Canonical preparation and
+result certification also remain substantial. Do not revive ADR 0166's rejected
+standalone frame-owned Schur-matrix cache or another recurrence-only tuning cycle.
+Narrow fits still need a complete-command lifecycle improvement.
+
+The generalized independent instrument admits bounded disconnected two-FE
+proposals while keeping the original ring entry/domain. Forest components balance
+separately; all original outward curvature/Newton conditions remain. Twenty-two
+focused Python tests pass, including connected and covariance/adjudication
+controls. No new Rust/Stata fixture campaign was needed for Python-only changes.
+The independent diagnostic adds conservative dense workspace accounting, not
+production memory or a physical-RSS guarantee. All 3,006 archived logical receipts
+have been restored and verified. The initial reference probe's unsupported FE
+tolerance failure remains visible; all declared headline/phase fits completed.
+
 ## Iterative canonical products accepted — 2026-09-25
 
 **Target remains:** the complete public `feppml` command should take at most
@@ -20,7 +93,8 @@ with independent science and whole-command evidence.
 
 Retain **canonicalcg3**, based on `a9164bfb` plus canonical product solving,
 visibility of the existing joint-product helper and the new licensed oracle.
-All **557 captured inputs** match this accepted source. Plugin SHA-256:
+All **557 captured inputs** matched the accepted 30d1c23d source; current
+diagnostic-only drift is listed above. Plugin SHA-256:
 `dcf1672c99e05521f5869309a3756f862025794e6bc23d95e6518e3088755d98`.
 [ADR 0193](docs/adr/0193-iterative-canonical-schur-products.md) and the
 [source-bound report](benchmarks/reports/development/ppml-iterative-canonical-products-local-2026-09-25/README.md)
@@ -61,14 +135,12 @@ inference and means, matched threads and strict pinned stock tolerances.
 pairs lose. Do not transfer older block win counts to this artifact or claim
 universal target attainment.
 
-**Unresolved comparisons:** both N49920 disconnected cases fail the stock
-fitted-mean envelope at six observations in all five repetitions, for both
-accepted baseline and candidate. Maximum absolute error is about 6.84987e-7,
-maximum tolerance ratio 1.54310. Coefficients, covariance, sample, objective and
-independent public-state replays pass; all candidate/baseline comparisons pass.
-No package is adjudicated as wrong. Keep these two stock clocks unranked. The
-older dense three-categorical N61440/K10/T8 coefficient discrepancy (maximum
-2.122205e-10, ratio1.44186) is separate and still unresolved.
+**Original unranked comparisons:** both N49920 disconnected cases failed the
+stock fitted-mean envelope at six observations in all five repetitions, for both
+baseline and candidate. ADR 0194 now proves reference outer-stopping error; the
+original clocks stay unranked. The corrected-accuracy block above supplies new
+comparable clocks. The older dense three-categorical N61440/K10/T8 coefficient
+discrepancy (maximum 2.122205e-10, ratio1.44186) remains unresolved.
 
 Validation: 68 distinct final Rust passes plus the known baseline checkpoint-
 count assertion failure, `refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model`
@@ -93,26 +165,25 @@ are now consumed/frozen** and cannot become tuning seeds.
 
 ## Further PPML development plan
 
-### 1. Adjudicate the two new mean discrepancies, then close the low-mode gap
+### 1. Close the remaining low-mode gap after the completed mean adjudication
 
-Use a bounded independent explicit-design Poisson/Hessian or high-accuracy
-score/reconstruction calculation on the exact frozen discrepant inputs. Localize
-whether the disagreement is finite coefficients, FE reconstruction or stopping
-accuracy. Do not change the sample or comparison envelope and do not rank clocks
-until resolved. Adjudication data remain frozen validation inputs, not performance
-tuning cases. Keep the older three-FE coefficient discrepancy separate.
+The two new mean discrepancies are adjudicated above. Do not repeat that task
+or reinterpret the old clocks. Keep the older three-FE coefficient discrepancy
+separate; resolve it independently before assigning a speed ranking.
 
 The comparable current low T4 case needs **23.1 ms (20.3%)** off 114 ms to reach
 90.9 ms. Aim for a **30–35% complete-command reduction** with useful margin.
 The previous cold factor-work refusal is addressed; do not build another fused
 canonical engine or remove its memory/assembly guards.
 
-Next localize remaining ordinary current-frame ownership and verification costs
-on the accepted artifact. The last separate baseline boundary ledger measured
-original norms 0.917 ms, score setup 0.449 ms, original scores 2.432 ms and
-reconstruction/report 1.208 ms across three calls. Those account for about 5.006 ms
-of the prior 9.84-ms ordinary-boundary gap; geometry occupies part of the rest.
-These are historical diagnostic spans, not new-candidate exclusive timings.
+Use the accepted-code ledger above to localize repeated row passes and ownership
+across current-frame preparation, original-input score/reconstruction checks,
+canonical preparation and result certification. The low recurrence is only
+5.743 ms; its whole boundary is 23.981 ms. Do not attribute the entire difference
+to certificates or sum overlapping spans. Source inspection also confirms final
+objective replay and null-objective publication each scan original outcomes;
+investigate their shared immutable terms without making cached IRLS values
+certify themselves. Their exclusive cost has not yet been measured.
 
 Implement one coherent current-frame owner only where a new ledger shows repeated
 work: borrow original columns, prepare normalized weights/stable norms once for
@@ -126,8 +197,8 @@ if they fail, retain the cost ledger and move on.
 ### 2. Redesign narrow fits across the complete command
 
 Current narrow fast needs **11.3 ms (27.6%)** off 41 ms to reach 29.7 ms. Aim for
-**35–40%**, carrying the benefit to low mode. Previous resgate1 diagnosis found
-only 2.731 ms in recurrence, so eliminating it alone cannot close this gap.
+**35–40%**, carrying the benefit to low mode. The accepted-code diagnostic finds
+only 3.131 ms in recurrence, so eliminating it alone cannot close this gap.
 Reprofile accepted code and prioritize canonical preparation, initialization,
 independent result certification and public loading/output costs.
 
