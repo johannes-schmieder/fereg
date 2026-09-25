@@ -3,7 +3,7 @@
 //! Symbolic edges and observation mappings belong to the sample/topology. Only
 //! numeric blocks are refilled when the owning weighted QR generation changes.
 //! Reconstruction and independent acceptance never use cached residuals.
-use super::{allocation, dot, filled, Group, ReusableCertificateGeometry};
+use super::{allocation, dot, filled, Group, ReusableCertificateGeometry, Worker};
 use crate::error::Result;
 use crate::fe::FeDesign;
 use rayon::prelude::*;
@@ -589,83 +589,8 @@ impl PreparedCoupling {
                 y[i] = dot(&self.schur[i * p..(i + 1) * p], x);
             }
         } else {
-            // Local blocks include the measured QR Gram, including rank-zero
-            // coordinates; no exact-identity or full-local-rank assumption.
-            let mut coordinate = 0;
-            let mut value = 0;
-            for effect in 0..self.effect_groups.len() {
-                if effect == self.eliminated {
-                    continue;
-                }
-                let pair = self.pairs[..self.coupling_pairs]
-                    .iter()
-                    .find(|pair| pair.right == effect)
-                    .expect("remaining partition");
-                let width = pair.right_channels;
-                let levels = if effect + 1 < self.effect_groups.len() {
-                    self.effect_groups[effect + 1] - self.effect_groups[effect]
-                } else {
-                    self.starts.len() - self.effect_groups[effect]
-                };
-                for _ in 0..levels {
-                    for a in 0..width {
-                        y[coordinate + a] = dot(
-                            &self.diagonal[value + a * width..value + (a + 1) * width],
-                            &x[coordinate..coordinate + width],
-                        );
-                    }
-                    coordinate += width;
-                    value += width * width;
-                }
-            }
-            for pair in &self.pairs[self.coupling_pairs..] {
-                let lc = pair.left_channels;
-                let rc = pair.right_channels;
-                for group in 0..pair.offsets.len() - 1 {
-                    let left = pair.left_start + group * lc;
-                    for edge in pair.offsets[group]..pair.offsets[group + 1] {
-                        let right = pair.right_start + pair.targets[edge] * rc;
-                        for a in 0..lc {
-                            for b in 0..rc {
-                                let v = pair.values[edge * lc * rc + a * rc + b];
-                                y[left + a] = v.mul_add(x[right + b], y[left + a]);
-                                y[right + b] = v.mul_add(x[left + a], y[right + b]);
-                            }
-                        }
-                    }
-                }
-            }
-            // Finish C and C' for one eliminated group while its block values
-            // are hot. Each worker owns its y/c banks; no shared reductions.
-            let lc = self.pairs[0].left_channels;
-            for group in 0..self.pairs[0].offsets.len() - 1 {
-                let local = &mut c[..lc];
-                local.fill(0.);
-                for pair in &self.pairs[..self.coupling_pairs] {
-                    let rc = pair.right_channels;
-                    for edge in pair.offsets[group]..pair.offsets[group + 1] {
-                        let right = pair.right_start + pair.targets[edge] * rc;
-                        for a in 0..lc {
-                            for b in 0..rc {
-                                local[a] = pair.values[edge * lc * rc + a * rc + b]
-                                    .mul_add(x[right + b], local[a]);
-                            }
-                        }
-                    }
-                }
-                for pair in &self.pairs[..self.coupling_pairs] {
-                    let rc = pair.right_channels;
-                    for edge in pair.offsets[group]..pair.offsets[group + 1] {
-                        let right = pair.right_start + pair.targets[edge] * rc;
-                        for a in 0..lc {
-                            for b in 0..rc {
-                                y[right + b] = (-pair.values[edge * lc * rc + a * rc + b])
-                                    .mul_add(local[a], y[right + b]);
-                            }
-                        }
-                    }
-                }
-            }
+            self.compact_base(x, y);
+            self.subtract_eliminated(x, y, c, 0..self.pairs[0].offsets.len() - 1);
         }
         let curvature = dot(x, y);
         if !curvature.is_finite() || curvature <= self.curvature_error_scale * dot(x, x) {
@@ -673,6 +598,146 @@ impl PreparedCoupling {
         }
         Some(curvature)
     }
+    #[inline(always)]
+    fn compact_base(&self, x: &[f64], y: &mut [f64]) {
+        // Local blocks include the measured QR Gram, including rank-zero
+        // coordinates; no exact-identity or full-local-rank assumption.
+        let mut coordinate = 0;
+        let mut value = 0;
+        for effect in 0..self.effect_groups.len() {
+            if effect == self.eliminated {
+                continue;
+            }
+            let pair = self.pairs[..self.coupling_pairs]
+                .iter()
+                .find(|pair| pair.right == effect)
+                .expect("remaining partition");
+            let width = pair.right_channels;
+            let levels = if effect + 1 < self.effect_groups.len() {
+                self.effect_groups[effect + 1] - self.effect_groups[effect]
+            } else {
+                self.starts.len() - self.effect_groups[effect]
+            };
+            for _ in 0..levels {
+                for a in 0..width {
+                    y[coordinate + a] = dot(
+                        &self.diagonal[value + a * width..value + (a + 1) * width],
+                        &x[coordinate..coordinate + width],
+                    );
+                }
+                coordinate += width;
+                value += width * width;
+            }
+        }
+        for pair in &self.pairs[self.coupling_pairs..] {
+            let lc = pair.left_channels;
+            let rc = pair.right_channels;
+            for group in 0..pair.offsets.len() - 1 {
+                let left = pair.left_start + group * lc;
+                for edge in pair.offsets[group]..pair.offsets[group + 1] {
+                    let right = pair.right_start + pair.targets[edge] * rc;
+                    for a in 0..lc {
+                        for b in 0..rc {
+                            let v = pair.values[edge * lc * rc + a * rc + b];
+                            y[left + a] = v.mul_add(x[right + b], y[left + a]);
+                            y[right + b] = v.mul_add(x[left + a], y[right + b]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn subtract_eliminated(
+        &self,
+        x: &[f64],
+        y: &mut [f64],
+        c: &mut [f64],
+        groups: std::ops::Range<usize>,
+    ) {
+        // Finish C and C' for one eliminated group while its block values
+        // are hot. Each invocation writes only its own output and scratch.
+        let lc = self.pairs[0].left_channels;
+        for group in groups {
+            let local = &mut c[..lc];
+            local.fill(0.);
+            for pair in &self.pairs[..self.coupling_pairs] {
+                let rc = pair.right_channels;
+                for edge in pair.offsets[group]..pair.offsets[group + 1] {
+                    let right = pair.right_start + pair.targets[edge] * rc;
+                    for a in 0..lc {
+                        for b in 0..rc {
+                            local[a] = pair.values[edge * lc * rc + a * rc + b]
+                                .mul_add(x[right + b], local[a]);
+                        }
+                    }
+                }
+            }
+            for pair in &self.pairs[..self.coupling_pairs] {
+                let rc = pair.right_channels;
+                for edge in pair.offsets[group]..pair.offsets[group + 1] {
+                    let right = pair.right_start + pair.targets[edge] * rc;
+                    for a in 0..lc {
+                        for b in 0..rc {
+                            y[right + b] = (-pair.values[edge * lc * rc + a * rc + b])
+                                .mul_add(local[a], y[right + b]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Ordinary joint solving has one RHS; the other column workers are idle.
+    /// Each owns a partial product. Merge in worker order before the unchanged
+    /// curvature guard; only original-row reconstruction can accept a solve.
+    pub(super) fn apply_joint(
+        &self,
+        input: &[f64],
+        output: &mut [f64],
+        scratch: &mut [f64],
+        helpers: &mut [Worker],
+    ) -> Option<f64> {
+        let groups = self.pairs[0].offsets.len() - 1;
+        let width = (helpers.len() + 1).min(groups);
+        if self.representation == Representation::Schur || width < 2 {
+            return self.apply(input, output, scratch);
+        }
+        let helpers = &mut helpers[..width - 1];
+        let chunk = groups / width;
+        let extra = groups % width;
+        rayon::join(
+            || {
+                self.compact_base(input, output);
+                self.subtract_eliminated(input, output, scratch, 0..chunk + usize::from(extra > 0));
+            },
+            || helpers.par_iter_mut().enumerate().for_each(|(index, worker)| {
+                worker.product.fill(0.);
+                let first = chunk * (index + 1) + extra.min(index + 1);
+                let last = chunk * (index + 2) + extra.min(index + 2);
+                self.subtract_eliminated(
+                    input, &mut worker.product, &mut worker.eliminated_scratch, first..last,
+                );
+            }),
+        );
+        for worker in helpers {
+            for (value, partial) in output.iter_mut().zip(&worker.product) {
+                *value += partial;
+            }
+        }
+        let curvature = dot(input, output);
+        if !curvature.is_finite() || curvature <= self.curvature_error_scale * dot(input, input) {
+            return None;
+        }
+        Some(curvature)
+    }
+
+    #[cfg(test)]
+    pub(super) fn force_compact_for_test(&mut self) {
+        self.representation = Representation::Coupling;
+    }
+
 }
 
 #[cfg(test)]

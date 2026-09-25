@@ -251,6 +251,11 @@ impl SlopeCoefficientWorkspace {
     }
 
     #[cfg(test)]
+    pub(super) fn force_compact_coupling_for_test(&mut self) {
+        self.coupling.as_mut().expect("prepared coupling").force_compact_for_test();
+    }
+
+    #[cfg(test)]
     pub(super) fn coupling_preparations(&self) -> Option<usize> {
         self.coupling.as_ref().map(|c| c.preparations)
     }

@@ -10,6 +10,93 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Cooperative compact PPML products accepted — 2026-09-25
+
+[ADR 0185](docs/adr/0185-cooperative-compact-ppml-products.md) and the
+[source-bound report](benchmarks/reports/development/ppml-cooperative-slope-products-local-2026-09-25/README.md)
+retain **jointteam1**. The 554 captured inputs match this checkpoint; four Rust
+files differ from geoteam1 at `9a297e44`. The new licensed compact-route fixture
+is separately source-bound because it was added after artifact capture.
+Plugin SHA-256 is
+`89b247490669492e928b5cb9fc9f33f3b0b85fef073733624b084f35a84d970b`.
+The multi-FE PPML <=0.90-times-comparable-stock goal remains active and unfinished.
+
+Ordinary single-RHS compact FE products borrow idle workers' existing coefficient
+and eliminated-group scratch banks. Contiguous group contributions merge in worker
+order. Dense Schur and single-worker products retain their scalar path. No new
+bank, descriptor, factor, thread team or admission term is added. Reduction
+grouping changes, but curvature fallback, original reconstruction, all fresh
+checks, generation authority, tolerances, canonical rank/bread and final Hessian
+remain unchanged. Canonical multiple-RHS batching is unchanged.
+
+Fresh seed **202609418**, five baseline/candidate/stock rotations:
+
+| Case | N/K/T; mode | Baseline / candidate / stock ms | Candidate / stock |
+|---|---|---:|---:|
+| Unbalanced three-FE slopes |69120/10/8; fast|233 / 220 / 259|0.849|
+| Same, low |69120/10/8; low|252 / 241 / 258|0.934|
+| Two slope partitions |36480/6/8; fast|112 / 112 / 83|1.349|
+| Smaller three-FE slopes |34560/6/4; fast|111 / 105 / 131|0.802|
+| Serial two-slope |36480/6/1; fast|186 / 190 / 330|0.576|
+| Narrow categorical |24000/2/4; fast|40 / 40 / 33|1.212|
+| Weak slope barbell |14400/4/4; fast|38 / 38 / 742|0.051|
+| Disconnected slopes |24960/8/4; low|116 / 117 / 150|0.780|
+| Two slopes on each partition |28800/10/8; fast|172 / 167 / 189|0.884|
+| Four categorical FE |30000/8/4; low|195 / 173 / 484|0.357|
+
+Fresh has 29 wins, 12 losses and nine ties in 50 native pairs; seven medians
+clear 0.90 stock. Large slope gains are 4.4–5.6%. Diagnostic compact product
+time falls about 18→6–7 ms. Four-FE low-memory PPML uses the same operator:
+its diagnostic product falls 29.8→9.8 ms, explaining its approximately 11% gain.
+The dense slope product remains about 1.4 ms. Separate diagnostic clocks are
+not headline rankings; report distributions and source identities are authoritative.
+
+Same-input five-pair confirmation retains serial slopes' small loss: 185/188 ms,
+three paired losses. Disconnected slopes recover 118/117 ms; four categorical
+FE retain 187/167 ms. OLS seed419 controls pass exact scientific export equality;
+a three-FE 54/55-ms control loss persists as 50/52 ms in confirmation. Preserve
+these small losses; do not claim universal performance non-regression.
+
+All 17 distinct focused Rust tests and 13 licensed fixture executions pass,
+including independent analytic weighted projection and explicit Poisson/Hessian/
+sandwich oracles. New forced-compact tests cover T1/T2/T4, changing weights,
+deficient slopes, disconnected components and scaled controls. The new actual
+compact-route fixture passes fast/low T1/T4 16-iteration zero allocator events/
+growth windows. A diagnostic routing witness confirms cooperative products run.
+All 258 PPML states, 163 baseline comparisons, 68 direct stock comparisons and
+20 OLS pairs pass; 24 PPML states are diagnostics. All 83 headline PPML pairs
+have exact tracked peaks and scratch reports; selected-memory telemetry differs
+by at most 112 bytes. This is not RSS or physical-cap evidence.
+
+The restored archive has 11,199 logical receipts / 2,409 payloads / 22,541,741
+bytes, SHA-256 `750b1d04e875e9f980722f4d4b219bb3cd6d0e089e7cf3b147086723439e075f`.
+Work root: target/ppml-joint-operator-20260925. All operations are terminal.
+Seeds **202609418/419** are consumed validation, not tuning inputs.
+
+### Next bounded implementation
+
+Close compact-operator tuning and implement a model-space Poisson-start candidate
+for multipartition slopes. Current `seed_multi_effect_predictor` skips every
+slope design, even when its partitions contain intercepts. A conditional group
+intercept update remains exact with all other coefficients, including slopes,
+held at zero. Prove that generalization with independent truth, weighted offsets,
+rank-deficient/multiple slopes, refusal/full rollback, warm-start and Mu exclusions;
+then measure the full public command early. Preserve the first canonical rank
+solve and all strict/final checks. Do not change sweep counts or topology guards
+to fit validation seeds.
+
+If the seed alone leaves substantial ordinary work, move to safeguarded
+conditional slope-local Newton/coefficient updates from the broader plan. Compare
+objective/score progress per observation pass and avoid rebuilding full weighted
+solves when a certified ordinary coefficient step suffices. Large low-memory
+still needs 8.8 ms, two-slope T8 37.3 ms and narrow categorical 10.3 ms to clear
+the fresh stock target. These are separate priorities, not a reason to tune the
+already inexpensive dense product or revive rejected factors/paired lanes.
+
+Frozen definitions, static allocation drift, constrained-fit/CG failures and
+platform deferrals remain unchanged. No push, release, SCC retry, stopped
+campaign or qualification occurred. Earlier next-step entries are historical.
+
 ## Parallel current-weight slope preparation accepted — 2026-09-25
 
 [ADR 0184](docs/adr/0184-parallel-ppml-slope-preparation.md) and the

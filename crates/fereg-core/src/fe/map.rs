@@ -1553,8 +1553,8 @@ mod tests {
             ],
         )
         .unwrap();
-        for threads in [1, 4] {
-            for coupling in [false, true] {
+        for threads in [1, 2, 4] {
+            for coupling in [0, 1, 2] {
                 let pool = rayon::ThreadPoolBuilder::new()
                     .num_threads(threads)
                     .build()
@@ -1563,8 +1563,11 @@ mod tests {
                 owner.enable_certificate_geometry().unwrap();
                 owner.enable_coefficient_solver(threads).unwrap();
                 owner.enable_coefficient_certificates().unwrap();
-                if coupling {
+                if coupling != 0 {
                     owner.enable_coefficient_coupling().unwrap();
+                    if coupling == 2 {
+                        owner.coefficient_solver.as_mut().unwrap().force_compact_coupling_for_test();
+                    }
                 }
                 owner.enable_joint_slopes().unwrap();
                 let capacity = owner.capacities();
@@ -1790,18 +1793,21 @@ mod tests {
             ],
         )
         .unwrap();
-        for threads in [1, 4] {
-            for coupling in [false, true] {
+        for threads in [1, 2, 4] {
+            for coupling in [0, 1, 2] {
                 let pool = rayon::ThreadPoolBuilder::new()
                     .num_threads(threads)
                     .build()
                     .unwrap();
-                let mut owner = ReusableMapAbsorber::new(design.clone(), 1).unwrap();
+                let mut owner = ReusableMapAbsorber::new(design.clone(), if coupling == 2 { 4 } else { 1 }).unwrap();
                 owner.enable_certificate_geometry().unwrap();
                 owner.enable_coefficient_solver(threads).unwrap();
                 owner.enable_coefficient_certificates().unwrap();
-                if coupling {
+                if coupling != 0 {
                     owner.enable_coefficient_coupling().unwrap();
+                    if coupling == 2 {
+                        owner.coefficient_solver.as_mut().unwrap().force_compact_coupling_for_test();
+                    }
                 }
                 owner.enable_joint_slopes_for_columns(3).unwrap();
                 let capacity = owner.capacities();

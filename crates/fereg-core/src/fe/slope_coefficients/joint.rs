@@ -501,7 +501,7 @@ impl JointFiniteWorkspace {
         let (original, bank) = owner.columns.split_at_mut(n);
         let z = &mut bank[..n * k];
         let roots = &mut owner.roots;
-        let worker = &mut owner.workers[0];
+        let (worker, helpers) = owner.workers.split_first_mut().expect("admitted worker");
         let observations = &mut worker.observations;
         let scratch = &mut worker.eliminated_scratch;
         for row in 0..n {
@@ -560,6 +560,7 @@ impl JointFiniteWorkspace {
             scale_y,
             observations,
             scratch,
+            helpers,
             config,
         )
     }
@@ -576,6 +577,7 @@ impl JointFiniteWorkspace {
         scale_y: f64,
         observations: &mut [f64],
         scratch: &mut [f64],
+        helpers: &mut [Worker],
         config: MapConfig,
     ) -> Result<usize> {
         let n = original.len();
@@ -660,7 +662,7 @@ impl JointFiniteWorkspace {
             }
             if op
                 .coupling
-                .and_then(|c| c.apply(&self.direction[..p], &mut self.product[..p], scratch))
+                .and_then(|c| c.apply_joint(&self.direction[..p], &mut self.product[..p], scratch, helpers))
                 .is_none()
             {
                 op.forward(&self.direction[..p], observations);
@@ -883,7 +885,7 @@ impl JointFiniteWorkspace {
                     Ok(())
                 })?;
         }
-        let worker = &mut owner.workers[0];
+        let (worker, helpers) = owner.workers.split_first_mut().expect("admitted worker");
         let observations = &mut worker.observations;
         let scratch = &mut worker.eliminated_scratch;
         for i in 0..k {
@@ -901,6 +903,7 @@ impl JointFiniteWorkspace {
             scale_y,
             observations,
             scratch,
+            helpers,
             config,
         )
     }
