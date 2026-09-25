@@ -194,7 +194,7 @@ with complete work/memory admission before weighted geometry allocation. A fused
 direct fully absorbed Gram/RHS/norms and independent FE moments. Same-call
 products go directly to canonical rank solving; retained rows are written once
 for unchanged QR/span, residual, inverse and inference consumers. Complete
-workspace and structural factor-work refusal preserve the existing projector.
+workspace and structural assembly-work refusal preserve the existing projector.
 No weighted factor or certificate authority survives the call.
 [ADR 0171](adr/0171-observed-work-canonical-ppml-routing.md) lets later calls
 compare factor setup against actual Schur operator work from the previous
@@ -219,6 +219,17 @@ rows in fixed order; its original mean uses compensated accumulation. Current
 factors and the independent original-input residual/Gram certificate retain their
 existing requirements. The complete phase plan can admit more direct work within
 the same allowance; it does not grant any cross-generation weighted authority.
+
+Under [ADR 0193](adr/0193-iterative-canonical-schur-products.md), a component
+factorization that exceeds the existing work allowance can instead use independent
+per-column conjugate gradients on the same grounded, diagonally scaled Schur
+blocks. Affordable factorizations retain Cholesky. The bounded recurrence only
+proposes a projection: the same fresh original-input FE certificate and direct
+absorbed products determine acceptance, followed by unchanged canonical finite
+rank and final-Hessian checks. Unfinished or uncertified proposals retain the
+existing projector. Matrix assembly and complete phase-memory admission remain
+required, and no weighted state survives the call. Iterative report counts are
+maximum component/RHS Krylov iterations, not MAP sweeps.
 
 Under ADR 0139, admitted low one-FE PPML canonical products use immutable
 original columns minus freshly computed current-weight group centers. A separate

@@ -531,6 +531,15 @@ buffer. The minimum future plan must still fit the full allowance, and the
 complete component-dependent plan must pass before that buffer can be reclaimed.
 No budget increases or weighted-state reuse across calls follow from this change.
 
+[ADR 0193](adr/0193-iterative-canonical-schur-products.md) adds an iterative
+proposal when reduced Cholesky work is too large. Three `D*W` double vectors
+(total free reduced dimension by response/control width) are reserved fallibly
+and conservatively charged alongside the component matrix/factor bank in the
+complete phase plan. They are released before independent certification. All
+phases still fit `16*N*pool`; refusal preserves the existing projector and its
+ownership rules. No persistent Krylov cache or additional memory allowance is
+introduced.
+
 ## PPML separation memory
 
 The prepared singleton fixed point uses one N-capacity machine-word queue

@@ -9,10 +9,12 @@ use crate::fe::{
     BorrowedInterceptFeDesign, BorrowedMapWeights, FeCertificate, FeSolverKind, MapConfig,
     SolveReport, SolveStopReason,
 };
+use crate::fe::slope_coefficients::joint::normalized_product;
 use crate::memory::SolverWorkspacePeak;
 use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 use std::mem::size_of;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 fn declined() -> FeregError {
@@ -665,11 +667,16 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             )
             .ok_or_else(declined)?;
     }
-    if factor_work > factor_work_budget {
-        return Err(declined());
-    }
+    // A reduced matrix can be inexpensive to apply even when its cubic
+    // factorization exceeds the current-call work allowance. The same fused
+    // original-input certificate decides acceptance of either proposal.
+    let iterative = factor_work > factor_work_budget;
+    let krylov_cells = if iterative {
+        d.checked_mul(width).and_then(|x| x.checked_mul(3)).ok_or_else(declined)?
+    } else { 0 };
+    let factor_charge = factor_cells.checked_add(krylov_cells).ok_or_else(declined)?;
     let minimum_bytes = plan
-        .minimum_storage_bytes(matrix_cells, factor_cells)
+        .minimum_storage_bytes(matrix_cells, factor_charge)
         .ok_or_else(declined)?;
     if minimum_bytes > allowance {
         return Err(declined());
@@ -678,9 +685,9 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     // coexisting phase banks fit. Streaming is the same solve under tighter
     // workspace, not a different numerical route or a threshold by width.
     let (retain_centers, tile_output, bytes) =
-        match plan.storage_bytes(matrix_cells, factor_cells, true) {
+        match plan.storage_bytes(matrix_cells, factor_charge, true) {
             Some(bytes) if bytes <= allowance => (true, false, bytes),
-            _ => match plan.storage_bytes(matrix_cells, factor_cells, false) {
+            _ => match plan.storage_bytes(matrix_cells, factor_charge, false) {
                 Some(bytes) if bytes <= allowance => (false, false, bytes),
                 _ => (false, true, minimum_bytes),
             },
@@ -803,10 +810,12 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         }
     }
     components.retain(|block| block.len != 0);
-    // Keep the existing global pivot guard; splitting independent blocks does
-    // not weaken numerical admission or confer rank/certificate authority.
+    // Direct proposals retain the existing global pivot guard. Iterative
+    // proposals require positive curvature and the same fresh FE certificate;
+    // neither reduced solve establishes canonical finite-rank authority.
     let guard = 128. * f64::EPSILON * d.max(1) as f64;
     for block in &components {
+        if iterative { break; }
         let size = block.len;
         let factor = &mut factor[block.offset..block.offset + size * size];
         for j in 0..size {
@@ -926,11 +935,10 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             Ok(())
         })?;
     let mut solved = budget.reserve(d * width, 0.)?;
+    let mut krylov = budget.reserve(krylov_cells, 0.)?;
+    let iterations = AtomicUsize::new(1);
     if d > 0 {
-        solved
-            .par_chunks_mut(d)
-            .enumerate()
-            .try_for_each(|(j, values)| -> Result<()> {
+        let solve_column = |j: usize, values: &mut [f64], scratch: &mut [f64]| -> Result<()> {
                 for h in 0..q {
                     if free[h] != usize::MAX {
                         values[free[h]] = cross[j * q + h] / roots[h];
@@ -940,6 +948,12 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                     let size = block.len;
                     let values = &mut values[block.start..block.start + size];
                     let factor = &factor[block.offset..block.offset + size * size];
+                    if iterative {
+                        let count = solve_reduced_cg(factor, values, &mut scratch[..3*size],
+                            config.max_iterations.min(size), config.tolerance * 0.01)?;
+                        iterations.fetch_max(count, Ordering::Relaxed);
+                        continue;
+                    }
                     for i in 0..size {
                         for k in 0..i {
                             values[i] -= factor[i * size + k] * values[k];
@@ -957,8 +971,16 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                     return Err(declined());
                 }
                 Ok(())
-            })?;
+        };
+        if iterative {
+            solved.par_chunks_mut(d).zip(krylov.par_chunks_mut(3*d)).enumerate()
+                .try_for_each(|(j, (values, scratch))| solve_column(j, values, scratch))?;
+        } else {
+            solved.par_chunks_mut(d).enumerate()
+                .try_for_each(|(j, values)| solve_column(j, values, &mut []))?;
+        }
     }
+    budget.release(krylov)?;
     budget.release(factor)?;
     budget.release(components)?;
     budget.release(cross)?;
@@ -991,6 +1013,10 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 }
                 Ok(())
             })?;
+    }
+    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        eprintln!("FEREG_SOLVER_TRACE|phase=canonical_reduced_solve|rows={n}|iterative={}|iterations={}",
+            u8::from(iterative), iterations.load(Ordering::Relaxed));
     }
     let solve_seconds = started.elapsed().as_secs_f64();
     let started = Instant::now();
@@ -1199,7 +1225,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     let report = SolveReport {
         requested_solver: FeSolverKind::Map,
         used_solver: FeSolverKind::Map,
-        iterations: 1,
+        iterations: iterations.load(Ordering::Relaxed),
         checkpoint_retries: 0,
         solver_workspace_peak: SolverWorkspacePeak::from_bytes(bytes)?,
         stop_reason: SolveStopReason::Certified,
@@ -1273,6 +1299,76 @@ fn group_coefficient<P: PreparedOlsFitView + ?Sized>(
     } else {
         Err(declined())
     }
+}
+
+// The coefficient recurrence only proposes a projection. The independent
+// original-row FE certificate and direct Gram construction remain mandatory.
+fn solve_reduced_cg(
+    matrix: &[f64],
+    values: &mut [f64],
+    scratch: &mut [f64],
+    max_iterations: usize,
+    tolerance: f64,
+) -> Result<usize> {
+    let n = values.len();
+    if matrix.len() != n * n || scratch.len() < 3 * n {
+        return Err(declined());
+    }
+    let scale = values.iter().map(|x| x.abs()).fold(0_f64, f64::max);
+    if !scale.is_finite() {
+        return Err(declined());
+    }
+    if scale == 0. {
+        return Ok(0);
+    }
+    let (residual, rest) = scratch.split_at_mut(n);
+    let (direction, product) = rest.split_at_mut(n);
+    let product = &mut product[..n];
+    for i in 0..n {
+        residual[i] = values[i] / scale;
+        direction[i] = residual[i];
+    }
+    values.fill(0.);
+    let mut square: f64 = residual.iter().map(|x| x * x).sum();
+    let target = tolerance * square.sqrt();
+    for iteration in 1..=max_iterations {
+        for (row, out) in matrix.chunks(n).zip(product.iter_mut()) {
+            *out = normalized_product(row, direction);
+        }
+        let curvature: f64 = direction
+            .iter()
+            .zip(product.iter())
+            .map(|(x, y)| x * y)
+            .sum();
+        if !curvature.is_finite() || curvature <= 0. || !square.is_finite() {
+            return Err(declined());
+        }
+        let alpha = square / curvature;
+        let mut next = 0.;
+        for i in 0..n {
+            values[i] = alpha.mul_add(direction[i], values[i]);
+            residual[i] = (-alpha).mul_add(product[i], residual[i]);
+            next = residual[i].mul_add(residual[i], next);
+        }
+        if !next.is_finite() {
+            return Err(declined());
+        }
+        if next.sqrt() <= target {
+            for value in values {
+                *value *= scale;
+                if !value.is_finite() {
+                    return Err(declined());
+                }
+            }
+            return Ok(iteration);
+        }
+        let beta = next / square;
+        for i in 0..n {
+            direction[i] = beta.mul_add(direction[i], residual[i]);
+        }
+        square = next;
+    }
+    Err(declined())
 }
 
 fn group_effect_mean(
@@ -1395,6 +1491,175 @@ mod tests {
             },
         )
         .unwrap()
+    }
+
+    #[test]
+    fn reduced_cg_matches_dense_spd_products_and_refuses_unfinished_solves() {
+        for n in [2_usize, 7, 31] {
+            let mut matrix = vec![0.; n * n];
+            for i in 0..n {
+                matrix[i * n + i] = 2.;
+                if i + 1 < n {
+                    matrix[i * n + i + 1] = -0.7;
+                    matrix[(i + 1) * n + i] = -0.7;
+                }
+            }
+            for scale in [1e-200, 1., 1e200] {
+                let truth: Vec<_> = (0..n)
+                    .map(|i| ((i as f64 + 0.2) * 0.37).sin() * scale)
+                    .collect();
+                let rhs: Vec<_> = (0..n)
+                    .map(|i| (0..n).map(|j| matrix[i * n + j] * truth[j]).sum())
+                    .collect();
+                let mut answer = rhs.clone();
+                assert!(
+                    solve_reduced_cg(&matrix, &mut answer, &mut vec![0.; 3 * n], n, 1e-13).unwrap()
+                        <= n
+                );
+                for (actual, expected) in answer.iter().zip(&truth) {
+                    assert!((actual / scale - expected / scale).abs() < 1e-12);
+                }
+                assert!(
+                    solve_reduced_cg(&matrix, &mut rhs.clone(), &mut vec![0.; 3 * n], 0, 1e-13)
+                        .is_err()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn iterative_products_preserve_independent_weighted_nonzero_residuals() {
+        for threads in [1, 4] {
+            let team = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            team.install(|| {
+                let mut g = Vec::new();
+                let mut h = Vec::new();
+                let mut x = Vec::new();
+                let mut y = Vec::new();
+                let mut q = Vec::new();
+                let mut truth = Vec::new();
+                for a in 0..640 {
+                    for slot in 0..6 {
+                        let b = (a + 13 * slot) % 80;
+                        let value = ((a * 6 + slot) as f64 * 0.23).sin();
+                        let error = 0.03 * ((a * 6 + slot) as f64 * 0.71).cos();
+                        for repeat in 0..2 {
+                            let weight = if repeat == 0 { 0.7 } else { 2.3 };
+                            let residual = if repeat == 0 {
+                                error / weight
+                            } else {
+                                -error / weight
+                            };
+                            g.push(a as f64);
+                            h.push(b as f64);
+                            x.push(value);
+                            q.push(weight);
+                            truth.push(residual);
+                            y.push(0.37 * value + 0.002 * a as f64 - 0.01 * b as f64 + residual);
+                        }
+                    }
+                }
+                let prepared = prepared(&y, &[x.clone(), vec![0.; y.len()]], &g, &h);
+                let design = prepared
+                    .fit_borrowed_intercept_map_design()
+                    .unwrap()
+                    .unwrap();
+                let plan = Plan::new(&design, 3, 0, threads, 0).unwrap();
+                assert!((plan.q as u128).pow(3) / 3 > plan.factor_work_budget);
+                for frame in [0, 1] {
+                    let weights: Vec<_> = q
+                        .iter()
+                        .enumerate()
+                        .map(|(i, w)| {
+                            w * if frame == 0 {
+                                1.
+                            } else {
+                                0.3 + (i / 2 % 13) as f64
+                            }
+                        })
+                        .collect();
+                    let config = MapConfig {
+                        tolerance: 1e-12,
+                        ..MapConfig::default()
+                    };
+                    let products = try_build(
+                        &prepared,
+                        &[0, 1],
+                        &y,
+                        BorrowedMapWeights::Provided(&weights),
+                        1.,
+                        config,
+                        8_000_000,
+                        0,
+                        &mut Vec::new(),
+                    )
+                    .unwrap()
+                    .expect("iterative product proposal certifies");
+                    assert!(products.report.iterations > 1 && products.report.certified());
+                    let minimum = products.minimum_workspace_bytes;
+                    let bounded = try_build(
+                        &prepared,
+                        &[0, 1],
+                        &y,
+                        BorrowedMapWeights::Provided(&weights),
+                        1.,
+                        config,
+                        minimum,
+                        0,
+                        &mut Vec::new(),
+                    )
+                    .unwrap()
+                    .expect("complete Krylov phase fits its reported minimum");
+                    assert_eq!(products.response, bounded.response);
+                    assert_eq!(products.moments.gram, bounded.moments.gram);
+                    let mut panel = vec![42.; 1024];
+                    let capacity = panel.capacity();
+                    assert!(try_build(
+                        &prepared,
+                        &[0, 1],
+                        &y,
+                        BorrowedMapWeights::Provided(&weights),
+                        1.,
+                        config,
+                        minimum - 1,
+                        0,
+                        &mut panel
+                    )
+                    .unwrap()
+                    .is_none());
+                    assert_eq!(panel.capacity(), capacity);
+                    assert!(panel.iter().all(|&x| x == 42.));
+                    let beta = products.moments.gram[3] / products.moments.gram[4] * products.scales[0]
+                        / products.scales[1];
+                    assert!((beta - 0.37).abs() < 1e-10);
+                    for i in 0..y.len() {
+                        let residual =
+                            products.residual(i, 0).unwrap() - beta * products.residual(i, 1).unwrap();
+                        assert!((residual - truth[i]).abs() < 1e-10);
+                    }
+                    let stopped = MapConfig {
+                        max_iterations: 1,
+                        ..config
+                    };
+                    assert!(try_build(
+                        &prepared,
+                        &[0, 1],
+                        &y,
+                        BorrowedMapWeights::Provided(&weights),
+                        1.,
+                        stopped,
+                        8_000_000,
+                        0,
+                        &mut Vec::new()
+                    )
+                    .unwrap()
+                    .is_none());
+                }
+            });
+        }
     }
 
     #[test]
@@ -2438,7 +2703,8 @@ mod tests {
             )
             .unwrap()
             .is_some());
-            // One connected cycle still exceeds the same Gram work allowance.
+            // A connected cycle exceeds dense factor work but can now use a
+            // certified iterative proposal. An unfinished proposal still refuses.
             let connected: Vec<_> = (0..n).map(|i| ((i % 60 + i / 60) % 60) as f64).collect();
             let wide = prepared(&y, &[x], &large, &connected);
             assert!(try_build(
@@ -2453,7 +2719,10 @@ mod tests {
                 &mut Vec::new()
             )
             .unwrap()
-            .is_none());
+            .is_some_and(|products| products.report.certified() && products.report.iterations > 1));
+            assert!(try_build(&wide, &[0], &y, BorrowedMapWeights::Unit, 1.,
+                MapConfig {max_iterations:1,..MapConfig::default()},u128::MAX,0,&mut Vec::new())
+                .unwrap().is_none());
         });
     }
 }

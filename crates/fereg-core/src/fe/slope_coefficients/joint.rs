@@ -83,8 +83,8 @@ fn failed() -> FeregError {
 }
 
 // Independent accumulation chains remove the dense Gram's serial dependency.
-// Both inputs are freshly normalized; scheduling cannot change this reduction.
-fn normalized_product(left: &[f64], right: &[f64]) -> f64 {
+// The reduction order is independent of worker scheduling.
+pub(crate) fn normalized_product(left: &[f64], right: &[f64]) -> f64 {
     debug_assert_eq!(left.len(), right.len());
     let mut sums = [0.0_f64; 8];
     let blocks = left.len() / sums.len();
