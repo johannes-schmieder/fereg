@@ -67,9 +67,10 @@ restored and hash/privacy checked. Seed431 is consumed/frozen. Static inventory
 drift, constrained-fit/nonretaining-CG failures, the baseline checkpoint-count
 assertion, older three-FE discrepancy and deferred platforms remain open.
 
-**Next implementation:** move to the larger canonical/preparation ownership and
-narrow lifecycle boundaries in Milestones 3/4 below. The joint-check experiment is
-closed; do not tune its tile size or thresholds. Native phase evidence locates
+**Next implementation:** follow the execution order in the revised plan below:
+close the pending lifecycle attribution, then replace demonstrated repeated
+canonical/preparation work and address the narrow command lifecycle. The
+joint-check experiment is closed; do not tune its tile size or thresholds. Native phase evidence locates
 about 4.1 ms of savings in the low categorical finite-solve/checking span while
 FE projection and strict/final costs persist. A larger replacement needs a
 nonoverlapping whole-command cost budget; another recurrence-only or reference-
@@ -410,6 +411,66 @@ Current T8 slope losses require 7–12 ms; the T4 win does not close them. The o
 dense three-categorical-FE coefficient discrepancy remains unresolved/unranked.
 Four-plus FE, generated terms, clustered/saved-FE outputs, weight extremes and
 larger N need selective current-source coverage, not inherited historical claims.
+
+### Immediate execution order after jointchecks1
+
+Runtime baseline is **c3623dec**; this revision changes the plan only.
+Target a reliable per-family public-command
+ratio below 0.90, with 0.80–0.85 as useful development headroom. For the current
+T8 slope cases, aim at **60–65 ms** in both memory modes, alongside the low
+categorical and narrow targets above. These are engineering goals, not measured
+savings or universal guarantees.
+
+1. **Finish the current attribution, then choose the replacement.** Preserve the
+   isolated `jointcheckslifecycle1` diagnostic and its recipes under
+   `target/ppml-lifecycle-20260925` in a source-bound report. Complete wrapper
+   attribution before calling the public-minus-plugin remainder removable Stata
+   overhead. Separate setup, canonical initial/strict work, ordinary directions,
+   fresh checks, inference and publication without summing nested spans. Count
+   full observation passes, operator constructions and bytes moved. Use an
+   isolated pinned-reference diagnostic only for unresolved comparable-work
+   questions. This attribution is preparation for implementation, not another
+   completed optimization milestone.
+2. **Make current-state preparation serve all compatible consumers.** Milestone
+   3 is the primary shared implementation: trace and replace duplicate original
+   column binding, topology construction, normalization, reconstruction and
+   product ownership. Keep immutable sample/design state separate from exact
+   current-weight geometry and response state. Initial rank and final Hessian
+   usually have different weights; never identify them merely because their
+   dimensions match. Reuse the existing fused canonical builder, preserve fresh
+   independent residual products, and remove obsolete owners after validation.
+   A candidate needs a measured budget for removing substantial whole-command
+   work, not just a faster inner recurrence.
+3. **Close narrow fits with a complete lifecycle change.** Milestone 4 follows
+   the shared prototype, or takes priority if the ledger finds no credible
+   shared savings. Prototype a compact execution plan only where the general
+   lifecycle demonstrably repeats preparation or scheduling. Include public
+   metadata validation and transactional publication in the budget. Route by
+   work and memory estimates; keep one substantive plugin call, main-thread SPI,
+   public outputs and explicit solver requests. The captured 41-ms case needs
+   14 ms to meet the target; a one-ms kernel improvement cannot close it.
+4. **Extend successful mechanisms and find the next actual losses.** Run the
+   compact 8–12-cell screen in Milestone 5 after the first structural checkpoint.
+   Cover three/four FE, multiple slopes, wider/generated terms, clusters and
+   saved effects, with selected imbalance/connectivity/thread/memory controls.
+   Protect current serial, wide and slope wins. Use fresh local larger-N cases
+   to check scaling. Resolve scientific disagreements before timing rankings.
+5. **Close each implementation with evidence and a commit.** Follow the existing
+   pilot/fresh-confirmation protocol below. Show each case's distribution,
+   remaining milliseconds to 0.90 and full memory cost. Test independent WLS,
+   Poisson/Hessian/sandwich truth, changing weights/sample generations, deficient
+   rank, refusal and rollback; run focused OLS and excluded-PPML controls. One
+   prototype and at most one evidence-led correction precede adoption/rejection.
+   Smaller inexpensive shared wins may be retained, but do not finish the broad
+   task. Leave failed candidates and unresolved comparisons visible.
+
+Coefficient-space slope solving, reusable current-weight geometry, independent
+column stopping, response/control fusion, profiled Poisson trials and fused
+canonical products already exist in admitted paths. Trace their reach and
+remaining consumers before proposing them again. Closed reference-operator,
+coarse-CG, early-checkpoint and residual-extrapolation experiments stay closed;
+a new solver proposal needs a materially different organization and a measured
+whole-command savings budget.
 
 ### Milestone 1: bounded canonical-solver experiment — closed
 
