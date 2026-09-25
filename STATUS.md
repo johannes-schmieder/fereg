@@ -10,6 +10,75 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Whole-command attribution and request framing accepted — 2026-09-25
+
+[ADR 0182](docs/adr/0182-bounded-request-framing.md) and the
+[source-bound report](benchmarks/reports/development/ppml-command-framing-local-2026-09-25/README.md)
+retain `frameado3`: vectorized bounded metadata framing in the OLS and PPML ado
+transactions. The native `familyrows2` plugin remains unchanged, SHA-256
+`4a326b8d3b210084620478dfd857ffdca672db5aacfc7acbd82fbc3194b98af8`.
+The final identity captures all **554** runtime inputs; only the two ado files
+differ from the parent. This is a small shared overhead improvement, not the
+requested solver-level closeout or completion of the broad speed goal.
+
+### What improved and what remains
+
+Same-command diagnostics put narrow PPML at 27–28 ms in the plugin and roughly
+10–11 ms in Stata preparation, checking and publication. Interruption round trips
+cost only 0.3–0.6 ms. Native canonical preparation is approximately 73/90 ms on
+the large fast/low slope diagnostics; ordinary joint work is about 68 ms.
+Those larger boundaries remain the principal opportunity. The phase definitions
+are nested/inclusive where specified in the report, not additive.
+
+The new framing consumes the same internal metadata and emits the same wire.
+Its input has explicit ownership; all temporary Mata objects are individually
+cleaned before error propagation or native entry. Fault probes exposed and then
+closed partial-construction cleanup holes. No observations or design matrices
+enter Mata, no native numerical work changes, and no persistent solver storage
+is added. Transient storage scales with metadata; RSS/physical-cap equivalence
+is not claimed.
+
+Final fresh seed202609415, five rotations, baseline/candidate/stock medians:
+narrow categorical **46/44/34 ms**, disconnected categorical **101/100/89**,
+large low slopes **284/282/279**, large fast slopes **262/260/281**, two-slope
+K6/T8 **126/126/89**, serial categorical **66/67/65**, four-FE low **237/231/558**.
+There are **21 wins, six losses and eight ties** in 35 PPML pairs. Serial has
+a 1 ms median loss. Earlier `frameado2` has a large-low 288→291 ms regression
+in four of five pairs; preserve it separately from final-source evidence.
+
+All **390 PPML public states** (360 headline, 30 diagnostic), **240 baseline
+comparisons**, **120 direct candidate/stock comparisons**, **60 OLS applications**
+and **30 OLS pairs** pass. Native scientific CSVs and saved means are exact across
+PPML pairs; OLS scientific CSVs are exact too. Final source passes three licensed
+independent-oracle fixtures and the framing/error-lifetime probes. The focused
+static screen has **25 passes and two parent-reproduced failures**; no Rust suite
+was rerun against an unchanged binary. All failed probes and noisy OLS timing
+controls, including their bounded confirmation, remain in the report.
+
+The verified/restored archive has **16,896 logical receipts / 3,259 payloads /
+29,851,575 bytes**, SHA-256
+`cbe4175e801f449a205c852a602ed0212ed05bda1a208c8667f6894f3ea49186`.
+Work root: target/ppml-command-cost-20260925. All operations are terminal.
+
+### Next bounded implementation
+
+Proceed to the larger canonical-construction intervention in the plan below:
+compare current-weight rank-aware block elimination/factorization serving all
+canonical RHSs against the existing per-column solver, including preparation,
+independent checking, required row materialization, rank and inference. Bound
+fill/work/memory and retain certified iterative solving when a factor is
+unsuitable. The closed retained-coefficient and paired-lane probes are not the
+new candidate. Do not spend another round on interrupt or metadata tuning.
+
+On the final fresh cases, narrow categorical still needs **13.4 ms / 30.5%**
+savings for 0.90 stock, two-slope K6/T8 **45.9 ms / 36.4%**, large low slopes
+**30.9 ms / 11.0%**, and large fast slopes **7.1 ms / 2.7%**. These are case-bound
+budgets; earlier larger losses are not repaired by a different favorable seed.
+Seeds202609412–415 are consumed validation/control seeds; seed202609411 remains
+declared/unrun. Frozen definitions, inventory drift, constrained-fit/CG failures,
+older discrepancies and deferred SCC/platform gates are unchanged. No push,
+release or qualification occurred. Older next-step paragraphs are historical.
+
 ## Paired slope operators closed; production unchanged — 2026-09-25
 
 [ADR 0181](docs/adr/0181-paired-slope-coupling-closeout.md) and the

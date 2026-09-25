@@ -648,17 +648,26 @@ program define _fereg_estimate_ppml, eclass
         local request_arguments ///
             `"`request_arguments'break_marker_token=`break_marker_token';"'
     }
-    local request_bundle
-    local request_count 0
-    while `"`request_arguments'"' != "" {
-        gettoken argument request_arguments : request_arguments, parse(";")
-        if `"`argument'"' == ";" continue
-        local argument = strtrim(`"`argument'"')
-        local ++request_count
-        local argument_length = strlen(`"`argument'"')
-        local request_bundle `"`request_bundle'`argument_length':`argument'"'
+    // Frame bounded parser metadata in one vectorized pass. No observations or
+    // generated design columns enter Mata; field lengths remain UTF-8 bytes.
+    tempname request_input request_parser request_parts
+    // Mata externals outlive an aborted ado call. Release every constructed
+    // prefix before propagating failure; the bounded metadata step defers Break.
+    nobreak {
+        capture noisily {
+            mata: `request_input' = st_local("request_arguments")
+            mata: `request_parser' = tokeninit(";", "", "")
+            mata: tokenset(`request_parser', `request_input')
+            mata: `request_parts' = strtrim(tokengetall(`request_parser'))
+            mata: st_local("request_bundle", cols(`request_parts') ? strtrim(strofreal(cols(`request_parts'), "%21.0f")) + ":" + invtokens(strtrim(strofreal(strlen(`request_parts'), "%21.0f")) :+ ":" :+ `request_parts', "") : "0:")
+        }
+        local request_rc = _rc
+        capture mata: mata drop `request_input'
+        capture mata: mata drop `request_parser'
+        capture mata: mata drop `request_parts'
     }
-    local request_bundle `"`request_count':`request_bundle'"'
+    if `request_rc' exit `request_rc'
+    local request_arguments
     local request_bytes = strlen(`"`request_bundle'"')
     if `request_bytes' > 4000 {
         local fereg_request_bundle `"`request_bundle'"'
