@@ -10,6 +10,93 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Retained slope canonical products rejected — 2026-09-24
+
+[ADR 0180](docs/adr/0180-slope-canonical-product-closeout.md) and the
+[source-bound report](benchmarks/reports/development/ppml-slope-product-closeout-local-2026-09-24/README.md)
+close the first implementation experiment from the plan below. Two implemented
+solver/product organizations were compiled and measured in isolated clones of
+**cd19fd12**. Neither is adopted. Production computational source remains
+**711802bf**, with all **554** accepted artifact inputs verified unchanged.
+The goal remains active; this is a rejected experiment, not a speedup checkpoint.
+
+### Implemented and measured
+
+The first candidate retains all solved FE coefficients, recovers eliminated
+coefficients from immutable originals, and reconstructs residual rows and direct
+Gram/RHS together. It still pays the intermediate reconstructed check and the
+full final certificate. It loses **116/120 paired calls**, with median ratios
+0.996–1.158 and 23/24 medians slower than the accepted projection/product baseline.
+
+The successor uses coefficient recurrences only to propose a stopping point,
+reconstructs all columns together with RHS-contiguous coefficients, and retains
+the unchanged full fresh original-input certificate as acceptance. It loses
+**60/120 pairs**, with median ratios **0.946–1.086**. Main three-FE/K10/T8 cases
+improve only about 2–3%; no fresh or public adoption screen is justified by those
+small/inconsistent gains and the extra banks. Every paired iteration count is
+unchanged (the recorded count is the maximum per column). Do not tune either
+retained-coefficient layout further on these cases.
+
+Eight fixed frames use existing tuning seed202609347, N61440, two/three FE,
+K6/K10, two positive weight/working-response states and T1/T4/T8. They are dense
+projection/product experiments, not full canonical rank or public PPML timings.
+There is no low-memory admission claim. Recorded additional coefficient/lookup/
+partial payload is 1,141,024–1,737,288 bytes, with further transient/accounting
+work required for a complete production peak. The old normalized bank remains.
+
+Separate instrumentation shows the remaining three-FE/K10/T8 cost: about
+**20 ms** in parallel coefficient proposals/capture, **2 ms** coupling preparation,
+**3 ms** original geometry/norm setup, **1.8 ms** row reconstruction/products and
+**2 ms** full final certification. Instrumented spans are diagnostic; they cannot
+replace uninstrumented timings. All eighteen diagnostic exports match the
+corresponding uninstrumented within/Gram/scale files bitwise.
+
+### Validation, comparator correction and preservation
+
+Both artifacts pass their analytic weighted nonzero-residual fixture (including
+redundant local slopes and 1e-60/1e60 column scales), and **48 independent explicit-
+design projection/score/Gram/finite-coefficient/inverse configurations each**.
+Full internal certificates retain 1e-12. No production route, tolerance, rank,
+sample, weight, VCE, separation, allocation or transaction policy changes.
+No new licensed regression or complete nonlinear Poisson oracle was run, because
+these test-only engines are rejected and production inputs are unchanged.
+
+The first standalone stock diagnostic mistakenly inherited OMP_NUM_THREADS=1;
+T4/T8 requests were clamped to one thread. Its 120 calls, warning follow-up and
+24 mathematically passing exports are preserved and unmatched for timing.
+A separately declared block sets the cap to eight, asserts the requested
+effective T1/T4/T8 width before each call, completes all 120 calls without warnings,
+and passes 24 independent configurations. Both blocks use pinned unmodified stock
+fixest and tol=1e-11. They are separate diagnostic blocks, not paired public speed
+claims. The existing public harness already sets the OpenMP cap per case.
+
+The verified/restored archive contains **624 logical receipts / 240 payloads /
+1,777,356 bytes**, SHA-256
+`020f58e1fbdf0d4e4835b4493759aa5a5c4f94904fa0d94e73d4beac8e3d722b`.
+It preserves all three isolated sources, declarations, recipes, binary identities,
+timings, checks, warning evidence and hashes for omitted large binary data and
+local process snapshots. Native timing blocks did not use the public sampled
+isolation monitor; their scope remains fixed-frame development diagnostics.
+All operations are terminal. Work roots are target/ppml-slope-products-20260924,
+target/ppml-slope-products2-20260924 and target/ppml-slope-products-profile-20260924.
+
+### Next bounded implementation
+
+Prototype **active-RHS batching inside the coefficient operator**, sharing the
+immutable coupling loads while preserving separate recurrences and stopping.
+The measured proposal/capture stage is much larger than factor preparation or
+full certification. Measure whole projection calls and actual evaluated lanes,
+including any converged-column work, layout conversion, fallback and memory;
+then require an early public comparison before integration. Reuse existing
+geometry/ownership and replace superseded work instead of adding another retained
+coefficient layer. A faster matvec alone is insufficient.
+
+No fresh seeds or frozen 77/16/111 definitions changed. Existing allocation-
+inventory drift, constrained-fit/nonretaining-CG failures, comparator issues and
+deferred platform gates remain. The broader plan below is historical context;
+its first prototype is now complete and rejected. No push, SCC retry, release,
+stopped campaign or qualification occurred.
+
 ## Multi-FE PPML implementation plan and current-frame diagnosis — 2026-09-24
 
 The user requests an ambitious plan for **at least two FE partitions**, targeting
