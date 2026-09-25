@@ -1,0 +1,30 @@
+{
+  "logical_receipts": 8612,
+  "payloads": 1923,
+  "bytes": 9896042,
+  "sha256": "d1a00b298869a481fc89f12a9f201063d4d34bb134ad755efa37756803d3691b",
+  "omitted_files": 494,
+  "omission_policy": "Hash but omit generated DTA, binary row outputs and saved_outputs.csv; retain controllers, input fingerprints, complete scientific summaries and all attempt outcomes. Raw generated outputs remain local.",
+  "restored_logical_receipts": 8612,
+  "restored_hashes_verified": true,
+  "privacy_scan_passed": true,
+  "privacy_known_source_files": [
+    "artifacts/finiteblock1/scripts/resolve_reference_root.py",
+    "artifacts/finiteblock1/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/finiteblock1/tests/python/test_ols_reference_harness.py",
+    "artifacts/representatives-capture1/scripts/resolve_reference_root.py",
+    "artifacts/representatives-capture1/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/representatives-capture1/tests/python/test_ols_reference_harness.py",
+    "artifacts/representatives1/scripts/resolve_reference_root.py",
+    "artifacts/representatives1/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/representatives1/tests/python/test_ols_reference_harness.py",
+    "artifacts/representatives2/scripts/resolve_reference_root.py",
+    "artifacts/representatives2/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/representatives2/tests/python/test_ols_reference_harness.py",
+    "replay-source/tests/python/test_ols_hidden_numeric.py",
+    "replay-source/tests/python/test_ols_reference_harness.py",
+    "replay2-source/tests/python/test_ols_hidden_numeric.py",
+    "replay2-source/tests/python/test_ols_reference_harness.py"
+  ],
+  "privacy_scope": "Public shared-reference paths and two synthetic redaction-test literals are distinguished from private run metadata."
+}

@@ -9,14 +9,79 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-The [current implementation plan](#further-ppml-development-plan--renewed-at-6f697056-2026-09-25)
-prioritizes canonical FE-equivalent controls within existing joint LSMR, followed
-by canonical construction and large-N traversal. Full finite-block conditioning
-is now adopted. The blanket coefficient-engine replacement remains rejected.
+The [current implementation plan](#further-ppml-development-plan--after-representative-closeout-2026-09-25)
+prioritizes canonical weighted-frame construction and then large-N traversal.
+Full finite-block conditioning is adopted. The borrowed canonical-control trial
+is closed under ADR 0209; the blanket coefficient-engine replacement also remains
+rejected.
 Fast two-/three-FE auto already uses joint LSMR. Absence of calls to the coefficient joint helper
 did not establish repeated ordinary full-control projection.
 Earlier handoffs below are historical; their timings do not transfer to later
 artifacts. The sparse-factor and earlier small threshold probes remain closed.
+
+## Borrowed canonical controls rejected; move to canonical construction — 2026-09-25
+
+Restore **finiteblock1 / 6f697056** computation. All **565 computational inputs**
+match the accepted artifact after removing the experiment's runtime and dependent
+tests. No performance change is adopted in this closeout. The **multi-FE <=0.90
+stock objective remains active**. [ADR 0209](docs/adr/0209-joint-ppml-representatives-closeout.md)
+and the [source-bound report](benchmarks/reports/development/ppml-representatives-closeout-local-2026-09-25/README.md)
+preserve both prototypes, all distributions, failures, source identities and
+**8,612 restored hash/privacy-verified receipts**. Archive SHA:
+`d1a00b298869a481fc89f12a9f201063d4d34bb134ad755efa37756803d3691b`.
+
+Borrowing FE-equivalent retained controls into existing joint LSMR is mathematically
+sound and reduces hard-factor iterations. On identical captured frames, corrected
+original/representative counts are **17/6,14/7,15/6**. The full finite Gram and FE
+preconditioner remain; fresh acceptance still uses original controls and current
+weights. Strict attempts reset guesses before the physical bank can change, even
+when accepted fit/basis authority later rolls back. No new N-by-K bank is added.
+
+The first implementation loses numeric/wide medians by 11%/17% with no hard-factor
+median win. One bounded correction moves selected-column row access out of inner
+loops. Its three matched B/C/strict-pinned-stock rotations show:
+
+|Case; N/K/T; fast mode|B / C / stock median ms|Decision evidence|
+|---|---:|---|
+|Three-FE factors,unbalanced;153600/19/8;cluster|705 /643 /709|8.8% B gain; all C/stock ratios 0.907–0.922 miss 0.90|
+|Matched numeric;153600/19/8;cluster|578 /619 /632|7.1% regression|
+|Two-FE numeric;983040/6/8;robust|1241 /1251 /867|Large-N gap remains|
+|Three-FE wide;15360/65/4;robust|225 /243 /1017|8.0% regression despite fewer inner iterations|
+
+The corrected eight-case block has **five paired wins and 19 losses**. Hard-factor
+projection falls **285 -> 237 ms**, but numeric rises **227 -> 257** and wide
+**66 -> 80**. Outer counts are unchanged. The benefit does not justify the broad
+tradeoff. Reject without a fitted selector, another selected-view tuning round,
+or fresh campaign. **Seed202609440 remains unconsumed.** This does not reject
+FE-equivalent coordinates in a materially different ownership/traversal design.
+
+Both candidates pass **36 distinct focused Rust tests and five licensed fixtures**
+each. Two diagnostic builds pass **102 frozen-frame solves each**. Across small
+science and public pilots, all **192 public states**, **64 B/C pairs** and **12
+explicit Poisson/Hessian/sandwich arm checks** pass. Anchored pairs pass 122/128;
+direct candidate/stock 58/64. Six sparse stock mean discrepancies remain unranked.
+Two separate diagnostic capture screens add six passing public states. The first
+capture produced zero frames after environment sanitization; its empty zero-exit
+replay is not scientific evidence. That attempt and the initial borrow-check build
+failure are preserved.
+
+No modeled heap bank is added. Corrected selected-byte telemetry varies 0..+112;
+tracked peak deltas -2.52 MB..+1.95 MB, scratch unchanged. No RSS, warmed-allocation,
+physical-cap or platform qualification. No new OLS timings or restored-source test
+run is claimed after exact accepted-input restoration. Static inventory drift,
+constrained fits, nonretaining CG, prior scientific discrepancies and frozen77/16/111
+remain unchanged. No push/release or SCC retry.
+
+**Next implementation:** canonical weighted-frame construction. First obtain one
+exclusive initial/strict construction trace on the hard low three-FE design and
+the million-row control. Then compare at most two coherent organizations: a
+justified three-FE direct-product extension versus removal of repeated original
+normalization, means, materialization and finite-product scans around the current
+projector. Include independent original-input acceptance, rank/bread/inference
+handoff and full memory lifetimes. Keep the larger cross-stage large-N budget;
+ordinary direction replacement alone cannot close it. Do not reopen the borrowed
+view, blanket engine swap or rejected isolated Schur/incidence/cache probes.
+Historical claims below remain attached to their own artifacts.
 
 ## Full finite blocks adopted; generated-control gains carry to two FE — 2026-09-25
 
@@ -1082,15 +1147,16 @@ released before certification. Final fresh tracked peaks change by -2,681,856 to
 +48 bytes. All frozen benchmark definitions are preserved. Seeds **202609428/429
 are now consumed/frozen** and cannot become tuning seeds.
 
-## Further PPML development plan — renewed at 6f697056, 2026-09-25
+## Further PPML development plan — after representative closeout, 2026-09-25
 
 Scope is **at least two FE partitions**. Target complete public `feppml` time
 **<=0.90 times scientifically comparable pinned stock per case**, with
 **0.80–0.85** headroom where practical. The user authorizes substantial internal
 replacement when the measured cost warrants it. Required science, matched work
 and accuracy govern the comparison; an aggregate win rate cannot close a loss.
-This planning revision inspects the clean **6f697056** checkpoint and its existing
-source-bound report; it adds no new timing or implementation claim. Prioritize
+Runtime still matches **6f697056** after the measured representative experiment
+was rejected under ADR 0209. Its closeout report adds current baseline evidence;
+no candidate speedup is retained. Prioritize
 large practical losses while preserving established leads. Aim for whole-family
 improvements of 20–40% when the measured work budget supports them, rather than
 spending repeated milestones moving a boundary by one or two milliseconds.
@@ -1128,39 +1194,19 @@ assigning a savings budget; inclusive native spans and worker activity cannot be
 added together. Separate initial construction, ordinary directions, strict/final
 construction and inference. Keep loading/control/publication costs visible.
 
-### Milestone 1: complete finite conditioning with canonical representatives
+### Milestone 1 closed: finite block retained, borrowed representatives rejected
 
-The full current-weight finite block is accepted. It preserves FE preconditioning,
-removes substantial generated-control iteration work and transfers to two FE.
-Raw finite/FE coupling remains a plausible removable cost. Do not repeat the
-rejected whole-engine switch or fit a guard to numeric losses or fresh seeds.
+The current-weight full finite block remains accepted under ADR 0208. The second
+coherent conditioning candidate has now been implemented and independently tested.
+Borrowed canonical representatives reduce hard-factor iterations and, after one
+row-access correction, public time by 8.8%. Numeric and wide medians regress 7–8%;
+only five of 24 corrected pairs improve. ADR 0209 closes the experiment without
+fresh validation or a fitted selector. Do not resume selected-view tuning.
 
-1. Test canonical FE-equivalent control representatives in the existing joint
-   LSMR operator. Preserve original controls for independent acceptance and the
-   existing FE core-pair/Schwarz block. Derive coefficient/FE mapping and adjoint
-   consistency; prior projection does not certify the new weighted problem.
-2. Borrow already retained canonical storage where ownership permits, rather
-   than adding an unconditional N-by-K bank. Validate sample/topology/basis and
-   representative lifetimes; reset or correctly map recurrence guesses after
-   strict refresh, rank change or rollback. Preserve canonical authority in
-   both fused and nonfused paths. Factors still need valid current-call inputs.
-   In particular, strict rollback restores accepted fit/basis authority but does
-   not necessarily restore the physical projected bank (ADR 0176). Validate its
-   actual representative generation, not just the accepted iteration number.
-3. Compare identical frozen development frames, including numeric, two-/three-FE,
-   sparse/disconnected and wide controls. Count setup, solve, original-input
-   checks, mapping/reconstruction and complete live memory. Require useful
-   hard-case savings without the previous topology regressions.
-4. Advance a promising frozen implementation through independent WLS/Poisson/
-   Hessian boundaries, three public B/C/stock rotations, then five predeclared
-   fresh rotations. Carry low/slopes/four-FE, serial/OLS, weight/rank/refusal,
-   robust/cluster and saved-output controls. Keep discrepancies unranked.
-
-Aim to remove at least **67 ms** on the hard fast factor case and obtain headroom
-beyond 0.90 stock. This is the second coherent conditioning organization, not an
-open-ended threshold search. If it fails to repay its costs, seal the evidence
-and move to milestone 2. Do not accumulate overlapping solver layers or claim
-that the full-block success itself closes the broad goal.
+The next implementation is milestone 2. Keep the proven mathematical coordinate
+mapping and the physical-bank/strict-rollback distinction as evidence for a later
+ownership redesign, not as dormant production machinery. A new use must change
+complete computational organization and independently earn its costs.
 
 ### Milestone 2: build one efficient canonical weighted-frame pipeline
 
