@@ -10,6 +10,116 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Canonical residual certificate gate accepted — 2026-09-25
+
+[ADR 0190](docs/adr/0190-canonical-residual-certificate-gate.md) and the
+[source-bound report](benchmarks/reports/development/ppml-residual-gate-local-2026-09-25/README.md)
+retain **resgate1**, based on `27c408ea` plus `fe/map.rs` and
+`ols/linear_session.rs`. All **556 captured inputs** match this checkpoint.
+Plugin SHA-256:
+`9103c3092e83291e2941634ac07de06d445bfec85c39ca372a3b96f833f166d9`.
+The multi-FE <=0.90-times-comparable-stock objective remains active and unfinished.
+
+At canonical rank construction, an assembled finite residual now receives the
+existing full fresh FE certificate before corrective absorption. A pass returns
+the input rows unchanged; refusal runs the original solve/reconstruction/final
+certificate. This applies only to one RHS in the PPML coefficient owner without
+an alternate canonical projector and with already authorized current-weight QR
+geometry **and coupling**. Changed generations still go through normal preparation
+and solving. All finite/rank, score, objective, reconstruction and exact final-
+Hessian conditions remain; errors/unwinds revoke authority. Other RHS schedules
+and OLS routes are unchanged. There is no new bank or admission credit.
+
+Fresh seed **202609426**, five baseline/candidate/pinned-stock rotations, robust
+inference and fitted means; B is normhandoff2, C is resgate1:
+
+| Case | N/K/T; mode | B / C / stock median ms | C/stock |
+|---|---|---:|---:|
+| Large unbalanced three-FE slopes |72960/12/8; fast|223 / 222 / 307|0.723|
+| Same, low |72960/12/8; low|261 / 262 / 307|0.853|
+| Two slope partitions |40320/6/8; fast|97 / 96 / 89|1.079|
+| Smaller three-FE slopes |38400/8/4; fast|127 / 126 / 207|0.609|
+| Serial two-slope |40320/6/1; fast|158 / 159 / 360|0.442|
+| Narrow categorical |26880/2/4; fast|43 / 44 / 33|1.333|
+| Weak slope barbell |15360/4/4; fast|39 / 40 / 1182|0.034|
+| Disconnected slopes |26880/8/4; low|96 / 94 / 168|0.560|
+| Two slopes per partition |30720/10/8; fast|145 / 142 / 209|0.679|
+| Four categorical FE |32000/8/4; low|168 / 164 / 478|0.343|
+
+Eight of ten candidate medians meet the target. Fresh comparisons have **29 wins,
+14 losses, seven ties**; five slope medians improve, three lose 1 ms. Narrow
+categorical loses 1 ms and is a control; eligible four-FE coefficient owners can
+benefit. Keep all ranges/losses in the report. Development seed 202609347 gives
+12 wins/five losses/one tie, with large fast/low medians **184/177 and 200/195 ms**.
+Do not transfer gains or stock ratios across the differently sized blocks.
+
+Primary diagnostic rank-residual time falls **2.325→1.206 ms** (two slopes) and
+**5.539→2.519 / 5.935→2.380 ms** (large fast/low). Both canonical gates accept
+on every measured slope repetition. One diagnostic-only check on the exact three
+fresh losing slope inputs also has zero refusals and reduces the phase by about
+**4.11, 1.28 and 0.53 ms**, respectively. It does not replace their headline
+losses. Retain the inexpensive shared work reduction, but stop this mechanism
+here; no thread/size/topology exclusions, threshold tuning or headline repeats.
+
+All **232 PPML states, 150 baseline comparisons, 68 direct stock pairs, nine OLS
+pairs and nine licensed executions** pass. Final-source Rust: **132 distinct
+passes, one ignored timing probe, one known baseline assertion failure** (strict
+rejections expected one, observed zero). New weighted analytic projection tests
+cover zero/contaminated residuals, changed weights/RHS, deficient channels,
+extreme scaling, T1/T4 and error/recovery authority. Largest baseline/candidate
+absolute changes: b **1.102e-16**, V **1.356e-20**, mu **4.797e-14**; all established
+scientific envelopes pass. Only eight PPML pairs retain exact b/V/mu bits; that
+is expected after omitting an unnecessary floating-point correction. Recorded
+outer/inner iteration and halving counts are identical in every headline pair.
+
+Five independent licensed scientific oracles and four fast/low T1/T4 allocation
+fixtures pass. The latter retain their existing 16-iteration audit window with
+zero events/growth and stable capacities, not a new canonical-allocation/RSS
+qualification. Headline scratch/tracked-peak deltas are zero; fresh selected-byte
+telemetry varies **-48 to +48**. OLS seed **202609427** has exact audited exports
+and B/C medians **10/9, 57/57 and 99/99 ms**; no causal OLS speed claim.
+
+Archive: **9,465 logical receipts / 2,195 payloads / 23,454,787 bytes**, SHA-256
+`22c5a78710656cd631b2d6a8c07464c669d0f3b0247c9124e63ab2f27ff5b967`.
+Privacy checked, restored and verified. Work root:
+`target/ppml-residual-gate-20260925`. All operations are terminal.
+
+### Next milestone: replace an entire redundant outer solve
+
+The norm handoff and residual gate finish the first inexpensive canonical pass
+removals. Do not spend another cycle tuning them. Threaded two-slope PPML still
+needs **15.9 ms** to reach 0.90 stock on the new inputs (96→80.1 ms), and narrow
+categorical **14.3 ms** (44→29.7 ms). These are different sizes/seeds from the
+preceding checkpoint's 22.0/15.9-ms gaps; the change itself is much smaller.
+
+Investigate a **real canonical Newton checkpoint after the first accepted
+convergence pass**, supplying the second independently validated objective/score
+witness and final-Hessian products together. Inspect the exact current loop and
+contracts first; measure the removable ordinary direction/frame/score work.
+Preserve both convergence predicates, actual candidate movement, every strict
+comparison, rank/refusal recovery and exact final accepted q*mu authority. Do
+not synthesize a zero Newton step or mark convergence from a reused score. A
+revised schedule needs a successor ADR plus independent truth, extreme-component
+weights, rank loss, rejection/resume, iteration-cap, interruption and rollback
+checks before integration. Reject it if equivalent scientific authority cannot
+be established; do not add overlapping speculative solver layers.
+
+Then address narrow categorical execution across the complete command: its
+remaining gap exceeds its canonical construction budget. Consolidate useful
+current-frame passes and immutable ownership, informed by loading/start/iteration/
+inference/publication attribution. Keep rejected metadata, Schur scheduling,
+full-factor, paired-lane, retention-layout and zero-Newton probes closed. Extend
+the small screen to supported weights, factors/generated terms, cluster inference,
+wide controls and requested outputs only around measured gaps. The detailed
+bounded-milestone and independent-comparator discipline in the preceding opening
+continues to apply; no broad qualification or Cartesian campaign is authorized.
+
+**202609426/427 are now consumed validation seeds**; do not tune on them. Reserve
+**202609428/429** for the next promising candidate. Frozen 77/16/111 definitions,
+static allocation drift, known constrained-fit/CG failures, deferred Linux/physical-
+memory checks and stopped campaigns remain unchanged. No push, release or SCC retry.
+Earlier next-step sections below are historical and superseded by this opening.
+
 ## Current-call canonical PPML norms accepted — 2026-09-25
 
 [ADR 0189](docs/adr/0189-current-call-ppml-coefficient-norms.md) and the

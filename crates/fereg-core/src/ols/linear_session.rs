@@ -5100,7 +5100,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             DenseMatrix::from_row_major(rows, 1, std::mem::take(&mut workspace.residuals))?;
         let residual_absorbed = if self.config.absorb.solver == FeSolverKind::Map {
             self.fill_reusable_map_weights()?;
-            self.absorb_reusable_map(residual_matrix)?
+            if let Some(ReusableLinearMapProjector::PpmlCoefficients {
+                projector, canonical: None, ..
+            }) = self.fe_projector.as_mut() {
+                projector.absorb_coefficient_residual(
+                    &self.map_weights, residual_matrix, self.config.absorb.map,
+                    self.generations.map_geometry(),
+                )?
+            } else {
+                self.absorb_reusable_map(residual_matrix)?
+            }
         } else {
             self.prepared.fit_absorb_matrix(
                 self.weights.borrowed(),

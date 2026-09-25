@@ -748,10 +748,41 @@ impl ReusableMapAbsorber {
     pub(crate) fn absorb_in_generation(
         &mut self,
         weights: &[f64],
+        values: DenseMatrix,
+        config: MapConfig,
+        structural_constant_if_empty: bool,
+        generation: Option<MapGeometryGeneration>,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.absorb_with_residual_gate(
+            weights,
+            values,
+            config,
+            structural_constant_if_empty,
+            generation,
+            false,
+        )
+    }
+
+    /// Canonical finite residuals are assembled from projected columns. A fresh
+    /// full certificate can avoid correction; a refusal keeps the normal solve.
+    pub(crate) fn absorb_coefficient_residual(
+        &mut self,
+        weights: &[f64],
+        values: DenseMatrix,
+        config: MapConfig,
+        generation: MapGeometryGeneration,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.absorb_with_residual_gate(weights, values, config, false, Some(generation), true)
+    }
+
+    fn absorb_with_residual_gate(
+        &mut self,
+        weights: &[f64],
         mut values: DenseMatrix,
         config: MapConfig,
         structural_constant_if_empty: bool,
         generation: Option<MapGeometryGeneration>,
+        certify_residual: bool,
     ) -> Result<CertifiedBorrowedMap> {
         // Take authority before any fallible work. Failure or unwind cannot
         // leave a generation authorized for a later call.
@@ -766,6 +797,7 @@ impl ReusableMapAbsorber {
             || weights.len() != values.nrows()
             || rhs == 0
             || rhs > self.max_rhs
+            || (certify_residual && (rhs != 1 || self.coefficient_solver.is_none()))
         {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -844,6 +876,30 @@ impl ReusableMapAbsorber {
 
         let mut geometry_valid = false;
         if self.coefficient_solver.is_some() {
+            // Generation authority covers both QR geometry and coupling. If
+            // either must be prepared, keep the normal solve so an early return
+            // cannot authorize reuse of an unprepared current-weight operator.
+            if certify_residual && reusable_geometry {
+                let certificate =
+                    self.certify(&values, weights, rhs, config.tolerance, &mut true)?;
+                if certificate.passed {
+                    let result = CertifiedBorrowedMap::from_certified_parts(
+                        values,
+                        reusable_map_report(
+                            SolveStopReason::Certified,
+                            0,
+                            certificate,
+                            setup_seconds,
+                            solve_started.elapsed().as_secs_f64(),
+                        ),
+                    )?;
+                    self.certificate_geometry
+                        .as_mut()
+                        .expect("admitted geometry")
+                        .generation = generation;
+                    return Ok(result);
+                }
+            }
             if !reusable_geometry {
                 self.prepare_coefficient_geometry(weights)?;
             }
@@ -2109,6 +2165,182 @@ mod tests {
                     }
                     assert_eq!(candidate.capacities(), capacities);
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn coefficient_residual_gate_checks_truth_refusal_and_weight_authority() {
+        let n = 6 * 4 * 3;
+        let ci: Vec<_> = (0..n).map(|r| (r / 12) as u32).collect();
+        let cj: Vec<_> = (0..n).map(|r| ((r / 3) % 4) as u32).collect();
+        let t: Vec<_> = (0..n).map(|r| (r % 3) as f64 - 1.).collect();
+        let design = FeDesign::new(
+            n,
+            vec![
+                EffectTerm::new(
+                    ci.clone(),
+                    6,
+                    true,
+                    vec![t.clone(), t.iter().map(|v| 2. * v).collect(), vec![0.; n]],
+                )
+                .unwrap(),
+                EffectTerm::new(
+                    cj.clone(),
+                    4,
+                    true,
+                    vec![ci.iter().map(|&i| i as f64).collect()],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        let config = MapConfig {
+            tolerance: 1e-12,
+            ..MapConfig::default()
+        };
+        for threads in [1, 4] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            let mut owner = ReusableMapAbsorber::new(design.clone(), 2).unwrap();
+            owner.enable_certificate_geometry().unwrap();
+            owner.enable_coefficient_solver(threads).unwrap();
+            owner.enable_coefficient_coupling().unwrap();
+            owner.enable_coefficient_certificates().unwrap();
+            let capacity = owner.capacities();
+            for (frame, scale) in [1., 1e-60, 1e60].into_iter().enumerate() {
+                let generation = MapGeometryGeneration {
+                    sample: 1,
+                    topology: 1,
+                    weights: frame as u64 + 1,
+                };
+                let jw: Vec<_> = (0..4).map(|j| (j + frame + 1) as f64).collect();
+                let mean = (0..4).map(|j| jw[j] * j as f64).sum::<f64>() / jw.iter().sum::<f64>();
+                let weights: Vec<_> = (0..n)
+                    .map(|r| scale * (1. + ci[r] as f64) * jw[cj[r] as usize])
+                    .collect();
+                // Weighted complete-product contrasts are orthogonal to every
+                // declared channel, including the locally redundant slopes.
+                let truth: Vec<_> = (0..n)
+                    .map(|r| (ci[r] as f64 + 1.).sin() * (cj[r] as f64 - mean) * t[r])
+                    .collect();
+                let raw: Vec<_> = (0..n)
+                    .map(|r| truth[r] + (ci[r] as f64).cos() * t[r] + (cj[r] as f64).sin())
+                    .collect();
+                let matrix = |x: &[f64]| DenseMatrix::from_row_major(n, 1, x.to_vec()).unwrap();
+                let preparations = owner.certificate_geometry.as_ref().unwrap().preparations;
+                let first = pool
+                    .install(|| {
+                        owner.absorb_coefficient_residual(
+                            &weights,
+                            matrix(&raw),
+                            config,
+                            generation,
+                        )
+                    })
+                    .unwrap();
+                assert!(first.report().iterations > 0);
+                assert_eq!(
+                    owner.certificate_geometry.as_ref().unwrap().preparations,
+                    preparations + 1
+                );
+                for (&a, &b) in first.residualized().as_slice().iter().zip(&truth) {
+                    assert!((a - b).abs() < 1e-10, "{a} != {b}");
+                }
+                for rhs_scale in [1., -3., 1e-60, 1e60] {
+                    let residual: Vec<_> = truth.iter().map(|v| v * rhs_scale).collect();
+                    let accepted = pool
+                        .install(|| {
+                            owner.absorb_coefficient_residual(
+                                &weights,
+                                matrix(&residual),
+                                config,
+                                generation,
+                            )
+                        })
+                        .unwrap();
+                    assert!(accepted.report().certified());
+                    assert_eq!(accepted.report().iterations, 0);
+                    assert_eq!(accepted.residualized().as_slice(), residual.as_slice());
+                }
+                // Identical geometry does not authorize an untested RHS. A
+                // material FE component must trigger the original correction.
+                let corrected = pool
+                    .install(|| {
+                        owner.absorb_coefficient_residual(
+                            &weights,
+                            matrix(&raw),
+                            config,
+                            generation,
+                        )
+                    })
+                    .unwrap();
+                assert!(corrected.report().iterations > 0);
+                for (&a, &b) in corrected.residualized().as_slice().iter().zip(&truth) {
+                    assert!((a - b).abs() < 1e-10);
+                }
+                let zero = vec![0.; n];
+                let accepted = pool
+                    .install(|| {
+                        owner.absorb_coefficient_residual(
+                            &weights,
+                            matrix(&zero),
+                            config,
+                            generation,
+                        )
+                    })
+                    .unwrap();
+                assert_eq!(accepted.report().iterations, 0);
+                assert_eq!(accepted.residualized().as_slice(), zero.as_slice());
+                for failure in 0..3 {
+                    let mut invalid = truth.clone();
+                    if failure == 0 {
+                        invalid[0] = f64::NAN;
+                    }
+                    let values = if failure == 1 {
+                        DenseMatrix::zeros(n, 2).unwrap()
+                    } else {
+                        matrix(&invalid)
+                    };
+                    let cfg = if failure == 2 {
+                        MapConfig {
+                            max_iterations: 0,
+                            ..config
+                        }
+                    } else {
+                        config
+                    };
+                    assert!(pool
+                        .install(
+                            || owner.absorb_coefficient_residual(&weights, values, cfg, generation)
+                        )
+                        .is_err());
+                    assert!(owner
+                        .certificate_geometry
+                        .as_ref()
+                        .unwrap()
+                        .generation
+                        .is_none());
+                    let before = owner.certificate_geometry.as_ref().unwrap().preparations;
+                    let recovered = pool
+                        .install(|| {
+                            owner.absorb_coefficient_residual(
+                                &weights,
+                                matrix(&raw),
+                                config,
+                                generation,
+                            )
+                        })
+                        .unwrap();
+                    assert!(recovered.report().certified());
+                    assert_eq!(
+                        owner.certificate_geometry.as_ref().unwrap().preparations,
+                        before + 1
+                    );
+                }
+                assert_eq!(owner.capacities(), capacity);
             }
         }
     }

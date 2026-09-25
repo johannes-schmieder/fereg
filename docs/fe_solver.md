@@ -56,6 +56,16 @@ The public MAP-owned engine identity includes this slope kernel; its iteration
 count is the maximum column Krylov count, not a symmetric-MAP sweep count.
 Categorical, one-effect, mu-separation and public OLS routing are unchanged.
 
+At retained PPML canonical rank construction, ADR 0190 permits a fresh full
+certificate before corrective absorption of the assembled finite residual.
+This entry requires already authorized current-weight coefficient geometry and
+coupling, one RHS and no alternate canonical projector. A passing check returns
+the actual input rows unchanged; refusal runs the existing certified correction.
+A changed generation still prepares through the ordinary solve. Other RHS calls
+retain their prior schedule; finite/rank, reconstruction and final-Hessian
+checks remain independent. No input-column certificate substitutes for this
+fresh residual check, and errors or unwinds revoke reuse authority.
+
 Under ADRs 0130 and 0134, admitted ordinary PPML slope directions couple the finite
 controls to the same FE Schur operator and use one block-preconditioned Krylov
 solve. This call reports its joint Krylov count. Reconstructed residuals receive
