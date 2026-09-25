@@ -204,7 +204,7 @@ impl ProfiledInterceptCurve {
                 break;
             }
             match workspace
-                .fill_line_search_trial_with(step, config.bounds, |eta| self.project(design, eta))
+                .fill_prepared_line_search_trial_with(step, config.bounds, inputs, |eta| self.project(design, eta))
             {
                 Ok(()) => {}
                 Err(e) if e.code == ErrorCode::NonConvergence => {
@@ -213,7 +213,7 @@ impl ProfiledInterceptCurve {
                 }
                 Err(e) => return Err(e),
             }
-            match inputs.evaluate(workspace.trial_eta(), workspace.trial_mean()) {
+            match workspace.evaluate_trial_objective(inputs) {
                 Ok(objective) if objective.deviance <= allowed => {
                     workspace.accept_trial()?;
                     return Ok(PpmlLineSearchAcceptance {

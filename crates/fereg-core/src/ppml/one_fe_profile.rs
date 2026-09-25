@@ -665,7 +665,7 @@ impl ProfiledOneFe {
                 }
                 Err(e) => return Err(e),
             }
-            let objective = match inputs.evaluate(&self.eta, &self.mean) {
+            let objective = match workspace.evaluate_external_objective(inputs, &self.eta, &self.mean) {
                 Ok(value) => value,
                 Err(e) if e.code == ErrorCode::NonConvergence => {
                     step *= 0.5;
@@ -683,7 +683,7 @@ impl ProfiledOneFe {
                     workspace.candidate_coefficients_mut()[slot] =
                         step.mul_add(self.direction[j], self.base[j]);
                 }
-                workspace.fill_line_search_trial(1., config.bounds)?;
+                workspace.fill_prepared_line_search_trial_with(1., config.bounds, inputs, |_| Ok(()))?;
                 workspace.accept_trial()?;
                 return Ok(PpmlLineSearchAcceptance {
                     objective,

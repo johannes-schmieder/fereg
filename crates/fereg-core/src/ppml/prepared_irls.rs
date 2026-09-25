@@ -1411,12 +1411,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         start,
         purpose,
     )?;
-    let objective_inputs = PreparedPoissonInputs::new(outcome, prior_weights, offset)?;
+    let objective_inputs = PreparedPoissonInputs::new_with_threads(outcome, prior_weights, offset, config.linear.execution.threads)?;
     let mut workspace =
         PpmlIterationWorkspace::from_initial_state(memory_plan, eta, coefficient_values)?;
     workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
     let mut objective =
-        objective_inputs.evaluate(workspace.eta(), workspace.mean())?;
+        workspace.evaluate_current_objective(&objective_inputs)?;
     let mut score_workspace = PpmlScoreWorkspace::new(&fe_design, config.linear.execution.threads)?;
     let initial_tolerance =
         scheduled_inner_tolerance(config.ppml, 1, config.ppml.inner_tolerance_initial, None);
@@ -2445,7 +2445,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 // retaining it keeps the strict canonical products on the exact
                 // accepted Hessian frame for independently checked final reuse.
                 if !canonical_final && profiled_one_fe.is_none() && profiled_curve.is_none() {
-                    workspace.fill_line_search_trial(1.0, config.ppml.bounds)?;
+                    workspace.fill_prepared_line_search_trial_with(1.0, config.ppml.bounds, &objective_inputs, |_| Ok(()))?;
                     workspace.accept_trial()?;
                     objective = strict_objective.expect("consistent strict objective is present");
                 }

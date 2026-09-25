@@ -10,7 +10,7 @@
 use std::mem::size_of;
 use std::time::{Duration, Instant};
 
-use super::family::{means_from_eta, PreparedPoissonInputs};
+use super::family::{means_from_eta, objective_tile_rows, PreparedPoissonInputs};
 #[cfg(test)]
 use super::family::{fill_poisson_working_state, poisson_objective_from_eta};
 use super::{
@@ -1409,12 +1409,16 @@ fn estimate_route(
     } else {
         0
     };
-    let iteration_buffer_bytes = bytes_f64(checked_mul(
+    let objective_tile_cells = checked_mul(
+        objective_tile_rows(dimensions.observations, dimensions.threads) as u128,
+        2, "PPML objective tile cells",
+    )?;
+    let iteration_buffer_bytes = bytes_f64(checked_sum(&[checked_mul(
         n,
         // Two immutable outcome terms live beside the eight mutable buffers.
         ITERATION_VECTOR_COUNT + 2,
         "PPML reusable iteration vectors",
-    )?)?;
+    )?, objective_tile_cells])?)?;
     let coefficient_buffer_bytes = bytes_f64(checked_mul(
         coefficient_slots,
         COEFFICIENT_VECTOR_COUNT,
@@ -2518,6 +2522,7 @@ pub struct PpmlIterationWorkspace {
     trial_eta: Vec<f64>,
     trial_mean: Vec<f64>,
     score_residuals: Vec<f64>,
+    objective_tile: Vec<f64>,
     coefficients: Vec<f64>,
     candidate_coefficients: Vec<f64>,
     trial_coefficients: Vec<f64>,
@@ -2593,6 +2598,11 @@ impl PpmlIterationWorkspace {
             trial_eta: fallible_filled(n, 0.0, "PPML line-search eta buffer")?,
             trial_mean: fallible_filled(n, 0.0, "PPML line-search mean buffer")?,
             score_residuals: fallible_filled(n, 0.0, "PPML score-residual buffer")?,
+            objective_tile: fallible_filled(
+                objective_tile_rows(n, plan.dimensions.threads).checked_mul(2)
+                    .ok_or_else(|| allocation("PPML objective tile length overflows"))?,
+                0.0, "PPML objective row tile",
+            )?,
             coefficients,
             candidate_coefficients: fallible_filled(k, 0.0, "PPML candidate-coefficient buffer")?,
             trial_coefficients: fallible_filled(k, 0.0, "PPML trial-coefficient buffer")?,
@@ -2834,11 +2844,10 @@ impl PpmlIterationWorkspace {
     pub(crate) fn refresh_prepared_working_state(
         &mut self, inputs: &PreparedPoissonInputs<'_>, bounds: PoissonBounds,
     ) -> Result<()> {
-        let outcome = inputs.outcome();
-        require_observation_lengths(self.eta.len(), &[outcome.len()], "PPML working state")?;
-        means_from_eta(&self.eta, bounds, &mut self.mean)?;
-        inputs.fill_working_state(&self.mean, &self.eta, &mut self.hessian_weights, &mut self.working_response)?;
-        self.refresh_score_residuals(outcome)
+        require_observation_lengths(self.eta.len(), &[inputs.outcome().len()], "PPML working state")?;
+        inputs.fill_means(&self.eta, bounds, &mut self.mean)?;
+        inputs.fill_working_state_and_scores(&self.mean, &self.eta, &mut self.hessian_weights, &mut self.working_response, &mut self.score_residuals)?;
+        self.certify_steady_state_capacity()
     }
 
     /// Reuse the working-response buffer for a Hessian-only final
@@ -2868,6 +2877,7 @@ impl PpmlIterationWorkspace {
     /// Materialize one deterministic line-search trial in caller-owned
     /// buffers.  `trial_mean` is overwritten only after all eta values are
     /// finite; representability remains governed by `PoissonBounds`.
+    #[cfg(test)]
     pub(crate) fn fill_line_search_trial(
         &mut self,
         step: f64,
@@ -2876,8 +2886,23 @@ impl PpmlIterationWorkspace {
         self.fill_line_search_trial_with(step, bounds, |_| Ok(()))
     }
 
+    #[cfg(test)]
     pub(super) fn fill_line_search_trial_with(
         &mut self, step: f64, bounds: PoissonBounds,
+        transform: impl FnOnce(&mut [f64]) -> Result<()>,
+    ) -> Result<()> {
+        self.fill_line_search_trial_core(step, bounds, None, transform)
+    }
+
+    pub(super) fn fill_prepared_line_search_trial_with(
+        &mut self, step: f64, bounds: PoissonBounds, inputs: &PreparedPoissonInputs<'_>,
+        transform: impl FnOnce(&mut [f64]) -> Result<()>,
+    ) -> Result<()> {
+        self.fill_line_search_trial_core(step, bounds, Some(inputs), transform)
+    }
+
+    fn fill_line_search_trial_core(
+        &mut self, step: f64, bounds: PoissonBounds, inputs: Option<&PreparedPoissonInputs<'_>>,
         transform: impl FnOnce(&mut [f64]) -> Result<()>,
     ) -> Result<()> {
         if !step.is_finite() || !(0.0..=1.0).contains(&step) {
@@ -2907,7 +2932,11 @@ impl PpmlIterationWorkspace {
             self.trial_coefficients[column] = value;
         }
         transform(&mut self.trial_eta)?;
-        means_from_eta(&self.trial_eta, bounds, &mut self.trial_mean)?;
+        if let Some(inputs) = inputs {
+            inputs.fill_means(&self.trial_eta, bounds, &mut self.trial_mean)?;
+        } else {
+            means_from_eta(&self.trial_eta, bounds, &mut self.trial_mean)?;
+        }
         self.certify_steady_state_capacity()
     }
 
@@ -2916,10 +2945,22 @@ impl PpmlIterationWorkspace {
     pub(crate) fn evaluate_candidate_objective(
         &mut self, inputs: &PreparedPoissonInputs<'_>, bounds: PoissonBounds,
     ) -> Result<PoissonObjective> {
-        means_from_eta(&self.candidate_eta, bounds, &mut self.trial_mean)?;
-        let objective = inputs.evaluate(&self.candidate_eta, &self.trial_mean)?;
+        inputs.fill_means(&self.candidate_eta, bounds, &mut self.trial_mean)?;
+        let objective = inputs.evaluate_tiled(&self.candidate_eta, &self.trial_mean, &mut self.objective_tile)?;
         self.certify_steady_state_capacity()?;
         Ok(objective)
+    }
+
+    pub(crate) fn evaluate_current_objective(&mut self, inputs: &PreparedPoissonInputs<'_>) -> Result<PoissonObjective> {
+        inputs.evaluate_tiled(&self.eta, &self.mean, &mut self.objective_tile)
+    }
+
+    pub(super) fn evaluate_trial_objective(&mut self, inputs: &PreparedPoissonInputs<'_>) -> Result<PoissonObjective> {
+        inputs.evaluate_tiled(&self.trial_eta, &self.trial_mean, &mut self.objective_tile)
+    }
+
+    pub(super) fn evaluate_external_objective(&mut self, inputs: &PreparedPoissonInputs<'_>, eta: &[f64], mean: &[f64]) -> Result<PoissonObjective> {
+        inputs.evaluate_tiled(eta, mean, &mut self.objective_tile)
     }
 
     /// Accept the already-certified trial by swapping observation buffers and
@@ -2969,7 +3010,7 @@ impl PpmlIterationWorkspace {
             if step < config.minimum_step {
                 break;
             }
-            match self.fill_line_search_trial(step, config.bounds) {
+            match self.fill_prepared_line_search_trial_with(step, config.bounds, inputs, |_| Ok(())) {
                 Ok(()) => {}
                 Err(error) if error.code == ErrorCode::NonConvergence => {
                     step *= 0.5;
@@ -2977,7 +3018,7 @@ impl PpmlIterationWorkspace {
                 }
                 Err(error) => return Err(error),
             }
-            match inputs.evaluate(&self.trial_eta, &self.trial_mean) {
+            match self.evaluate_trial_objective(inputs) {
                 Ok(objective) if objective.deviance <= allowed => {
                     self.accept_trial()?;
                     return Ok(PpmlLineSearchAcceptance {
@@ -3025,7 +3066,8 @@ impl PpmlIterationWorkspace {
                 + self.candidate_eta.capacity()
                 + self.trial_eta.capacity()
                 + self.trial_mean.capacity()
-                + self.score_residuals.capacity(),
+                + self.score_residuals.capacity()
+                + self.objective_tile.capacity(),
             coefficient_capacity_sum: self.coefficients.capacity()
                 + self.candidate_coefficients.capacity()
                 + self.trial_coefficients.capacity(),
@@ -3560,6 +3602,7 @@ impl PpmlMemoryTelemetry {
                 .dimensions
                 .observations
                 .checked_mul(ITERATION_VECTOR_COUNT as usize)
+                .and_then(|n| objective_tile_rows(self.plan.dimensions.observations, self.plan.dimensions.threads).checked_mul(2).and_then(|tile| n.checked_add(tile)))
                 .ok_or_else(|| allocation("PPML workspace observation capacity overflows"))?;
             let minimum_coefficient_capacity = self
                 .plan
@@ -3787,6 +3830,24 @@ mod tests {
             },
         )
         .expect("memory plan")
+    }
+
+    #[test]
+    fn objective_row_tile_is_charged_beside_all_iteration_vectors() {
+        for threads in [1, 4, 8] {
+            let shape = PpmlMemoryDimensions { threads, ..dimensions() };
+            let estimate = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+            let rows = objective_tile_rows(shape.observations, threads);
+            let expected = (10 * shape.observations as u128 + 2 * rows as u128) * 8;
+            assert_eq!(estimate.fast.iteration_buffer_bytes, expected);
+            assert_eq!(estimate.low.iteration_buffer_bytes, expected);
+            let plan = plan_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
+            let workspace = PpmlIterationWorkspace::new(plan, &vec![0.; shape.observations]).unwrap();
+            assert_eq!(workspace.objective_tile.len(), 2 * rows);
+            assert_eq!(workspace.objective_tile.capacity(), 2 * rows);
+            assert_eq!(workspace.capacity_report().observation_capacity_sum, 8 * shape.observations + 2 * rows);
+            workspace.certify_steady_state_capacity().unwrap();
+        }
     }
 
     fn report(iteration: usize) -> PpmlIterationReport {

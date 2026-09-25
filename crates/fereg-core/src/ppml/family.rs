@@ -1,4 +1,17 @@
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::options::ThreadConfig;
+use crate::parallel::{InstalledThreadTeam, ThreadTeam};
+use rayon::prelude::*;
+
+// Bound the temporary objective bank by worker count, not the full sample.
+const FAMILY_ROWS_PER_WORKER: usize = 4096;
+pub(super) fn objective_tile_rows(rows: usize, threads: usize) -> usize {
+    if threads <= 1 || rows < FAMILY_ROWS_PER_WORKER {
+        0
+    } else {
+        rows.min(threads.checked_mul(FAMILY_ROWS_PER_WORKER).unwrap_or(rows))
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct PoissonBounds {
@@ -71,31 +84,36 @@ pub(crate) fn means_from_eta(eta: &[f64], bounds: PoissonBounds, mean: &mut [f64
             "eta and mean buffers have different lengths",
         ));
     }
-    for (row, (linear_predictor, output)) in eta.iter().zip(mean).enumerate() {
-        if !linear_predictor.is_finite() {
-            return Err(numerical_nonconvergence(format!(
-                "Poisson linear predictor at observation {row} is nonfinite"
-            )));
-        }
-        if *linear_predictor < bounds.eta_min || *linear_predictor > bounds.eta_max {
-            return Err(numerical_nonconvergence(format!(
-                "Poisson linear predictor at observation {row} is outside configured bounds"
-            )));
-        }
-        let value = linear_predictor.exp();
-        if !value.is_finite() || value <= 0.0 {
-            return Err(numerical_nonconvergence(format!(
-                "Poisson mean at observation {row} is not representable as a finite positive value; reduce the proposed step"
-            )));
-        }
-        if value < bounds.mu_min || value > bounds.mu_max {
-            return Err(numerical_nonconvergence(format!(
-                "Poisson mean at observation {row} is outside configured bounds"
-            )));
-        }
-        *output = value;
+    for (row, (&linear_predictor, output)) in eta.iter().zip(mean).enumerate() {
+        *output = mean_row(row, linear_predictor, bounds)?;
     }
     Ok(())
+}
+
+#[inline]
+fn mean_row(row: usize, linear_predictor: f64, bounds: PoissonBounds) -> Result<f64> {
+    if !linear_predictor.is_finite() {
+        return Err(numerical_nonconvergence(format!(
+            "Poisson linear predictor at observation {row} is nonfinite"
+        )));
+    }
+    if linear_predictor < bounds.eta_min || linear_predictor > bounds.eta_max {
+        return Err(numerical_nonconvergence(format!(
+            "Poisson linear predictor at observation {row} is outside configured bounds"
+        )));
+    }
+    let value = linear_predictor.exp();
+    if !value.is_finite() || value <= 0.0 {
+        return Err(numerical_nonconvergence(format!(
+            "Poisson mean at observation {row} is not representable as a finite positive value; reduce the proposed step"
+        )));
+    }
+    if value < bounds.mu_min || value > bounds.mu_max {
+        return Err(numerical_nonconvergence(format!(
+            "Poisson mean at observation {row} is outside configured bounds"
+        )));
+    }
+    Ok(value)
 }
 
 pub fn poisson_objective(
@@ -202,10 +220,16 @@ pub(crate) struct PreparedPoissonInputs<'a> {
     prior_weights: &'a [f64],
     offset: &'a [f64],
     terms: Vec<[f64; 2]>,
+    team: Option<InstalledThreadTeam>,
 }
 
 impl<'a> PreparedPoissonInputs<'a> {
+    #[cfg(test)]
     pub(crate) fn new(outcome: &'a [f64], prior_weights: &'a [f64], offset: &'a [f64]) -> Result<Self> {
+        Self::new_with_threads(outcome, prior_weights, offset, ThreadConfig::from_requested(1, true)?)
+    }
+
+    pub(crate) fn new_with_threads(outcome: &'a [f64], prior_weights: &'a [f64], offset: &'a [f64], threads: ThreadConfig) -> Result<Self> {
         if outcome.len() != prior_weights.len() || outcome.len() != offset.len() {
             return Err(FeregError::new(ErrorCode::InvalidArgument, "Poisson immutable inputs are misaligned"));
         }
@@ -219,7 +243,12 @@ impl<'a> PreparedPoissonInputs<'a> {
             // the same finite-domain rule as the independent implementation.
             terms.push([if y == 0. { 0. } else { y.ln() }, log_gamma(y + 1.)]);
         }
-        Ok(Self { outcome, prior_weights, offset, terms })
+        let team = if objective_tile_rows(outcome.len(), threads.resolved()) == 0 {
+            None
+        } else {
+            Some(ThreadTeam::new(threads).acquire()?)
+        };
+        Ok(Self { outcome, prior_weights, offset, terms, team })
     }
 
     pub(crate) fn outcome(&self) -> &[f64] { self.outcome }
@@ -228,6 +257,80 @@ impl<'a> PreparedPoissonInputs<'a> {
         poisson_objective_with_terms(self.outcome, Some(eta), mean, self.prior_weights, Some(&self.terms))
     }
 
+    pub(crate) fn evaluate_tiled(&self, eta: &[f64], mean: &[f64], tile: &mut [f64]) -> Result<PoissonObjective> {
+        let Some(team) = self.team.as_ref().filter(|_| !tile.is_empty()) else {
+            return self.evaluate(eta, mean);
+        };
+        if eta.len() != self.outcome.len() || mean.len() != self.outcome.len() || tile.len() % 2 != 0 {
+            return Err(FeregError::new(ErrorCode::InvalidArgument, "Poisson objective tile or inputs are misaligned"));
+        }
+        let mut deviance = CompensatedSum::default();
+        let mut likelihood = CompensatedSum::default();
+        let rows = tile.len() / 2;
+        for first in (0..self.outcome.len()).step_by(rows) {
+            let count = rows.min(self.outcome.len() - first);
+            let buffer = &mut tile[..2 * count];
+            let failure = team.install(|| buffer.par_chunks_mut(2).enumerate()
+                .with_min_len(256)
+                .map(|(i, output)| -> Result<()> {
+                    let terms = objective_row(self.outcome, Some(eta), mean, self.prior_weights, Some(&self.terms), first + i)?;
+                    output.copy_from_slice(&terms);
+                    Ok(())
+                }).find_first(Result::is_err));
+            if let Some(result) = failure { result?; }
+            // Keep the original observation order and both compensated chains.
+            // The scratch bank carries no accepted point or Hessian authority.
+            for values in buffer.chunks_exact(2) {
+                deviance.add(values[0]);
+                likelihood.add(values[1]);
+            }
+        }
+        finish_objective(deviance, likelihood)
+    }
+
+    pub(crate) fn fill_means(&self, eta: &[f64], bounds: PoissonBounds, mean: &mut [f64]) -> Result<()> {
+        let Some(team) = &self.team else { return means_from_eta(eta, bounds, mean); };
+        bounds.validate()?;
+        if eta.len() != mean.len() {
+            return Err(FeregError::new(ErrorCode::InvalidArgument, "eta and mean buffers have different lengths"));
+        }
+        let failure = team.install(|| mean.par_iter_mut().zip(eta).enumerate().with_min_len(256)
+            .map(|(row, (output, &value))| -> Result<()> {
+                *output = mean_row(row, value, bounds)?;
+                Ok(())
+            }).find_first(Result::is_err));
+        if let Some(result) = failure { result?; }
+        Ok(())
+    }
+
+    pub(crate) fn fill_working_state_and_scores(&self, mean: &[f64], eta: &[f64], weights: &mut [f64], response: &mut [f64], scores: &mut [f64]) -> Result<()> {
+        let n = self.outcome.len();
+        if [mean.len(), eta.len(), weights.len(), response.len(), scores.len()].iter().any(|&length| length != n) {
+            return Err(FeregError::new(ErrorCode::InvalidArgument, "Poisson working-state buffers have inconsistent lengths"));
+        }
+        let fill = |row: usize, weight: &mut f64, response: &mut f64, score: &mut f64| -> Result<()> {
+            let values = working_row(self.outcome, mean, self.prior_weights, eta, self.offset, Some(&self.terms), row)?;
+            let residual = self.outcome[row] - mean[row];
+            if !residual.is_finite() {
+                return Err(numerical_nonconvergence("PPML score residual is not finitely representable"));
+            }
+            *weight = values[0];
+            *response = values[1];
+            *score = residual;
+            Ok(())
+        };
+        if let Some(team) = &self.team {
+            let failure = team.install(|| weights.par_iter_mut().zip(response).zip(scores).enumerate().with_min_len(256)
+                .map(|(row, ((weight, response), score))| fill(row, weight, response, score))
+                .find_first(Result::is_err));
+            if let Some(result) = failure { result?; }
+        } else {
+            for row in 0..n { fill(row, &mut weights[row], &mut response[row], &mut scores[row])?; }
+        }
+        Ok(())
+    }
+
+    #[cfg(test)]
     pub(crate) fn fill_working_state(&self, mean: &[f64], eta: &[f64], weights: &mut [f64], response: &mut [f64]) -> Result<()> {
         fill_poisson_working_state_with_terms(self.outcome, mean, self.prior_weights, eta, self.offset, weights, response, Some(&self.terms))
     }
@@ -261,43 +364,53 @@ fn poisson_objective_with_terms(
     let mut deviance_sum = CompensatedSum::default();
     let mut log_likelihood_sum = CompensatedSum::default();
     for row in 0..outcome.len() {
-        let y = outcome[row];
-        let mu = mean[row];
-        let weight = prior_weights[row];
-        if !y.is_finite() || y < 0.0 {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                format!("invalid Poisson outcome at observation {row}"),
-            ));
-        }
-        if !weight.is_finite() || weight <= 0.0 {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                format!("invalid Poisson prior weight at observation {row}"),
-            ));
-        }
-        if !mu.is_finite() || mu <= 0.0 {
-            return Err(numerical_nonconvergence(format!(
-                "Poisson mean at observation {row} is outside the finite positive computational domain"
-            )));
-        }
-        let log_mean = eta.map_or_else(|| mu.ln(), |values| values[row]);
-        if !log_mean.is_finite() {
-            return Err(numerical_nonconvergence(format!(
-                "Poisson linear predictor at observation {row} is nonfinite"
-            )));
-        }
-        let half_deviance = poisson_half_deviance_with_log_mean(y, mu, log_mean)?;
-        let deviance_term = 2.0 * weight * half_deviance;
-        let log_likelihood_term = weight * (y * log_mean - mu - terms.map_or_else(|| log_gamma(y + 1.0), |values| values[row][1]));
-        if !deviance_term.is_finite() || !log_likelihood_term.is_finite() {
-            return Err(numerical_nonconvergence(format!(
-                "Poisson objective overflowed at observation {row}"
-            )));
-        }
-        deviance_sum.add(deviance_term);
-        log_likelihood_sum.add(log_likelihood_term);
+        let values = objective_row(outcome, eta, mean, prior_weights, terms, row)?;
+        deviance_sum.add(values[0]);
+        log_likelihood_sum.add(values[1]);
     }
+    finish_objective(deviance_sum, log_likelihood_sum)
+}
+
+#[inline]
+fn objective_row(outcome: &[f64], eta: Option<&[f64]>, mean: &[f64], prior_weights: &[f64], terms: Option<&[[f64; 2]]>, row: usize) -> Result<[f64; 2]> {
+    let y = outcome[row];
+    let mu = mean[row];
+    let weight = prior_weights[row];
+    if !y.is_finite() || y < 0.0 {
+        return Err(FeregError::new(
+            ErrorCode::InvalidData,
+            format!("invalid Poisson outcome at observation {row}"),
+        ));
+    }
+    if !weight.is_finite() || weight <= 0.0 {
+        return Err(FeregError::new(
+            ErrorCode::InvalidData,
+            format!("invalid Poisson prior weight at observation {row}"),
+        ));
+    }
+    if !mu.is_finite() || mu <= 0.0 {
+        return Err(numerical_nonconvergence(format!(
+            "Poisson mean at observation {row} is outside the finite positive computational domain"
+        )));
+    }
+    let log_mean = eta.map_or_else(|| mu.ln(), |values| values[row]);
+    if !log_mean.is_finite() {
+        return Err(numerical_nonconvergence(format!(
+            "Poisson linear predictor at observation {row} is nonfinite"
+        )));
+    }
+    let half_deviance = poisson_half_deviance_with_logs(y, mu, log_mean, terms.map(|values| values[row][0]))?;
+    let deviance_term = 2.0 * weight * half_deviance;
+    let log_likelihood_term = weight * (y * log_mean - mu - terms.map_or_else(|| log_gamma(y + 1.0), |values| values[row][1]));
+    if !deviance_term.is_finite() || !log_likelihood_term.is_finite() {
+        return Err(numerical_nonconvergence(format!(
+            "Poisson objective overflowed at observation {row}"
+        )));
+    }
+    Ok([deviance_term, log_likelihood_term])
+}
+
+fn finish_objective(deviance_sum: CompensatedSum, log_likelihood_sum: CompensatedSum) -> Result<PoissonObjective> {
     let objective = PoissonObjective {
         deviance: deviance_sum.total(),
         log_likelihood: log_likelihood_sum.total(),
@@ -329,6 +442,7 @@ pub(crate) fn fill_poisson_working_state(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg(test)]
 fn fill_poisson_working_state_with_terms(
     outcome: &[f64], mean: &[f64], prior_weights: &[f64], eta: &[f64], offset: &[f64],
     working_weights: &mut [f64], working_response: &mut [f64], terms: Option<&[[f64; 2]]>,
@@ -347,52 +461,58 @@ fn fill_poisson_working_state_with_terms(
         ));
     }
     for row in 0..nrows {
-        let y = outcome[row];
-        let mu = mean[row];
-        let prior_weight = prior_weights[row];
-        let linear_predictor = eta[row];
-        let row_offset = offset[row];
-        if !y.is_finite() || y < 0.0 {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                format!("invalid Poisson outcome at observation {row}"),
-            ));
-        }
-        if !prior_weight.is_finite() || prior_weight <= 0.0 {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                format!("invalid Poisson prior weight at observation {row}"),
-            ));
-        }
-        if !row_offset.is_finite() {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                format!("invalid Poisson offset at observation {row}"),
-            ));
-        }
-        if !mu.is_finite() || mu <= 0.0 || !linear_predictor.is_finite() {
-            return Err(numerical_nonconvergence(format!(
-                "Poisson fitted state at observation {row} is outside the finite computational domain"
-            )));
-        }
-        let weight = prior_weight * mu;
-        let score_adjustment = if y == 0.0 {
-            -1.0
-        } else {
-            // Form y/mu in log space so a representable ratio is not lost to
-            // premature division under extreme but otherwise valid offsets.
-            (terms.map_or_else(|| y.ln(), |values| values[row][0]) - linear_predictor).exp() - 1.0
-        };
-        let response = linear_predictor - row_offset + score_adjustment;
-        if !weight.is_finite() || weight <= 0.0 || !response.is_finite() {
-            return Err(numerical_nonconvergence(format!(
-                "Poisson working state at observation {row} is not finitely representable"
-            )));
-        }
-        working_weights[row] = weight;
-        working_response[row] = response;
+        let values = working_row(outcome, mean, prior_weights, eta, offset, terms, row)?;
+        working_weights[row] = values[0];
+        working_response[row] = values[1];
     }
     Ok(())
+}
+
+#[inline]
+fn working_row(outcome: &[f64], mean: &[f64], prior_weights: &[f64], eta: &[f64], offset: &[f64], terms: Option<&[[f64; 2]]>, row: usize) -> Result<[f64; 2]> {
+    let y = outcome[row];
+    let mu = mean[row];
+    let prior_weight = prior_weights[row];
+    let linear_predictor = eta[row];
+    let row_offset = offset[row];
+    if !y.is_finite() || y < 0.0 {
+        return Err(FeregError::new(
+            ErrorCode::InvalidData,
+            format!("invalid Poisson outcome at observation {row}"),
+        ));
+    }
+    if !prior_weight.is_finite() || prior_weight <= 0.0 {
+        return Err(FeregError::new(
+            ErrorCode::InvalidData,
+            format!("invalid Poisson prior weight at observation {row}"),
+        ));
+    }
+    if !row_offset.is_finite() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidData,
+            format!("invalid Poisson offset at observation {row}"),
+        ));
+    }
+    if !mu.is_finite() || mu <= 0.0 || !linear_predictor.is_finite() {
+        return Err(numerical_nonconvergence(format!(
+            "Poisson fitted state at observation {row} is outside the finite computational domain"
+        )));
+    }
+    let weight = prior_weight * mu;
+    let score_adjustment = if y == 0.0 {
+        -1.0
+    } else {
+        // Form y/mu in log space so a representable ratio is not lost to
+        // premature division under extreme but otherwise valid offsets.
+        (terms.map_or_else(|| y.ln(), |values| values[row][0]) - linear_predictor).exp() - 1.0
+    };
+    let response = linear_predictor - row_offset + score_adjustment;
+    if !weight.is_finite() || weight <= 0.0 || !response.is_finite() {
+        return Err(numerical_nonconvergence(format!(
+            "Poisson working state at observation {row} is not finitely representable"
+        )));
+    }
+    Ok([weight, response])
 }
 
 pub fn offset_from_exposure(exposure: &[f64]) -> Result<Vec<f64>> {
@@ -443,7 +563,7 @@ impl CompensatedSum {
     }
 }
 
-fn poisson_half_deviance_with_log_mean(y: f64, mu: f64, log_mean: f64) -> Result<f64> {
+fn poisson_half_deviance_with_logs(y: f64, mu: f64, log_mean: f64, log_y: Option<f64>) -> Result<f64> {
     if y == 0.0 {
         return Ok(mu);
     }
@@ -455,7 +575,7 @@ fn poisson_half_deviance_with_log_mean(y: f64, mu: f64, log_mean: f64) -> Result
     let value = if relative_difference.is_finite() && relative_difference.abs() <= 0.5 {
         mu * one_plus_x_log1p_minus_x(relative_difference)
     } else {
-        y * (y.ln() - log_mean) - difference
+        y * (log_y.unwrap_or_else(|| y.ln()) - log_mean) - difference
     };
     if value.is_finite() && value >= 0.0 {
         Ok(value)
@@ -481,7 +601,7 @@ pub(crate) fn poisson_deviance_contribution(y: f64, mu: f64) -> Result<f64> {
             "Poisson deviance mean is outside the finite positive computational domain",
         ));
     }
-    let value = 2.0 * poisson_half_deviance_with_log_mean(y, mu, mu.ln())?;
+    let value = 2.0 * poisson_half_deviance_with_logs(y, mu, mu.ln(), None)?;
     if value.is_finite() && value >= 0.0 {
         Ok(value)
     } else {
@@ -531,6 +651,86 @@ fn log_gamma(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scheduled_family_rows_preserve_scalar_bits_across_tiles_and_teams() {
+        for n in [4095, 4096, 4097, 17003] {
+            let y: Vec<_> = (0..n).map(|i| [0., 1e-100, 0.25, 1., 5., 100., 1e6, 1e100][i % 8]).collect();
+            let q: Vec<_> = (0..n).map(|i| [2., 0.3, 1., 0.01, 7., 2., 1e-4, 1e-80][i % 8]).collect();
+            let offset: Vec<_> = (0..n).map(|i| (i % 13) as f64 - 5.).collect();
+            for threads in [1, 4, 8, 1] {
+                let config = ThreadConfig::from_requested(threads, true).unwrap();
+                let inputs = PreparedPoissonInputs::new_with_threads(&y, &q, &offset, config).unwrap();
+                let mut tile = vec![f64::NAN; 2 * objective_tile_rows(n, threads)];
+                let allocation = (tile.as_ptr(), tile.capacity());
+                for shift in [-0.4_f64, 0., 0.3, 1.] {
+                    let eta: Vec<_> = y.iter().map(|&y| (y + 0.7).ln() + shift).collect();
+                    let mut mean = vec![0.; n];
+                    inputs.fill_means(&eta, PoissonBounds::default(), &mut mean).unwrap();
+                    let mut direct_mean = vec![0.; n];
+                    means_from_eta(&eta, PoissonBounds::default(), &mut direct_mean).unwrap();
+                    assert_eq!(mean, direct_mean);
+                    let direct = poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap();
+                    let scheduled = inputs.evaluate_tiled(&eta, &mean, &mut tile).unwrap();
+                    assert_eq!(direct.deviance.to_bits(), scheduled.deviance.to_bits());
+                    assert_eq!(direct.log_likelihood.to_bits(), scheduled.log_likelihood.to_bits());
+                    let (mut w, mut z, mut pw, mut pz, mut scores) = (
+                        vec![0.; n], vec![0.; n], vec![0.; n], vec![0.; n], vec![0.; n]);
+                    fill_poisson_working_state(&y, &mean, &q, &eta, &offset, &mut w, &mut z).unwrap();
+                    inputs.fill_working_state_and_scores(&mean, &eta, &mut pw, &mut pz, &mut scores).unwrap();
+                    assert_eq!(w, pw);
+                    assert_eq!(z, pz);
+                    assert!(scores.iter().enumerate().all(|(i, value)| value.to_bits() == (y[i] - mean[i]).to_bits()));
+                    assert_eq!((tile.as_ptr(), tile.capacity()), allocation);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn scheduled_family_errors_preserve_first_observation_and_can_retry() {
+        let n = 17003;
+        let y = vec![2.; n];
+        let q = vec![1.; n];
+        let offset = vec![0.; n];
+        let inputs = PreparedPoissonInputs::new_with_threads(
+            &y, &q, &offset, ThreadConfig::from_requested(4, true).unwrap()).unwrap();
+        let mut tile = vec![0.; objective_tile_rows(n, 4) * 2];
+        for first in [300, 16401] {
+            let mut mean = vec![1.; n];
+            mean[first] = 0.;
+            mean[first + 50] = f64::INFINITY;
+            let eta = vec![0.; n];
+            let direct = poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap_err();
+            let scheduled = inputs.evaluate_tiled(&eta, &mean, &mut tile).unwrap_err();
+            assert_eq!((scheduled.code, scheduled.message), (direct.code, direct.message));
+            let (mut w, mut z, mut pw, mut pz, mut scores) = (
+                vec![0.; n], vec![0.; n], vec![0.; n], vec![0.; n], vec![0.; n]);
+            let direct = fill_poisson_working_state(&y, &mean, &q, &eta, &offset, &mut w, &mut z).unwrap_err();
+            let scheduled = inputs.fill_working_state_and_scores(&mean, &eta, &mut pw, &mut pz, &mut scores).unwrap_err();
+            assert_eq!((scheduled.code, scheduled.message), (direct.code, direct.message));
+            let mut bad_eta = eta.clone();
+            bad_eta[first] = f64::NAN;
+            bad_eta[first + 50] = f64::INFINITY;
+            let direct = means_from_eta(&bad_eta, PoissonBounds::default(), &mut mean).unwrap_err();
+            let scheduled = inputs.fill_means(&bad_eta, PoissonBounds::default(), &mut mean).unwrap_err();
+            assert_eq!((scheduled.code, scheduled.message), (direct.code, direct.message));
+            inputs.fill_means(&eta, PoissonBounds::default(), &mut mean).unwrap();
+            assert_eq!(inputs.evaluate_tiled(&eta, &mean, &mut tile).unwrap(),
+                poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap());
+        }
+        assert_eq!(inputs.evaluate_tiled(&[0.], &[1.], &mut tile).unwrap_err().code, ErrorCode::InvalidArgument);
+        assert_eq!(inputs.evaluate_tiled(&vec![0.; n], &vec![1.; n], &mut [0.; 3]).unwrap_err().code, ErrorCode::InvalidArgument);
+    }
+
+    #[test]
+    fn family_tile_is_bounded_without_overflowing_dimension_arithmetic() {
+        assert_eq!(objective_tile_rows(usize::MAX, 1), 0);
+        assert_eq!(objective_tile_rows(4095, 4), 0);
+        assert_eq!(objective_tile_rows(4096, 4), 4096);
+        assert_eq!(objective_tile_rows(17003, 4), 16384);
+        assert_eq!(objective_tile_rows(17003, usize::MAX), 17003);
+    }
 
     #[test]
     fn prepared_inputs_preserve_objective_and_working_bits_across_frames() {

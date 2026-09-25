@@ -7,8 +7,143 @@
 tag, or Windows scientific qualification.
 
 This is the sole mutable progress/handover record. Historical receipts remain
-unchanged under benchmarks/reports/. This compact handover supersedes the
-completed optimization/calibration investigation chronology formerly here.
+unchanged under benchmarks/reports/. This opening supersedes previous next-step
+directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
+
+## Scoped PPML execution and family rows adopted — 2026-09-24
+
+[ADR 0179](docs/adr/0179-scoped-ppml-family-execution.md) and the
+[source-bound report](benchmarks/reports/development/ppml-scoped-family-local-2026-09-24/README.md)
+record the mechanism, distributions, independent science, memory costs and all
+failed attempts. The prior deferred-Schwarz checkpoint is
+[ADR 0178](docs/adr/0178-deferred-two-fe-ppml-schwarz.md).
+
+Accepted **familyrows2**, plugin SHA-256
+`4a326b8d3b210084620478dfd857ffdca672db5aacfc7acbd82fbc3194b98af8`, captures
+**3bcf225db255853171d275007793e92a398403cf** plus five PPML core and three
+plugin source overlays. All **554 captured inputs match final computational
+source**. Baseline lazygraph2's 552 inputs match 3bcf225d. Rejected familyrows1
+and its allocation failure remain captured separately.
+
+The verified/restored archive contains **10,963 logical receipts / 2,592 payloads /
+20,180,351 bytes**, SHA-256
+`7febaa64a73ae75229cd77e4ddeaa10c2c1312bb8bc6617be3ef70501468e15c`.
+Report verification.json binds source and restore checks. All builds, tests,
+fits, audits, archive and restore processes are terminal. Work root:
+`target/ppml-family-rows-20260924`.
+
+### Adopted mechanism
+
+The Stata adapter runs Rust-owned native PPML work in one scoped task on the
+resolved team after loading. A stack exchange relays every existing interrupt
+point to the Stata caller. The non-Send/non-Sync SPI callback stays there;
+errors and either peer's panic close the exchange and join before publication.
+T1 retains direct execution. The live scoped-job footprint enters embedding
+admission before core preflight.
+
+Prepared family mean/working rows use that installed team. Working weights,
+responses and score residuals share a pass. The deviance uses the existing
+cached log outcome. Objective row contributions use a bounded tile, followed
+by the original observation-ordered compensated sums. Fresh final objective,
+score, projection, model-space, rank, reconstruction, consecutive convergence,
+separation and final-Hessian requirements are unchanged.
+
+The first implementation repeatedly submitted individual family phases from the
+calling thread. Its T4 audit caught one allocation with zero growth; external
+Rayon submissions use a periodically allocated Crossbeam block queue. Scoped
+execution passes the unchanged real 16-iteration T1/T4 audits and a separate
+256-cycle allocation/callback test. No audit-only route or relaxed check exists.
+
+### Measured outcome
+
+Fresh seed **202609404**, five B/C/stock rotations, numeric unweighted controls,
+robust inference and fitted means; pinned unmodified fixest 0.14.2 uses
+glm.tol=1e-10/fixef.tol=1e-11. Fast unless stated.
+
+| Case | B ms | Accepted ms | Stock ms | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Two FE N24480/K2/T4 |45|42|32|1.313|
+| Same, low |45|43|32|1.344|
+| Disconnected N49200/K12/T8 |118|112|90|1.244|
+| Unbalanced N29520/K6/T4 |55|53|44|1.205|
+| Weak barbell N20400/K8/T4 |45|43|1077|0.040|
+| Three FE unbalanced slopes N69120/K12/T8, low |342|330|290|1.138|
+| Two intercept+slope partitions N34560/K6/T4 |126|121|124|0.976|
+| Two FE N36960/K10/T1 |106|106|204|0.520|
+| Three FE unbalanced N35840/K8/T4 |108|104|124|0.839|
+| Two FE N41040/K32/T4 |125|121|285|0.425|
+
+Threaded fresh medians improve **3.2–6.7%**; 44 paired calls improve and one ties.
+Serial ties at the median, loses three pairs and reaches 110 versus B109 ms.
+Every fresh inner/outer count is identical. Two small oracle calls lose 1–2 ms;
+one-FE small control has an individual loss. Six OLS scientific export pairs are
+exact; medians 62→62 and 43→41 ms. Full distributions and losses are in the report.
+This targeted sample is not a global win rate; six of ten fresh main cases still
+miss the <=0.90-times-stock objective.
+
+Fresh low large slopes reduce working refresh 7.34→3.73 ms and objective
+15.51→10.06; FE work remains 135.17 and strict finalization 74.71 ms. Disconnected
+refresh falls 2.16→0.67 and objective 7.75→4.61. These changes explain much of the
+whole-call gain; other phases and loading/control costs remain.
+
+The tile adds **16*min(N,4096*T) bytes** when N>=4096/T>1, zero otherwise:
+256 KiB at T4 and 512 KiB at T8 here. Both routes charge it beside existing vectors.
+The scoped job adds 1,392 observed heap bytes on this artifact, charged by actual
+embedding observation. Main fresh tracked peaks grow 263,536/T4 or 525,680/T8 bytes;
+serial is unchanged. Modeled peaks can be dominated by another phase. No extra
+N-by-K bank, RSS/physical-cap qualification or inventory repair is claimed.
+
+### Validation and retained failures
+
+All **321 public PPML states**, **107 native pairs** and **107 direct stock pairs**
+pass their numerical checks. Accepted-candidate screens account for 249 states/83
+pairs; rejected-candidate evidence accounts for the rest. Nine small explicit
+Poisson/Hessian/sandwich/mean states pass: six valid-graph checks and three warned
+actual-design diagnostics. The warned N1440 oracle's timing remains unranked.
+A new predeclared N2400 graph supplies the valid slope oracle.
+
+**215 distinct focused Rust tests pass**, with the inherited checkpoint-count
+assertion still failing zero versus one strict rejection. **Eleven final-candidate
+licensed runs pass**, including science/OLS, saved slopes, allocation audits,
+actual Ctrl-C and the current-wire transaction copy. The original transaction
+fixture expects wire minor 2 instead of 3 and fails for B and C; a diagnostic copy
+changes only that assertion and its sentinel, then passes all remaining checks
+for both. Do not describe the unmodified suite as wholly green.
+
+Pre-fit whole-graph dimension and final-singleton generator failures, the N1440
+modulo-zero warning, initial compile error, rejected allocation probe and all
+original receipts are retained. The correction declarations preceded any timing
+on affected cases. No frozen sample, tolerance or generator was changed.
+
+### Next bounded milestone
+
+Seeds **202609404–202609408 are consumed and frozen**. Stop tuning the family
+scheduling constants and tiny serial difference. For the strong paper generator,
+future declarations need N divisible by 240 and at least 1920; panel counts must
+not leave a final singleton. Preserve the failed setups rather than rewriting them.
+
+Investigate shared **current-frame original-input statistics and reconstruction**,
+with explicit sample/basis/weight-generation ownership and independent fresh
+acceptance. Profile low-slope strict/canonical work and narrow whole-command
+loading before choosing the next change. The scoped native team now permits
+compatible independent row work without repeated external queue submissions.
+
+Current further savings needed for 0.90x stock: narrow 13.2 ms (31.4%), low
+narrow 14.2 (33.0%), disconnected 31.0 (27.7%), unbalanced 13.4 (25.3%), low large
+slopes 69.0 (20.9%), and two slope partitions 9.4 (7.8%). Candidate phase budgets:
+low large slopes prep/FE/finite/strict=33.91/135.17/24.03/74.71 ms;
+disconnected 14.37/24.11/8.92/21.39; narrow 5.44/6.41/3.73/3.73 plus 4.14 publication.
+Do not infer the remaining gap is irreducible or promise parity without evidence.
+
+Static allocation inventory drift, weighted constrained/nonretaining-CG failures,
+older sparse comparator/reporting issues, SCC access and Linux/thread/physical-
+memory confirmation remain open. Frozen 77/16/111 definitions are unchanged. No
+push, release, SCC retry, stopped campaign or full qualification occurred.
+
+---
+
+The sections below preserve prior milestone history; their next-step directions
+are superseded by the current opening above.
 
 ## Deferred two-FE PPML Schwarz adopted — 2026-09-24
 

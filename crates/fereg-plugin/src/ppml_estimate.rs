@@ -372,37 +372,10 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     fereg_core::ThreadTeam::new(action.linear.execution.threads).install(|| {
         drop(rayon::broadcast(|_| ()));
     })?;
-    // Core phases are measured relative to the action-start allocator
-    // baseline, while the decoded action, loaded columns, and owned request
-    // remain live when Preparation begins.  Snapshot only after constructing
-    // every core-owned input so preflight charges that exact resident delta
-    // to every phase instead of guessing allocator overhead.
-    match (action_probe, action_start) {
-        (Some(probe), Some(start)) => {
-            let before_fit = probe();
-            let embedding_resident_bytes =
-                before_fit.current_bytes.saturating_sub(start.current_bytes);
-            prepared_request.memory.embedding_resident_bytes = u128::from(embedding_resident_bytes)
-                .checked_add(action.transport_parent_bytes)
-                .ok_or_else(|| allocation("PPML embedding parent size overflows"))?;
-            #[cfg(test)]
-            TEST_LAST_EMBEDDING_RESIDENT_BYTES.store(
-                embedding_resident_bytes,
-                std::sync::atomic::Ordering::Relaxed,
-            );
-        }
-        (None, None) => {}
-        _ => {
-            return Err(internal(
-                "PPML action allocator observation is partial before core entry",
-            ));
-        }
-    }
     let mut native_break_armed = false;
     let mut interrupt = |point: PpmlInterruptPoint| {
-        // This closure borrows the non-Send/non-Sync SPI session and is called
-        // only by serial core boundaries.  It can therefore never migrate to
-        // a Rayon worker or invoke Stata from a worker thread.
+        // The scoped executor relays safe-point requests here. This closure
+        // keeps the non-Send/non-Sync SPI session on Stata's calling thread.
         spi.check_interrupted()?;
         if action.injection == PpmlDeveloperInjection::BreakNative
             && !native_break_armed
@@ -421,7 +394,40 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         }
         Ok(())
     };
-    let result = fit_prepared_ppml_interruptible(prepared_request, prepared_input, &mut interrupt)?;
+    let transport_parent_bytes = action.transport_parent_bytes;
+    let result = crate::ppml_execution::run(
+        fereg_core::ThreadTeam::new(action.linear.execution.threads),
+        move |poll| {
+            // Core phases are measured relative to the action-start allocator
+            // baseline, while the decoded action, loaded columns, and owned request
+            // remain live when Preparation begins.  Snapshot only after constructing
+            // every core-owned input so preflight charges that exact resident delta
+            // to every phase instead of guessing allocator overhead.
+            match (action_probe, action_start) {
+                (Some(probe), Some(start)) => {
+                    let before_fit = probe();
+                    let embedding_resident_bytes =
+                        before_fit.current_bytes.saturating_sub(start.current_bytes);
+                    prepared_request.memory.embedding_resident_bytes = u128::from(embedding_resident_bytes)
+                        .checked_add(transport_parent_bytes)
+                        .ok_or_else(|| allocation("PPML embedding parent size overflows"))?;
+                    #[cfg(test)]
+                    TEST_LAST_EMBEDDING_RESIDENT_BYTES.store(
+                        embedding_resident_bytes,
+                        std::sync::atomic::Ordering::Relaxed,
+                    );
+                }
+                (None, None) => {}
+                _ => {
+                    return Err(internal(
+                        "PPML action allocator observation is partial before core entry",
+                    ));
+                }
+            }
+            fit_prepared_ppml_interruptible(prepared_request, prepared_input, poll)
+        },
+        &mut interrupt,
+    )?;
     let publication_extension_started = Instant::now();
     let mut publication_phase = PublicationPhaseScope::begin(phase_probe);
     let publication_memory = action.publication_memory(&result)?;

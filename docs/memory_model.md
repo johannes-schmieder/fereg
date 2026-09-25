@@ -916,3 +916,19 @@ geometry/workspace/prior-response refusal consumes the generic owner to restore
 the categorical route without a topology clone. Both owners end before inference.
 The additional joint/coefficient payload follows the existing checked dimensions
 and fit-lifetime reservation; low mode still retains its bounded scratch pool.
+
+## Bounded PPML family contribution tiles
+
+[ADR 0179](adr/0179-scoped-ppml-family-execution.md) adds a mutable objective
+contribution tile of 16*min(N,4096*T) bytes when N>=4096 and T>1, zero otherwise.
+Fast and low plans charge it beside the eight mutable and two immutable family
+vectors; capacity telemetry includes the tile. Its rows are scratch, never
+accepted point, Hessian or generation authority. Two ordered compensated sums
+consume the tiles without changing the numerical reduction order.
+
+The Stata adapter's single scoped native task uses a stack-owned callback
+exchange. Its live Rayon job is captured in the embedding allocation snapshot
+before core preflight, rather than assuming a fixed platform-specific size.
+The real T1/T4 warmed audits and a 256-cycle executor test retain exact-zero
+allocation requirements. Static allocation-inventory drift and physical-cap
+qualification remain separate open issues.
