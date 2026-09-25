@@ -471,7 +471,7 @@ to the strict overlap charge, not a second permanent observation vector. The
 session row buffer is a separate K-double bank. Optional-cell validation during
 plugin publication uses predicates without allocating index vectors.
 
-For admitted low two-categorical-FE canonical products (ADRs 0168–0173), a
+For admitted low two-categorical-FE canonical products (ADRs 0168–0175), a
 checked current-call bank replaces the planned temporary projection panel and
 reusable projection block. The maximum setup, solve, certificate and
 reconstruction payload, plus live descriptors, must fit `16*N*pool` bytes. The initial topology plan
@@ -510,6 +510,16 @@ coefficient bank before the tile bank exists. The complete minimum is the
 smaller of full and tiled reconstruction plans; affordable full-bank paths
 remain preferred. Every setup, solve, certificate and reconstruction peak still
 fits the unchanged reservation. No cross-call weighted state survives.
+
+[ADR 0175](adr/0175-column-owned-canonical-ppml-rhs.md) replaces the RHS
+worker reductions with one column-owned Q-by-W bank. At most Q-by-W solved
+coordinates overlap it; streamed group centers use scalar column-local scratch.
+The independent certificate retains its separate worker reductions and complete
+phase bound. Before components are known, admission charges only the actual
+topology tables, bindings and fixed allowance alongside the old projection
+buffer. The minimum future plan must still fit the full allowance, and the
+complete component-dependent plan must pass before that buffer can be reclaimed.
+No budget increases or weighted-state reuse across calls follow from this change.
 
 ## PPML separation memory
 

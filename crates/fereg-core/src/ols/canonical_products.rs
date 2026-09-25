@@ -158,6 +158,16 @@ impl Plan {
         Some(plan)
     }
 
+    fn topology_storage_bytes(&self) -> Option<u128> {
+        // Before the complete component plan is known, only these two Q-sized
+        // tables and the column bindings coexist with the old projection panel.
+        // Future numeric/reduction banks are admitted after that panel can end.
+        (self.q as u128)
+            .checked_mul((size_of::<usize>() + size_of::<ComponentFactor>()) as u128)?
+            .checked_add((self.width as u128).checked_mul(32)?)?
+            .checked_add(2048)
+    }
+
     fn output_tile_rows(&self) -> usize {
         // A bounded group bank keeps reconstruction independent of P*W. The
         // existing scratch encoder can use smaller tiles without new storage.
@@ -196,7 +206,9 @@ impl Plan {
         let coefficients = p.checked_mul(width)?;
         let cached_coefficients = if retain_centers { coefficients } else { 0 };
         let reductions = workers.checked_mul(stride)?;
-        let rhs_reductions = workers.checked_mul(cross.checked_add(width.checked_mul(3)?)?)?;
+        // RHS columns own disjoint Q-vectors. After construction, a solved
+        // coordinate bank of at most Q*W overlaps that single cross bank.
+        let rhs_solve_overlap = cross;
         let words = |sizes: &[usize]| {
             sizes
                 .iter()
@@ -218,7 +230,7 @@ impl Plan {
             cross,
             width,
             width,
-            rhs_reductions,
+            rhs_solve_overlap,
         ])?
         .checked_add(indices(q.checked_mul(6)?)?)?;
         let certify = words(&[
@@ -461,7 +473,9 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         return Ok(None);
     };
     let available = allowance.saturating_sub(obsolete_projection.capacity() as u128 * 8);
-    if plan.bytes > available {
+    if plan.bytes > allowance
+        || plan.topology_storage_bytes().is_none_or(|bytes| bytes > available)
+    {
         return Ok(None);
     }
     match build(
@@ -505,11 +519,12 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         width,
         workers,
         stride,
-        bytes: initial_bytes,
         factor_work_budget,
+        ..
     } = plan;
     let a = &design.effects()[left_effect];
     let b = &design.effects()[1 - left_effect];
+    let initial_bytes = plan.topology_storage_bytes().ok_or_else(allocation)?;
     let mut budget = Budget::new(initial_bytes - 2048 - (width as u128) * 32);
     let mut columns = Vec::new();
     columns.try_reserve_exact(width).map_err(|_| allocation())?;
@@ -817,58 +832,40 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         None
     };
-    // A streaming frame has only this worker-local group center bank.
-    let rhs_stride = q * width + 3 * width;
-    let mut partials = budget.reserve(workers * rhs_stride, 0.)?;
-    let groups_per_worker = p.div_ceil(workers);
-    partials
-        .par_chunks_mut(rhs_stride)
+    // Each RHS owns its complete retained-level vector and compensated mean.
+    // This avoids T copies of Q*W and visits each original column in group order.
+    let mut cross = budget.reserve(q * width, 0.)?;
+    cross
+        .par_chunks_mut(q)
+        .zip(means.par_iter_mut())
         .enumerate()
-        .try_for_each(|(worker, partial)| -> Result<()> {
-            let (cross, rest) = partial.split_at_mut(q * width);
-            let (centers, rest) = rest.split_at_mut(width);
-            let (means, corrections) = rest.split_at_mut(width);
-            for g in worker * groups_per_worker..((worker + 1) * groups_per_worker).min(p) {
+        .try_for_each(|(j, (cross, mean))| -> Result<()> {
+            let scale = nonzero(scales[j]);
+            let mut sum = 0.;
+            let mut correction = 0.;
+            for g in 0..p {
                 let members = a.level_index().members(g);
-                for j in 0..width {
-                    centers[j] = if let Some(left) = &retained_left {
-                        left[j * p + g]
-                    } else {
-                        group_coefficient(
-                            &columns[j],
-                            &w,
-                            nonzero(scales[j]),
-                            mass_a[g],
-                            members,
-                            None,
-                        )?
-                    };
-                    let term = (mass_a[g] / total) * centers[j] - corrections[j];
-                    let next = means[j] + term;
-                    corrections[j] = (next - means[j]) - term;
-                    means[j] = next;
-                }
+                let center = if let Some(left) = &retained_left {
+                    left[j * p + g]
+                } else {
+                    group_coefficient(&columns[j], &w, scale, mass_a[g], members, None)?
+                };
+                let term = (mass_a[g] / total) * center - correction;
+                let next = sum + term;
+                correction = (next - sum) - term;
+                sum = next;
                 for &i in members {
                     let h = b.codes()[i] as usize;
-                    for j in 0..width {
-                        let value = columns[j].value(i)? / nonzero(scales[j]) - centers[j];
-                        cross[h * width + j] = w[i].mul_add(value, cross[h * width + j]);
-                    }
+                    let value = columns[j].value(i)? / scale - center;
+                    cross[h] = w[i].mul_add(value, cross[h]);
                 }
+            }
+            *mean = sum * scale;
+            if !mean.is_finite() {
+                return Err(declined());
             }
             Ok(())
         })?;
-    for j in 0..width {
-        means[j] = merge(&partials, rhs_stride, q * width + width + j) * nonzero(scales[j]);
-        if !means[j].is_finite() {
-            return Err(declined());
-        }
-    }
-    let mut cross = budget.reserve(q * width, 0.)?;
-    for slot in 0..cross.len() {
-        cross[slot] = merge(&partials, rhs_stride, slot);
-    }
-    budget.release(partials)?;
     let mut solved = budget.reserve(d * width, 0.)?;
     if d > 0 {
         solved
@@ -877,7 +874,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             .try_for_each(|(j, values)| -> Result<()> {
                 for h in 0..q {
                     if free[h] != usize::MAX {
-                        values[free[h]] = cross[h * width + j] / roots[h];
+                        values[free[h]] = cross[j * q + h] / roots[h];
                     }
                 }
                 for block in &components {
@@ -1491,15 +1488,24 @@ mod tests {
 
     #[test]
     fn streamed_canonical_groups_admit_wide_nonzero_weighted_contrasts() {
-        weighted_streaming_case(8640, 100, 36, false);
+        weighted_streaming_case(8640, 100, 36, 1, &[1, 8], false);
     }
 
     #[test]
     fn tiled_canonical_output_matches_independent_wls_under_changing_weights() {
-        weighted_streaming_case(14400, 144, 32, true);
+        weighted_streaming_case(14400, 144, 32, 1, &[1, 8], true);
     }
 
-    fn weighted_streaming_case(n: usize, k: usize, q: usize, tile_output: bool) {
+    #[test]
+    fn column_owned_rhs_admits_disconnected_wls_below_the_old_reduction_peak() {
+        weighted_streaming_case(16320, 100, 124, 4, &[4], true);
+    }
+
+    fn weighted_streaming_case(
+        n: usize, k: usize, q_per_component: usize, components: usize,
+        worker_counts: &[usize], tile_output: bool,
+    ) {
+        let q = q_per_component * components;
         use crate::ols::linear_session::{CertifiedLinearSession, LinearSessionGenerations};
         use crate::ols::prepared_fit::LinearSolveFrame;
         use crate::ols::{
@@ -1507,7 +1513,8 @@ mod tests {
         };
         let g: Vec<_> = (0..n).map(|i| (i / 6) as f64).collect();
         let h: Vec<_> = (0..n)
-            .map(|i| ((i / 6 + 11 * ((i % 6) / 2)) % q) as f64)
+            .map(|i| (((i / 6 / components + 11 * ((i % 6) / 2)) % q_per_component)
+                + (i / 6 % components) * q_per_component) as f64)
             .collect();
         // Both rows in each pair share all FE and control coordinates. Their
         // reciprocal-weight errors are orthogonal to the complete explicit
@@ -1531,7 +1538,7 @@ mod tests {
             .collect();
         let prepared = prepared(&predictor, &x, &g, &h);
         let allowance = (n * 10 * 16) as u128;
-        for threads in [1, 8] {
+        for &threads in worker_counts {
             let team = rayon::ThreadPoolBuilder::new()
                 .num_threads(threads)
                 .build()
@@ -1543,6 +1550,15 @@ mod tests {
                     .unwrap();
                 let plan = Plan::new(&design, k + 1, 0, threads, 0).unwrap();
                 let w = k + 1;
+                if components > 1 {
+                    let matrix = components * q_per_component * q_per_component;
+                    let factor = components * (q_per_component - 1) * (q_per_component - 1);
+                    let old_solve = 8 * (n + plan.p + 2*q + factor + q*w + 2*w
+                        + threads * (q*w + 3*w))
+                        + 6*q*size_of::<usize>() + 32*w + 2048;
+                    assert!(old_solve as u128 > allowance);
+                    assert!(plan.minimum_storage_bytes(matrix, factor).unwrap() <= allowance);
+                }
                 let previous_certificate = 8
                     * (n + n / 6
                         + q
@@ -1584,6 +1600,30 @@ mod tests {
                         reference_weight_multiplier: divisor,
                         reference_weight_sum: weights.iter().sum(),
                     };
+                    let mut old_panel = vec![42.; n * 10];
+                    let old_capacity = old_panel.capacity();
+                    let topology = plan.topology_storage_bytes().unwrap();
+                    // The earlier preflight refused this live-panel frame by
+                    // charging reductions that do not exist during topology.
+                    if threads == 8 {
+                        assert!(plan.bytes > allowance - old_capacity as u128 * 8);
+                    }
+                    assert!(topology <= allowance - old_capacity as u128 * 8);
+                    assert!(try_build(
+                        &prepared,
+                        &(0..k).collect::<Vec<_>>(),
+                        &y,
+                        BorrowedMapWeights::Provided(&weights),
+                        divisor,
+                        config.absorb.map,
+                        old_capacity as u128 * 8 + topology - 1,
+                        0,
+                        &mut old_panel,
+                    )
+                    .unwrap()
+                    .is_none());
+                    assert_eq!(old_panel.capacity(), old_capacity);
+                    assert!(old_panel.iter().all(|&x| x == 42.));
                     let mut products = try_build(
                         &prepared,
                         &(0..k).collect::<Vec<_>>(),
@@ -1593,11 +1633,18 @@ mod tests {
                         config.absorb.map,
                         allowance,
                         0,
-                        &mut Vec::new(),
+                        &mut old_panel,
                     )
                     .unwrap()
                     .unwrap();
                     assert!(products.report.certified());
+                    let selected_bytes = products.report.solver_workspace_peak.bytes().unwrap() as u128;
+                    if selected_bytes > allowance - old_capacity as u128 * 8 {
+                        assert_eq!(old_panel.capacity(), 0);
+                    } else {
+                        assert_eq!(old_panel.capacity(), old_capacity);
+                        assert!(old_panel.iter().all(|&x| x == 42.));
+                    }
                     assert!(!products.retained_centers);
                     assert_eq!(products.tiled.is_some(), tile_output);
                     let bytes = products.minimum_workspace_bytes;
@@ -1638,6 +1685,8 @@ mod tests {
                     assert_eq!(products.moments.gram, cached.moments.gram);
                     assert_eq!(products.means, cached.means);
                     drop(cached);
+                    let mut refused_panel = vec![42.; n * 10];
+                    let refused_capacity = refused_panel.capacity();
                     assert!(try_build(
                         &prepared,
                         &(0..k).collect::<Vec<_>>(),
@@ -1647,10 +1696,12 @@ mod tests {
                         config.absorb.map,
                         bytes - 1,
                         0,
-                        &mut Vec::new()
+                        &mut refused_panel
                     )
                     .unwrap()
                     .is_none());
+                    assert_eq!(refused_panel.capacity(), refused_capacity);
+                    assert!(refused_panel.iter().all(|&x| x == 42.));
                     // The bank rebuilt after certification must reproduce the
                     // very residuals whose direct products supplied the Gram.
                     for j in [0, 1, k] {

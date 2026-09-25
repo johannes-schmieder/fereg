@@ -193,6 +193,13 @@ the groups needed by each retained-row tile. Its weights, masses, original
 columns and retained coefficients remain immutable until writing finishes.
 The same certified coefficient recurrence governs either reconstruction.
 Work admission, factors and acceptance thresholds are unchanged.
+[ADR 0175](adr/0175-column-owned-canonical-ppml-rhs.md) gives each response/control
+column exclusive ownership of its retained-level RHS vector, eliminating the
+worker-private RHS banks and their merge. Each column visits groups and original
+rows in fixed order; its original mean uses compensated accumulation. Current
+factors and the independent original-input residual/Gram certificate retain their
+existing requirements. The complete phase plan can admit more direct work within
+the same allowance; it does not grant any cross-generation weighted authority.
 
 Under ADR 0139, admitted low one-FE PPML canonical products use immutable
 original columns minus freshly computed current-weight group centers. A separate
