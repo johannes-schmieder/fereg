@@ -9,8 +9,46 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-The [current implementation plan](#further-ppml-development-plan--revised-after-adr-0201-2026-09-25)
-uses final controlplane3 seed434 evidence and continues with native lifecycle work.
+The [current implementation plan](#further-ppml-development-plan--revised-after-adr-0202-2026-09-25)
+uses final controlplane3 seed434 evidence. The topology-transfer pilot below is
+closed; substantial native lifecycle work is next.
+
+## Multi-partition topology transfer rejected — 2026-09-25
+
+Retain **c7c4c473 / controlplane3**. The `partitiontransfer1` prototype and its
+four source overlays are removed; all **564 accepted computational inputs** match.
+[ADR 0202](docs/adr/0202-ppml-topology-transfer-closeout.md) and the
+[source-bound report](benchmarks/reports/development/ppml-topology-transfer-closeout-local-2026-09-25/README.md)
+preserve the implementation and **2,654 restored, hash/privacy-verified receipts**.
+The existing PPML goal remains active and unfinished.
+
+The prototype moves unchanged single-source category codes/membership into
+finalized multi-partition PPML topology, preserving fresh validation. This removes
+real repeated preparation but does not change numerical work. Its predeclared
+seed202609347 development pilot (three B/C/stock rotations) yields medians:
+**108/106/99 ms** disconnected low categorical, **37/38/33** narrow,
+**83/82/127** wide, **71/71/81** low T8 slopes, **179/179/234** unbalanced three-FE
+slopes and **134/134/271** multiple slopes. **Seven wins, four losses, seven ties**;
+no new family meets 0.90 stock. Two-ms large-case savings and unchanged slope
+medians do not justify another production path. No correction, fresh seed or
+additional timing campaign follows. Do not pool this with accepted seed434.
+
+All **24 distinct Rust tests**, **six licensed independent scientific fixtures**,
+**54 public states**, **36 baseline-anchored pairs** and **18 direct stock pairs**
+pass. All 18 native pairs have exact coefficient/covariance/mean exports and
+unchanged iterations/fallbacks. Initial missing-toolchain and empty-N test-probe
+failures are preserved; the latter was test-only and corrected. Tracked native
+peaks change -240 to -120 bytes, scratch zero, selected telemetry zero to +48.
+No new public OLS, cold-start or physical-cap clocks are claimed. Existing OLS
+losses, science discrepancies, allocation drift and deferred platforms stay open.
+
+**Next implementation:** pursue an integrated weighted-frame lifecycle change
+with a credible **at least ten-ms public savings budget**, then a materially
+different exact-weight block solve if those duplicates cannot cover the deficit.
+Do not tune this topology transfer, closed incidence operators or packaging.
+The accepted-source deficits remain **11 ms narrow / 21.7 ms low categorical**;
+shared structural savings should provide headroom for near-target T8 slopes.
+The plan below specifies owners, mathematical authorities and stopping gates.
 
 ## Compiled PPML transport accepted — 2026-09-25
 
@@ -603,7 +641,7 @@ released before certification. Final fresh tracked peaks change by -2,681,856 to
 +48 bytes. All frozen benchmark definitions are preserved. Seeds **202609428/429
 are now consumed/frozen** and cannot become tuning seeds.
 
-## Further PPML development plan — revised after ADR 0201, 2026-09-25
+## Further PPML development plan — revised after ADR 0202, 2026-09-25
 
 This is the current execution plan and supersedes earlier plans in this file.
 Scope remains **at least two FE partitions**. Target complete public `feppml`
@@ -614,8 +652,10 @@ completion. Proposed savings below are targets, not measured improvements.
 
 The retained artifact is **controlplane3**, parent **19ab41ce**, with unchanged
 slopetopology1 native computation. ADR0201's seed434 block is the current
-accepted-source comparison. Compiled bounded validation/publication is complete;
-the broader native lifecycle milestone remains active. Prior rejected prototypes
+accepted-source comparison. Compiled bounded validation/publication is complete. ADR0202 closes the
+standalone topology-transfer prototype without adoption; its 2-ms large-case
+gain cannot meet this milestone. The broader native lifecycle milestone remains
+active. Prior rejected prototypes
 and earlier validation seeds do not redefine this baseline.
 
 ### Targets and priority
@@ -654,9 +694,51 @@ proposing them again. Closed coarse-CG, reference-operator, early-checkpoint,
 residual-extrapolation and incidence experiments stay closed; a new proposal
 must materially change organization and have a measured public savings budget.
 
+### Ambition and implementation sequence
+
+Aim beyond a fragile 0.90 crossing: **24–25 ms narrow**, **75–80 ms disconnected
+low categorical**, and **60–65 ms T8 slopes** on comparable work. These are
+engineering targets, not predicted or measured improvements. Judge each case
+against contemporaneous stock; do not treat an old stock clock as a fixed budget.
+
+The next two candidates must change computational organization rather than add
+another specialized micro-path. Execute them sequentially, not as overlapping
+solver layers:
+
+1. **One owner per mathematical PPML state.** Follow `prepared_irls.rs`,
+   `linear_session.rs`, `prepared_fit.rs` and result construction through the
+   initial, ordinary, strict and final states. Build a dependency table for row
+   identity, immutable columns/topology, exact weights, working response,
+   predictor/mean, rank and outputs. Replace demonstrated duplicate owners and
+   reconstruct-only transitions in one integrated candidate. Carry valid
+   products to their consumers; invalidate them by sample generation, weight
+   frame and state identity. A shared constructor alone is insufficient: public
+   measurement must show removed full passes or a removed stage. Preserve
+   independently computed acceptance quantities. A current-weight authority
+   cannot be inferred from an old-weight solution or a solver's own recurrence.
+2. **One exact-weight block proposal for compatible RHS work.** If lifecycle
+   duplication cannot cover the budget, evaluate the sparse grounded FE-block
+   factor candidate specified in Milestone 2. Reuse symbolic structure only;
+   rebuild numeric factors at each actual weight frame. Compare all initial,
+   ordinary, strict and final workloads, including already-cheap warm solves.
+   Aim to serve finite-block elimination and compatible response/control work
+   from that factor, while independent original-input checks retain authority.
+   Do not adopt it if fill, setup, rank or complete memory costs erase the gain.
+
+Before implementation, assign every proposed saved pass to one nonoverlapping
+ledger entry. The integrated candidate needs a credible **at least 10-ms public
+budget** on a principal loss and a path to the full **11/21.7-ms deficits**.
+The ledger already exists: fill only missing dependency/operation counts, not
+another broad profiling report. Do not add proposed savings from nested spans.
+A smaller change is worth retaining only if reliable and cheap in complexity,
+or if it removes machinery as part of the coherent replacement. ADR0202 fails
+that test and stays closed. Required verification has a measured cost, not an
+assumed exemption from optimization or a reason to weaken acceptance.
+
 ### Milestone 1: implement a smaller complete public-command lifecycle
 
-**Resume at step 2.** Step 1 is retained under ADR0201. The earlier native
+**Resume at step 2 with the integrated candidate above.** Step 1 is retained
+under ADR0201; standalone topology transfer is closed under ADR0202. The earlier native
 ledger places the narrow inner recurrence at only about three ms.
 That earlier diagnostic public command was about 42 ms, with roughly 33 ms
 inside the plugin; the ado phase sum is about 8.5 ms. These rounded diagnostic spans are not exact
@@ -700,7 +782,7 @@ low case. The current public saving required is 21.7 ms. ADR0200's roughly
 four-ms solver saving cannot meet that budget and did not justify its added representation.
 Do not resume its packing, operator crossover or component-threshold experiments.
 
-First complete the same-state ownership change only where Milestone 1 identifies
+Use same-state ownership changes only where Milestone 1 identifies
 repeated work that also scales here. Map immutable topology and column recipes,
 current-weight geometry, response-specific solutions, retained rows/products and
 independently formed acceptance products. Reuse the existing fused builders and
