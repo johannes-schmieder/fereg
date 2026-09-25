@@ -10,6 +10,24 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Active plan and unfinished experiment — 2026-09-25
+
+The [development plan below](#further-ppml-development-plan--revised-2026-09-25)
+now prioritizes eliminating repeated weighted-system construction with a
+safeguarded modified-Newton proposal, then shared preparation/certification,
+narrow-fit lifecycle costs, and a selective broader-family screen. Aim for
+75–80 ms on the recorded 112-ms low case and 26–28 ms on the 39-ms narrow case;
+these are engineering ambitions, not measured results or promised speedups.
+
+At this planning update, `map.rs` and `slope_coefficients/joint.rs` contain an
+uncommitted fixed-frame product-reuse prototype. It has no production PPML
+caller yet. The existing focused fixed-frame test passes; this is not public
+estimator acceptance. Preserve these edits and the local diagnostic evidence
+under `target/ppml-nonlinear-block-20260925` and
+`target/ppml-fixed-joint-20260925`. Production remains finalreplay1. The next
+implementation milestone must integrate, validate and measure the complete
+proposal or reject it; merely committing its cache prerequisite is insufficient.
+
 ## Coarse canonical CG experiment closed — 2026-09-25
 
 Production remains **e7731129/finalreplay1**. Reject **canonicalcoarse1**, based
@@ -43,12 +61,13 @@ inclusive diagnostic spans, not stock headlines. Narrow RHS work is **0.177 ms**
 The original accepted-source clocks and remaining 27.4/8.4-ms gaps below remain
 the active planning budget. Do not pool the pilot with that fresh block.
 
-**Next implementation:** Milestone 2's shared preparation/reconstruction/checking
-boundary. Ordinary recurrence occupies about 5.8 ms inside 23.8 ms of joint work;
-geometry alone is about 1.5 ms. Trace the ownership and independently necessary
-row passes, then replace duplicated work coherently. Do not resume the rejected
-coarse correction or another recurrence-only tuning cycle. Known scientific,
-allocation-inventory, constrained-memory and platform gaps remain unchanged.
+**Next implementation:** the active plan's modified-Newton experiment and shared
+preparation/reconstruction/checking boundary. Ordinary recurrence occupies about
+5.8 ms inside 23.8 ms of joint work; geometry alone is about 1.5 ms. Reduce full
+weighted-system constructions and independently necessary row passes together.
+Do not resume the rejected coarse correction or another recurrence-only tuning
+cycle. Known scientific, allocation-inventory, constrained-memory and platform
+gaps remain unchanged.
 
 ## Fresh final verification retained; larger gaps remain — 2026-09-25
 
@@ -269,8 +288,9 @@ Scope remains **at least two FE partitions**. The goal is complete public
 wherever practical. Judge each family and its losses, not an aggregate win rate.
 Aim for additional margin so a noisy 0.90 median is not mistaken for a reliable
 advantage. This is an implementation plan; none of its proposed savings is an
-achieved result. Current runtime is **e7731129/finalreplay1**, with a clean
-production worktree at the start of this planning update.
+achieved result. Current accepted runtime is **e7731129/finalreplay1**. The
+unfinished two-file prototype in the opening record is preserved separately;
+its core test is not evidence of a production speed improvement.
 
 ### Current savings budgets and coverage
 
@@ -306,7 +326,45 @@ checks pass and iteration work decreases, but the full-public pilot has only
 no fresh validation seed is consumed. Continue with Milestone 2, preserving this
 negative result instead of retuning the correction.
 
-### Milestone 2: remove repeated work across the weighted-linear lifecycle
+### Milestone 2: replace repeated Newton setup with certified surrogate proposals
+
+Finish the materially different candidate already under development: use a
+fixed reference-weight joint operator for several modified-Newton (chord)
+proposals, driven by the fresh current Poisson gradient. Establish the operator
+after a successful current-weight step. Reuse its FE geometry, finite products
+and factors only under exact sample, topology, weight, finite-design, basis and
+selected-column identities. A changed response alone may reuse those products;
+changed dependencies or a failed solve revoke reuse. Start with the existing
+low-mode original-column owner, then generalize only after public gains.
+
+The local `chord.json` diagnostic uses actual first-accepted states. It needs
+four steps with one setup instead of three steps with three setups on the large
+case, and three steps with one setup instead of three setups on the narrow case.
+These are mathematical feasibility observations, not production timings. Its
+dense reduced matrix is diagnostic only and cannot become the low-memory
+implementation. The alternative nonlinear block-coordinate probe needs 13/9
+accelerated sweeps and is not selected for integration. Preserve both probes,
+including unsuccessful drafts, in the milestone's source-bound report.
+
+A reference-weight solve certifies its surrogate problem; it must never claim
+to solve the current q*mu Newton equations. Fresh current objective, finite/FE
+scores and model-space checks govern accepted proposals. Rebuild the operator
+on failed progress or numerical refusal using a documented, case-independent
+rule, with bounded recovery. A strict checkpoint first restores exact current
+q*mu weights and the canonical response. Initial/final rank policy, independent
+strict projection and reconstruction, and exact final Hessian/inference remain
+authoritative. Document the revised proposal policy and diagnostics in a
+successor ADR; do not silently change the meaning of a current-weight certificate.
+
+Measure preparations, RHS work, gradient/score passes, exponentials, rejected
+trials and strict/final work across the complete fit. Extra cheap steps are
+acceptable only if their total cost is lower. The first delivery is a complete
+public-command pilot plus independent changing-weight Poisson/Hessian and
+rollback evidence, not just a reusable-factor commit. Admit only on fresh
+whole-command evidence. If it fails, close it without repeated age/threshold
+tuning and continue to Milestone 3.
+
+### Milestone 3: consolidate weighted-linear preparation and independent checking
 
 This is the principal shared implementation target. The accepted diagnostic
 still records about 23.8 ms inside ordinary joint directions with only 5.8 ms
@@ -337,34 +395,22 @@ include setup, checks and inference when deciding whether the new ownership is
 better. Measure the remaining milliseconds against the current target after
 adoption. Do not spend another cycle on final-replay micro-tuning.
 
-### Milestone 3: a materially different algorithm if full solves remain dominant
+Specifically separate immutable topology and source recipes, one weighted
+operator, per-response state, and independent acceptance scratch. Hand off
+same-state products across strict solving and inference only after their
+identities and independent certificates agree. Existing fused canonical builders
+already do part of this; inspect their remaining duplicate consumers rather
+than implement another competing builder. Initial rank and final-Hessian work
+cannot share weighted factors merely because the structural design is unchanged.
 
-If lifecycle consolidation leaves too many expensive changing-weight solves,
-prototype **nonlinear block coefficient updates between canonical boundaries**.
-Use exact conditional categorical intercept updates and safeguarded local slope
-Newton updates, coupled to finite coefficients and objective-checked acceleration.
-The purpose is to reach the required accepted point with fewer complete weighted-
-linear solves, not merely fewer iterations in one recurrence.
+Count bytes read/written and full observation passes as well as arithmetic.
+Evaluate bounded row/RHS tiles and independently stopping columns where retained
+work remains substantial. The candidate must remove a measured whole phase or
+several repeated passes, not save a few Krylov iterations while leaving setup
+unchanged. Use a nonoverlapping wall-time ledger to estimate a feasible savings
+budget; never add inclusive phase spans or worker times.
 
-ADRs 0174/0187 already profile one partition on line-search trials; ADR 0186
-already improves slope initialization. Those are not new candidates. The proposed
-change must replace selected ordinary direction work with a bounded alternating
-coefficient solve across coupled partitions. Distinguish it from the rejected
-three-plus-FE trial correction, which added work without removing outer steps.
-Use original-coordinate coefficient guesses or a proven mapping into changed
-weighted coordinates. Always recompute the initial residual/current objective
-under new weights. Warm guesses carry no certificate authority.
-
-Compare this one coherent alternative against the existing joint Newton engine
-on the same actual PPML sequences. Count full solves, factor preparations,
-exponentials, row passes, rejected trials and finalization, not nominal iteration
-counts. Preserve canonical initial rank, required current-weight projection and
-strict final acceptance, sample/separation policy and exact final Hessian.
-Refusal uses the existing certified route. If the candidate wins, integrate and
-remove superseded overlap; if it fails, preserve the cause and stop. Do not add
-multiple permanent solver layers or tune topology/seed-specific guards.
-
-### Milestone 4: make narrow fits and broader families earn the same margin
+### Milestone 4: reduce the entire narrow-fit lifecycle
 
 Narrow fits require their own complete-command budget because canonical CG is
 already cheap. Separate public preparation/loading/output from native topology,
@@ -373,6 +419,17 @@ avoid redundant session construction and unnecessary worker scheduling only wher
 measured. Preserve one substantive plugin call, main-thread SPI and atomic results.
 The 26–28-ms engineering target requires more than moving output outside the clock.
 
+Build a distinct narrow-fit execution plan if the existing general session
+demonstrably does unnecessary work: bounded small-system kernels, one prepared
+topology owner, and serial execution of phases too small to amortize scheduling.
+Route by measured operation counts and complete memory cost, not benchmark
+identity or favorable seeds. Preserve explicit solver-family requests. Retire a
+superseded path after its replacement passes; do not accumulate specialized
+owners for individual cases. Aim to remove at least 8.4 ms across the command,
+with 11–13 ms as the engineering ambition on this captured block.
+
+### Milestone 5: extend the advantage across multi-FE families
+
 After the first larger accepted change, run a compact opportunity screen spanning
 threaded two-partition slopes, unbalanced three-FE slopes fast/low, three/four
 categorical FE, a wide/generated design and one cluster/saved-output case.
@@ -380,6 +437,16 @@ Adjudicate the known three-FE coefficient disagreement before ranking it. Extend
 only around measured misses: imbalance, weak/disconnected connectivity, multiple
 or deficient slopes, changed weights, zeros/separation and offsets/exposure.
 Use complete work/memory estimates for any routing change, never case names.
+
+Begin with roughly eight to twelve representative cells, reusing existing
+definitions and matched work. Spread T1/T4/T8, fast/low, imbalance, connectivity
+and widths across them instead of taking a Cartesian product. Include multiple
+and deficient slope channels and selective fweight/pweight, offset/exposure and
+separation boundaries in focused science checks. Ordinary fixest weights are
+not an fweight inference oracle. Four-plus FE and saved effects are opportunities
+to measure, not presumed losses. Pick the next implementation by absolute time
+lost, prevalence and plausible shared savings. Include known winning serial,
+wide and slope cases as protections against a routing regression.
 
 Confirm promising gains at a larger local N to expose bandwidth, allocation and
 scratch behavior. Low-mode success alone is not proof of physical-cap feasibility.
@@ -412,15 +479,24 @@ Linux/T1/T8/T16 and constrained-platform confirmation remain deferred; no SCC re
   inexpensive shared gains without calling the broader task finished. After two
   materially different failures in a subsystem, move to the next measured loss
   with an explicit account of the remaining cost.
+- A completed family needs fresh per-case evidence at or below 0.90, supported
+  by its timing distribution. A noisy median near the boundary is provisional;
+  target 0.80–0.85 during development where practical. Report the fraction of
+  cases meeting 0.90, worst losses, and remaining milliseconds for every miss.
+  No aggregate speedup hides a slower family. If required fresh scientific work
+  consumes the target budget, identify and measure it separately from removable
+  implementation cost before declaring the remaining margin impractical.
 - Commit accepted changes and sanitized rejected evidence at bounded milestones;
   remove superseded paths. STATUS remains the sole mutable handover. Known test,
   allocation-inventory, constrained-fit/CG and platform gaps remain open. No push,
   release, stopped campaign restart or qualification claim.
 
-The original planning update changed no estimator source and consumed no fresh
-validation seed. Milestone 1 has since completed as recorded above. The broad
-goal remains active; implementation continues with Milestone 2 after the rejected
-bounded preconditioning experiment.
+This planning revision changes no estimator source and consumes no fresh
+validation seed. Milestone 1 is closed. Milestone 2's prerequisite remains
+uncommitted and without public integration; preserve it and its diagnostics.
+The broad goal remains active. Each implementation milestone ends with a
+coherent tested commit and evidence of adopted improvements or a bounded
+rejection, not a declaration that a promising prototype completed the task.
 
 ## Canonical residual certificate gate accepted — 2026-09-25
 
