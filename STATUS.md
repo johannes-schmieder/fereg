@@ -10,6 +10,87 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Shared dense slope factors rejected — 2026-09-25
+
+[ADR 0183](docs/adr/0183-shared-slope-factor-closeout.md) and the
+[source-bound report](benchmarks/reports/development/ppml-shared-slope-factors-local-2026-09-25/README.md)
+close the canonical shared-factor experiment. **No production change is adopted.**
+All **554** accepted `frameado3` runtime inputs still match **132b69b6**;
+plugin SHA-256 remains
+`4a326b8d3b210084620478dfd857ffdca672db5aacfc7acbd82fbc3194b98af8`.
+The broad speed goal is not complete.
+
+### What was implemented and measured
+
+Two isolated prototypes form a current-weight reduced Schur matrix and share a
+stabilized blocked Cholesky proposal factor across RHSs. Refinement targets the
+unshifted problem; original-row reconstruction and the unchanged full FE check
+remain acceptance gates. The single correction replaces the first intermediate
+row reconstruction with coefficient moments. The public prototype also shares
+its lazy factor across compatible calls and invalidates it at every coupling
+refresh, including ordinary joint work. It has diagnostic-only extra workspace,
+not production memory admission.
+
+Cold strict wide three-FE/T8 calls improve roughly **34→26 ms**. Whole public
+commands lose: accepted/prototype/stock medians are **223/238/231 ms** large
+fast, **240/243/230** large low, **104/107/80** two-slope K6/T8,
+**114/119/117** smaller three-FE/T4, **150/148/317** serial slopes and
+**36/36/31** narrow categorical. There are **14 losses, two ties and two wins**
+in 18 public pairs. Do not adopt a cold-kernel gain or tune guards around it.
+
+Actual accepted-command captures explain the mismatch. Initial canonical work
+uses the existing **1e-6** schedule; final canonical work uses **1e-12**. The
+large fast initial call evaluates 87 CG products across 12 RHSs; strict uses
+170 across 11. Some scalar refreshes need zero or one product. At those actual
+targets, the T8 fast initial replay worsens **20.512→26.881 ms**, while strict
+improves only **26.684→26.057**. Low initial worsens **20.407→26.178** and strict
+improves **28.489→25.675**. Replays rebuild geometry and are not public clocks.
+Their baseline operator counts match every captured block at T1/T4/T8.
+
+All **780 native timed calls**, **156 independent explicit-design configurations**,
+**66 public states**, **42 baseline comparisons**, **18 direct stock comparisons**
+and three licensed fixtures pass. Twelve public states are diagnostics, not
+ranked. Three analytic Rust-oracle executions cover deficient slopes, changing
+weights and extreme column scales. The first capture's stripped dump variable
+and a subsequent wrapper argument error are preserved; the corrected capture
+is successful. There are no failed measured applications, timeouts or isolation
+failures. No broad Rust, fresh holdout, allocation or qualification campaign was
+advanced after the public rejection.
+
+The large factor alone retains **6,610,248 numeric bytes**, and factor plus
+panel needs **6,842,952**, alongside existing owners. Reported prototype public
+memory counters are not a complete model. The verified/restored archive holds
+**4,272 logical receipts / 1,098 payloads / 9,855,150 bytes**, SHA-256
+`3183af44df30a279de31d001bb52ffe33c18c5224299f031a005f1e56f5b33f8`.
+Work roots are target/ppml-slope-factors-20260925,
+target/ppml-slope-factors2-20260925, target/ppml-slope-factor-replay-20260925 and
+target/ppml-slope-factor-public-20260925. All operations are terminal.
+
+### Next bounded implementation
+
+Proceed to **ordinary joint-direction construction and its checking passes**,
+using actual scheduled PPML frames from the start. The preceding whole-command
+diagnosis places joint work near 68 ms for large slopes and 38 ms for the smaller
+two-partition fit. Separate current-weight normalization, finite/group moments,
+operator applications, reconstruction and independent checking before editing.
+Investigate a coherent construction of finite/group sufficient statistics from
+original controls, followed by coefficient-space elimination, to remove repeated
+observation passes. Reuse the existing joint owner and observation-operator
+fallback. These remain direction proposals: canonical rank, direct residual
+Gram, inverse and final-Hessian authority must stay independent. ADR 0167's
+canonical cancellation objection remains in force.
+
+Require an early complete public screen, then fresh cases and categorical/OLS
+controls only for a promising candidate. Do not resume dense-factor threshold,
+paired-lane, retained-coefficient, interrupt or metadata tuning. On this tuning
+screen, accepted fast/low large slopes still need **15.1/33 ms** savings for
+0.90 stock, and two-slope T8 needs **32 ms**. Prior fresh415 budgets remain
+case-bound evidence, not superseded by these more favorable tuning cases.
+No new validation seed was consumed. Frozen 77/16/111 definitions, static
+inventory drift, constrained-fit/CG failures, comparator discrepancies and
+deferred SCC/platform work remain unchanged. No push, release or qualification
+occurred. Earlier next-step paragraphs below are historical.
+
 ## Whole-command attribution and request framing accepted — 2026-09-25
 
 [ADR 0182](docs/adr/0182-bounded-request-framing.md) and the
