@@ -781,6 +781,17 @@ pub(crate) fn prepare_ols_data_with_cluster_sources(
     loaded: &LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedOlsData> {
+    let (model, sample) = prepare_ols_numeric_sample(request, loaded, cluster_sources)?;
+    finish_prepare_ols_data(request, cluster_sources, model, sample)
+}
+
+/// Borrowed counterpart of the owned classification boundary. All source uses
+/// are resolved before a caller may discard synthetic availability categories.
+pub(crate) fn prepare_ols_numeric_sample(
+    request: &OlsRequestV1,
+    loaded: &LoadedOlsInput,
+    cluster_sources: &[SourceId],
+) -> Result<(PreparedOlsModel, PreparedNumericSample)> {
     let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
     validate_loaded(request, loaded)?;
     validate_candidate_categorical_domain(request, loaded, cluster_sources)?;
@@ -829,7 +840,7 @@ pub(crate) fn prepare_ols_data_with_cluster_sources(
             prepare_numeric_sample_with_source_uses(&input, &source_uses, &OlsPreparationPolicy)?
         }
     };
-    finish_prepare_ols_data(request, cluster_sources, model, sample)
+    Ok((model, sample))
 }
 
 fn finish_prepare_ols_data(

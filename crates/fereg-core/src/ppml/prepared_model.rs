@@ -1120,6 +1120,47 @@ mod tests {
     }
 
     #[test]
+    fn slope_generation_compaction_preserves_pweight_rebase_and_rollback() {
+        let mut fixture = categorical_clustered_fixture();
+        let x = SourceId::new(1).unwrap();
+        let h = SourceId::new(3).unwrap();
+        fixture.request.absorbed_terms[0].slope_sources = vec![x];
+        fixture.request.absorbed_terms.push(AbsorbedTerm {
+            id: AbsorbTermId::new(2).unwrap(), intercept: true,
+            categorical_sources: vec![h], slope_sources: vec![x],
+            label: "h##c.x".into(), saved_name: String::new(),
+        });
+        let numeric = fixture.prepare_numeric();
+        let mut owner = fixture.into_owner(numeric);
+        let candidate = owner.loaded.candidate.clone();
+        let raw_weights = owner.loaded.probability_weight.clone();
+        let all_rows = owner.candidate_original_rows.to_vec();
+        let initial = owner.rebuild_generation(&all_rows, 0).unwrap();
+        let subset = [0, 2, 3, 6];
+        let rebased = owner.rebuild_generation(&subset, 1).unwrap();
+        assert_eq!(rebased.original_rows(), subset);
+        assert_eq!(rebased.fit_view().sample().n_active(), subset.len());
+        assert_eq!(rebased.fit_view().effect_specs().len(), 2);
+        assert!((rebased.prior_weights().iter().sum::<f64>() - subset.len() as f64).abs() < 1e-12);
+        for (position, &row) in subset.iter().enumerate() {
+            assert_eq!(rebased.outcome()[position], owner.loaded.outcome.values[row]);
+            assert_eq!(rebased.fit_view().sample().regressors[0][position],
+                owner.loaded.numeric_sources[0].1.values[row]);
+        }
+        assert_eq!(owner.loaded.candidate, candidate);
+        assert_eq!(owner.loaded.probability_weight, raw_weights);
+        owner.generation_memory_bound = Some(rebased.owned_buffer_bytes() - 1);
+        assert_eq!(owner.rebuild_generation(&subset, 2).unwrap_err().code, ErrorCode::Allocation);
+        assert_eq!(owner.loaded.candidate, candidate);
+        assert_eq!(owner.loaded.probability_weight, raw_weights);
+        owner.generation_memory_bound = Some(initial.owned_buffer_bytes());
+        let restored = owner.rebuild_generation(&all_rows, 3).unwrap();
+        assert_eq!(restored.original_rows(), initial.original_rows());
+        assert_eq!(restored.prior_weights(), initial.prior_weights());
+        assert_eq!(restored.fit_view().sample(), initial.fit_view().sample());
+    }
+
+    #[test]
     fn categorical_clustered_generations_preserve_original_rows_and_defer_singletons() {
         let fixture = categorical_clustered_fixture();
         let numeric = fixture.prepare_numeric();

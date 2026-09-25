@@ -1202,12 +1202,24 @@ fn prepare_categorical_ols_data_with_cluster_sources_policy(
     cluster_sources: &[SourceId],
     ppml_structural_constant: bool,
 ) -> Result<PreparedCategoricalOlsData> {
-    let plan = plan_categorical_absorbed_request(request)?;
-    let availability = prepare_ols_data_with_cluster_sources(
-        plan.availability_request(),
-        loaded,
-        cluster_sources,
-    )?;
+    let mut plan = plan_categorical_absorbed_request(request)?;
+    let compact_slope_availability = ppml_structural_constant
+        && request.absorbed_terms.iter().any(|term| !term.slope_sources.is_empty())
+        && request.model.terms.iter().all(|term| term.components.iter().all(|component|
+            component.kind == crate::metadata::ComponentKind::Continuous));
+    let availability = if compact_slope_availability {
+        let (model, sample) = crate::ols::prepare_ols_numeric_sample(
+            plan.availability_request(), loaded, cluster_sources)?;
+        // The complete source-use classifier already decided slope missingness.
+        // Only true categorical partitions need codes and membership from here;
+        // cluster roles remain explicit, and every new generation repeats this
+        // classification before constructing its own immutable topology.
+        plan.discard_classified_slope_categories()?;
+        crate::ols::finish_prepare_with_early_factor(
+            plan.availability_request(), cluster_sources, model, sample, true, None)?
+    } else {
+        prepare_ols_data_with_cluster_sources(plan.availability_request(), loaded, cluster_sources)?
+    };
     finish_prepare_categorical_ols_data(request, cluster_sources, ppml_structural_constant, plan, availability)
 }
 

@@ -1,0 +1,325 @@
+[
+  {
+    "case": 0,
+    "cell": {
+      "coefficient_names": [
+        "x1",
+        "x2",
+        "x3",
+        "x4",
+        "x5",
+        "x6"
+      ],
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "effects_r": "g1 + g2",
+      "export_names": "x1 x2 x3 x4 x5 x6",
+      "fixest_strict": true,
+      "k": 6,
+      "memory": "low",
+      "model": "ppml",
+      "n": 61440,
+      "outputs": "mu",
+      "r_coefficient_names": [
+        "x1",
+        "x2",
+        "x3",
+        "x4",
+        "x5",
+        "x6"
+      ],
+      "rhs": "x1 x2 x3 x4 x5 x6",
+      "rhs_r": "x1 + x2 + x3 + x4 + x5 + x6",
+      "section": "development",
+      "slope_absorb": "",
+      "terms": "numeric",
+      "threads": 4,
+      "topology": "disconnected",
+      "ts_setup": "",
+      "vce": "robust"
+    },
+    "variants": {
+      "jointchecksprepare1": [
+        {
+          "plugin:estimate": 104.048417,
+          "ppml/prepared_model.rs:build_prepared_model": 3.698458,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.347208,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.50275,
+          "ols/linear_session.rs:prepare_retained_solve": 29.071792000000002
+        },
+        {
+          "plugin:estimate": 104.452416,
+          "ppml/prepared_model.rs:build_prepared_model": 3.649125,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.294375,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.567709,
+          "ols/linear_session.rs:prepare_retained_solve": 28.826792
+        }
+      ],
+      "slopetopologyprepare1": [
+        {
+          "plugin:estimate": 105.638167,
+          "ppml/prepared_model.rs:build_prepared_model": 3.893208,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.475959,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.530416,
+          "ols/linear_session.rs:prepare_retained_solve": 29.463875
+        },
+        {
+          "plugin:estimate": 104.61625,
+          "ppml/prepared_model.rs:build_prepared_model": 3.659041,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.339125,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.541792,
+          "ols/linear_session.rs:prepare_retained_solve": 28.880375
+        }
+      ]
+    }
+  },
+  {
+    "case": 1,
+    "cell": {
+      "coefficient_names": [
+        "x1",
+        "x2"
+      ],
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "effects_r": "g1 + g2",
+      "export_names": "x1 x2",
+      "fixest_strict": true,
+      "k": 2,
+      "memory": "fast",
+      "model": "ppml",
+      "n": 24960,
+      "outputs": "mu",
+      "r_coefficient_names": [
+        "x1",
+        "x2"
+      ],
+      "rhs": "x1 x2",
+      "rhs_r": "x1 + x2",
+      "section": "development",
+      "slope_absorb": "",
+      "terms": "numeric",
+      "threads": 4,
+      "ts_setup": "",
+      "vce": "robust"
+    },
+    "variants": {
+      "jointchecksprepare1": [
+        {
+          "plugin:estimate": 37.334959,
+          "ppml/prepared_model.rs:build_prepared_model": 1.426709,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.123708,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.202084,
+          "ols/linear_session.rs:prepare_retained_solve": 6.620084
+        },
+        {
+          "plugin:estimate": 36.554333,
+          "ppml/prepared_model.rs:build_prepared_model": 1.522,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.1215,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.228292,
+          "ols/linear_session.rs:prepare_retained_solve": 6.497667
+        }
+      ],
+      "slopetopologyprepare1": [
+        {
+          "plugin:estimate": 36.518625,
+          "ppml/prepared_model.rs:build_prepared_model": 1.324542,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.100542,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.195958,
+          "ols/linear_session.rs:prepare_retained_solve": 6.667875
+        },
+        {
+          "plugin:estimate": 37.376084,
+          "ppml/prepared_model.rs:build_prepared_model": 1.36775,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.126167,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.213333,
+          "ols/linear_session.rs:prepare_retained_solve": 6.786751
+        }
+      ]
+    }
+  },
+  {
+    "case": 2,
+    "cell": {
+      "coefficient_names": [
+        "x1",
+        "x2",
+        "x3",
+        "x4",
+        "x5",
+        "x6"
+      ],
+      "design": "strong_d6",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "effects_r": "g1[z1] + g2[z2]",
+      "export_names": "x1 x2 x3 x4 x5 x6",
+      "fixest_strict": true,
+      "k": 6,
+      "memory": "fast",
+      "model": "ppml",
+      "n": 30720,
+      "outputs": "mu",
+      "r_coefficient_names": [
+        "x1",
+        "x2",
+        "x3",
+        "x4",
+        "x5",
+        "x6"
+      ],
+      "rhs": "x1 x2 x3 x4 x5 x6",
+      "rhs_r": "x1 + x2 + x3 + x4 + x5 + x6",
+      "section": "development",
+      "slope_absorb": "g1##c.(z1) g2##c.(z2)",
+      "slope_partitions": {
+        "g1": [
+          "z1"
+        ],
+        "g2": [
+          "z2"
+        ]
+      },
+      "terms": "numeric",
+      "threads": 8,
+      "ts_setup": "",
+      "vce": "robust"
+    },
+    "variants": {
+      "jointchecksprepare1": [
+        {
+          "plugin:estimate": 77.336416,
+          "ppml/prepared_model.rs:build_prepared_model": 6.237542,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 4.039583,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.766834,
+          "ols/linear_session.rs:prepare_retained_solve": 21.374459
+        },
+        {
+          "plugin:estimate": 78.417292,
+          "ppml/prepared_model.rs:build_prepared_model": 6.464583,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 4.004834,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.895875,
+          "ols/linear_session.rs:prepare_retained_solve": 22.205459
+        }
+      ],
+      "slopetopologyprepare1": [
+        {
+          "plugin:estimate": 73.731417,
+          "ppml/prepared_model.rs:build_prepared_model": 2.15825,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.33175,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.227333,
+          "ols/linear_session.rs:prepare_retained_solve": 20.704666
+        },
+        {
+          "plugin:estimate": 71.834333,
+          "ppml/prepared_model.rs:build_prepared_model": 2.0255,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.263333,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.25475,
+          "ols/linear_session.rs:prepare_retained_solve": 20.305501
+        }
+      ]
+    }
+  },
+  {
+    "case": 3,
+    "cell": {
+      "coefficient_names": [
+        "x1",
+        "x2",
+        "x3",
+        "x4",
+        "x5",
+        "x6",
+        "x7",
+        "x8",
+        "x9",
+        "x10"
+      ],
+      "design": "three_fe_dense",
+      "effects": [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "effects_r": "g1[z1] + g2[z2] + g3",
+      "export_names": "x1 x2 x3 x4 x5 x6 x7 x8 x9 x10",
+      "fixest_strict": true,
+      "k": 10,
+      "memory": "low",
+      "model": "ppml",
+      "n": 61440,
+      "outputs": "mu",
+      "r_coefficient_names": [
+        "x1",
+        "x2",
+        "x3",
+        "x4",
+        "x5",
+        "x6",
+        "x7",
+        "x8",
+        "x9",
+        "x10"
+      ],
+      "rhs": "x1 x2 x3 x4 x5 x6 x7 x8 x9 x10",
+      "rhs_r": "x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10",
+      "section": "chord_width_extension",
+      "slope_absorb": "g1##c.(z1) g2##c.(z2) g3",
+      "slope_partitions": {
+        "g1": [
+          "z1"
+        ],
+        "g2": [
+          "z2"
+        ]
+      },
+      "terms": "numeric",
+      "threads": 8,
+      "topology": "unbalanced",
+      "ts_setup": "",
+      "vce": "robust"
+    },
+    "variants": {
+      "jointchecksprepare1": [
+        {
+          "plugin:estimate": 190.694125,
+          "ppml/prepared_model.rs:build_prepared_model": 14.095708,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 8.583042,
+          "ols/prepared.rs:build_prepared_fe_topology": 1.917458,
+          "ols/linear_session.rs:prepare_retained_solve": 82.062375
+        },
+        {
+          "plugin:estimate": 194.19175,
+          "ppml/prepared_model.rs:build_prepared_model": 14.4685,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 8.720041,
+          "ols/prepared.rs:build_prepared_fe_topology": 1.880709,
+          "ols/linear_session.rs:prepare_retained_solve": 84.79166599999999
+        }
+      ],
+      "slopetopologyprepare1": [
+        {
+          "plugin:estimate": 183.042625,
+          "ppml/prepared_model.rs:build_prepared_model": 4.868625,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.512708,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.776375,
+          "ols/linear_session.rs:prepare_retained_solve": 83.699209
+        },
+        {
+          "plugin:estimate": 183.727292,
+          "ppml/prepared_model.rs:build_prepared_model": 5.019917,
+          "ols/prepared.rs:factorize_categorical_sources_reusing": 0.461666,
+          "ols/prepared.rs:build_prepared_fe_topology": 0.71275,
+          "ols/linear_session.rs:prepare_retained_solve": 82.733917
+        }
+      ]
+    }
+  }
+]

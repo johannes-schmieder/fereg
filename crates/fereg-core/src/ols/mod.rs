@@ -46,7 +46,7 @@ pub use linear_session::{
     LinearSessionPhaseAllocatorProbe,
 };
 pub(crate) use prepared::{prepare_ols_data_with_cluster_sources, prepare_ols_data_owned_with_cluster_sources,
-    prepare_ols_numeric_sample_owned, finish_prepare_with_early_factor};
+    prepare_ols_numeric_sample, prepare_ols_numeric_sample_owned, finish_prepare_with_early_factor};
 pub use prepared::{
     prepare_ols_data, prepare_ols_data_owned, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding,
     OlsInputRole, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCategoricalComponent,

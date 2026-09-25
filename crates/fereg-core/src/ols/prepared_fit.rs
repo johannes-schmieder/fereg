@@ -8382,6 +8382,114 @@ mod tests {
     }
 
     #[test]
+    fn ppml_slope_availability_preserves_classification_and_final_design() {
+        use crate::prepared_categorical_data::{prepare_ppml_categorical_ols_data,
+            prepare_categorical_ols_data_with_cluster_sources};
+        for swapped in [false, true] { for kind in 0..3 { for case in 0..12 {
+            let n = 97;
+            let x = source(1, "x");
+            let g = source(if swapped {3} else {2}, "g");
+            let z = source(if swapped {2} else {3}, "z");
+            let h = source(4, "h");
+            let t = source(5, "t");
+            let mut sources = vec![x.clone(), g.clone(), z.clone(), h.clone(), t.clone()];
+            sources.sort_by_key(|source| source.id);
+            let mut request = OlsRequestV1 {
+                model: CompiledTermGraph { sources, terms: vec![continuous_term(1, x.id, false)] },
+                absorbed_terms: vec![
+                    AbsorbedTerm { id: AbsorbTermId::new(1).unwrap(), intercept: case != 5,
+                        categorical_sources: vec![g.id], slope_sources: vec![z.id, x.id],
+                        label: "g##c.(z x)".into(), saved_name: String::new() },
+                    AbsorbedTerm { id: AbsorbTermId::new(2).unwrap(), intercept: true,
+                        categorical_sources: if case == 8 {vec![g.id, h.id]} else {vec![h.id]},
+                        slope_sources: vec![t.id], label: "h##c.t".into(), saved_name: String::new() },
+                ],
+                bindings: vec![OlsInputBinding {stata_var_position: 1, role: OlsInputRole::Candidate},
+                    OlsInputBinding {stata_var_position: 2, role: OlsInputRole::Outcome}],
+                include_intercept: true, keep_singletons: case != 7,
+            };
+            for source in &request.model.sources {
+                request.bindings.push(OlsInputBinding {stata_var_position: source.id.get()+2,
+                    role: OlsInputRole::NumericSource(source.id)});
+            }
+            let mut input = LoadedOlsInput {
+                candidate: vec![true; n], outcome: loaded(&vec![1.0; n]),
+                numeric_sources: request.model.sources.iter().map(|source| {
+                    let values: Vec<_> = (0..n).map(|r| {
+                        if source.id == g.id {(r % 7) as f64}
+                        else if source.id == h.id {(r % 5) as f64}
+                        else {((r * (source.id.get() as usize + 3)) as f64).sin()}
+                    }).collect();
+                    (source.id, loaded(&values))
+                }).collect(),
+                analytic_weight: None, frequency_weight: None, probability_weight: None,
+            };
+            let zi = (z.id.get()-1) as usize;
+            let gi = (g.id.get()-1) as usize;
+            if case == 1 {input.numeric_sources[zi].1.missing[3] = true;}
+            if case == 2 {
+                input.numeric_sources[0].1.missing[4] = true;
+                input.numeric_sources[zi].1.missing[4] = true;
+                input.outcome.missing[5] = true;
+            }
+            if case == 3 {input.numeric_sources[zi].1.values[6] = f64::INFINITY;}
+            if case == 4 {
+                input.candidate[3] = false;
+                input.numeric_sources[zi].1.values[3] = f64::NAN;
+            }
+            if case == 6 {input.numeric_sources[zi].1.missing[8] = true;}
+            if case == 7 {input.numeric_sources[gi].1.values[0] = 1000.0;}
+            if case == 9 {
+                // A slope source may also define another partition. Its codes
+                // must survive compaction even with deficient slope channels.
+                request.absorbed_terms[1].categorical_sources = vec![z.id];
+                input.numeric_sources[zi].1.values.fill(1.0);
+                input.numeric_sources[4].1.values.fill(0.0);
+            }
+            if case >= 10 {
+                // Factor recipes bind indices in the complete availability
+                // table, so their existing path is deliberately preserved.
+                input.numeric_sources[zi].1.values = (0..n).map(|r| (r%3) as f64).collect();
+                request.model.terms.push(categorical_term(2, z.id, 1.0, false));
+                request.model.terms.push(categorical_interaction_term(3, &[(g.id, 2.0), (h.id, 1.0)]));
+                if case == 11 {
+                    request.model.terms.push(categorical_term(4, z.id, 9.0, false));
+                    request.model.terms.push(categorical_term(5, z.id, 0.0, true));
+                }
+            }
+            if kind > 0 {
+                let role = if kind == 1 {OlsInputRole::FrequencyWeight}
+                    else {OlsInputRole::ProbabilityWeight};
+                request.bindings.push(OlsInputBinding {stata_var_position: 8, role});
+                let mut weight = loaded(&(0..n).map(|r| 1.0+(r%3) as f64).collect::<Vec<_>>());
+                if case == 2 {weight.missing[7] = true;}
+                if kind == 1 {input.frequency_weight = Some(weight);}
+                else {input.probability_weight = Some(weight);}
+            }
+            let clusters = if case == 6 {vec![z.id]} else {Vec::new()};
+            let expected = prepare_categorical_ols_data_with_cluster_sources(&request, &input, &clusters);
+            let actual = prepare_ppml_categorical_ols_data(&request, &input, &clusters);
+            match (expected, actual) {
+                (Ok(a), Ok(b)) => {
+                    assert_eq!(a.sample(), b.sample());
+                    assert_eq!(a.model(), b.model());
+                    assert_eq!(a.effect_specs(), b.effect_specs());
+                    assert_eq!(a.report_plan(), b.report_plan());
+                    assert_eq!(a.singletons(), b.singletons());
+                    assert_eq!(a.fit_owned_fe_design().unwrap(), b.fit_owned_fe_design().unwrap());
+                    if case == 1 {
+                        assert!(!b.sample().original_row_by_active.contains(&3));
+                        assert_eq!(b.sample().n_active(), n-1);
+                    }
+                    if case == 4 {assert!(!b.sample().original_row_by_active.contains(&3));}
+                }
+                (Err(a), Err(b)) => assert_eq!(a, b),
+                _ => panic!("PPML slope preparation changed acceptance: {swapped}/{kind}/{case}"),
+            }
+        }}}
+    }
+
+    #[test]
     fn compact_slope_availability_preserves_legacy_samples_models_and_topology() {
         use crate::prepared_categorical_data::{prepare_categorical_ols_data_owned_with_cluster_sources,
             prepare_categorical_ols_data_with_cluster_sources};

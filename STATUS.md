@@ -10,6 +10,93 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## PPML slope availability preparation accepted — 2026-09-25
+
+Retain **slopetopology1**, based on **d25c6e06** plus `ols/mod.rs`,
+`ols/prepared.rs`, `ols/prepared_categorical_data.rs`, `ols/prepared_fit.rs` and
+`ppml/prepared_model.rs` under `crates/fereg-core/src/`. The final two overlays
+add tests only. All **558 captured computational inputs** match. Plugin SHA-256:
+`1c598ce6ecbdea8e1a6e0ffcc9dfcd655c89165750a8d2b02d8189ec15b9ae1e`.
+[ADR 0199](docs/adr/0199-ppml-slope-source-preparation.md) and the
+[source-bound report](benchmarks/reports/development/ppml-slope-source-preparation-local-2026-09-25/README.md)
+record the implementation, complete lifecycle evidence and all timing losses.
+The broad >=2-FE <=0.90-stock goal remains active and unfinished.
+
+PPML with continuous finite terms now completes original source-use/domain/sample
+classification before removing synthetic slope-category markers. This avoids
+encoding continuous slopes and constructing unused membership. Numeric slope
+values, true partition/cluster roles, sample generations, pweight normalization
+and rollback remain intact. Factor recipes retain their existing path because
+their compiled category indices require separate rebinding. No new cache,
+weighted reuse, numerical algorithm, certificate, tolerance or routing threshold
+is introduced. The earlier owned OLS optimization is unchanged.
+
+Paired diagnostics attribute prepared-model reductions **6.351→2.092 ms** for
+two-partition slopes and **14.282→4.944 ms** for three-FE slopes. Factorization
+falls **4.022→0.298** and **8.652→0.487 ms**. Canonical work remains substantial.
+The completed accepted-source lifecycle ledger and wrapper diagnostics are now
+archived; their nested and worker-inclusive spans are not additive headlines.
+
+Fresh seed **202609432**, five B/C/stock rotations, robust inference and means,
+matched threads, unmodified pinned stock glm.tol=1e-10/fixef.tol=1e-11:
+
+| Case; N/K/T; mode | Baseline / candidate / stock ms | Candidate/stock |
+|---|---:|---:|
+|Disconnected categorical; 61440/6/4; low|113 / 113 / 98|1.153|
+|Serial categorical; 38400/10/1; low|143 / 144 / 245|0.588|
+|Narrow categorical; 24960/2/4; fast|43 / 42 / 31|1.355|
+|Wide categorical; 23040/36/8; low|87 / 88 / 127|0.693|
+|Two slope partitions; 38400/8/4; fast|104 / 99 / 185|0.535|
+|Two slope partitions; 30720/6/8; low|79 / 74 / 80|0.925|
+|Two slope partitions; 30720/6/8; fast|76 / 72 / 79|0.911|
+|Unbalanced three-FE slopes; 61440/10/8; low|191 / 184 / 228|0.807|
+|Three slopes on two partitions; 38400/8/4; low|144 / 136 / 272|0.500|
+|Weak barbell slopes; 17280/4/4; low|45 / 42 / 1067|0.039|
+|Larger three-FE slopes; 122880/10/8; low|402 / 384 / 489|0.785|
+
+**44 wins, ten losses, one tie; all 35 slope pairs improve.** Slope median
+savings are 3–18 ms / 3.7–6.7%. Seven of eleven medians meet 0.90, all already
+met by baseline in this block. Serial/wide categorical medians lose one ms.
+Remaining deficits are **24.8 ms low categorical, 14.1 ms narrow, 2.0 ms low
+T8 slopes and 0.9 ms fast T8 slopes**. No guards or source changes follow fresh
+validation; seed432 is consumed/frozen. Do not pool these clocks with seed431.
+
+Eleven distinct Rust tests and six independent licensed fixtures pass. All
+**247 PPML public states, 160 baseline-anchored comparisons and 73 direct stock
+pairs** pass; all **87 native PPML pairs** have exact coefficient/covariance/mean
+exports and unchanged iteration/fallback counts. Two slope allocation executions
+pass, each with sixteen warmed iterations and zero events/current growth. Scratch
+deltas are zero, tracked peaks -48 to zero bytes, selected telemetry -112 to +48.
+No retained bank is added; physical-cap and static-inventory gaps remain open.
+
+**OLS timing concern remains unresolved.** Initial controls have B/C medians
+11/11, 59/57 and **108/114 ms**; a single predeclared serial/slope confirmation
+has 9/8 and **107/113 ms**. All nineteen public pairs have exact exports.
+Attribution with production phase timers finds unchanged preparation, iterations,
+allocation and scratch, but variable absorption costs; the traced block reverses
+the overall direction. That is diagnostic evidence, not a reason to erase the
+repeated six-ms public loss or claim its cause proven. Six additional diagnostic
+pairs also have exact exports. Excluded one-FE PPML medians are 22/22 and 73/74 ms.
+Retention rests on consistent PPML slope gains from removing unnecessary work;
+there is no overall non-regression or qualification claim.
+
+All **13,421 logical receipts** have been restored and hash/privacy checked.
+The partial diagnostic stopped on competing compilation, the failed module-path
+compile and the initially suppressed OLS tracing attempt are preserved. No such
+overlap occurred in headline blocks. Frozen 77/16/111 definitions and previous
+scientific, allocation-inventory, constrained-fit/CG and platform gaps remain.
+No push, release, SCC retry or stopped-campaign restart occurred.
+
+**Next implementation:** the preparation experiment is closed. Proceed with the
+larger canonical/current-frame ownership and narrow lifecycle boundaries, using
+the archived nonoverlapping cost ledger. Low categorical still spends about
+28.4 ms in initial/strict canonical work and 19.6 ms in ordinary joint directions;
+narrow still needs a whole-command reduction. Carry the OLS slope control and its
+unresolved timing sensitivity into the next checkpoint; do not claim it repaired.
+Do not chase the remaining 0.9/2-ms slope gaps with isolated thresholds or reopen
+closed serial weighted-OLS tuning. Further savings should come from shared work
+removal, preserving independent acceptance and exact final-Hessian authority.
+
 ## Current-call joint checks accepted — 2026-09-25
 
 Retain **jointchecks1**, based on **181735c6** plus `fe/map.rs`,
