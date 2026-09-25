@@ -1,0 +1,52 @@
+{
+  "base_commit": "b8f04a232ea693d8ac90542c1dc72f00aa93e473",
+  "patch_sha256": "81b79eb201e3f450768fcd0fa3248a60db0503c9a7a1eab0b07d0a82312663c9",
+  "files": {
+    "crates/fereg-core/src/ols/linear_session.rs": {
+      "candidate_sha256": "ca9c8015e16e2d2e77a21bedcdc27e2bf374beb36fdcf9580cb8f00d1192e619",
+      "baseline_sha256": "4016e01635612dacfd603eb3777808a84541e4a4eb3d7440f911c7036a8e047b"
+    },
+    "crates/fereg-core/src/ppml/prepared_irls.rs": {
+      "candidate_sha256": "5ee08e50416c13b7e6aac167a63c365a7873a6215553514038512fb1d8014047",
+      "baseline_sha256": "7499f1870225c14be56d484e1177a1737b8aea3b9d319b3e54cc068fc3a24495"
+    }
+  },
+  "test_command": "cargo test -p fereg-core prepared_irls --lib",
+  "target_directories_distinct": true,
+  "tests": {
+    "candidate": {
+      "raw_log_sha256": "b9d24fbc2b8dfd69f3a42dca52e449f61e06cebb7f5e311c64611fa11667769d",
+      "sanitized_log": "rust-irls-candidate.txt",
+      "sanitized_log_sha256": "ca795245bcb105fd609cbb20ea1a28350bed11d8cc26d72c633e2511ee8e9070",
+      "test_binary_sha256": "3d0a746e3bfba5ebf6bf2797042180cdab6c12ffc55dd4afa894372bbb8282bc",
+      "pass_count": 49,
+      "failed_tests": [
+        "ppml::prepared_irls::tests::canonical_final_preserves_slope_truth_current_hessian_and_reuse_refusal",
+        "ppml::prepared_irls::tests::explicit_three_fe_solver_roles_are_permutation_invariant_and_certified",
+        "ppml::prepared_irls::tests::low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control",
+        "ppml::prepared_irls::tests::refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model",
+        "ppml::prepared_irls::tests::canonical_final_preserves_accuracy_on_a_small_dynamic_range_model"
+      ],
+      "filtered_out": 1046
+    },
+    "baseline": {
+      "raw_log_sha256": "1ce831724b1dafdb4b5e1389894ad646c2c7ca0aa66d5aa0415e9c3761b56471",
+      "sanitized_log": "rust-irls-baseline.txt",
+      "sanitized_log_sha256": "50045f4d988aa07ad1e4808e7937c355ba7d9791de457eaa0bb653d958f7a094",
+      "test_binary_sha256": "b01834e9bef7890f141626b2487dd23526f5b1a88d4e43bef7a2aba4d27605fd",
+      "pass_count": 53,
+      "failed_tests": [
+        "ppml::prepared_irls::tests::refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model"
+      ],
+      "filtered_out": 1046,
+      "observed_cargo_exit_code": 101
+    }
+  },
+  "production_files_restored_exactly": true,
+  "new_failures": [
+    "ppml::prepared_irls::tests::canonical_final_preserves_accuracy_on_a_small_dynamic_range_model",
+    "ppml::prepared_irls::tests::canonical_final_preserves_slope_truth_current_hessian_and_reuse_refusal",
+    "ppml::prepared_irls::tests::explicit_three_fe_solver_roles_are_permutation_invariant_and_certified",
+    "ppml::prepared_irls::tests::low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control"
+  ]
+}

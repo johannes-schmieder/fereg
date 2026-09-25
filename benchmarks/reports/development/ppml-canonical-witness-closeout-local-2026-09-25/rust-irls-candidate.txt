@@ -1,0 +1,143 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling autocfg v1.5.1
+   Compiling crossbeam-utils v0.8.22
+   Compiling crossbeam-epoch v0.9.20
+   Compiling serde_core v1.0.229
+   Compiling crossbeam-deque v0.8.7
+   Compiling serde v1.0.229
+   Compiling cfg-if v1.0.4
+   Compiling libc v0.2.189
+   Compiling rayon-core v1.13.0
+   Compiling thiserror v2.0.20
+   Compiling semver v1.0.28
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling byteorder v1.5.0
+   Compiling either v1.18.0
+   Compiling portable-atomic v1.15.0
+   Compiling rawpointer v0.2.1
+   Compiling stable_deref_trait v1.2.1
+   Compiling fereg-core v0.5.0 (<repository>/crates/fereg-core)
+   Compiling thread_local v1.1.10
+   Compiling chacha20 v0.10.1
+   Compiling hash32 v0.2.1
+   Compiling rustc_version v0.4.1
+   Compiling num-traits v0.2.19
+   Compiling matrixmultiply v0.3.11
+   Compiling heapless v0.7.17
+   Compiling rayon v1.12.0
+   Compiling syn v3.0.3
+   Compiling rand v0.10.2
+   Compiling cmg v0.1.0 (https://github.com/johannes-schmieder/CMG?rev=1d39c113f0c397f29653d92672090e5a42f80921#1d39c113)
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.20
+   Compiling num-complex v0.4.6
+   Compiling num-integer v0.1.47
+   Compiling ndarray v0.17.2
+   Compiling cobs v0.3.0
+   Compiling approx-chol v0.5.0
+   Compiling schwarz-precond v0.4.0 (https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a)
+   Compiling postcard v1.1.3
+   Compiling within v0.4.0 (https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 24.99s
+     Running unittests src/lib.rs (target/ppml-canonical-witness-20260925/rust/debug/deps/fereg_core-f491e9ad28b34a1c)
+
+running 54 tests
+test ppml::prepared_irls::tests::experimental_strict_guard_ignores_only_nonestimable_coefficient_slots ... ok
+test ppml::prepared_irls::tests::initial_checkpoint_lsmr_eligibility_is_narrow_and_route_explicit ... ok
+test ppml::prepared_irls::tests::constant_offset_seed_uses_weighted_means_and_falls_back_on_raw_overflow ... ok
+test ppml::prepared_irls::tests::line_search_reuses_buffers_and_rejects_overflow ... ok
+test ppml::prepared_irls::tests::intercept_initialization_and_backtracking_move_beta_and_eta_together ... ok
+test ppml::prepared_irls::tests::multi_effect_seed_improves_objective_and_refusal_restores_global_start ... ok
+test ppml::prepared_irls::tests::cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work ... ok
+test ppml::prepared_irls::tests::multi_effect_seed_matches_separable_poisson_truth_and_weight_scaling ... ok
+test ppml::prepared_irls::tests::one_effect_seed_does_not_admit_slopes_or_multiple_effects ... ok
+test ppml::prepared_irls::tests::one_effect_seed_is_group_optimal_weighted_stable_and_deterministic ... ok
+test ppml::prepared_irls::tests::failed_canonical_retry_after_warm_invalidation_is_atomic ... ok
+test ppml::prepared_irls::tests::owned_intercept_fe_design_peak_covers_the_allocated_topology ... ok
+test ppml::prepared_irls::tests::domain_and_interrupt_failures_never_enter_the_canonical_fallback ... ok
+test ppml::prepared_irls::tests::bitwise_identical_weights_skip_final_frame_control_reprojection ... ok
+test ppml::prepared_irls::tests::prepared_driver_reports_nonconvergence_atomically ... ok
+test ppml::prepared_irls::tests::prepared_iteration_report_fits_registered_memory_slot ... ok
+test ppml::prepared_irls::tests::profile_recovery_is_bounded_but_does_not_penalize_progress_or_changed_bases ... ok
+test ppml::prepared_irls::tests::profiled_slope_seed_matches_analytic_newton_step_and_scaling ... ok
+test ppml::prepared_irls::tests::low_categorical_geometry_refusal_retains_canonical_projection ... ok
+test ppml::prepared_irls::tests::canonical_final_preserves_slope_truth_current_hessian_and_reuse_refusal ... FAILED
+test ppml::prepared_irls::tests::prepared_driver_matches_explicit_dense_poisson_without_fixed_effects ... ok
+test ppml::prepared_irls::tests::invalid_warm_projection_falls_back_to_independently_certified_canonical_solve ... ok
+test ppml::prepared_irls::tests::slope_intercept_seed_preserves_offsets_warm_starts_and_full_refusal ... ok
+test ppml::prepared_irls::tests::stable_initialization_handles_large_offsets ... ok
+test ppml::prepared_irls::tests::slope_intercept_seed_matches_independent_poisson_truth ... ok
+test ppml::prepared_irls::tests::complete_warmed_map_window_certifies_stable_fake_allocator ... ok
+test ppml::prepared_irls::tests::strict_candidate_rank_predicate_is_shared_by_both_checkpoints ... ok
+test ppml::prepared_irls::tests::explicit_three_fe_solver_roles_are_permutation_invariant_and_certified ... FAILED
+test ppml::prepared_irls::tests::strict_profile_movement_never_weakens_a_tiny_user_tolerance ... ok
+test ppml::prepared_irls::tests::strict_projection_refinement_is_bounded_and_never_loosens_a_target ... ok
+test ppml::prepared_irls::tests::unusable_one_effect_seed_restores_global_start_and_mu_keeps_global_start ... ok
+test ppml::prepared_irls::tests::allocator_event_inside_warmed_solve_fails_even_with_zero_net_growth ... ok
+test ppml::prepared_irls::tests::rebuilt_strict_candidate_preserves_storage_and_fresh_science ... ok
+test ppml::prepared_irls::tests::strict_candidate_categorical_projection_preserves_scratch_and_fresh_parity ... ok
+test ppml::prepared_irls::tests::strict_caller_error_and_unwind_restore_a_usable_prior_session ... ok
+test ppml::prepared_irls::tests::same_rank_basis_pivot_resumes_first_checkpoint_and_fails_final_hessian_closed ... ok
+test ppml::prepared_irls::tests::strict_checkpoint_movement_resumes_bounded_irls_at_both_checkpoints ... ok
+test ppml::prepared_irls::tests::low_three_fe_checkpoint_budget_refusal_preserves_joint_owner_and_science ... ok
+test ppml::prepared_irls::tests::cmg_warm_seed_requires_complete_certification_and_survives_no_failed_frame ... ok
+test ppml::prepared_irls::tests::persistent_strict_profile_failure_rebuilds_then_returns_bounded_nonconvergence ... ok
+test ppml::prepared_irls::tests::low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control ... FAILED
+test ppml::prepared_irls::tests::low_three_fe_audit_certifies_map_window_independently_of_checkpoint_engine ... ok
+test ppml::prepared_irls::tests::original_profile_columns_match_cold_design_across_bindings_and_weight_frames ... ok
+test ppml::prepared_irls::tests::low_categorical_joint_strict_final_preserves_truth_and_canonical_retry ... ok
+test ppml::prepared_irls::tests::cmg_nuisance_batches_preserve_weighted_fits_and_deterministic_certificates ... ok
+test ppml::prepared_irls::tests::fast_categorical_lsmr_strict_final_preserves_truth_and_canonical_retry ... ok
+test ppml::prepared_irls::tests::cmg_nested_nuisance_preserves_full_weighted_checkpoint_and_retry_certificates ... ok
+test ppml::prepared_irls::tests::fast_categorical_lsmr_three_fe_preserves_canonical_science_nested_rank_and_zero_control ... ok
+test ppml::prepared_irls::tests::joint_strict_final_preserves_truth_current_hessian_and_canonical_retry ... ok
+test ppml::prepared_irls::tests::canonical_final_preserves_strict_disconnected_slope_truth ... ok
+test ppml::prepared_irls::tests::joint_slope_session_preserves_changing_frames_rollback_and_fresh_rank ... ok
+test ppml::prepared_irls::tests::numeric_outer_scores_preserve_every_certificate_bit_across_teams_and_weights ... ok
+test ppml::prepared_irls::tests::refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model ... FAILED
+test ppml::prepared_irls::tests::canonical_final_preserves_accuracy_on_a_small_dynamic_range_model ... FAILED
+
+failures:
+
+---- ppml::prepared_irls::tests::canonical_final_preserves_slope_truth_current_hessian_and_reuse_refusal stdout ----
+
+thread 'ppml::prepared_irls::tests::canonical_final_preserves_slope_truth_current_hessian_and_reuse_refusal' panicked at crates/fereg-core/src/ppml/prepared_irls.rs:7279:21:
+assertion failed: relative_infinity_difference(fit.eta(), &eta) < 1e-10
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- ppml::prepared_irls::tests::explicit_three_fe_solver_roles_are_permutation_invariant_and_certified stdout ----
+
+thread 'ppml::prepared_irls::tests::explicit_three_fe_solver_roles_are_permutation_invariant_and_certified' panicked at crates/fereg-core/src/ppml/prepared_irls.rs:5776:21:
+assertion failed: relative_infinity_difference(fit.eta(), eta) <= 2e-9
+
+---- ppml::prepared_irls::tests::low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control stdout ----
+
+thread 'ppml::prepared_irls::tests::low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control' panicked at crates/fereg-core/src/ppml/prepared_irls.rs:7623:13:
+assertion failed: relative_infinity_difference(fit.eta(), &eta) < 1e-10
+
+---- ppml::prepared_irls::tests::refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model stdout ----
+
+thread 'ppml::prepared_irls::tests::refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model' panicked at crates/fereg-core/src/ppml/prepared_irls.rs:5533:13:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- ppml::prepared_irls::tests::canonical_final_preserves_accuracy_on_a_small_dynamic_range_model stdout ----
+
+thread 'ppml::prepared_irls::tests::canonical_final_preserves_accuracy_on_a_small_dynamic_range_model' panicked at crates/fereg-core/src/ppml/prepared_irls.rs:5597:13:
+mode=Fast eta_error=3.13320702716168853e-10
+
+
+failures:
+    ppml::prepared_irls::tests::canonical_final_preserves_accuracy_on_a_small_dynamic_range_model
+    ppml::prepared_irls::tests::canonical_final_preserves_slope_truth_current_hessian_and_reuse_refusal
+    ppml::prepared_irls::tests::explicit_three_fe_solver_roles_are_permutation_invariant_and_certified
+    ppml::prepared_irls::tests::low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control
+    ppml::prepared_irls::tests::refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model
+
+test result: FAILED. 49 passed; 5 failed; 0 ignored; 0 measured; 1046 filtered out; finished in 0.84s
+
+error: test failed, to rerun pass `-p fereg-core --lib`
