@@ -10,6 +10,117 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Fast canonical PPML products adopted — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This opening supersedes all older next-step instructions.
+[ADR 0176](docs/adr/0176-fast-canonical-ppml-products.md) and the
+[source-bound report](benchmarks/reports/development/ppml-fast-canonical-products-local-2026-09-24/README.md)
+record the accepted implementation, profiles, full distributions and losses.
+
+Accepted artifact **fastproducts1**, plugin SHA-256
+`96156a9c3970c2001d4e04795ef9e82eade204622e3eae3ce315f5b0ec3c1d3e`,
+is captured from **e9bb61460eb4355513e9fda8639b0fdaac1128f8** plus
+ols/canonical_products.rs, ols/linear_session.rs and ppml/prepared_irls.rs.
+All **551 captured inputs match final computational source**. The immutable
+archive has **10,298 logical receipts / 2,524 payloads / 24,312,633 bytes**, all
+verified and restored, SHA-256
+`6dc62d6e6d166b5468c2ce62e01c5149ab1757ed8fbb3ecc9913e9a31d5ea771`.
+All builds, fits, tests, audits and archive/restore operations are terminal.
+Work root: `target/ppml-lifecycle-next-20260924`.
+
+### Adopted mechanism and current evidence
+
+The existing two-categorical-FE canonical engine now serves optionally admitted
+fast publication fits. Current-weight factors serve all response/control RHSs;
+the independent original-input residual certificate supplies same-call Gram
+products. Write certified controls once into the existing dense retained bank.
+Share streamed tile preparation with low output. Advance the fused raw-response
+anchor with the physical current-weight bank, including across strict rollback.
+Ordinary IRLS engines, all independent acceptance requirements, tolerances,
+samples, weights, rank, DoF, separation and publication remain unchanged.
+
+Baseline source profiles explain the choice: narrow low ordinary recurrence
+costs only about 0.25 ms, versus 8.13–8.39 ms canonical preparation and 4.53–4.60 ms
+ordinary joint boundary. Fast canonical preparation totals 14.4–15.6 ms. A new
+recurrence alone cannot close the narrow whole-fit gap. Diagnostic builds are
+isolated from all stock-comparator timings; twelve public states pass science.
+
+Fresh seed **202609395**, five baseline/candidate/stock rotations, robust
+inference and saved means, stock glm.tol=1e-10/fixef.tol=1e-11. Fast unless stated.
+Full ranges and paired losses are in the report; every ranked state passes.
+
+| Case | Baseline ms | Accepted ms | Stock ms | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Connected N23040/K10/T4 |62|55|62|0.887|
+| Disconnected N46080/K10/T8 |119|108|90|1.200|
+| Narrow N23040/K2/T4 |48|46|32|1.438|
+| Unbalanced N32640/K28/T4 |122|112|164|0.683|
+| Serial N24960/K10/T1 |89|80|143|0.559|
+| Wide N34560/K64/T8 |416|240|385|0.623|
+| Disconnected wide N53760/K102/T8 |1236|643|971|0.662|
+| Weak N17280/K8/T4 |102|102|383|0.266|
+| Low N23040/K10/T4 |52|52|61|0.852|
+| Two slope partitions N23040/K10/T4 |110|110|126|0.873|
+| Three FE unbalanced N24960/K10/T4 |85|86|96|0.896|
+| Low disconnected N55680/K102/T8 |862|856|971|0.882|
+
+The two wide fast cases improve 42.3%/48.0% versus baseline and 37.7%/33.8% versus
+stock, in every pair. Ten of twelve selected medians reach the 10% stock lead;
+the two remaining losses lose every stock pair. This is not a package-wide win
+rate. The weak case has two native paired losses, one 5 ms; three-FE median rises
+1 ms and loses three pairs. Other unchanged controls also have paired losses.
+Do not claim algorithmic improvement from their timing variation.
+
+Fast admission adds 16*N*min(poolsize, finite_columns) bytes beside the complete
+old plan, using existing positive-dimension floors. No old projector credit;
+optional refusal retains the prior route. Fresh modeled peaks rise 1.11–8.60 MB.
+Tracked peaks fall 43.52/120.57 MB in the wide cases; weak rises 138,240 bytes,
+narrow is unchanged. Excluded paths' modeled/tracked peaks are unchanged.
+No RSS, physical-limit or allocation-inventory qualification claim.
+
+### Validation, failures and frozen inputs
+
+**39 distinct focused Rust tests**, **six licensed science fixtures** and
+**four real sixteen-iteration allocation audits** (low/fast, T1/T4) pass. Weighted WLS
+truth, nonzero residuals, exact tiled/dense reconstruction, changed weights,
+rank deficiency, one-byte refusal, interrupted rank, strict rollback and
+response-only handoff cover the changed boundary. All **246 development/fresh/
+oracle public states, 164 baseline pairs and 82 direct stock pairs** pass.
+**Six explicit Poisson/Hessian/sandwich/mean fits** pass. **24 OLS applications /
+12 output pairs** pass; medians 17→15,28→28,101→101,61→60 ms.
+
+Preserve the initial unsupported test injection and two copied-fixture sentinel
+mismatches; corrected attempts pass. The original disconnected N6720 oracle has
+1232 FE columns, above the unchanged 1200 bound: public-state science passes,
+independent evidence instead comes from predeclared smaller cases. No tolerance
+or bound changed. Seeds **202609395/396/397 are consumed and frozen**, alongside
+all earlier seeds. Preserve 77/16/111 definitions.
+
+### Next bounded implementation milestone
+
+Prioritize **narrow and small disconnected two-FE whole-fit costs**. Current fast
+narrow 46 versus 32 needs 17.2 ms (37.4%) more savings to reach 0.90×; disconnected 108
+versus 90 needs 27 ms (25%). Existing profiles identify canonical construction/
+acceptance, ordinary-boundary original-input statistics, reconstruction and
+family/objective passes as substantial work. Reorganize current-frame ownership
+and independent witness scans together; recurrence-only tuning cannot close the
+narrow gap. Protect final score/model-space/rank/Hessian authority. Measure a
+small current-source low/fast screen before selecting the next coherent change.
+
+The prior low wide-connected loss remains historical e9bb6146 evidence and needs
+remeasurement before a current-source claim. Fast wide is now competitive on the
+fresh tested cases; avoid another long threshold-tuning cycle there. Do not
+repeat the rejected residual extrapolation, full dense ordinary direction or
+full canonical products on every ordinary direction. Keep all prior accepted
+slope/OLS work and stronger verification requirements.
+
+Canonical LSMR reporting failure, allocation-inventory drift, weighted constrained/
+nonretaining-CG span failures, seed378 comparator issue and SCC/Linux/thread/
+physical-memory/platform gaps remain open. No SCC retry, stopped campaign,
+remote mutation or qualification occurred. STATUS remains the sole handover.
+
 ## Column-owned canonical PPML RHS adopted — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock

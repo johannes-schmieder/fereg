@@ -1497,6 +1497,7 @@ impl CertifiedLinearSessionProducts {
 pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Sized> {
     prepared: &'a P,
     group_centered_source: Option<SharedPreparedOlsData>,
+    fast_canonical_products_allowance: u128,
     config: PreparedOlsFitConfig,
     response: Vec<f64>,
     weights: OwnedLinearWeights,
@@ -1869,6 +1870,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(Self {
             prepared,
             group_centered_source: None,
+            fast_canonical_products_allowance: 0,
             config,
             response,
             weights,
@@ -1915,6 +1917,20 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     pub(crate) fn has_implicit_one_fe(&self) -> bool {
         self.group_centered_source.is_some() && self.config.execution.mode == PreparedOlsExecutionMode::Low
+    }
+
+    /// PPML admits this complete optional bank beside the existing fast plan;
+    /// the direct builder may still decline work or current-weight geometry.
+    pub(crate) fn enable_fast_canonical_products(&mut self, allowance: u128) -> Result<()> {
+        if self.within.is_some() || self.config.execution.mode != PreparedOlsExecutionMode::Fast
+            || self.config.absorb.solver != FeSolverKind::Map
+            || self.fe_design().effects().len() != 2
+            || !self.fe_design().effects().iter().all(|e| e.has_intercept() && e.slopes().is_empty())
+            || !matches!(self.fe_projector, Some(ReusableLinearMapProjector::PpmlCategorical { .. })) {
+            return Err(invalid_argument("fast canonical product admission does not match the session"));
+        }
+        self.fast_canonical_products_allowance = allowance;
+        Ok(())
     }
 
     pub(crate) const fn fe_design(&self) -> &FeDesign {
@@ -3289,7 +3305,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     fn try_canonical_products(&mut self) -> Result<Option<(Vec<f64>, SolveReport, CanonicalMoments)>> {
-        if self.config.execution.mode != PreparedOlsExecutionMode::Low
+        if (self.config.execution.mode != PreparedOlsExecutionMode::Low
+            && self.fast_canonical_products_allowance == 0)
             || self.config.absorb.solver != FeSolverKind::Map
             || !self.fe_projector.as_ref().is_some_and(|projector| matches!(projector,
                 ReusableLinearMapProjector::PpmlCategorical { .. }
@@ -3297,7 +3314,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             return Ok(None);
         }
         if let Some(within) = &self.within {
-            if !matches!(within.storage, RetainedWithinStorage::Scratch(_))
+            if !matches!(within.storage, RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Dense(_))
                 || within.generations.sample != self.generations.sample
                 || within.generations.topology != self.generations.topology
                 || (!self.projection_refresh_required && within.generations.same_design(self.generations)) {
@@ -3315,8 +3332,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         // capacity until its complete plan permits releasing that obsolete
         // temporary panel. Nothing is added to the fit memory allowance.
         let pool = self.config.execution.poolsize.max(1).min(generated.len());
-        let allowance = (self.response.len() as u128).checked_mul(pool as u128)
-            .and_then(|x|x.checked_mul(16)).ok_or_else(|| allocation("canonical product allowance overflows"))?;
+        let allowance = if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
+            self.fast_canonical_products_allowance
+        } else {
+            (self.response.len() as u128).checked_mul(pool as u128)
+                .and_then(|x|x.checked_mul(16)).ok_or_else(|| allocation("canonical product allowance overflows"))?
+        };
         let Some(mut products) = super::canonical_products::try_build(
             self.prepared, &generated, &self.response, self.weights.borrowed(),
             self.bread_weight_scale.solver_weight_divisor, self.config.absorb.map, allowance,
@@ -3324,18 +3345,28 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             &mut self.projection_block,
         )? else { return Ok(None); };
         if let Some(within) = self.within.as_mut() {
-            let RetainedWithinStorage::Scratch(storage) = &mut within.storage else { unreachable!() };
-            products.write_controls(storage)?;
+            within.certificate.passed = false;
+            match &mut within.storage {
+                RetainedWithinStorage::Scratch(storage) => products.write_controls(storage)?,
+                RetainedWithinStorage::Dense(storage) => products.write_dense(storage)?,
+                RetainedWithinStorage::Implicit(_) => unreachable!(),
+            }
             within.reference_norms.copy_from_slice(&products.scales[1..]);
             within.reference_means.copy_from_slice(&products.means[1..]);
             within.within_norms.copy_from_slice(&products.norms[1..]);
             within.generations = WithinGenerations::from_session(self.generations);
-            within.certificate.passed = false;
         } else {
-            let mut scratch = PreparedOlsScratch::create_row_major(self.response.len(), generated.len())?;
-            products.write_controls(&mut scratch)?;
+            let storage = if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
+                let mut dense = DenseMatrix::zeros(self.response.len(), generated.len())?;
+                products.write_dense(&mut dense)?;
+                RetainedWithinStorage::Dense(dense)
+            } else {
+                let mut scratch = PreparedOlsScratch::create_row_major(self.response.len(), generated.len())?;
+                products.write_controls(&mut scratch)?;
+                RetainedWithinStorage::Scratch(scratch)
+            };
             self.within = Some(RetainedWithinDesign {
-                storage: RetainedWithinStorage::Scratch(scratch),
+                storage,
                 stored_generated_columns: generated,
                 active_positions: Vec::new(),
                 reference_norms: fallible_copy(&products.scales[1..], "unable to retain canonical product scales")?,
@@ -3347,6 +3378,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     right_inverse_relative_infinity_norm: f64::INFINITY, passed: false,
                 },
             });
+        }
+        // The dense residual bank and fused response anchor must describe the
+        // same physical frame, including after a strict candidate is rolled
+        // back. Otherwise the next ordinary refresh adds an obsolete z delta.
+        if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
+            self.map_weights.copy_from_slice(&self.response);
         }
         Ok(Some((products.response, products.report, products.moments)))
     }

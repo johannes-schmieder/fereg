@@ -3,6 +3,7 @@
 //! moments cross into the canonical rank owner.
 use super::prepared_scratch::PreparedOlsScratch;
 use super::PreparedOlsColumnKind;
+use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
     BorrowedInterceptFeDesign, BorrowedMapWeights, FeCertificate, FeSolverKind, MapConfig,
@@ -308,6 +309,48 @@ struct TiledCoefficients {
     rows: usize,
 }
 
+impl TiledCoefficients {
+    #[allow(clippy::too_many_arguments)]
+    fn prepare<P: PreparedOlsFitView + Sync + ?Sized>(
+        &mut self,
+        columns: &[Column<'_, P>],
+        design: &BorrowedInterceptFeDesign<'_>,
+        left_effect: usize,
+        scales: &[f64],
+        right: &[f64],
+        first: usize,
+        count: usize,
+    ) -> Result<()> {
+        let a = &design.effects()[left_effect];
+        let b = &design.effects()[1 - left_effect];
+        let q = b.n_levels();
+        let width = columns.len();
+        self.slots.fill(usize::MAX);
+        let mut groups = 0;
+        for &g in &a.codes()[first..first + count] {
+            let g = g as usize;
+            if self.slots[g] == usize::MAX {
+                self.slots[g] = groups;
+                self.groups[groups] = g;
+                groups += 1;
+            }
+        }
+        self.values[..groups * width]
+            .par_chunks_mut(width)
+            .enumerate()
+            .try_for_each(|(slot, values)| -> Result<()> {
+                let g = self.groups[slot];
+                for j in 1..width {
+                    values[j] = group_coefficient(
+                        &columns[j], &self.weights, nonzero(scales[j]), self.masses[g],
+                        a.level_index().members(g), Some((&right[j * q..(j + 1) * q], b.codes())),
+                    )?;
+                }
+                Ok(())
+            })
+    }
+}
+
 pub(super) struct Products<'a, P: PreparedOlsFitView + ?Sized> {
     columns: Vec<Column<'a, P>>,
     design: BorrowedInterceptFeDesign<'a>,
@@ -377,35 +420,8 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
         storage.rewrite_row_major_prepared_with(
             tile,
             rows,
-            |tile, first, count| {
-                tile.slots.fill(usize::MAX);
-                let mut groups = 0;
-                for &g in &a.codes()[first..first + count] {
-                    let g = g as usize;
-                    if tile.slots[g] == usize::MAX {
-                        tile.slots[g] = groups;
-                        tile.groups[groups] = g;
-                        groups += 1;
-                    }
-                }
-                tile.values[..groups * width]
-                    .par_chunks_mut(width)
-                    .enumerate()
-                    .try_for_each(|(slot, values)| -> Result<()> {
-                        let g = tile.groups[slot];
-                        for j in 1..width {
-                            values[j] = group_coefficient(
-                                &self.columns[j],
-                                &tile.weights,
-                                nonzero(self.scales[j]),
-                                tile.masses[g],
-                                a.level_index().members(g),
-                                Some((&self.right[j * q..(j + 1) * q], b.codes())),
-                            )?;
-                        }
-                        Ok(())
-                    })
-            },
+            |tile, first, count| tile.prepare(&self.columns, &self.design, self.left_effect,
+                &self.scales, &self.right, first, count),
             |tile, row, column| {
                 let j = column + 1;
                 let scale = nonzero(self.scales[j]);
@@ -416,6 +432,49 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
                     * scale)
             },
         )
+    }
+
+    pub fn write_dense(&mut self, storage: &mut DenseMatrix) -> Result<()> {
+        let columns = self.columns.len() - 1;
+        if storage.nrows() != self.design.nobs() || storage.ncols() != columns {
+            return Err(FeregError::new(ErrorCode::InvalidArgument,
+                "canonical dense product storage is misaligned"));
+        }
+        if columns == 0 { return Ok(()); }
+        let Some(tile) = self.tiled.as_mut() else {
+            return storage.as_mut_slice().par_chunks_mut(columns).enumerate()
+                .try_for_each(|(row, values)| {
+                    for (column, value) in values.iter_mut().enumerate() {
+                        *value = self.residual(row, column + 1)?;
+                    }
+                    Ok(())
+                });
+        };
+        let a = &self.design.effects()[self.left_effect];
+        let b = &self.design.effects()[1 - self.left_effect];
+        let q = b.n_levels();
+        let width = self.columns.len();
+        let rows = tile.rows;
+        // Streamed centers are rebuilt once per group in an output tile, not
+        // once for every observation that belongs to that group.
+        for (index, values) in storage.as_mut_slice().chunks_mut(rows * columns).enumerate() {
+            let first = index * rows;
+            tile.prepare(&self.columns, &self.design, self.left_effect, &self.scales,
+                &self.right, first, values.len() / columns)?;
+            values.par_chunks_mut(columns).enumerate().try_for_each(|(i, values)| -> Result<()> {
+                let row = first + i;
+                let slot = tile.slots[a.codes()[row] as usize];
+                for (column, value) in values.iter_mut().enumerate() {
+                    let j = column + 1;
+                    let scale = nonzero(self.scales[j]);
+                    *value = (self.columns[j].value(row)? / scale - tile.values[slot * width + j]
+                        - self.right[j * q + b.codes()[row] as usize]) * scale;
+                    if !value.is_finite() { return Err(declined()); }
+                }
+                Ok(())
+            })?;
+        }
+        Ok(())
     }
 }
 
@@ -1665,6 +1724,16 @@ mod tests {
                     .unwrap()
                     .unwrap();
                     assert!(cached.retained_centers);
+                    let mut dense = DenseMatrix::zeros(n, k).unwrap();
+                    products.write_dense(&mut dense).unwrap();
+                    for i in 0..n {
+                        for j in 0..k {
+                            assert_eq!(dense[(i, j)], cached.residual(i, j + 1).unwrap());
+                        }
+                    }
+                    let mut misaligned = DenseMatrix::zeros(n - 1, k).unwrap();
+                    assert_eq!(products.write_dense(&mut misaligned).unwrap_err().code, ErrorCode::InvalidArgument);
+                    assert!(misaligned.as_slice().iter().all(|&x| x == 0.));
                     if tile_output {
                         let mut scratch = PreparedOlsScratch::create_row_major(n, k).unwrap();
                         products.write_controls(&mut scratch).unwrap();
@@ -1910,10 +1979,16 @@ mod tests {
                 })
                 .collect();
             let prepared = prepared(&y, &x, &g, &h);
-            for threads in [1, 4] {
+            for (threads, mode, admitted) in [
+                (1, PreparedOlsExecutionMode::Low, true),
+                (4, PreparedOlsExecutionMode::Low, true),
+                (1, PreparedOlsExecutionMode::Fast, true),
+                (4, PreparedOlsExecutionMode::Fast, true),
+                (4, PreparedOlsExecutionMode::Fast, false),
+            ] {
                 let mut config = PreparedOlsFitConfig::default();
                 config.absorb.solver = FeSolverKind::Map;
-                config.execution.mode = PreparedOlsExecutionMode::Low;
+                config.execution.mode = mode;
                 config.execution.poolsize = 8;
                 config.execution.threads =
                     crate::options::ThreadConfig::from_requested(threads, true).unwrap();
@@ -1933,10 +2008,13 @@ mod tests {
                     prepared.fit_owned_fe_design().unwrap(),
                 )
                 .unwrap();
+                if mode == PreparedOlsExecutionMode::Fast {
+                    session.enable_fast_canonical_products(if admitted { 16 * n as u128 * 8 } else { 1 }).unwrap();
+                }
                 let original = session.solve_fresh().unwrap();
                 // A direct certified solve reports one solve, proving that
                 // this test reaches the fused handoff rather than its fallback.
-                assert_eq!(original.fit().absorption_report().iterations, 1);
+                if admitted { assert_eq!(original.fit().absorption_report().iterations, 1); }
                 assert!(original.fit().residuals().iter().all(|r| r.abs() < 1e-10));
                 let statuses: Vec<_> = original
                     .fit()
@@ -1948,9 +2026,16 @@ mod tests {
                 scale.solver_weight_divisor = changed.iter().copied().fold(0_f64, f64::max);
                 scale.reference_weight_multiplier = scale.solver_weight_divisor;
                 scale.reference_weight_sum = changed.iter().sum();
+                let next_y: Vec<_> = y.iter().zip(&x[0]).map(|(y, x)| y + 0.4*x).collect();
+                session.refresh_response(&next_y, 1).unwrap();
                 session
                     .refresh_weights(BorrowedMapWeights::Provided(&changed), scale, 1)
                     .unwrap();
+                // A rank failure occurs after the direct writer changed the
+                // physical dense bank. Retrying must use the matching response
+                // anchor and never publish the failed candidate.
+                session.inject_fresh_rank_failure(ErrorCode::Interrupted);
+                assert!(session.strict_candidate().is_err());
                 // A dropped speculative candidate cannot publish its basis.
                 {
                     let candidate = session.strict_candidate().unwrap();
@@ -1974,6 +2059,13 @@ mod tests {
                 );
                 candidate.commit();
                 assert!(session.output().unwrap().fit().score_certificate().passed);
+                // Same-weight response-only solving bypasses direct products;
+                // this protects the handoff back to the existing projector.
+                session.refresh_response(&y, 2).unwrap();
+                let recovered = session.solve_fresh().unwrap();
+                assert!(recovered.fit().score_certificate().passed);
+                assert!(recovered.fit().residuals().iter().all(|r| r.abs() < 1e-9));
+                assert_eq!(recovered.fit().coefficients().iter().map(|c| c.status).collect::<Vec<_>>(), statuses);
             }
         }
     }

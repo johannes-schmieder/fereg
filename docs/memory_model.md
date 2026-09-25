@@ -42,6 +42,16 @@ existing fast plan and projector remain charged; no speculative savings enter
 admission. A wide case's tracked peak can rise despite lower retained dense
 capacity. Refusal preserves the previous certified construction.
 
+Fast two-categorical-FE publication PPML can admit the existing direct canonical
+product engine with a separate `16*N*min(poolsize, finite_columns)` temporary
+allowance, using the existing positive-dimension floors (ADR 0176). Charge it
+beside the complete fast solver, retained design and checkpoint plan, without
+crediting the old projector or excess dense capacity. Certified controls are
+written once into the existing dense bank; weighted factors and reductions die
+with the call. The builder still checks complete phase peaks and actual
+capacities. Optional admission or numerical/work refusal preserves the existing
+certified projection. Low execution retains its prior allowance.
+
 On macOS, automatic availability uses free plus inactive pages from
 `HOST_VM_INFO64`. Mach's free count already includes speculative pages.
 The original statistics prefix supports older kernel revisions, and each
