@@ -10,6 +10,143 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Renewed plan: a 10% public PPML advantage — 2026-09-25
+
+The target is **complete public PPML time <=0.90 times scientifically comparable
+pinned stock fixest, for designs with at least two FE**. Evaluate it by family,
+including inference and requested outputs, rather than by an aggregate win rate.
+This planning update adopts no numerical change. The accepted runtime remains
+`frameado3` at **132b69b6**, with the shared-factor closeout at **6a1eb064**.
+The three modified Rust files contain an unfinished geometry/preparation
+experiment; preserve them and their evidence until its explicit adopt/reject
+decision. Earlier next-step lists below are historical.
+
+### Current savings budgets
+
+Use the final fresh415 block in the
+[accepted-source report](benchmarks/reports/development/ppml-command-framing-local-2026-09-25/README.md).
+These are warm public-command medians on the local Mac, not cold-start or
+cross-platform claims. The unpublished current experiment has no ranked timing.
+
+| Family | N/K/T; mode | Accepted / stock ms | 0.90-stock target | Further saving needed |
+|---|---|---:|---:|---:|
+| Two slope partitions |38400/6/8; fast|126 / 89|80.1|45.9 ms / 36.4%|
+| Two categorical FE |26880/2/4; fast|44 / 34|30.6|13.4 ms / 30.5%|
+| Disconnected categorical |48000/12/8; fast|100 / 89|80.1|19.9 ms / 19.9%|
+| Three FE slopes, unbalanced |72960/10/8; low|282 / 279|251.1|30.9 ms / 11.0%|
+| Three FE slopes, unbalanced |72960/10/8; fast|260 / 281|252.9|7.1 ms / 2.7%|
+| Two categorical FE, serial |25920/3/1; fast|67 / 65|58.5|8.5 ms / 12.7%|
+| Four categorical FE |32160/10/4; low|231 / 558|502.2|Already clears target|
+
+### Evidence that changes the next implementation
+
+The isolated `jointphases1` diagnostic, based on 6a1eb064, profiles actual
+ordinary joint calls at their scheduled tolerances. Receipts, build identity,
+profile recipe and audit are under `target/ppml-joint-moments-20260925`.
+The two diagnostic rotations have **20 passing public states and 10 exact
+baseline scientific comparisons**. No diagnostic clock is a stock ranking.
+
+For the existing large N61440/K10/T8 tuning case, ordinary joint FE products
+cost about **18 ms**, weighted geometry **10 ms** and pair preparation **6 ms**;
+projected columns plus their finite Hessian cost about **6 ms**. The small
+two-partition N30720/K6/T8 case instead spends about **11 ms** on geometry and
+**7 ms** on coupling, but only **1.4 ms** on FE products. These distinct designs
+must not be subtracted from the fresh415 budgets. Nested profile spans are not
+additive. The current joint implementation also starts its coefficient vector
+at zero each call; useful previous solutions need a valid change of weighted
+coordinates before they can become guesses.
+
+The draft parallelizes group QR using existing idle worker observation scratch
+and prepares disjoint pair couplings concurrently. Its three focused joint
+analytic-oracle tests pass. Boundary, memory/allocation, public performance and
+excluded-path checks remain pending; this is not production acceptance.
+
+### Ordered bounded milestones
+
+1. **Close the preparation experiment and use idle workers effectively.** Check
+   deficient/empty groups, oversized local blocks, changing weights, failed-frame
+   invalidation and allocation capacities. Run an early complete-command
+   baseline/candidate/stock screen before broadening tests. Separately test
+   parallel compact single-RHS FE products using existing worker banks, with
+   ordered reductions and the existing observation-space curvature fallback.
+   Preserve the fast small dense operator. This has a credible large-three-FE
+   opportunity; it cannot by itself explain a 46 ms two-partition saving.
+
+2. **Target the number and cost of complete changing-weight solves.** The main
+   ambitious candidate is a multi-FE Poisson coefficient engine: conditional
+   categorical updates and safeguarded group-local Newton updates for slope
+   blocks, combined with finite-coefficient updates and objective-checked
+   acceleration. Reuse immutable topology and bounded coefficient/work buffers.
+   Extend the mathematical idea behind ADR 0127, not its one-FE analytic formula:
+   multiple partitions are coupled and slopes have no general closed-form
+   conditional solution. First compare a better slope initialization and ordinary
+   nonlinear coefficient steps against the existing joint Newton route on actual
+   PPML sequences. Count exponentials, full observation passes, outer steps,
+   factor preparations and finalization work. Do not select an algorithm from
+   cold fixed-weight kernel timings alone.
+
+   Nonlinear steps propose model-space predictors; they must not masquerade as
+   certified WLS outputs. A successor ADR must establish their acceptance and
+   fallback boundary. Keep canonical initial rank, current objective and original
+   FE/finite scores, strict current-weight projection, reconstruction and final
+   rank/bread/Hessian/inference acceptance. Preserve numerical tolerances and
+   separation. Use the existing joint solver for finishing or numerical refusal.
+   Test mapping prior identified coefficients into the new weighted coordinates
+   as a joint-solver starting guess, with a freshly formed current-weight initial
+   residual. Prior coefficients may initialize work but never certify it.
+   Start with two slope partitions, then test three-plus FE, categorical cases
+   and low memory. Choose one coherent replacement rather than layering several
+   competing permanent solvers.
+
+3. **Make canonical construction and verification share necessary work.**
+   Alongside the solver, map each check to its mathematical purpose, original
+   inputs and sample/basis/weight generation. Fuse compatible reconstruction,
+   residual-norm, moment and direct residual-Gram scans; write retained rows once
+   where ownership permits. Keep independent acceptance grounded in original
+   inputs and preserve cancellation-sensitive direct products. Geometry reuse
+   within a weight frame already exists: remove measured duplication rather than
+   proposing that cache again. Reuse a certified exact final weight state only
+   through existing explicit generation authority. Never skip a check because a
+   recurrence reports convergence. Measure the cost of mandatory verification
+   separately after each solver improvement.
+
+4. **Close categorical and narrow-fit gaps through shared lifecycle work.**
+   Profile remaining native preparation, canonical work, inference and saved
+   outputs in the complete command. Consolidate demonstrated duplicate design,
+   topology, normalization and output passes, and use the nonlinear candidate
+   only where its total cost wins. Preserve the one-call native architecture and
+   independent transactional output validation. Existing interruption and native
+   publication costs are too small to justify another tuning cycle. Keep wide,
+   disconnected and four-plus-FE wins as controls; expand generated terms and
+   cluster/output cases when they expose substantial costs.
+
+5. **Freeze, validate, measure fresh cases and consolidate.** Each candidate
+   needs focused independent explicit-design WLS and Poisson/Hessian/sandwich
+   oracles, changing-frame/rank/separation/rollback checks, memory refusal and
+   real warmed allocation checks where ownership changes. Use a small adaptive
+   development screen, then freeze code before predeclaring fresh dense, sparse,
+   weak, disconnected, unbalanced, multiple/deficient-slope, width, weight,
+   T1/T4/T8, fast/low and inference/output cases. Include categorical PPML and
+   OLS controls. Use five uncontended baseline/candidate/pinned-stock rotations
+   for confirmation; record per-case medians, ranges, paired losses, failures
+   and memory, with scientifically unresolved comparisons unranked. Commit
+   accepted coherent changes, archive rejected experiments, remove superseded
+   code, and update this opening with exact source/artifact identities.
+
+Give each candidate one implementation and at most one evidence-led correction
+before a public adopt/reject decision. Retain inexpensive reliable shared gains,
+but do not mistake them for closing a family that needs 20--36%. Do not reopen
+the rejected full dense factors, paired lanes or retained-product layouts by
+tuning thresholds. If the ambitious nonlinear candidate fails, use its measured
+solve/check/finalization breakdown to choose the next materially different
+intervention. A target miss must name the remaining milliseconds and responsible
+work, rather than claim that stronger science makes the gap inevitable.
+
+No new validation seed is consumed by this planning update. Frozen 77/16/111
+definitions, source-drift allocation failure, constrained-fit/CG failures and
+deferred platform work remain unchanged. No push, release, SCC retry, stopped
+campaign or qualification is authorized by this plan.
+
 ## Shared dense slope factors rejected — 2026-09-25
 
 [ADR 0183](docs/adr/0183-shared-slope-factor-closeout.md) and the
