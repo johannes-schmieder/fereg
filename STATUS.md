@@ -9,46 +9,66 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-The [current implementation plan](#further-ppml-development-plan--revised-after-the-sparse-factor-pilot-2026-09-25)
+The [current implementation plan](#further-ppml-development-plan--revised-after-adr-0204-2026-09-25)
 uses higherdim1 seed435 evidence and a separate current-source development screen.
 Fast four-plus categorical PPML uses the admitted coefficient/joint engine.
-The sparse-factor experiment remains isolated and unfinished; its first public
-integration loses. Earlier closeouts below are historical; their source-bound
-timings do not transfer to this checkpoint.
+The sparse-factor experiment is closed after its bounded correction also fails
+to improve complete public time. Earlier closeouts below are historical; their
+source-bound timings do not transfer to this checkpoint.
 
-## Current experiment and revised priorities — 2026-09-25
+## Sparse FE-factor candidates closed — 2026-09-25
 
-Production remains **3e1d9120 / higherdim1**, with all **565 captured computational
-inputs** matching. The [interim source-bound report](benchmarks/reports/development/ppml-sparse-factor-interim-local-2026-09-25/README.md)
-preserves the completed baseline, sparse-kernel oracle and first public pilot.
-All original work remains in `target/ppml-sparse-fe-factor-20260925` and its isolated
-artifacts. This planning checkpoint changes no runtime code and consumes no fresh
-seed. The full experiment archive and production decision are still pending.
+Retain **3e1d9120 / higherdim1** computation; all **565 captured computational
+inputs** still match. Both candidates remained isolated. [ADR 0204](docs/adr/0204-sparse-fe-factor-closeout.md)
+and the [source-bound closeout](benchmarks/reports/development/ppml-sparse-fe-factor-closeout-local-2026-09-25/README.md)
+preserve both implementations and **5,137 restored, hash/privacy-verified
+receipts**. Archive SHA-256:
+`ab6768510a28f99139a059c63a33ce2263e95066ccaf8f118256f49d0df67f9c`.
+The interim planning report is unchanged. No fresh seed is consumed.
 
-Three current-source baseline/stock rotations on reused development seed347 give
-**106/101 ms** disconnected low two-FE categorical, **37/34 ms** narrow two-FE,
-and **71/81 ms** low T8 slopes. Required median savings to reach 0.90 stock are
-**15.1 ms**, **6.4 ms**, and zero, respectively. The slope margin is still small.
-All eighteen public states and nine science comparisons pass; no monitor overlap
-is recorded. These clocks do not replace older seed434/435 evidence.
+The sparse grounded FE Laplacian kernel passes seven actual weighted-frame
+explicit-design oracles / 41 RHSs, but neither public integration pays. The
+first replaces ordinary joint/fused work with full WLS and loses **106->155 ms**
+on disconnected low categorical and **37->43 ms** narrow. The correction retains
+ordinary joint directions, direct residual Gram, fused original-row certificates
+and output reconstruction; only the canonical coefficient proposal changes.
+Symbolic topology persists within a fit, numeric factors refresh for changed
+weights and no old-weight factor supplies current authority.
 
-The sparse grounded-Laplacian kernel passes independent weighted explicit-design
-oracles for seven actual frames/41 RHSs. Its first public integration replaces
-ordinary joint directions and fused canonical products with full WLS, losing
-**106->155 ms** on the large case and **37->43 ms** narrow. The excluded slope
-median ties at 72 ms. All 27 public states, eighteen baseline pairs, nine stock
-pairs and three licensed scientific fixtures pass. Separate diagnostic profiling
-also passes four states/two pairs; it confirms factor kernels run at T4 and that
-the first integration adds substantial projection and finite work. Its incomplete
-memory/fallback lifecycle precludes production adoption regardless of timing.
+Three baseline/corrected-candidate/stock rotations on existing development seed347:
 
-**Next action:** allow one corrected integration that keeps ordinary joint steps
-and fused canonical certificates/products, replacing only their coefficient solve
-with exact-current-weight sparse factors. Include symbolic setup and all consumers
-in the public clock. If that does not give worthwhile savings, close this candidate
-and move to narrow-fit lifecycle or a larger measured gap from the bounded coverage
-screen. Do not tune the losing full-WLS integration. The revised plan below sets
-concrete targets, science gates, coverage priorities and stopping rules.
+| Case; N/K/T; mode | B / C / stock median ms | C/stock |
+|---|---:|---:|
+|Disconnected two categorical FE; 61440/6/4; low|107 / 108 / 97|1.113|
+|Narrow two categorical FE; 24960/2/4; fast|38 / 40 / 32|1.250|
+|Two slope partitions; 30720/6/8; low excluded|71 / 73 / 81|0.901|
+
+**Three paired wins, six losses; every narrow pair loses.** Large strict-solve
+telemetry saves about 3.4 ms, while projection/setup adds about 5.2 ms. The
+corrected tracked peak adds **6.68 MB large / 3.15 MB narrow**, scratch unchanged.
+Complete new-owner admission/refusal is not implemented; unchanged modeled bytes
+are not a memory-acceptance claim. Close after this single correction. Do not
+continue ordering, fill, size, thread or phase tuning on these cases.
+
+Both candidates pass three licensed scientific fixtures each. Across the
+baseline, capture, both pilots and separate profile, **80 public states / 49
+baseline pairs** pass; both pilots also pass all **eighteen direct stock pairs**.
+The corrected maximum native errors are b **8.999e-17**, V **5.930e-21**, mu
+**2.310e-14**. All headline sampled monitors are clean. The initial builder marker
+assertion failure is preserved. No new Rust unit-test campaign, OLS clocks,
+physical cap, Linux/SCC run, qualification, push or release is claimed. Existing
+OLS losses, scientific discrepancies, inventory drift and constrained-fit failures
+remain open. The broad multi-FE <=0.90-stock goal remains active.
+
+**Next subsystem:** implement the missing development measurement surface for
+PPML generated/factor terms, clustered inference and requested saved outputs,
+starting with a small independent explicit-design oracle for each new comparison.
+The present timing surface permits only numeric controls, robust inference and
+saved means; do not treat the other families as measured. Then run the bounded
+six-to-eight-case coverage screen in the plan below, including larger N and harder
+outer problems where comparable science is established. Select the largest
+avoidable public cost for the next implementation. Keep narrow lifecycle and OLS
+controls, but do not reopen closed factor, incidence, packaging or threshold probes.
 
 ## Fast higher-dimensional PPML adopted — 2026-09-25
 
@@ -754,7 +774,7 @@ released before certification. Final fresh tracked peaks change by -2,681,856 to
 +48 bytes. All frozen benchmark definitions are preserved. Seeds **202609428/429
 are now consumed/frozen** and cannot become tuning seeds.
 
-## Further PPML development plan — revised after the sparse-factor pilot, 2026-09-25
+## Further PPML development plan — revised after ADR 0204, 2026-09-25
 
 Scope is **at least two FE partitions**. Target complete public `feppml` time
 **<=0.90 times scientifically comparable pinned stock fixest per case**, with
@@ -781,8 +801,8 @@ dense-factor probes remain closed. Do not propose those mechanisms as new work.
 
 | Remaining target | Source-bound evidence | Required next action |
 |---|---|---|
-|Low disconnected two-FE categorical|Current baseline 106/101 ms; separate pilot 106/98 ms|Save 15.1–17.8 ms; aim for 80–85 ms to provide headroom|
-|Narrow two-FE fast|Current baseline and pilot 37/34 ms|Save at least 6.4 ms; aim for 27–29 ms through whole-command work removal|
+|Low disconnected two-FE categorical|Current baseline blocks 106/101, 106/98 and 107/97 ms|Save about 15–20 ms; aim for 80–85 ms to provide headroom|
+|Narrow two-FE fast|Current baseline blocks 37/34 and 38/32 ms|Save about 6–9 ms; aim for 27–29 ms through whole-command work removal|
 |T8 two-partition slopes|Current baseline 71/81 ms; prior fresh 71/80 ms with one pair missing 0.90|Aim for about 65–68 ms through shared improvements; no isolated threshold tuning|
 |Disconnected five-FE|Current means disagree; tighter stock still leaves fifteen discrepancies|Independent scientific localization before any timing rank|
 |OLS slopes|Current control loses two ms in all three pairs; older larger losses also exist|Carry exact-output and public-time controls through the next implementation|
@@ -793,41 +813,19 @@ are implementation budgets, not promises of attainable speed. Earlier seed434's
 to baseline; all excluded-path distributions remain visible. Zero-/one-FE PPML
 are regression controls; the active speed objective starts at two FE partitions.
 
-### Milestone 1: exact-weight canonical work on weak/disconnected designs
+### Milestone 1 closed: exact-weight sparse canonical factors
 
-1. Baseline, actual-frame feasibility and the first public pilot are complete;
-   use the interim report rather than repeating them. The first integration is
-   unsuitable: a fast factor does not justify replacing cheap joint steps with
-   full response/control absorption on every ordinary iteration.
-2. Implement the one remaining correction in the existing canonical product owner.
-   Retain ordinary joint directions, direct residual Gram construction, fused
-   original-input certification and output reconstruction. Replace only the
-   coefficient proposal with the sparse grounded FE factor. Retain symbolic
-   ordering per immutable design; rebuild numeric factors for every changed
-   current weight frame. Solve compatible group RHSs together without allocating
-   another N-by-K observation bank. Do not restore cancellation-sensitive Gram
-   subtraction rejected in ADR0167.
-3. Charge symbolic setup, numeric preparation, all RHS solves, independent checks,
-   row reconstruction and every downstream consumer in the early public pilot.
-   The 7.3-ms symbolic setup and extra factor storage may erase kernel savings.
-   Preserve the already-cheap ordinary calls. A worthwhile complete-command gain
-   is the gate for further integration, not a strict cold-kernel speedup.
-4. Integrate only a candidate with a credible substantial public saving. Admit
-   every factor, owner and overlap before allocation. Low mode must not gain a
-   second N-by-K bank. Keep canonical rank and exact final q*mu Hessian independent;
-   factors propose solutions and do not certify themselves. Document any changed
-   checking schedule by mapping every scientific purpose to its independent
-   authority. No relaxed tolerances or reference-weight inverse.
-
-The first candidate has used its initial pilot; allow only this evidence-led
-correction. If it fails,
-archive the negative evidence, remove its machinery and move to Milestone 2.
-Do not accumulate dormant solver layers or another long Krylov-threshold search.
+ADR0204 closes the grounded full-bipartite sparse LDL candidate after one public
+integration and one coherent correction. The latter preserves joint directions
+and fused canonical consumers yet loses complete public time and adds memory.
+Keep the accepted current-weight engine. Both implementations, actual-frame
+science and all distributions are preserved; no production prerequisite remains.
+Do not reopen this organization without materially different measured evidence.
 
 ### Milestone 2: complete-command overhead and output consumers
 
-Narrow PPML needs at least 6.4 ms against the current stock median, preferably
-8–10 ms for headroom. Its roughly three-ms historical inner recurrence cannot
+Narrow PPML needs about 6–9 ms across current development blocks, preferably
+more for headroom. Its roughly three-ms historical inner recurrence cannot
 provide that saving alone. Assign a proposed saved pass
 to one nonoverlapping ledger entry in preparation, canonical setup, finalization,
 inference or publication. First compare fresh and repeated complete public fits
@@ -849,7 +847,17 @@ record the remaining command/verification floor and move to the next family.
 
 ### Milestone 3: find and remove the next large practical bottleneck
 
-Run one adaptive six-to-eight-case screen before another narrow tuning cycle.
+The current timing harness limits PPML to positive outcomes, numeric controls,
+robust inference and saved means. Extend only the required development surface;
+preserve frozen definitions. For each extension, first establish matched formula,
+coefficient axis, sample, VCE/DoF and requested outputs on a bounded independent
+explicit-design Poisson/Hessian/sandwich oracle. For saved FE, compare uniquely
+identified fitted contributions/reconstruction rather than arbitrary gauges.
+Zeros, offsets or separation require their own sample/objective checks before
+ranking. Reference disagreement stays unranked. These are measurement gates, not
+permission for an unsupported public feature or a silent comparator shortcut.
+
+Then run one adaptive six-to-eight-case screen before another narrow tuning cycle.
 Include larger observation counts (start at 100k, then about one million where
 locally feasible), generated/factor controls, wider designs, clustered inference,
 saved FE and means, and a harder outer-IRLS path with offsets/zeros/separation.
@@ -870,7 +878,7 @@ requested outputs once, with their independent reconstruction checks intact.
 
 Prioritize changes with a plausible 20–30% family improvement or a broad shared
 saving; this is a selection target, not an adoption threshold. Shared inexpensive
-gains can be smaller. Source-specific guards, overlapping dormant engines and
+gains can be smaller. Benchmark-specific guards, overlapping dormant engines and
 unbounded threshold searches remain excluded. A selected shared mechanism must
 also be checked for benefit or regressions in multi-partition OLS.
 

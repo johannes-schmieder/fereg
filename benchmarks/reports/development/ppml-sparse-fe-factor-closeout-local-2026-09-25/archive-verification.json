@@ -1,0 +1,10 @@
+{
+  "logical_receipts": 5137,
+  "payloads": 1139,
+  "bytes": 9497674,
+  "sha256": "ab6768510a28f99139a059c63a33ce2263e95066ccaf8f118256f49d0df67f9c",
+  "temp_path_redactions": 12,
+  "restored_logical_receipts": 5137,
+  "privacy_scan": "pass: no actual home/temp prefixes or raw license headers",
+  "restore_status": "pass"
+}
