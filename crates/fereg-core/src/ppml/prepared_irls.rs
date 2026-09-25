@@ -1232,7 +1232,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         && config.solver_plan.selected == super::PpmlSolverFamily::Map
         && fe_design.effects().len() > 1
         && (fe_design.effects().iter().any(|effect| !effect.slopes().is_empty())
-            || (config.linear.execution.mode == PreparedOlsExecutionMode::Low
+            || ((config.linear.execution.mode == PreparedOlsExecutionMode::Low
+                    // The categorical checkpoint/LSMR engines cover at most
+                    // three partitions. Higher-dimensional fast fits otherwise
+                    // repeat generic observation-space projection for every RHS.
+                    || fe_design.effects().len() > 3)
                 && solver_rhs > 1
                 && fe_design.effects().iter().all(|effect| effect.has_intercept())))
     {
@@ -7488,6 +7492,84 @@ mod tests {
             validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
         }
     }
+    #[test]
+    fn higher_dimensional_categorical_frames_preserve_weighted_poisson_truth() {
+        // Identical pairs have opposite response errors, so every weighted
+        // explicit-design score vanishes at eta despite nonzero residuals.
+        for (dimensions, nested, zero_control) in [(4, false, false), (5, false, false), (4, true, true)] {
+            let n = 480;
+            let x = source(1, "x");
+            let effects: Vec<_> = (0..dimensions).map(|j| source((j + 2) as u32, &format!("g{j}"))).collect();
+            let codes: Vec<Vec<f64>> = (0..dimensions).map(|j| (0..n).map(|i| {
+                let row = i / 2;
+                (match j {
+                    0 => row % 24,
+                    1 => (row * 5 + row / 24) % 9,
+                    2 => (row * 7 + row / 11) % 4,
+                    3 if nested => (row % 24) / 3,
+                    3 => (row * 11 + row / 7) % 5,
+                    _ => (row / 3) % 3,
+                }) as f64
+            }).collect()).collect();
+            let values: Vec<_> = (0..n).map(|i| if zero_control { 0. } else { ((i / 2) as f64 * 0.173).sin() }).collect();
+            let offset: Vec<_> = (0..n).map(|i| ((i / 2) as f64 / 17.).cos() * 0.1).collect();
+            let eta: Vec<_> = (0..n).map(|i| offset[i] + 0.3 + 0.2 * values[i]
+                + codes.iter().enumerate().map(|(j, c)| 0.02 * (j + 1) as f64 * c[i]).sum::<f64>()).collect();
+            let y: Vec<_> = eta.iter().enumerate().map(|(i, v)| v.exp() * if i % 2 == 0 { 0.9 } else { 1.1 }).collect();
+            let weights: Vec<_> = (0..n).map(|i| 0.2 + ((i / 2) % 17) as f64 / 7.).collect();
+            let mut sources = vec![x.clone()]; sources.extend(effects.clone());
+            let mut numeric_sources = vec![(x.id, loaded(&values))];
+            numeric_sources.extend(effects.iter().zip(&codes).map(|(e, c)| (e.id, loaded(c))));
+            let mut bindings = vec![
+                OlsInputBinding { stata_var_position: 1, role: OlsInputRole::Candidate },
+                OlsInputBinding { stata_var_position: 2, role: OlsInputRole::Outcome },
+                OlsInputBinding { stata_var_position: 3, role: OlsInputRole::NumericSource(x.id) },
+            ];
+            bindings.extend(effects.iter().enumerate().map(|(j, e)| OlsInputBinding {
+                stata_var_position: (j + 4) as u32, role: OlsInputRole::NumericSource(e.id),
+            }));
+            let prepared = prepare_ols_data(&OlsRequestV1 {
+                model: CompiledTermGraph { sources, terms: vec![continuous_term(1, x.id)] },
+                absorbed_terms: effects.iter().enumerate().rev().map(|(j, e)| AbsorbedTerm {
+                    id: AbsorbTermId::new((dimensions - j) as u32).unwrap(), intercept: true,
+                    categorical_sources: vec![e.id], slope_sources: Vec::new(),
+                    label: format!("g{j}"), saved_name: String::new(),
+                }).collect(),
+                bindings, include_intercept: true, keep_singletons: true,
+            }, &LoadedOlsInput {
+                candidate: vec![true; n], outcome: loaded(&y), numeric_sources,
+                analytic_weight: None, frequency_weight: None, probability_weight: None,
+            }).unwrap();
+            for (mode, threads) in [(PreparedOlsExecutionMode::Fast, 1), (PreparedOlsExecutionMode::Fast, 4), (PreparedOlsExecutionMode::Low, 4)] {
+                let mut config = PreparedPpmlIrlsConfig::default();
+                config.linear.execution.mode = mode;
+                config.linear.execution.threads.requested = std::num::NonZeroUsize::new(threads);
+                config.memory.requested = if mode == PreparedOlsExecutionMode::Low { crate::options::MemoryMode::Low } else { crate::options::MemoryMode::Fast };
+                let plan = plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
+                let fit = fit_prepared_ppml_irls(&prepared, &y, &weights, &offset, config, plan, None).unwrap();
+                assert!(fit.diagnostics().converged && fit.diagnostics().final_score.passed);
+                assert!(fit.diagnostics().memory.plan.reusable_slope_bytes > 0);
+                assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10);
+                if !zero_control { assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10); }
+                validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
+                if dimensions == 4 && !nested && mode == PreparedOlsExecutionMode::Fast && threads == 1 {
+                    let mut constrained = plan;
+                    constrained.usable_bytes = Some(plan.selected_bytes());
+                    let fallback = fit_prepared_ppml_irls(&prepared, &y, &weights, &offset, config, constrained, None).unwrap();
+                    assert_eq!(fallback.diagnostics().memory.plan.reusable_slope_bytes, 0);
+                    assert!(fallback.diagnostics().memory.plan.selected_bytes() <= constrained.usable_bytes.unwrap());
+                    // Refused optional workspace retains the generic engine;
+                    // check its published means against the scientific envelope.
+                    for (&actual, &truth) in fallback.mean().iter().zip(&eta) {
+                        let expected = truth.exp();
+                        assert!((actual - expected).abs() <= 1e-9 + 1e-7 * expected.abs());
+                    }
+                    validate_final_hessian_frame(fallback.linear().weights(), &weights, fallback.mean()).unwrap();
+                }
+            }
+        }
+    }
+
     #[test]
     fn low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control() {
         for (order, nested, zero_control) in [

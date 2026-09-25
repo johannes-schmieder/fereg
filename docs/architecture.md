@@ -147,8 +147,11 @@ Admitted low three-FE sessions use pool-bounded, component-scaled LSMR inside
 that canonical owner under [ADR 0143](adr/0143-low-memory-three-fe-checkpoints.md).
 Original-weight acceptance remains independent; an ordinary MAP allocation audit
 has a separate identity from its final LSMR checkpoint.
-The owned FE design exists once. Four-plus FE use the generic coefficient
-projector at canonical boundaries. Optional-state refusal restores the prior
+The owned FE design exists once. Four-plus categorical FE with finite controls
+also admit this owner in fast MAP storage under
+[ADR 0203](adr/0203-higher-dimensional-fast-ppml.md), using coefficient projection
+at canonical boundaries and joint ordinary directions. Complete optional memory
+is charged before allocation. Optional-state refusal restores the prior
 route; all current-weight and final acceptance requirements remain unchanged.
 Final robust PPML inference borrows its certified design through fixed row-block
 visitors. Scratch-backed blocks own immutable scan cursors under

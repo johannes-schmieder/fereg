@@ -1,0 +1,9 @@
+{
+  "logical_receipts_verified": 7092,
+  "unique_payloads_verified": 2038,
+  "actual_home_absent": true,
+  "licensed_headers_absent": true,
+  "user_path_audit_passed": true,
+  "private_temp_paths_absent": true,
+  "restored": true
+}
