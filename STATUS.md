@@ -10,6 +10,105 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Profiled slope-coordinate Poisson starts accepted — 2026-09-25
+
+[ADR 0186](docs/adr/0186-profiled-slope-poisson-start.md) and the
+[source-bound report](benchmarks/reports/development/ppml-profiled-slope-start-local-2026-09-25/README.md)
+retain **slopeinit2**, based on `cda48a0e` plus `ppml/prepared_irls.rs`.
+All **555 captured inputs** match this checkpoint. Plugin SHA-256:
+`2cfb165a645db02ef6fed1a6c787bfbdbee89893757e3d556eedc8514280c79b`.
+The multi-FE <=0.90-times-comparable-stock goal remains active and unfinished.
+
+Cold publication fits with at least two intercept-containing partitions now
+finish one conditional intercept sweep, then make one safeguarded Newton proposal
+per slope coordinate with the group intercept profiled exactly. Compensated
+scalar moments, shifted exponentials and bounded objective-checked proposals
+supply a model-space initial guess without another bank, factor, cache or thread
+team. Constants/zero slopes retain their intercept correction. Invalid seed
+arithmetic restores the full global start; declined coordinates retain the prior
+guess. Initial canonical rank and all current-weight, strict/final, Hessian,
+score, reconstruction and publication requirements remain unchanged. Explicit
+starts, Mu, slope-only partitions and one-FE routes retain their behavior.
+
+The first intercept-only candidate **slopeinit1** is not retained separately:
+it left the principal two-slope case at seven outer iterations. The adopted
+staged candidate removes one or two outer iterations in every fresh slope case.
+Preserved draft test failures led to completing the intercept sweep first and
+handling exactly constant slopes; no tolerance was changed.
+
+Fresh **seed202609420**, five baseline/candidate/stock rotations:
+
+| Case | N/K/T; mode | Baseline / candidate / stock ms | Candidate / stock |
+|---|---|---:|---:|
+| Unbalanced three-FE slopes |69120/10/8; fast|236 / 209 / 268|0.780|
+| Same, low |69120/10/8; low|255 / 232 / 268|0.866|
+| Two slope partitions |36480/6/8; fast|105 / 102 / 83|1.229|
+| Smaller three-FE slopes |34560/6/4; fast|110 / 98 / 131|0.748|
+| Serial two-slope |36480/6/1; fast|172 / 161 / 325|0.495|
+| Narrow categorical |24000/2/4; fast|39 / 39 / 32|1.219|
+| Weak slope barbell |14400/4/4; fast|40 / 39 / 724|0.054|
+| Disconnected slopes |24960/8/4; low|107 / 102 / 147|0.694|
+| Two slopes on each partition |28800/10/8; fast|150 / 141 / 192|0.734|
+| Four categorical FE |30000/8/4; low|169 / 170 / 489|0.348|
+
+Fresh slope medians improve **2.5–11.4%**, with **38 wins/two ties** in 40 pairs.
+All 15 development slope pairs improve. Eight of ten fresh medians clear 0.90
+stock; the full fresh block has 40 wins, three losses and seven ties. The three
+losses are the unchanged four-FE categorical control (median +1 ms). The small
+OLS control loses 3 ms initially and 2 ms in a seven-pair same-input confirmation,
+52/54 ms with four losses/one tie. All 16 OLS scientific pairs are exact. Preserve
+these small losses; do not claim universal non-regression.
+
+Preparation increases about 6 ms in the large cases while FE projection falls
+20–21 ms; final construction remains 44–58 ms. The remaining threaded two-slope
+case spends about 17.47 ms in preparation, 30.27 in FE projection, 9.84 in finite
+solving, 13.09 in strict final work and 6.16 in publication. Its small dense FE
+product was only about 1.4 ms in the preceding diagnostic. The corrected outer
+trace has substantial nonlinear score error before convergence: candidate scores
+`.00275, .000242, 1.18e-5, 3.02e-8, 1.66e-12, 1.53e-14`. Merely observing most
+inner-schedule stages does not establish that scheduling causes those iterations.
+
+Final prepared-IRLS tests: **53 pass / one known baseline assertion fails**.
+The unchanged baseline reproduces zero strict rejections versus the expected
+one in the dynamic-range test. This remains open; all three new tests pass.
+All **14 licensed fixture executions**, **266 PPML public states**, **176
+baseline comparisons**, **86 direct stock comparisons** and **16 OLS pairs**
+pass across both candidates and diagnostic attempts. Eight PPML calls are
+nongating diagnostics, including the first trace attempt whose inherited switch
+the harness cleared. Corrected --trace evidence is preserved separately.
+
+Fast/low T1/T4 real compact allocation windows retain zero events/growth and
+fresh/warm equivalence. All 68 accepted-candidate headline PPML pairs have exact
+tracked peaks and scratch reports; selected-memory telemetry differs by at most
+48 bytes. There is no added numerical payload or physical-cap/RSS claim.
+The verified/restored archive contains 10,140 logical receipts / 2,397 payloads /
+25,296,608 bytes, SHA-256
+`ceec6ecc2342a71f92a0915f8fe9e5a5d4f2140019c3920f4aae1345fe1e8d47`.
+Work root: target/ppml-slope-start-20260925. All operations are terminal.
+Seeds **202609420/421** are consumed validation, not tuning inputs.
+
+### Next bounded implementation
+
+The fresh gaps to 0.90 stock are **27.3 ms** for threaded two-slope PPML and
+**10.2 ms** for narrow categorical PPML. Close seed sweep-count tuning here.
+Evaluate a coherent ordinary nonlinear coefficient correction using the measured
+Poisson score trajectory: finite/model-space direction, explicit objective
+safeguard, correct working-frame invalidation and independent canonical final
+acceptance. A seed or nonlinear proposal must not acquire current-weight linear
+or final-Hessian authority. Compare work saved against its extra row passes;
+reject after an early full-command screen if it does not pay. The existing
+small dense operator is not the dominant opportunity.
+
+Separately profile full public setup/publication on the narrow categorical loss:
+its native FE projection is only 6.34 ms and strict final 3.66 ms, below the total
+10.2-ms target gap. Preserve all requested outputs and main-thread SPI boundaries.
+Do not infer that unavoidable certification explains wrapper overhead, or revive
+rejected dense factors/paired lanes without materially new evidence.
+
+Frozen definitions, static allocation drift, constrained-fit/CG failures and
+deferred platforms remain unchanged. No push, release, qualification, SCC retry
+or stopped campaign occurred. Earlier next-step entries are historical.
+
 ## Cooperative compact PPML products accepted — 2026-09-25
 
 [ADR 0185](docs/adr/0185-cooperative-compact-ppml-products.md) and the

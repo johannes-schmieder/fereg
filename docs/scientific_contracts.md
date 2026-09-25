@@ -22,9 +22,12 @@ the shared mechanisms of ADR 0015.
 
 Cold publication initialization uses the bounded group optimum for one
 categorical FE (ADR 0028) and one conditional-coordinate sweep for multiple
-categorical FEs (ADR 0161). An unusable seed restores the full global start.
-These starting guesses have no rank, convergence or final-Hessian authority;
-all independent acceptance requirements remain unchanged.
+categorical FEs (ADR 0161). Multi-FE intercept-plus-slope models additionally
+receive safeguarded slope-coordinate proposals with profiled group intercepts
+under [ADR 0186](adr/0186-profiled-slope-poisson-start.md). Invalid seed arithmetic
+restores the full global start; a declined coordinate retains the preceding
+finite guess. These starting guesses have no rank, convergence or final-Hessian
+authority; all independent acceptance requirements remain unchanged.
 
 The exact pinned `ppmlhdfe` closure is the compatibility reference, and small
 explicit-dummy Poisson and recession-cone calculations are the independent

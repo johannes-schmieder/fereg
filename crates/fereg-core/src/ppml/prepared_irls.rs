@@ -3903,13 +3903,13 @@ fn seed_multi_effect_predictor(
     eta: &mut [f64],
 ) -> bool {
     if design.effects().len() < 2 || design.effects().iter()
-        .any(|effect| !effect.has_intercept() || !effect.slopes().is_empty())
+        .any(|effect| !effect.has_intercept())
     {
         return true;
     }
-    // With finite coefficients fixed at zero, a categorical group has an
-    // exact conditional Poisson update. One sweep supplies a model-space
-    // initial guess; it has no rank, convergence or final-Hessian authority.
+    // Start with exact conditional intercepts, then one safeguarded Newton
+    // update per slope with that intercept profiled out. These model-space
+    // initial guesses have no rank, convergence or final-Hessian authority.
     for effect in design.effects() {
         for level in 0..effect.n_levels() {
             let members = effect.level_index().members(level);
@@ -3942,6 +3942,86 @@ fn seed_multi_effect_predictor(
             }
         }
     }
+    // Establish all intercepts before slopes can explain another partition's
+    // intercept variation. The second stage profiles the current group mass
+    // afresh: later partition updates may have moved its conditional intercept.
+    for effect in design.effects().iter().filter(|effect| !effect.slopes().is_empty()) {
+        for level in 0..effect.n_levels() {
+            let members = effect.level_index().members(level);
+            let mut observed = CompensatedSum::default();
+            for &row in members { observed.add(weights[row] * outcome[row]); }
+            for slope in effect.slopes() {
+                if !seed_profiled_slope(members, slope, outcome, weights,
+                    observed.total(), config, eta) { return false; }
+            }
+        }
+    }
+    true
+}
+
+// Profile the group intercept exactly for each proposed slope step. Other
+// coefficients remain fixed; only a nondecreasing finite group Poisson
+// objective permits a provisional update, including the intercept correction.
+#[allow(clippy::too_many_arguments)]
+fn seed_profiled_slope(
+    members: &[usize],
+    slope: &[f64],
+    outcome: &[f64],
+    weights: &[f64],
+    observed: f64,
+    config: PpmlConfig,
+    eta: &mut [f64],
+) -> bool {
+    let scale = members.iter().map(|&r| slope[r].abs()).fold(0.0_f64, f64::max);
+    let constant = members.iter().all(|&r| slope[r] == slope[members[0]]);
+    let scale = if scale == 0.0 { 1.0 } else { scale };
+    let mut target = CompensatedSum::default();
+    let mut first = CompensatedSum::default();
+    let mut mass = CompensatedSum::default();
+    for &r in members {
+        let z = slope[r] / scale;
+        let wmu = weights[r] * eta[r].exp();
+        target.add(weights[r] * outcome[r] * z);
+        first.add(wmu * z);
+        mass.add(wmu);
+    }
+    let center = first.total() / mass.total();
+    let mut curvature = CompensatedSum::default();
+    for &r in members {
+        let z = slope[r] / scale - center;
+        curvature.add(weights[r] * eta[r].exp() * z * z);
+    }
+    let score = target.total() - observed * center;
+    let curvature = curvature.total() * (observed / mass.total());
+    if !score.is_finite() || !curvature.is_finite() { return false; }
+    // A constant slope has no profiled direction, but the current intercept
+    // can still need its conditional correction after another partition moved.
+    let mut step = if constant || curvature == 0.0 { 0.0 } else { score / curvature };
+    if !step.is_finite() { return false; }
+    for _ in 0..=config.max_step_halvings {
+        // A scaled sum avoids overflow of the unnormalized trial means.
+        let maximum = members.iter().map(|&r|
+            weights[r].ln() + eta[r] + step * (slope[r] / scale)
+        ).fold(f64::NEG_INFINITY, f64::max);
+        let mut trial_mass = CompensatedSum::default();
+        for &r in members {
+            trial_mass.add((weights[r].ln() + eta[r] +
+                step * (slope[r] / scale) - maximum).exp());
+        }
+        let shift = observed.ln() - (maximum + trial_mass.total().ln());
+        let change = step * target.total() + observed * shift - (observed - mass.total());
+        if change.is_finite() && change >= 0.0 && members.iter().all(|&r|
+            usable_seed_value(eta[r] + step * (slope[r] / scale) + shift, config))
+        {
+            for &r in members {
+                eta[r] += step * (slope[r] / scale) + shift;
+            }
+            return true;
+        }
+        step *= 0.5;
+    }
+    // A refused coordinate leaves this group unchanged. The seed remains a
+    // finite model-space guess; full IRLS still establishes its own acceptance.
     true
 }
 
@@ -6267,6 +6347,119 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn profiled_slope_seed_matches_analytic_newton_step_and_scaling() {
+        let members = [0, 1, 2, 3];
+        let outcome = [1., 9., 1., 9.];
+        for slope_scale in [1e-50, 1., 1e50] {
+            for weight_scale in [1e-50, 1., 1e50] {
+                let slope = [-slope_scale, slope_scale, -slope_scale, slope_scale];
+                let weights = [weight_scale; 4];
+                let mut eta = [5.0_f64.ln(); 4];
+                assert!(seed_profiled_slope(&members, &slope, &outcome, &weights,
+                    20. * weight_scale, PpmlConfig::default(), &mut eta));
+                // At beta=0, the normalized slope score/curvature is 16/20.
+                // Profiling the intercept sets the mean back to five.
+                let b = 0.8_f64;
+                let intercept = 5.0_f64.ln() - b.cosh().ln();
+                for r in 0..4 {
+                    let truth = intercept + if r % 2 == 0 { -b } else { b };
+                    assert!((eta[r] - truth).abs() < 1e-12);
+                }
+                let objective = |e: &[f64]| (0..4).map(|r|
+                    outcome[r] * e[r] - e[r].exp()).sum::<f64>();
+                assert!(objective(&eta) > objective(&[5.0_f64.ln(); 4]));
+            }
+        }
+    }
+
+    #[test]
+    fn slope_intercept_seed_matches_independent_poisson_truth() {
+        for dimensions in [2, 3] {
+            let n = 4 * 5 * 3 * 2;
+            let codes: Vec<Vec<u32>> = (0..dimensions).map(|d| (0..n).map(|r|
+                match d { 0 => (r / 2) % 4, 1 => (r / 8) % 5, _ => (r / 40) % 3 } as u32
+            ).collect()).collect();
+            // Every explicit intercept/slope is constant within a replica pair.
+            // Paired outcome deviations cancel its weighted score exactly.
+            let slopes: Vec<_> = (0..n).map(|r| (0.37 * (r / 2) as f64).sin()).collect();
+            let effects = codes.iter().enumerate().map(|(d, c)|
+                crate::fe::EffectTerm::new(c.clone(), [4, 5, 3][d], true,
+                    vec![slopes.clone(), slopes.iter().map(|z| z * 1e6).collect(), vec![0.0; n]])
+                    .unwrap()
+            ).collect();
+            let design = FeDesign::new(n, effects).unwrap();
+            let truth: Vec<f64> = (0..n).map(|r| (0..dimensions)
+                .map(|d| 0.2 * (d + 1) as f64 * codes[d][r] as f64).sum::<f64>().exp()).collect();
+            let outcome: Vec<_> = truth.iter().enumerate().map(|(r, m)|
+                m * if r % 2 == 0 { 0.8 } else { 1.2 }).collect();
+            for scale in [1e-50, 1.0, 1e50] {
+                let weights: Vec<_> = (0..n).map(|r| scale * (0..dimensions)
+                    .map(|d| 1.0 + 0.25 * codes[d][r] as f64).product::<f64>()).collect();
+                let total: f64 = outcome.iter().zip(&weights).map(|(y, w)| y * w).sum();
+                let initial = (total / weights.iter().sum::<f64>()).ln();
+                let mut eta = vec![initial; n];
+                assert!(seed_multi_effect_predictor(&outcome, &weights, &design,
+                    PpmlConfig::default(), &mut eta));
+                for (value, expected) in eta.iter().zip(&truth) {
+                    assert!((value.exp() - expected).abs() <= 1e-12 * (1.0 + expected));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn slope_intercept_seed_preserves_offsets_warm_starts_and_full_refusal() {
+        let make_design = |intercept| FeDesign::new(8, vec![
+            crate::fe::EffectTerm::new(vec![0,0,0,0,1,1,1,1],2,true,
+                vec![vec![0.,0.,2.,2.,0.,0.,2.,2.]]).unwrap(),
+            crate::fe::EffectTerm::new(vec![0,0,1,1,0,0,1,1],2,intercept,
+                vec![vec![1.,1.,0.,0.,1.,1.,0.,0.],vec![0.;8]]).unwrap(),
+        ]).unwrap();
+        let design = make_design(true);
+        let weights = [1.,2.,3.,4.,5.,6.,7.,8.];
+        let offset = [0.2,-0.3,0.7,-0.1,0.4,-0.5,0.1,0.9];
+        let outcome = [1.,3.,4.,2.,7.,5.,8.,9.];
+        let prepared = prepared(&outcome, &[]);
+        let config = PreparedPpmlIrlsConfig::default();
+        let initialize_as = |purpose, start| initialize(&prepared, &outcome, &weights,
+            &offset, &design, config, start, purpose).unwrap();
+        let mu = PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance: 1e-4 };
+        let (global_coefficients, global) = initialize_as(mu, None);
+        let (_, publication) = initialize_as(PreparedPpmlIrlsPurpose::Publication, None);
+        let objective = |e: &[f64]| (0..8).map(|r|
+            weights[r] * (outcome[r] * e[r] - e[r].exp())).sum::<f64>();
+        assert!(objective(&publication) > objective(&global));
+        for group in [vec![0,1,4,5],vec![2,3,6,7]] {
+            let score: f64 = group.iter().map(|&r|
+                weights[r] * (outcome[r] - publication[r].exp())).sum();
+            assert!(score.abs() < 1e-11);
+        }
+        for r in (0..8).step_by(2) {
+            assert!(((publication[r] - offset[r]) -
+                (publication[r+1] - offset[r+1])).abs() < 1e-14);
+        }
+        let start = PreparedPpmlStart { coefficient_values: global_coefficients,
+            eta: global.clone() };
+        let (coefficients, warm) = initialize_as(PreparedPpmlIrlsPurpose::Publication, Some(&start));
+        assert_eq!(coefficients, start.coefficient_values);
+        assert_eq!(warm, start.eta);
+        let mut refused = global.clone();
+        assert!(seed_multi_effect_predictor(&outcome, &weights, &make_design(false),
+            config.ppml, &mut refused));
+        assert_eq!(refused, global, "a slope-only partition retains the prior route");
+        for y in [[1.,2.,3.,4.,0.,0.,0.,0.], [2.;8]] {
+            let mut limited = config;
+            if y[4] > 0.0 { limited.ppml.bounds.eta_max = 0.01; }
+            let run = |purpose| initialize(&prepared, &y, &weights, &offset, &design,
+                limited, None, purpose).unwrap().1;
+            assert_eq!(run(PreparedPpmlIrlsPurpose::Publication), run(mu));
+        }
+        let mut eta = global;
+        assert!(!seed_multi_effect_predictor(&[2.;8], &[1e308;8], &design,
+            config.ppml, &mut eta));
     }
 
     #[test]
