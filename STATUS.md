@@ -10,6 +10,125 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Canonical PPML costs measured; Schur scheduling closed — 2026-09-25
+
+[ADR 0188](docs/adr/0188-canonical-ppml-cost-and-schur-closeout.md) and the
+[source-bound report](benchmarks/reports/development/ppml-canonical-cost-local-2026-09-25/README.md)
+close two scheduling probes without a production change. The accepted engine
+remains `ad776bd5` / **slopecurve3**; all **555 captured baseline inputs** match the
+restored source. Plugin SHA-256:
+`ebfca50ca203293d14e3b710951276b14d4221ff550b610a3c171bb1a7e22fe8`.
+The multi-FE <=0.90-times-comparable-stock goal remains active and unfinished.
+
+The first prototype, **schurteam1**, required a complete partial matrix in each
+worker observation bank. The target has 5,120 eliminated groups, two channels
+and 256 remaining coordinates: 65,536 matrix elements exceed N=30,720. Its route
+was inactive there; an initial smaller-dimension assumption was wrong. Do not
+interpret that result as a test of active parallel Schur construction.
+
+The corrected **schurrows1** owns disjoint rows of the existing matrix, preserving
+each entry's summation order without additional memory. The independent dense
+oracle and exact serial matrix comparison pass at T1/2/4/7. Activation is verified
+on all five current-weight frames. Diagnostic Schur time falls **4.343→3.144 ms**,
+but the public target median ties at **78 ms**. The six-case block has seven wins,
+eight losses and three ties. Both prototypes are rejected and removed; do not
+continue panel-size, scratch-threshold or case-guard tuning.
+
+Final development block, seed **202609347**, three stock rotations; B is the
+retained production baseline, C is the rejected row-panel candidate:
+
+| Case | N/K/T; mode | B / C / stock median ms |
+|---|---|---:|
+| Unbalanced three-FE slopes |61440/10/8; fast|185 / 187 / 232|
+| Same, low |61440/10/8; low|202 / 204 / 231|
+| Two slope partitions |30720/6/8; fast|78 / 78 / 79|
+| Smaller three-FE slopes |30720/6/4; fast|88 / 89 / 115|
+| Serial two-slope |30720/6/1; fast|127 / 124 / 319|
+| Narrow categorical |21120/2/4; fast|36 / 37 / 31|
+
+All **140 public states**, **84 baseline comparisons**, **36 direct stock pairs**
+and **ten licensed oracle executions** pass. All 36 headline B/C pairs have
+byte-identical coefficient, covariance and mean exports. Final candidate Rust:
+**123 distinct passes / one known baseline assertion failure** (expected strict
+rejections one, observed zero). Selected-model, scratch and tracked-peak deltas
+are zero. No fresh performance seeds, new allocation fixture, OLS headline
+campaign or qualification were consumed after the trial failed.
+
+The archive has **7,583 logical receipts / 1,451 payloads / 10,753,119 bytes**,
+SHA-256 `10790d75e60a624cd7e7c30c128c117958465790d3ed04c086a34e2a6e07b57e`.
+It was privacy-checked, restored and verified. Work root:
+`target/ppml-canonical-cost-20260925`. All operations are terminal.
+
+### Ambitious next implementation plan
+
+Use **<=0.90 stock per comparable case**, including losses and uncertainty, as
+the objective. The retained baseline is already below that level in four of the
+six development cases above. Its remaining gaps are **6.9 ms** for threaded
+two-slope PPML and **8.1 ms** for narrow categorical PPML. The preceding fresh
+block has different N/seeds and larger gaps, **20.3/10.3 ms**; preserve both blocks
+rather than transferring one block's wins to another. Aim to remove substantial
+shared work, not to optimize a single favorable timing point.
+
+1. **Reorganize canonical construction as one current-frame pipeline.** Start
+   with the initial and strict slope checkpoints, then carry successful ownership
+   and handoff mechanisms to categorical PPML. Bind original columns once; fuse
+   reference means/norms with unavoidable construction visits; hand fresh
+   certificate norms and already validated products directly to the rank owner.
+   Remove redundant normalization, materialization and copying without replacing
+   explicit projected-column rank/Hessian authority with a cancelling Gram
+   subtraction. Compare identical frozen frames before full-command timing.
+   The two canonical calls cost about **21.6 ms** on the two-slope diagnostic and
+   **67.5/85.4 ms** on large fast/low three-FE slopes. These are meaningful budgets.
+
+2. **Separate residual acceptance from corrective projection.** A residual
+   assembled from independently projected columns may already satisfy the full
+   current-weight FE condition. Investigate a fresh original-row certificate
+   first, followed by the existing correction only on refusal. Preserve finite
+   scores, model-space/reconstruction, rank and final-Hessian checks. This is a
+   testable input-residual handoff, not the rejected strict zero-Newton shortcut.
+   Do not add an unconditional check to unrelated RHS paths. Current rank
+   residual projection costs about **2.4 ms** in the two-slope case and **5.6–6.1
+   ms** in the large diagnostics; first establish how much is actually redundant.
+
+3. **Coordinate convergence with canonical finalization.** After the pipeline
+   boundary is established, investigate whether a real canonical Newton solve
+   can supply the second independent objective/score convergence witness and
+   exact final-Hessian products in one transaction. Keep both convergence
+   predicates and all strict comparisons; never manufacture convergence from a
+   zero update or reuse products after their weight frame changes. Any revised
+   checking schedule needs an explicit scientific argument, successor ADR and
+   boundary oracles before adoption. This could remove a whole ordinary solve
+   rather than another fraction of a matrix kernel; it is not yet validated.
+
+4. **Close the small categorical overhead gap and extend the surface.** Apply
+   useful common changes to narrow fits, then measure complete loading, native
+   work and publication again. The existing ADO diagnostic has no single 10-ms
+   wrapper cost, so keep isolated metadata tuning closed. Use a small new screen
+   for currently underrepresented generated/factor terms, weights, clustered
+   inference and saved outputs, selecting targets from measured losses. Preserve
+   independent Stata weight semantics; ordinary fixest weights are not a
+   frequency-weight inference oracle.
+
+For each bounded milestone: baseline and operation attribution, one coherent
+implementation, independent WLS/Poisson/Hessian and failure-boundary checks,
+alternating baseline/candidate/pinned-stock rotations, then predeclared fresh
+confirmation and excluded OLS/categorical controls. Require meaningful whole-
+command gains; accept smaller ones only when reliable and cheap in complexity.
+Do not extend weak pilots into a large matrix or tune on validation seeds.
+**202609424/425 remain unused** for a successful candidate's fresh PPML/OLS
+validation. Include fast/low, T1/T4/T8, imbalance, weak/disconnected topology,
+multiple slopes, width, changing weights and rank deficiency adaptively.
+
+Attribution correction: PPML Preparation ends **before** initial canonical WLS.
+The previous roughly 31-ms preparation-plus-strict total is not a measurement of
+31 ms of canonical work. Nested profile spans are inclusive, and recursive
+parallel child totals are not wall time. Preserve independent certificate
+purposes while redesigning the observation passes that implement them.
+
+Frozen 77/16/111 definitions, static allocation drift, constrained-fit/CG failures
+and deferred platforms remain unchanged. No push, release, SCC retry or stopped
+campaign occurred. Earlier next-step entries below are historical.
+
 ## Profiled two-partition slope trials accepted — 2026-09-25
 
 [ADR 0187](docs/adr/0187-profiled-slope-poisson-trials.md) and the
