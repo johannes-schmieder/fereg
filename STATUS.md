@@ -10,6 +10,109 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions; the multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Parallel current-weight slope preparation accepted — 2026-09-25
+
+[ADR 0184](docs/adr/0184-parallel-ppml-slope-preparation.md) and the
+[source-bound report](benchmarks/reports/development/ppml-parallel-slope-preparation-local-2026-09-25/README.md)
+retain **geoteam1**. All **554** captured runtime inputs match this checkpoint;
+three Rust files differ from accepted frameado3. Plugin SHA-256 is
+`149871641cdce3d36e4551c9b1313352821ae8bce51375177e5f89fe4e3f4e7e`.
+The multi-FE PPML <=0.90-times-comparable-stock goal remains active and unfinished.
+The prior planning entry below is historical; its unfinished geometry experiment
+is now adopted with the evidence here.
+
+### Change and measured effect
+
+Weighted group QR preparation borrows idle, already admitted worker observation
+buffers and writes directly to disjoint geometry slices. Work splits by basis
+elements. A complete scratch-capacity precheck preserves the existing serial
+fallback for oversized group blocks; one-worker preparation stays serial.
+Independent group-pair numeric banks also prepare concurrently. No persistent
+payload, descriptor, factor or thread team is added. Scientific arithmetic within
+each group/pair, active ranks, cache authority, recurrence, check schedule and
+tolerances are unchanged. Inactive geometry padding has no authority.
+
+Actual ordinary-call diagnostics locate the saving: large threaded geometry
+preparation falls about **10→1.9 ms**, with pair preparation **5.9→3.2 ms**;
+the two-partition threaded geometry phase falls **10.9→2.5 ms**. Its single-pair
+preparation remains about 7 ms. Large compact FE products still cost about 18 ms.
+These separate diagnostic blocks are not stock rankings and nested spans are
+not additive. No numerical result changes.
+
+Fresh **seed202609416**, five rotations, baseline/candidate/stock medians:
+
+| Case | N/K/T; mode | Baseline / candidate / stock ms | Candidate / stock |
+|---|---|---:|---:|
+| Unbalanced three-FE slopes |69120/10/8; fast|276 / 256 / 265|0.966|
+| Same, low |69120/10/8; low|301 / 279 / 265|1.053|
+| Two slope partitions |36480/6/8; fast|120 / 107 / 84|1.274|
+| Smaller three-FE slopes |34560/6/4; fast|127 / 117 / 129|0.907|
+| Serial two-slope |36480/6/1; fast|171 / 172 / 335|0.513|
+| Narrow categorical |24000/2/4; fast|40 / 40 / 31|1.290|
+| Weak slope barbell |14400/4/4; fast|41 / 38 / 714|0.053|
+| Disconnected slopes |24960/8/4; low|115 / 106 / 138|0.768|
+| Two slopes on each partition |28800/10/8; fast|173 / 147 / 188|0.782|
+| Four categorical FE |30000/8/4; low|191 / 188 / 481|0.391|
+
+Threaded slope gains are **7.2–15.0%**. The full fresh block has **40 wins,
+five losses and five ties** in 50 pairs; threaded slopes have 34 wins and one
+tie. Serial slopes lose 1 ms at the median, with three losses and two ties.
+Categorical timing differences have no causal optimization claim. All cases
+are scientifically rankable; five of ten medians clear 0.90 stock. Different
+seeds/sizes in older reports retain their own claims. The tuning block separately
+has 15 wins, one loss and two ties, with 5–9% threaded slope gains.
+
+### Validation, memory and receipts
+
+All **17 distinct focused Rust tests** and **seven licensed fixture executions**
+pass. Independent analytic WLS and explicit Poisson/Hessian/sandwich checks cover
+deficient slopes, changing weights, scales, threads, unit/FW/PW, offsets and
+robust/clustered inference. The new geometry test covers 32 thread/weight/scratch
+configurations, including empty levels and oversized-block refusal. Fast and low
+T1/T4 real 16-iteration allocation windows pass zero events/growth, capacity and
+warm/fresh checks. The separate ignored frozen-frame test was not run.
+
+All **244 PPML public states**, **156 baseline comparisons**, **68 direct stock
+comparisons**, **88 exact native scientific/mean pairs** and **22 OLS pairs** pass.
+Forty PPML states are diagnostics; 204 PPML and 44 OLS calls are headline controls.
+There are no measured application failures, timeouts or isolation failures.
+OLS original medians are 51/53, 35/34, 52/52, 144/143 and 92/91 ms. The noisy
+small serial control's seven-pair same-input confirmation is 53/53 ms, with
+four paired losses; both blocks are preserved. OLS scientific exports are exact.
+
+All 68 headline PPML pairs have exact tracked allocation peaks and scratch
+reports. Selected-memory telemetry has -48 to +48 byte differences; the baseline
+also varies by 48 bytes across unchanged-artifact repetitions. No equal-RSS or
+physical-cap claim follows. The verified/restored archive contains **10,794
+logical receipts / 2,290 payloads / 18,039,596 bytes**, SHA-256
+`7763f4300e53a786471751c8ab1a53f1fb55611cc7b233152ff8a2e37b90c122`.
+Work root: target/ppml-joint-moments-20260925. All operations are terminal.
+
+### Next bounded implementation
+
+Finish the planned **single-RHS compact FE product** experiment using idle
+existing worker coefficient/scratch banks. The large ordinary operator still
+costs about 18 ms; the small dense operator costs only 1.4 ms and should retain
+its current efficient path. Keep ordered reductions, original reconstruction,
+current-weight full checks and the observation-space curvature fallback. Judge
+whole public time early, then fresh cases only if promising; add no unadmitted
+bank or benchmark-specific guard. This is one bounded experiment, not a new
+round of pair-width, factor or threshold tuning.
+
+Then implement the larger Poisson coefficient-step candidate from the plan:
+reduce repeated weighted solves with safeguarded conditional/group-local Newton
+updates and meaningful current-weight initial guesses. Fresh416 still needs
+**17.5 ms** large fast, **40.5 ms** large low, **31.4 ms** two-slope T8 and
+**12.1 ms** narrow categorical savings for the target. Do not chase the smaller
+three-FE **0.9 ms** residual gap. Required canonical construction and final
+acceptance remain independent; measure their residual cost alongside the solve.
+
+Seeds **202609416/417** are consumed frozen validation, not tuning inputs.
+The full renewed implementation plan remains active beyond this milestone.
+Frozen 77/16/111 definitions, source-drift allocation failure, constrained-fit/CG
+failures and deferred platform work remain unchanged. No push, release, SCC
+retry, stopped campaign or qualification occurred.
+
 ## Renewed plan: a 10% public PPML advantage — 2026-09-25
 
 The target is **complete public PPML time <=0.90 times scientifically comparable

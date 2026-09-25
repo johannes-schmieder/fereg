@@ -963,6 +963,11 @@ impl ReusableMapAbsorber {
         {
             geometry.preparations += 1;
         }
+        if let Some(solver) = self.coefficient_solver.as_mut() {
+            if solver.prepare_geometry(&self.design, weights, geometry)? {
+                return Ok(());
+            }
+        }
         let mut offset = 0;
         let mut group = 0;
         for effect in self.design.effects() {
@@ -1200,7 +1205,7 @@ pub(super) fn certify_reusable_group(
     }
 }
 
-fn prepare_reusable_group_basis(
+pub(super) fn prepare_reusable_group_basis(
     effect: &super::EffectTerm,
     members: &[usize],
     weights: &[f64],
@@ -1967,6 +1972,68 @@ mod tests {
             }
         }
         assert!(ReusableMapAbsorber::joint_slope_bytes(&design, usize::MAX).is_err());
+    }
+
+    #[test]
+    fn parallel_slope_geometry_preserves_active_basis_and_scratch_refusal() {
+        // Empty declared levels stress disjoint zero-length slices. Duplicate
+        // and zero slopes stress inactive padding, which has no rank authority.
+        let rows = 192;
+        for oversized in [false, true] {
+            let z: Vec<_> = (0..rows).map(|i| ((i / 8) as f64).sin()).collect();
+            let design = FeDesign::new(rows, vec![
+                EffectTerm::new(
+                    (0..rows).map(|i| if oversized { 0 } else { (2 * (i % 8)) as u32 }).collect(),
+                    19, true,
+                    vec![z.clone(), z.iter().map(|v| v * 2.).collect(), vec![0.; rows]],
+                ).unwrap(),
+                EffectTerm::new(
+                    (0..rows).map(|i| (i % 11) as u32).collect(), 13, false,
+                    vec![(0..rows).map(|i| 1e120 * ((i * 7) as f64).cos()).collect()],
+                ).unwrap(),
+            ]).unwrap();
+            let mut serial = ReusableMapAbsorber::new(design.clone(), 7).unwrap();
+            serial.enable_certificate_geometry().unwrap();
+            for threads in [1, 2, 4, 7] {
+                let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+                let mut candidate = ReusableMapAbsorber::new(design.clone(), 7).unwrap();
+                candidate.enable_certificate_geometry().unwrap();
+                candidate.enable_coefficient_solver(threads).unwrap();
+                let capacities = candidate.capacities();
+                for (generation, scale) in [1., 1e-80, 1e80, 1.].into_iter().enumerate() {
+                    let weights: Vec<_> = (0..rows)
+                        .map(|i| scale * (0.2 + ((i * (generation + 3)) % 17) as f64))
+                        .collect();
+                    serial.prepare_coefficient_geometry(&weights).unwrap();
+                    let before = candidate.certificate_geometry.as_ref().unwrap().basis.clone();
+                    let prepared = pool.install(|| {
+                        candidate.coefficient_solver.as_mut().unwrap().prepare_geometry(
+                            &design, &weights, candidate.certificate_geometry.as_mut().unwrap(),
+                        )
+                    }).unwrap();
+                    assert_eq!(prepared, threads > 1 && !oversized);
+                    if !prepared {
+                        assert_eq!(candidate.certificate_geometry.as_ref().unwrap().basis, before);
+                        pool.install(|| candidate.prepare_coefficient_geometry(&weights)).unwrap();
+                    }
+                    let expected = serial.certificate_geometry.as_ref().unwrap();
+                    let actual = candidate.certificate_geometry.as_ref().unwrap();
+                    assert_eq!(actual.ranks, expected.ranks);
+                    let mut group = 0;
+                    let mut offset = 0;
+                    for effect in design.effects() {
+                        for level in 0..effect.n_levels() {
+                            let members = effect.level_index().members(level).len();
+                            let end = offset + members * expected.ranks[group];
+                            assert_eq!(&actual.basis[offset..end], &expected.basis[offset..end]);
+                            offset += members * effect.channels();
+                            group += 1;
+                        }
+                    }
+                    assert_eq!(candidate.capacities(), capacities);
+                }
+            }
+        }
     }
 
     #[test]

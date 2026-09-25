@@ -6,6 +6,7 @@
 use super::{allocation, dot, filled, Group, ReusableCertificateGeometry};
 use crate::error::Result;
 use crate::fe::FeDesign;
+use rayon::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Representation {
@@ -469,21 +470,23 @@ impl PreparedCoupling {
                 }
             }
         }
-        for pair in &mut self.pairs {
+        let effect_groups = &self.effect_groups;
+        let local_rows = &self.local_rows;
+        self.pairs.par_iter_mut().for_each(|pair| {
             pair.values.fill(0.);
             let left_effect = &design.effects()[pair.left];
             let right_effect = &design.effects()[pair.right];
             for level in 0..left_effect.n_levels() {
-                let lg = self.effect_groups[pair.left] + level;
+                let lg = effect_groups[pair.left] + level;
                 let l = groups[lg];
                 let members = left_effect.level_index().members(level);
                 let ls = members.len();
                 for (local, &row) in members.iter().enumerate() {
-                    let rg = self.effect_groups[pair.right] + right_effect.codes()[row] as usize;
+                    let rg = effect_groups[pair.right] + right_effect.codes()[row] as usize;
                     let r = groups[rg];
                     let rs = right_effect.level_index().members(r.level).len();
                     let lb = l.basis_start + local;
-                    let rb = r.basis_start + self.local_rows[pair.right * n + row];
+                    let rb = r.basis_start + local_rows[pair.right * n + row];
                     let target = pair.observation_blocks[row];
                     for a in 0..geometry.ranks[lg] {
                         let left = geometry.basis[lb + a * ls];
@@ -495,7 +498,7 @@ impl PreparedCoupling {
                     }
                 }
             }
-        }
+        });
         if self.representation == Representation::Schur {
             self.form_schur(design, groups);
         }

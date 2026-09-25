@@ -225,6 +225,31 @@ impl SlopeCoefficientWorkspace {
         Ok(())
     }
 
+    /// Geometry precedes column solving, so observation workspaces have no live
+    /// numerical state here. Borrow them for QR scratch and write each group's
+    /// basis directly into its disjoint part of the admitted geometry bank.
+    pub(super) fn prepare_geometry(
+        &mut self,
+        design: &FeDesign,
+        weights: &[f64],
+        geometry: &mut ReusableCertificateGeometry,
+    ) -> Result<bool> {
+        let workers = self.workers.len().min(self.groups.len());
+        if workers < 2 || self.groups.iter().any(|g| {
+            design.effects()[g.effect].level_index().members(g.level).len()
+                > design.nobs() / g.channels
+        }) {
+            // A very large local block can exceed an observation workspace.
+            // Its original serial scratch remains admitted and available.
+            return Ok(false);
+        }
+        prepare_geometry_blocks(
+            design, weights, &self.groups, &mut self.workers[..workers],
+            &mut geometry.basis, &mut geometry.ranks,
+        )?;
+        Ok(true)
+    }
+
     #[cfg(test)]
     pub(super) fn coupling_preparations(&self) -> Option<usize> {
         self.coupling.as_ref().map(|c| c.preparations)
@@ -443,6 +468,46 @@ impl SlopeCoefficientWorkspace {
         }
         Ok(self.workers.iter().map(|w| w.iterations).max().unwrap_or(0))
     }
+}
+
+fn prepare_geometry_blocks(
+    design: &FeDesign,
+    weights: &[f64],
+    groups: &[Group],
+    workers: &mut [Worker],
+    basis: &mut [f64],
+    ranks: &mut [usize],
+) -> Result<()> {
+    let base = groups[0].basis_start;
+    if workers.len() == 1 {
+        let scratch = &mut workers[0].observations;
+        for (group, rank) in groups.iter().zip(ranks) {
+            let effect = &design.effects()[group.effect];
+            let members = effect.level_index().members(group.level);
+            let start = group.basis_start - base;
+            let size = members.len() * group.channels;
+            *rank = super::map::prepare_reusable_group_basis(
+                effect, members, weights, members.len(), &mut scratch[..size],
+                &mut basis[start..start + size],
+            )?;
+        }
+        return Ok(());
+    }
+    let left_workers = workers.len() / 2;
+    let right_workers = workers.len() - left_workers;
+    let target = base + basis.len() / workers.len() * left_workers;
+    let middle = groups.partition_point(|g| g.basis_start < target)
+        .clamp(left_workers, groups.len() - right_workers);
+    let split = groups[middle].basis_start - base;
+    let (left_basis, right_basis) = basis.split_at_mut(split);
+    let (left_ranks, right_ranks) = ranks.split_at_mut(middle);
+    let (left, right) = workers.split_at_mut(left_workers);
+    let (a, b) = rayon::join(
+        || prepare_geometry_blocks(design, weights, &groups[..middle], left, left_basis, left_ranks),
+        || prepare_geometry_blocks(design, weights, &groups[middle..], right, right_basis, right_ranks),
+    );
+    a?;
+    b
 }
 
 struct Operator<'a> {
