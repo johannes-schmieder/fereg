@@ -1,0 +1,80 @@
+{
+  "identities": {
+    "slopetopology1": {
+      "plugin": "1c598ce6ecbdea8e1a6e0ffcc9dfcd655c89165750a8d2b02d8189ec15b9ae1e",
+      "base_commit": "d25c6e06785709566eddf69060cde5d7f0140733",
+      "source_inputs": 558
+    },
+    "canonicalincidence1": {
+      "plugin": "36145555bd8a88da508d656e506db557665860a978ad867b2ea49a6049882797",
+      "base_commit": "e3ef175717926f51a2d0e387440694bd0ec6cff3",
+      "source_inputs": 558
+    },
+    "canonicalincidence2": {
+      "plugin": "b92469cba5ff9057050038ef56e2f7829fef2f6cad3ecf42d3f3d563752e0635",
+      "base_commit": "e3ef175717926f51a2d0e387440694bd0ec6cff3",
+      "source_inputs": 558
+    }
+  },
+  "all_558_accepted_inputs_restored": true,
+  "science": {
+    "science": 6,
+    "science2": 6
+  },
+  "tests": {
+    "canonical-tests": {
+      "passed": [
+        "ols::canonical_products::tests::canonical_budget_credits_only_released_capacity",
+        "ols::canonical_products::tests::incidence_schur_matches_independent_dense_weighted_elimination",
+        "ols::canonical_products::tests::reduced_cg_matches_dense_spd_products_and_refuses_unfinished_solves",
+        "ols::canonical_products::tests::canonical_products_refuse_work_and_invalid_frames_without_mutation",
+        "ols::canonical_products::tests::canonical_component_factors_admit_disconnected_weighted_contrasts",
+        "ols::canonical_products::tests::canonical_products_match_independent_weighted_contrasts_and_direct_gram",
+        "ols::canonical_products::tests::iterative_products_preserve_independent_weighted_nonzero_residuals",
+        "ols::canonical_products::tests::canonical_phase_peak_admits_wide_weighted_oracle_within_the_existing_pool",
+        "ols::canonical_products::tests::canonical_products_session_keeps_rank_and_strict_rollback_across_weights",
+        "ols::canonical_products::tests::column_owned_rhs_admits_disconnected_wls_below_the_old_reduction_peak",
+        "ols::canonical_products::tests::streamed_canonical_groups_admit_wide_nonzero_weighted_contrasts",
+        "ols::canonical_products::tests::tiled_canonical_output_matches_independent_wls_under_changing_weights"
+      ],
+      "failed": [
+        "ols::canonical_products::tests::canonical_work_history_admits_changed_weights_and_reclaims_only_after_preflight"
+      ]
+    },
+    "canonical-tests2": {
+      "passed": [
+        "ols::canonical_products::tests::canonical_budget_credits_only_released_capacity",
+        "ols::canonical_products::tests::incidence_schur_matches_independent_dense_weighted_elimination",
+        "ols::canonical_products::tests::reduced_cg_matches_dense_spd_products_and_refuses_unfinished_solves",
+        "ols::canonical_products::tests::canonical_products_refuse_work_and_invalid_frames_without_mutation",
+        "ols::canonical_products::tests::canonical_component_factors_admit_disconnected_weighted_contrasts",
+        "ols::canonical_products::tests::canonical_products_match_independent_weighted_contrasts_and_direct_gram",
+        "ols::canonical_products::tests::iterative_products_preserve_independent_weighted_nonzero_residuals",
+        "ols::canonical_products::tests::canonical_phase_peak_admits_wide_weighted_oracle_within_the_existing_pool",
+        "ols::canonical_products::tests::canonical_products_session_keeps_rank_and_strict_rollback_across_weights",
+        "ols::canonical_products::tests::column_owned_rhs_admits_disconnected_wls_below_the_old_reduction_peak",
+        "ols::canonical_products::tests::streamed_canonical_groups_admit_wide_nonzero_weighted_contrasts",
+        "ols::canonical_products::tests::tiled_canonical_output_matches_independent_wls_under_changing_weights"
+      ],
+      "failed": [
+        "ols::canonical_products::tests::canonical_work_history_admits_changed_weights_and_reclaims_only_after_preflight"
+      ]
+    },
+    "baseline-routing-test": {
+      "passed": [
+        "ols::canonical_products::tests::canonical_work_history_admits_changed_weights_and_reclaims_only_after_preflight"
+      ],
+      "failed": []
+    }
+  },
+  "test_binary_hashes": {
+    "target/ppml-slope-preparation-20260925/cargo/debug/deps/fereg_core-f491e9ad28b34a1c": "6b83ef739e0003aaa4fbc3b3ea9d1c0c6fc86f252943d77d8a319301c1c62cce",
+    "target/ppml-canonical-incidence-20260925/cargo/debug/deps/fereg_core-f491e9ad28b34a1c": "668aced95f1a051a8b4fe39e13ab0c07950e15371482f0ca2c6036c90b8e7fd4"
+  },
+  "counts": {
+    "public_states": 116,
+    "baseline_pairs": 76,
+    "direct_stock_pairs": 36
+  },
+  "decision": "reject both prototypes; no fresh validation seed consumed; no production change"
+}

@@ -10,6 +10,68 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
 
+## Canonical incidence replacement rejected — 2026-09-25
+
+Retain **e3ef1757 / slopetopology1** runtime. Both incidence prototypes are
+rejected and `ols/canonical_products.rs` is restored exactly. All **558 accepted
+computational inputs** match. [ADR 0200](docs/adr/0200-canonical-ppml-incidence-closeout.md)
+and the [source-bound report](benchmarks/reports/development/ppml-canonical-incidence-closeout-local-2026-09-25/README.md)
+preserve both implementations, the failing routing assertion, full public
+distributions, independent science and the closing diagnostic. The broad goal
+remains active and unfinished; this is negative implementation evidence.
+
+The candidate replaces the iterative canonical builder's dense Schur matrix
+with exact current-weight normalized FE incidence. Original-input projection
+and direct-Gram certificates, rank, residual/score/reconstruction, strict
+comparison and exact final q*mu Hessian remain. The first implementation couples
+disconnected component stopping and loses all nine principal categorical pairs:
+low **111→116 ms**, fast **102→109**, serial **140→171**. Reported inner work
+rises **69→89, 56→76, 63→81** while outer counts stay four.
+
+The one declared correction packs non-anchor group-pair weights/local indices
+and restores independent component/RHS stopping. Its separate three-rotation
+development block, seed347, robust inference and means, has B/C/stock medians:
+
+| Case; N/K/T; mode | Baseline / candidate / stock ms |
+|---|---:|
+|Disconnected categorical; 61440/6/4; low|107 / 105 / 98|
+|Disconnected categorical; 61440/6/4; fast|100 / 95 / 101|
+|Serial categorical; 38400/10/1; low|144 / 141 / 245|
+|Narrow categorical; 24960/2/4; fast|39 / 42 / 34|
+|Wide categorical; 23040/36/8; low|89 / 89 / 129|
+|Two slope partitions; 30720/6/8; fast|72 / 72 / 82|
+
+**Eight paired wins, six losses, four ties.** Low and serial each have a losing
+pair; narrow has two losses and a tie. Reported iteration counts match baseline.
+No new family reaches 0.90 stock. The closing trace confirms roughly four ms of
+aggregate solver savings on large low/fast fits, leaving most of the public gap
+intact. Do not pool blocks or use these development clocks in place of seed432's
+accepted-source fresh comparison.
+
+Each candidate passes twelve canonical Rust tests and six licensed independent
+scientific fixtures. One existing work-history assertion fails in both and
+passes in baseline: smaller workspace admits a cold canonical solve where the
+test expects fallback and a work hint. Its later assertions are not reached;
+the test is not weakened. All **116 public states, 76 baseline-anchored pairs
+and 36 direct stock pairs** pass independent scientific audits. Corrected tracked
+peaks fall 2,122,544 bytes large low/fast and 37,104 serial, rise 247,936 narrow,
+and are unchanged wide/slopes. Scratch is unchanged; selected telemetry deltas
+are -112 to +48 bytes. No new OLS, warmed-allocation or physical-cap campaign.
+
+All **4,959 logical receipts** are restored and hash/privacy checked. No fresh
+validation seed is consumed. No third operator variant, crossover tuning or
+favorable-subset retention follows. Prior OLS timing sensitivity, scientific
+discrepancies, static-inventory drift, constrained-fit/CG failures and deferred
+platforms remain open. No push, release, SCC retry or stopped campaign occurred.
+
+**Next implementation:** move to the **complete narrow command lifecycle**,
+using ADR0199's existing nonoverlapping ledger. A viable candidate must remove
+demonstrated repeated preparation, execution, validation or publication work
+across stages; the current 14-ms narrow deficit cannot be closed by another
+isolated canonical matvec. Preserve independent acceptance and transactional
+publication, and carry the unresolved OLS slope timing control forward. The
+larger low categorical gap remains open; no universal speed claim is justified.
+
 ## PPML slope availability preparation accepted — 2026-09-25
 
 Retain **slopetopology1**, based on **d25c6e06** plus `ols/mod.rs`,
