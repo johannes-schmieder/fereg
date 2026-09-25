@@ -10,6 +10,124 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This compact handover supersedes the
 completed optimization/calibration investigation chronology formerly here.
 
+## Canonical-first multi-FE PPML finalization adopted — 2026-09-24
+
+The active goal remains **whole-public PPML <=0.90 times comparable pinned stock
+fixest wherever reasonably achievable with at least two FE partitions**. It is
+unfinished. This opening supersedes older next-step instructions.
+[ADR 0177](docs/adr/0177-canonical-first-ppml-finalization.md) and the
+[source-bound report](benchmarks/reports/development/ppml-canonical-first-finalization-local-2026-09-24/README.md)
+record the inventory, profiles, rejected experiments, full distributions and losses.
+
+Accepted artifact **canonicalfinal1**, plugin SHA-256
+`d653f5b858554ed237623de828624b6a88d638cecfc40653350bbb344e54a4ac`, captures
+**3d3ef6e85fac956e37b7f13c4f44a2062b2f5f8c** plus
+ppml/prepared_irls.rs and ppml/prepared_estimator.rs. All **551 captured inputs
+match final computational source**. The baseline fastproducts1 also has all 551
+inputs verified against that committed base. The immutable archive has
+**10,110 logical receipts / 2,535 payloads / 23,175,058 bytes**, SHA-256
+`b48b4bec02d0a3c98998a4c1f1b2645942d580ee8739f2654e2c697d57f94e8d`.
+Every receipt was verified and restored. All builds, tests, fits, audits and archive/
+restore processes are terminal. Work root: `target/ppml-multife-frontier-20260924`.
+
+### Adopted mechanism and evidence
+
+After the existing two accepted convergence passes, try one strict canonical
+Newton checkpoint. If its independent certificates and strict point/basis comparison
+pass, preserve the accepted point and reuse its exact-current-weight products after
+fresh authority, q*mu and reconstruction checks. Final score remains fresh. If the
+checkpoint moves the point, revoke this shortcut and process the strict transaction
+through the existing accept/backtrack/resume policy. Later eligible finalization
+uses the established joint witness plus canonical predictor solve. Ordinary IRLS,
+line search, samples, rank, inference, tolerances and recovery budgets are unchanged.
+
+The legacy numerical fallback remains necessary: always requiring canonical Newton
+confirmation fails an extreme disconnected slope truth probe at requested 1e-12
+accuracy, while the joint route and accepted refusal policy pass the unchanged
+1e-10 predictor truth bound. The broader conditional-intercept trial update was
+rejected; its analytic checks, strict failures and failed rebuild-time revocation
+are retained. Do not treat that probe as proof accelerated trials can never help.
+
+Fresh seed **202609398**, five rotating B/C/stock pairs, robust covariance and saved
+means, strict pinned stock glm.tol=1e-10/fixef.tol=1e-11. Fast unless stated.
+
+| Case | Baseline ms | Accepted ms | Stock ms | Accepted/stock |
+|---|---:|---:|---:|---:|
+| Three FE unbalanced slopes N65280/K12/T8 |324|296|351|0.843|
+| Same, low |367|347|352|0.986|
+| Three FE unbalanced slopes N28800/K8/T4 |134|124|168|0.738|
+| Two slope partitions N28800/K8/T4 |117|112|133|0.842|
+| Weak slopes low N17280/K6/T4 |62|60|1456|0.041|
+| Three FE dense categorical N40320/K10/T4 |160|142|536|0.265|
+| Three FE disconnected categorical N23040/K12/T4 |194|173|774|0.224|
+| Three FE unbalanced categorical low N33600/K28/T4 |220|203|452|0.449|
+| One-FE excluded control N21120/K6/T4 |36|37|22|1.682|
+| Narrow two-FE excluded control N21120/K2/T4 |43|43|30|1.433|
+| Two partitions/two slopes each N23040/K12/T1 |218|209|781|0.268|
+
+All nine changed cases improve every native pair, with 3.2–11.3% median gains.
+Eight of ten selected >=2-FE medians reach the stock target; this is not a global
+win rate. Low large slopes and narrow two-FE remain short. Unchanged one-FE/narrow
+controls lose three/two native pairs; the one-FE median rises 1 ms. All fresh modeled
+and tracked peaks are unchanged. The development dense categorical case increases
+tracked peak 1,766,560 bytes with unchanged model. No additional heap workspace,
+physical-limit/RSS claim, or allocation-inventory repair.
+
+### Science, failures and frozen inputs
+
+**148 distinct focused Rust tests pass.** The existing dynamic-range checkpoint-
+count assertion still fails (zero versus expected one rejection), reproduced in the
+isolated baseline. Its assertion remains unchanged; a separate successor test
+checks mathematical truth on both routes. **Six licensed science fixtures and two
+real sixteen-iteration allocation audits pass**, including two-/three-partition
+slope Poisson/Hessian/sandwich FW/PW/cluster checks, saved effects and OLS. Audits
+at T1/T4 have zero events/growth and fresh/warm equivalence.
+
+All **300 public states** pass their own score/model-space/objective checks. All
+**82 candidate/baseline pairs** and **55 fresh direct stock pairs** pass. All six
+fereg explicit Poisson/Hessian/sandwich/mean states pass. Stock's small disconnected
+oracle covariance misses its unchanged envelope (max 4.20e-10, ratio 2.006,
+nine coordinates), so that comparison is unranked. Three baseline-inventory and
+three development dense-categorical stock coefficient comparisons are also
+unranked. Preserve these alongside older comparator discrepancies. OLS controls
+have twelve successful applications, six exact scientific-output pairs, medians
+64→60 and 41→41 ms, with individual timing losses retained.
+
+The first default-tolerance low extreme-component truth probe fails a newly imposed
+1e-10 bound equally in baseline and candidate (1.0069622913e-10); this is not repaired.
+The failed fresh z4 syntax launch and OLS wrapper launch occurred before data/fits;
+corrected retries preserve all declared inputs. The bounded harness now accepts z4.
+Seeds **202609398/399/400 are consumed and frozen**, as are all earlier seeds.
+Frozen 77/16/111 definitions are unchanged.
+
+### Next bounded implementation milestone
+
+Target **shared original-input statistics, current-frame geometry ownership and
+reconstruction/certificate scans** across ordinary and canonical PPML boundaries.
+Fuse quantities that can safely share a pass while preserving independently checked
+acceptance. Avoid recurrence-only tuning: measured recurrence is a small fraction
+of narrow whole-fit cost. The two-/three-FE trial generalization is not adopted;
+a later experiment must account explicitly for strict-refusal ownership and use
+new validation cases, not reopen the unchanged failed probe.
+
+Concrete remaining gaps: fresh narrow fast 43 versus stock 30 needs another **16 ms
+(37.2%)** to reach 0.90x. Fresh low large slopes 347 versus 352 needs **30.2 ms
+(8.7%)**. The development large fast slope case is 235 versus 232; its target needs
+**26.2 ms (11.1%)**. Measured native phases there: preparation 31.7 ms, FE projection
+84.0, finite solves 17.6, objective/line search 11.9, strict final 43.1, publication 9.8.
+Strict final fell from 65.9 ms; ordinary work and five outer iterations remain.
+Baseline isolated profiles put canonical construction at 77–95 ms and ordinary joint
+boundaries at 87–91 ms in large slopes, with nested costs recorded explicitly.
+
+Small disconnected low execution is a measured **3d3ef6e8** inventory loss (110
+versus 76 ms), not yet a candidate-source timing claim; remeasure it before selecting
+that branch of the next milestone. Larger categorical designs are competitive
+controls; one dense categorical comparator discrepancy remains unranked.
+Known allocation-inventory drift, weighted constrained/nonretaining-CG failures,
+other canonical reporting/comparator issues, SCC authentication, Linux/thread/
+physical-memory/platform confirmation remain open. No SCC retry, stopped campaign,
+remote mutation or qualification occurred. STATUS is the sole mutable handover.
+
 ## Fast canonical PPML products adopted — 2026-09-24
 
 The active goal remains **whole-public PPML <=0.90 times comparable pinned stock

@@ -141,6 +141,7 @@ fn use_initial_checkpoint_lsmr_accelerator(
 #[cfg(test)]
 thread_local! {
     static FORCE_GENERIC_OUTER_SCORE: Cell<bool> = const { Cell::new(false) };
+    static CANONICAL_FINAL_TEST_DISABLED: Cell<bool> = const { Cell::new(false) };
     static PROFILE_CURVE_TEST_DISABLED: Cell<bool> = const { Cell::new(false) };
     static PROFILE_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
     static PROFILE_FINAL_ACCEPTED: Cell<usize> = const { Cell::new(0) };
@@ -228,6 +229,23 @@ fn profile_curve_enabled() -> bool {
     { !PROFILE_CURVE_TEST_DISABLED.get() }
     #[cfg(not(test))]
     { true }
+}
+
+fn canonical_final_enabled() -> bool {
+    #[cfg(test)]
+    if CANONICAL_FINAL_TEST_DISABLED.get() { return false; }
+    true
+}
+
+#[cfg(test)]
+pub(super) struct CanonicalFinalTestGuard(bool);
+#[cfg(test)]
+impl CanonicalFinalTestGuard {
+    pub(super) fn disabled() -> Self { Self(CANONICAL_FINAL_TEST_DISABLED.replace(true)) }
+}
+#[cfg(test)]
+impl Drop for CanonicalFinalTestGuard {
+    fn drop(&mut self) { CANONICAL_FINAL_TEST_DISABLED.set(self.0); }
 }
 
 #[cfg(test)]
@@ -1472,6 +1490,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let mut joint_lsmr_engine = None;
     let mut profiled_one_fe: Option<ProfiledOneFe> = None;
     let mut profiled_curve: Option<ProfiledInterceptCurve> = None;
+    let mut canonical_final = canonical_final_enabled()
+        && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+        && session.fe_design().effects().len() >= 2;
     let mut fused_cmg = None;
     let mut solver_report = None;
     let retained_limit = MAX_RETAINED_ITERATION_REPORTS
@@ -2212,11 +2233,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             interrupt(PpmlInterruptPoint::StrictFinalSolve)?;
             begin_phase_allocation(config.phase_allocation_probe, PpmlPhase::StrictFinalSolve);
             let strict_clock = PpmlPhaseClock::start();
-            // Profiled trials preserve the model space. One canonical Newton
-            // checkpoint can both confirm that accepted point and supply its
+            // Certified ordinary directions preserve the model space. One
+            // canonical Newton checkpoint can confirm the accepted point and supply its
             // exact-weight design/bread; the independent final checks below
             // still decide whether those products can be reused.
-            if profiled_curve.is_none()
+            if !canonical_final && profiled_curve.is_none()
                 && !profile_rebuild_pending
                 && !checkpoint_refinement_pending
                 && (session.supports_joint_ppml_direction() || joint_lsmr.is_some())
@@ -2389,6 +2410,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 ));
             }
 
+            // A moved canonical Newton point must resume under ADR 0016.
+            // Retire this shortcut for the remainder of that fit; the joint
+            // strict witness may reconstruct a better-conditioned direction.
+            if canonical_final && !strict_consistent {
+                canonical_final = false;
+            }
+
             let mut profile_difference = if strict_consistent {
                 0.0
             } else {
@@ -2412,11 +2440,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             checkpoint_refinement_pending = false;
             let mut strict_committed = false;
             if strict_consistent {
-                // A profiled point already satisfies the independently checked
+                // The accepted point already satisfies the independently checked
                 // outer conditions. If strict WLS confirms that same point,
                 // retaining it keeps the strict canonical products on the exact
                 // accepted Hessian frame for independently checked final reuse.
-                if profiled_one_fe.is_none() && profiled_curve.is_none() {
+                if !canonical_final && profiled_one_fe.is_none() && profiled_curve.is_none() {
                     workspace.fill_line_search_trial(1.0, config.ppml.bounds)?;
                     workspace.accept_trial()?;
                     objective = strict_objective.expect("consistent strict objective is present");
@@ -2532,9 +2560,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             )?;
             if strict_consistent && final_score.passed {
                 interrupt(PpmlInterruptPoint::StrictFinalSolve)?;
-                let synchronized = if (profiled_one_fe.is_some() || profiled_curve.is_some())
+                let synchronized = if (canonical_final || profiled_one_fe.is_some() || profiled_curve.is_some())
                     && strict_basis_unchanged
-                    && reuse_profiled_final_products(
+                    && reuse_canonical_final_products(
                         &session,
                         &workspace,
                         prior_weights,
@@ -3309,9 +3337,8 @@ enum FinalHessianSynchronization {
     ResumeAcceptedState,
 }
 
-/// Check the Newton direction and final canonical products on one accepted
-/// weight frame. No speculative eta/beta is published. Any movement or basis
-/// change returns to the canonical checkpoint/resume policy below the caller.
+/// Joint Newton witness followed by canonical predictor finalization. This
+/// remains necessary when canonical Newton reconstruction moves the point.
 #[allow(clippy::too_many_arguments)]
 fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     session: &mut CertifiedLinearSession<'_, P>,
@@ -3533,7 +3560,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
 /// exact weights, not on whether its RHS was the working response or predictor.
 /// Recheck the accepted predictor against that canonical decomposition before
 /// allowing those products to serve final inference without a second WLS.
-fn reuse_profiled_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
+fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
     session: &CertifiedLinearSession<'_, P>,
     workspace: &PpmlIterationWorkspace,
     prior_weights: &[f64],
@@ -3574,7 +3601,7 @@ fn reuse_profiled_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
         || output.finite_predictor().len() != offset.len()
         || output.absorbed_predictor().len() != offset.len()
     {
-        return Err(internal("profile final predictor is misaligned"));
+        return Err(internal("canonical final predictor is misaligned"));
     }
     for row in 0..offset.len() {
         let candidate =
@@ -5337,6 +5364,69 @@ mod tests {
             assert!(fit.diagnostics().iterations <= 6);
         }
     }
+    #[test]
+    fn canonical_final_preserves_accuracy_on_a_small_dynamic_range_model() {
+        for (hot, mode) in [(30.0_f64, PreparedOlsExecutionMode::Low), (30., PreparedOlsExecutionMode::Fast)] {
+            let mut x = Vec::new();
+            let mut g = Vec::new();
+            let mut h = Vec::new();
+            let mut truth = Vec::new();
+            let mut initial = Vec::new();
+            for worker in 0..40 {
+                for repeat in 0..4 {
+                    let firm = if worker < 8 {
+                        (worker + repeat % 2) % 8
+                    } else {
+                        8 + (worker - 8 + repeat % 2) % 32
+                    };
+                    let value = ((worker * 2 + repeat % 2) as f64 * 1.31).sin();
+                    x.push(value);
+                    g.push(worker as f64);
+                    h.push(firm as f64);
+                    let eta = if worker < 8 { hot } else { 1.0 }
+                        + 0.2 * value
+                        + 0.3 * (firm as f64).cos();
+                    truth.push(eta);
+                    initial.push(
+                        eta + if worker < 8 {
+                            0.0
+                        } else {
+                            0.4 * (worker as f64).sin()
+                        },
+                    );
+                }
+            }
+            let y: Vec<_> = truth
+                .iter()
+                .enumerate()
+                .map(|(row, eta)| eta.exp() * if row % 4 < 2 { 0.9 } else { 1.1 })
+                .collect();
+            let prepared = prepared_two_fe_with_codes(&y, &x, &g, &h);
+            let mut config = PreparedPpmlIrlsConfig::default();
+            config.ppml.max_iterations = 6;
+            config.memory.requested = if mode == PreparedOlsExecutionMode::Low { crate::options::MemoryMode::Low } else { crate::options::MemoryMode::Fast };
+            config.memory.poolsize = 1;
+            config.linear.execution.mode = mode;
+            config.linear.execution.poolsize = 1;
+            let start = PreparedPpmlStart {
+                coefficient_values: vec![0.2, 0.0],
+                eta: initial,
+            };
+            let fitted = fit_prepared_ppml_irls(
+                &prepared,
+                &y,
+                &vec![1.0; y.len()],
+                &vec![0.0; y.len()],
+                config,
+                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                Some(&start),
+            );
+            let fit = fitted.expect("refined ordinary solves must preserve strict progress");
+            assert!(fit.diagnostics().converged);
+            assert!(relative_infinity_difference(fit.eta(), &truth) < 1e-10, "mode={mode:?} eta_error={:.17e}", relative_infinity_difference(fit.eta(), &truth));
+            assert!(fit.diagnostics().iterations <= 6);
+        }
+    }
 
     fn prepared_three_fe(
         order: [usize; 3],
@@ -6729,6 +6819,7 @@ mod tests {
 
     #[test]
     fn joint_strict_final_preserves_truth_current_hessian_and_canonical_retry() {
+        let _canonical = CanonicalFinalTestGuard::disabled();
         let n = 240;
         let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
         let h: Vec<_> = (0..n).map(|i| (i / 20 % 3) as f64).collect();
@@ -6796,6 +6887,117 @@ mod tests {
             }
         }
         JOINT_FINAL_TEST_MODE.set(0);
+    }
+
+    #[test]
+    fn canonical_final_preserves_strict_disconnected_slope_truth() {
+        let n = 480;
+        let g: Vec<_> = (0..n).map(|i| (i/5%4 + 4*(i/240)) as f64).collect();
+        let h: Vec<_> = (0..n).map(|i| (i/20%3 + 3*(i/240)) as f64).collect();
+        let x: Vec<_> = (0..n).map(|i| ((i%5) as f64 - 2.).powi(2)
+            + (i as f64/17.).sin()).collect();
+        let eta: Vec<_> = (0..n).map(|i| 0.3 + 0.2*x[i] + 0.1*g[i] - 0.05*h[i]
+            + (g[i]+h[i])*((i%5) as f64 - 2.)*0.02).collect();
+        let y: Vec<_> = eta.iter().map(|v| v.exp()).collect();
+        let prepared = prepared_joint_slopes(&y, &x, &g, &h);
+        for disparity in [1e13] {
+            let weights: Vec<_> = (0..n).map(|i| (0.2+(i%13) as f64/7.)
+                * if i<240 { 1. } else { disparity }).collect();
+            for (execution, memory) in [
+                (PreparedOlsExecutionMode::Fast, crate::options::MemoryMode::Fast),
+            ] {
+                for threads in [1, 4] {
+                    let mut config = PreparedPpmlIrlsConfig::default();
+                    config.ppml.tolerance = 1e-12;
+                    config.ppml.score_tolerance = 1e-12;
+                    config.linear.execution.mode = execution;
+                    config.memory.requested = memory;
+                    config.linear.execution.poolsize = 1;
+                    config.memory.poolsize = 1;
+                    config.linear.execution.threads = crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                    {
+                        let _canonical = CanonicalFinalTestGuard::disabled();
+                        let baseline = fit_prepared_ppml_irls(&prepared, &y, &weights, &vec![0.;n], config,
+                            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(), None).unwrap();
+                        assert!(relative_infinity_difference(baseline.eta(), &eta) < 1e-10);
+                    }
+                    for mode in [0, 1, 2, 3] {
+                        profile_final_test_mode(mode);
+                        let fit = fit_prepared_ppml_irls(&prepared, &y, &weights, &vec![0.;n], config,
+                            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(), None).unwrap();
+                        let accepted = profile_final_test_mode(0);
+                        assert_eq!(accepted, 0);
+                        assert!(fit.diagnostics().strict_profile_rejections > 0);
+                        assert!(fit.diagnostics().converged && fit.diagnostics().two_consecutive_convergence);
+                        assert!(fit.diagnostics().final_score.passed);
+                        assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10,
+                            "disparity={disparity} mode={mode} storage={execution:?} threads={threads} eta_error={:.17e}", relative_infinity_difference(fit.eta(), &eta));
+                        assert!((fit.coefficients()[0].value.unwrap()-0.2).abs() < 1e-10);
+                        validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn canonical_final_preserves_slope_truth_current_hessian_and_reuse_refusal() {
+        let n = 240;
+        let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
+        let h: Vec<_> = (0..n).map(|i| (i / 20 % 3) as f64).collect();
+        let x: Vec<_> = (0..n)
+            .map(|i| ((i % 5) as f64 - 2.).powi(2) + (i as f64 / 17.).sin())
+            .collect();
+        let eta: Vec<_> = (0..n)
+            .map(|i| {
+                0.3 + 0.2 * x[i] + g[i] * 0.1 - h[i] * 0.05
+                    + (g[i] + h[i]) * ((i % 5) as f64 - 2.) * 0.02
+            })
+            .collect();
+        let y: Vec<_> = eta.iter().map(|v| v.exp()).collect();
+        let prepared = prepared_joint_slopes(&y, &x, &g, &h);
+        let weights: Vec<_> = (0..n).map(|i| 0.2 + (i % 13) as f64 / 7.).collect();
+        for memory_mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            for threads in [1, 4] {
+                let mut config = PreparedPpmlIrlsConfig::default();
+                config.linear.execution.threads =
+                    crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                config.linear.execution.mode = memory_mode;
+                config.linear.execution.poolsize = 1;
+                config.memory.requested = match memory_mode {
+                    PreparedOlsExecutionMode::Fast => crate::options::MemoryMode::Fast,
+                    PreparedOlsExecutionMode::Low => crate::options::MemoryMode::Low,
+                };
+                config.memory.poolsize = 1;
+                for mode in [0, 1, 2, 3] {
+                    profile_final_test_mode(mode);
+                    let fit = fit_prepared_ppml_irls(
+                        &prepared,
+                        &y,
+                        &weights,
+                        &vec![0.; n],
+                        config,
+                        plan_ppml_memory(memory_dimensions(&prepared, config), config.memory)
+                            .unwrap(),
+                        None,
+                    )
+                    .unwrap();
+                    assert!(
+                        fit.diagnostics().converged
+                            && fit.diagnostics().two_consecutive_convergence
+                    );
+                    assert!(fit.diagnostics().final_score.passed);
+                    assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10);
+                    assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+                    validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean())
+                        .unwrap();
+                    assert_eq!(profile_final_test_mode(0), usize::from(mode == 0));
+                }
+            }
+        }
     }
 
     #[test]
@@ -6912,6 +7114,7 @@ mod tests {
     #[test]
     fn fast_categorical_lsmr_strict_final_preserves_truth_and_canonical_retry() {
         // Preserve coverage of the fallback when the optional curve is absent.
+        let _canonical = CanonicalFinalTestGuard::disabled();
         let _curve = ProfileCurveTestGuard::disabled();
         let n = 240;
         let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
@@ -6969,6 +7172,7 @@ mod tests {
     #[test]
     fn low_categorical_joint_strict_final_preserves_truth_and_canonical_retry() {
         // Preserve coverage of the fallback when the optional curve is absent.
+        let _canonical = CanonicalFinalTestGuard::disabled();
         let _curve = ProfileCurveTestGuard::disabled();
         let n = 240;
         let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
@@ -7025,6 +7229,7 @@ mod tests {
 
     #[test]
     fn fast_categorical_lsmr_three_fe_preserves_canonical_science_nested_rank_and_zero_control() {
+        let _canonical = CanonicalFinalTestGuard::disabled();
         for (order, nested, zero_control) in [
             ([0, 1, 2], None, false),
             ([2, 0, 1], Some(0), false),

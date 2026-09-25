@@ -2483,7 +2483,7 @@ mod tests {
     #[test]
     fn profiled_final_products_match_canonical_and_reject_stale_authority() {
         use super::super::prepared_irls::profile_final_test_mode;
-        for effects in [1, 2] {
+        for effects in [1, 2, 3] {
             for (memory, pool) in [
                 (MemoryMode::Fast, 10000),
                 (MemoryMode::Low, 1),
@@ -2775,8 +2775,8 @@ mod tests {
     }
 
     #[test]
-    fn one_and_two_fe_ppml_map_keep_fused_projection_capacities_stable() {
-        for effects in [1, 2] {
+    fn multipartition_ppml_map_keeps_fused_projection_capacities_stable() {
+        for effects in [1, 2, 3] {
             let (mut request, loaded) = fixture(effects, false, false, false, false, false);
             request.allocation_snapshot_probe = Some(stable_allocation_probe);
             let result = fit_prepared_ppml(request, loaded).expect("audited categorical PPML");

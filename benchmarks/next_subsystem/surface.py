@@ -43,7 +43,7 @@ def configure(cell):
     if slopes and (mode != 'numeric' or cell.get('outputs') == 'all'):
         raise ValueError('Slope screen currently requires numeric terms and no saved outputs')
     if any(effect not in cell['effects'] or not channels or
-           any(name not in ('z1', 'z2', 'z3') for name in channels)
+           any(name not in ('z1', 'z2', 'z3', 'z4') for name in channels)
            for effect, channels in slopes.items()):
         raise ValueError('Unknown slope source or partition')
     cell['slope_absorb'] = ' '.join(
