@@ -65,16 +65,12 @@ is consumed/frozen. Known checkpoint-count assertion failure, allocation-invento
 drift, constrained-fit/nonretaining-CG failures, older three-FE discrepancy and
 deferred platforms remain open. No push, release or qualification performed.
 
-**Next implementation boundary:** canonical preparation and the ordinary-direction
-boundary. The new low diagnostic retains **27.193 ms canonical**, **23.836 ms
-ordinary**, and **5.784 ms recurrence**. Group-geometry preparation is only
-**1.485 ms**, with coupling preparation **0.951 ms**; do not equate worker sums or
-all boundary overhead with geometry rebuilding. The next ledger should split
-canonical product construction, RHS solves, materialization/scratch transport,
-original-input reconstruction, finite-rank assembly and checking into disjoint
-work before selecting a coherent ownership change. Reuse existing grounded Schur
-and column-oriented engines; keep the earlier standalone matrix-cache and
-checkpoint-schedule experiments closed. The larger plan below remains active.
+**Next implementation boundary:** use the completed finer canonical diagnostic
+below to test one current-weight coarse preconditioner, then address the larger
+ordinary/canonical lifecycle. A faster recurrence alone cannot close the current
+27.4-ms low-mode gap. The revised plan below supersedes its older timing budgets;
+production remains e7731129/finalreplay1. The user requested this planning update;
+it introduces no solver change or new benchmark run.
 
 ## Mean comparison adjudicated; remaining cost measured — 2026-09-25
 
@@ -231,168 +227,189 @@ are now consumed/frozen** and cannot become tuning seeds.
 
 ## Further PPML development plan — revised 2026-09-25
 
-Scope remains **at least two FE partitions**. The target is complete public
+Scope remains **at least two FE partitions**. The goal is complete public
 `feppml` runtime **<=0.90 times scientifically comparable pinned stock fixest**
-for each covered family wherever practical. Ratios above the target remain open
-losses; an aggregate win rate cannot close them. This is a development plan, not
-a claim that the target is attained or a new qualification campaign. Current
-runtime is finalreplay1 as recorded above; the larger implementation priorities
-below remain unfinished.
+wherever practical. Judge each family and its losses, not an aggregate win rate.
+Aim for additional margin so a noisy 0.90 median is not mistaken for a reliable
+advantage. This is an implementation plan; none of its proposed savings is an
+achieved result. Current runtime is **e7731129/finalreplay1**, with a clean
+production worktree at the start of this planning update.
 
-### Measured targets and priority
+### Current savings budgets and coverage
 
-The following planning baselines are separate source-bound blocks, not a pooled
-distribution; the newest candidate block is recorded above. Robust inference and
-fitted means are included. The first two rows use the corrected
-reference accuracy of ADR 0194; the other rows use ADR 0193's rankable comparisons.
+Use the latest five-rotation seed430 block in the
+[source-bound report](benchmarks/reports/development/ppml-final-replay-local-2026-09-25/README.md).
+These are comparable warm public commands, including robust inference and means,
+not process startup or data import. No older block is pooled with these clocks.
 
-| Current case | fereg / stock median | Target ceiling | Required fereg reduction |
-|---|---:|---:|---:|
-|Disconnected two FE, low, N49920/K12/T8|107 / 102 ms|91.8 ms|15.2 ms / 14.2%|
-|Same design, fast|90 / 103 ms|92.7 ms|Target met in this block|
-|Disconnected two FE, low, N61440/K6/T4|114 / 101 ms|90.9 ms|23.1 ms / 20.3%|
-|Narrow two FE, fast, N24960/K2/T4|41 / 33 ms|29.7 ms|11.3 ms / 27.6%|
-|Two slope partitions, fast, N38400/K8/T4|107 / 177 ms|159.3 ms|Target met in this block|
+| Case; N/K/T; mode | fereg / stock ms | fereg/stock | 0.90-stock ceiling | Further saving needed |
+|---|---:|---:|---:|---:|
+|Disconnected categorical; 61440/6/4; low|112 / 94|1.191|84.6 ms|27.4 ms / 24.5%|
+|Disconnected categorical; 38400/10/1; low|144 / 243|0.593|218.7 ms|Target met in this block|
+|Narrow categorical; 24960/2/4; fast|39 / 34|1.147|30.6 ms|8.4 ms / 21.5%|
+|Wide categorical; 23040/36/8; low|86 / 128|0.672|115.2 ms|Target met in this block|
+|Two slope partitions; 38400/8/4; fast|105 / 181|0.580|162.9 ms|Target met in this block|
 
-The first implementation priority is low-mode preparation and verification;
-narrow complete-command cost follows. Aim for **30–35%** and **35–40%** reductions,
-respectively, to leave useful margin. These are engineering targets, not measured
-savings or promises. Preserve existing fast, serial, wide, weak-connectivity and
-slope wins. The older threaded slope loss needs current-source remeasurement;
-the older dense three-FE coefficient discrepancy needs independent adjudication
-before any timing ranking.
+Engineering targets for the two current losses are **75–80 ms low** and
+**26–28 ms narrow**: about 29–33% and 28–33% below their current medians. These
+are ambitions, not predictions. The same report's separate threaded-slope pilot
+is 79/81 ms at N30720/K6/T8 and does not meet 0.90; the fresh T4 slope win cannot
+close that boundary. Remeasure it on the next accepted source with three-FE
+unbalanced slopes in both modes. The older dense three-categorical-FE coefficient
+discrepancy remains unresolved and unranked. Four-plus FE, generated terms,
+clustered/saved-FE outputs, weight extremes and larger N need selective current-
+source coverage, not inherited historical claims.
 
-### Milestone 1: finish attribution and freeze the implementation experiment
+### Milestone 1: one bounded canonical-solver experiment
 
-Use the existing accepted-source ledger; do not restart a broad profiling campaign.
-For low T4, ordinary recurrence is 5.743 ms inside a 23.981-ms direction boundary;
-canonical preparation is 27.406 ms and result certification is 7.785 ms. These
-are inclusive scopes, not additive exclusive savings. Narrow recurrence is only
-3.131 ms, so a recurrence-only improvement cannot close its 11.3-ms public gap.
+The pending finer diagnostic is now complete under
+`target/ppml-canonical-ledger-20260925`: accepted baseline finalreplay1 versus
+isolated canonicalstages1, two rotations on three designs, development seed347.
+Its audit has 12 passing public states and six passing native comparisons.
+The instrumented plugin SHA-256 is
+`6ee7bf77ab77e5df302a13521e72d509ad12220af0b0b46f7187b902a40770d7`.
+Recipes, declarations, controller, audit and phase-summary remain there pending
+sanitized immutable closeout. These are preliminary diagnostic spans, not stock
+headline clocks; inclusive scopes overlap and worker sums are not wall time.
 
-The isolated final-replay diagnostic and implementation are now closed under
-ADR 0195 with restored receipts. Their modest gain cannot substitute for the
-larger redesign below. Continue with the remaining canonical/direction operation
-ledger; do not repeat or extend this publication micro-tuning experiment.
+On N61440/K6/T4 low, canonical build is 18.106 ms, including 7.426 ms RHS solves;
+writing controls is 2.257 ms. The scaled grounded systems reach 15 iterations
+initially and 23 at strict precision. Narrow canonical RHS solves take only
+0.177 ms. Therefore this candidate can help low/large canonical work but cannot
+by itself close either whole-command target. Scratch transport is not the first
+large cost to redesign.
 
-Build one exclusive operation ledger per target: original-row passes, generated
-column evaluations, current-weight geometry/factors, bytes read/written, RHS
-work, original-input checks, allocations, and ordinary/strict/final invocations.
-Inspect matching pinned fixest work only where attribution remains uncertain.
-For each proposed removal identify the duplicate operation, its dependencies,
-and the independent invariant that remains. Freeze at most two coherent designs
-before testing them; do not accumulate speculative cache layers.
+Prototype **current-weight component coarse preconditioning** in the existing
+canonical CG engine. Grounding creates a plausible slowly varying direction;
+verify it with frozen-state operation counts rather than assume it explains
+all iterations. Prepare one positive rank-one correction per component from
+its current matrix and diagonal scaling, reuse it across independently stopping
+RHSs, and retain the unchanged original-input projection certificate/direct Gram.
+Reclaim existing setup scratch where possible and charge its longer lifetime.
+No previous-frame factor authority, new N-by-K bank or increased allowance.
+Direct Cholesky/narrow and unrelated engines remain controls.
 
-### Milestone 2: consolidate current-weight preparation, solve and verification
+Run analytic nonzero-residual WLS, changed-weight, rank/scale, iteration-refusal
+and exact-budget checks, followed by an early full-public B/C/stock pilot. Give
+this prototype one evidence-led correction at most. Reject if the public gain
+is negligible, inconsistent or bought with disproportionate memory. An accepted
+small coherent gain may be committed, but it does not complete this plan.
 
-The principal candidate is a narrower ownership boundary inside the existing
-PPML engine. Borrow immutable original columns/topology; prepare each required
-weight-dependent quantity once per valid state; transfer existing scratch and
-products between compatible consumers. Consolidate repeated normalization,
-geometry construction, residual reconstruction and moment passes only where the
-ledger demonstrates duplication. Existing weight roots and finite column scales
-already have owners: do not add second caches for them.
+### Milestone 2: remove repeated work across the weighted-linear lifecycle
 
-Give ordinary, canonical and inference consumers explicit dependency identities
-(sample, design/basis, weight state, response where relevant). A product may be
-shared only when those dependencies match exactly. Changed weights rebuild numeric
-authority; prior solutions remain guesses. Initial rank and strict/final Hessian
-work retain their required original-input/current-state checks. No new N-by-K bank
-in low mode; account for simultaneously live fallbacks before admission.
+This is the principal shared implementation target. The accepted diagnostic
+still records about 23.8 ms inside ordinary joint directions with only 5.8 ms
+in recurrence; group geometry is about 1.5 ms. Do not revive the old diagnosis
+that repeated group factors alone explain the remaining loss.
 
-Restructure acceptance work alongside computation. Cheap recurrence diagnostics
-may decide when to attempt an independent check. Fresh original-row passes may
-share loads, immutable terms and compatible reductions without trusting solver
-residuals or cached objectives as their own proof. Keep the canonical rank,
-projection, model-space, finite-score, objective, reconstruction and exact final
-q*mu Hessian conditions. Any replacement of checking work requires an explicit
-successor ADR and adversarial oracle tests, not a tolerance change.
+Trace original-column reads, weight normalization, norms/means, predictor and
+residual reconstruction, finite/FE score passes, canonical rank assembly and
+retained-row consumers. Mark each operation's sample, design/basis, weight,
+response and generation dependencies. Consolidate demonstrated duplicate work
+within one current state, and transfer ownership of already necessary products
+instead of adding overlapping caches. Existing grouped geometry, retained norms,
+fused canonical products and exact-state final-product reuse already exist.
 
-Integrate only after frozen-current-weight comparisons show the proposed work
-reduction, then test full public fits. A few percent from final publication can
-be a small accepted commit; completion of this milestone requires reporting how
-much of the 15–23-ms low-mode gap remains and where it resides. After two
-materially different failed prototypes, preserve the evidence and move on.
+Design one fresh original-input acceptance pass to share compatible loads and
+reductions for projection, finite scores, reconstruction and direct products.
+Keep numerically stable direct residual products; do not resurrect cancellation-
+prone subtraction of large Gram matrices. A solver recurrence or stored score
+must never validate itself. Initial rank, changing-weight geometry, strict
+acceptance and exact final q*mu Hessian retain their scientific purposes. Document
+any replaced check and its independent authority in a successor ADR and adversarial
+tests. Retain the accepted checkpoint order; ADRs 0191/0192 are closed.
 
-### Milestone 3: close narrow-fit overhead across the public command
+Low mode must remain bounded without a second observation-by-regressor bank.
+Account for fallback/rollback overlap and test allocation refusal before public
+integration. Compare identical frozen frames first, then complete PPML sequences;
+include setup, checks and inference when deciding whether the new ownership is
+better. Measure the remaining milliseconds against the current target after
+adoption. Do not spend another cycle on final-replay micro-tuning.
 
-Measure the remaining public Stata preparation/loading/output cost separately
-from native initialization, canonical construction, checking and inference.
-Remove repeated metadata/design setup and generic-session reconstruction when
-proven redundant. Preserve one substantive plugin call, main-thread SPI, bounded
-native workers and transactional publication. Do not move estimation into ado or
-hide requested outputs outside the measured command.
+### Milestone 3: a materially different algorithm if full solves remain dominant
 
-If remaining operator work justifies an algorithmic candidate, start from existing
-joint directions and grounded Schur products. Compare a genuinely reduced system
-that shares current-weight preparation across consumers against the accepted
-route on identical frozen states before public integration. Require a credible
-whole-command saving; a new recurrence alone is insufficient. The chosen design
-must explicitly distinguish itself from ADR 0148's rejected previous-factor
-matrix-free prototype, ADR 0174's rejected dense ordinary system, ADR 0166's
-standalone matrix cache and ADRs 0191/0192's rejected early checkpoints.
+If lifecycle consolidation leaves too many expensive changing-weight solves,
+prototype **nonlinear block coefficient updates between canonical boundaries**.
+Use exact conditional categorical intercept updates and safeguarded local slope
+Newton updates, coupled to finite coefficients and objective-checked acceleration.
+The purpose is to reach the required accepted point with fewer complete weighted-
+linear solves, not merely fewer iterations in one recurrence.
 
-Analytic categorical trial profiling and two-partition slope trial corrections
-already exist under ADRs 0174/0187. Do not propose them again as new features or
-attribute their benefits to a future artifact. Replace superseded machinery when
-a new path earns adoption rather than retaining overlapping engines indefinitely.
+ADRs 0174/0187 already profile one partition on line-search trials; ADR 0186
+already improves slope initialization. Those are not new candidates. The proposed
+change must replace selected ordinary direction work with a bounded alternating
+coefficient solve across coupled partitions. Distinguish it from the rejected
+three-plus-FE trial correction, which added work without removing outer steps.
+Use original-coordinate coefficient guesses or a proven mapping into changed
+weighted coordinates. Always recompute the initial residual/current objective
+under new weights. Warm guesses carry no certificate authority.
 
-### Milestone 4: expand the margin to further multi-FE families
+Compare this one coherent alternative against the existing joint Newton engine
+on the same actual PPML sequences. Count full solves, factor preparations,
+exponentials, row passes, rejected trials and finalization, not nominal iteration
+counts. Preserve canonical initial rank, required current-weight projection and
+strict final acceptance, sample/separation policy and exact final Hessian.
+Refusal uses the existing certified route. If the candidate wins, integrate and
+remove superseded overlap; if it fails, preserve the cause and stop. Do not add
+multiple permanent solver layers or tune topology/seed-specific guards.
 
-Run a small accepted-source screen to select the next substantial miss: three and
-four categorical partitions, multiple slopes on multiple partitions, unbalanced
-or weakly connected groups, wide/generated controls, changing-weight extremes,
-zeros/separation, offsets/exposure, and clustered or saved-effect output costs. Cover fast/low and serial/threaded
-execution without a Cartesian product. Resolve the known three-FE coefficient
-discrepancy independently; passing means/objectives alone does not rank it.
+### Milestone 4: make narrow fits and broader families earn the same margin
 
-For measured three-plus-FE losses, evaluate whether the existing block coefficient
-operator and reusable current-weight group factors can replace the expensive
-path, with current-state preconditioning and independent column stopping where
-appropriate. Choose explicit versus operator products from complete measured work
-and memory, not topology names or seeds. For slopes, remeasure the older T8 anchor
-first and retain the accepted joint/coefficient-space engines. The original
-five-to-eightfold gap is historical and is not the current diagnosis.
+Narrow fits require their own complete-command budget because canonical CG is
+already cheap. Separate public preparation/loading/output from native topology,
+initialization, rank and verification. Reuse immutable design/metadata preparation,
+avoid redundant session construction and unnecessary worker scheduling only where
+measured. Preserve one substantive plugin call, main-thread SPI and atomic results.
+The 26–28-ms engineering target requires more than moving output outside the clock.
 
-After family-level gains, use a bounded larger-N confirmation on local Mac to
-check bandwidth, allocation and scratch behavior. Do not extrapolate small-N wins
-to large data or call low mode proof of physical-memory feasibility. Linux and
-constrained-platform confirmation remain deferred pending renewed access.
+After the first larger accepted change, run a compact opportunity screen spanning
+threaded two-partition slopes, unbalanced three-FE slopes fast/low, three/four
+categorical FE, a wide/generated design and one cluster/saved-output case.
+Adjudicate the known three-FE coefficient disagreement before ranking it. Extend
+only around measured misses: imbalance, weak/disconnected connectivity, multiple
+or deficient slopes, changed weights, zeros/separation and offsets/exposure.
+Use complete work/memory estimates for any routing change, never case names.
 
-### Acceptance, measurement and stopping rules for every milestone
+Confirm promising gains at a larger local N to expose bandwidth, allocation and
+scratch behavior. Low-mode success alone is not proof of physical-cap feasibility.
+Linux/T1/T8/T16 and constrained-platform confirmation remain deferred; no SCC retry.
 
-- Freeze a scientific baseline before implementation. Use explicit-design WLS
-  and Poisson/Hessian/sandwich oracles, frequency expansion, pweight rescaling,
-  changed-weight/generation, rank-deficient, extreme-scale and refusal cases as
-  relevant. Protect categorical/slope OLS, one-FE PPML and excluded routes with
-  focused controls. Preserve all frozen 77/16/111 definitions.
-- Begin with three alternating baseline/candidate/stock development rotations.
-  Only promising source-frozen candidates get five predeclared fresh rotations;
-  declare unused seeds before generating data. Frozen validation seeds never
-  become tuning inputs. Repeat noisy results only under a declared rule, keeping
-  the original block visible.
-- Use unmodified pinned stock with matched sample, weights, threads, inference
-  and outputs. Default strict settings remain glm.tol=1e-10/fixef.tol=1e-11;
-  independently established reference failures require separately declared
-  stronger-accuracy comparisons, as in ADR 0194. Failed-accuracy clocks stay
-  unranked. Never make stock do gratuitous work to manufacture a win.
-- No builds, profiles, archives or competing fits alongside headline timings.
-  Report full distributions, paired losses/ties, per-family ratios, timeouts,
-  failures and discrepancies. A 0.90 point estimate with unstable paired results
-  needs confirmation; it is not a broad claim. Keep setup/import outside the
-  clock explicitly distinct from loading/estimation/certification/output inside it.
-- Report modeled and tracked allocation peaks, scratch bytes and complete fallback
-  overlaps. Check warm allocation stability for changed owners. Use an explicit
-  local cap experiment before claiming constrained-memory improvement.
-- Prefer substantial gains. Keep smaller reliable gains only when inexpensive and
-  broadly useful; do not spend another long cycle on a small residual miss. At
-  each closeout give the remaining milliseconds to 0.90, the measured cost that
-  prevents it, and the next materially different action or an evidence-backed
-  reason to deprioritize it. Scientific guarantees are not bargaining variables.
-- Commit accepted changes and source-bound rejected evidence in bounded milestones.
-  STATUS remains the sole mutable handover. No push/release, SCC retry or stopped
-  campaign restart. Known checkpoint-count test failure, static allocation drift,
-  constrained-fit/nonretaining-CG failures and deferred platforms remain open.
+### Acceptance and stopping rules for every milestone
+
+- Start with a source-bound baseline and small independent explicit-design WLS
+  and Poisson/Hessian/sandwich oracles. Cover changed weights/generations, rank
+  deficiency, extreme scales and refusal/rollback; use frequency expansion and
+  pweight rescaling where relevant. Numerical tolerances never pay for speed.
+- Use three alternating baseline/candidate/pinned-stock pilot rotations. Freeze
+  promising source before five fresh predeclared rotations on unused seeds.
+  Frozen validation inputs never become tuning data. Preserve failures and all
+  blocks; repeat noise only under an explicit rule, not until a favorable result.
+- Match sample, work, threads, inference and outputs. Default strict stock remains
+  glm.tol=1e-10/fixef.tol=1e-11. Independently proven reference inaccuracies need
+  separately declared comparable reruns, not relaxed envelopes. Scientific
+  discrepancies stay unranked. Diagnostic reference builds never supply headlines.
+- No compilation, profiling, archiving or competing fits during headline timing.
+  Report distributions, paired wins/losses/ties and remaining milliseconds to
+  0.90 per case, with timeouts and failures visible. Setup/import, public loading,
+  solve/checks, inference and outputs remain explicitly separated.
+- Protect categorical and slope OLS, one-FE PPML and excluded paths with focused
+  controls. Preserve the 77 primary, 16 holdout and 111 native definitions. Check
+  changed owners' warmed allocations, modeled/tracked peak, scratch and complete
+  fallback overlap; no unsupported physical-memory claim.
+- One implementation and at most one evidence-led correction per candidate before
+  adopt/reject. Prefer 20–35% gains on current losers; accept smaller reliable,
+  inexpensive shared gains without calling the broader task finished. After two
+  materially different failures in a subsystem, move to the next measured loss
+  with an explicit account of the remaining cost.
+- Commit accepted changes and sanitized rejected evidence at bounded milestones;
+  remove superseded paths. STATUS remains the sole mutable handover. Known test,
+  allocation-inventory, constrained-fit/CG and platform gaps remain open. No push,
+  release, stopped campaign restart or qualification claim.
+
+This planning update changes no estimator source, consumes no fresh validation
+seed and runs no new performance or scientific campaign. The broad goal remains
+active; the next implementation begins with Milestone 1 and must progress beyond
+that bounded preparatory experiment.
 
 ## Canonical residual certificate gate accepted — 2026-09-25
 
