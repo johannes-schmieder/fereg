@@ -26,14 +26,26 @@ passed scheduler accounting, Linux build and actual-plugin ABI checks (333s,
 four slots, 3.010G maxvmem). Existing comparator bytes match the old frozen
 runtime. No reference source changed or dependency upgrade occurred.
 
-Next: freeze the deployed controller/runtime; run the 28-group licensed smoke,
-then the 12-group current-source pilot, validate application/science/accounting,
-and submit the pending registered groups packed toward 10.5h under 12h tasks.
-The initial cost proxy predicts 17 bundles / 174.06 node-hours; pilot whole-group
-elapsed times must refine that forecast. No whole-campaign speed claim yet.
+Harness commit **82603d0e** is local; it was not pushed. The deployed runtime
+is frozen as `c20c85932f1ab631020f02c10f1db64be81e34308b0bee0a56316313a17bc624`.
+[Launch receipt](benchmarks/reports/development/systematic-light-scc-2026-09-26/launch.json)
+binds the archive/plugin/controller/manifest identities. Smoke job **7745382**
+is submitted with `plans/smoke.json` (28 groups, one-hour whole-node allocation).
+It is running on the reserved Broadwell node; the first seven categorical OLS
+command groups are passing. Full scientific smoke acceptance is still pending.
+
+One same-task follow-up, **run-lighter-fereg-scc-campaign**, checks this long
+campaign every 15 minutes and continues the authorized stages. Do not duplicate
+it or any submitted job. After smoke, capture accounting and run
+`light_control.py` acceptance, then generate/run/accept the 12-group pilot and
+submit the pending production groups. Target 10.5h within 12h tasks, concurrency
+eight. The initial proxy predicts 17 bundles / 174.06 node-hours; current pilot
+whole-group elapsed times refine that forecast. No whole-campaign speed claim.
 Full command timeout bounds, scientific discrepancies, default versus strict
 stock PPML, unsupported slope APIs and predeclared budget exclusions stay
-separate. STATUS is the only mutable handover; do not modify stopped receipts.
+separate. See `benchmarks/systematic/LIGHT.md` for commands. Preserve frozen
+bytes and failed attempts; do not resume old stopped campaigns. Pause the one
+follow-up after verified completion or a diagnosed blocker.
 
 ## Canonical slope helper candidate accepted — 2026-09-26
 
