@@ -9,6 +9,32 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## Lighter systematic SCC rerun — 2026-09-26
+
+Johannes authorized implementing and running the discussed lighter campaign.
+[ADR 0222](docs/adr/0222-lighter-systematic-development-campaign.md) and the
+[preflight receipt](benchmarks/reports/development/systematic-light-scc-2026-09-26/README.md)
+define 140 configurations / 568 groups with four warm repetitions and eight
+cold anchors. Both OLS and PPML, eight graph designs, selected scaling/width,
+zero outcomes and absorbed slopes remain. The old stopped campaign stays stopped.
+Candidate source is **c31bcb621ba196e03a070ff2d808812733970f50**; only the harness
+changes in this checkpoint. New SCC run: `20260926-systematic-light-c31bcb62`.
+
+Twenty local harness tests passed. Twelve added independent slope/zero oracle
+self-exercises completed; licensed comparison is pending. Setup job **7745351**
+passed scheduler accounting, Linux build and actual-plugin ABI checks (333s,
+four slots, 3.010G maxvmem). Existing comparator bytes match the old frozen
+runtime. No reference source changed or dependency upgrade occurred.
+
+Next: freeze the deployed controller/runtime; run the 28-group licensed smoke,
+then the 12-group current-source pilot, validate application/science/accounting,
+and submit the pending registered groups packed toward 10.5h under 12h tasks.
+The initial cost proxy predicts 17 bundles / 174.06 node-hours; pilot whole-group
+elapsed times must refine that forecast. No whole-campaign speed claim yet.
+Full command timeout bounds, scientific discrepancies, default versus strict
+stock PPML, unsupported slope APIs and predeclared budget exclusions stay
+separate. STATUS is the only mutable handover; do not modify stopped receipts.
+
 ## Canonical slope helper candidate accepted — 2026-09-26
 
 [ADR 0221](docs/adr/0221-idle-workers-in-canonical-slope-products.md) adopts

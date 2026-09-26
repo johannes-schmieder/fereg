@@ -13,16 +13,22 @@ from scipy.special import gammaln, xlogy
 from common import HERE, read_json, write_json
 
 
-def dummy_matrix(frame, effects):
+def dummy_matrix(frame, effects, slopes=None):
     matrices, codes, widths = [], [], []
     for name in effects:
         code, levels = pd.factorize(frame[name], sort=True)
         width = len(levels)
-        matrices.append(sparse.csr_matrix((np.ones(len(code)), (np.arange(len(code)), code)), shape=(len(code), width)))
+        indicator = sparse.csr_matrix((np.ones(len(code)), (np.arange(len(code)), code)), shape=(len(code), width))
+        matrices.append(indicator)
+        matrices.extend(indicator.multiply(frame[z].to_numpy()[:, None]) for z in (slopes or {}).get(name, []))
         codes.append(code)
         widths.append(width)
     F = sparse.hstack(matrices, format="csr")
-    if len(effects) == 1:
+    if slopes:
+        if F.shape[1] > 1200:
+            raise ValueError('Slope explicit rank audit exceeds bounded oracle width')
+        rank = int(np.linalg.matrix_rank(F.toarray()))
+    elif len(effects) == 1:
         rank = widths[0]
     elif len(effects) == 2:
         left, right = codes[0], codes[1] + widths[0]
@@ -52,10 +58,20 @@ def solve(A, b):
 
 def oracle(path, cell):
     frame = pd.read_stata(path, convert_categoricals=False)
+    if cell['section'] == 'zeros':
+        # All-zero FE groups give an explicit recession direction. Repeat with
+        # singleton deletion, without changing the estimator's original input.
+        while True:
+            keep = np.ones(len(frame), dtype=bool)
+            for effect in cell['effects']:
+                grouped = frame.groupby(effect).y
+                keep &= (grouped.transform('sum').to_numpy() > 0) & (grouped.transform('size').to_numpy() > 1)
+            if keep.all():break
+            frame = frame.loc[keep].reset_index(drop=True)
     n, k = len(frame), cell["k"]
     if n > 7680:
         raise ValueError("oracle is bounded to 7680 observations")
-    F, rank = dummy_matrix(frame, cell["effects"])
+    F, rank = dummy_matrix(frame, cell["effects"], cell.get('slopes'))
     X = frame[[f"x{i}" for i in range(1, k + 1)]].to_numpy()
     y = frame.y.to_numpy()
     if cell["model"] == "ols":
@@ -112,6 +128,7 @@ def oracle(path, cell):
                  "deviance": float(2 * np.sum(xlogy(y, y / mu) - y + mu)),
                  "maximum_scaled_score": float(np.max(abs(score) / scale)), "iterations": iteration + 1}
     return {"schema": "systematic-explicit-dummy-oracle-v2", "status": "pass", "N": n,
+            "sample_sha256": __import__('hashlib').sha256(b''.join(int(x).to_bytes(8,'little') for x in frame.obs_id)).hexdigest(),
             "linear_solver": "column-equilibrated SciPy LSMR, atol=btol=1e-13",
             "fe_rank": rank, "coefficient_names": [f"x{i}" for i in range(1, k + 1)],
             "coefficients": b.tolist(), "covariance": V.tolist(), **extra}

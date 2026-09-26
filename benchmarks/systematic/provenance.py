@@ -4,11 +4,11 @@ import hashlib
 import json
 from pathlib import Path
 
-from common import HERE, read_json, sha256, write_json
+from common import HERE, read_json, sha256, write_json, manifest_for
 
 MEASUREMENT_FILES = ("manifest.json", "references.json", "common.py", "generate.py",
                      "runner.py", "oracle.py", "stata_worker.do", "r_worker.R",
-                     "python_worker.py", "job.sh", "provenance.py")
+                     "python_worker.py", "job.sh", "provenance.py", "light.py", "campaign.py", "report.py", "light_control.py", "light_report.py", "accounting.py")
 
 
 def fingerprint(value):
@@ -20,13 +20,15 @@ def freeze(root):
     if target.exists():
         raise ValueError("runtime already frozen; preserve the existing evidence")
     candidate = read_json(root / "input/candidate.json")
-    manifest = read_json(HERE / "manifest.json")
+    manifest = manifest_for(root)
     if candidate["commit"] != manifest["candidate_commit"] or sha256(root / "input/candidate.tar.gz") != candidate["sha256"]:
         raise ValueError("candidate archive identity differs")
     paths = [root / "candidate/dist/fereg_linux.plugin", root / "env/python-freeze.txt",
              root / "env/R-packages.csv", root / "input/candidate.tar.gz"]
+    if (root/'input/manifest.json').exists():paths.append(root/'input/manifest.json')
     paths += sorted((root / "references").glob("*"))
     paths += sorted((root / "candidate/stata").glob("*.ado"))
+    paths += sorted((root / "candidate/stata").glob("*.mo"))
     # Bind comparator implementations and compiled extensions, in addition to
     # the package-version receipts and exact source archives.
     for directory in [root / "env/R/fixest", *root.glob("env/python/lib/python*/site-packages/pyfixest")]:

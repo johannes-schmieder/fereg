@@ -7,12 +7,21 @@ c <- fromJSON(args[[1]], simplifyVector = TRUE)
 cell <- c$cell
 output <- c$output
 setFixest_nthreads(cell$threads)
+effect_terms <- vapply(cell$effects, function(e) {
+    slopes <- cell$slopes[[e]]
+    if (length(slopes)) paste0(e, "[", paste(slopes, collapse=", "), "]") else e
+}, character(1))
 formula <- as.formula(paste("y ~", paste(paste0("x", seq_len(cell$k)), collapse=" + "),
-                            "|", paste(cell$effects, collapse=" + ")))
+                            "|", paste(effect_terms, collapse=" + ")))
 fit_model <- function(data) {
     if (cell$model == "ols") {
         feols(formula, data=data, nthreads=cell$threads, vcov="iid", notes=FALSE)
     } else {
+        if (identical(c$arm, "fixest_strict")) {
+            return(fepois(formula, data=data, nthreads=cell$threads, vcov="hetero",
+                          ssc=ssc(K.adj=FALSE), notes=FALSE,
+                          glm.tol=c$fixest_strict$glm_tol, fixef.tol=c$fixest_strict$fixef_tol))
+        }
         fepois(formula, data=data, nthreads=cell$threads, vcov="hetero", ssc=ssc(K.adj=FALSE), notes=FALSE)
     }
 }

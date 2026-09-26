@@ -21,8 +21,14 @@ forvalues j = 1/`k' {
 local effects g1
 if `dimensions' >= 2 local effects `effects' g2
 if `dimensions' == 3 local effects `effects' g3
-local command `"`arm' y `xvars', absorb(`effects')"'
+local absorption `effects'
+local slope_names
+local memory
+capture confirm file `"`output'/surface.do"'
+if !_rc include `"`output'/surface.do"'
+local command `"`arm' y `xvars', absorb(`absorption')"'
 if inlist("`arm'", "fereg", "feppml") local command `"`command' threads(`threads')"'
+if inlist("`arm'", "fereg", "feppml") & "`memory'" != "" local command `"`command' memory(`memory')"'
 if inlist("`arm'", "greg", "gglm") local command `"`command' mata(BenchG)"'
 if "`arm'" == "gglm" local command `"`command' family(poisson) robust"'
 if inlist("`arm'", "feppml", "ppmlhdfe") local command `"`command' vce(robust)"'
@@ -39,7 +45,7 @@ if "`phase'" == "warm" {
     capture mata: mata drop BenchG
 }
 quietly use `"`data'"', clear
-local inputvars obs_id `effects' `xvars' y
+local inputvars obs_id `effects' `xvars' `slope_names' y
 mata:
 void __sb_export_input(string scalar path, string rowvector names)
 {

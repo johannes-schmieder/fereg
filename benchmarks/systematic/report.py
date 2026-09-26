@@ -67,9 +67,9 @@ def collect(root, manifest):
     return rows, comparisons
 
 
-def quantiles(records, metric):
+def quantiles(records, metric, repetitions=6):
     valid = [r[metric] for r in records if r["eligible"] and r[metric] is not None and math.isfinite(r[metric]) and r[metric] > 0]
-    if len(valid) != 6 or {r["repetition"] for r in records if r["eligible"]} != set(range(1, 7)):
+    if len(valid) != repetitions or {r["repetition"] for r in records if r["eligible"]} != set(range(1, repetitions+1)):
         return None
     return np.quantile(valid, [.25, .5, .75], method="linear")
 
@@ -169,7 +169,12 @@ def findings(ratios, manifest):
 
 
 def render(root, output, allow_incomplete=False):
-    manifest = read_json(HERE / "manifest.json")
+    from common import manifest_for
+    from light import enabled
+    manifest = manifest_for(root)
+    if enabled(manifest):
+        from light_report import render as render_light
+        return render_light(root, output, allow_incomplete)
     completeness = audit(root, manifest)
     if completeness["status"] != "complete" and not allow_incomplete:
         raise ValueError("report cannot be finalized while registered groups are missing")

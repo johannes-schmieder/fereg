@@ -75,6 +75,11 @@ def generate(cell, seed, path, manifest):
         eta -= 0.12 * np.cos(groups["g2"] / 5)
     if "g3" in groups:
         eta += 0.08 * np.sin(groups["g3"] / 3)
+    slope_rng = np.random.default_rng(np.random.SeedSequence([seed, 904]))
+    for effect, names in cell.get('slopes', {}).items():
+        for name in names:
+            data[name] = slope_rng.normal(size=n)
+            eta += .15 * np.sin(groups[effect] / 11) * data[name]
     if cell["model"] == "ols":
         y = 1 + xb + eta + rng.normal(0, 0.5, n)
     else:

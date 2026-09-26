@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import psutil
 
-from common import HERE, arm_order, cell_id, dataset_id, read_json, sha256, thread_environment, write_json
+from common import HERE, arm_order, cell_id, dataset_id, read_json, sha256, thread_environment, write_json, manifest_for
 from generate import generate
 
 
@@ -48,10 +48,12 @@ def sample_hash(path):
     return digest.hexdigest(), rows
 
 
-def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None):
+def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None, limits=None):
+    arm_start = time.monotonic()
     output.mkdir(parents=True, exist_ok=False)
     threads = cell["threads"]
-    config = {"output": str(output), "cell": cell, "data": str(data), "warm": str(warm), "phase": phase}
+    config = {"output": str(output), "cell": cell, "data": str(data), "warm": str(warm), "phase": phase,
+              "arm": arm, "fixest_strict": manifest.get('fixest_strict')}
     write_json(output / "request.json", config)
     environment = os.environ.copy()
     # Prevent inherited user/developer overrides from changing the estimator.
@@ -62,19 +64,29 @@ def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None)
     temporary = data.parent / f"worker-{arm}"
     temporary.mkdir(exist_ok=False)
     environment.update({"R_LIBS_USER": str(root / "env/R"), "MPLCONFIGDIR": str(temporary / "mpl"),
-                        "TMPDIR": str(temporary), "PYTHONDONTWRITEBYTECODE": "1"})
+                        "TMPDIR": str(temporary), "NUMBA_CACHE_DIR": str(temporary / 'numba'),
+                        "PYTHONDONTWRITEBYTECODE": "1"})
     # Use a deterministic nested physical-core subset, preserving the full
     # whole-node allocation even when the application requests fewer cores.
     cpu_ids = sorted(os.sched_getaffinity(0))[:threads]
     prefix = ["taskset", "-c", ",".join(map(str, cpu_ids))]
     import_path = temporary / "import.bin"
-    if arm == "fixest":
+    if arm in ("fixest", "fixest_strict"):
         command = ["Rscript", str(HERE / "r_worker.R"), str(output / "request.json")]
     elif arm == "pyfixest":
         command = [str(root / "env/python/bin/python"), str(HERE / "python_worker.py"), str(output / "request.json")]
     else:
+        # Each Stata process gets its own writable pinned package closure.
+        # ftools may compile Mata during initialization; never race in a shared tree.
+        reference_path = root / 'references'
+        if manifest.get('schema') == 'fereg-systematic-light-v2':
+            reference_path = temporary / 'references'
+            shutil.copytree(root / 'references', reference_path)
+        absorption = ' '.join(e + ('##c.('+' '.join(cell['slopes'][e])+')' if e in cell.get('slopes', {}) else '') for e in cell['effects'])
+        slope_names = ' '.join(z for values in cell.get('slopes', {}).values() for z in values)
+        (output / 'surface.do').write_text(f'local absorption "{absorption}"\nlocal slope_names "{slope_names}"\nlocal memory "{cell.get("memory", "")}"\n')
         command = ["stata-mp", "-b", "do", str(HERE / "stata_worker.do"),
-                   str(root / "candidate"), str(root / "references"), str(data), str(warm), str(output),
+                   str(root / "candidate"), str(reference_path), str(data), str(warm), str(output),
                    arm, cell["model"], str(cell["k"]), str(threads), str(len(cell["effects"])), phase, str(import_path)]
     maximum_rss = 0
     samples = 0
@@ -83,74 +95,86 @@ def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None)
     reason = None
     wall_start = time.monotonic()
     import_verified = False
+    finished = None
+    limits = limits or dict(startup=manifest['measurement']['startup_timeout_seconds'],
+                            command=manifest['measurement']['command_timeout_seconds'], extraction=600)
     with (output / "stdout.txt").open("w") as stdout, (output / "stderr.txt").open("w") as stderr:
         process = subprocess.Popen(prefix + command, cwd=output, env=environment,
                                    stdout=stdout, stderr=stderr, start_new_session=True)
-        while process.poll() is None:
-            now = time.monotonic()
-            if (output / "INPUT.READY").exists() and not import_verified:
-                info = read_json(data.with_suffix(".json"))
-                hashes = {}
-                with import_path.open("rb") as stream:
-                    for column in info["columns"]:
-                        digest = __import__("hashlib").sha256()
-                        remaining = info["n"] * 8
-                        while remaining:
-                            block = stream.read(min(remaining, 2**20))
-                            if not block:
-                                raise ValueError("truncated Stata import audit")
-                            digest.update(block)
-                            remaining -= len(block)
-                        hashes[column] = digest.hexdigest()
-                    if stream.read(1):
-                        raise ValueError("extra Stata import audit bytes")
-                if hashes != info["column_sha256"]:
-                    os.killpg(process.pid, signal.SIGKILL)
+        try:
+            while process.poll() is None:
+                now = time.monotonic()
+                if (output / "INPUT.READY").exists() and not import_verified:
+                    info = read_json(data.with_suffix(".json"))
+                    hashes = {}
+                    with import_path.open("rb") as stream:
+                        for column in info["columns"]:
+                            digest = __import__("hashlib").sha256()
+                            remaining = info["n"] * 8
+                            while remaining:
+                                block = stream.read(min(remaining, 2**20))
+                                if not block:
+                                    raise ValueError("truncated Stata import audit")
+                                digest.update(block)
+                                remaining -= len(block)
+                            hashes[column] = digest.hexdigest()
+                        if stream.read(1):
+                            raise ValueError("extra Stata import audit bytes")
+                    if hashes != info["column_sha256"]:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        process.wait()
+                        raise ValueError("Stata imported values differ from canonical hashes")
+                    import_path.unlink()
+                    write_json(output / "import-hashes.json", hashes)
+                    (output / "IMPORT.CHECKED").write_text("PASS\n")
+                    import_verified = True
+                active = (output / "START").exists() and not (output / "DONE").exists()
+                if (output / 'DONE').exists() and finished is None:
+                    finished = now
+                if active and started is None:
+                    started = now
+                if active:
+                    try:
+                        parent = psutil.Process(process.pid)
+                        tree = [parent, *parent.children(recursive=True)]
+                        rss, nthreads = 0, 0
+                        for child in tree:
+                            try:
+                                rss += child.memory_info().rss
+                                nthreads += child.num_threads()
+                            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                pass
+                        maximum_rss = max(maximum_rss, rss)
+                        peaks_threads = max(peaks_threads, nthreads)
+                        samples += 1
+                        # A pre-invocation boundary sample also covers commands
+                        # shorter than the periodic sampler interval. Handshake
+                        # waiting is excluded from the command's own timer.
+                        if not (output / "START.CHECKED").exists():
+                            (output / "START.CHECKED").write_text("SAMPLED\n")
+                    except psutil.NoSuchProcess:
+                        pass
+                if started is None and now - wall_start > limits['startup']:
+                    reason = "startup_timeout"
+                elif started is not None and active and now - started > limits['command']:
+                    reason = "command_timeout"
+                elif finished is not None and now - finished > limits['extraction']:
+                    reason = "extraction_timeout"
+                if reason:
+                    os.killpg(process.pid, signal.SIGTERM)
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(process.pid, signal.SIGKILL)
                     process.wait()
-                    raise ValueError("Stata imported values differ from canonical hashes")
-                import_path.unlink()
-                write_json(output / "import-hashes.json", hashes)
-                (output / "IMPORT.CHECKED").write_text("PASS\n")
-                import_verified = True
-            active = (output / "START").exists() and not (output / "DONE").exists()
-            if active and started is None:
-                started = now
-            if active:
-                try:
-                    parent = psutil.Process(process.pid)
-                    tree = [parent, *parent.children(recursive=True)]
-                    rss, nthreads = 0, 0
-                    for child in tree:
-                        try:
-                            rss += child.memory_info().rss
-                            nthreads += child.num_threads()
-                        except (psutil.NoSuchProcess, psutil.AccessDenied):
-                            pass
-                    maximum_rss = max(maximum_rss, rss)
-                    peaks_threads = max(peaks_threads, nthreads)
-                    samples += 1
-                    # A pre-invocation boundary sample also covers commands
-                    # shorter than the periodic sampler interval. Handshake
-                    # waiting is excluded from the command's own timer.
-                    if not (output / "START.CHECKED").exists():
-                        (output / "START.CHECKED").write_text("SAMPLED\n")
-                except psutil.NoSuchProcess:
-                    pass
-            if started is None and now - wall_start > manifest["measurement"]["startup_timeout_seconds"]:
-                reason = "startup_timeout"
-            elif started is not None and active and now - started > manifest["measurement"]["command_timeout_seconds"]:
-                reason = "command_timeout"
-            elif started is not None and not active and now - started > manifest["measurement"]["command_timeout_seconds"] + 600:
-                reason = "extraction_timeout"
-            if reason:
-                os.killpg(process.pid, signal.SIGTERM)
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
-                process.wait()
-                break
-            time.sleep(manifest["measurement"]["rss_interval_seconds"])
+                    break
+                time.sleep(manifest["measurement"]["rss_interval_seconds"])
+        finally:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait()
     meta = metadata(output)
     sentinel = any("SYSTEMATIC_WORKER_COMPLETE" in p.read_text(errors="replace")
                    for p in [output / "stdout.txt", *output.glob("*.log")] if p.exists())
@@ -167,7 +191,8 @@ def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None)
                "peak_process_tree_threads": peaks_threads, "cpu_affinity": cpu_ids,
                "job_id": os.environ.get("JOB_ID"), "task_id": os.environ.get("SGE_TASK_ID"),
                "host": socket.gethostname(), "input_sha256": sha256(data),
-               "command_time_lower_bound": manifest["measurement"]["command_timeout_seconds"] if reason == "command_timeout" else None}
+               "elapsed_seconds": time.monotonic()-arm_start, "limits": limits,
+               "command_time_lower_bound": limits['command'] if reason == "command_timeout" else None}
     if (output / "sample.csv").exists():
         receipt["sample_sha256"], receipt["sample_rows"] = sample_hash(output / "sample.csv")
         (output / "sample.csv").unlink()
@@ -221,7 +246,7 @@ def compare(left, right, config):
         for field in ("df_a", "df_r"):
             checks[field] = isinstance(a["metadata"].get(field), (float, int)) and a["metadata"].get(field) == b["metadata"].get(field)
     checks["candidate_converged"] = a["metadata"].get("converged") == 1
-    if b["arm"] in ("fixest", "ppmlhdfe") or (b["arm"] == "pyfixest" and a["cell"]["model"] == "ppml"):
+    if b["arm"] in ("fixest", "fixest_strict", "ppmlhdfe") or (b["arm"] == "pyfixest" and a["cell"]["model"] == "ppml"):
         checks["comparator_converged"] = b["metadata"].get("converged") == 1
     if b["arm"] == "ppmlhdfe":
         # Accepted PPML capture contract assigns the normalized constant to
@@ -244,6 +269,8 @@ def compare(left, right, config):
 
 
 def run_group(root, group, scratch, manifest, identity=None, results_directory="results"):
+    from light import enabled, active_arms, skips
+    group_start = time.monotonic()
     cell, rep = group["cell"], group["repetition"]
     phase = "cold" if rep == 0 else "warm"
     seed = manifest["seeds"][max(0, rep - 1)]
@@ -253,7 +280,7 @@ def run_group(root, group, scratch, manifest, identity=None, results_directory="
         if existing.get("measurement_fingerprint") != identity:
             raise ValueError("cannot reuse a group from a different measurement controller")
         return existing
-    if output.exists() and any(output.glob("*/result.json")):
+    if output.exists() and any(output.iterdir()):
         raise ValueError("partial comparison group requires isolated recovery; refusing cross-node pairing")
     output.mkdir(parents=True, exist_ok=True)
     data = scratch / (dataset_id(cell, seed) + ".dta")
@@ -267,9 +294,12 @@ def run_group(root, group, scratch, manifest, identity=None, results_directory="
     independent = None
     if cell["n"] <= 7680:
         from oracle import oracle
-        independent = oracle(data, cell)
+        try:
+            independent = oracle(data, cell)
+        except Exception as exc:
+            independent = dict(status='failed', error=f'{type(exc).__name__}: {exc}')
         write_json(output / "oracle.json", independent)
-    arms = group.get("arms", manifest["arms"][cell["model"]])
+    arms = active_arms(group, manifest) if enabled(manifest) else group.get("arms", manifest["arms"][cell["model"]])
     receipts = []
     for arm in arm_order(arms, max(1, rep)):
         destination = output / arm
@@ -278,35 +308,61 @@ def run_group(root, group, scratch, manifest, identity=None, results_directory="
             if receipt.get("measurement_fingerprint") != identity:
                 raise ValueError("cannot reuse an arm from a different measurement controller")
         else:
-            receipt = measure(root, cell, arm, phase, data, warm, destination, manifest, identity)
+            receipt = measure(root, cell, arm, phase, data, warm, destination, manifest, identity,
+                              group.get('limits', {}).get(arm))
         receipts.append(receipt)
         print(f"ARM {cell_id(cell)} {phase}-{rep} {arm} {receipt['status']} {receipt['seconds']}", flush=True)
     candidate = "fereg" if cell["model"] == "ols" else "feppml"
     science = [compare(output / candidate, output / arm, manifest["science"]) for arm in arms if arm != candidate]
     oracle_checks = None
-    if independent and (output / candidate / "coefficients.csv").exists():
+    if independent and independent['status'] != 'pass':
+        oracle_checks = {'converged': False}
+    elif independent and (output / candidate / "coefficients.csv").exists():
         values = read_coefficients(output / candidate)
         names = independent["coefficient_names"]
         tolerance = manifest["science"]
         oracle_checks = {
+            'sample': independent['sample_sha256'] == read_json(output/candidate/'result.json').get('sample_sha256'),
             "coefficients": bool(np.allclose([values[n][0] for n in names], independent["coefficients"],
                                               rtol=tolerance["coefficient_rtol"], atol=tolerance["coefficient_atol"])),
             "standard_errors": bool(np.allclose([values[n][1] for n in names], np.sqrt(np.diag(independent["covariance"])),
                                                 rtol=tolerance["vce_rtol"], atol=tolerance["vce_atol"]))}
+    elif independent:
+        oracle_checks = {'candidate_output': False}
+    if independent and independent['status'] == 'pass' and oracle_checks:
+        native = read_json(output/candidate/'result.json')
+        oracle_checks['converged'] = native['status'] == 'pass' and native['metadata'].get('converged') == 1
+        objective = 'rss' if cell['model'] == 'ols' else 'deviance'
+        observed = native['metadata'].get(objective)
+        oracle_checks['objective'] = isinstance(observed, (int, float)) and math.isclose(
+            observed, independent[objective], rel_tol=manifest['science']['objective_rtol'], abs_tol=manifest['science']['objective_atol'])
+        path = output/candidate/'covariance.csv'
+        oracle_checks['covariance'] = False
+        if path.exists():
+            with path.open() as stream:
+                covariance = {(r['row'],r['column']):float(r['value']) for r in csv.DictReader(stream)}
+            names = independent['coefficient_names']
+            observed = [[covariance.get((a,b),float('nan')) for b in names] for a in names]
+            oracle_checks['covariance'] = bool(np.allclose(observed, independent['covariance'],
+                rtol=manifest['science']['vce_rtol'], atol=manifest['science']['vce_atol']))
     result = {"cell": cell, "repetition": rep, "phase": phase, "seed": seed,
               "measurement_fingerprint": identity,
               "job_id": os.environ.get("JOB_ID"), "host": socket.gethostname(),
               "arm_status": {r["arm"]: r["status"] for r in receipts}, "comparisons": science,
-              "oracle_checks": oracle_checks}
+              "oracle_checks": oracle_checks, "elapsed_seconds": time.monotonic()-group_start,
+              "skips": skips(cell, rep, manifest) if enabled(manifest) else {}}
     write_json(output / "GROUP.COMPLETE.json", result)
     # Target files are regenerable and hash-bound; no accumulation in shared storage.
     data.unlink()
     data.with_suffix(".json").unlink()
+    warm.unlink()
+    warm.with_suffix('.json').unlink()
     return result
 
 
 def run_bundle(root, plan, bundle_id):
-    manifest = read_json(HERE / "manifest.json")
+    from light import enabled, choose_fitting
+    manifest = manifest_for(root)
     if os.environ.get("NSLOTS") != "28":
         raise RuntimeError("all benchmark execution requires 28 reserved cores")
     if "E5-2680 v4" not in Path("/proc/cpuinfo").read_text():
@@ -314,11 +370,18 @@ def run_bundle(root, plan, bundle_id):
     if len(os.sched_getaffinity(0)) != 28:
         raise RuntimeError("benchmark requires exactly 28 available CPU IDs")
     plan_data = read_json(plan)
+    if enabled(manifest):
+        if plan_data.get('manifest_sha256') != sha256(root/'input/manifest.json'):
+            raise ValueError('Plan belongs to another manifest')
+        all_groups = [g for b in plan_data['bundles'] for g in b['groups']]
+        keys = [(cell_id(g['cell']), g['repetition']) for g in all_groups]
+        if len(keys) != len(set(keys)):
+            raise ValueError('Duplicate comparison in plan')
     results_directory = plan_data.get("results_directory", "results")
     if Path(results_directory).name != results_directory or results_directory in ("", ".", ".."):
         raise ValueError("result directory must be one named child of the run")
     identity = None
-    if plan_data["mode"] in ("pilot", "production"):
+    if plan_data["mode"] in ("pilot", "production", "smoke") and (root/'env/frozen.json').exists():
         from provenance import verify
         identity = verify(root)
     setup = read_json(root / "env/setup.json")
@@ -331,6 +394,24 @@ def run_bundle(root, plan, bundle_id):
     start = time.monotonic()
     completed = []
     pending = []
+    if enabled(manifest):
+        pending = list(bundle['groups'])
+        while pending:
+            index = choose_fitting(pending, plan_data['wall_seconds']-(time.monotonic()-start))
+            if index is None:break
+            group = pending.pop(index)
+            run_group(root, group, scratch, manifest, identity, results_directory)
+            completed.append(group)
+            write_json(root/'bundle-results'/f'{Path(plan).stem}-{bundle_id}.json',
+                       dict(job_id=os.environ.get('JOB_ID'), task_id=bundle_id, measurement_fingerprint=identity,
+                            plan_sha256=sha256(plan), completed=completed, pending=pending,
+                            wall_seconds=time.monotonic()-start, status='running'))
+        write_json(root/'bundle-results'/f'{Path(plan).stem}-{bundle_id}.json',
+                   dict(job_id=os.environ.get('JOB_ID'),task_id=bundle_id,measurement_fingerprint=identity,
+                        plan_sha256=sha256(plan),completed=completed,pending=pending,
+                        wall_seconds=time.monotonic()-start,status='complete' if not pending else 'checkpointed'))
+        print('SYSTEMATIC_BUNDLE_COMPLETE', flush=True)
+        return
     for index, group in enumerate(bundle["groups"]):
         # Reserve enough time for every arm's command cap plus extraction before
         # starting an indivisible same-node comparison group.

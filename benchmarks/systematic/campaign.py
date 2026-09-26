@@ -4,10 +4,82 @@ import math
 from collections import defaultdict
 from pathlib import Path
 
-from common import HERE, cell_id, cells, read_json, write_json
+from common import HERE, cell_id, cells, read_json, write_json, manifest_for, sha256
+
+
+def light_plan(manifest, mode, results):
+    from light import groups, smoke_groups, configure_group, historical_costs, pack
+    root = results.parent
+    history = root/'input/historical-runs.csv'
+    if sha256(history) != manifest['historical_cost_sha256']:
+        raise ValueError('Historical cost receipt changed')
+    costs = historical_costs(history)
+    if mode == 'production':
+        from light_control import verify_acceptance
+        verify_acceptance(root, 'smoke')
+        verify_acceptance(root, 'pilot')
+        selected = groups(manifest)
+        from provenance import verify
+        identity = verify(root)
+        pending = []
+        for g in selected:
+            c, r = g['cell'], g['repetition']
+            marker = results/cell_id(c)/f'{"cold" if r==0 else "warm"}-{r}'/'GROUP.COMPLETE.json'
+            if marker.exists():
+                if read_json(marker).get('measurement_fingerprint') != identity:
+                    raise ValueError('Completed group belongs to another runtime')
+                continue
+            pending.append(g)
+        selected = pending
+        # Pilot elapsed times refine forecasts, while historical slow outcomes
+        # remain available when the pilot omits that comparator or configuration.
+        for path in results.glob('**/result.json'):
+            d = read_json(path)
+            if d.get('measurement_fingerprint') != identity:raise ValueError('Stale pilot result')
+            if d['status']=='pass':
+                c=d['cell'];key=(c['model'],c['design'],c['n'],c['k'],c['threads'],d['arm'])
+                costs[key]=[d['seconds']]
+    elif mode == 'smoke':
+        selected = smoke_groups(manifest)
+    else:
+        selected=[]
+        for g in groups(manifest):
+            c=g['cell']
+            if g['repetition'] != 1:continue
+            if c.get('slopes') or (c['section']=='main' and c['k']==10 and c['threads']==28 and
+                                  ((c['design']=='strong_d6' and c['n']==3932160) or
+                                   (c['design']=='two_fe_dense' and c['n']==983040))):
+                selected.append(g)
+    prepared=[configure_group(g,manifest,costs) for g in selected]
+    if mode == 'production':
+        # Whole-group elapsed time includes generation, import, initialization,
+        # private comparator setup and serialization, not just command timers.
+        measured = {}
+        for path in results.glob('**/GROUP.COMPLETE.json'):
+            record = read_json(path)
+            if record.get('elapsed_seconds', 0) > 0:
+                measured[cell_id(record['cell'])] = record['elapsed_seconds']
+        for g in prepared:
+            if cell_id(g['cell']) in measured:
+                g['predicted_seconds'] = max(g['predicted_seconds'], measured[cell_id(g['cell'])]*1.2)
+
+    wall=manifest['scc']['wall_seconds'] if mode=='production' else (3600 if mode=='smoke' else 43200)
+    if mode=='smoke':
+        for g in prepared:
+            g['limits']={a:dict(startup=120,command=60,extraction=60) for a in g['limits']}
+        bundles=[dict(groups=prepared,predicted_seconds=sum(g['predicted_seconds'] for g in prepared))]
+    else:
+        bundles=pack(prepared,manifest['scc']['target_bundle_seconds'] if mode=='production' else 10800,wall)
+    return dict(schema='systematic-light-plan-v2',mode=mode,bundles=bundles,wall_seconds=wall,
+                results_directory='smoke-results' if mode=='smoke' else 'results',
+                planned_groups=len(prepared),mem_per_core_gib=3,
+                predicted_node_hours=sum(g['predicted_seconds'] for g in prepared)/3600,
+                manifest_sha256=sha256(root/'input/manifest.json'))
 
 
 def build_plan(manifest, mode, results=None):
+    from light import enabled
+    if enabled(manifest):return light_plan(manifest,mode,results)
     all_cells = cells(manifest)
     if mode == "smoke":
         selected = []
@@ -102,6 +174,7 @@ def build_plan(manifest, mode, results=None):
 
 
 def audit(root, manifest):
+    from light import enabled, repetitions, skips, active_arms
     missing, failures, comparisons = [], [], defaultdict(int)
     integrity_errors = []
     frozen = read_json(root / "env/frozen.json") if (root / "env/frozen.json").exists() else {}
@@ -112,7 +185,7 @@ def audit(root, manifest):
             accounting[receipt["job_id"], task["task_id"]] = task
     count = 0
     for c in cells(manifest):
-        for rep in range(7):
+        for rep in repetitions(c, manifest):
             path = root / "results" / cell_id(c) / f"{'cold' if rep == 0 else 'warm'}-{rep}" / "GROUP.COMPLETE.json"
             if not path.exists():
                 missing.append({"cell": c, "repetition": rep})
@@ -140,9 +213,12 @@ def audit(root, manifest):
                     failures.append({"cell": cell_id(c), "repetition": rep, "arm": arm, "status": status})
             for comparison in record["comparisons"]:
                 comparisons[comparison["status"]] += 1
-            if set(record["arm_status"]) != set(manifest["arms"][c["model"]]):
+            expected = active_arms(dict(cell=c,repetition=rep),manifest) if enabled(manifest) else manifest['arms'][c['model']]
+            if enabled(manifest) and record.get('skips') != skips(c,rep,manifest):
+                integrity_errors.append({'cell':cell_id(c),'repetition':rep,'reason':'missing or altered exclusion receipt'})
+            if set(record["arm_status"]) != set(expected):
                 integrity_errors.append({"cell": cell_id(c), "repetition": rep, "reason": "unexpected arm set"})
-    return {"complete_groups": count, "expected_groups": len(cells(manifest)) * 7,
+    return {"complete_groups": count, "expected_groups": sum(len(repetitions(c,manifest)) for c in cells(manifest)),
             "missing": missing, "failures": failures, "comparison_status": dict(comparisons),
             "integrity_errors": integrity_errors,
             "status": "complete" if not missing and not integrity_errors else "incomplete"}
@@ -154,7 +230,7 @@ if __name__ == "__main__":
     p.add_argument("run_root", type=Path)
     p.add_argument("output", type=Path)
     a = p.parse_args()
-    manifest = read_json(HERE / "manifest.json")
+    manifest = manifest_for(a.run_root)
     value = audit(a.run_root, manifest) if a.mode == "audit" else build_plan(manifest, a.mode, a.run_root / "results")
     write_json(a.output, value)
     print({k: v for k, v in value.items() if k not in ("bundles", "missing", "failures")})

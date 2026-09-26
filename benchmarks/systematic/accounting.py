@@ -7,7 +7,7 @@ from pathlib import Path
 from common import write_json
 
 
-def parse(text, job_id, expected_tasks):
+def parse(text, job_id, expected_tasks, expected_slots=28):
     records = []
     for block in re.split(r"^=+\s*$", text, flags=re.MULTILINE):
         fields = {}
@@ -34,7 +34,7 @@ def parse(text, job_id, expected_tasks):
     if set(found) - set(expected_tasks):
         raise ValueError("unexpected scheduler tasks")
     missing = sorted(set(expected_tasks) - set(found))
-    status = "pending" if missing else "pass" if all(r["failed"] == 0 and r["exit_status"] == 0 and r["slots"] == 28 for r in records) else "failed"
+    status = "pending" if missing else "pass" if all(r["failed"] == 0 and r["exit_status"] == 0 and r["slots"] == expected_slots for r in records) else "failed"
     return {"schema": "systematic-accounting-v1", "job_id": str(job_id),
             "expected_tasks": list(expected_tasks), "missing_tasks": missing, "status": status, "records": records}
 

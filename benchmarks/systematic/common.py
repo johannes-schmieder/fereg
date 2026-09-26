@@ -30,6 +30,9 @@ def sha256(path):
 
 def cells(manifest):
     """Deduplicate observation/core intersections, without duplicating figures."""
+    from light import enabled, cells as light_cells
+    if enabled(manifest):
+        return light_cells(manifest)
     result = []
     for model in manifest["arms"]:
         for design, spec in manifest["designs"].items():
@@ -66,3 +69,8 @@ def thread_environment(threads):
             "NUMBA_NUM_THREADS": str(threads), "OPENBLAS_NUM_THREADS": "1",
             "MKL_NUM_THREADS": "1", "NUMEXPR_NUM_THREADS": "1",
             "OMP_MAX_ACTIVE_LEVELS": "1", "OMP_NESTED": "FALSE"}
+
+
+def manifest_for(root):
+    path = Path(root) / 'input/manifest.json'
+    return read_json(path if path.exists() else HERE / 'manifest.json')
