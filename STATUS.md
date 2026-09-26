@@ -42,20 +42,37 @@ retain 148 arm attempts (140 pass/eight comparator worker failures), 81 passing
 comparisons, 31 accuracy failures and eight unavailable pairs. Discrepant pairs
 remain unranked. These single-repetition small checks are not headline timings.
 
-Pilot **7745818**, array task **1**, is submitted with `plans/pilot.json`: all
-12 registered groups in one task, 28-core E5-2680v4, 3G/core, up to 12h; initial
-historical forecast 1.36h is not a completion guarantee. [Pilot launch](benchmarks/reports/development/systematic-light-scc-resume-2026-09-26/pilot-launch.json)
-binds its immutable plan and identity. No production submitted yet. No competing
-build remains. The manifest changes only candidate_commit; all benchmark
-configuration and exclusion definitions remain unchanged.
+Pilot **7745818/task1 completed but its scientific gate is REJECTED**.
+[The pilot report](benchmarks/reports/development/systematic-light-scc-resume-2026-09-26/pilot.md)
+and captured rejection/accounting/summary preserve all 12 groups. Accounting is
+clean: 1,795s, 28 slots, 7.170G maxvmem. All 12 native fits pass their command
+checks; 52 total arms give 47 passes, three command timeouts and two comparator
+initialization failures. Pair checks: 28 pass, seven accuracy failures, five
+unavailable. The smaller accepted smoke remains valid; full-size scientific
+agreement is unresolved in the three rejected cases.
 
-Next: after pilot terminal, capture accounting for job 7745818/count 1 and run
-light_control.py on plans/pilot.json. If accepted, generate and submit production
-with refreshed whole-group forecasts (target 10.5h under 12h, concurrency eight).
-Preserve failed comparators and sample mismatches. The campaign heartbeat
-**run-lighter-fereg-scc-campaign is ACTIVE** and records this pilot job; it will
-continue through accepted stages and stop on a diagnosed blocker. Do not
-resubmit setup/smoke/pilot or reuse the earlier rejected controller.
+Blockers at N61,440, three sparse FE with two slopes on each of the first two
+partitions: PPML K10/T28/fast and K6/T4/low have default fixest coefficient,
+covariance and deviance discrepancies, strict stock fixest 120s timeouts, and
+ppmlhdfe initialization r(3201). OLS K10/T28/fast has nonconverged/discrepant
+fixest and a reghdfe 120s timeout. Samples match where outputs exist. No
+comparable reference passes for those groups. Do not rank those timings.
+
+Passing single warm-1 observations show remaining losses: OLS two-partition
+slopes are 3.21x/4.39x default fixest (fast/low); large strong-degree6 PPML is
+3.77x strict stock. Two-partition PPML slopes are 0.446x/0.298x strict stock.
+These are preliminary points, not four-repeat distributions or later-source
+claims. The full report includes categorical controls and other passing pairs.
+
+**No production was submitted. No campaign job remains.** The existing
+**run-lighter-fereg-scc-campaign heartbeat is PAUSED** after this diagnosed
+blocker. No estimator, tolerance, sample, frozen plan or skip definition changed;
+no failed fit was rerun. Next useful work is focused reference/independent-oracle
+adjudication for the three captured designs, including an adequate isolated
+strict-reference budget and converged OLS comparison. Preserve rejected evidence
+and successful pilot groups; do not waive gates, silently remove cases or
+restart the full pilot/old campaigns. The authorized 568-group campaign remains
+incomplete pending that resolution. No push.
 
 ## Lighter systematic SCC rerun — 2026-09-26
 

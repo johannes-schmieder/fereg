@@ -1,0 +1,23 @@
+{
+  "expected_tasks": [
+    1
+  ],
+  "job_id": "7745818",
+  "missing_tasks": [],
+  "records": [
+    {
+      "exit_status": 0,
+      "failed": 0,
+      "hostname": "scc-wf4.scc.bu.edu",
+      "jobnumber": "7745818",
+      "maxvmem": "7.170G",
+      "ru_wallclock": "1795",
+      "slots": 28,
+      "task_id": 1,
+      "taskid": "1",
+      "wall_seconds": 1795.0
+    }
+  ],
+  "schema": "systematic-accounting-v1",
+  "status": "pass"
+}
