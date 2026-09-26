@@ -9,6 +9,23 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## Slope pilot adjudication continuation — 2026-09-26
+
+Johannes requested continuation after the pilot rejection. [ADR0225](docs/adr/0225-explicit-slope-pilot-adjudication.md)
+and [local evidence](benchmarks/reports/development/systematic-slope-adjudication-2026-09-26/README.md)
+prepare an isolated exact-input diagnostic. Five direct QR/SVD oracle tests,
+small OLS/Poisson full-design controls, and a full-size local OLS boundary
+exercise pass. The full-size independent FE/model ranks are 38,701/38,711;
+score/projection checks are below 6e-15/3e-13. This local input is not the
+SCC input receipt and cannot adjudicate the captured outputs by itself.
+
+Next: deploy the separately committed diagnostic source beside the frozen
+58284f76 run, verify its original input hashes, run the three timed-out
+references with 1,800-second command budgets and direct independent oracles.
+No native command, failed ppmlhdfe initialization, full pilot or stopped campaign
+will be rerun. Original receipts and production gate remain unchanged. The
+existing heartbeat is paused until the diagnostic job identity is recorded.
+
 ## SCC preflight continuation: automatic report merge — 2026-09-26
 
 Johannes requested continuation. The low-memory warm-up failure is localized
