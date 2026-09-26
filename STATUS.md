@@ -19,12 +19,25 @@ exercise pass. The full-size independent FE/model ranks are 38,701/38,711;
 score/projection checks are below 6e-15/3e-13. This local input is not the
 SCC input receipt and cannot adjudicate the captured outputs by itself.
 
-Next: deploy the separately committed diagnostic source beside the frozen
-58284f76 run, verify its original input hashes, run the three timed-out
-references with 1,800-second command budgets and direct independent oracles.
-No native command, failed ppmlhdfe initialization, full pilot or stopped campaign
-will be rerun. Original receipts and production gate remain unchanged. The
-existing heartbeat is paused until the diagnostic job identity is recorded.
+Diagnostic source **925c4b337ca2ff4a879349ee47fb2e27be8b4c06** is committed
+and deployed under the unchanged run's
+`diagnostics/slope-adjudication-925c4b33/source`. Job **7747280** is running:
+28 E5-2680v4 slots, 3G/core, maximum 5h, sequential references/oracles. The
+[launch receipt](benchmarks/reports/development/systematic-slope-adjudication-2026-09-26/launch.json)
+binds verified source hashes. Results go to the sibling `result/` directory;
+logs/job-id live in that diagnostic attempt. Never submit it twice.
+
+Next: collect job 7747280 accounting and inspect `result/result.json`, all three
+oracle traces and scientific comparisons. Require exact captured input hashes,
+independent rank, coefficients, full covariance, sample and objective agreement.
+These are scientific diagnostics, never timing pairs across jobs. No native
+command, failed ppmlhdfe initialization, full pilot or stopped campaign is rerun.
+Original rejected pilot and frozen production gate remain unchanged. If the
+adjudication resolves all blockers, document and test an explicit successor gate
+that binds this evidence and preserves failed comparisons before production;
+do not manufacture PILOT.ACCEPTED.json or alter the frozen controller. The
+existing campaign heartbeat **run-lighter-fereg-scc-campaign is ACTIVE** and
+records job 7747280 and the evidence requirements for this continuation.
 
 ## SCC preflight continuation: automatic report merge — 2026-09-26
 
