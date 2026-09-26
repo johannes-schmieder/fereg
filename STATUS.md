@@ -9,6 +9,32 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## SCC preflight continuation: automatic report merge — 2026-09-26
+
+Johannes requested continuation. The low-memory warm-up failure is localized
+and fixed by [ADR0224](docs/adr/0224-independent-auto-rhs-report-aggregation.md).
+[Evidence](benchmarks/reports/development/ols-auto-report-merge-2026-09-26/README.md)
+includes 51 distinct focused Rust tests, actual-plugin ABI containment, and 22
+public attempts (one expected baseline failure, 21 successful candidate/controls).
+Independent small explicit OLS/Poisson/Hessian/covariance oracles pass; sparse
+full-design LSMR independently validates the original 7,680-row coefficients.
+Maximum oracle coefficient difference is 5.64e-12; baseline/candidate control
+differences are at most 1.12e-15. No numerical solver, tolerance or bank changed.
+
+SCC diagnostic **7745601** exposed inconsistent automatic RHS report metadata,
+not a failed projection certificate. Its wrapper used the wrong Stata log name,
+so scheduler exit_status=2 is preserved (failed=0, four slots, 10s, 750.625M).
+The actual native rc459 was independently reproduced on Mac and fixed there.
+This does not repair the deferred nonretaining-CG span instability. The benchmark
+warm-up now logs native errors outside timing. Original rejected smoke/controller
+and old campaigns remain untouched.
+
+Next: commit/freeze the corrected candidate with the corrected zero oracle,
+run the 28-group SCC smoke, then the registered 12-group pilot and packed
+production if their gates pass. The existing heartbeat remains paused until
+new jobs/identities are recorded. The authorized 140-configuration/568-group
+scope and all benchmark design/skip/tolerance definitions remain unchanged.
+
 ## Lighter systematic SCC rerun — 2026-09-26
 
 Johannes authorized implementing and running the discussed lighter campaign.

@@ -1,0 +1,56 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running unittests src/lib.rs (target/debug/deps/fereg_core-f491e9ad28b34a1c)
+
+running 49 tests
+test fe::topology_slope_map::tests::recovery_output_capacity_overflow_is_an_allocation_error ... ok
+test fe::design::tests::borrowed_intercept_slot_overflow_fails_closed ... ok
+test memory::tests::low_mode_is_smaller_for_wide_models ... ok
+test fe::certificate::tests::certificate_capacity_overflow_is_an_allocation_error ... ok
+test fe::lsmr::tests::lsmr_setup_capacity_overflow_is_an_allocation_error ... ok
+test fe::components::tests::fallible_all_reports_capacity_overflow_as_allocation_error ... ok
+test memory::workspace_peak::tests::addressability_sentinel_and_arithmetic_overflow_fail_closed ... ok
+test memory::owned_fe::tests::owned_shape_rejects_overflow_before_allocation ... ok
+test memory::tests::auto_selects_low_when_fast_exceeds_the_safe_budget ... ok
+test memory::tests::wide_cholesky_workspace_is_preflighted_without_changing_low_mode ... ok
+test memory::tests::explicit_fast_fails_before_allocation_when_only_low_fits ... ok
+test ols::prepared_fit::tests::low_report_merge_rejects_uncertified_or_incompatible_continuations ... ok
+test ols::prepared_fit::tests::low_report_merge_preserves_certified_lsmr_cg_continuation_in_any_order ... ok
+test ols::prepared_fit::tests::low_report_merge_accepts_independent_auto_pilots_in_any_order ... ok
+test ols::prepared_fit::tests::residual_bound_requires_weighted_underflow_fallback ... ok
+test ppml::family::tests::fractional_outcomes_follow_the_continuous_poisson_objective ... ok
+test fe::map::tests::map_rejects_weighted_basis_overflow_before_mutation ... ok
+test fe::projection::tests::optional_projection_checks_capacity_overflow_and_validation_before_mutation ... ok
+test ppml::memory::tests::low_categorical_workspace_caps_oversized_pools_before_admission ... ok
+test ppml::memory::tests::low_route_replaces_resident_n_by_k_with_pool_and_scratch ... ok
+test ppml::memory::tests::low_scratch_io_buffer_covers_empty_bounded_and_wide_rows_exactly ... ok
+test ppml::memory::tests::auto_falls_back_to_low_and_explicit_fast_fails_before_workspace ... ok
+test fe::categorical_request::tests::availability_terms_follow_model_registry_and_preserve_original_effects ... ok
+test ols::prepared::tests::numeric_factor_main_effects_preserve_slots_factorize_once_and_allow_dual_use ... ok
+test fe::borrowed_map::tests::reusable_one_fe_trailing_norms_follow_current_values_weights_and_width ... ok
+test ppml::prepared_separation::tests::report_bank_overflow_or_allocation_failure_precedes_detector_execution ... ok
+test ppml::vce::tests::valid_finite_ppml_sandwich_overflow_is_nonconvergence ... ok
+test ols::prepared_fit::tests::rank_zero_fast_path_matches_low_memory_weighted_fe_fit ... ok
+test ols::prepared_fit::tests::retained_low_residual_report_preserves_actual_work_without_changing_one_shot ... ok
+test ols::prepared_fit::tests::absorbed_intercept_and_bread_follow_reference_weight_normalization ... ok
+test ols::prepared_robust::tests::low_memory_robust_covariance_routes_through_bit_exact_shared_serial_reducer ... ok
+test ols::prepared_robust::tests::unit_aweight_pweight_and_scaled_pweight_follow_pinned_hc1_contract ... ok
+test ols::prepared_fit::tests::low_memory_scratch_fit_matches_fast_fit_across_multiple_blocks ... ok
+test ols::prepared_fit::tests::low_guarded_fit_allocation_and_certificate_failures_are_fatal ... ok
+test fe::borrowed_map::tests::routed_auto_selects_lsmr_for_a_slow_chain_graph ... ok
+test ppml::prepared_estimator::tests::automatic_low_memory_retains_certified_map ... ok
+test ppml::family::tests::block_objective_overflow_retains_scalar_errors_and_later_row_failures ... ok
+test ppml::prepared_irls::tests::low_categorical_geometry_refusal_retains_canonical_projection ... ok
+test ppml::prepared_irls::tests::low_three_fe_checkpoint_budget_refusal_preserves_joint_owner_and_science ... ok
+test ppml::prepared_irls::tests::low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control ... ok
+test ppml::prepared_irls::tests::low_three_fe_audit_certifies_map_window_independently_of_checkpoint_engine ... ok
+test ols::prepared_robust::tests::retained_low_scores_preserve_rank_selection_and_reject_corrupt_columns ... ok
+test ols::prepared_fit::tests::low_fresh_blocks_preserve_explicit_weight_divisors_and_rank ... ok
+test ppml::prepared_irls::tests::low_categorical_joint_strict_final_preserves_truth_and_canonical_retry ... ok
+test ols::prepared_clustered::tests::low_memory_small_cluster_table_matches_legacy_group_influences ... ok
+test ols::prepared_fit::tests::low_lsmr_batches_match_fast_across_pool_sizes ... ok
+test ols::prepared_clustered::tests::low_memory_batched_cluster_tables_match_legacy_and_fail_closed ... ok
+test ols::canonical_products::tests::column_owned_rhs_admits_disconnected_wls_below_the_old_reduction_peak ... ok
+test ols::prepared_fit::tests::wide_fast_and_low_agree_for_weighted_full_weak_and_deficient_designs ... ok
+
+test result: ok. 49 passed; 0 failed; 0 ignored; 0 measured; 1084 filtered out; finished in 4.68s
+

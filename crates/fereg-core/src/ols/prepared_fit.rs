@@ -3361,16 +3361,33 @@ fn fit_with_controls_low_internal_with_frame<
 }
 
 pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) -> Result<()> {
-    // Automatic batches may finish with LSMR or its certified CG continuation.
-    // The aggregate records CG if any batch required that continuation.
-    let auto_lsmr_cg_mix = target.requested_solver == FeSolverKind::Auto
-        && source.requested_solver == FeSolverKind::Auto
-        && target.requested_preconditioner.is_some()
-        && target.used_preconditioner.is_some()
-        && match (target.used_solver, source.used_solver) {
-            (FeSolverKind::Lsmr, FeSolverKind::Cg) => source.fallback_used,
-            (FeSolverKind::Cg, FeSolverKind::Lsmr) => target.fallback_used,
-            _ => false,
+    // RHS blocks share a model and weight frame, but Auto pilots depend on
+    // their values. MAP completion, direct CG and LSMR are all valid results.
+    // Some preconditioner metadata describes an LSMR attempt; None describes
+    // a block that never entered LSMR, rather than a conflicting request.
+    let valid_auto = |report: &SolveReport| {
+        report.requested_solver == FeSolverKind::Auto
+            && match (
+                report.used_solver,
+                report.requested_preconditioner,
+                report.used_preconditioner,
+            ) {
+                (FeSolverKind::Map | FeSolverKind::Cg, None, None) => true,
+                (FeSolverKind::Lsmr, Some(_), Some(_)) => true,
+                (FeSolverKind::Cg, Some(_), Some(_)) => report.fallback_used,
+                _ => false,
+            }
+    };
+    let auto_mix = valid_auto(target)
+        && valid_auto(&source)
+        && match (
+            target.requested_preconditioner,
+            source.requested_preconditioner,
+        ) {
+            (Some(a), Some(b)) => {
+                a == b && target.used_preconditioner == source.used_preconditioner
+            }
+            _ => true,
         };
     let cmg_fallback_mix = target.requested_solver == FeSolverKind::Cmg
         && source.requested_solver == FeSolverKind::Cmg
@@ -3379,15 +3396,34 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
     if !target.certified()
         || !source.certified()
         || target.requested_solver != source.requested_solver
-        || (target.used_solver != source.used_solver && !cmg_fallback_mix && !auto_lsmr_cg_mix)
-        || target.requested_preconditioner != source.requested_preconditioner
-        || target.used_preconditioner != source.used_preconditioner
+        || (!auto_mix
+            && ((target.used_solver != source.used_solver && !cmg_fallback_mix)
+                || target.requested_preconditioner != source.requested_preconditioner
+                || target.used_preconditioner != source.used_preconditioner))
     {
-        return Err(invalid_data(
-            "prepared OLS low-memory solver reports are inconsistent",
-        ));
+        return Err(FeregError::new(ErrorCode::InvalidData, format!(
+            "prepared OLS low-memory solver reports are inconsistent: target={:?}/{:?}/{:?}/{:?}, source={:?}/{:?}/{:?}/{:?}",
+            target.requested_solver, target.used_solver, target.requested_preconditioner, target.used_preconditioner,
+            source.requested_solver, source.used_solver, source.requested_preconditioner, source.used_preconditioner,
+        )));
     }
-    if (cmg_fallback_mix || auto_lsmr_cg_mix)
+    if auto_mix {
+        // A certified continuation remains authoritative over its LSMR
+        // attempt. Otherwise LSMR metadata takes precedence over direct CG.
+        let priority = |report: &SolveReport| match report.used_solver {
+            FeSolverKind::Cg if report.fallback_used => 3,
+            FeSolverKind::Lsmr => 2,
+            FeSolverKind::Cg => 1,
+            _ => 0,
+        };
+        if priority(&source) > priority(target) {
+            target.used_solver = source.used_solver;
+        }
+        if target.requested_preconditioner.is_none() {
+            target.requested_preconditioner = source.requested_preconditioner;
+            target.used_preconditioner = source.used_preconditioner;
+        }
+    } else if cmg_fallback_mix
         && (target.used_solver == FeSolverKind::Cg || source.used_solver == FeSolverKind::Cg)
     {
         target.used_solver = FeSolverKind::Cg;
@@ -11519,6 +11555,68 @@ mod tests {
             assert_eq!(merged.pilot_iterations, 2);
             assert_eq!(merged.pilot_contraction, 0.1);
             assert_eq!(merged.warnings, expected_warnings);
+        }
+    }
+
+    #[test]
+    fn low_report_merge_accepts_independent_auto_pilots_in_any_order() {
+        let lsmr = automatic_lsmr_report_for_merge();
+        let mut map = lsmr.clone();
+        map.used_solver = FeSolverKind::Map;
+        map.requested_preconditioner = None;
+        map.used_preconditioner = None;
+        map.iterations = 4;
+        let mut direct_cg = map.clone();
+        direct_cg.used_solver = FeSolverKind::Cg;
+        direct_cg.iterations = 9;
+        for fallback in [false, true] {
+            let mut last = lsmr.clone();
+            if fallback {
+                last.used_solver = FeSolverKind::Cg;
+                last.fallback_used = true;
+            }
+            let reports = [map.clone(), direct_cg.clone(), lsmr.clone(), last];
+            for a in 0..4 {
+                for b in 0..4 {
+                    for c in 0..4 {
+                        for d in 0..4 {
+                            let order = [a, b, c, d];
+                            if (0..4).any(|i| (i + 1..4).any(|j| order[i] == order[j])) {
+                                continue;
+                            }
+                            let mut merged = reports[a].clone();
+                            for index in [b, c, d] {
+                                merge_solve_report(&mut merged, reports[index].clone()).unwrap();
+                            }
+                            assert!(merged.certified());
+                            assert_eq!(
+                                merged.used_solver,
+                                if fallback {
+                                    FeSolverKind::Cg
+                                } else {
+                                    FeSolverKind::Lsmr
+                                }
+                            );
+                            assert_eq!(merged.fallback_used, fallback);
+                            assert_eq!(
+                                merged.requested_preconditioner,
+                                lsmr.requested_preconditioner
+                            );
+                            assert_eq!(merged.used_preconditioner, lsmr.used_preconditioner);
+                            assert_eq!(merged.iterations, 12);
+                            assert_eq!(merged.setup_seconds, 4.0);
+                            assert_eq!(merged.solve_seconds, 8.0);
+                        }
+                    }
+                }
+            }
+        }
+        // A direct-CG/early-MAP mixture did not attempt or fall back from LSMR.
+        for (mut merged, source) in [(map.clone(), direct_cg.clone()), (direct_cg, map)] {
+            merge_solve_report(&mut merged, source).unwrap();
+            assert_eq!(merged.used_solver, FeSolverKind::Cg);
+            assert!(!merged.fallback_used);
+            assert_eq!(merged.used_preconditioner, None);
         }
     }
 

@@ -35,7 +35,7 @@ if inlist("`arm'", "feppml", "ppmlhdfe") local command `"`command' vce(robust)"'
 
 if "`phase'" == "warm" {
     quietly use `"`warm'"', clear
-    capture quietly `command'
+    capture noisily `command'
     local warm_rc = _rc
     if `warm_rc' {
         display as error "SYSTEMATIC_WARMUP_FAILED rc=`warm_rc'"
