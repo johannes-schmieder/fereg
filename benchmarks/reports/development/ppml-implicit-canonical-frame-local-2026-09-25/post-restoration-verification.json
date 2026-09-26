@@ -1,0 +1,206 @@
+{
+  "restored_receipts": 10792,
+  "all_hashes_verified": true,
+  "personal_path_and_license_scan": "pass; 48 reviewed existing shared-reference locators and synthetic redaction-test literals only",
+  "reviewed_source_literal_matches": [
+    {
+      "path": "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+      "line": 54
+    },
+    {
+      "path": "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+      "line": 55
+    },
+    {
+      "path": "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+      "line": 56
+    },
+    {
+      "path": "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+      "line": 111
+    },
+    {
+      "path": "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+      "line": 112
+    },
+    {
+      "path": "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+      "line": 115
+    },
+    {
+      "path": "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+      "line": 116
+    },
+    {
+      "path": "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+      "line": 119
+    },
+    {
+      "path": "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+      "line": 120
+    },
+    {
+      "path": "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+      "line": 121
+    },
+    {
+      "path": "artifacts/canonicalframe2/tests/python/test_ols_hidden_numeric.py",
+      "line": 434
+    },
+    {
+      "path": "artifacts/canonicalframe2/tests/python/test_ols_reference_harness.py",
+      "line": 647
+    },
+    {
+      "path": "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+      "line": 54
+    },
+    {
+      "path": "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+      "line": 55
+    },
+    {
+      "path": "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+      "line": 56
+    },
+    {
+      "path": "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+      "line": 111
+    },
+    {
+      "path": "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+      "line": 112
+    },
+    {
+      "path": "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+      "line": 115
+    },
+    {
+      "path": "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+      "line": 116
+    },
+    {
+      "path": "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+      "line": 119
+    },
+    {
+      "path": "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+      "line": 120
+    },
+    {
+      "path": "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+      "line": 121
+    },
+    {
+      "path": "artifacts/canonicalthree1/tests/python/test_ols_hidden_numeric.py",
+      "line": 434
+    },
+    {
+      "path": "artifacts/canonicalthree1/tests/python/test_ols_reference_harness.py",
+      "line": 647
+    },
+    {
+      "path": "artifacts/implicitframe1/scripts/resolve_reference_root.py",
+      "line": 54
+    },
+    {
+      "path": "artifacts/implicitframe1/scripts/resolve_reference_root.py",
+      "line": 55
+    },
+    {
+      "path": "artifacts/implicitframe1/scripts/resolve_reference_root.py",
+      "line": 56
+    },
+    {
+      "path": "artifacts/implicitframe1/scripts/resolve_reference_root.py",
+      "line": 111
+    },
+    {
+      "path": "artifacts/implicitframe1/scripts/resolve_reference_root.py",
+      "line": 112
+    },
+    {
+      "path": "artifacts/implicitframe1/scripts/resolve_reference_root.py",
+      "line": 115
+    },
+    {
+      "path": "artifacts/implicitframe1/scripts/resolve_reference_root.py",
+      "line": 116
+    },
+    {
+      "path": "artifacts/implicitframe1/scripts/resolve_reference_root.py",
+      "line": 119
+    },
+    {
+      "path": "artifacts/implicitframe1/scripts/resolve_reference_root.py",
+      "line": 120
+    },
+    {
+      "path": "artifacts/implicitframe1/scripts/resolve_reference_root.py",
+      "line": 121
+    },
+    {
+      "path": "artifacts/implicitframe1/tests/python/test_ols_hidden_numeric.py",
+      "line": 434
+    },
+    {
+      "path": "artifacts/implicitframe1/tests/python/test_ols_reference_harness.py",
+      "line": 647
+    },
+    {
+      "path": "artifacts/implicitprofile1/scripts/resolve_reference_root.py",
+      "line": 54
+    },
+    {
+      "path": "artifacts/implicitprofile1/scripts/resolve_reference_root.py",
+      "line": 55
+    },
+    {
+      "path": "artifacts/implicitprofile1/scripts/resolve_reference_root.py",
+      "line": 56
+    },
+    {
+      "path": "artifacts/implicitprofile1/scripts/resolve_reference_root.py",
+      "line": 111
+    },
+    {
+      "path": "artifacts/implicitprofile1/scripts/resolve_reference_root.py",
+      "line": 112
+    },
+    {
+      "path": "artifacts/implicitprofile1/scripts/resolve_reference_root.py",
+      "line": 115
+    },
+    {
+      "path": "artifacts/implicitprofile1/scripts/resolve_reference_root.py",
+      "line": 116
+    },
+    {
+      "path": "artifacts/implicitprofile1/scripts/resolve_reference_root.py",
+      "line": 119
+    },
+    {
+      "path": "artifacts/implicitprofile1/scripts/resolve_reference_root.py",
+      "line": 120
+    },
+    {
+      "path": "artifacts/implicitprofile1/scripts/resolve_reference_root.py",
+      "line": 121
+    },
+    {
+      "path": "artifacts/implicitprofile1/tests/python/test_ols_hidden_numeric.py",
+      "line": 434
+    },
+    {
+      "path": "artifacts/implicitprofile1/tests/python/test_ols_reference_harness.py",
+      "line": 647
+    }
+  ],
+  "production_source_inputs_verified": 566,
+  "plugin_sha256": "0f00d18b41c5a7588d9e1bd9448a8490120bd30737ae63ce85300c3a46692766",
+  "distinct_focused_rust_passes": 44,
+  "known_baseline_test_failures": [
+    "ols::prepared_fit::tests::initial_full_width_lsmr_preserves_canonical_multiway_rank_policy"
+  ],
+  "archive_sha256": "114b4581aadbeea2af20a3b20ac1798fcb50e25e052c8bad4d5dfbc8762b3296"
+}

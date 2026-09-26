@@ -250,6 +250,15 @@ existing projector. Matrix assembly and complete phase-memory admission remain
 required, and no weighted state survives the call. Iterative report counts are
 maximum component/RHS Krylov iterations, not MAP sweeps.
 
+[ADR 0211](adr/0211-implicit-canonical-frame-products.md) additionally admits
+full-frame two-FE construction when complete dense geometry would exceed the
+same temporary allowance. Combine current-weight group-pair masses once and
+apply the grounded, diagonally scaled Schur operator through packed incidence.
+Dense and implicit operators share the independent component/RHS CG recurrence.
+Affordable dense calls keep their arithmetic. The existing work preflight,
+original-input residual certificates, finite products, rank and final-Hessian
+requirements remain; no weighted numerical state crosses calls.
+
 Under ADR 0139, admitted low one-FE PPML canonical products use immutable
 original columns minus freshly computed current-weight group centers. A separate
 original-input residual-moment replay certifies the projection; finite moments,

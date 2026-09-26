@@ -29,7 +29,14 @@ def augment(cell, path):
         return
     frame = pd.read_stata(path, convert_categoricals=False)
     i = np.arange(len(frame), dtype=np.int64)
-    if topology == "weak_slope_barbell":
+    if topology == "repeated_pairs":
+        # Small connected systems with many retained levels and repeated pairs
+        # exercise implicit geometry under an independently solvable FE rank.
+        if cell['effects'] != ['g1', 'g2'] or len(frame) < 800 or len(frame) % 10:
+            raise ValueError('Repeated pairs require two FE and whole ten-row groups')
+        frame['g1'] = i // 10 + 1
+        frame['g2'] = (i // 10 + 37 * ((i % 10) // 2)) % max(16, len(frame) // 25) + 1
+    elif topology == "weak_slope_barbell":
         if cell['effects'] != ['g1', 'g2']:
             raise ValueError('Weak slope barbell currently requires two FE partitions')
         frame['g1'], frame['g2'] = weak_slope_memberships(len(frame))

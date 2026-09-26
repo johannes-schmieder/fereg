@@ -421,5 +421,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         minimum_workspace_bytes: bytes,
         #[cfg(test)]
         retained_centers: true,
+        #[cfg(test)]
+        implicit: false,
     })
 }

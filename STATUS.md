@@ -9,12 +9,111 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-The [current implementation plan](#further-ppml-development-plan--after-canonical-construction-2026-09-25)
-now prioritizes large-N two-FE canonical construction and cross-stage ownership.
-Full finite-block conditioning and full-frame three-FE canonical products are
-adopted. Borrowed canonical controls (ADR 0209) and the blanket ordinary-engine
-replacement remain rejected. Earlier handoffs are historical; their timings and
-pending instructions do not transfer to this artifact.
+The [next implementation](#next-implementation-prepared-sample-and-final-result-ownership)
+is prepared-sample/final-result ownership and independent replay. Full finite-block
+conditioning, full-frame three-FE products and implicit large-N two-FE canonical
+construction are adopted. Borrowed canonical controls (ADR 0209), blanket ordinary
+solver replacement and earlier isolated operator probes remain closed. Historical
+timings and pending directions do not transfer to this artifact.
+
+## Implicit two-FE canonical construction adopted — 2026-09-25
+
+Retain **implicitframe1**, based on **de5883cd** plus two Rust overlays; all
+**566 computational inputs** match the tested artifact. Plugin SHA-256:
+`0f00d18b41c5a7588d9e1bd9448a8490120bd30737ae63ce85300c3a46692766`.
+[ADR 0211](docs/adr/0211-implicit-canonical-frame-products.md) and the
+[source-bound report](benchmarks/reports/development/ppml-implicit-canonical-frame-local-2026-09-25/README.md)
+preserve source, full distributions, separate diagnostic builds, science,
+failures, memory and **10,792 restored hash/privacy-verified receipts**. Archive:
+`114b4581aadbeea2af20a3b20ac1798fcb50e25e052c8bad4d5dfbc8762b3296`.
+
+When complete dense geometry exceeds the existing allowance, prepare packed
+current-weight group-pair incidence for the existing full-frame product builder.
+Share the grounded, diagonally scaled Schur operator across independently stopping
+component/RHS CG solves. Reconstruct original-input residuals, certify every group
+and form finite products together, then write retained controls once. Affordable
+dense routes keep their arithmetic. No ordinary solver replacement, cross-weight
+cache or new N-by-K bank. This admits the surrounding certified pipeline where it
+previously declined; it is materially different from ADR 0200's rejected
+operator-only substitution inside already admitted construction.
+
+Production three-arm development medians (B=canonicalthree1 / C=implicitframe1 /
+comparable pinned stock), robust inference and means:
+
+|Two-FE numeric case; N/K/T|B / C / stock ms|C/stock paired range|
+|---|---:|---:|
+|Fast;983040/6/8|1248 /1013 /878|1.137–1.162|
+|Fast;491520/6/8|628 /506 /505|0.996–1.022|
+|Low;983040/6/8|1362 /1102 /865|1.257–1.294|
+|Affordable dense control;245760/6/4|316 /318 /386|0.824–0.833|
+|Wide dense control;491520/19/8|1035 /1037 /1180|0.872–0.884|
+
+Large eligible gains are **18.8–19.4%**. Seven of ten development families meet
+0.90 in every comparable pair; B/C outcomes are 20 wins/10 losses. Low three-FE
+factors regress528->536 ms; protected generated terms422->425 ms. Fresh predeclared
+**seed 202609441** confirms **18–23%** gains: fast 737280 **932->762** (stock759),
+low 737280 **1029->836** (stock765), fast 368640 **596->462** (stock means unresolved).
+Two of eight fresh families meet 0.90 in every pair, three remain short and three
+stock comparisons are unranked (means; large factors also one coefficient).
+Fresh B/C outcomes 23/13/4; serial 553->556, wide factors 1360->1364, four slopes 123->125
+retain their losses. No source/guard tuning follows 441. Weak_d3 diagnostic checks
+are 162->135 and 411->277 ms with passing science; these are single rotations.
+
+Separate exclusive traces show million-row initial/strict construction about
+**240/223->110/112 ms fast**, **256/289->138/142 ms low**. Current fast geometry,
+coefficient solves and combined certificate/Gram across both calls cost about
+40/43/22 ms. Low finite rank and retained scratch writing cost 66/24 ms, versus 25/8
+fast. Scientific certificates remain independent; these are not lower bounds.
+
+**44 distinct focused Rust tests, five licensed fixtures and 18 independent
+Poisson/Hessian/sandwich arm checks pass.** The known baseline multiway-rank
+report-flag failure remains. A second initial routing-test failure was resolved
+by changing only its topology 6/160->4/158, retaining N and every assertion so it
+still exercises cold refusal, work history, reclamation and strict rollback.
+All 274 production public states and 91 completed B/C comparisons pass; diagnostic
+blocks add8/4. Of186 completed anchored pairs including diagnostics,164 pass;
+22 retain stock discrepancies, and 36 additional planned pairs are incomplete.
+Direct production C/stock means comparisons pass 71/91, with 18 further incomplete.
+Two small full-output residual discrepancies remain separate. **12 OLS scientific
+export pairs are exact**, with B/C medians66/66,77/75,14/14,210/208 ms. No universal
+performance non-regression claim.
+
+Preserve the first preflight-blocked pilot, two interrupted development blocks,
+and two transiently contended fresh attempts. The report selects only complete
+uncontended blocks, without pooling partials. Identical fresh retries and OLS /
+diagnostic blocks complete with clean monitors. All process identities, outcomes
+and omitted work remain visible. No unrelated process was stopped.
+
+The temporary allowance is unchanged; complete phase bounds include incidence,
+indices, descriptors and Krylov banks before reclaiming obsolete workspace.
+Tracked peak deltas range **-31,327,184..+424,088 bytes**; selected modeled deltas
+-48..+112 bytes; scratch unchanged. Million-row peaks fall31.3 MB. The existing
+fast modeled selected bound remains about 26.8 GB despite a599-MB tracked peak;
+this conservative planner discrepancy is not repaired. No RSS/physical-cap,
+warmed-allocation or platform qualification. Static inventory drift, constrained
+weighted fits, nonretaining CG and frozen 77/16/111 remain unchanged. No push,
+release, SCC retry or stopped campaign restart.
+
+### Next implementation: prepared-sample and final-result ownership
+
+The comparable million-row fast/low cases still need about **223/324 ms** to reach
+0.90 stock; fresh737280 fast/low need **79/148 ms**. Production preparation remains
+232–250 ms and publication 124–129 ms. Exclusive plugin loading/publication are
+41/24 ms; initialize 53–59 ms. The unpartitioned estimator body is219–227 ms and
+contains separation/model preparation, final FE metadata, sample/output ownership
+and composite replay. Do not attribute all that time to one function: subdivide
+those named boundaries in an isolated diagnostic build before replacing ownership.
+
+Design a shared immutable prepared sample and final-result handoff that removes
+repeated row/outcome/weight copies and compatible normalization/replay passes,
+while preserving independently established objective, sample, separation,
+reconstruction and inference checks. Document any changed checking organization
+in a successor ADR. Test weight frames, excluded rows, outputs, separation,
+allocation refusal and failure atomicity; no certificate may inherit solver
+recurrence authority. Low finite-rank scratch scans are a measured additional
+~41 ms per fit. Robust inference itself costs only 6–12 ms and is not the primary
+opportunity. Keep four-slope125/119 and unresolved wide-factor comparisons visible;
+do not reopen rejected threshold tuning. The broad 0.90 goal is unfinished.
 
 ## Full-frame three-FE canonical products adopted — 2026-09-25
 

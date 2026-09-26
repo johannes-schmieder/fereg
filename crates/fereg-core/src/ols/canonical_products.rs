@@ -381,6 +381,8 @@ pub(super) struct Products<'a, P: PreparedOlsFitView + ?Sized> {
     minimum_workspace_bytes: u128,
     #[cfg(test)]
     retained_centers: bool,
+    #[cfg(test)]
+    implicit: bool,
 }
 
 impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
@@ -688,11 +690,31 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     // A reduced matrix can be inexpensive to apply even when its cubic
     // factorization exceeds the current-call work allowance. The same fused
     // original-input certificate decides acceptance of either proposal.
-    let iterative = factor_work > factor_work_budget;
+    let dense_iterative = factor_work > factor_work_budget;
+    let dense_krylov = if dense_iterative {
+        d.checked_mul(width).and_then(|x| x.checked_mul(3)).ok_or_else(declined)?
+    } else { 0 };
+    let dense_charge = factor_cells.checked_add(dense_krylov).ok_or_else(declined)?;
+    // Dense geometry already affordable under the existing complete phase plan
+    // retains its arithmetic. Implicit geometry admits the full certified
+    // product pipeline where dense storage would otherwise force repeated
+    // observation-space construction, not merely a different dense matvec.
+    let implicit = plan.minimum_storage_bytes(matrix_cells, dense_charge)
+        .is_none_or(|bytes| bytes > allowance);
+    let iterative = implicit || dense_iterative;
     let krylov_cells = if iterative {
         d.checked_mul(width).and_then(|x| x.checked_mul(3)).ok_or_else(declined)?
     } else { 0 };
-    let factor_charge = factor_cells.checked_add(krylov_cells).ok_or_else(declined)?;
+    let matrix_cells = if implicit { q } else { matrix_cells };
+    let factor_cells = if implicit { n.checked_add(q).ok_or_else(declined)? } else { factor_cells };
+    let incidence_indices = if implicit {
+        (n as u128).checked_mul(size_of::<usize>() as u128)
+            .and_then(|x| x.checked_add((p as u128) * size_of::<IncidenceRow>() as u128))
+            .ok_or_else(declined)?.div_ceil(8)
+    } else { 0 };
+    let incidence_words = usize::try_from(incidence_indices).map_err(|_| declined())?;
+    let factor_charge = factor_cells.checked_add(krylov_cells)
+        .and_then(|x| x.checked_add(incidence_words)).ok_or_else(declined)?;
     let minimum_bytes = plan
         .minimum_storage_bytes(matrix_cells, factor_charge)
         .ok_or_else(declined)?;
@@ -768,6 +790,21 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         if count == 0 {
             return Err(declined());
         }
+        if implicit {
+            // Prefix/suffix sums form each Schur diagonal without subtracting
+            // nearly equal group masses. The diagonal is a preconditioner;
+            // acceptance still uses independently reconstructed original rows.
+            let mut prefix = 0.;
+            for &h in &touched[..count] {
+                matrix[h] += (totals[h] / mass_a[g]) * prefix;
+                prefix += totals[h];
+            }
+            let mut suffix = 0.;
+            for &h in touched[..count].iter().rev() {
+                matrix[h] += (totals[h] / mass_a[g]) * suffix;
+                suffix += totals[h];
+            }
+        } else {
         for (position, &h) in touched[..count].iter().enumerate() {
             let block = components[parent[h]];
             let size = block.len + 1;
@@ -783,6 +820,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 matrix[block.matrix_offset + row * size + row] += value;
                 matrix[block.matrix_offset + column * size + column] += value;
             }
+        }
         }
         for &h in &touched[..count] {
             totals[h] = 0.;
@@ -804,7 +842,9 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         let block = components[r];
         let size = block.len + 1;
         touched[block.level_start + local[h]] = h;
-        roots[h] = matrix[block.matrix_offset + local[h] * size + local[h]].sqrt();
+        roots[h] = if implicit { matrix[h] } else {
+            matrix[block.matrix_offset + local[h] * size + local[h]]
+        }.sqrt();
         if anchors[r] != h {
             if !roots[h].is_finite() || roots[h] <= 0. {
                 return Err(declined());
@@ -813,6 +853,42 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         }
     }
     let mut factor = budget.reserve(factor_cells, 0.)?;
+    let mut incidence_ids = budget.reserve(if implicit { n } else { 0 }, 0_usize)?;
+    let mut incidence_rows = budget.reserve(if implicit { p } else { 0 }, IncidenceRow::default())?;
+    if implicit {
+        let mut edge = 0;
+        for g in 0..p {
+            let members = a.level_index().members(g);
+            let component = parent[b.codes()[members[0]] as usize];
+            let mut count = 0;
+            for &i in members {
+                let h = b.codes()[i] as usize;
+                if totals[h] == 0. { touched[count] = h; count += 1; }
+                totals[h] += w[i];
+            }
+            touched[..count].sort_unstable();
+            let start = edge;
+            let mass_root = mass_a[g].sqrt();
+            for &h in &touched[..count] {
+                if free[h] != usize::MAX {
+                    incidence_ids[edge] = free[h] - components[component].start;
+                    factor[edge] = (totals[h] / mass_root) / roots[h];
+                    if !factor[edge].is_finite() { return Err(declined()); }
+                    edge += 1;
+                }
+                totals[h] = 0.;
+            }
+            incidence_rows[g] = IncidenceRow { start, end: edge, component };
+        }
+        incidence_rows.sort_unstable_by_key(|row| (row.component, row.start));
+        for h in 0..q {
+            if free[h] != usize::MAX {
+                factor[n + free[h]] = (mass_b[h] / roots[h]) / roots[h];
+                if !factor[n + free[h]].is_finite() { return Err(declined()); }
+            }
+        }
+        for (root, block) in components.iter_mut().enumerate() { block.matrix_offset = root; }
+    } else {
     for h in 0..q {
         if free[h] != usize::MAX {
             let block = components[parent[h]];
@@ -826,6 +902,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 }
             }
         }
+    }
     }
     components.retain(|block| block.len != 0);
     // Direct proposals retain the existing global pivot guard. Iterative
@@ -965,6 +1042,19 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 for block in &components {
                     let size = block.len;
                     let values = &mut values[block.start..block.start + size];
+                    if implicit {
+                        let root = block.matrix_offset;
+                        let start = incidence_rows.partition_point(|row| row.component < root);
+                        let end = incidence_rows.partition_point(|row| row.component <= root);
+                        let rows = &incidence_rows[start..end];
+                        let diagonal = &factor[n + block.start..n + block.start + size];
+                        let count = solve_reduced_cg_with_product(values, &mut scratch[..3 * size],
+                            config.max_iterations.min(size), config.tolerance * 0.01,
+                            |direction, product| apply_incidence_schur(
+                                &factor[..n], diagonal, &incidence_ids, rows, direction, product))?;
+                        iterations.fetch_max(count, Ordering::Relaxed);
+                        continue;
+                    }
                     let factor = &factor[block.offset..block.offset + size * size];
                     if iterative {
                         let count = solve_reduced_cg(factor, values, &mut scratch[..3*size],
@@ -999,6 +1089,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         }
     }
     budget.release(krylov)?;
+    budget.release(incidence_ids)?;
+    budget.release(incidence_rows)?;
     budget.release(factor)?;
     budget.release(components)?;
     budget.release(cross)?;
@@ -1033,8 +1125,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             })?;
     }
     if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-        eprintln!("FEREG_SOLVER_TRACE|phase=canonical_reduced_solve|rows={n}|iterative={}|iterations={}",
-            u8::from(iterative), iterations.load(Ordering::Relaxed));
+        eprintln!("FEREG_SOLVER_TRACE|phase=canonical_reduced_solve|rows={n}|iterative={}|implicit={}|iterations={}",
+            u8::from(iterative), u8::from(implicit), iterations.load(Ordering::Relaxed));
     }
     let solve_seconds = started.elapsed().as_secs_f64();
     let started = Instant::now();
@@ -1287,6 +1379,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         minimum_workspace_bytes: minimum_bytes,
         #[cfg(test)]
         retained_centers: retain_centers,
+        #[cfg(test)]
+        implicit,
     })
 }
 
@@ -1330,9 +1424,48 @@ fn solve_reduced_cg(
     tolerance: f64,
 ) -> Result<usize> {
     let n = values.len();
-    if matrix.len() != n * n || scratch.len() < 3 * n {
-        return Err(declined());
+    if matrix.len() != n * n { return Err(declined()); }
+    solve_reduced_cg_with_product(values, scratch, max_iterations, tolerance,
+        |direction, product| {
+            for (row, out) in matrix.chunks(n).zip(product.iter_mut()) {
+                *out = normalized_product(row, direction);
+            }
+        })
+}
+
+#[derive(Clone, Copy, Default)]
+struct IncidenceRow {
+    start: usize,
+    end: usize,
+    component: usize,
+}
+
+// diag(m_b / root^2) - C'C. Group-pair weights are combined once;
+// grounding and component-local coordinates are resolved before any iteration.
+fn apply_incidence_schur(
+    incidence: &[f64], diagonal: &[f64], ids: &[usize], rows: &[IncidenceRow],
+    direction: &[f64], product: &mut [f64],
+) {
+    for ((out, d), x) in product.iter_mut().zip(diagonal).zip(direction) { *out = d * x; }
+    for row in rows {
+        let mut center = 0.;
+        let coefficients = &incidence[row.start..row.end];
+        let columns = &ids[row.start..row.end];
+        for (&c, &j) in coefficients.iter().zip(columns) {
+            center = c.mul_add(direction[j], center);
+        }
+        for (&c, &j) in coefficients.iter().zip(columns) {
+            product[j] = (-c).mul_add(center, product[j]);
+        }
     }
+}
+
+fn solve_reduced_cg_with_product(
+    values: &mut [f64], scratch: &mut [f64], max_iterations: usize,
+    tolerance: f64, apply: impl Fn(&[f64], &mut [f64]),
+) -> Result<usize> {
+    let n = values.len();
+    if scratch.len() < 3 * n { return Err(declined()); }
     let scale = values.iter().map(|x| x.abs()).fold(0_f64, f64::max);
     if !scale.is_finite() {
         return Err(declined());
@@ -1351,9 +1484,7 @@ fn solve_reduced_cg(
     let mut square: f64 = residual.iter().map(|x| x * x).sum();
     let target = tolerance * square.sqrt();
     for iteration in 1..=max_iterations {
-        for (row, out) in matrix.chunks(n).zip(product.iter_mut()) {
-            *out = normalized_product(row, direction);
-        }
+        apply(direction, product);
         let curvature: f64 = direction
             .iter()
             .zip(product.iter())
@@ -1512,6 +1643,145 @@ mod tests {
             },
         )
         .unwrap()
+    }
+
+    #[test]
+    fn implicit_canonical_frame_matches_weighted_contrasts_when_dense_storage_refuses() {
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                for disconnected in [false, true] {
+                    for frame in [0, 1] {
+                        for mass in [1e-100, 1., 1e100] {
+                            let (mut g, mut h, mut w) = (Vec::new(), Vec::new(), Vec::new());
+                            let mut values = vec![Vec::new(); 7];
+                            let mut truth = vec![Vec::new(); 7];
+                            for a in 0..1024 { for e in 0..8 { for repeat in 0..2 {
+                                let b = if disconnected { (a*7+e*61)%256 + (a/512)*256 }
+                                    else { (a*7+e*61)%512 };
+                                g.push(a as f64); h.push(b as f64);
+                                w.push(mass*(0.2+((a*13+e*7+frame*3)%17) as f64));
+                                for j in 0..7 {
+                                    let scale = if j==1 { 1e20 } else if j==2 { 1e-20 } else { 1. };
+                                    let r = if j==3 { 0. } else {
+                                        (2.*repeat as f64-1.)*((a*(j+1)+e*3)%11) as f64
+                                    };
+                                    truth[j].push(r*scale);
+                                    values[j].push((r+0.01*a as f64-0.02*b as f64)*scale);
+                                }
+                            }}}
+                            let p = prepared(&values[0], &values[1..], &g, &h);
+                            let config = MapConfig { tolerance: 1e-12, ..MapConfig::default() };
+                            let divisor = w.iter().copied().fold(0_f64, f64::max);
+                            let allowance = 16*g.len() as u128*6;
+                            let cols = [0,1,2,3,4,5];
+                            let mut product = try_build(&p, &cols, &values[0], BorrowedMapWeights::Provided(&w),
+                                divisor, config, allowance, 0, &mut Vec::new()).unwrap().expect("implicit frame fits and certifies");
+                            assert!(product.implicit && product.report.certified());
+                            let mut dense = DenseMatrix::zeros(g.len(), 6).unwrap();
+                            product.write_dense(&mut dense).unwrap();
+                            let mut file = PreparedOlsScratch::create_row_major(g.len(), 6).unwrap();
+                            product.write_controls(&mut file).unwrap();
+                            let mut row = [0.;6];
+                            for i in 0..g.len() {
+                                file.read_linear_shared(i*6, &mut row).unwrap();
+                                assert!((product.response[i]-truth[0][i]).abs()<1e-8);
+                                for j in 1..7 {
+                                    assert_eq!(row[j-1],dense[(i,j-1)]);
+                                    let scale = if j==1 { 1e20 } else if j==2 { 1e-20 } else { 1. };
+                                    assert!((row[j-1]-truth[j][i]).abs()/scale<1e-8);
+                                }
+                            }
+                            for j in 0..7 { for k in 0..7 {
+                                let expected: f64 = (0..g.len()).map(|i| (w[i]/divisor)*
+                                    (truth[j][i]/nonzero(product.scales[j]))*(truth[k][i]/nonzero(product.scales[k]))).sum();
+                                assert!((product.moments.gram[j*7+k]-expected).abs()<1e-10);
+                            }}
+                            let bytes=product.minimum_workspace_bytes;
+                            assert!(try_build(&p,&cols,&values[0],BorrowedMapWeights::Provided(&w),divisor,
+                                config,bytes-1,0,&mut Vec::new()).unwrap().is_none());
+                            assert!(try_build(&p,&cols,&values[0],BorrowedMapWeights::Provided(&w),divisor,
+                                config,bytes,0,&mut Vec::new()).unwrap().is_some());
+                            assert!(try_build(&p,&cols,&values[0],BorrowedMapWeights::Provided(&w),divisor,
+                                MapConfig { max_iterations:1, ..config },allowance,0,&mut Vec::new()).unwrap().is_none());
+                            // A genuinely affordable dense frame retains its old organization.
+                            let dense=try_build(&p,&cols,&values[0],BorrowedMapWeights::Provided(&w),divisor,
+                                config,u128::MAX,0,&mut Vec::new()).unwrap().unwrap();
+                            assert!(!dense.implicit);
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    #[test]
+    fn incidence_schur_matches_independent_dense_weighted_elimination() {
+        let a = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3];
+        let b = [0, 1, 1, 1, 2, 0, 3, 4, 4, 4, 5, 3];
+        let groups = crate::fe::LevelIndex::from_codes(&a, 4).unwrap();
+        let free = [usize::MAX, 0, 1, usize::MAX, 2, 3];
+        let truth = [0.3, -0.7, 1.1, 0.2];
+        for scale in [1e-200, 1., 1e200] {
+            for frame in [0, 1] {
+                let weights: Vec<f64> = (0..a.len()).map(|i| scale *
+                    (0.2 + ((i * 7 + frame * 3) % 11) as f64)).collect();
+                let mut cross = [[0.; 6]; 4];
+                let mut left_mass = [0.; 4];
+                let mut right_mass = [0.; 6];
+                for i in 0..a.len() {
+                    cross[a[i] as usize][b[i] as usize] += weights[i];
+                    left_mass[a[i] as usize] += weights[i];
+                    right_mass[b[i] as usize] += weights[i];
+                }
+                let mut schur = [[0_f64; 6]; 6];
+                for h in 0..6 {
+                    schur[h][h] = right_mass[h];
+                    for j in 0..6 {
+                        for g in 0..4 {
+                            schur[h][j] -= (cross[g][h] / left_mass[g]) * cross[g][j];
+                        }
+                    }
+                }
+                let roots: Vec<_> = (0..6).map(|h| schur[h][h].sqrt()).collect();
+                let mut dense = vec![0.; 16];
+                for h in 0..6 {
+                    if free[h] == usize::MAX { continue; }
+                    for j in 0..6 {
+                        if free[j] != usize::MAX {
+                            dense[free[h] * 4 + free[j]] = (schur[h][j] / roots[h]) / roots[j];
+                        }
+                    }
+                }
+                let mut incidence = Vec::new();
+                let mut ids = Vec::new();
+                let mut rows = Vec::new();
+                for g in 0..4 {
+                    let start = ids.len();
+                    for &i in groups.members(g) {
+                        let h = b[i] as usize;
+                        if free[h] == usize::MAX { continue; }
+                        ids.push(free[h]);
+                        incidence.push((weights[i] / left_mass[g].sqrt()) / roots[h]);
+                    }
+                    rows.push(IncidenceRow { start, end: ids.len(), component: g / 2 });
+                }
+                let mut diagonal = [0.; 4];
+                for h in 0..6 {
+                    if free[h] != usize::MAX { diagonal[free[h]] = (right_mass[h] / roots[h]) / roots[h]; }
+                }
+                let apply = |x: &[f64], y: &mut [f64]| apply_incidence_schur(
+                    &incidence, &diagonal, &ids, &rows, x, y);
+                let rhs: Vec<_> = dense.chunks(4).map(|row| row.iter().zip(truth).map(|(a,b)| a*b).sum::<f64>()).collect();
+                let mut actual = [0.; 4];
+                apply(&truth, &mut actual);
+                for i in 0..4 { assert!((actual[i] - rhs[i]).abs() < 3e-15); }
+                let mut solution = rhs.clone();
+                let count = solve_reduced_cg_with_product(&mut solution, &mut [0.; 12], 4, 1e-13, apply).unwrap();
+                assert!(count <= 4);
+                for i in 0..4 { assert!((solution[i] - truth[i]).abs() < 1e-12); }
+                assert!(solve_reduced_cg_with_product(&mut rhs.clone(), &mut [0.; 12], 0, 1e-13, apply).is_err());
+            }
+        }
     }
 
     #[test]
@@ -2107,9 +2377,12 @@ mod tests {
             PreparedOlsBreadWeightScale, PreparedOlsExecutionMode, PreparedOlsFitConfig,
         };
         let n = 19200;
-        let g: Vec<_> = (0..n).map(|i| (i / 6) as f64).collect();
+        // Four-member groups keep the complete implicit owner above this
+        // allowance; Q158 keeps dense direct storage affordable only after
+        // observed work permits eliminating its extra iterative workspace.
+        let g: Vec<_> = (0..n).map(|i| (i / 4) as f64).collect();
         let h: Vec<_> = (0..n)
-            .map(|i| ((i / 6 + 13 * (i % 6)) % 160) as f64)
+            .map(|i| ((i / 4 + 13 * (i % 4)) % 158) as f64)
             .collect();
         let x: Vec<Vec<_>> = (0..2)
             .map(|j| {

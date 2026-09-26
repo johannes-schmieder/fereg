@@ -52,6 +52,16 @@ with the call. The builder still checks complete phase peaks and actual
 capacities. Optional admission or numerical/work refusal preserves the existing
 certified projection. Low execution retains its prior allowance.
 
+When that two-FE builder's complete dense geometry does not fit, an implicit
+grounded Schur operator may admit the same certified full-frame construction
+under [ADR 0211](adr/0211-implicit-canonical-frame-products.md). Its complete
+phase bound charges N incidence values/indices, P component-row descriptors,
+Q diagonal values and the existing group/RHS Krylov banks. Affordable dense
+geometry retains its route. The temporary allowance does not increase. Incidence
+geometry and Krylov scratch die before certification; current-weight group
+coefficients live only through the retained-row write.
+Budget or numerical refusal preserves the previous certified construction.
+
 Connected three-categorical-FE canonical construction can use the same separate
 fast allowance under [ADR 0210](adr/0210-three-fe-canonical-frame-products.md).
 Its complete shared shape/byte preflight must pass before optional fast admission;
