@@ -9,12 +9,103 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-**Unchanged multi-partition topology ownership is adopted.** Numeric selection,
-initialization and prior slope/categorical solver gains remain intact. The next
-substantial boundary is canonical retained-rank construction, not more topology
-or selection tuning. Fresh seed **202609445** is consumed; do not tune on it or
-reuse earlier frozen validation seeds. Historical timings do not transfer to the
-current artifact. All task-owned jobs are terminal.
+**Parallel retained-scratch residual reconstruction is adopted.** Prior topology,
+initialization, numeric selection and slope/categorical solver gains remain intact.
+The next substantial boundary is one-pass current-weight incidence construction
+inside canonical preparation. Fresh seed **202609446** is consumed; do not tune
+on it or reuse earlier frozen validation seeds. Historical timing claims do not
+transfer to the current artifact. All task-owned jobs are terminal.
+
+## Parallel retained-scratch residual reconstruction adopted — 2026-09-26
+
+Retain **residualrows2**, base **20e764f5**, with Rust overlays in
+`ols/linear_session.rs` and `ols/prepared_fit.rs`. All **567 computational inputs**
+match. Plugin SHA-256:
+`ef3ee205cab739352ccc1024500e26e9c7c874c609001c58cf0bc7038c32f519`.
+[ADR 0216](docs/adr/0216-parallel-retained-scratch-residuals.md) and the
+[source-bound report](benchmarks/reports/development/ppml-parallel-residuals-local-2026-09-26/README.md)
+retain sources, distributions, independent science and **9,787 restored
+hash/privacy-verified receipts**. Archive SHA-256:
+`de9a61cb4cd7f9a9926cc8ca07801ac6a2c30e5c547dcc4e7d378da869a8d37a`.
+Local work root: `target/ppml-canonical-rank-20260926`.
+
+After finite moments are consumed, reuse their admitted workspace as disjoint
+complete-row buffers for scratch residual reconstruction. Bound partitions by
+the installed requested team, sample size and available buffers. Each worker
+owns an immutable 8-KiB cursor. Read/validate all stored columns, including omitted
+ones. Preserve each row's normalization and FMA order, scratch errors, rank,
+current-weight projection, original-input scores/model space, objective,
+reconstruction, exact final Hessian and failure-atomic publication. Serial or
+insufficient-buffer/zero-width cases retain the old loop. Dense/implicit and
+frozen residual reconstruction and one-shot OLS are unchanged. No numerical cache,
+new observation bank, worker pool or allowance is added.
+
+Pilot three-rotation B/C/stock medians: million-row low **993/962/900 ms** (3.1%
+gain), fast **891/886/901**, low two slopes **75/73/116**, fast three-FE two slopes
+**159/152/231**, factors **584/583/719**, serial fast **562/561/986**. B/C:
+**16 wins, two losses**. Four of six families meet 0.90 in every pair. Do not
+attribute excluded dense/serial control fluctuations to the new scratch branch.
+
+Fresh **seed202609446**, five rotations: large fast **680/672/769**, large low
+**754/730/773** (3.2% gain), T4 low **450/441/681**, clustered factors low
+**653/641/3212**, four-slope low **106/106/117**, serial low **565/566/929**, weak
+low **132/131/871**, disconnected low **94/93/99**. All **40** fresh C/stock
+comparisons pass. **Five of eight** families meet 0.90 in every pair; large low,
+four-slope low and disconnected low do not. Preserve **28 wins, five losses,
+seven ties**, including the serial loss and slope tie. C/stock ranges on the
+three remaining target misses are **0.927–0.955, 0.889–0.922, 0.921–0.959**.
+
+**76 distinct Rust tests, nine licensed fixtures, 204 public PPML states and 12
+explicit Poisson/Hessian/sandwich checks pass.** All **68 native PPML pairs**
+have exact coefficients/covariance/means/full-output exports. Anchored comparisons
+**129/130**, direct C/stock **61/62** retain one old-seed small full-output
+residual discrepancy, unranked. No missing completed pair or timed application
+failure, interruption, timeout or contention. All **18 OLS pairs** have exact
+coefficient/covariance exports; B/C medians **65/65, 76/76, 14/14, 209/209,
+159/158, 17/17** for slopes, three-FE low, small, factors, large and one FE.
+
+Whole-fit tracked heap/scratch deltas are **zero**, modeled bounds **-48..+48
+bytes** with unchanged admission. Concurrent cursor pages use existing worker
+stack/runtime headroom; physical-cap/platform qualification remains deferred.
+The initial new test failed compilation on an optional column index; preserve
+that log and unmeasured **residualrows1**. Residualrows2 fixes only that test.
+No production source changed after the pilot. Known static inventory drift,
+wire-minor/checkpoint-count failures, weighted constrained-fit/nonretaining-CG
+failures, SCC deferral, frozen 77/16/111 and stopped campaigns remain unchanged.
+No push or release. No candidate or task-owned job remains pending.
+
+### Next implementation: one-pass current-weight incidence construction
+
+Finer baseline diagnostics identified low residual reconstruction **45 ms**,
+versus dense **4 ms**, while immutable component planning was only **5 ms**.
+Paired **rankprofile1/rankprofile2** confirms low residual **45.715->15.397 ms**;
+containing retained-rank solve **127.474->97.190**. Norm scans stay **15.8 ms**,
+geometry setup **40 ms**, and retained-control writing **23 ms**. Dense residual
+is **4.636/4.324**. Retain diagnostic whole-plugin fast loss **836.7/859.4 ms**
+and low gain **936.9/912.7**; diagnostic clocks do not rank stock performance.
+Stop this residual loop here.
+
+Current candidate canonical preparation costs **229/248 ms** fast/low. The next
+coherent hypothesis is in `ols/canonical_products.rs::build`: it traverses,
+accumulates and sorts weighted right-neighbor sums for the diagonal, then repeats
+the same group work to pack the implicit operator. Low matrix/packing spans cost
+**11.9/15.2 ms**. Store first-pass ordered weighted incidences in the existing
+admitted factor/index banks, then scale and compact after current-weight
+roots/anchors are known. Preserve prefix/suffix arithmetic, exact peak admission,
+finite checks and independent original-input acceptance. This can benefit fast
+and low without another cross-weight cache; not all 27 ms is assumed avoidable.
+
+Do not spend a long cycle caching 5-ms component planning. The 23-ms low writer
+already parallelizes encoding inside bounded tiles; distinguish encoding from
+sequential I/O before redesign. A one-use handoff of fresh current-frame norms
+may remove some of the 16-ms scan only with a proof of units/dependencies and
+independent acceptance. Original-input score costs remain about 40 ms, loading
+41, publication 24, inference 7/10. Nested spans must not be added twice.
+
+Median deficits to 0.90 stock are still about **75/152 ms** for the million-row
+fast/low pilot and **34/1/4 ms** for fresh large-low/four-slope-low/disconnected-low.
+Continue canonical-frame organization with focused excluded-path controls and
+fresh predeclarations; do not claim broad goal completion.
 
 ## Shared unchanged topology ownership adopted — 2026-09-26
 

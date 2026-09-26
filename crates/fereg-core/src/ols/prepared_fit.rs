@@ -13573,6 +13573,65 @@ mod tests {
     }
 
     #[test]
+    fn retained_scratch_parallel_residuals_match_weighted_orthogonal_oracle() {
+        // Complete Walsh blocks remain orthogonal under either block-constant
+        // weight frame. The unused channel is an independent residual oracle;
+        // the duplicate checks rank selection and validation of omitted storage.
+        let rows = 2048;
+        let channel = |row: usize, mask: usize| {
+            if (row & mask).count_ones() % 2 == 0 { 1.0 } else { -1.0 }
+        };
+        for width in [6, 65] {
+            let mut regressors = (1..=width)
+                .map(|mask| (0..rows).map(|row| channel(row, mask)).collect::<Vec<_>>())
+                .collect::<Vec<_>>();
+            regressors.push(regressors[0].clone());
+            let response = (0..rows).map(|row| {
+                (0..width).map(|column| (column + 1) as f64 / 67.0 * regressors[column][row])
+                    .sum::<f64>() + channel(row, 256) / 16.0
+            }).collect::<Vec<_>>();
+            let initial_weights = (0..rows).map(|row| (1 + row / 512) as f64).collect::<Vec<_>>();
+            let next_weights = (0..rows).map(|row| (7 - row / 512) as f64).collect::<Vec<_>>();
+            let data = prepared(&response, &regressors, &vec![false; width + 1], None,
+                false, TestWeights::Frequency(&initial_weights));
+            let next = prepared(&response, &regressors, &vec![false; width + 1], None,
+                false, TestWeights::Frequency(&next_weights));
+            let frame = LinearSolveFrame::from_prepared_ols(&data).unwrap();
+            let next_frame = LinearSolveFrame::from_prepared_ols(&next).unwrap();
+            for mode in [PreparedOlsExecutionMode::Fast, PreparedOlsExecutionMode::Low] {
+                // Three workers leave a short last row partition.
+                for threads in [1, 3, 8] {
+                    let config = PreparedOlsFitConfig {
+                        execution: PreparedOlsExecutionConfig { mode, poolsize: 8,
+                            threads: ThreadConfig::from_requested(threads, true).unwrap() },
+                        ..PreparedOlsFitConfig::default()
+                    };
+                    let mut session = CertifiedLinearSession::new(&data, frame, config,
+                        LinearSessionGenerations::new(0, 0, 0, 0, 0)).unwrap();
+                    let check = |fit: &CertifiedPreparedOlsFit| {
+                        assert_eq!(fit.finite_rank(), width);
+                        assert_eq!(fit.dropped_generated_columns(), &[width]);
+                        for coefficient in fit.coefficients().iter().filter(|c| c.value.is_some()) {
+                            assert_close(coefficient.value.unwrap(),
+                                (coefficient.generated_column_index.unwrap() + 1) as f64 / 67.0, 2e-12);
+                        }
+                        for (row, &residual) in fit.residuals().iter().enumerate() {
+                            assert_close(residual, channel(row, 256) / 16.0, 2e-12);
+                        }
+                        assert!(fit.rank_certificate().passed);
+                        assert!(fit.score_certificate().passed);
+                    };
+                    check(session.solve_fresh().unwrap().fit());
+                    session.refresh_weights(next_frame.raw_weights(), next_frame.bread_weight_scale(), 1).unwrap();
+                    let strict = session.strict_candidate().unwrap();
+                    check(strict.candidate().fit());
+                    strict.commit();
+                }
+            }
+        }
+    }
+
+    #[test]
     fn retained_session_matches_one_shot_above_sixty_four_columns_with_exact_deficiency() {
         let rows = 128_usize;
         let mut regressors = (1..=65_usize)

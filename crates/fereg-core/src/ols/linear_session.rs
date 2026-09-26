@@ -4831,10 +4831,33 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 })?;
             }
             RetainedWithinStorage::Scratch(_) => {
-                let mut reader = retained.storage.reader();
-                for (row, target) in workspace.residuals.iter_mut().enumerate() {
-                    reader.fill_row(row, &mut workspace.row)?;
-                    *target = residual_at(row, &mut |column| Ok(workspace.row[column]))?;
+                // Finite moments have been consumed. Reuse their admitted bank
+                // for disjoint row buffers; each worker owns an immutable-read
+                // cursor. Read every stored column, including omitted ones, so
+                // scratch validation and each row's arithmetic remain unchanged.
+                let workers = rayon::current_num_threads()
+                    .min(rows)
+                    .min(workspace.moment_partials.len() / stored_columns.max(1));
+                if stored_columns != 0 && workers > 1 {
+                    let chunk_rows = rows.div_ceil(workers);
+                    workspace.residuals.par_chunks_mut(chunk_rows)
+                        .zip(workspace.moment_partials.par_chunks_exact_mut(stored_columns))
+                        .enumerate()
+                        .try_for_each(|(chunk, (targets, values))| -> Result<()> {
+                            let mut reader = retained.storage.reader();
+                            for (local_row, target) in targets.iter_mut().enumerate() {
+                                let row = chunk * chunk_rows + local_row;
+                                reader.fill_row(row, values)?;
+                                *target = residual_at(row, &mut |column| Ok(values[column]))?;
+                            }
+                            Ok(())
+                        })?;
+                } else {
+                    let mut reader = retained.storage.reader();
+                    for (row, target) in workspace.residuals.iter_mut().enumerate() {
+                        reader.fill_row(row, &mut workspace.row)?;
+                        *target = residual_at(row, &mut |column| Ok(workspace.row[column]))?;
+                    }
                 }
             }
         }
