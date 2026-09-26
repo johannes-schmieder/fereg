@@ -33,13 +33,27 @@ separate evidence-bound production gate/planner. Eight focused tests and a
 read-only actual-SCC integration check pass (12 pilot groups/three adjudications).
 It preserves the original rejected pilot and frozen controller; it binds the
 new independent evidence without manufacturing PILOT.ACCEPTED.json. The first
-production plan must contain exactly 556 pending groups, preserving 12 completed
-pilot groups and all 568 definitions. No production has been submitted yet.
-Next: commit/deploy the verified planner, publish its separate gate and immutable
-plan, inspect forecasts/resources, then submit with concurrency eight under 12h.
-No estimator or measurement-controller byte changed. The existing heartbeat
-**run-lighter-fereg-scc-campaign is ACTIVE** and must be updated with the actual
-production plan/job identity once submitted. Never repeat completed pilot groups.
+production plan contains exactly 556 pending groups, preserving 12 completed
+pilot groups and all 568 definitions.
+
+**Production array 7747518/tasks 1–16 is submitted**, queued at launch on
+2026-09-26 17:19:33 UTC. [Launch receipt and immutable plan](benchmarks/reports/development/systematic-light-scc-resume-2026-09-26/production-launch.md)
+record 270 OLS/286 PPML pending groups, 28 E5-2680v4 cores, 3G/core,
+12h/task and concurrency eight. Forecast: 9.87–9.95h/task, 158.59 node-hours.
+External planner commit **78b2eb0b**; estimator/controller remains **58284f76**.
+Run root: `/projectnb/welfgr/fereg/runs/20260926-systematic-light-58284f76`.
+Plan: `plans/production-adjudicated.json`, SHA256
+`80e2439f6d134f9c9e1afd2d701910d6b38886d148e3e32d9783463396f84702`.
+The separate `env/PILOT.ADJUDICATED.json` is published; no rejected receipt or
+frozen measurement byte changed. No production performance claim exists yet.
+
+Next: allow the array to run, collect all 16 accounting records and terminal
+bundle/application receipts, audit all 568 groups, and report valid four-repeat
+distributions with losses/timeouts/discrepancies visible. Any pending whole
+groups require a distinct immutable plan after all original tasks stop; never
+repeat completed groups or combine partial timing pairs across nodes. The
+existing **run-lighter-fereg-scc-campaign heartbeat is ACTIVE**, updated with
+production identity and collection/recovery instructions. Commits remain local.
 
 ## SCC preflight continuation: automatic report merge — 2026-09-26
 
