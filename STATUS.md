@@ -9,12 +9,105 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-**Parallel retained-scratch residual reconstruction is adopted.** Prior topology,
-initialization, numeric selection and slope/categorical solver gains remain intact.
-The next substantial boundary is one-pass current-weight incidence construction
-inside canonical preparation. Fresh seed **202609446** is consumed; do not tune
-on it or reuse earlier frozen validation seeds. Historical timing claims do not
-transfer to the current artifact. All task-owned jobs are terminal.
+**The one-pass incidence experiment is closed and rejected.** Production remains
+exactly **residualrows2**, accepted at **ceb8f53d**, with all 567 computational
+inputs matching. The next boundary is a single-use current-frame response-statistic
+handoff, with explicit proof of units, rounding and independent acceptance.
+Fresh seed **202609447** is consumed; do not tune on it or reuse earlier frozen
+validation seeds. No candidate or task-owned job is pending.
+
+## One-pass canonical incidence experiment rejected — 2026-09-26
+
+**incidencepass1** was based on ceb8f53d plus one overlay in
+`ols/canonical_products.rs`; plugin SHA-256:
+`9414e2ed3970e2f56dc99a49f00d53d7b743d153ce19e894c27da0f30d4690b8`.
+[ADR 0217](docs/adr/0217-one-pass-incidence-experiment-closeout.md) and the
+[source-bound report](benchmarks/reports/development/ppml-incidence-pass-local-2026-09-26/README.md)
+retain the full candidate/patch, independent tests, source-bound builds,
+distributions, failures and **10,087 restored hash/privacy-verified receipts**.
+Archive SHA-256:
+`2d2e5c1f7327816799ede0f769d0d1a864e991be78750832400b22184c66c259`.
+Local work root: `target/ppml-incidence-pass-20260926`.
+
+The prototype retained first-pass ordered weighted pair masses in existing
+admitted incidence banks, then grounded/scaled/compacted them in place. It removed
+the second observation traversal and sort, preserving diagonal arithmetic and
+all certificates. No buffer, allowance, cache or pool was added. The independent
+compaction oracle covers all anchor positions, interleaved/empty components,
+repeated pairs, changing/extreme weights, finite failure and storage boundaries.
+
+Paired **rankprofile2/incidenceprofile1** demonstrates geometry setup
+**39.625->33.582 ms** fast and **40.893->33.695** low. Packing saves 11–12 ms,
+but earlier raw-pair storage adds about 5 ms to the first pass: the net is only
+**6–7 ms**. Compare complete setup, not packing alone. Whole diagnostic plugin
+fast/low B/C is **838.8/831.1, 921.7/900.0**, factor control **484.3/487.7**;
+retain that diagnostic loss and do not rank stock with diagnostic clocks.
+
+Pilot B/C/stock medians: million low **934/926/864**, fast **859/858/862**,
+low two slopes **70/70/120**, fast three-FE two slopes **151/151/231**, factors
+**570/567/697**, serial fast **539/538/929**. **Nine wins, three losses, six ties**;
+four of six families meet 0.90 in every comparable pair.
+
+Fresh seed202609447: large fast B/C **664/655**, low **708/704**; both stock
+comparisons are **unranked**. Other B/C/S: T4 fast **415/409/661**, factors
+**712/715/3134**, two slopes **195/190/296**, four-slope low **115/115/117**,
+serial **541/540/935**, weak **161/160/821**, disconnected low **92/94/99**.
+**27 wins, nine losses, nine ties**. Five of seven comparable families meet
+0.90; two additional families are unranked. A single predeclared five-pair repeat
+on identical source/seed/full/warm inputs gives factors **715/714**, disconnected
+**92/94**. The factor loss did not repeat; the disconnected 2-ms loss did.
+
+The declared gate required meaningful public gains without a reproducible control
+loss. It was not met. Restore the accepted solver instead of tuning against the
+fresh seed or retaining this small tradeoff. No causal attribution of the full-fit
+disconnected loss to the new kernel was established. All **567 current production
+inputs match residualrows2**, plugin
+`ef3ee205cab739352ccc1024500e26e9c7c874c609001c58cf0bc7038c32f519`.
+No candidate machinery or test remains in production. Candidate timings do not
+transfer to restored source; the preceding accepted report remains authoritative.
+
+The rejected candidate passed **74 distinct Rust tests, nine licensed fixtures,
+233 public PPML state audits and 12 explicit Poisson/Hessian/sandwich comparisons**.
+All **83 native PPML pairs** and **18 OLS pairs** have exact scientific exports.
+Anchored comparisons **139/150**, direct C/stock **56/67** preserve one older small
+saved-output discrepancy and ten fresh large-case mean mismatches. The latter
+have six failed observations per comparison, max differences **5.073e-7/5.034e-7**
+and max tolerance ratios **1.213/1.204**. Coefficients, covariance and objectives
+pass. Native B/C are exact; no claim that the prototype caused those differences.
+Do not relax envelopes or rank those stock cases.
+
+OLS B/C medians **67/64, 75/76, 15/14, 207/207, 160/158, 17/17** retain the
+three-FE 1-ms loss. Heap/scratch peak deltas zero; model bounds **-48..+48 bytes**
+with unchanged admission. No build/test/application failure, timeout,
+interruption or contention. The failed retention gate remains explicit.
+No qualification, push or release. Known static inventory drift, wire-minor/
+checkpoint-count failures, constrained-fit/nonretaining-CG failures, SCC deferral,
+frozen 77/16/111 definitions and stopped campaigns remain unchanged.
+
+### Next implementation: single-use canonical response statistics
+
+Do not reopen incidence tuning or spend a cycle on 5-ms immutable topology setup.
+Paired diagnostics leave **16 ms** in canonical norm scans and **20 ms** in
+`finalize_reported_bread_and_intercept`; its containing assembly also has **14 ms**
+of independent finite score checks. These are disjoint subspans, not license to
+remove the checks or assume the entire containing cost is avoidable.
+
+Inspect `Products.means[0]`, `Products.norms[0]`, `CanonicalMoments`,
+`try_canonical_products`, `solve_full_retained_rank` and
+`finalize_reported_bread_and_intercept`. Canonical products compute current-response
+statistics but transfer only control statistics and the finite Gram; the rank
+owner rescans response norms and the intercept identity obtains the outcome mean
+again. Investigate carrying certified statistics with the already single-use
+moment handoff, preserving the fresh raw-residual-mean identity and score checks.
+Prove normalized-weight units, actual reconstructed-row rounding, zero/underflow,
+rank sensitivity and changing-frame/rollback ownership. A scaled Gram diagonal is
+not automatically equivalent to the stable residual norm. No stale weight or
+response authority may cross generations. Validate against independent weighted
+and Poisson/Hessian oracles before measuring new frozen/fresh cases.
+
+This materially different canonical boundary can help fast and low construction;
+keep categorical/absorbed-slope and shared OLS controls. The broader multi-FE
+speed goal remains active and unproven.
 
 ## Parallel retained-scratch residual reconstruction adopted — 2026-09-26
 

@@ -1,0 +1,247 @@
+{
+  "passed": true,
+  "reviewed_matches": 48,
+  "reason": "Only shared reference search defaults and synthetic redaction test literals. No personal runtime paths or license lines.",
+  "matches": [
+    {
+      "file": "artifacts/incidencepass1/scripts/resolve_reference_root.py",
+      "line": 54,
+      "text": "    Path(\"/Users/Shared/fereg-references\"),"
+    },
+    {
+      "file": "artifacts/incidencepass1/scripts/resolve_reference_root.py",
+      "line": 55,
+      "text": "    Path(\"/Users/Shared/fereg-references\"),"
+    },
+    {
+      "file": "artifacts/incidencepass1/scripts/resolve_reference_root.py",
+      "line": 56,
+      "text": "    Path(\"/Users/Shared/references\"),"
+    },
+    {
+      "file": "artifacts/incidencepass1/scripts/resolve_reference_root.py",
+      "line": 111,
+      "text": "        Path(\"/Users/Shared/reghdfe\"),"
+    },
+    {
+      "file": "artifacts/incidencepass1/scripts/resolve_reference_root.py",
+      "line": 112,
+      "text": "        Path(\"/Users/Shared/fereg-references/reghdfe\"),"
+    },
+    {
+      "file": "artifacts/incidencepass1/scripts/resolve_reference_root.py",
+      "line": 115,
+      "text": "        Path(\"/Users/Shared/ftools\"),"
+    },
+    {
+      "file": "artifacts/incidencepass1/scripts/resolve_reference_root.py",
+      "line": 116,
+      "text": "        Path(\"/Users/Shared/fereg-references/ftools\"),"
+    },
+    {
+      "file": "artifacts/incidencepass1/scripts/resolve_reference_root.py",
+      "line": 119,
+      "text": "        Path(\"/Users/Shared/require\"),"
+    },
+    {
+      "file": "artifacts/incidencepass1/scripts/resolve_reference_root.py",
+      "line": 120,
+      "text": "        Path(\"/Users/Shared/stata-require\"),"
+    },
+    {
+      "file": "artifacts/incidencepass1/scripts/resolve_reference_root.py",
+      "line": 121,
+      "text": "        Path(\"/Users/Shared/fereg-references/require\"),"
+    },
+    {
+      "file": "artifacts/incidencepass1/tests/python/test_ols_hidden_numeric.py",
+      "line": 434,
+      "text": "        redaction[\"payload\"][\"host\"][\"system\"] = \"/Users/licensed/private\""
+    },
+    {
+      "file": "artifacts/incidencepass1/tests/python/test_ols_reference_harness.py",
+      "line": 647,
+      "text": "            seal_payload({\"note\": \"/Users/alice/private/reference.log\"})"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/scripts/resolve_reference_root.py",
+      "line": 54,
+      "text": "    Path(\"/Users/Shared/fereg-references\"),"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/scripts/resolve_reference_root.py",
+      "line": 55,
+      "text": "    Path(\"/Users/Shared/fereg-references\"),"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/scripts/resolve_reference_root.py",
+      "line": 56,
+      "text": "    Path(\"/Users/Shared/references\"),"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/scripts/resolve_reference_root.py",
+      "line": 111,
+      "text": "        Path(\"/Users/Shared/reghdfe\"),"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/scripts/resolve_reference_root.py",
+      "line": 112,
+      "text": "        Path(\"/Users/Shared/fereg-references/reghdfe\"),"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/scripts/resolve_reference_root.py",
+      "line": 115,
+      "text": "        Path(\"/Users/Shared/ftools\"),"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/scripts/resolve_reference_root.py",
+      "line": 116,
+      "text": "        Path(\"/Users/Shared/fereg-references/ftools\"),"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/scripts/resolve_reference_root.py",
+      "line": 119,
+      "text": "        Path(\"/Users/Shared/require\"),"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/scripts/resolve_reference_root.py",
+      "line": 120,
+      "text": "        Path(\"/Users/Shared/stata-require\"),"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/scripts/resolve_reference_root.py",
+      "line": 121,
+      "text": "        Path(\"/Users/Shared/fereg-references/require\"),"
+    },
+    {
+      "file": "artifacts/incidenceprofile1/tests/python/test_ols_hidden_numeric.py",
+      "line": 434,
+      "text": "        redaction[\"payload\"][\"host\"][\"system\"] = \"/Users/licensed/private\""
+    },
+    {
+      "file": "artifacts/incidenceprofile1/tests/python/test_ols_reference_harness.py",
+      "line": 647,
+      "text": "            seal_payload({\"note\": \"/Users/alice/private/reference.log\"})"
+    },
+    {
+      "file": "artifacts/rankprofile2/scripts/resolve_reference_root.py",
+      "line": 54,
+      "text": "    Path(\"/Users/Shared/fereg-references\"),"
+    },
+    {
+      "file": "artifacts/rankprofile2/scripts/resolve_reference_root.py",
+      "line": 55,
+      "text": "    Path(\"/Users/Shared/fereg-references\"),"
+    },
+    {
+      "file": "artifacts/rankprofile2/scripts/resolve_reference_root.py",
+      "line": 56,
+      "text": "    Path(\"/Users/Shared/references\"),"
+    },
+    {
+      "file": "artifacts/rankprofile2/scripts/resolve_reference_root.py",
+      "line": 111,
+      "text": "        Path(\"/Users/Shared/reghdfe\"),"
+    },
+    {
+      "file": "artifacts/rankprofile2/scripts/resolve_reference_root.py",
+      "line": 112,
+      "text": "        Path(\"/Users/Shared/fereg-references/reghdfe\"),"
+    },
+    {
+      "file": "artifacts/rankprofile2/scripts/resolve_reference_root.py",
+      "line": 115,
+      "text": "        Path(\"/Users/Shared/ftools\"),"
+    },
+    {
+      "file": "artifacts/rankprofile2/scripts/resolve_reference_root.py",
+      "line": 116,
+      "text": "        Path(\"/Users/Shared/fereg-references/ftools\"),"
+    },
+    {
+      "file": "artifacts/rankprofile2/scripts/resolve_reference_root.py",
+      "line": 119,
+      "text": "        Path(\"/Users/Shared/require\"),"
+    },
+    {
+      "file": "artifacts/rankprofile2/scripts/resolve_reference_root.py",
+      "line": 120,
+      "text": "        Path(\"/Users/Shared/stata-require\"),"
+    },
+    {
+      "file": "artifacts/rankprofile2/scripts/resolve_reference_root.py",
+      "line": 121,
+      "text": "        Path(\"/Users/Shared/fereg-references/require\"),"
+    },
+    {
+      "file": "artifacts/rankprofile2/tests/python/test_ols_hidden_numeric.py",
+      "line": 434,
+      "text": "        redaction[\"payload\"][\"host\"][\"system\"] = \"/Users/licensed/private\""
+    },
+    {
+      "file": "artifacts/rankprofile2/tests/python/test_ols_reference_harness.py",
+      "line": 647,
+      "text": "            seal_payload({\"note\": \"/Users/alice/private/reference.log\"})"
+    },
+    {
+      "file": "artifacts/residualrows2/scripts/resolve_reference_root.py",
+      "line": 54,
+      "text": "    Path(\"/Users/Shared/fereg-references\"),"
+    },
+    {
+      "file": "artifacts/residualrows2/scripts/resolve_reference_root.py",
+      "line": 55,
+      "text": "    Path(\"/Users/Shared/fereg-references\"),"
+    },
+    {
+      "file": "artifacts/residualrows2/scripts/resolve_reference_root.py",
+      "line": 56,
+      "text": "    Path(\"/Users/Shared/references\"),"
+    },
+    {
+      "file": "artifacts/residualrows2/scripts/resolve_reference_root.py",
+      "line": 111,
+      "text": "        Path(\"/Users/Shared/reghdfe\"),"
+    },
+    {
+      "file": "artifacts/residualrows2/scripts/resolve_reference_root.py",
+      "line": 112,
+      "text": "        Path(\"/Users/Shared/fereg-references/reghdfe\"),"
+    },
+    {
+      "file": "artifacts/residualrows2/scripts/resolve_reference_root.py",
+      "line": 115,
+      "text": "        Path(\"/Users/Shared/ftools\"),"
+    },
+    {
+      "file": "artifacts/residualrows2/scripts/resolve_reference_root.py",
+      "line": 116,
+      "text": "        Path(\"/Users/Shared/fereg-references/ftools\"),"
+    },
+    {
+      "file": "artifacts/residualrows2/scripts/resolve_reference_root.py",
+      "line": 119,
+      "text": "        Path(\"/Users/Shared/require\"),"
+    },
+    {
+      "file": "artifacts/residualrows2/scripts/resolve_reference_root.py",
+      "line": 120,
+      "text": "        Path(\"/Users/Shared/stata-require\"),"
+    },
+    {
+      "file": "artifacts/residualrows2/scripts/resolve_reference_root.py",
+      "line": 121,
+      "text": "        Path(\"/Users/Shared/fereg-references/require\"),"
+    },
+    {
+      "file": "artifacts/residualrows2/tests/python/test_ols_hidden_numeric.py",
+      "line": 434,
+      "text": "        redaction[\"payload\"][\"host\"][\"system\"] = \"/Users/licensed/private\""
+    },
+    {
+      "file": "artifacts/residualrows2/tests/python/test_ols_reference_harness.py",
+      "line": 647,
+      "text": "            seal_payload({\"note\": \"/Users/alice/private/reference.log\"})"
+    }
+  ]
+}
