@@ -1,0 +1,20 @@
+{
+  "run_label": "20260926-systematic-light-58284f76",
+  "candidate_commit": "58284f76a65b226e6df09a48cafa5caa68461af2",
+  "controller_commit": "58284f76a65b226e6df09a48cafa5caa68461af2",
+  "candidate_archive_sha256": "0741ee405599fbbac63ac2c7e9825917a6a5e03bdc8b5a25ee249bfcbb03d4e7",
+  "manifest_sha256": "4f73e9f98ed44a3d8590f8e8b4a81ed78b9d8124cac8841d33b8c5feeaca10f6",
+  "setup_job": "7745641",
+  "setup_slots": 4,
+  "setup_wall_seconds": 1800,
+  "reference_origin_run_label": "20260926-systematic-light-c31bcb62",
+  "registered_groups": 568,
+  "manifest_change": "candidate_commit only; designs, repetitions, tolerances, reference pins and exclusions unchanged",
+  "measurement_fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+  "plugin_sha256": "1f59671842c4ff436d6975057eb1fcf2d32cec302bc6a64b8adc73d91588c023",
+  "smoke_job": "7745656",
+  "planned_smoke_groups": 28,
+  "smoke_wall_seconds": 3600,
+  "production_wall_seconds": 43200,
+  "production_target_seconds": 37800
+}

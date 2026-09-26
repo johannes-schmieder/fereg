@@ -29,11 +29,22 @@ This does not repair the deferred nonretaining-CG span instability. The benchmar
 warm-up now logs native errors outside timing. Original rejected smoke/controller
 and old campaigns remain untouched.
 
-Next: commit/freeze the corrected candidate with the corrected zero oracle,
-run the 28-group SCC smoke, then the registered 12-group pilot and packed
-production if their gates pass. The existing heartbeat remains paused until
-new jobs/identities are recorded. The authorized 140-configuration/568-group
-scope and all benchmark design/skip/tolerance definitions remain unchanged.
+Committed correction **58284f76a65b226e6df09a48cafa5caa68461af2** is the new
+candidate/controller. New isolated run **20260926-systematic-light-58284f76**;
+setup **7745641** passed (four slots, 205s, 3.010G maxvmem) with binary audit
+and actual-plugin ABI/self-test. [Launch receipt](benchmarks/reports/development/systematic-light-scc-resume-2026-09-26/smoke-launch.json)
+binds source, plugin, manifest and frozen runtime
+`041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6`.
+The 28-group smoke **7745656** is running with `plans/smoke.json` (28 slots,
+1h). No pilot or production submitted yet. No competing build remains.
+The new manifest changes only candidate_commit; all benchmark definitions and
+exclusions remain. Next: capture smoke accounting and run light_control.py;
+if accepted, submit the 12-group pilot (one packed task, initial forecast 1.36h),
+then gate and pack production. Preserve all failed comparators and sample
+mismatches. The existing campaign heartbeat **run-lighter-fereg-scc-campaign is ACTIVE**
+and points to this new root. It will continue through accepted stages and stop
+on a diagnosed blocker. Never submit setup/smoke twice or reuse the rejected
+controller.
 
 ## Lighter systematic SCC rerun — 2026-09-26
 
