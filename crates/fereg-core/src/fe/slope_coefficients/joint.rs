@@ -685,7 +685,7 @@ impl JointFiniteWorkspace {
             }
             if op
                 .coupling
-                .and_then(|c| c.apply_joint(&self.direction[..p], &mut self.product[..p], scratch, helpers))
+                .and_then(|c| c.apply_with_helpers(&self.direction[..p], &mut self.product[..p], scratch, helpers))
                 .is_none()
             {
                 op.forward(&self.direction[..p], observations);

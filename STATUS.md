@@ -9,6 +9,109 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## Canonical slope helper candidate accepted — 2026-09-26
+
+[ADR 0221](docs/adr/0221-idle-workers-in-canonical-slope-products.md) adopts
+**canonicalhelpers2** over baseline **5a0f576d / directionalscore2**. This turn
+made progress toward the multi-FE performance goal; it did not complete that goal.
+Johannes requested finishing the current candidate and an overall assessment.
+All operations are terminal. No next optimization experiment has been started.
+Work root: `target/ppml-canonical-slopes-20260926`; accepted results are under
+`final-candidate/`. No live build, fit, fixture or campaign remains.
+
+Single-RHS canonical slope calls now borrow idle admitted column workers for
+compact Schur products using the existing joint-solve helper mechanism. Multiple
+RHS and single-worker calls select their original direct kernel at compile time
+within the same recurrence. The current-weight QR/coupling generation, original-
+input reconstruction, independent certificates and all scientific tolerances
+remain. There is no new numeric bank, worker pool, allowance or solver family.
+The public OLS route is unchanged. Plugin SHA-256:
+`a41963955baf6600dd86a20f97e84bdee1f79f722e4e9de4bdfb15cdefd88f35`.
+All 567 baseline inputs match 5a0f576d; all 567 current inputs match the measured
+candidate. No computational input changed after its build.
+
+The [report](benchmarks/reports/development/ppml-canonical-helpers-local-2026-09-26/README.md)
+contains ordered distributions, losses, source identities and independent checks.
+Its **11,068 restored, hash/privacy-verified receipts** have archive SHA-256
+`610b29c126e6f6dd105511bd542e805ff7b9dbcb6f23055aca8c0598630839b5`.
+Both older score archives remain byte-identical. An explicit
+[source-label adjudication](benchmarks/reports/development/ppml-directional-scores-local-2026-09-26/reference-source-adjudication.json)
+corrects their two instrumented excerpts labeled as stock; the selected stock
+library matches its original committed receipt. Exact source is extracted from
+the pinned archive in this milestone. Times and tolerances are unchanged.
+
+**First candidate rejected:** canonicalhelpers1 shared one helper-capable entry
+for all columns. Target 112/108 ms improved, but wide 185/191 and serial 248/254
+lost. Paired diagnostics showed 10–14% slower direct operator work with identical
+iteration/check counts. The accepted compile-time dispatch removes that operator
+penalty without thresholds, graph guards, seed or layout tuning. Both artifacts
+and all first-candidate evidence are preserved; it was never committed.
+
+Final pilot B/C/stock medians: four-slope low **112/106/117**, four-slope fast
+**101/102/119**, wide three-FE two slopes **186/185/294**, two-FE slopes low
+**70/68/120**, serial four slopes **248/247/555**, disconnected categorical low
+**92/91/100**. Native pairs: **10 wins, seven losses, one tie**. Four of six
+families meet 0.90 stock in every pair. Target low gains 5.4% against baseline,
+but still misses the median 0.90 target by 0.7 ms and misses in two of three pairs.
+
+Fresh seed202609452, declared before initial timing inspection and now consumed:
+four-slope low T4 **167/158/329**, larger T8 **208/197/300**, serial **268/267/516**,
+disconnected slopes **57/60/63**, weak slope barbell **61/60/3540**, wide two-FE
+slopes **155/155/280**. Native pairs: **11 wins, four losses, three ties**. Five
+of six families meet 0.90 stock in every pair. Fresh low targets improve about
+5.3–5.4%, with all six native pairs improving. The extreme weak-case advantage
+is specific to this design. One fixed-input disconnected follow-up gives
+**57/57/67**, one native paired loss/four ties; the original three-ms loss does
+not recur, but one stock pair still misses 0.90. Preserve both blocks.
+
+Final diagnostic target column solving falls **23.149->19.402 ms**, canonical
+construction **45.494->41.956**, whole plugin **113.951->110.568**. Wide and
+serial diagnostic whole fits still lose **185.097/187.385** and
+**239.498/240.330**. Iterations/checks are unchanged; operator sums across columns
+do not fall on the target. These nested spans measure scheduling gains, not
+fewer operations or removed certificates, and are separate from stock timings.
+
+**19 distinct Rust tests**, **13 licensed fixtures**, **147 public-state audits**,
+**12 explicit Poisson/Hessian/sandwich comparisons**, **96 anchored comparisons**
+and **45 direct stock comparisons** pass. The independent analytic weighted
+projection oracle covers forced compact coupling, T1/T4/T8, single/multiple RHS,
+changing/extreme weights, rank deficiency and disconnected/slope-only channels.
+All 51 native PPML pairs satisfy scientific envelopes; 38 are fully byte-exact.
+All 12 OLS coefficient/covariance pairs are exact. Four protected OLS B/C medians
+are **69/66,80/78,215/212,160/159** with seven paired wins/five losses; no new
+OLS/fixest ranking. No application failure, timeout, incomplete pair or sampled
+contention. Actual T1/T4 categorical/slope 16-iteration audits remain zero-event
+and zero-growth. Observed peak/scratch deltas are zero; modeled bounds vary
+−48..+48 bytes with unchanged allowances. No physical-cap/platform qualification.
+
+### Overall standing and next opportunity
+
+Tested multipartition PPML slope families now often beat comparable stock by
+much more than 10%: current two-FE low **68/120**, wide three-FE **185/294**,
+fresh four-slope low **158/329** and **197/300** ms. This is current-source
+evidence, not an exact multiplier against the original differently seeded cases.
+The smaller four-slope target **106/117** and disconnected cases still miss the
+10% margin in some/all pairs. There is no universal win or full current matrix.
+
+The largest known practical deficit is still large categorical two-FE PPML.
+The preceding **5a0f576d** checkpoint measured N983040/K6/T8 fast **845/868** and
+low **937/931** ms; these stock comparisons were not rerun on canonicalhelpers2.
+They need **63.8/99.1 ms** to reach 0.90 at those medians. Its source-bound
+canonical construction costs roughly **226–252 ms**, not all avoidable. Once
+Johannes resumes implementation, first remeasure those cases on this checkpoint,
+then pursue repeated canonical/whole-command work. Do not spend another cycle
+chasing the small four-slope median's remaining 0.7 ms.
+
+Historical categorical OLS 93/93 wins remain attached to their earlier artifact;
+current evidence here is four native controls only. Historical serial weighted
+slopes AW 226/188 and PW 209/152 remain unremeasured/unrepaired and that tuning
+round stays closed. Higher-dimensional, weighted, wide and constrained-memory
+coverage remains incomplete. Prior mean/saved-output discrepancies stay unranked.
+Inherited checkpoint-count (not rerun this milestone), wire-minor and static
+allocation-inventory drift, weighted constrained-fit/nonretaining-CG issues,
+Linux/SCC deferral and stopped campaigns remain unchanged. Frozen 77/16/111
+definitions are intact. No release, push, full qualification or SCC retry.
+
 ## Independent FE score directions accepted — 2026-09-26
 
 [ADR 0220](docs/adr/0220-owned-fe-score-directions.md) adopts **directionalscore2**.

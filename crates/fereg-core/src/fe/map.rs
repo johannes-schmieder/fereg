@@ -2599,9 +2599,10 @@ mod tests {
                     effects.push(EffectTerm::new(g3, 4, true, vec![]).unwrap());
                 }
                 let design = FeDesign::new(rows, effects).unwrap();
-                for prepared_coupling in [false, true] {
+                for coupling_kind in 0..3 {
+                    let prepared_coupling = coupling_kind != 0;
                     let mut reference: Option<DenseMatrix> = None;
-                    for threads in [1, 4] {
+                    for threads in [1, 4, 8] {
                         let pool = rayon::ThreadPoolBuilder::new()
                             .num_threads(threads)
                             .build()
@@ -2611,6 +2612,10 @@ mod tests {
                         solver.enable_coefficient_solver(threads).unwrap();
                         if prepared_coupling {
                             solver.enable_coefficient_coupling().unwrap();
+                            if coupling_kind == 2 {
+                                solver.coefficient_solver.as_mut().unwrap()
+                                    .force_compact_coupling_for_test();
+                            }
                         }
                         let capacity = solver.capacities();
                         assert!(ReusableMapAbsorber::coefficient_solver_bytes(

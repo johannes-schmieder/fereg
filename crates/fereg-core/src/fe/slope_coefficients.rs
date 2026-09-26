@@ -449,19 +449,27 @@ impl SlopeCoefficientWorkspace {
             worker.iterations = 0;
             worker.checks = 0;
         }
-        let (longer, shorter) = self.columns[..n * rhs].split_at_mut(split);
-        // Unequal contiguous blocks keep every worker busy without allocating
-        // a task list or changing any column's arithmetic or stopping rule.
-        longer
-            .par_chunks_mut(n * (width + 1))
-            .chain(shorter.par_chunks_mut(n * width))
-            .zip(self.workers[..active_workers].par_iter_mut())
-            .try_for_each(|(block, worker)| -> Result<()> {
-                for column in block.chunks_mut(n) {
-                    worker.solve(&operator, column, config)?;
-                }
-                Ok(())
-            })?;
+        if rhs == 1 && self.workers.len() > 1 {
+            // A response-only call leaves the other admitted column buffers
+            // idle. They can share compact operator products, just as in the
+            // joint finite/FE solve, without another workspace or recurrence.
+            let (worker, helpers) = self.workers.split_first_mut().expect("admitted worker");
+            worker.solve::<true>(&operator, &mut self.columns[..n], config, helpers)?;
+        } else {
+            let (longer, shorter) = self.columns[..n * rhs].split_at_mut(split);
+            // Unequal contiguous blocks keep every worker busy without allocating
+            // a task list or changing any column's arithmetic or stopping rule.
+            longer
+                .par_chunks_mut(n * (width + 1))
+                .chain(shorter.par_chunks_mut(n * width))
+                .zip(self.workers[..active_workers].par_iter_mut())
+                .try_for_each(|(block, worker)| -> Result<()> {
+                    for column in block.chunks_mut(n) {
+                        worker.solve::<false>(&operator, column, config, &mut [])?;
+                    }
+                    Ok(())
+                })?;
+        }
         for column in 0..rhs {
             for row in 0..n {
                 let value = (self.columns[column * n + row] * norms[column]) / self.roots[row];
@@ -632,7 +640,10 @@ impl Worker {
             && self.residual.iter().all(|x| x.is_finite())
             && self.projection_max.is_finite()
     }
-    fn solve(&mut self, op: &Operator<'_>, original: &mut [f64], config: MapConfig) -> Result<()> {
+    fn solve<const SHARE_PRODUCT: bool>(
+        &mut self, op: &Operator<'_>, original: &mut [f64], config: MapConfig,
+        helpers: &mut [Worker],
+    ) -> Result<()> {
         self.coefficients.fill(0.);
         self.observations.copy_from_slice(original);
         op.project_eliminated(&mut self.observations, &mut self.eliminated_scratch);
@@ -658,11 +669,17 @@ impl Worker {
                 break;
             }
             let curvature = match op.coupling.and_then(|c| {
-                c.apply(
-                    &self.direction,
-                    &mut self.product,
-                    &mut self.eliminated_scratch,
-                )
+                // Specialize at dispatch: routing every column through the
+                // helper-capable product penalizes the ordinary compact kernel
+                // even when no worker is available to share its work.
+                if SHARE_PRODUCT {
+                    c.apply_with_helpers(
+                        &self.direction, &mut self.product,
+                        &mut self.eliminated_scratch, helpers,
+                    )
+                } else {
+                    c.apply(&self.direction, &mut self.product, &mut self.eliminated_scratch)
+                }
             }) {
                 Some(curvature) => curvature,
                 None => {

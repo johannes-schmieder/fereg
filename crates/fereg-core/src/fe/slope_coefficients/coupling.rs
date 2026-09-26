@@ -689,10 +689,10 @@ impl PreparedCoupling {
         }
     }
 
-    /// Ordinary joint solving has one RHS; the other column workers are idle.
+    /// A single-RHS solve leaves the other column workers idle.
     /// Each owns a partial product. Merge in worker order before the unchanged
     /// curvature guard; only original-row reconstruction can accept a solve.
-    pub(super) fn apply_joint(
+    pub(super) fn apply_with_helpers(
         &self,
         input: &[f64],
         output: &mut [f64],

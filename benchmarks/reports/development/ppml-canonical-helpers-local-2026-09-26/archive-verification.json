@@ -1,0 +1,16 @@
+{
+  "logical_receipts": 11068,
+  "payloads": 2371,
+  "bytes": 13552399,
+  "sha256": "610b29c126e6f6dd105511bd542e805ff7b9dbcb6f23055aca8c0598630839b5",
+  "omitted_files": 1622,
+  "omission_policy": "Hash but omit generated DTA, binary row outputs and saved_outputs.csv; retain controllers, input fingerprints, complete scientific summaries and all attempt outcomes. Raw generated outputs remain local.",
+  "restored_logical_receipts": 11068,
+  "restored_hashes_verified": true,
+  "privacy_scan_passed": true,
+  "reviewed_source_literal_occurrences": 72,
+  "prior_archives_unchanged": {
+    "receipts-content-addressed.zip": "55692ae2fb9f7fdfd18bdbf73818f38250f939d3e1b774733c2bf7ad492465d9",
+    "final-receipts/receipts-content-addressed.zip": "04a59a1305da165a27abbd9bdc0350a1787e88fb6cd6a518f1f8505389c7ea28"
+  }
+}

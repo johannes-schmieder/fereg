@@ -905,6 +905,12 @@ sample/topology/weight-generation descriptor is charged with QR geometry.
 Generation equality permits reuse only through the owning PPML slope session;
 fresh residual checks remain mandatory and errors clear reuse authority.
 
+[ADR 0221](adr/0221-idle-workers-in-canonical-slope-products.md) lets a single-RHS
+canonical slope solve borrow idle column workers' existing product and eliminated-
+group scratch. It uses the same helper operation as ordinary joint directions;
+no new capacity, pool, allowance or geometry authority is introduced. Multiple
+RHS and single-worker calls retain the direct product kernel.
+
 The PPML plan charges this optional storage throughout the linear session,
 including refresh, ordinary solves, line search and strict checkpoints, and
 re-admits it after fresh telemetry. It is released before inference/recovery.

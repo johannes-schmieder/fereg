@@ -56,6 +56,14 @@ The public MAP-owned engine identity includes this slope kernel; its iteration
 count is the maximum column Krylov count, not a symmetric-MAP sweep count.
 Categorical, one-effect, mu-separation and public OLS routing are unchanged.
 
+Under [ADR 0221](adr/0221-idle-workers-in-canonical-slope-products.md), a canonical
+single-RHS slope solve can borrow idle admitted column workers for compact Schur
+products, using the existing joint-solve helper mechanism. Ordered partial-product
+merging precedes the unchanged curvature guard and fresh reconstruction checks.
+Multiple RHS and single-worker calls select the direct product at compile time
+within the same recurrence. No geometry lifetime, tolerance, certificate schedule
+or memory allowance changes.
+
 At retained PPML canonical rank construction, ADR 0190 permits a fresh full
 certificate before corrective absorption of the assembled finite residual.
 This entry requires already authorized current-weight coefficient geometry and
