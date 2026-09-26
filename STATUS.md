@@ -9,12 +9,104 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-The [next implementation](#next-implementation-current-input-start-and-prepared-model-work)
-is current-input cold initialization and prepared-model construction. Scheduled
-Poisson preparation and independent final replay are adopted. The broader solver
-improvements remain intact. Borrowed canonical controls (ADR 0209), blanket
-ordinary-solver replacement and rejected operator/extrapolation probes remain
-closed. Historical timings and pending directions do not transfer to this artifact.
+Direct first-partition cold initialization is adopted. The
+[next implementation](#next-implementation-borrow-bound-numeric-selection) is
+redundant generation-zero numeric selection, now separately measured. Prior solver
+and final-replay improvements remain intact. Rejected operator/extrapolation and
+borrowed-canonical-control probes remain closed. Historical timings do not transfer
+to this artifact; fresh seed 202609443 is consumed.
+
+## Direct first-partition PPML start adopted — 2026-09-25
+
+Retain **directstart1**, based on accepted **fd92efc2** plus the single Rust overlay
+`ppml/prepared_irls.rs`. All **566 computational inputs** match the tested artifact.
+Plugin SHA-256:
+`aab4f8976e164d0f48c18d1c0f6948cd0ebe435a9cc28bf12c017b317e16a832`.
+[ADR 0213](docs/adr/0213-direct-first-partition-ppml-start.md) and the
+[source-bound report](benchmarks/reports/development/ppml-direct-start-local-2026-09-25/README.md)
+preserve sources, distributions, independent science, failures, separate
+preparation attribution and **9,843 restored hash/privacy-verified receipts**.
+Archive SHA-256:
+`d606f71050291c5fed482ec5fe1b5169eb7e5571d364bbe8ad3a7d1f0ac4703d`.
+
+For cold publication multi-FE starts with intercepts in every partition, the
+first conditional group optimum analytically eliminates the global starting
+shift. Compute it directly from original offsets/outcomes/prior weights using
+the established guarded group arithmetic. Remaining intercept/slope proposals
+retain their order. Refusal lazily computes and restores the complete former
+global start. Explicit starts, Mu exploration, one/no FE and slope-only partitions
+retain their routes. The initial constant gauge is not final normalization.
+No certificate, tolerance, memory bank, allowance, pool or OLS path change.
+
+Clean production pilot B/C/stock medians: million-row fast **945/914/868 ms**,
+matched low **1044/1012/868**; improvements **3.3/3.1%**. Serial **561/553/943**;
+wide clustered factors **584/581/709**. Keep the two-slope three-FE loss
+**156/161/231**, the low two-slope tie **74/74/119**, and small three-FE
+**74/74/82**. Development B/C outcomes are **15 wins, six losses, three ties**.
+Four of seven multi-FE families meet 0.90 in every pair.
+
+Unchanged fresh **seed 202609443** confirms large fast **717->692 ms** and low
+**794->766**, both **3.5%** gains against baseline. Their stock mean comparisons
+miss six coordinates in each of five rotations (maximum tolerance ratios
+1.089/1.078); raw stock medians **761/760 ms remain unranked**. Five of the six
+scientifically comparable fresh families meet 0.90 in every pair: fast368640
+**477/660**, clustered factors **684/3221**, two slopes **195/296**, serial
+**554/938**, weak **124/855**. Four-slope low ties **119/119** with paired
+C/stock range 0.975–1.017. Fresh B/C outcomes: **35 wins, two losses, three ties**.
+Do not tune on 443 or recast unresolved stock clocks as parity evidence.
+
+Two clean diagnostic pairs reduce million-row initialization **53.58->20.90 ms**;
+the redundant global outcome/offset sums disappear. Four-slope initialization
+falls **6.80->5.42 ms**. Its geometry workers' roughly 44-ms summed duration
+represents about **5 ms wall time**; overlapping worker time is not additive.
+
+**115 focused Rust tests pass**, with one existing strict checkpoint-count
+assertion failure freshly reproduced on the accepted baseline in a distinct Cargo
+target (expected one rejection, observed zero). **Seven original licensed fixtures
+pass**, including independent categorical, slope/higher-dimensional, inference and
+transaction oracles. **223 completed PPML states**, **12 explicit Poisson/Hessian/
+sandwich checks** and all **73 complete B/C pairs** pass. Anchored comparisons
+128/142, with 46 incomplete planned pairs; direct C/stock including requested
+outputs 56/70, with 22 incomplete. Preserve the small full-output residual mismatch,
+protected one-FE mean mismatch and fresh large numeric mean mismatches. No new
+application failure; four pre-measurement stops and one detected overlap in the
+interrupted pilot remain archived. The complete unchanged repeat supplies pilot
+medians. No unrelated process was stopped.
+
+**12 OLS coefficient/covariance pairs are exact**. Medians B/C **64/66, 76/75, 14/14,
+210/210 ms** retain the small loss; no universal timing non-regression claim.
+Tracked peak and scratch deltas are zero; modeled bounds vary -48..+48 bytes.
+No physical-cap/platform qualification, inventory-drift repair, hidden-allocation
+wire-minor fixture repair, weighted constrained-fit/nonretaining-CG repair, frozen
+77/16/111 change, SCC retry, stopped-campaign restart, push or release.
+
+### Next implementation: borrow-bound numeric selection
+
+The separate **inputprofile1** accepted-baseline diagnostic has six clean,
+scientifically checked fits. Million-row fast/low core preparation is **60.3/60.6
+ms**: initial numeric classification **26.3/26.4**, FE cardinality preflight
+**4.2/4.3**, post-admission selection **29.2/29.3**, ownership transfer negligible.
+Initial generation construction is separate at **50.6/50.9 ms**, including shared
+categorical preparation **47.8/48.2**. Wide clustered-factor classification and
+selection cost **8.1/8.6 ms**; generation construction **33.2 ms**. Receipt recipes,
+identities and traces are archived under `next-preparation/`. Local work root is
+`target/ppml-prepared-input-20260925`; its diagnostic build is complete, all jobs
+terminal. No second production candidate has been implemented.
+
+Implement a borrow-bound classified-input owner/token, with a private constructor
+and unchanged original inputs, source roles, weight and adjustment frame held
+through memory admission and selection. If every candidate survived authoritative
+classification, fill the existing row map/drop ledger from the candidate mask
+without repeating all numeric validation. Scalar counts alone must never grant
+that authority. Preserve actual-drop paths, domain/error precedence, if/in masking,
+weight normalization, exposure handling, allocation capacities, pre-materialization
+admission and all changing-generation checks. Test against independently materialized
+selection and excluded/drop/error cases, then use a new frozen candidate and fresh
+seed. Do not widen into model-construction reuse before subdividing that separate
+boundary. Current large fast/low deficits to 0.90 stock are about **133/231 ms**;
+this 29-ms target alone cannot close them. Four-slope low still needs work around
+its roughly 45-ms canonical solves and 32-ms MAP absorption, not the overlapping
+geometry-worker sum. Keep the broader goal active.
 
 ## Scheduled Poisson preparation and final replay adopted — 2026-09-25
 

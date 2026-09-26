@@ -24,7 +24,12 @@ Cold publication initialization uses the bounded group optimum for one
 categorical FE (ADR 0028) and one conditional-coordinate sweep for multiple
 categorical FEs (ADR 0161). Multi-FE intercept-plus-slope models additionally
 receive safeguarded slope-coordinate proposals with profiled group intercepts
-under [ADR 0186](adr/0186-profiled-slope-poisson-start.md). Invalid seed arithmetic
+under [ADR 0186](adr/0186-profiled-slope-poisson-start.md). With an intercept in
+every partition, the first conditional optimum is computed directly from original
+offsets under [ADR 0213](adr/0213-direct-first-partition-ppml-start.md); the preceding
+global shift cancels analytically. The remaining conditional and slope proposals
+retain their order. The initial reported-constant gauge may be zero; canonical
+solving still establishes its final normalization. Invalid seed arithmetic
 restores the full global start; a declined coordinate retains the preceding
 finite guess. These starting guesses have no rank, convergence or final-Hessian
 authority; all independent acceptance requirements remain unchanged.

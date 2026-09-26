@@ -3830,14 +3830,8 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
         0.0,
         "unable to reserve prepared PPML initial coefficients",
     )?;
-    let shift = if prepared.fit_report_intercept() {
-        log_weighted_outcome_sum(outcome, prior_weights)?
-            - log_weighted_offset_sum(offset, prior_weights)?
-    } else {
-        0.0
-    };
+    let mut intercept_position = None;
     if prepared.fit_report_intercept() {
-        let mut found = false;
         for (position, coefficient) in prepared.fit_model().coefficients.iter().enumerate() {
             let Some(generated) = coefficient.generated_column_index else {
                 continue;
@@ -3849,17 +3843,16 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
                 )
             })?;
             if matches!(column.kind, PreparedOlsColumnKind::Intercept) {
-                if found {
+                if intercept_position.is_some() {
                     return Err(FeregError::new(
                         ErrorCode::Internal,
                         "prepared PPML model contains multiple reported structural constants",
                     ));
                 }
-                coefficient_values[position] = shift;
-                found = true;
+                intercept_position = Some(position);
             }
         }
-        if !found {
+        if intercept_position.is_none() {
             return Err(FeregError::new(
                 ErrorCode::Internal,
                 "prepared PPML reports a structural constant without an intercept slot",
@@ -3872,6 +3865,23 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
         "unable to reserve prepared PPML initial predictor",
     )?;
     if purpose == PreparedPpmlIrlsPurpose::Publication
+        && seed_multi_effect_predictor(
+            outcome, prior_weights, offset, fe_design, config.ppml, &mut eta,
+        )
+    {
+        // Absorbed intercepts represent the entire initial predictor. The
+        // reported constant may start at zero; canonical solving establishes
+        // its final normalization independently.
+        return Ok((coefficient_values, eta));
+    }
+    let shift = if intercept_position.is_some() {
+        log_weighted_outcome_sum(outcome, prior_weights)?
+            - log_weighted_offset_sum(offset, prior_weights)?
+    } else {
+        0.0
+    };
+    if let Some(position) = intercept_position { coefficient_values[position] = shift; }
+    if purpose == PreparedPpmlIrlsPurpose::Publication
         && seed_one_effect_predictor(
             outcome,
             prior_weights,
@@ -3883,9 +3893,10 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
     {
         return Ok((coefficient_values, eta));
     }
-    // An absorbed constant needs the global sum only when the group-optimal
-    // seed was unavailable. Its final normalization is owned by certification.
-    let shift = if prepared.fit_report_intercept() {
+    // The first conditional intercept eliminates the global starting shift.
+    // Compute that shift only when the complete provisional seed was refused;
+    // overwriting every row also discards any partially completed sweep.
+    let shift = if intercept_position.is_some() {
         shift
     } else {
         log_weighted_outcome_sum(outcome, prior_weights)?
@@ -3899,21 +3910,13 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
             ));
         }
     }
-    if purpose == PreparedPpmlIrlsPurpose::Publication
-        && !seed_multi_effect_predictor(outcome, prior_weights, fe_design, config.ppml, &mut eta)
-    {
-        // A rejected provisional sweep may have updated earlier groups. No
-        // accepted state exists yet; restore the entire original seed.
-        for row in 0..outcome.len() {
-            eta[row] = offset[row] + shift;
-        }
-    }
     Ok((coefficient_values, eta))
 }
 
 fn seed_multi_effect_predictor(
     outcome: &[f64],
     weights: &[f64],
+    offset: &[f64],
     design: &FeDesign,
     config: PpmlConfig,
     eta: &mut [f64],
@@ -3921,12 +3924,18 @@ fn seed_multi_effect_predictor(
     if design.effects().len() < 2 || design.effects().iter()
         .any(|effect| !effect.has_intercept())
     {
-        return true;
+        return false;
+    }
+    // Solve the first partition directly from original offsets. Its exact
+    // conditional optimum does not depend on a preceding global intercept.
+    // Reuse the guarded one-partition arithmetic, including log-space fallback.
+    if !seed_group_intercept_predictor(outcome, weights, offset, &design.effects()[0], config, eta) {
+        return false;
     }
     // Start with exact conditional intercepts, then one safeguarded Newton
     // update per slope with that intercept profiled out. These model-space
     // initial guesses have no rank, convergence or final-Hessian authority.
-    for effect in design.effects() {
+    for effect in &design.effects()[1..] {
         for level in 0..effect.n_levels() {
             let members = effect.level_index().members(level);
             let mut observed = CompensatedSum::default();
@@ -4055,6 +4064,17 @@ fn seed_one_effect_predictor(
     if !effect.has_intercept() || !effect.slopes().is_empty() {
         return false;
     }
+    seed_group_intercept_predictor(outcome, weights, offset, effect, config, eta)
+}
+
+fn seed_group_intercept_predictor(
+    outcome: &[f64],
+    weights: &[f64],
+    offset: &[f64],
+    effect: &crate::fe::EffectTerm,
+    config: PpmlConfig,
+    eta: &mut [f64],
+) -> bool {
     // At beta=0 each one-way intercept has an analytic Poisson optimum.
     // Evaluate both sums in log space; this is an initialization only, before
     // canonical rank freezing or any accepted IRLS state exists. A failed
@@ -6351,6 +6371,66 @@ mod tests {
     }
 
     #[test]
+    fn direct_first_partition_start_matches_independent_offset_poisson_truth() {
+        for dimensions in [2, 3, 4] {
+            let n = 2 * 2 * 3 * 2 * 2;
+            let codes: Vec<Vec<u32>> = (0..dimensions).map(|d| (0..n).map(|r|
+                ((r / [2, 4, 12, 24][d]) % [2, 3, 2, 2][d]) as u32).collect()).collect();
+            let offset: Vec<_> = (0..n).map(|r| if codes[0][r] == 0 { 1000.0 } else { -1000.0 }
+                + 0.05 * codes[1][r] as f64).collect();
+            let truth: Vec<_> = (0..n).map(|r| (0.05 * codes[1][r] as f64 +
+                (0..dimensions).map(|d| 0.2 * (d + 1) as f64 * codes[d][r] as f64).sum::<f64>()).exp()).collect();
+            // Paired outcome deviations give zero score for every explicit
+            // intercept and slope, independently specifying the Poisson optimum.
+            let y: Vec<_> = truth.iter().enumerate().map(|(r, m)| m * if r%2 == 0 { 0.8 } else { 1.2 }).collect();
+            let prepared = prepared(&y, &[]);
+            for slopes in [false, true] {
+                let effects = codes.iter().enumerate().map(|(d, c)|
+                    crate::fe::EffectTerm::new(c.clone(), [2,3,2,2][d], true,
+                        if slopes { vec![(0..n).map(|r| (0.37 * (r/2) as f64).sin()).collect(), vec![1.;n]] }
+                        else { vec![] }).unwrap()).collect();
+                let design = FeDesign::new(n, effects).unwrap();
+                for scale in [1e-150, 1., 1e150] {
+                    let q: Vec<_> = (0..n).map(|r| scale * (0..dimensions)
+                        .map(|d| 1.0 + 0.25 * codes[d][r] as f64).product::<f64>()).collect();
+                    let (beta, eta) = initialize(&prepared, &y, &q, &offset, &design,
+                        PreparedPpmlIrlsConfig::default(), None, PreparedPpmlIrlsPurpose::Publication).unwrap();
+                    assert!(beta.iter().all(|b| *b == 0.), "absorbed initial constant has a zero gauge");
+                    for (value, expected) in eta.iter().zip(&truth) {
+                        assert!((value.exp()-expected).abs() <= 1e-11*(1.0+expected));
+                    }
+                    for effect in design.effects() {
+                        for level in 0..effect.n_levels() {
+                            let score: f64 = effect.level_index().members(level).iter()
+                                .map(|&r| q[r]/scale*(y[r]-eta[r].exp())).sum();
+                            assert!(score.abs() < 1e-9);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn direct_first_partition_refusal_restores_global_after_later_partition_failure() {
+        let y = [1.,2.,0.,0.,3.,4.,0.,0.];
+        let q = [1.,2.,3.,4.,5.,6.,7.,8.];
+        let offset = [0.2,-0.3,0.7,-0.1,0.4,-0.5,0.1,0.9];
+        let design = FeDesign::new(8, vec![
+            crate::fe::EffectTerm::new(vec![0,0,0,0,1,1,1,1],2,true,vec![]).unwrap(),
+            crate::fe::EffectTerm::new(vec![0,0,1,1,0,0,1,1],2,true,vec![]).unwrap(),
+        ]).unwrap();
+        let mut eta = [0.;8];
+        assert!(seed_group_intercept_predictor(&y,&q,&offset,&design.effects()[0],PpmlConfig::default(),&mut eta));
+        assert!(!seed_multi_effect_predictor(&y,&q,&offset,&design,PpmlConfig::default(),&mut eta));
+        let prepared = prepared(&y, &[]);
+        let run = |purpose| initialize(&prepared,&y,&q,&offset,&design,
+            PreparedPpmlIrlsConfig::default(),None,purpose).unwrap();
+        assert_eq!(run(PreparedPpmlIrlsPurpose::Publication),
+            run(PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance:1e-4 }));
+    }
+
+    #[test]
     fn stable_initialization_handles_large_offsets() {
         let outcome = [0.0, 2.0, 8.0];
         let weights = [1.0, 3.0, 0.5];
@@ -6443,7 +6523,7 @@ mod tests {
                 let total: f64 = outcome.iter().zip(&weights).map(|(y,w)| y*w).sum();
                 let initial = (total / weights.iter().sum::<f64>()).ln();
                 let mut eta = vec![initial; n];
-                assert!(seed_multi_effect_predictor(&outcome, &weights, &design, PpmlConfig::default(), &mut eta));
+                assert!(seed_multi_effect_predictor(&outcome, &weights, &vec![0.; n], &design, PpmlConfig::default(), &mut eta));
                 for (value, expected) in eta.iter().zip(&truth) {
                     assert!((value.exp()-expected).abs() <= 1e-12*(1.0+expected));
                 }
@@ -6503,7 +6583,7 @@ mod tests {
                 let total: f64 = outcome.iter().zip(&weights).map(|(y, w)| y * w).sum();
                 let initial = (total / weights.iter().sum::<f64>()).ln();
                 let mut eta = vec![initial; n];
-                assert!(seed_multi_effect_predictor(&outcome, &weights, &design,
+                assert!(seed_multi_effect_predictor(&outcome, &weights, &vec![0.; n], &design,
                     PpmlConfig::default(), &mut eta));
                 for (value, expected) in eta.iter().zip(&truth) {
                     assert!((value.exp() - expected).abs() <= 1e-12 * (1.0 + expected));
@@ -6549,7 +6629,7 @@ mod tests {
         assert_eq!(coefficients, start.coefficient_values);
         assert_eq!(warm, start.eta);
         let mut refused = global.clone();
-        assert!(seed_multi_effect_predictor(&outcome, &weights, &make_design(false),
+        assert!(!seed_multi_effect_predictor(&outcome, &weights, &offset, &make_design(false),
             config.ppml, &mut refused));
         assert_eq!(refused, global, "a slope-only partition retains the prior route");
         for y in [[1.,2.,3.,4.,0.,0.,0.,0.], [2.;8]] {
@@ -6560,7 +6640,7 @@ mod tests {
             assert_eq!(run(PreparedPpmlIrlsPurpose::Publication), run(mu));
         }
         let mut eta = global;
-        assert!(!seed_multi_effect_predictor(&[2.;8], &[1e308;8], &design,
+        assert!(!seed_multi_effect_predictor(&[2.;8], &[1e308;8], &offset, &design,
             config.ppml, &mut eta));
     }
 
@@ -6576,7 +6656,7 @@ mod tests {
         let mut eta = offset;
         let objective = |e: &[f64]| (0..8).map(|r| weights[r]*(outcome[r]*e[r]-e[r].exp())).sum::<f64>();
         let before = objective(&eta);
-        assert!(seed_multi_effect_predictor(&outcome, &weights, &design, PpmlConfig::default(), &mut eta));
+        assert!(seed_multi_effect_predictor(&outcome, &weights, &offset, &design, PpmlConfig::default(), &mut eta));
         assert!(objective(&eta) > before);
         for group in [vec![0,1,4,5],vec![2,3,6,7]] {
             let score: f64 = group.iter().map(|&r| weights[r]*(outcome[r]-eta[r].exp())).sum();
@@ -6595,10 +6675,10 @@ mod tests {
             PreparedPpmlIrlsPurpose::Publication).unwrap();
         assert_eq!(publication,global);
         let mut unusable = [0.;8];
-        assert!(!seed_multi_effect_predictor(&[2.;8],&[1e308;8],&design,config.ppml,&mut unusable));
+        assert!(!seed_multi_effect_predictor(&[2.;8],&[1e308;8],&[0.;8],&design,config.ppml,&mut unusable));
         let mut bounded = PpmlConfig::default();
         bounded.bounds.eta_max = 0.01;
-        assert!(!seed_multi_effect_predictor(&[2.;8],&[1.;8],&design,bounded,&mut unusable));
+        assert!(!seed_multi_effect_predictor(&[2.;8],&[1.;8],&[0.;8],&design,bounded,&mut unusable));
     }
 
     #[test]
