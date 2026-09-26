@@ -10,7 +10,7 @@
 use std::mem::size_of;
 use std::time::{Duration, Instant};
 
-use super::family::{means_from_eta, objective_tile_rows, PreparedPoissonInputs};
+use super::family::{means_from_eta, objective_partial_cells, PreparedPoissonInputs};
 #[cfg(test)]
 use super::family::{fill_poisson_working_state, poisson_objective_from_eta};
 use super::{
@@ -1409,16 +1409,15 @@ fn estimate_route(
     } else {
         0
     };
-    let objective_tile_cells = checked_mul(
-        objective_tile_rows(dimensions.observations, dimensions.threads) as u128,
-        2, "PPML objective tile cells",
-    )?;
+    let objective_partials_cells = objective_partial_cells(
+        dimensions.observations, dimensions.threads,
+    ) as u128;
     let iteration_buffer_bytes = bytes_f64(checked_sum(&[checked_mul(
         n,
         // Two immutable outcome terms live beside the eight mutable buffers.
         ITERATION_VECTOR_COUNT + 2,
         "PPML reusable iteration vectors",
-    )?, objective_tile_cells])?)?;
+    )?, objective_partials_cells])?)?;
     let coefficient_buffer_bytes = bytes_f64(checked_mul(
         coefficient_slots,
         COEFFICIENT_VECTOR_COUNT,
@@ -2522,7 +2521,7 @@ pub struct PpmlIterationWorkspace {
     trial_eta: Vec<f64>,
     trial_mean: Vec<f64>,
     score_residuals: Vec<f64>,
-    objective_tile: Vec<f64>,
+    objective_partials: Vec<f64>,
     coefficients: Vec<f64>,
     candidate_coefficients: Vec<f64>,
     trial_coefficients: Vec<f64>,
@@ -2598,10 +2597,9 @@ impl PpmlIterationWorkspace {
             trial_eta: fallible_filled(n, 0.0, "PPML line-search eta buffer")?,
             trial_mean: fallible_filled(n, 0.0, "PPML line-search mean buffer")?,
             score_residuals: fallible_filled(n, 0.0, "PPML score-residual buffer")?,
-            objective_tile: fallible_filled(
-                objective_tile_rows(n, plan.dimensions.threads).checked_mul(2)
-                    .ok_or_else(|| allocation("PPML objective tile length overflows"))?,
-                0.0, "PPML objective row tile",
+            objective_partials: fallible_filled(
+                objective_partial_cells(n, plan.dimensions.threads),
+                0.0, "PPML objective partial sums",
             )?,
             coefficients,
             candidate_coefficients: fallible_filled(k, 0.0, "PPML candidate-coefficient buffer")?,
@@ -2946,21 +2944,21 @@ impl PpmlIterationWorkspace {
         &mut self, inputs: &PreparedPoissonInputs<'_>, bounds: PoissonBounds,
     ) -> Result<PoissonObjective> {
         inputs.fill_means(&self.candidate_eta, bounds, &mut self.trial_mean)?;
-        let objective = inputs.evaluate_tiled(&self.candidate_eta, &self.trial_mean, &mut self.objective_tile)?;
+        let objective = inputs.evaluate_tiled(&self.candidate_eta, &self.trial_mean, &mut self.objective_partials)?;
         self.certify_steady_state_capacity()?;
         Ok(objective)
     }
 
     pub(crate) fn evaluate_current_objective(&mut self, inputs: &PreparedPoissonInputs<'_>) -> Result<PoissonObjective> {
-        inputs.evaluate_tiled(&self.eta, &self.mean, &mut self.objective_tile)
+        inputs.evaluate_tiled(&self.eta, &self.mean, &mut self.objective_partials)
     }
 
     pub(super) fn evaluate_trial_objective(&mut self, inputs: &PreparedPoissonInputs<'_>) -> Result<PoissonObjective> {
-        inputs.evaluate_tiled(&self.trial_eta, &self.trial_mean, &mut self.objective_tile)
+        inputs.evaluate_tiled(&self.trial_eta, &self.trial_mean, &mut self.objective_partials)
     }
 
     pub(super) fn evaluate_external_objective(&mut self, inputs: &PreparedPoissonInputs<'_>, eta: &[f64], mean: &[f64]) -> Result<PoissonObjective> {
-        inputs.evaluate_tiled(eta, mean, &mut self.objective_tile)
+        inputs.evaluate_tiled(eta, mean, &mut self.objective_partials)
     }
 
     /// Accept the already-certified trial by swapping observation buffers and
@@ -3067,7 +3065,7 @@ impl PpmlIterationWorkspace {
                 + self.trial_eta.capacity()
                 + self.trial_mean.capacity()
                 + self.score_residuals.capacity()
-                + self.objective_tile.capacity(),
+                + self.objective_partials.capacity(),
             coefficient_capacity_sum: self.coefficients.capacity()
                 + self.candidate_coefficients.capacity()
                 + self.trial_coefficients.capacity(),
@@ -3602,7 +3600,7 @@ impl PpmlMemoryTelemetry {
                 .dimensions
                 .observations
                 .checked_mul(ITERATION_VECTOR_COUNT as usize)
-                .and_then(|n| objective_tile_rows(self.plan.dimensions.observations, self.plan.dimensions.threads).checked_mul(2).and_then(|tile| n.checked_add(tile)))
+                .and_then(|n| n.checked_add(objective_partial_cells(self.plan.dimensions.observations, self.plan.dimensions.threads)))
                 .ok_or_else(|| allocation("PPML workspace observation capacity overflows"))?;
             let minimum_coefficient_capacity = self
                 .plan
@@ -3833,19 +3831,19 @@ mod tests {
     }
 
     #[test]
-    fn objective_row_tile_is_charged_beside_all_iteration_vectors() {
+    fn objective_partial_bank_is_charged_beside_all_iteration_vectors() {
         for threads in [1, 4, 8] {
             let shape = PpmlMemoryDimensions { threads, ..dimensions() };
             let estimate = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
-            let rows = objective_tile_rows(shape.observations, threads);
-            let expected = (10 * shape.observations as u128 + 2 * rows as u128) * 8;
+            let cells = objective_partial_cells(shape.observations, threads);
+            let expected = (10 * shape.observations as u128 + cells as u128) * 8;
             assert_eq!(estimate.fast.iteration_buffer_bytes, expected);
             assert_eq!(estimate.low.iteration_buffer_bytes, expected);
             let plan = plan_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
             let workspace = PpmlIterationWorkspace::new(plan, &vec![0.; shape.observations]).unwrap();
-            assert_eq!(workspace.objective_tile.len(), 2 * rows);
-            assert_eq!(workspace.objective_tile.capacity(), 2 * rows);
-            assert_eq!(workspace.capacity_report().observation_capacity_sum, 8 * shape.observations + 2 * rows);
+            assert_eq!(workspace.objective_partials.len(), cells);
+            assert_eq!(workspace.objective_partials.capacity(), cells);
+            assert_eq!(workspace.capacity_report().observation_capacity_sum, 8 * shape.observations + cells);
             workspace.certify_steady_state_capacity().unwrap();
         }
     }

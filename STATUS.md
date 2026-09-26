@@ -9,12 +9,108 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-**The response-statistics experiment is closed and rejected.** Production remains
-exactly **residualrows2**, accepted at **ceb8f53d**, with all **567 computational
-inputs matching**. The next boundary is the shared accepted eta/mean and working-
-state lifecycle, not further canonical statistic/packing tuning. Fresh seed
-**202609448** is consumed; do not tune on it or earlier frozen validation seeds.
-No candidate or task-owned job is pending.
+**The fixed compensated objective-block implementation is accepted.** Production
+matches all **567 computational inputs of objectiveblocks1**, based on
+**826bcdfd** plus the two captured PPML family/workspace overlays. The next
+boundary is the independent outer score certificate, not accepted-mean caching
+or further family block-size tuning. Fresh seed **202609449** is consumed; do
+not tune on it or earlier frozen validation seeds. No task-owned job is pending.
+
+## Compensated PPML objective blocks accepted — 2026-09-26
+
+[ADR 0219](docs/adr/0219-compensated-ppml-objective-blocks.md) supersedes ADR 0179's
+intermediate-objective serial-fold implementation. Fixed 4096-row blocks form
+compensated deviance/likelihood sums on the existing team, followed by an ordered
+merge of both sums and corrections. Boundaries do not depend on thread count or
+workspace size. Nonfinite accumulation replays the original scalar evaluation.
+Small/T1 calls retain scalar work. The independent uncached final objective/null
+replay, fresh current-state scores, projection/rank/model-space/reconstruction,
+consecutive convergence and final-Hessian checks remain unchanged. No tolerance,
+sample, weight, DoF, inference, separation or publication policy changes.
+
+Candidate plugin SHA-256:
+`fe596205eef0faf28680d6682a778ad3f871e9530d57fd9b361ebf36cce84c04`.
+The [source-bound report](benchmarks/reports/development/ppml-objective-blocks-local-2026-09-26/README.md)
+retains all identities, ordered distributions, losses and **10,616 restored
+hash/privacy-verified receipts**. Archive SHA-256:
+`f5c9d9bc12376775673e61a5ccd921df8278c63b3d710556d24137c62e861aab`.
+Work root: `target/ppml-working-state-20260926`. All 567 final computational
+inputs match the measured candidate; no computational edits followed its build.
+
+Finer baseline profiling found only a few avoidable milliseconds in accepted-
+mean recomputation, so no accepted-point cache was implemented. Paired
+stateprofile1/stateprofile2 diagnostics reduce large objective work
+**32.093->22.322 ms fast**, **31.866->25.387 low**. Whole diagnostic plugin
+**872.349/855.506**, **917.960/916.824**. The factor diagnostic whole-plugin loss
+**495.420/512.222** remains visible; nested spans are not additive. Stock headline
+clocks use only uninstrumented artifacts.
+
+Pilot B/C/stock medians: million low **938/934/865**, fast **864/846/868**,
+two slopes low **70/72/122**, three-FE two slopes **150/152/231**, factors
+**570/569/702**, serial **547/550/951**. **9 wins, 7 losses, 2 ties**;
+four of six comparable families meet 0.90 stock in every pair. Million fast/low
+still need **64.8/155.5 ms** to reach the median target.
+
+Fresh seed202609449, five rotations: large fast **672/666/782**, low
+**724/715/772**, T4 fast **462/457/667**, factors **625/623/3253**,
+three-FE two slopes **192/193/300**, four slopes low **119/119/115**, serial
+**557/557/964**, weak **134/134/789**, disconnected low **94/93/99**.
+**22 native wins, 16 losses, 7 ties**. The first two stock comparisons are
+unranked: six mean coordinates exceed the unchanged comparison envelope in each
+repetition, maximum about 5.51e-7 /1.303 times tolerance. Both native arms show
+the discrepancy and have exact exports; all individual public-state checks pass.
+Do not attribute the difference or loosen the envelope. Five of seven comparable
+fresh families meet 0.90 in every pair. Four-slope low and disconnected low still
+need **15.5/3.9 ms** at their medians.
+
+Accept this modest shared improvement for reliable large-case median savings
+(**0.4–2.1%** pilot, **0.9–1.2%** fresh native), small complexity and lower
+memory. Small controls remain mixed. OLS B/C **66/65, 77/77, 16/15, 211/209,
+159/162, 18/17**; one predeclared identical-input repeat of the slower large case
+is **162/160**, three wins/one loss/one tie. The initial loss does not reproduce;
+one 7-ms follow-up loss remains. No layout, threshold, guard or seed tuning.
+
+**135 focused Rust tests**, **11 licensed fixtures**, **237 public-state audits**
+and **12 explicit Poisson/Hessian/sandwich comparisons** pass. Real T4 categorical
+and slope 16-iteration audits have zero allocation events and growth. All
+**79 native PPML and 23 OLS export pairs are exact**. Anchored comparisons
+**135/146**, direct C/stock **56/67**; the older small saved-output discrepancy
+and ten fresh large stock discrepancies remain unranked. No application failure,
+timeout, incomplete pair, interruption or detected contention occurred.
+
+The inherited checkpoint-count test fails identically (0 versus 1) on the
+candidate and isolated exact baseline. Initial prototype tests and a corrected
+pre-fit declaration filename error are preserved; the OLS declaration's stale
+purpose prose has an explicit adjudication, leaving its original receipt intact.
+Other fields and computational artifacts were correct.
+
+The objective bank falls **512 KiB->256 bytes T8**, **256 KiB->128 bytes T4**.
+Observed and selected modeled peaks decrease **0..524,032 bytes**; scratch peaks
+are unchanged. Separation phase model bounds vary -48..+48 bytes. Independent
+final-replay storage and other allowances are unchanged. No physical-cap or
+cross-platform qualification is claimed. Known static inventory drift,
+wire-minor/checkpoint-count failures, weighted constrained-fit/nonretaining-CG
+failures, SCC deferral, stopped campaigns and frozen 77/16/111 definitions remain
+unchanged. No push or release.
+
+### Next implementation: independent outer score construction
+
+The next measured boundary is `prepared_score_certificate` in
+`ppml/prepared_irls.rs`, about **40 ms** on the million-row fits. Separate scale,
+finite-column and FE-channel costs first. Current finite columns run concurrently;
+scale sums and each FE partition's observation scan remain serial. Do not assume
+all 40 ms are avoidable or reuse projected/Newton products as independent scores.
+
+Test coherent fresh-original-input score/norm batching and parallel ownership
+of disjoint FE directions using immutable membership indices and existing banks.
+If membership gathers lose locality, consider bounded admitted row partials.
+Preserve mathematical normalization, all current-state checks and their frequency,
+allocation-free warmed work, first-error behavior and independent mathematical
+oracles. Validate recurrence changes by the established envelopes, rather than
+requiring old arithmetic bits. Protect T1, slopes, categorical, generated terms,
+low-memory and OLS with bounded rotations. Four-slope low canonical preparation
+(~46 ms here) is a separate substantial target. Do not revisit closed canonical
+handoffs or tune family block sizes to consume another few milliseconds.
 
 ## Canonical response-statistics experiment rejected — 2026-09-26
 

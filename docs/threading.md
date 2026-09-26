@@ -78,9 +78,12 @@ The Stata PPML adapter keeps native work in one scoped task after input loading
 the Stata calling thread. Workers never receive the SPI callback. Both peers
 close on unwind, and the scope joins before publication or ABI error handling.
 This avoids repeated external Rayon queue submissions during ordinary IRLS.
-Prepared family rows use that installed team; objective tiles retain both
-compensated reductions in original observation order. Small and T1 calls keep
-scalar family evaluation, and T1 adapter execution stays on the calling thread.
+Prepared family rows use that installed team. IRLS objectives use fixed
+4096-row compensated blocks and an ordered merge of sums and corrections
+(ADR 0219), independent of scheduling and bank capacity. Independent final
+objective replay retains its original row-order reduction (ADR 0212). Small
+and T1 calls keep scalar family evaluation; T1 adapter execution stays on the
+calling thread.
 
 ## SPI prohibition
 

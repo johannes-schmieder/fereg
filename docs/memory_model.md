@@ -957,12 +957,15 @@ and fit-lifetime reservation; low mode still retains its bounded scratch pool.
 
 ## Bounded PPML family contribution tiles
 
-[ADR 0179](adr/0179-scoped-ppml-family-execution.md) adds a mutable objective
-contribution tile of 16*min(N,4096*T) bytes when N>=4096 and T>1, zero otherwise.
-Fast and low plans charge it beside the eight mutable and two immutable family
-vectors; capacity telemetry includes the tile. Its rows are scratch, never
-accepted point, Hessian or generation authority. Two ordered compensated sums
-consume the tiles without changing the numerical reduction order.
+[ADR 0219](adr/0219-compensated-ppml-objective-blocks.md) replaces ADR 0179's
+IRLS objective row tile with a partial-sum bank of 32*min(T,ceil(N/4096)) bytes
+when N>=4096 and T>1, zero otherwise. Fast and low plans charge it beside the
+eight mutable and two immutable family vectors; telemetry includes actual
+capacity. Each fixed observation block produces deviance and likelihood sums
+and corrections, merged separately in block order. Partial sums are scratch,
+never accepted point, Hessian or generation authority. Nonfinite accumulation
+replays the original scalar evaluation. This bank does not replace the separate
+independent final replay tile below.
 
 The Stata adapter's single scoped native task uses a stack-owned callback
 exchange. Its live Rayon job is captured in the embedding allocation snapshot

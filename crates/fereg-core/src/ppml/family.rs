@@ -13,6 +13,18 @@ pub(super) fn objective_tile_rows(rows: usize, threads: usize) -> usize {
     }
 }
 
+// One compensated sum/correction pair for each of deviance and likelihood.
+// Each worker handles fixed 4096-row blocks; their ordered merge is independent
+// of the number of partials that fit in this reusable bank.
+pub(super) fn objective_partial_cells(rows: usize, threads: usize) -> usize {
+    if threads <= 1 || rows < FAMILY_ROWS_PER_WORKER {
+        0
+    } else {
+        // The row-derived bound keeps this multiplication addressable.
+        4 * threads.min(rows.div_ceil(FAMILY_ROWS_PER_WORKER))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct PoissonBounds {
     pub(crate) eta_min: f64,
@@ -385,35 +397,56 @@ impl<'a> PreparedPoissonInputs<'a> {
         poisson_objective_with_terms(self.outcome, Some(eta), mean, self.prior_weights, Some(&self.terms))
     }
 
-    pub(crate) fn evaluate_tiled(&self, eta: &[f64], mean: &[f64], tile: &mut [f64]) -> Result<PoissonObjective> {
-        let Some(team) = self.team.as_ref().filter(|_| !tile.is_empty()) else {
+    pub(crate) fn evaluate_tiled(&self, eta: &[f64], mean: &[f64], partials_storage: &mut [f64]) -> Result<PoissonObjective> {
+        let Some(team) = self.team.as_ref().filter(|_| !partials_storage.is_empty()) else {
             return self.evaluate(eta, mean);
         };
-        if eta.len() != self.outcome.len() || mean.len() != self.outcome.len() || tile.len() % 2 != 0 {
-            return Err(FeregError::new(ErrorCode::InvalidArgument, "Poisson objective tile or inputs are misaligned"));
+        if eta.len() != self.outcome.len() || mean.len() != self.outcome.len() || partials_storage.len() % 4 != 0 {
+            return Err(FeregError::new(ErrorCode::InvalidArgument, "Poisson objective partials or inputs are misaligned"));
+        }
+        let blocks = self.outcome.len().div_ceil(FAMILY_ROWS_PER_WORKER);
+        let bank_blocks = (partials_storage.len() / 4).min(blocks);
+        if bank_blocks == 0 {
+            return self.evaluate(eta, mean);
         }
         let mut deviance = CompensatedSum::default();
         let mut likelihood = CompensatedSum::default();
-        let rows = tile.len() / 2;
-        for first in (0..self.outcome.len()).step_by(rows) {
-            let count = rows.min(self.outcome.len() - first);
-            let buffer = &mut tile[..2 * count];
-            let failure = team.install(|| buffer.par_chunks_mut(2).enumerate()
-                .with_min_len(256)
-                .map(|(i, output)| -> Result<()> {
-                    let terms = objective_row(self.outcome, Some(eta), mean, self.prior_weights, Some(&self.terms), first + i)?;
-                    output.copy_from_slice(&terms);
+        for first in (0..blocks).step_by(bank_blocks) {
+            let count = bank_blocks.min(blocks - first);
+            let partials = &mut partials_storage[..4 * count];
+            let failure = team.install(|| partials.par_chunks_mut(4).enumerate()
+                .map(|(block, output)| -> Result<()> {
+                    let begin = (first + block) * FAMILY_ROWS_PER_WORKER;
+                    let end = begin.saturating_add(FAMILY_ROWS_PER_WORKER).min(self.outcome.len());
+                    let mut deviance = CompensatedSum::default();
+                    let mut likelihood = CompensatedSum::default();
+                    for row in begin..end {
+                        let values = objective_row(self.outcome, Some(eta), mean, self.prior_weights,
+                            Some(&self.terms), row)?;
+                        deviance.add(values[0]);
+                        likelihood.add(values[1]);
+                    }
+                    output.copy_from_slice(&[deviance.sum, deviance.correction,
+                        likelihood.sum, likelihood.correction]);
                     Ok(())
                 }).find_first(Result::is_err));
             if let Some(result) = failure { result?; }
-            // Keep the original observation order and both compensated chains.
-            // The scratch bank carries no accepted point or Hessian authority.
-            for values in buffer.chunks_exact(2) {
+            // Fixed observation blocks and an ordered compensated merge make
+            // reduction independent of scheduling and workspace capacity. Keep
+            // corrections separate until merging; no rounded partial totals.
+            if partials.iter().any(|value| !value.is_finite()) {
+                return self.evaluate(eta, mean);
+            }
+            for values in partials.chunks_exact(4) {
                 deviance.add(values[0]);
-                likelihood.add(values[1]);
+                deviance.add(values[1]);
+                likelihood.add(values[2]);
+                likelihood.add(values[3]);
             }
         }
-        finish_objective(deviance, likelihood)
+        // Block overflow is not proof that the original ordered sum fails.
+        // Preserve its finite/error behavior on exceptional arithmetic.
+        finish_objective(deviance, likelihood).or_else(|_| self.evaluate(eta, mean))
     }
 
     pub(crate) fn fill_means(&self, eta: &[f64], bounds: PoissonBounds, mean: &mut [f64]) -> Result<()> {
@@ -919,7 +952,7 @@ mod tests {
             for threads in [1, 4, 8, 1] {
                 let config = ThreadConfig::from_requested(threads, true).unwrap();
                 let inputs = PreparedPoissonInputs::new_with_threads(&y, &q, &offset, config).unwrap();
-                let mut tile = vec![f64::NAN; 2 * objective_tile_rows(n, threads)];
+                let mut tile = vec![f64::NAN; objective_partial_cells(n, threads)];
                 let allocation = (tile.as_ptr(), tile.capacity());
                 for shift in [-0.4_f64, 0., 0.3, 1.] {
                     let eta: Vec<_> = y.iter().map(|&y| (y + 0.7).ln() + shift).collect();
@@ -946,6 +979,64 @@ mod tests {
     }
 
     #[test]
+    fn block_objectives_match_analytic_poisson_and_are_partition_reproducible() {
+        for n in [4096, 4097, 17003] {
+            for weight_scale in [2_f64.powi(-600), 1., 2_f64.powi(600)] {
+                // y=0, mu=1 has exactly D=2*sum(q), log L=-sum(q).
+                // Integer periodic weights give an independent closed-form sum.
+                let y = vec![0.; n];
+                let q: Vec<_> = (0..n).map(|i| (1 + i % 7) as f64 * weight_scale).collect();
+                let eta = vec![0.; n];
+                let mean = vec![1.; n];
+                let offset = vec![0.; n];
+                let remainder = n % 7;
+                let mass = (28 * (n / 7) + remainder * (remainder + 1) / 2) as f64 * weight_scale;
+                let mut first = None;
+                for threads in [2, 3, 8] {
+                    let inputs = PreparedPoissonInputs::new_with_threads(&y, &q, &offset,
+                        ThreadConfig::from_requested(threads, true).unwrap()).unwrap();
+                    for cells in [4, 8, 32, objective_partial_cells(n, threads)] {
+                        let mut workspace = vec![f64::NAN; cells];
+                        let allocation = (workspace.as_ptr(), workspace.capacity());
+                        let actual = inputs.evaluate_tiled(&eta, &mean, &mut workspace).unwrap();
+                        assert_eq!(actual.deviance, 2. * mass);
+                        assert!((actual.log_likelihood + mass).abs() <= 16. * f64::EPSILON * mass);
+                        if let Some(expected) = first { assert_eq!(actual, expected); } else { first = Some(actual); }
+                        assert_eq!(inputs.evaluate_tiled(&eta, &mean, &mut workspace).unwrap(), actual);
+                        assert_eq!((workspace.as_ptr(), workspace.capacity()), allocation);
+                    }
+                }
+            }
+        }
+        assert_eq!(objective_partial_cells(4095, 8), 0);
+        assert_eq!(objective_partial_cells(4096, 8), 4);
+        assert_eq!(objective_partial_cells(17003, 8), 20);
+        assert_eq!(objective_partial_cells(1_000_000, 8), 32);
+        assert_eq!(objective_partial_cells(usize::MAX, 1), 0);
+        assert_eq!(objective_partial_cells(usize::MAX, usize::MAX), 4 * usize::MAX.div_ceil(4096));
+    }
+
+    #[test]
+    fn block_objective_overflow_retains_scalar_errors_and_later_row_failures() {
+        let n = 17003;
+        let y = vec![0.; n];
+        let q = vec![2_f64.powi(1015); n];
+        let eta = vec![0.; n];
+        let offset = vec![0.; n];
+        let inputs = PreparedPoissonInputs::new_with_threads(&y, &q, &offset,
+            ThreadConfig::from_requested(4, true).unwrap()).unwrap();
+        for bad_row in [None, Some(4097), Some(16_801)] {
+            let mut mean = vec![1.; n];
+            if let Some(row) = bad_row { mean[row] = 0.; }
+            let expected = inputs.evaluate(&eta, &mean).unwrap_err();
+            for cells in [4, 8, 32] {
+                let actual = inputs.evaluate_tiled(&eta, &mean, &mut vec![0.; cells]).unwrap_err();
+                assert_eq!(actual, expected);
+            }
+        }
+    }
+
+    #[test]
     fn scheduled_family_errors_preserve_first_observation_and_can_retry() {
         let n = 17003;
         let y = vec![2.; n];
@@ -953,7 +1044,7 @@ mod tests {
         let offset = vec![0.; n];
         let inputs = PreparedPoissonInputs::new_with_threads(
             &y, &q, &offset, ThreadConfig::from_requested(4, true).unwrap()).unwrap();
-        let mut tile = vec![0.; objective_tile_rows(n, 4) * 2];
+        let mut tile = vec![0.; objective_partial_cells(n, 4)];
         for first in [300, 16401] {
             let mut mean = vec![1.; n];
             mean[first] = 0.;
