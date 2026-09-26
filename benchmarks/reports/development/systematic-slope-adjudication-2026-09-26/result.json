@@ -1,0 +1,254 @@
+{
+  "all_science_pass": true,
+  "plan": {
+    "cases": [
+      [
+        "ols-three_fe_sparse-n61440-k10-t28-slopes_fast",
+        "reghdfe"
+      ],
+      [
+        "ppml-three_fe_sparse-n61440-k10-t28-slopes_fast",
+        "fixest_strict"
+      ],
+      [
+        "ppml-three_fe_sparse-n61440-k6-t4-slopes_low",
+        "fixest_strict"
+      ]
+    ],
+    "diagnostic_id": "6338cbdbcb8c6ed8862d5135af79cfcae52c3a20e84e85d68bdb801e181e58a6",
+    "job_id": "7747280",
+    "oracle_wall_limit": 1800,
+    "parent_fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+    "purpose": "Scientific adjudication only; no cross-node timing pairing",
+    "reference_command_limit": 1800,
+    "schema": "pilot-slope-adjudication-v1",
+    "slots": "28",
+    "source": {
+      "explicit_slope_oracle.py": "f84c442f4819d4f96bd8eea72a6a3a79f3237ce344810cb41c0a4078fc3ee1ea",
+      "job.sh": "05adc7887172af37947f4840c30f62fa55076a44aa2060757938a566b7264f7c",
+      "run.py": "f192d208ce6cb43d54503a774613bc6725873c821bb671179165089f11650501",
+      "test_explicit_slope_oracle.py": "1bd080f5e778f5675c672d4e217815e6b2d3eed8af52c28c0598ccb3db8bd3fc"
+    }
+  },
+  "records": [
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ols",
+        "n": 61440,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 28
+      },
+      "native": {
+        "checks": {
+          "N": true,
+          "coefficients": true,
+          "converged": true,
+          "covariance": true,
+          "df_r": true,
+          "objective": true,
+          "sample": true
+        },
+        "max_coefficient_error": 8.881784197001252e-16,
+        "max_covariance_error": 1.5956314016147904e-19,
+        "objective_error": -3.637978807091713e-12,
+        "status": "pass"
+      },
+      "native_output_hashes": {
+        "coefficients.csv": "10a165bd2e3cf0fd9c7d383e8c166acb56927ded7ae0956c31fa735f063cb161",
+        "covariance.csv": "0def60b71b11bb83c1ad26c7fcc21854b86ff9a6b78264827b4a7c922b4b4ffb"
+      },
+      "native_result_sha256": "b824ec30e27aee52b957165a82a6c14bdfdc08d903a354073d2c1908dd3f85b1",
+      "oracle_sha256": "07e3d43fb2e6886479d1fd91a77f7cc37a585306421178add52333c304b926a5",
+      "oracle_status": "pass",
+      "original_group_sha256": "e3bc0052816b52aeeefe8fa72073c060bfb01e6cde262282e4b6361c4f3b03e7",
+      "original_input_sha256": "60c2767561a8464d372ae6bcae472162762ecbf37071b6bc34469018fac55d1b",
+      "reference": {
+        "checks": {
+          "N": true,
+          "coefficients": true,
+          "converged": true,
+          "covariance": true,
+          "df_r": true,
+          "objective": true,
+          "sample": true
+        },
+        "max_coefficient_error": 4.668560676934774e-12,
+        "max_covariance_error": 2.7638007442550017e-16,
+        "objective_error": 1.7025558918248862e-07,
+        "status": "pass"
+      },
+      "reference_output_hashes": {
+        "coefficients.csv": "626a0cb352626768d39d2ee20e9888d1232ab71589246f08d77ff6901b63e63d",
+        "covariance.csv": "5ace0c4ca42fcbd53bdbe539392700075c429e1c372c3880b51fd09a4843c275",
+        "feppml_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+        "feppml_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+        "fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+        "fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb"
+      },
+      "reference_result_sha256": "760a642026560bac3343e7017d46f1a292970c0ec018f92932f0e7c8d4f203ed",
+      "reference_status": "pass"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 61440,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 28
+      },
+      "native": {
+        "checks": {
+          "N": true,
+          "coefficients": true,
+          "converged": true,
+          "covariance": true,
+          "model_rank": true,
+          "objective": true,
+          "sample": true
+        },
+        "max_coefficient_error": 5.1980988957645025e-15,
+        "max_covariance_error": 5.929230630780102e-19,
+        "objective_error": 0.0,
+        "status": "pass"
+      },
+      "native_output_hashes": {
+        "coefficients.csv": "e83dab76c0d5383130dc175610ca100140f5f2f94aa23d435e8f7a6428a73f29",
+        "covariance.csv": "acc4ca4be47abcfcf03a82e5f5e1ed872d339222a7ede7694c79159192d9ee0c"
+      },
+      "native_result_sha256": "ab4ca087a371fe4d6fd0db3183c85b649bfc5f382976e02368622662dc7efacc",
+      "oracle_sha256": "5223726237b285ff6444087a1b986352fbcc5fb1fad30a319367c260748a9dd3",
+      "oracle_status": "pass",
+      "original_group_sha256": "35ecf29ca80d3d2760407b2e736e476f9f2c0503415cf6a4627bb5c83b343ede",
+      "original_input_sha256": "26c7d59a8e8c8c5e58e802eb19df63202e869b06567985abf10b5c04e7daf340",
+      "reference": {
+        "checks": {
+          "N": true,
+          "coefficients": true,
+          "converged": true,
+          "covariance": true,
+          "objective": true,
+          "sample": true
+        },
+        "max_coefficient_error": 4.220105059675461e-12,
+        "max_covariance_error": 9.030503954891205e-13,
+        "objective_error": 2.104061422869563e-07,
+        "status": "pass"
+      },
+      "reference_output_hashes": {
+        "coefficients.csv": "483a1bbb882e59444a5c439ad5410b15438be98eeec9e565c5f474dacbb47723",
+        "covariance.csv": "abd1d48de3e74f208d3ba2704f73b1823e42df8c9d616b6d27e23d87d0752608"
+      },
+      "reference_result_sha256": "f3dcd5e432598057e2f33a56cb3feed2d5eb6e96fd133a98f285511748f29df1",
+      "reference_status": "pass"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ppml",
+        "n": 61440,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "native": {
+        "checks": {
+          "N": true,
+          "coefficients": true,
+          "converged": true,
+          "covariance": true,
+          "model_rank": true,
+          "objective": true,
+          "sample": true
+        },
+        "max_coefficient_error": 2.8047768101113757e-14,
+        "max_covariance_error": 7.352245982167327e-19,
+        "objective_error": -1.4551915228366852e-11,
+        "status": "pass"
+      },
+      "native_output_hashes": {
+        "coefficients.csv": "5ccd3539aa523bf1d3fbfcb74291c163aa88d76fb2cb3065c43c815f40941997",
+        "covariance.csv": "7547ac4028af94cee90a3727fa16f14b851eceb2d380fc0189086fef3a4754c2"
+      },
+      "native_result_sha256": "ec0ca184c34ca185a076b5a56feb09c4258ee2780ad0426202b3ced46cb74263",
+      "oracle_sha256": "6539d1f0b04510cdda18cdf6d9f00abb9574fa142b3e48dcf5a4ce668e52aa64",
+      "oracle_status": "pass",
+      "original_group_sha256": "f23e007cca17479ac088e53533845ddf4afded8b6f08f19c74ae23a9c14a8201",
+      "original_input_sha256": "3c6af4f6278887b8156ef34b3f1a60a9311704563a596e17a853f1729f7533a7",
+      "reference": {
+        "checks": {
+          "N": true,
+          "coefficients": true,
+          "converged": true,
+          "covariance": true,
+          "objective": true,
+          "sample": true
+        },
+        "max_coefficient_error": 5.1269788111166226e-12,
+        "max_covariance_error": 9.186816821052206e-13,
+        "objective_error": 1.100837835110724e-06,
+        "status": "pass"
+      },
+      "reference_output_hashes": {
+        "coefficients.csv": "35f73252dfd52b5c95b3afc8f1473011e32e458705cd54d1f4ec51e27d1e24d2",
+        "covariance.csv": "777009de48762c64c6abcb932520b49cce5634c8c7a6d26ffd37b7fb8df1d269"
+      },
+      "reference_result_sha256": "aa66d588c11cccc2c2a46bd56f36ef8ab73b6cb2f29c86b96a15706c2a3d8450",
+      "reference_status": "pass"
+    }
+  ],
+  "status": "complete"
+}

@@ -1,0 +1,11 @@
+....ORACLE_ITERATION ppml 2 {'iteration': 1, 'score': 0.21798881050325544, 'step': 1.0}
+ORACLE_ITERATION ppml 2 {'iteration': 2, 'score': 0.04572621960597904, 'step': 1.0}
+ORACLE_ITERATION ppml 2 {'iteration': 3, 'score': 0.002330845789173708, 'step': 1.0}
+ORACLE_ITERATION ppml 2 {'iteration': 4, 'score': 6.425575732681841e-06, 'step': 1.0}
+ORACLE_ITERATION ppml 2 {'iteration': 5, 'score': 5.02053908834857e-11, 'step': 1.0}
+ORACLE_ITERATION ppml 2 {'iteration': 6, 'score': 1.3506267073145913e-16, 'step': 1.0}
+....
+----------------------------------------------------------------------
+Ran 8 tests in 0.207s
+
+OK

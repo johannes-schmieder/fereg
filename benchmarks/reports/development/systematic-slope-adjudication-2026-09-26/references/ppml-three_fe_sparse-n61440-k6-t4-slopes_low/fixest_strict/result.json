@@ -1,0 +1,76 @@
+{
+  "arm": "fixest_strict",
+  "cell": {
+    "design": "three_fe_sparse",
+    "effects": [
+      "g1",
+      "g2",
+      "g3"
+    ],
+    "k": 6,
+    "memory": "low",
+    "model": "ppml",
+    "n": 61440,
+    "section": "slopes_low",
+    "slopes": {
+      "g1": [
+        "z1",
+        "z2"
+      ],
+      "g2": [
+        "z3",
+        "z4"
+      ]
+    },
+    "suite": "panels",
+    "threads": 4
+  },
+  "command_time_lower_bound": null,
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "elapsed_seconds": 556.0191182710114,
+  "host": "scc-wf2",
+  "input_sha256": "3c6af4f6278887b8156ef34b3f1a60a9311704563a596e17a853f1729f7533a7",
+  "input_value_audit": "columnwise IEEE-754 SHA-256",
+  "job_id": "7747280",
+  "limits": {
+    "command": 1800,
+    "extraction": 600,
+    "startup": 600
+  },
+  "measurement_fingerprint": "diagnostic-6338cbdbcb8c6ed8862d5135af79cfcae52c3a20e84e85d68bdb801e181e58a6",
+  "metadata": {
+    "N": 61440,
+    "R_version": "4.5.2",
+    "converged": true,
+    "covariance_multiplier": 1.00001627630658,
+    "covariance_normalization": "HC0 multiplied by N/(N-1)",
+    "deviance": 81950.8665369118,
+    "df_k": 38744,
+    "effective_threads": 4,
+    "error": {},
+    "fixest_version": "0.14.2",
+    "loglik": -161976.194545265,
+    "rc": 0,
+    "requested_threads": 4,
+    "sample_kind": "observation_ids",
+    "seconds": 517.104
+  },
+  "peak_process_tree_threads": 5,
+  "peak_rss_gib": 0.3437614440917969,
+  "phase": "warm",
+  "process_returncode": 0,
+  "rss_interval_seconds": 0.01,
+  "rss_samples": 32259,
+  "sample_rows": 61440,
+  "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+  "schema": "systematic-arm-v1",
+  "seconds": 517.104,
+  "sentinel": true,
+  "status": "pass",
+  "task_id": "undefined"
+}

@@ -19,25 +19,27 @@ exercise pass. The full-size independent FE/model ranks are 38,701/38,711;
 score/projection checks are below 6e-15/3e-13. This local input is not the
 SCC input receipt and cannot adjudicate the captured outputs by itself.
 
-Diagnostic source **925c4b337ca2ff4a879349ee47fb2e27be8b4c06** is committed
-and deployed under the unchanged run's
-`diagnostics/slope-adjudication-925c4b33/source`. Job **7747280** is running:
-28 E5-2680v4 slots, 3G/core, maximum 5h, sequential references/oracles. The
-[launch receipt](benchmarks/reports/development/systematic-slope-adjudication-2026-09-26/launch.json)
-binds verified source hashes. Results go to the sibling `result/` directory;
-logs/job-id live in that diagnostic attempt. Never submit it twice.
+Diagnostic **7747280 passed** on exact captured inputs: clean accounting,
+28 slots, 1,934s, 2.973G maxvmem. [The result](benchmarks/reports/development/systematic-slope-adjudication-2026-09-26/result.md)
+records all three independent QR/SVD oracles and all six native/reference
+comparisons passing. Maximum native coefficient error is 2.81e-14; full
+covariance, objective, samples, rank/DoF and fresh final-Hessian checks pass.
+Unchanged reghdfe completed in 734.694s and strict stock PPML in 322.253/517.104s.
+Those diagnostic times are resource forecasts, never cross-job timing pairs.
+Original 120s timeouts and default-reference discrepancies remain unranked.
 
-Next: collect job 7747280 accounting and inspect `result/result.json`, all three
-oracle traces and scientific comparisons. Require exact captured input hashes,
-independent rank, coefficients, full covariance, sample and objective agreement.
-These are scientific diagnostics, never timing pairs across jobs. No native
-command, failed ppmlhdfe initialization, full pilot or stopped campaign is rerun.
-Original rejected pilot and frozen production gate remain unchanged. If the
-adjudication resolves all blockers, document and test an explicit successor gate
-that binds this evidence and preserves failed comparisons before production;
-do not manufacture PILOT.ACCEPTED.json or alter the frozen controller. The
-existing campaign heartbeat **run-lighter-fereg-scc-campaign is ACTIVE** and
-records job 7747280 and the evidence requirements for this continuation.
+[ADR0226](docs/adr/0226-adjudicated-pilot-production-continuation.md) defines a
+separate evidence-bound production gate/planner. Eight focused tests and a
+read-only actual-SCC integration check pass (12 pilot groups/three adjudications).
+It preserves the original rejected pilot and frozen controller; it binds the
+new independent evidence without manufacturing PILOT.ACCEPTED.json. The first
+production plan must contain exactly 556 pending groups, preserving 12 completed
+pilot groups and all 568 definitions. No production has been submitted yet.
+Next: commit/deploy the verified planner, publish its separate gate and immutable
+plan, inspect forecasts/resources, then submit with concurrency eight under 12h.
+No estimator or measurement-controller byte changed. The existing heartbeat
+**run-lighter-fereg-scc-campaign is ACTIVE** and must be updated with the actual
+production plan/job identity once submitted. Never repeat completed pilot groups.
 
 ## SCC preflight continuation: automatic report merge — 2026-09-26
 
