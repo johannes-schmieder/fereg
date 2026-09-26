@@ -3,6 +3,7 @@
 mod dof;
 mod finite_wls_kernel;
 mod canonical_products;
+pub(crate) use canonical_products::canonical_three_workspace_bytes;
 mod fit;
 mod linear_session;
 mod implicit_centered;

@@ -1,0 +1,20 @@
+{
+  "restored_logical_receipts": 11076,
+  "restored_hashes_verified": true,
+  "privacy_scan_passed": true,
+  "privacy_known_source_files": [
+    "artifacts/canonicalframe1/scripts/resolve_reference_root.py",
+    "artifacts/canonicalframe1/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/canonicalframe1/tests/python/test_ols_reference_harness.py",
+    "artifacts/canonicalframe2/scripts/resolve_reference_root.py",
+    "artifacts/canonicalframe2/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/canonicalframe2/tests/python/test_ols_reference_harness.py",
+    "artifacts/canonicalthree1/scripts/resolve_reference_root.py",
+    "artifacts/canonicalthree1/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/canonicalthree1/tests/python/test_ols_reference_harness.py",
+    "artifacts/finiteblock1/scripts/resolve_reference_root.py",
+    "artifacts/finiteblock1/tests/python/test_ols_hidden_numeric.py",
+    "artifacts/finiteblock1/tests/python/test_ols_reference_harness.py"
+  ],
+  "privacy_scope": "Public shared-reference paths and two synthetic redaction-test literals are distinguished from private run metadata."
+}

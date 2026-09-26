@@ -6,15 +6,15 @@
 use super::*;
 
 #[derive(Clone, Copy, Debug)]
-struct Plan {
-    order: [usize; 3],
-    rows: usize,
+pub(crate) struct Plan {
+    pub(crate) order: [usize; 3],
+    pub(crate) rows: usize,
     rhs: usize,
-    eliminated: usize,
-    split: usize,
-    reduced: usize,
-    square: usize,
-    entries: usize,
+    pub(crate) eliminated: usize,
+    pub(crate) split: usize,
+    pub(crate) reduced: usize,
+    pub(crate) square: usize,
+    pub(crate) entries: usize,
     outputs: usize,
     columns_per_worker: usize,
     worker_width: usize,
@@ -27,7 +27,7 @@ impl Plan {
         (self.bytes <= allowance).then(|| AllocationBudget::new(allowance))
     }
 
-    fn new(rows: usize, rhs: usize, levels: [usize; 3], threads: usize) -> Option<Self> {
+    pub(crate) fn new(rows: usize, rhs: usize, levels: [usize; 3], threads: usize) -> Option<Self> {
         if rows == 0 || rhs == 0 || threads == 0 || levels.contains(&0) {
             return None;
         }
@@ -94,14 +94,14 @@ impl Plan {
 
 // The plan is checked before the first reservation. Actual capacities consume
 // the same allowance, so allocator rounding cannot silently exceed admission.
-struct AllocationBudget {
+pub(crate) struct AllocationBudget {
     remaining: u128,
     #[cfg(test)]
     fail_after: Option<usize>,
 }
 
 impl AllocationBudget {
-    fn new(bytes: u128) -> Self {
+    pub(crate) fn new(bytes: u128) -> Self {
         Self {
             remaining: bytes,
             #[cfg(test)]
@@ -109,7 +109,7 @@ impl AllocationBudget {
         }
     }
 
-    fn reserve<T: Clone>(&mut self, count: usize, value: T) -> Result<Vec<T>> {
+    pub(crate) fn reserve<T: Clone>(&mut self, count: usize, value: T) -> Result<Vec<T>> {
         #[cfg(test)]
         if let Some(left) = self.fail_after.as_mut() {
             if *left == 0 {
@@ -245,88 +245,10 @@ fn solve(
         cost.setup_seconds = setup_started.elapsed().as_secs_f64();
         return Ok(None);
     }
-    let mut mass = budget.reserve(plan.eliminated, 0.)?;
-    let mut matrix = budget.reserve(plan.square, 0.)?;
-    let mut cross = budget.reserve(plan.entries, (0_usize, 0.))?;
-    let mut offsets = budget.reserve(plan.eliminated + 1, 0_usize)?;
-    let mut cooccurrence = budget.reserve(plan.square, 0.)?;
-    let mut group_weights = budget.reserve(q, 0.)?;
-    let mut touched = budget.reserve(q, 0_usize)?;
-    let mut used = 0;
-    for g in 0..plan.eliminated {
-        let mut count = 0;
-        for &row in a.level_index().members(g) {
-            mass[g] += w[row];
-            let left = b.codes()[row] as usize;
-            let right = plan.split + c.codes()[row] as usize;
-            cooccurrence[left * q + right] += w[row];
-            for index in [left, right] {
-                if group_weights[index] == 0. {
-                    touched[count] = index;
-                    count += 1;
-                }
-                group_weights[index] += w[row];
-            }
-        }
-        if mass[g] <= 0. || !mass[g].is_finite() {
-            cost.setup_seconds = setup_started.elapsed().as_secs_f64();
-            return Ok(None);
-        }
-        touched[..count].sort_unstable();
-        let left_count = touched[..count].partition_point(|&j| j < plan.split);
-        let constant = |j| {
-            if j < plan.split {
-                left_count == 1
-            } else {
-                count - left_count == 1
-            }
-        };
-        for (i, &left) in touched[..count].iter().enumerate() {
-            let lv = group_weights[left];
-            cross[used] = (left, lv);
-            used += 1;
-            for &right in &touched[i..count] {
-                // Group-constant indicators have exactly zero covariance.
-                // Enforce that topological identity before floating subtraction.
-                let covariance = if constant(left) || constant(right) {
-                    0.
-                } else if left == right {
-                    lv * ((mass[g] - lv) / mass[g])
-                } else {
-                    cooccurrence[left * q + right] - lv * (group_weights[right] / mass[g])
-                };
-                matrix[left * q + right] += covariance;
-                cooccurrence[left * q + right] = 0.;
-            }
-        }
-        for &j in &touched[..count] {
-            group_weights[j] = 0.;
-        }
-        offsets[g + 1] = used;
-    }
-    drop(cooccurrence);
-    drop(group_weights);
-    drop(touched);
-    let mut scales = budget.reserve(q, 0.)?;
-    for j in 0..q {
-        let diagonal = matrix[j * q + j];
-        if diagonal < 0. || !diagonal.is_finite() {
-            cost.setup_seconds = setup_started.elapsed().as_secs_f64();
-            return Ok(None);
-        }
-        scales[j] = if diagonal == 0. { 1. } else { diagonal.sqrt() };
-    }
-    for i in 0..q {
-        for j in i..q {
-            let v = matrix[i * q + j] / scales[i] / scales[j];
-            if !v.is_finite() {
-                cost.setup_seconds = setup_started.elapsed().as_secs_f64();
-                return Ok(None);
-            }
-            matrix[i * q + j] = v;
-            matrix[j * q + i] = v;
-        }
-    }
+    let Some(geometry) = Geometry::prepare(design, &w, plan, budget)? else {
+        cost.setup_seconds = setup_started.elapsed().as_secs_f64();
+        return Ok(None);
+    };
     let mut columns = budget.reserve(plan.outputs, 0.)?;
     let mut workspace = budget.reserve(plan.workspace, 0.)?;
     let mut steps = budget.reserve(plan.rhs, 0_usize)?;
@@ -341,83 +263,22 @@ fn solve(
         .zip(workspace.par_chunks_mut(plan.worker_width))
         .zip(steps.par_chunks_mut(width))
         .enumerate()
-        .for_each(|(block, ((outputs, work), column_steps))| {
-            let (arhs, rest) = work.split_at_mut(plan.eliminated);
-            let (solution, rest) = rest.split_at_mut(q);
-            let (residual, rest) = rest.split_at_mut(q);
-            let (direction, rest) = rest.split_at_mut(q);
-            let (ax, rhs) = rest.split_at_mut(q);
+        .try_for_each(|(block, ((outputs, work), column_steps))| -> Result<()> {
+            let (coefficients, scratch) = work.split_at_mut(plan.eliminated + q);
             for (local, out) in outputs.chunks_mut(plan.rows).enumerate() {
                 let column = block * width + local;
                 let norm = norms[column];
-                arhs.fill(0.);
-                rhs.fill(0.);
-                solution.fill(0.);
-                for row in 0..plan.rows {
-                    let wy = w[row]
-                        * if norm == 0. {
-                            0.
-                        } else {
-                            input[(row, column)] / norm
-                        };
-                    arhs[a.codes()[row] as usize] += wy;
-                    rhs[b.codes()[row] as usize] += wy;
-                    rhs[plan.split + c.codes()[row] as usize] += wy;
-                }
-                for g in 0..plan.eliminated {
-                    for &(j, v) in &cross[offsets[g]..offsets[g + 1]] {
-                        rhs[j] -= v * (arhs[g] / mass[g]);
-                    }
-                }
-                for j in 0..q {
-                    rhs[j] /= scales[j];
-                }
-                residual.copy_from_slice(rhs);
-                direction.copy_from_slice(rhs);
-                let mut rr = residual.iter().map(|v| v * v).sum::<f64>();
-                let mut iterations = 0;
-                while iterations < cap {
-                    if residual.iter().map(|v| v.abs()).fold(0., f64::max) <= tolerance * 0.05 {
-                        break;
-                    }
-                    for (row, target) in matrix.chunks_exact(q).zip(ax.iter_mut()) {
-                        let mut sums = [0.; 8];
-                        for (j, (&v, &x)) in row.iter().zip(direction.iter()).enumerate() {
-                            sums[j % 8] = v.mul_add(x, sums[j % 8]);
-                        }
-                        *target = sums.iter().sum();
-                    }
-                    let curvature = direction
-                        .iter()
-                        .zip(ax.iter())
-                        .map(|(x, y)| x * y)
-                        .sum::<f64>();
-                    if curvature <= 0. || !curvature.is_finite() || !rr.is_finite() {
-                        break;
-                    }
-                    let alpha = rr / curvature;
-                    for j in 0..q {
-                        solution[j] = alpha.mul_add(direction[j], solution[j]);
-                        residual[j] = (-alpha).mul_add(ax[j], residual[j]);
-                    }
-                    let next = residual.iter().map(|v| v * v).sum::<f64>();
-                    let beta = next / rr;
-                    for j in 0..q {
-                        direction[j] = beta.mul_add(direction[j], residual[j]);
-                    }
-                    rr = next;
-                    iterations += 1;
-                }
-                column_steps[local] = iterations;
-                for j in 0..q {
-                    solution[j] /= scales[j];
-                }
-                for g in 0..plan.eliminated {
-                    for &(j, v) in &cross[offsets[g]..offsets[g + 1]] {
-                        arhs[g] -= v * solution[j];
-                    }
-                    arhs[g] /= mass[g];
-                }
+                column_steps[local] = geometry.solve_column(
+                    design,
+                    &w,
+                    |row| Ok(input[(row, column)]),
+                    norm,
+                    cap,
+                    tolerance,
+                    coefficients,
+                    scratch,
+                )?;
+                let (arhs, solution) = coefficients.split_at(plan.eliminated);
                 for row in 0..plan.rows {
                     let fit = arhs[a.codes()[row] as usize]
                         + solution[b.codes()[row] as usize]
@@ -425,7 +286,8 @@ fn solve(
                     out[row] = input[(row, column)] - norm * fit;
                 }
             }
-        });
+            Ok(())
+        })?;
     cost.iterations = steps.iter().copied().max().unwrap_or(0);
     if columns.iter().any(|v| !v.is_finite()) {
         cost.solve_seconds = started.elapsed().as_secs_f64();
@@ -441,6 +303,225 @@ fn solve(
     Ok(Some(DenseMatrix::from_row_major(
         plan.rows, plan.rhs, output,
     )?))
+}
+
+/// One weighted three-partition Schur system. Its coefficients are proposals;
+/// callers independently certify residuals reconstructed from original inputs.
+pub(crate) struct Geometry {
+    plan: Plan,
+    mass: Vec<f64>,
+    matrix: Vec<f64>,
+    cross: Vec<(usize, f64)>,
+    offsets: Vec<usize>,
+    scales: Vec<f64>,
+}
+
+impl Plan {
+    pub(crate) fn geometry_bytes(self) -> Option<u128> {
+        let doubles = (self.eliminated as u128)
+            .checked_add(2 * self.square as u128)?
+            .checked_add(2 * self.reduced as u128)?;
+        doubles
+            .checked_mul(8)?
+            .checked_add(
+                ((self.eliminated + 1) as u128 + self.reduced as u128)
+                    .checked_mul(std::mem::size_of::<usize>() as u128)?,
+            )?
+            .checked_add(
+                (self.entries as u128).checked_mul(std::mem::size_of::<(usize, f64)>() as u128)?,
+            )
+    }
+}
+
+impl Geometry {
+    pub(crate) fn prepare(
+        design: &BorrowedInterceptFeDesign<'_>,
+        w: &[f64],
+        plan: Plan,
+        budget: &mut AllocationBudget,
+    ) -> Result<Option<Self>> {
+        let [a, b, c] = plan.order.map(|e| &design.effects()[e]);
+        let q = plan.reduced;
+        let mut mass = budget.reserve(plan.eliminated, 0.)?;
+        let mut matrix = budget.reserve(plan.square, 0.)?;
+        let mut cross = budget.reserve(plan.entries, (0_usize, 0.))?;
+        let mut offsets = budget.reserve(plan.eliminated + 1, 0_usize)?;
+        let mut cooccurrence = budget.reserve(plan.square, 0.)?;
+        let mut group_weights = budget.reserve(q, 0.)?;
+        let mut touched = budget.reserve(q, 0_usize)?;
+        let mut used = 0;
+        for g in 0..plan.eliminated {
+            let mut count = 0;
+            for &row in a.level_index().members(g) {
+                mass[g] += w[row];
+                let left = b.codes()[row] as usize;
+                let right = plan.split + c.codes()[row] as usize;
+                cooccurrence[left * q + right] += w[row];
+                for index in [left, right] {
+                    if group_weights[index] == 0. {
+                        touched[count] = index;
+                        count += 1;
+                    }
+                    group_weights[index] += w[row];
+                }
+            }
+            if mass[g] <= 0. || !mass[g].is_finite() {
+                return Ok(None);
+            }
+            touched[..count].sort_unstable();
+            let left_count = touched[..count].partition_point(|&j| j < plan.split);
+            let constant = |j| {
+                if j < plan.split {
+                    left_count == 1
+                } else {
+                    count - left_count == 1
+                }
+            };
+            for (i, &left) in touched[..count].iter().enumerate() {
+                let lv = group_weights[left];
+                cross[used] = (left, lv);
+                used += 1;
+                for &right in &touched[i..count] {
+                    // Group-constant indicators have exactly zero covariance.
+                    // Enforce that topological identity before floating subtraction.
+                    let covariance = if constant(left) || constant(right) {
+                        0.
+                    } else if left == right {
+                        lv * ((mass[g] - lv) / mass[g])
+                    } else {
+                        cooccurrence[left * q + right] - lv * (group_weights[right] / mass[g])
+                    };
+                    matrix[left * q + right] += covariance;
+                    cooccurrence[left * q + right] = 0.;
+                }
+            }
+            for &j in &touched[..count] {
+                group_weights[j] = 0.;
+            }
+            offsets[g + 1] = used;
+        }
+        drop(cooccurrence);
+        drop(group_weights);
+        drop(touched);
+        let mut scales = budget.reserve(q, 0.)?;
+        for j in 0..q {
+            let diagonal = matrix[j * q + j];
+            if diagonal < 0. || !diagonal.is_finite() {
+                return Ok(None);
+            }
+            scales[j] = if diagonal == 0. { 1. } else { diagonal.sqrt() };
+        }
+        for i in 0..q {
+            for j in i..q {
+                let v = matrix[i * q + j] / scales[i] / scales[j];
+                if !v.is_finite() {
+                    return Ok(None);
+                }
+                matrix[i * q + j] = v;
+                matrix[j * q + i] = v;
+            }
+        }
+        Ok(Some(Self {
+            plan,
+            mass,
+            matrix,
+            cross,
+            offsets,
+            scales,
+        }))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn solve_column(
+        &self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        w: &[f64],
+        value: impl Fn(usize) -> Result<f64>,
+        norm: f64,
+        cap: usize,
+        tolerance: f64,
+        coefficients: &mut [f64],
+        work: &mut [f64],
+    ) -> Result<usize> {
+        let plan = self.plan;
+        let [a, b, c] = plan.order.map(|e| &design.effects()[e]);
+        let q = plan.reduced;
+        let Self {
+            mass,
+            matrix,
+            cross,
+            offsets,
+            scales,
+            ..
+        } = self;
+        let (arhs, solution) = coefficients.split_at_mut(plan.eliminated);
+        let (residual, rest) = work.split_at_mut(q);
+        let (direction, rest) = rest.split_at_mut(q);
+        let (ax, rhs) = rest.split_at_mut(q);
+        arhs.fill(0.);
+        rhs.fill(0.);
+        solution.fill(0.);
+        for row in 0..plan.rows {
+            let wy = w[row] * if norm == 0. { 0. } else { value(row)? / norm };
+            arhs[a.codes()[row] as usize] += wy;
+            rhs[b.codes()[row] as usize] += wy;
+            rhs[plan.split + c.codes()[row] as usize] += wy;
+        }
+        for g in 0..plan.eliminated {
+            for &(j, v) in &cross[offsets[g]..offsets[g + 1]] {
+                rhs[j] -= v * (arhs[g] / mass[g]);
+            }
+        }
+        for j in 0..q {
+            rhs[j] /= scales[j];
+        }
+        residual.copy_from_slice(rhs);
+        direction.copy_from_slice(rhs);
+        let mut rr = residual.iter().map(|v| v * v).sum::<f64>();
+        let mut iterations = 0;
+        while iterations < cap {
+            if residual.iter().map(|v| v.abs()).fold(0., f64::max) <= tolerance * 0.05 {
+                break;
+            }
+            for (row, target) in matrix.chunks_exact(q).zip(ax.iter_mut()) {
+                let mut sums = [0.; 8];
+                for (j, (&v, &x)) in row.iter().zip(direction.iter()).enumerate() {
+                    sums[j % 8] = v.mul_add(x, sums[j % 8]);
+                }
+                *target = sums.iter().sum();
+            }
+            let curvature = direction
+                .iter()
+                .zip(ax.iter())
+                .map(|(x, y)| x * y)
+                .sum::<f64>();
+            if curvature <= 0. || !curvature.is_finite() || !rr.is_finite() {
+                break;
+            }
+            let alpha = rr / curvature;
+            for j in 0..q {
+                solution[j] = alpha.mul_add(direction[j], solution[j]);
+                residual[j] = (-alpha).mul_add(ax[j], residual[j]);
+            }
+            let next = residual.iter().map(|v| v * v).sum::<f64>();
+            let beta = next / rr;
+            for j in 0..q {
+                direction[j] = beta.mul_add(direction[j], residual[j]);
+            }
+            rr = next;
+            iterations += 1;
+        }
+        for j in 0..q {
+            solution[j] /= scales[j];
+        }
+        for g in 0..plan.eliminated {
+            for &(j, v) in &cross[offsets[g]..offsets[g + 1]] {
+                arhs[g] -= v * solution[j];
+            }
+            arhs[g] /= mass[g];
+        }
+        Ok(iterations)
+    }
 }
 
 #[cfg(test)]

@@ -17,6 +17,11 @@ use std::mem::size_of;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
+mod three;
+pub(crate) fn canonical_three_workspace_bytes(n: usize, width: usize, levels: [usize; 3], threads: usize) -> Option<u128> {
+    three::workspace_bytes(n, width, levels, threads)
+}
+
 fn declined() -> FeregError {
     FeregError::new(
         ErrorCode::NonConvergence,
@@ -284,6 +289,11 @@ enum Column<'a, P: ?Sized> {
     Numeric(&'a [f64]),
     Generated(&'a P, usize),
 }
+impl<P: ?Sized> Clone for Column<'_, P> {
+    fn clone(&self) -> Self {
+        match self { Self::Numeric(v) => Self::Numeric(v), Self::Generated(p, j) => Self::Generated(p, *j) }
+    }
+}
 impl<P: PreparedOlsFitView + ?Sized> Column<'_, P> {
     #[inline]
     fn value(&self, row: usize) -> Result<f64> {
@@ -360,6 +370,7 @@ pub(super) struct Products<'a, P: PreparedOlsFitView + ?Sized> {
     left: Vec<f64>,
     tiled: Option<TiledCoefficients>,
     right: Vec<f64>,
+    three: Option<three::Coefficients>,
     pub scales: Vec<f64>,
     pub means: Vec<f64>,
     pub norms: Vec<f64>,
@@ -374,6 +385,9 @@ pub(super) struct Products<'a, P: PreparedOlsFitView + ?Sized> {
 
 impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
     fn residual(&self, row: usize, j: usize) -> Result<f64> {
+        if let Some(three) = &self.three {
+            return three.residual(&self.design, &self.columns, &self.scales, row, j);
+        }
         let a = &self.design.effects()[self.left_effect];
         let b = &self.design.effects()[1 - self.left_effect];
         let scale = nonzero(self.scales[j]);
@@ -520,6 +534,10 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     let Some(design) = prepared.fit_borrowed_intercept_map_design()? else {
         return Ok(None);
     };
+    if design.effects().len() == 3 && design.nobs() == response.len() {
+        return three::try_build(prepared, generated, response, weights, divisor, config,
+            allowance, obsolete_projection, design);
+    }
     if design.effects().len() != 2 || design.nobs() != response.len() {
         return Ok(None);
     }
@@ -1258,6 +1276,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         left,
         tiled,
         right,
+        three: None,
         scales,
         means,
         norms,
@@ -1406,7 +1425,9 @@ mod tests {
         OlsRequestV1, PreparedOlsData,
     };
 
-    fn prepared(y: &[f64], x: &[Vec<f64>], g: &[f64], h: &[f64]) -> PreparedOlsData {
+    fn prepared(y: &[f64], x: &[Vec<f64>], g: &[f64], h: &[f64]) -> PreparedOlsData { prepared_effects(y, x, &[g, h]) }
+
+    fn prepared_effects(y: &[f64], x: &[Vec<f64>], effects: &[&[f64]]) -> PreparedOlsData {
         let mut sources = Vec::new();
         let mut terms = Vec::new();
         let mut numeric = Vec::new();
@@ -1420,7 +1441,7 @@ mod tests {
                 role: OlsInputRole::Outcome,
             },
         ];
-        for (j, values) in x.iter().map(Vec::as_slice).chain([g, h]).enumerate() {
+        for (j, values) in x.iter().map(Vec::as_slice).chain(effects.iter().copied()).enumerate() {
             let id = (j + 1) as u32;
             let source = SourceId::new(id).unwrap();
             sources.push(SourceEntry {
@@ -1464,7 +1485,7 @@ mod tests {
         prepare_ols_data(
             &OlsRequestV1 {
                 model: CompiledTermGraph { sources, terms },
-                absorbed_terms: (0..2)
+                absorbed_terms: (0..effects.len() as u32)
                     .map(|j| AbsorbedTerm {
                         id: AbsorbTermId::new(j + 1).unwrap(),
                         intercept: true,
@@ -2336,6 +2357,132 @@ mod tests {
     }
 
     #[test]
+    fn canonical_three_products_session_keeps_rank_and_strict_rollback_across_weights() {
+        use crate::ols::linear_session::{CertifiedLinearSession, LinearSessionGenerations};
+        use crate::ols::prepared_fit::LinearSolveFrame;
+        use crate::ols::{
+            PreparedOlsBreadWeightScale, PreparedOlsExecutionMode, PreparedOlsFitConfig,
+        };
+        let n = 4096;
+        let g: Vec<_> = (0..n).map(|i| (i % 8) as f64).collect();
+        let h: Vec<_> = (0..n).map(|i| ((i / 9) % 6) as f64).collect();
+        let z: Vec<_> = (0..n).map(|i| ((i / 31) % 5) as f64).collect();
+        for duplicate in [false, true] {
+            let mut x: Vec<Vec<_>> = (0..8)
+                .map(|j| {
+                    (0..n)
+                        .map(|i| {
+                            (i as f64 / (13 + 7 * j) as f64).sin()
+                                + (i % (7 + j)) as f64 / (5 + j) as f64
+                        })
+                        .collect()
+                })
+                .collect();
+            if duplicate {
+                x[7] = x[2].clone();
+            }
+            let y: Vec<_> = (0..n)
+                .map(|i| {
+                    0.2 * g[i] - 0.1 * h[i] + 0.07 * z[i]
+                        + x.iter()
+                            .enumerate()
+                            .map(|(j, x)| 0.03 * (j + 1) as f64 * x[i])
+                            .sum::<f64>()
+                })
+                .collect();
+            let prepared = prepared_effects(&y, &x, &[&g, &h, &z]);
+            for (threads, mode, admitted) in [
+                (1, PreparedOlsExecutionMode::Low, true),
+                (4, PreparedOlsExecutionMode::Low, true),
+                (1, PreparedOlsExecutionMode::Fast, true),
+                (4, PreparedOlsExecutionMode::Fast, true),
+                (4, PreparedOlsExecutionMode::Fast, false),
+            ] {
+                let mut config = PreparedOlsFitConfig::default();
+                config.absorb.solver = FeSolverKind::Map;
+                config.execution.mode = mode;
+                config.execution.poolsize = 8;
+                config.execution.threads =
+                    crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                let mut scale = PreparedOlsBreadWeightScale {
+                    weight_kind: None,
+                    solver_weight_divisor: 1.,
+                    reference_weight_multiplier: 1.,
+                    reference_weight_sum: n as f64,
+                };
+                let frame =
+                    LinearSolveFrame::from_parts(&y, BorrowedMapWeights::Unit, scale).unwrap();
+                let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                    &prepared,
+                    frame,
+                    config,
+                    LinearSessionGenerations::default(),
+                    prepared.fit_owned_fe_design().unwrap(),
+                )
+                .unwrap();
+                if mode == PreparedOlsExecutionMode::Fast {
+                    session.enable_fast_canonical_products(if admitted { 16 * n as u128 * 8 } else { 1 }).unwrap();
+                }
+                let original = session.solve_fresh().unwrap();
+                // Independent product tests establish the direct route. This
+                // test checks publication authority across speculative writes.
+                assert!(original.fit().absorption_report().certified());
+                assert!(original.fit().residuals().iter().all(|r| r.abs() < 1e-10));
+                let statuses: Vec<_> = original
+                    .fit()
+                    .coefficients()
+                    .iter()
+                    .map(|c| c.status)
+                    .collect();
+                let changed: Vec<_> = (0..n).map(|i| 0.2 + (i % 17) as f64 / 7.).collect();
+                scale.solver_weight_divisor = changed.iter().copied().fold(0_f64, f64::max);
+                scale.reference_weight_multiplier = scale.solver_weight_divisor;
+                scale.reference_weight_sum = changed.iter().sum();
+                let next_y: Vec<_> = y.iter().zip(&x[0]).map(|(y, x)| y + 0.4*x).collect();
+                session.refresh_response(&next_y, 1).unwrap();
+                session
+                    .refresh_weights(BorrowedMapWeights::Provided(&changed), scale, 1)
+                    .unwrap();
+                // A rank failure occurs after the direct writer changed the
+                // physical dense bank. Retrying must use the matching response
+                // anchor and never publish the failed candidate.
+                session.inject_fresh_rank_failure(ErrorCode::Interrupted);
+                assert!(session.strict_candidate().is_err());
+                // A dropped speculative candidate cannot publish its basis.
+                {
+                    let candidate = session.strict_candidate().unwrap();
+                    assert!(candidate
+                        .candidate()
+                        .fit()
+                        .residuals()
+                        .iter()
+                        .all(|r| r.abs() < 1e-10));
+                }
+                let candidate = session.strict_candidate().unwrap();
+                assert_eq!(
+                    candidate
+                        .candidate()
+                        .fit()
+                        .coefficients()
+                        .iter()
+                        .map(|c| c.status)
+                        .collect::<Vec<_>>(),
+                    statuses
+                );
+                candidate.commit();
+                assert!(session.output().unwrap().fit().score_certificate().passed);
+                // Same-weight response-only solving bypasses direct products;
+                // this protects the handoff back to the existing projector.
+                session.refresh_response(&y, 2).unwrap();
+                let recovered = session.solve_fresh().unwrap();
+                assert!(recovered.fit().score_certificate().passed);
+                assert!(recovered.fit().residuals().iter().all(|r| r.abs() < 1e-9));
+                assert_eq!(recovered.fit().coefficients().iter().map(|c| c.status).collect::<Vec<_>>(), statuses);
+            }
+        }
+    }
+
+    #[test]
     fn canonical_products_match_independent_weighted_contrasts_and_direct_gram() {
         for threads in [1, 4, 8] {
             let team = rayon::ThreadPoolBuilder::new()
@@ -2725,4 +2872,82 @@ mod tests {
                 .unwrap().is_none());
         });
     }
+    #[test]
+    fn canonical_three_products_match_independent_weighted_contrasts() {
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                for shift in [0., 0.7] {
+                    for mass in [1., 1e-100, 1e100] {
+                        for nested in [false, true] {
+                            let wa: Vec<_> = (0..6).map(|i| 1. + i as f64 + shift).collect();
+                            let wb: Vec<_> = (0..5).map(|i| 0.5 + i as f64 + shift).collect();
+                            let wc: Vec<_> = (0..3).map(|i| 0.3 + i as f64 + shift).collect();
+                            let mean = |v: &[f64]| v.iter().enumerate().map(|(i,w)| i as f64*w).sum::<f64>() / v.iter().sum::<f64>();
+                            let (ma, mb) = (mean(&wa), mean(&wb));
+                            let (mut g, mut h, mut z, mut weights) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+                            let mut values = vec![Vec::new(); 5];
+                            let mut truth = vec![Vec::new(); 5];
+                            let scales = [1., 1e30, 1e-30, 1., 1.];
+                            for a in 0..6 { for b in 0..5 { for c in 0..3 { for t in 0..2 {
+                                g.push(a as f64); h.push(b as f64); z.push(if nested { (b % 3) as f64 } else { c as f64 });
+                                weights.push(wa[a]*wb[b]*wc[c]*mass);
+                                let ab = (a as f64-ma)*(b as f64-mb);
+                                let error = 2.*t as f64-1.;
+                                for (j, r) in [ab+error, ab, error, 0., ab].into_iter().enumerate() {
+                                    truth[j].push(r*scales[j]);
+                                    values[j].push((r+0.2*a as f64-0.1*b as f64+0.3*z[z.len()-1])*scales[j]);
+                                }
+                            }}}}
+                            let p = prepared_effects(&values[0], &values[1..], &[&g, &h, &z]);
+                            let divisor = weights.iter().copied().fold(0_f64, f64::max);
+                            let cfg = MapConfig { tolerance: 1e-12, ..MapConfig::default() };
+                            let mut result = try_build(&p, &[0,1,2,3], &values[0], BorrowedMapWeights::Provided(&weights), divisor, cfg, u128::MAX, 0, &mut Vec::new()).unwrap().expect("three-FE direct products admitted");
+                            assert!(result.three.is_some() && result.report.certified());
+                            let mut dense = DenseMatrix::zeros(g.len(), 4).unwrap();
+                            result.write_dense(&mut dense).unwrap();
+                            let mut scratch = PreparedOlsScratch::create_row_major(g.len(), 4).unwrap();
+                            result.write_controls(&mut scratch).unwrap();
+                            let mut row = [0.;4];
+                            for i in 0..g.len() {
+                                scratch.read_linear_shared(i*4, &mut row).unwrap();
+                                assert!((result.response[i]-truth[0][i]).abs()<1e-10);
+                                for j in 1..5 {
+                                    assert_eq!(row[j-1], dense[(i,j-1)]);
+                                    assert!((row[j-1]-truth[j][i]).abs()/scales[j]<1e-10);
+                                }
+                            }
+                            for j in 0..5 { for k in 0..5 {
+                                let expected: f64 = (0..g.len()).map(|i| weights[i]/divisor * (truth[j][i]/nonzero(result.scales[j])) * (truth[k][i]/nonzero(result.scales[k]))).sum();
+                                assert!((result.moments.gram[j*5+k]-expected).abs()<1e-11);
+                            }}
+                            let bytes = result.minimum_workspace_bytes;
+                            assert!(try_build(&p, &[0,1,2,3], &values[0], BorrowedMapWeights::Provided(&weights), divisor, cfg, bytes-1, 0, &mut Vec::new()).unwrap().is_none());
+                            assert!(try_build(&p, &[0,1,2,3], &values[0], BorrowedMapWeights::Provided(&weights), divisor, cfg, bytes, 0, &mut Vec::new()).unwrap().is_some());
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    #[test]
+    fn canonical_three_products_preserve_disconnected_and_invalid_frame_fallback() {
+        let n = 480;
+        let g: Vec<_> = (0..n).map(|i| (i%6) as f64).collect();
+        let h: Vec<_> = (0..n).map(|i| (i%2*5+(i/6)%5) as f64).collect();
+        let z: Vec<_> = (0..n).map(|i| (i%2*4+(i/30)%4) as f64).collect();
+        let x = vec![(0..n).map(|i| (i as f64).sin()).collect::<Vec<_>>()];
+        let y = x[0].clone();
+        let p = prepared_effects(&y, &x, &[&g, &h, &z]);
+        let mut panel = vec![1.;48];
+        assert!(try_build(&p, &[0], &y, BorrowedMapWeights::Unit, 1., MapConfig::default(), u128::MAX, 0, &mut panel).unwrap().is_none());
+        assert_eq!(panel, vec![1.;48]);
+        let ch: Vec<_> = (0..n).map(|i| ((i/6)%5) as f64).collect();
+        let cz: Vec<_> = (0..n).map(|i| ((i/30)%4) as f64).collect();
+        let connected = prepared_effects(&y, &x, &[&g, &ch, &cz]);
+        for weights in [vec![0.;n], vec![f64::NAN;n], vec![1.;n-1]] {
+            assert!(try_build(&connected, &[0], &y, BorrowedMapWeights::Provided(&weights), 1., MapConfig::default(), u128::MAX, 0, &mut panel).unwrap().is_none());
+        }
+    }
+
 }

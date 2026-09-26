@@ -82,6 +82,12 @@ selective LSMR fallback, and the fresh original-weight canonical certificate
 retains its exact tolerance. Three-FE checkpoints can use a current-call centered
 Schur matrix under [ADR 0163](adr/0163-admitted-three-fe-schur-checkpoints.md),
 subject to reduced-operator work and complete transient-memory admission.
+Connected three-FE canonical construction can share that geometry across the
+entire response/control frame, return original-input certified norms and moments,
+and write retained rows once under
+[ADR 0210](adr/0210-three-fe-canonical-frame-products.md). The checkpoint caller
+and full-frame builder share the same Schur kernel. Numerical geometry remains
+call-local; disconnected designs retain component-scaled projection.
 Original-input reconstruction and fresh certification still govern acceptance;
 optional refusal preserves LSMR. Ordinary joint LSMR remains separate. The ownership,
 invalidation, and zero-cost OLS rules are fixed by

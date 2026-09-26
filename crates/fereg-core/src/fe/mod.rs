@@ -3,6 +3,7 @@
 mod accelerated_map;
 mod auto;
 mod borrowed_map;
+pub(crate) use borrowed_map::three_fe_schur;
 mod cmg;
 #[allow(unused_imports)]
 #[rustfmt::skip]

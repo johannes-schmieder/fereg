@@ -18,7 +18,7 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 
 use super::map::ReusableMapCapacities;
 
-mod three_fe_schur;
+pub(crate) mod three_fe_schur;
 
 pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
 pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;

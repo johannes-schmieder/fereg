@@ -1897,7 +1897,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     pub(crate) fn enable_fast_canonical_products(&mut self, allowance: u128) -> Result<()> {
         if self.within.is_some() || self.config.execution.mode != PreparedOlsExecutionMode::Fast
             || self.config.absorb.solver != FeSolverKind::Map
-            || self.fe_design().effects().len() != 2
+            || !matches!(self.fe_design().effects().len(), 2 | 3)
             || !self.fe_design().effects().iter().all(|e| e.has_intercept() && e.slopes().is_empty())
             || !matches!(self.fe_projector, Some(ReusableLinearMapProjector::PpmlCategorical { .. })) {
             return Err(invalid_argument("fast canonical product admission does not match the session"));

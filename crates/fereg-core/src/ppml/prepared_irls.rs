@@ -1198,13 +1198,19 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let fast_canonical_products_allowance = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
         && config.linear.absorb.solver == FeSolverKind::Map
-        && fe_design.effects().len() == 2
+        && matches!(fe_design.effects().len(), 2 | 3)
         && fe_design.effects().iter().all(|e| e.has_intercept() && e.slopes().is_empty())
     {
         let pool = config.linear.execution.poolsize.max(1)
             .min(memory_plan.dimensions.finite_columns.max(1));
         let bytes = (fe_design.nobs() as u128).checked_mul(pool as u128)
-            .and_then(|n| n.checked_mul(16));
+            .and_then(|n| n.checked_mul(16))
+            .filter(|&allowance| fe_design.effects().len() == 2 ||
+                crate::ols::canonical_three_workspace_bytes(fe_design.nobs(),
+                    memory_plan.dimensions.finite_columns.saturating_add(1),
+                    std::array::from_fn(|e| fe_design.effects()[e].n_levels()),
+                    effective_threads)
+                    .is_some_and(|bytes| bytes <= allowance));
         match bytes.and_then(|bytes| memory_plan.solver_workspace_bytes.checked_add(bytes)
             .map(|total| (bytes, memory_plan.with_solver_workspace(total)))) {
             Some((bytes, Ok(plan))) => {

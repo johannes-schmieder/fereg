@@ -52,6 +52,16 @@ with the call. The builder still checks complete phase peaks and actual
 capacities. Optional admission or numerical/work refusal preserves the existing
 certified projection. Low execution retains its prior allowance.
 
+Connected three-categorical-FE canonical construction can use the same separate
+fast allowance under [ADR 0210](adr/0210-three-fe-canonical-frame-products.md).
+Its complete shared shape/byte preflight must pass before optional fast admission;
+low execution uses its existing `16*N*pool` allowance. The cumulative bound
+charges geometry construction scratch even after it dies, group-by-RHS
+coefficients, fixed worker Krylov/check buffers and certified products. It adds
+no N-by-K bank. The dead normalized-weight bank becomes the response; only group
+coefficients survive until retained controls have been written. Old projector
+capacity earns no speculative credit, and no weighted state crosses calls.
+
 On macOS, automatic availability uses free plus inactive pages from
 `HOST_VM_INFO64`. Mach's free count already includes speculative pages.
 The original statistics prefix supports older kernel revisions, and each
