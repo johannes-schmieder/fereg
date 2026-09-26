@@ -971,6 +971,16 @@ The real T1/T4 warmed audits and a 256-cycle executor test retain exact-zero
 allocation requirements. Static allocation-inventory drift and physical-cap
 qualification remain separate open issues.
 
+[ADR 0212](adr/0212-scheduled-poisson-preparation-and-final-replay.md) prepares
+immutable outcome terms in the same existing bank on that team. Independent
+final objective replay may use a three-double row tile, capped by both
+min(N,4096*T) and the existing publication-validator workspace. Separation, PSD
+and Wald validation scratch has been released before this tile is allocated.
+Actual capacity must fit the allowance; no phase bound increases. If fewer than
+4096 rows fit, or execution is serial, replay retains the scalar traversal.
+Fresh contributions merge in original row order. Independent separation digest
+streams share the installed team without retaining another observation bank.
+
 ## PPML sequential cluster scores
 
 ADR 0205 permits a scratch-backed positive-rank PPML subset to replace radix

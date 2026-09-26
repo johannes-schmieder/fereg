@@ -162,16 +162,27 @@ impl CertifiedSeparationSeal {
         final_outcome: &[f64],
     ) -> Result<()> {
         let expected_mask = requested_replay_mask(config);
-        if self.config != config
-            || self.final_generation != report.generations
-            || self.final_generation_hash != report.generation_hashes.last().copied().unwrap_or(0)
-            || self.final_rows_digest
-                != stable_usize_slice_digest(b"final-rows", final_original_rows)?
-            || self.final_outcome_digest
-                != stable_f64_slice_digest(b"final-outcome", final_outcome)?
-            || self.report_digest != separation_report_digest(report)?
-            || self.replay_mask != expected_mask
-        {
+        let bound = if self.config != config || self.final_generation != report.generations
+            || self.final_generation_hash != report.generation_hashes.last().copied().unwrap_or(0) {
+            false
+        } else {
+            let (rows, outcome, trace) = if parallel_digest_team(final_original_rows.len()) {
+                let ((rows, outcome), trace) = rayon::join(
+                    || final_frame_digests(final_original_rows, final_outcome),
+                    || separation_report_digest(report));
+                (rows, outcome, trace)
+            } else {
+                let (rows, outcome) = final_frame_digests(final_original_rows, final_outcome);
+                (rows, outcome, separation_report_digest(report))
+            };
+            // Independent byte streams retain their complete traversal and
+            // comparison/error precedence; no digest is cached or reassociated.
+            self.final_rows_digest == rows?
+                && self.final_outcome_digest == outcome?
+                && self.report_digest == trace?
+                && self.replay_mask == expected_mask
+        };
+        if !bound {
             return Err(FeregError::new(
                 ErrorCode::Internal,
                 "PPML separation certification seal does not bind the requested detector chain and terminal generation",
@@ -209,10 +220,11 @@ impl FinalGenerationReplayToken {
                 "PPML terminal separation generation did not independently replay every requested detector",
             ));
         }
+        let (rows, outcome) = final_frame_digests(final_original_rows, final_outcome);
         Ok(Self {
             final_generation,
-            final_rows_digest: stable_usize_slice_digest(b"final-rows", final_original_rows)?,
-            final_outcome_digest: stable_f64_slice_digest(b"final-outcome", final_outcome)?,
+            final_rows_digest: rows?,
+            final_outcome_digest: outcome?,
             replay_mask,
         })
     }
@@ -251,6 +263,22 @@ impl FinalGenerationReplayToken {
 pub(crate) struct PreparedPpmlSeparationExecution {
     pub(crate) preliminary_plan: PpmlMemoryPlan,
     pub(crate) linear: PreparedOlsFitConfig,
+}
+
+fn parallel_digest_team(rows: usize) -> bool {
+    // Public PPML already owns an installed, scoped team. Standalone callers
+    // keep serial execution rather than initializing an unrelated global pool.
+    rows >= 4096 && rayon::current_thread_index().is_some() && rayon::current_num_threads() > 1
+}
+
+fn final_frame_digests(rows: &[usize], outcome: &[f64]) -> (Result<u64>, Result<u64>) {
+    let row_digest = || stable_usize_slice_digest(b"final-rows", rows);
+    let outcome_digest = || stable_f64_slice_digest(b"final-outcome", outcome);
+    if parallel_digest_team(rows.len()) {
+        rayon::join(row_digest, outcome_digest)
+    } else {
+        (row_digest(), outcome_digest())
+    }
 }
 
 impl PreparedPpmlSeparationOutcome {
@@ -3352,6 +3380,37 @@ mod tests {
     static PHASE_PROBE_ENDS: AtomicU64 = AtomicU64::new(0);
     static MU_PHASE_ACTIVE: AtomicBool = AtomicBool::new(false);
     static MU_FIT_CALLS: AtomicU64 = AtomicU64::new(0);
+
+    #[test]
+    fn scheduled_seals_keep_byte_identity_and_reject_mutated_bindings() {
+        let n = 8193;
+        let rows: Vec<_> = (0..n).map(|i| 5+3*i).collect();
+        let y: Vec<_> = (0..n).map(|i| [0.,0.25,2.,1e100][i%4]).collect();
+        let report = SeparationReport {
+            candidate_observations:n, active:vec![true;n], retained_observations:(0..n).collect(),
+            dropped_observations:vec![],drop_reasons:vec![None;n], singleton_count:0,separated_count:0,
+            generations:0,generation_hashes:vec![candidate_ledger_hash_candidate_axis(&rows,&vec![true;n],&vec![None;n]).unwrap()],methods:vec![],
+        };
+        let config = SeparationConfig { drop_singletons:false,
+            methods:SeparationMethods { fixed_effects:false,simplex:false,iterated_rectifier:false,mu:false },
+            ..SeparationConfig::default() };
+        let scalar=certify_disabled_separation_for_test(config,&report,&rows,&y).unwrap();
+        for threads in [1,2,4,8] {
+            crate::parallel::ThreadTeam::new(crate::options::ThreadConfig::from_requested(threads,true).unwrap()).install(|| {
+                let actual=certify_disabled_separation_for_test(config,&report,&rows,&y).unwrap();
+                assert_eq!(actual,scalar);
+                actual.validate(config,&report,&rows,&y).unwrap();
+                let mut changed_rows=rows.clone();changed_rows[4000]+=1;
+                let mut changed_y=y.clone();changed_y[4000]=f64::NAN;
+                let mut changed_report=report.clone();changed_report.active[4000]=false;
+                for (r,o,t) in [(&changed_rows,&y,&report),(&rows,&changed_y,&report),(&rows,&y,&changed_report),(&changed_rows,&changed_y,&changed_report)] {
+                    let expected = std::thread::scope(|scope| scope.spawn(|| scalar.validate(config,t,r,o)).join().unwrap()).unwrap_err();
+                    let found=actual.validate(config,t,r,o).unwrap_err();
+                    assert_eq!((found.code,found.message),(expected.code,expected.message));
+                }
+            }).unwrap();
+        }
+    }
 
     #[test]
     fn initial_generation_phase_closes_on_success_and_capacity_rejection() {

@@ -9,12 +9,113 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-The [next implementation](#next-implementation-prepared-sample-and-final-result-ownership)
-is prepared-sample/final-result ownership and independent replay. Full finite-block
-conditioning, full-frame three-FE products and implicit large-N two-FE canonical
-construction are adopted. Borrowed canonical controls (ADR 0209), blanket ordinary
-solver replacement and earlier isolated operator probes remain closed. Historical
-timings and pending directions do not transfer to this artifact.
+The [next implementation](#next-implementation-current-input-start-and-prepared-model-work)
+is current-input cold initialization and prepared-model construction. Scheduled
+Poisson preparation and independent final replay are adopted. The broader solver
+improvements remain intact. Borrowed canonical controls (ADR 0209), blanket
+ordinary-solver replacement and rejected operator/extrapolation probes remain
+closed. Historical timings and pending directions do not transfer to this artifact.
+
+## Scheduled Poisson preparation and final replay adopted — 2026-09-25
+
+Retain **familyframe1**, based on **f2a3ab0f** plus three Rust overlays; all
+**566 computational inputs** match the measured artifact. Plugin SHA-256:
+`a88eb33da856f021563105040e90a08ede50797e901cadce9b452629cab02328`.
+[ADR 0212](docs/adr/0212-scheduled-poisson-preparation-and-final-replay.md) and the
+[source-bound report](benchmarks/reports/development/ppml-scheduled-final-work-local-2026-09-25/README.md)
+retain sources, full distributions, separate diagnostic builds, failures and
+**10,774 restored hash/privacy-verified receipts**. Archive SHA-256:
+`a8daf27efeac329055a4852e581a69e8e2f3e557a4b5d20e2105523d97b1ffb1`.
+
+Use the installed team for immutable outcome-term preparation, fresh final
+likelihood contributions and independent sample/outcome/report digest streams.
+Terms retain their existing bank; final replay uses a bounded tile within the
+already admitted validator workspace after earlier scratch drops. Merge all
+three compensated sums in original row order. Fingerprint bytes, comparison/error
+precedence and every independent scientific check remain unchanged. No solver,
+weight-generation cache, certificate substitution, new pool or OLS path change.
+Scalar/small/insufficient-workspace replay retains its prior traversal.
+
+Production three-arm development medians (B=implicitframe1 / C=familyframe1 /
+comparable pinned stock), robust inference and fitted means unless noted:
+
+|Case; N/K/T|B / C / stock ms|C/stock paired range|
+|---|---:|---:|
+|Two-FE numeric fast;983040/6/8|1003 /938 /875|1.046–1.092|
+|Same low memory|1181 /1078 /895|1.182–1.233|
+|Two-FE numeric fast;491520/6/8|514 /479 /502|0.945–0.958|
+|Unbalanced three-FE factors, cluster;153600/19/8|595 /590 /700|0.823–0.849|
+|Unbalanced three-FE, two slopes;61440/10/8|160 /157 /232|0.670–0.687|
+|Two-FE, two slopes, low;30720/6/4|75 /74 /120|0.608–0.625|
+
+Large numeric gains are **6.5–8.7%**. Development paired outcomes are 22 wins,
+four losses and one tie; four of eight multi-FE families meet 0.90 in every pair.
+The one-FE protected control improves 66->62 ms but its stock mean comparison
+fails, so the 41-ms reference clock is unranked.
+
+Predeclared fresh **seed 202609442** confirms fast737280 **765->713 ms** (stock 769;
+ratios 0.926–0.934) and fast368640 **510->487** (stock 653). Five of seven fresh
+families with valid clocks meet 0.90 in every pair. Four-slope low retains a loss,
+**122->123 ms versus stock 111**. Fresh paired outcomes are 26/7/2 wins/losses/ties.
+The matched 737280 low family and three unchanged retries all record contention;
+completed science passes but **all fresh low-family clocks remain unranked**.
+The clean complete weak retry replaces its incomplete original timing block.
+No source or guard tuning follows 442; no more retries belong to this milestone.
+
+Two complete clean diagnostic fast pairs show final composite validation
+**88.27->46.28 ms**, including fresh objective replay **41.00->17.64 ms**.
+Initial-state work outside initialization, including immutable terms, falls
+33.35->21.43 ms. Initialization itself remains about 58 ms; canonical solves
+remain about 227 ms. Fingerprint stream durations overlap: do not sum them as
+wall time or add replay savings to their containing composite boundary.
+Direct final sample/output copies cost under 1 ms, disproving the opening
+ownership-copy hypothesis as the dominant cost. Initial model generation is 52
+ms and core preparation 65 ms; those are separate measured boundaries.
+
+**141 focused Rust tests, six original licensed fixtures, 262 completed public
+states and 12 explicit Poisson/Hessian/sandwich arm checks pass.** All 86 completed
+B/C pairs have exact scientific exports; 164 independent null-statistic states
+pass. Anchored pairs 163/167 retain one small stock full-output residual mismatch
+and three one-FE stock mean mismatches; 21 planned anchored pairs are incomplete.
+Direct production C/stock comparisons pass 78/81, with 10 further incomplete.
+The existing hidden-allocation fixture expects wire minor 2 instead of 3 and fails
+on both artifacts; isolated copies changing only that assertion/sentinel pass
+all remaining allocation/rollback checks. Preserve both original failures.
+
+**17 OLS scientific export pairs are exact.** Initial B/C medians 67/69, 80/82,
+10/9 and 222/244 ms retain their losses. A predeclared five-pair unchanged factor
+repeat ties 210/210, with two candidate wins and three losses; both clean blocks
+remain visible. No universal performance non-regression claim. Six recorded
+foreign-workload overlaps, one pre-measurement diagnostic stop and all partial
+work remain in the archive. No unrelated process was stopped; some between-call
+preflight stops preserve only the controller error, not process identities.
+
+At T8 final replay adds at most 768 KiB of scratch within the existing allowance.
+Selected production tracked peak and scratch deltas are zero; modeled bounds
+vary -48..+48 bytes. No N-by-K bank, memory-allowance increase, physical-cap/new
+warmed-allocation/platform qualification or static-inventory repair. Existing
+weighted constrained-fit and nonretaining-CG failures, frozen 77/16/111, Linux
+confirmation and stopped campaigns remain unchanged. No push or release.
+
+### Next implementation: current-input start and prepared-model work
+
+To reach 0.90 stock, million-row fast/low still need about **151/273 ms**; fresh
+fast737280 needs about **21 ms**. Target the measured **58-ms initialization**
+first: inspect the global log-sum start and conditional per-partition seed,
+retain representability fallback and group reduction order, and schedule only
+independent work on the existing team. These are initial guesses, not acceptance
+authority. Establish an independent fresh-case improvement before admission.
+
+Then redesign valid generation-zero numeric/sample/topology preparation across
+core preparation 65 ms and initial model construction 52 ms. Subdivide those named
+boundaries before deciding which passes can share ownership or validity. Preserve
+sample/separation changes, probability-weight rebasing, rank, finite-domain checks
+and transactional failure. Final output copies are not the opportunity.
+Low finite rank/scratch work remains a separate measured cost (about 67/26 ms
+across canonical calls in a clean single-pair diagnostic, not a completed low
+profile distribution). Four-slope low remains 123/111 and needs its own bounded
+attribution. Do not retune the accepted scheduling threshold or reopen rejected
+micro-probes. The broader 0.90 goal remains active.
 
 ## Implicit two-FE canonical construction adopted — 2026-09-25
 
@@ -94,7 +195,7 @@ warmed-allocation or platform qualification. Static inventory drift, constrained
 weighted fits, nonretaining CG and frozen 77/16/111 remain unchanged. No push,
 release, SCC retry or stopped campaign restart.
 
-### Next implementation: prepared-sample and final-result ownership
+### Prior proposal: prepared-sample and final-result ownership (superseded)
 
 The comparable million-row fast/low cases still need about **223/324 ms** to reach
 0.90 stock; fresh737280 fast/low need **79/148 ms**. Production preparation remains

@@ -137,10 +137,19 @@ pub fn poisson_null_objective(
     finish_null_objective(mean, likelihood)
 }
 
-// Both published likelihoods are replayed from original outcomes and weights.
-// Fresh immutable terms are shared within a row, never borrowed from IRLS state.
+#[cfg(test)]
 pub(super) fn replay_final_objectives(
     outcome: &[f64], mean: &[f64], prior_weights: &[f64],
+) -> Result<(PoissonObjective, PoissonNullObjective)> {
+    replay_final_objectives_with_threads(outcome, mean, prior_weights,
+        ThreadConfig::from_requested(1, true)?, 0)
+}
+
+// Both published likelihoods are replayed from original outcomes and weights.
+// Fresh immutable terms are shared within a row, never borrowed from IRLS state.
+pub(super) fn replay_final_objectives_with_threads(
+    outcome: &[f64], mean: &[f64], prior_weights: &[f64],
+    threads: ThreadConfig, workspace_bytes: u128,
 ) -> Result<(PoissonObjective, PoissonNullObjective)> {
     if outcome.len() != mean.len() || outcome.len() != prior_weights.len() {
         return Err(FeregError::new(ErrorCode::InvalidArgument,
@@ -150,16 +159,54 @@ pub(super) fn replay_final_objectives(
     let mut deviance = CompensatedSum::default();
     let mut likelihood = CompensatedSum::default();
     let mut null_likelihood = CompensatedSum::default();
-    for row in 0..outcome.len() {
+    let row_values = |row: usize| -> Result<[f64; 3]> {
         let y = outcome[row];
         let terms = [if y > 0.0 { y.ln() } else { 0.0 }, log_gamma(y + 1.0)];
         let values = objective_row_values(y, mean[row], prior_weights[row], None, Some(terms), row)?;
-        deviance.add(values[0]);
-        likelihood.add(values[1]);
-        null_likelihood.add(null_likelihood_row(y, prior_weights[row], null_mean, null_log_mean,
-            terms[1], row)?);
+        Ok([values[0], values[1], null_likelihood_row(y, prior_weights[row], null_mean, null_log_mean,
+            terms[1], row)?])
+    };
+    let rows = final_replay_tile_rows(outcome.len(), threads.resolved(), workspace_bytes);
+    if rows == 0 {
+        for row in 0..outcome.len() {
+            let values = row_values(row)?;
+            deviance.add(values[0]);
+            likelihood.add(values[1]);
+            null_likelihood.add(values[2]);
+        }
+    } else {
+        // Separation/PSD/Wald validators have returned and released their
+        // scratch. Reuse that admitted phase allowance, never IRLS terms.
+        let mut tile = fallible_output(rows, "unable to reserve fresh Poisson replay tile")?;
+        if tile.capacity() as u128 * std::mem::size_of::<[f64; 3]>() as u128 > workspace_bytes {
+            return Err(FeregError::new(ErrorCode::Allocation,
+                "fresh Poisson replay capacity exceeds publication allowance"));
+        }
+        tile.resize(rows, [0.; 3]);
+        let team = ThreadTeam::new(threads).acquire()?;
+        for first in (0..outcome.len()).step_by(rows) {
+            let count = rows.min(outcome.len() - first);
+            let buffer = &mut tile[..count];
+            let failure = team.install(|| buffer.par_iter_mut().enumerate().with_min_len(256)
+                .map(|(i, output)| -> Result<()> { *output = row_values(first + i)?; Ok(()) })
+                .find_first(Result::is_err));
+            if let Some(result) = failure { result?; }
+            // All three compensated chains retain their scalar row order.
+            for values in buffer {
+                deviance.add(values[0]);
+                likelihood.add(values[1]);
+                null_likelihood.add(values[2]);
+            }
+        }
     }
     Ok((finish_objective(deviance, likelihood)?, finish_null_objective(null_mean, null_likelihood)?))
+}
+
+fn final_replay_tile_rows(rows: usize, threads: usize, workspace_bytes: u128) -> usize {
+    let affordable = (workspace_bytes / std::mem::size_of::<[f64; 3]>() as u128)
+        .min(usize::MAX as u128) as usize;
+    let tile = objective_tile_rows(rows, threads).min(affordable);
+    if tile < FAMILY_ROWS_PER_WORKER { 0 } else { tile }
 }
 
 fn poisson_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<(f64, f64)> {
@@ -305,20 +352,30 @@ impl<'a> PreparedPoissonInputs<'a> {
             return Err(FeregError::new(ErrorCode::InvalidArgument, "Poisson immutable inputs are misaligned"));
         }
         let mut terms = fallible_output(outcome.len(), "unable to reserve Poisson immutable terms")?;
-        for (row, ((&y, &q), &o)) in outcome.iter().zip(prior_weights).zip(offset).enumerate() {
+        let row_terms = |row: usize| -> Result<[f64; 2]> {
+            let (y, q, o) = (outcome[row], prior_weights[row], offset[row]);
             if !y.is_finite() || y < 0. || !q.is_finite() || q <= 0. || !o.is_finite() {
                 return Err(FeregError::new(ErrorCode::InvalidData, format!("invalid Poisson immutable input at observation {row}")));
             }
             // Zero keeps its existing exact working-response branch. A
             // nonfinite log-Gamma still fails at objective evaluation, with
             // the same finite-domain rule as the independent implementation.
-            terms.push([if y == 0. { 0. } else { y.ln() }, log_gamma(y + 1.)]);
-        }
+            Ok([if y == 0. { 0. } else { y.ln() }, log_gamma(y + 1.)])
+        };
         let team = if objective_tile_rows(outcome.len(), threads.resolved()) == 0 {
             None
         } else {
             Some(ThreadTeam::new(threads).acquire()?)
         };
+        if let Some(team) = &team {
+            terms.resize(outcome.len(), [0.; 2]);
+            let failure = team.install(|| terms.par_iter_mut().enumerate().with_min_len(256)
+                .map(|(row, output)| -> Result<()> { *output = row_terms(row)?; Ok(()) })
+                .find_first(Result::is_err));
+            if let Some(result) = failure { result?; }
+        } else {
+            for row in 0..outcome.len() { terms.push(row_terms(row)?); }
+        }
         Ok(Self { outcome, prior_weights, offset, terms, team })
     }
 
@@ -726,6 +783,61 @@ fn log_gamma(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prepared_terms_and_fresh_replay_keep_scalar_bits_and_budget_boundaries() {
+        for n in [4095, 4096, 4097, 17003, 65539] {
+            let y: Vec<_> = (0..n).map(|i| [0., 1e-100, 0.25, 1., 5., 100., 1e6, 1e100][i%8]).collect();
+            let q: Vec<_> = (0..n).map(|i| [2., 0.3, 1., 0.01, 7., 2., 1e-4, 1e-80][i%8]).collect();
+            let offset = vec![0.; n];
+            let scalar = PreparedPoissonInputs::new(&y, &q, &offset).unwrap();
+            for threads in [1, 2, 4, 8, 1] {
+                let config = ThreadConfig::from_requested(threads, true).unwrap();
+                let prepared = PreparedPoissonInputs::new_with_threads(&y, &q, &offset, config).unwrap();
+                assert_eq!(prepared.terms, scalar.terms);
+                for shift in [0.75, 1., 1.5] {
+                    let mu: Vec<_> = y.iter().map(|&y| (y + 0.7) * shift).collect();
+                    let direct = replay_final_objectives(&y, &mu, &q).unwrap();
+                    for bytes in [0, 24*4096-1, 24*4096, 24*16385, u128::MAX] {
+                        let actual = replay_final_objectives_with_threads(&y, &mu, &q, config, bytes).unwrap();
+                        assert_eq!(actual, direct);
+                        assert!(final_replay_tile_rows(n, threads, bytes) as u128 * 24 <= bytes);
+                    }
+                }
+            }
+        }
+        assert_eq!(final_replay_tile_rows(usize::MAX, usize::MAX, u128::MAX), usize::MAX);
+        assert_eq!(final_replay_tile_rows(17003, 4, 24*4096-1), 0);
+        assert_eq!(final_replay_tile_rows(17003, 4, 24*4096), 4096);
+    }
+
+    #[test]
+    fn preparation_and_fresh_replay_preserve_error_order_and_retry() {
+        let n = 17003;
+        for threads in [2, 4, 8] {
+            let config = ThreadConfig::from_requested(threads, true).unwrap();
+            for first in [3, 4095, 16401] {
+                let mut y = vec![2.; n]; let mut q = vec![1.; n]; let mut offset = vec![0.; n];
+                for kind in 0..3 {
+                    match kind { 0 => y[first] = -1., 1 => q[first] = f64::NAN, _ => offset[first] = f64::INFINITY }
+                    y[first+50] = -1.;
+                    let direct = PreparedPoissonInputs::new(&y, &q, &offset).err().unwrap();
+                    let actual = PreparedPoissonInputs::new_with_threads(&y, &q, &offset, config).err().unwrap();
+                    assert_eq!((actual.code,actual.message),(direct.code,direct.message));
+                    y.fill(2.);q.fill(1.);offset.fill(0.);
+                }
+                for bad in [0., f64::NAN, f64::INFINITY] {
+                    let mut mu = vec![1.; n];mu[first]=bad;mu[first+50]=0.;
+                    let direct = replay_final_objectives(&y,&mu,&q).unwrap_err();
+                    let actual = replay_final_objectives_with_threads(&y,&mu,&q,config,24*4096).unwrap_err();
+                    assert_eq!((actual.code,actual.message),(direct.code,direct.message));
+                }
+                let mu=vec![1.;n];
+                assert_eq!(replay_final_objectives_with_threads(&y,&mu,&q,config,24*4096).unwrap(),
+                    replay_final_objectives(&y,&mu,&q).unwrap());
+            }
+        }
+    }
 
     #[test]
     fn fresh_joint_replay_matches_analytic_likelihoods_and_independent_calls() {

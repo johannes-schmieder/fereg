@@ -1,4 +1,4 @@
-use super::family::replay_final_objectives;
+use super::family::replay_final_objectives_with_threads;
 use super::prepared_model::PreparedPpmlModel;
 use super::prepared_separation::candidate_ledger_hash_candidate_axis;
 use super::prepared_separation::CertifiedSeparationSeal;
@@ -1554,7 +1554,9 @@ impl CertifiedPpmlResult {
         )?;
 
         let (recomputed_objective, null_objective) =
-            replay_final_objectives(sample.outcome(), output.mean(), sample.prior_weights()).map_err(
+            replay_final_objectives_with_threads(sample.outcome(), output.mean(), sample.prior_weights(),
+                crate::options::ThreadConfig::from_requested(memory.plan.dimensions.threads, true)?,
+                memory.plan.selected_inventory().publication_validator_workspace_bytes).map_err(
                 |error| composed_result_error("PPML final objective replay failed", error),
             )?;
         let objective_deviance_relative_error =
