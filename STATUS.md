@@ -9,12 +9,111 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-**The one-pass incidence experiment is closed and rejected.** Production remains
-exactly **residualrows2**, accepted at **ceb8f53d**, with all 567 computational
-inputs matching. The next boundary is a single-use current-frame response-statistic
-handoff, with explicit proof of units, rounding and independent acceptance.
-Fresh seed **202609447** is consumed; do not tune on it or reuse earlier frozen
-validation seeds. No candidate or task-owned job is pending.
+**The response-statistics experiment is closed and rejected.** Production remains
+exactly **residualrows2**, accepted at **ceb8f53d**, with all **567 computational
+inputs matching**. The next boundary is the shared accepted eta/mean and working-
+state lifecycle, not further canonical statistic/packing tuning. Fresh seed
+**202609448** is consumed; do not tune on it or earlier frozen validation seeds.
+No candidate or task-owned job is pending.
+
+## Canonical response-statistics experiment rejected — 2026-09-26
+
+**responsestats1**, base **04b5b792** plus four Rust overlays, tested a single-use
+current-frame handoff of the original response mean, stable reconstructed-response
+norm and constant-column norm. The norm uses actual materialized rows during the
+fresh original-input certificate, not a scaled Gram diagonal. The independent
+raw-residual mean and score checks remain. No bank, pool, allowance, retained
+response cache, tolerance or checking-frequency change was introduced.
+
+Candidate plugin SHA-256:
+`ad4dce9a467c13bc4b5540c8ecd430eab43a601cb4c48e111daf55e8bcc8a1ea`.
+[ADR 0218](docs/adr/0218-canonical-response-statistics-experiment-closeout.md) and the
+[source-bound report](benchmarks/reports/development/ppml-response-statistics-local-2026-09-26/README.md)
+retain complete source/patch, declarations, failures, independent science,
+ordered distributions and **9,732 restored hash/privacy-verified receipts**.
+Archive SHA-256:
+`a6f4b6c3fa084f4e6dd32945618a46967f80bc23d1a664acb6858a56d5b0c073`.
+Local work root: `target/ppml-response-statistics-20260926`.
+
+Paired **rankprofile2/responsestatsprofile1** removes about **16 ms** of separate
+norm scans and **9–10 ms** from reported-intercept assembly, adding about **5 ms**
+to weight preparation. Containing canonical solves improve **221.847->202.761 ms**
+fast and **249.282->229.555** low. Fresh original-input certificates/products and
+finite score checks stay. Whole diagnostic plugin B/C **832.445/812.727** fast,
+**911.765/889.088** low; factor control **489.756/485.375**. These clocks are
+separate from stock headline timing and include nested spans.
+
+Pilot three-rotation B/C/stock medians: million low **944/918/864**, fast
+**866/844/867**, low two slopes **71/70/120**, three-FE two slopes **147/153/231**,
+factors **562/561/701**, serial **539/534/937**. **10 wins, six losses, two ties**;
+four of six families meet 0.90 in every stock pair.
+
+Fresh seed202609448, five rotations: large fast **657/648/762**, low
+**712/698/765**, T4 fast **414/408/665**, factors **665/669/3202**, three-FE two
+slopes **190/195/300**, four-slope low **114/116/116**, serial **540/536/934**,
+weak **131/131/777**, disconnected low **93/91/99**. **29 wins, 14 losses, two
+ties**. All 45 direct stock comparisons pass science; six of nine families meet
+0.90 in every pair. Low large, four-slope and disconnected still miss the target.
+Do not reinterpret earlier seed447 mean discrepancies as repaired.
+
+A single predeclared five-pair repeat of the pilot slope control, on hash-identical
+full/warm numeric inputs, gives **148/151 ms**. The pilot **147/153** and fresh
+**190/195** losses therefore persist. Slope views decline the changed categorical
+builder; the binary-wide cause was not localized. Do not invent attribution.
+The gate required useful public savings without a reproducible control loss;
+it fails. Reject this implementation, preserve all blocks separately, and stop
+this bounded experiment without layout/seed tuning.
+
+All **567 production inputs now match residualrows2** exactly. Restored plugin:
+`ef3ee205cab739352ccc1024500e26e9c7c874c609001c58cf0bc7038c32f519`.
+No candidate code or test remains in production. Candidate gains do not transfer
+to restored source. This report's B arm supplies additional current-production
+measurements, rather than inheriting another artifact's performance claims.
+
+Candidate science: **76 distinct Rust tests, nine licensed fixtures, 223 public
+PPML state audits, 12 explicit Poisson/Hessian/sandwich comparisons** pass. All
+**78 native PPML and 18 OLS scientific export pairs are exact**. Anchored pairs
+**144/145**, direct C/stock **66/67** preserve the one older small full-output
+residual discrepancy, unranked. OLS B/C medians **64/63, 75/75, 14/14, 213/207,
+159/162, 18/16** retain the large OLS loss. No additional control repeat follows
+after the PPML rejection gate failed.
+
+Heap/scratch peak deltas zero; model bounds **-112..+48 bytes**, unchanged
+allowances. Initial test-only Vec/slice compilation failure is archived and was
+fixed before building either measured artifact. No application failure, timeout,
+interrupted fit or detected contention. No qualification, push or release.
+Known static inventory drift, wire-minor/checkpoint-count failures, constrained-
+fit/nonretaining-CG failures, SCC deferral, stopped campaigns and frozen
+77/16/111 definitions remain unchanged.
+
+### Next implementation: shared accepted-point and working-state lifecycle
+
+Restored production meets 0.90 stock in all pairs of four of six pilot and six
+of nine fresh families. Pilot fast/low median deficits are **85.7/166.4 ms**;
+fresh large low, four-slope low and disconnected low deficits **23.5/9.6/3.9 ms**.
+Avoid another cycle on the last few milliseconds of one small case.
+
+Baseline diagnostic IRLS-exclusive work is **95.4 ms fast /76.2 low**; independent
+outer score checks are a separate **40 ms**. The exclusive work is not yet all
+attributed and is not all assumed removable. Inspect `PpmlIterationWorkspace`
+in `ppml/memory.rs`, `PreparedPoissonInputs` in `family.rs`, and ordinary/strict
+state transitions in `prepared_irls.rs`. `accept_trial` swaps an already validated
+eta/mean pair; ordinary iteration refresh then computes exp(eta) again before
+forming current q*mu, working response and score residuals. Trial eta and mean
+formation also use separate passes. This is a shared categorical/slope boundary.
+
+First split `refresh_prepared_working_state`, `fill_means`,
+`fill_working_state_and_scores`, `fill_line_search_trial_core` and objective work
+inside the measured total. Implement an explicit valid accepted eta/mean lifetime
+and fuse compatible row transitions using existing banks. Preserve mutation,
+trial-rejection, normalization, strict-rollback, sample/generation and bounds
+invalidation. No prior-point authority may cross a changed state. Fresh current-
+weight working state, independent scores/objectives, two consecutive convergence
+passes, exact final-Hessian replay and transactional failure remain mandatory.
+Validate against independent Poisson/Hessian and boundary oracles, then matched
+baseline/candidate/stock rotations with categorical, slope, low-memory and OLS
+controls. Separation digest work (about **49–53 ms**) is a separate possible
+boundary, not part of an assumed working-state saving.
 
 ## One-pass canonical incidence experiment rejected — 2026-09-26
 

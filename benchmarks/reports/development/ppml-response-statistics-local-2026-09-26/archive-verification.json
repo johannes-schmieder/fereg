@@ -1,0 +1,16 @@
+{
+  "logical_receipts": 9732,
+  "payloads": 2286,
+  "bytes": 12571424,
+  "sha256": "a6f4b6c3fa084f4e6dd32945618a46967f80bc23d1a664acb6858a56d5b0c073",
+  "omitted_files": 1031,
+  "omission_policy": "Hash but omit generated DTA, binary row outputs and saved_outputs.csv; retain controllers, input fingerprints, complete scientific summaries and all attempt outcomes. Raw generated outputs remain local.",
+  "restored_logical_receipts": 9732,
+  "restored_hashes_verified": true,
+  "privacy_review": {
+    "personal_home_paths": 0,
+    "raw_license_headers": 0,
+    "approved_literals": 48,
+    "scope": "Shared reference locations and synthetic privacy-test fixtures only; see privacy-reviewed-literals.json."
+  }
+}
