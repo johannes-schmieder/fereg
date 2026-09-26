@@ -233,7 +233,9 @@ pub fn fit_prepared_ppml_interruptible(
     // classify the numeric sample without constructing any observation-sized
     // compact column. ADR 0018 freezes route selection at this boundary.
     let numeric_input = borrowed_numeric_input(&request, &loaded)?;
-    let numeric_classification = classify_ppml_numeric_data(&numeric_input.as_input())?;
+    let numeric_view = numeric_input.as_input();
+    let classified = classify_ppml_numeric_data(&numeric_view)?;
+    let numeric_classification = classified.classification();
     let mut preflight_dimensions = conservative_preflight_dimensions_from_classification(
         &request,
         numeric_classification,
@@ -284,8 +286,8 @@ pub fn fit_prepared_ppml_interruptible(
     }
 
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
-    let numeric = select_ppml_numeric_data(&numeric_input.as_input(), numeric_classification)?;
-    // Selection has checked the exact classified shape. Until topology exists,
+    let numeric = select_ppml_numeric_data(classified)?;
+    // Selection is bound to the classified input. Until topology exists,
     // retain the same proven FE envelope rather than widening it back to N.
     let prepared_dimensions = preflight_dimensions;
     drop(numeric_input);
@@ -1730,7 +1732,9 @@ mod tests {
         fixtures.push((interaction, data));
         for (request, loaded) in fixtures {
             let input = borrowed_numeric_input(&request, &loaded).unwrap();
-            let classification = classify_ppml_numeric_data(&input.as_input()).unwrap();
+            let view = input.as_input();
+            let classified = classify_ppml_numeric_data(&view).unwrap();
+            let classification = classified.classification();
             let dimensions = conservative_preflight_dimensions_from_classification(
                 &request, classification, input.numeric_sources.len(),
                 input.offset.is_some() || input.exposure.is_some(),
@@ -1738,7 +1742,7 @@ mod tests {
             ).unwrap();
             let plan = plan_ppml_memory(dimensions, request.memory).unwrap();
             let bound = plan.selected_inventory().prepared_generation_bytes;
-            let numeric = select_ppml_numeric_data(&input.as_input(), classification).unwrap();
+            let numeric = select_ppml_numeric_data(classified).unwrap();
             drop(input);
             let mut owner = PreparedPpmlModelOwner::from_selection(
                 request.ols, request.clusters, loaded.ols, numeric, loaded.adjustment,

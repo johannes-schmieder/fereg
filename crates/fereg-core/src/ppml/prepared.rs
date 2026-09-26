@@ -109,6 +109,21 @@ pub(crate) struct PpmlNumericClassification {
     pub(crate) n_active: usize,
 }
 
+/// The exact immutable input that passed authoritative numeric validation.
+/// Counts may inform memory admission, but cannot authorize selection for a
+/// different input. Holding the whole view also binds source roles and masks.
+#[derive(Debug)]
+pub(crate) struct ClassifiedPpmlNumericInput<'a> {
+    input: &'a PpmlNumericPreparationInput<'a>,
+    classification: PpmlNumericClassification,
+}
+
+impl ClassifiedPpmlNumericInput<'_> {
+    pub(crate) fn classification(&self) -> PpmlNumericClassification {
+        self.classification
+    }
+}
+
 impl PreparedPpmlNumericData {
     #[must_use]
     pub const fn sample(&self) -> &PreparedNumericSample {
@@ -145,12 +160,16 @@ impl PreparedPpmlNumericData {
 ///
 /// This pass exists solely so fit-lifetime memory routing can fail closed
 /// before canonical compaction. It invokes the shared row classifier and the
-/// same PPML domain policy as [`prepare_ppml_numeric_data`]. The sole retained
-/// state is a few scalar counts and the first deferred nonfinite-weight row.
-pub(crate) fn classify_ppml_numeric_data(
-    input: &PpmlNumericPreparationInput<'_>,
-) -> Result<PpmlNumericClassification> {
-    classify_ppml_numeric_data_with_visitor(input, |_, _| {})
+/// same PPML domain policy as [`prepare_ppml_numeric_data`]. Retain only scalar
+/// counts and an immutable borrow through post-admission selection.
+pub(crate) fn classify_ppml_numeric_data<'a>(
+    input: &'a PpmlNumericPreparationInput<'a>,
+) -> Result<ClassifiedPpmlNumericInput<'a>> {
+    let classification = classify_ppml_numeric_data_with_visitor(input, |_, _| {})?;
+    Ok(ClassifiedPpmlNumericInput {
+        input,
+        classification,
+    })
 }
 
 fn classify_ppml_numeric_data_with_visitor(
@@ -234,9 +253,12 @@ pub(crate) struct PpmlNumericSelection {
 }
 
 pub(crate) fn select_ppml_numeric_data(
-    input: &PpmlNumericPreparationInput<'_>,
-    admitted: PpmlNumericClassification,
+    classified: ClassifiedPpmlNumericInput<'_>,
 ) -> Result<PpmlNumericSelection> {
+    let ClassifiedPpmlNumericInput {
+        input,
+        classification: admitted,
+    } = classified;
     let mut original_row_by_active = Vec::new();
     original_row_by_active
         .try_reserve_exact(admitted.n_candidate)
@@ -255,12 +277,29 @@ pub(crate) fn select_ppml_numeric_data(
                 "unable to reserve PPML numeric drop ledger",
             )
         })?;
-    let classification = classify_ppml_numeric_data_with_visitor(input, |row, reason| {
-        drop_reasons.push(reason);
-        if reason == DropReason::Retained {
-            original_row_by_active.push(row);
+    let classification = if admitted.n_active == admitted.n_candidate {
+        // Every candidate survived the complete domain/error-precedence scan.
+        // The immutable borrow proves those values, roles and masks cannot
+        // change during admission; no numeric replay is needed for this ledger.
+        for (row, &candidate) in input.candidate.iter().enumerate() {
+            drop_reasons.push(if candidate {
+                DropReason::Retained
+            } else {
+                DropReason::ExcludedByIfIn
+            });
+            if candidate {
+                original_row_by_active.push(row);
+            }
         }
-    })?;
+        admitted
+    } else {
+        classify_ppml_numeric_data_with_visitor(input, |row, reason| {
+            drop_reasons.push(reason);
+            if reason == DropReason::Retained {
+                original_row_by_active.push(row);
+            }
+        })?
+    };
     if classification != admitted {
         return Err(FeregError::new(
             ErrorCode::Internal,
@@ -961,7 +1000,7 @@ mod tests {
     ) -> Result<PreparedPpmlNumericData> {
         let reference = prepare_ppml_numeric_data(input);
         let selected = classify_ppml_numeric_data(input)
-            .and_then(|admitted| select_ppml_numeric_data(input, admitted))
+            .and_then(select_ppml_numeric_data)
             .and_then(|selection| {
                 let values = input
                     .offset
@@ -1005,7 +1044,7 @@ mod tests {
                     ..unweighted_input(&candidate, &outcome)
                 };
                 let selection =
-                    select_ppml_numeric_data(&input, classify_ppml_numeric_data(&input).unwrap())
+                    select_ppml_numeric_data(classify_ppml_numeric_data(&input).unwrap())
                         .unwrap();
                 let (adjustment, report) = selection.take_adjustment(Some(values)).unwrap();
                 let PreparedAdjustment::Offset(values) = adjustment else {
@@ -1036,6 +1075,60 @@ mod tests {
     }
 
     #[test]
+    fn classified_selection_matches_materialized_weights_roles_masks_and_adjustments() {
+        let n = 37;
+        let candidate: Vec<_> = (0..n).map(|r| r % 5 != 0).collect();
+        let y: Vec<_> = (0..n).map(|r| if candidate[r] { (r % 7) as f64 / 3.0 } else { f64::NAN }).collect();
+        let uses = [NumericSourceUse::ordinary(),
+            NumericSourceUse { ordinary: false, fixed_effect: true, cluster: false },
+            NumericSourceUse { ordinary: false, fixed_effect: false, cluster: true }];
+        for dropped_source in [None, Some(0), Some(1), Some(2)] {
+            let mut values: Vec<Vec<_>> = (0..3).map(|j| (0..n).map(|r|
+                if candidate[r] { (r + j) as f64 } else { f64::INFINITY }).collect()).collect();
+            if let Some(j) = dropped_source { values[j][3] = f64::NAN; }
+            let sources: Vec<_> = values.iter().map(|v| NumericColumnView::new(v)).collect();
+            for kind in [None, Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
+                for adjustment in [0, 1, 2] {
+                    let weights: Vec<_> = (0..n).map(|r| if candidate[r] {
+                        (1 + r % 4) as f64 * if kind == Some(WeightKind::Probability) { 1e-100 } else { 1.0 }
+                    } else { -1.0 }).collect();
+                    let z: Vec<_> = (0..n).map(|r| if candidate[r] { 1.0 + r as f64 / 10.0 } else { f64::NAN }).collect();
+                    let input = PpmlNumericPreparationInput {
+                        numeric_sources: &sources, source_uses: &uses,
+                        weights: kind.map_or(WeightInput::None, |kind| WeightInput::Provided {
+                            kind, column: NumericColumnView::new(&weights) }),
+                        offset: (adjustment == 1).then(|| NumericColumnView::new(&z)),
+                        exposure: (adjustment == 2).then(|| NumericColumnView::new(&z)),
+                        ..unweighted_input(&candidate, &y)
+                    };
+                    let classified = classify_ppml_numeric_data(&input).unwrap();
+                    let shape = classified.classification();
+                    assert_eq!(shape.n_active == shape.n_candidate, dropped_source.is_none());
+                    let expected = prepare_and_check_selection(&input).unwrap();
+                    let actual = select_ppml_numeric_data(classified).unwrap();
+                    assert_eq!(actual.original_row_by_active, expected.sample().original_row_by_active);
+                    assert_eq!(actual.drop_reasons, expected.sample().drop_reasons);
+                    assert_eq!(actual.weights, expected.weights());
+                    assert!(actual.original_row_by_active.capacity() <= shape.n_candidate);
+                    assert!(actual.drop_reasons.capacity() <= n);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn classified_selection_binds_equal_shapes_to_their_original_candidates() {
+        let y = [1., 2., 3., 4.];
+        let first = unweighted_input(&[true, false, true, false], &y);
+        let second = unweighted_input(&[false, true, false, true], &y);
+        let a = classify_ppml_numeric_data(&first).unwrap();
+        let b = classify_ppml_numeric_data(&second).unwrap();
+        assert_eq!(a.classification(), b.classification());
+        assert_eq!(select_ppml_numeric_data(a).unwrap().original_row_by_active, [0, 2]);
+        assert_eq!(select_ppml_numeric_data(b).unwrap().original_row_by_active, [1, 3]);
+    }
+
+    #[test]
     fn allocation_free_classification_matches_materialized_shape_and_error_precedence() {
         let candidate = [true, true, false, true, true];
         let outcome = [1.0, 9.0, -7.0, 0.0, 3.0];
@@ -1057,7 +1150,7 @@ mod tests {
             exposure: None,
         };
         let classification =
-            classify_ppml_numeric_data(&input).expect("allocation-free classification");
+            classify_ppml_numeric_data(&input).expect("allocation-free classification").classification();
         let prepared = prepare_and_check_selection(&input).expect("materialized sample");
         assert_eq!(classification.n_original, prepared.sample().n_original);
         assert_eq!(classification.n_candidate, prepared.sample().n_candidate);

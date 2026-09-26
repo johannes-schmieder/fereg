@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-25
+**Last updated:** 2026-09-26
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,12 +9,103 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-Direct first-partition cold initialization is adopted. The
-[next implementation](#next-implementation-borrow-bound-numeric-selection) is
-redundant generation-zero numeric selection, now separately measured. Prior solver
-and final-replay improvements remain intact. Rejected operator/extrapolation and
-borrowed-canonical-control probes remain closed. Historical timings do not transfer
-to this artifact; fresh seed 202609443 is consumed.
+Borrow-bound numeric selection is adopted. The
+[next implementation](#next-implementation-multi-fe-topology-ownership) is eligible
+multi-FE topology ownership, supported by new attribution. Prior solver and
+initialization improvements remain intact. Rejected operator/extrapolation and
+borrowed-canonical-control probes remain closed. Fresh seed 202609444 is consumed.
+Historical timings and unresolved comparisons do not transfer to this artifact.
+
+## Borrow-bound PPML numeric selection adopted — 2026-09-26
+
+Retain **classifiedinput1**, based on **ea2fed22** plus Rust overlays in
+`ppml/prepared.rs` and `ppml/prepared_estimator.rs`. All **566 computational inputs**
+match the measured artifact. Plugin SHA-256:
+`6a9708ab9508de9e0c91394a9b0278f023476e586ec27c62cc3fb000aeed5b96`.
+[ADR 0214](docs/adr/0214-borrow-bound-ppml-numeric-selection.md) and the
+[source-bound report](benchmarks/reports/development/ppml-classified-input-local-2026-09-26/README.md)
+retain sources, distributions, checks, isolated diagnostics and **9,798 restored
+hash/privacy-verified receipts**. Archive SHA-256:
+`76765d7a7212b38a5708e16431b4c6a4d68edf243e1fa5e5450b0ae3b1e73b8d`.
+
+The classifier returns a private proof holding its exact immutable input view
+through memory admission. Selection consumes that proof; counts cannot authorize
+another input. If every candidate survived validation, construct the existing row
+map and ledger from the candidate mask without another numeric scan. Actual-drop
+paths retain the full visitor/count check. Preserve error precedence, if/in,
+source roles, weights, adjustments and every changing-generation/scientific/
+publication certificate. No observation buffer, pool, cache, allowance or OLS path
+change.
+
+Development B/C/stock medians: million-row fast **902/881/860 ms**, low
+**1003/982/871**; gains **2.3/2.1%**. Factors **579/571/708**, three-FE two slopes
+**155/152/231**, two slopes low **73/72/120**, serial **548/543/938**. Preserve
+small three-FE **72/73/81** and unranked one-FE control **61/61**. Pilot B/C outcomes
+**19 wins, five losses**; four of seven multi-FE families meet 0.90 in every pair.
+
+Unchanged fresh **seed 202609444** confirms fast737280 **688/670/760 ms** and
+matched low **766/742/761**: gains **2.6/3.1%**. All 40 fresh C/stock comparisons
+pass. Six of eight families meet 0.90 in every pair, including fast737280
+(**0.874–0.891**). Other C/stock medians: fast368640 **418/656**, factors
+**677/3192**, two slopes **192/300**, four-slope low **117/116**, serial
+**542/945**, weak **163/832**. Four-slope ratios **0.983–1.054** and matched low
+**0.974–0.982** miss the 10% target. Fresh B/C: **35 wins, three losses, two ties**.
+Earlier seeds' discrepancies remain unranked; do not tune on 444.
+
+Paired **inputprofile2/inputprofile3** reduces million-row selection
+**29.38->2.50 ms** fast and **29.42->2.46** low; core preparation
+**60.94->33.67** and **60.69->33.72**. The authoritative visitor runs once instead
+of twice. Initial validation remains about 26.5 ms; generation construction about
+50 ms. Factor selection **8.54->0.40**, core prep **18.19->10.11**. Nested phases
+are not additive. Stop tuning the remaining selection 2.5 ms.
+
+**93 distinct Rust tests, seven original licensed fixtures, 222 PPML public
+states and 12 explicit Poisson/Hessian/sandwich checks pass.** Public states cover
+204 production, 12 paired diagnostic and six subsequent model-attribution fits.
+All **74 B/C pairs** have exact scientific exports. Anchored comparisons
+**138/142**, direct C/stock with identified outputs **64/68** preserve one small
+residual mismatch and three protected one-FE mean mismatches; no incomplete pairs.
+All current monitors are clean; no interruption or timeout in this milestone.
+**12 OLS coefficient/covariance pairs are exact**; medians B/C **66/67, 77/76,
+14/15, 209/206 ms** retain small losses. Tracked peak allocation/scratch deltas
+are zero; modeled bounds vary 0..+48 bytes with unchanged allowances.
+
+No universal timing non-regression, physical-cap or platform qualification claim.
+Static-inventory drift, hidden-allocation wire-minor assertion mismatch, existing
+strict checkpoint-count failure, weighted constrained-fit/nonretaining-CG failures
+remain open. Frozen 77/16/111, SCC deferral and stopped campaigns are unchanged.
+No push or release.
+
+### Next implementation: multi-FE topology ownership
+
+Separate current-candidate **modelprofile1** has six clean scientifically checked
+fits. Million-row fast/low model generation **48.95/50.12 ms** contains numeric
+sample preparation **7.80/8.12**, availability FE membership **8.88/8.97**,
+categorical singleton pruning **2.49/2.53** and final topology **15.96/16.03**.
+Final categorical preparation contains the latter two and costs **24.93/25.23**;
+do not add it again. The full-retained numeric shortcut is already active: this
+is not another 26-ms generic numeric scan. Wide factors spend **17.17 ms** on
+categorical domain validation and **3.86 ms** on final topology, inside a separate
+37.68-ms finer-profile generation. Exact evidence is archived under `next-model/`;
+local work root `target/ppml-model-construction-20260926`. All task-owned jobs are
+terminal; no second production candidate is implemented.
+
+Generalize the existing one-FE unchanged-sample code/membership transfer in
+`ols/prepared_categorical_data.rs` and `fe/topology_finalize.rs` for eligible
+ordinary single-source multi-FE partitions. First prove the no-singleton fixed
+point and exact source/row/level/membership correspondence. Preserve full
+validation and memory admission; do not blindly remove guards. Composite or
+duplicate recipes, changed samples and incompatible ownership retain validated
+fallbacks until separately proved. The shared path needs independent topology,
+rank, singleton/weight and OLS estimator controls, plus public PPML rotations and
+new fresh validation. Do not pursue a broad raw-source borrowing rewrite on the
+unsupported assumption that numeric copying/classification dominates this boundary.
+
+Large development deficits to 0.90 stock remain about **107/198 ms**; topology
+reuse alone cannot close them. The first authoritative scan about 26.5 ms and
+canonical/inference costs remain separate candidates. Four-slope low remains near
+stock and merits a bounded separate milestone, not rejected residual/extrapolation
+retuning. Keep the broad goal active.
 
 ## Direct first-partition PPML start adopted — 2026-09-25
 

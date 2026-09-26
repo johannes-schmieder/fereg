@@ -34,6 +34,14 @@ restores the full global start; a declined coordinate retains the preceding
 finite guess. These starting guesses have no rank, convergence or final-Hessian
 authority; all independent acceptance requirements remain unchanged.
 
+Generation-zero numeric classification may bind an immutable input view through
+memory admission and selection under
+[ADR 0214](adr/0214-borrow-bound-ppml-numeric-selection.md). When every candidate
+survived validation, the same mask determines the row map and exclusion ledger
+without repeating numeric domain checks. Samples with numeric drops retain the
+existing row visitor. The proof cannot authorize another input or replace any
+changing-generation or final-estimator certificate.
+
 The exact pinned `ppmlhdfe` closure is the compatibility reference, and small
 explicit-dummy Poisson and recession-cone calculations are the independent
 authority. The prepared PPML transaction is the sole production estimator;
