@@ -48,3 +48,12 @@ For local controller checks, run `python -m unittest discover -s
 benchmarks/systematic -p 'test*.py'` in the established scientific Python
 runtime. Tests need NumPy, SciPy, pandas, psutil and matplotlib, but invoke no
 estimators. The Linux smoke exercises the actual licensed workers.
+
+The bounded zero-outcome oracle includes full-model recession-cone separation
+(ADR 0223), in addition to zero-only groups and singleton cascades. For an
+independent audit of already captured small zero cases, `adjudicate_zeros.py
+RUN_ROOT OUTPUT` regenerates and verifies the exact original bytes before
+comparing to the captured native outputs. Use the same compute runtime as the
+original run; cross-platform regeneration is rejected if any value hash differs.
+This audit never rewrites original receipts or reruns an estimator, and does not
+by itself authorize a campaign with another unresolved smoke failure.

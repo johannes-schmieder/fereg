@@ -59,6 +59,22 @@ class LightTests(unittest.TestCase):
         self.assertFalse(pair_eligible(dict(oracle_checks={'coef':False}),comparison,True,True))
         self.assertFalse(pair_eligible({},dict(status='pass',checks={}),True,True))
 
+    def test_full_model_separation_beyond_zero_only_groups(self):
+        import pandas as pd
+        from oracle import separation_sample
+        # Both FE levels contain positives; only the finite direction exposes
+        # the zero row at x=-1. The singleton cascade then removes its partner.
+        frame=pd.DataFrame(dict(obs_id=[1,2,3,4,5],g1=[1,1,1,2,2],
+                                x1=[0.,0.,0.,0.,-1.],y=[1.,1.,0.,1.,0.]))
+        retained,trace=separation_sample(frame,dict(effects=['g1'],k=1))
+        self.assertEqual(retained.obs_id.tolist(),[1,2,3])
+        self.assertEqual(trace[0]['removed'],[5])
+        # Opposing zero rows rule out a nonzero recession direction.
+        frame=pd.DataFrame(dict(obs_id=[1,2,3],g1=[1,1,1],x1=[0.,-1.,1.],y=[1.,0.,0.]))
+        retained,trace=separation_sample(frame,dict(effects=['g1'],k=1))
+        self.assertEqual(retained.obs_id.tolist(),[1,2,3])
+        self.assertEqual(trace[-1]['removed'],[])
+
     def test_startup_timeout_kills_worker_group(self):
         import os
         import runner

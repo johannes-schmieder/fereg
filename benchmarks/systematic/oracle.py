@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import sparse
+from scipy.optimize import linprog
 from scipy.sparse.linalg import lsmr
 from scipy.sparse.csgraph import connected_components
 from scipy.special import gammaln, xlogy
@@ -56,11 +57,10 @@ def solve(A, b):
     return scaling * solution[0]
 
 
-def oracle(path, cell):
-    frame = pd.read_stata(path, convert_categoricals=False)
-    if cell['section'] == 'zeros':
-        # All-zero FE groups give an explicit recession direction. Repeat with
-        # singleton deletion, without changing the estimator's original input.
+def separation_sample(frame, cell):
+    """Explicit full-model recession cone, independent of native detectors."""
+    trace = []
+    for _ in range(len(frame)+1):
         while True:
             keep = np.ones(len(frame), dtype=bool)
             for effect in cell['effects']:
@@ -68,6 +68,47 @@ def oracle(path, cell):
                 keep &= (grouped.transform('sum').to_numpy() > 0) & (grouped.transform('size').to_numpy() > 1)
             if keep.all():break
             frame = frame.loc[keep].reset_index(drop=True)
+        if frame.empty or not (frame.y > 0).any():
+            raise ValueError('No positive-outcome oracle sample remains')
+        F, _ = dummy_matrix(frame, cell['effects'], cell.get('slopes'))
+        X = frame[[f'x{j}' for j in range(1,cell['k']+1)]].to_numpy()
+        D = sparse.hstack([sparse.csr_matrix(X), F], format='csr')
+        positive = frame.y.to_numpy() > 0
+        if positive.all():break
+        cost = np.asarray(D[~positive].sum(axis=0)).ravel()
+        result = linprog(cost, A_ub=D[~positive], b_ub=np.zeros(sum(~positive)),
+                         A_eq=D[positive], b_eq=np.zeros(sum(positive)), bounds=(-1,1),
+                         method='highs', options={'primal_feasibility_tolerance':1e-9,
+                                                  'dual_feasibility_tolerance':1e-9})
+        if not result.success:
+            raise ValueError('Explicit recession-cone LP failed: '+result.message)
+        direction = np.asarray(D @ result.x)
+        scale = max(1., float(np.max(abs(direction))))
+        interior = float(np.max(abs(direction[positive])))
+        violation = float(np.max(direction[~positive]))
+        if not np.isfinite(direction).all() or interior > 1e-9*scale or violation > 1e-9*scale:
+            raise ValueError('Independent recession-direction sign certificate failed')
+        remove = (~positive) & (direction < -1e-8*scale)
+        trace.append(dict(rows=len(frame), objective=float(result.fun),
+                          removed=frame.obs_id.to_numpy()[remove].tolist(),
+                          maximum_interior_residual=interior, maximum_boundary_violation=violation))
+        if not remove.any():
+            if result.fun < -1e-8*scale:
+                raise ValueError('Recession LP is negative without a certified deletion margin')
+            break
+        frame = frame.loc[~remove].reset_index(drop=True)
+    else:
+        raise ValueError('Independent separation fixed point did not finish')
+    return frame, trace
+
+
+def oracle(path, cell):
+    frame = pd.read_stata(path, convert_categoricals=False)
+    if len(frame) > 7680:
+        raise ValueError('oracle is bounded to 7680 observations')
+    separation = []
+    if cell['section'] == 'zeros':
+        frame, separation = separation_sample(frame, cell)
     n, k = len(frame), cell["k"]
     if n > 7680:
         raise ValueError("oracle is bounded to 7680 observations")
@@ -130,7 +171,7 @@ def oracle(path, cell):
     return {"schema": "systematic-explicit-dummy-oracle-v2", "status": "pass", "N": n,
             "sample_sha256": __import__('hashlib').sha256(b''.join(int(x).to_bytes(8,'little') for x in frame.obs_id)).hexdigest(),
             "linear_solver": "column-equilibrated SciPy LSMR, atol=btol=1e-13",
-            "fe_rank": rank, "coefficient_names": [f"x{i}" for i in range(1, k + 1)],
+            "separation_trace": separation, "fe_rank": rank, "coefficient_names": [f"x{i}" for i in range(1, k + 1)],
             "coefficients": b.tolist(), "covariance": V.tolist(), **extra}
 
 

@@ -20,32 +20,43 @@ zero outcomes and absorbed slopes remain. The old stopped campaign stays stopped
 Candidate source is **c31bcb621ba196e03a070ff2d808812733970f50**; only the harness
 changes in this checkpoint. New SCC run: `20260926-systematic-light-c31bcb62`.
 
-Twenty local harness tests passed. Twelve added independent slope/zero oracle
-self-exercises completed; licensed comparison is pending. Setup job **7745351**
-passed scheduler accounting, Linux build and actual-plugin ABI checks (333s,
-four slots, 3.010G maxvmem). Existing comparator bytes match the old frozen
-runtime. No reference source changed or dependency upgrade occurred.
+The bounded SCC smoke is **terminal and rejected; pilot/production were not
+submitted**. The [smoke report](benchmarks/reports/development/systematic-light-scc-2026-09-26/smoke.md)
+preserves all findings. Setup **7745351** passed (333s, four slots, 3.010G maxvmem).
+Smoke **7745382** completed all 28 groups in 862s (28 slots, 1.392G maxvmem),
+with clean accounting and the completion marker. Frozen controller **82603d0e** /
+runtime `c20c85932f1ab631020f02c10f1db64be81e34308b0bee0a56316313a17bc624`
+remain unchanged. Launch/hand-over commit **b943df56** is local; no push.
 
-Harness commit **82603d0e** is local; it was not pushed. The deployed runtime
-is frozen as `c20c85932f1ab631020f02c10f1db64be81e34308b0bee0a56316313a17bc624`.
-[Launch receipt](benchmarks/reports/development/systematic-light-scc-2026-09-26/launch.json)
-binds the archive/plugin/controller/manifest identities. Smoke job **7745382**
-is submitted with `plans/smoke.json` (28 groups, one-hour whole-node allocation).
-It is running on the reserved Broadwell node; the first seven categorical OLS
-command groups are passing. Full scientific smoke acceptance is still pending.
+**Oracle defect fixed:** the initial zero-count oracle omitted full-model
+separation. [ADR 0223](docs/adr/0223-full-model-zero-oracle-separation.md) adds an
+independent explicit recession-cone LP with sign certificates and fixed-point
+pruning. Oracle-only SCC job **7745417** passed on the exact captured inputs
+(12s, one slot, 1.250G maxvmem). All four zero cases match native sample hashes,
+coefficients, full covariance and objectives. Sparse two/three-FE samples are
+938/943 rather than the simpler oracle/reference 950. An initial Mac regeneration
+had a differing x3 hash and was not accepted as exact-input evidence. No estimator
+was rerun. The corrected **21-test controller suite** passes. The original
+rejected smoke receipts and frozen controller were not rewritten or promoted.
 
-One same-task follow-up, **run-lighter-fereg-scc-campaign**, checks this long
-campaign every 15 minutes and continues the authorized stages. Do not duplicate
-it or any submitted job. After smoke, capture accounting and run
-`light_control.py` acceptance, then generate/run/accept the 12-group pilot and
-submit the pending production groups. Target 10.5h within 12h tasks, concurrency
-eight. The initial proxy predicts 17 bundles / 174.06 node-hours; current pilot
-whole-group elapsed times refine that forecast. No whole-campaign speed claim.
-Full command timeout bounds, scientific discrepancies, default versus strict
-stock PPML, unsupported slope APIs and predeclared budget exclusions stay
-separate. See `benchmarks/systematic/LIGHT.md` for commands. Preserve frozen
-bytes and failed attempts; do not resume old stopped campaigns. Pause the one
-follow-up after verified completion or a diagnosed blocker.
+All **27 successful native fits** agree with independent oracles after that
+separate adjudication. One native fit failed: three-FE OLS, two slopes on each
+of the first two partitions, K6/T4, `memory(low)`, seed104729. Its **7,680-row
+initialization returned r(459)** before timing the 960-row target. The quiet
+worker log does not identify the failing native substage. Do not assert it is
+the historical nonretaining-CG issue without further evidence. Overall smoke:
+139 successful arms, nine worker failures; 80 passing comparisons, 30 accuracy
+failures, ten unavailable pairs. These are diagnostic, not headline rankings.
+
+The campaign follow-up **run-lighter-fereg-scc-campaign is PAUSED**. No current
+job remains. Next: focused diagnosis of the low-memory initialization failure,
+then a newly frozen/validated controller before resuming the authorized lighter
+campaign. Do not waive the gate or silently remove the failing case. Production
+still targets 10.5h within 12h tasks, concurrency eight. Initial forecast:
+17 bundles / 174.06 node-hours before current pilot refinement; no measured
+whole-campaign speed claim. Keep default versus strict stock PPML, failures,
+timeouts and explicit budget/unsupported exclusions visible. Do not restart the
+old stopped campaigns. The multi-FE speed goal remains separate and incomplete.
 
 ## Canonical slope helper candidate accepted — 2026-09-26
 
