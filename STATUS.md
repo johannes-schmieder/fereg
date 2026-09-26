@@ -35,16 +35,27 @@ setup **7745641** passed (four slots, 205s, 3.010G maxvmem) with binary audit
 and actual-plugin ABI/self-test. [Launch receipt](benchmarks/reports/development/systematic-light-scc-resume-2026-09-26/smoke-launch.json)
 binds source, plugin, manifest and frozen runtime
 `041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6`.
-The 28-group smoke **7745656** is running with `plans/smoke.json` (28 slots,
-1h). No pilot or production submitted yet. No competing build remains.
-The new manifest changes only candidate_commit; all benchmark definitions and
-exclusions remain. Next: capture smoke accounting and run light_control.py;
-if accepted, submit the 12-group pilot (one packed task, initial forecast 1.36h),
-then gate and pack production. Preserve all failed comparators and sample
-mismatches. The existing campaign heartbeat **run-lighter-fereg-scc-campaign is ACTIVE**
-and points to this new root. It will continue through accepted stages and stop
-on a diagnosed blocker. Never submit setup/smoke twice or reuse the rejected
-controller.
+The 28-group smoke **7745656 passed**: all 28 native fits and independent
+oracles pass; scheduler failed=0/exit_status=0, 879s, 28 slots, 2.147G maxvmem.
+[Acceptance and summary](benchmarks/reports/development/systematic-light-scc-resume-2026-09-26/smoke-summary.json)
+retain 148 arm attempts (140 pass/eight comparator worker failures), 81 passing
+comparisons, 31 accuracy failures and eight unavailable pairs. Discrepant pairs
+remain unranked. These single-repetition small checks are not headline timings.
+
+Pilot **7745818**, array task **1**, is submitted with `plans/pilot.json`: all
+12 registered groups in one task, 28-core E5-2680v4, 3G/core, up to 12h; initial
+historical forecast 1.36h is not a completion guarantee. [Pilot launch](benchmarks/reports/development/systematic-light-scc-resume-2026-09-26/pilot-launch.json)
+binds its immutable plan and identity. No production submitted yet. No competing
+build remains. The manifest changes only candidate_commit; all benchmark
+configuration and exclusion definitions remain unchanged.
+
+Next: after pilot terminal, capture accounting for job 7745818/count 1 and run
+light_control.py on plans/pilot.json. If accepted, generate and submit production
+with refreshed whole-group forecasts (target 10.5h under 12h, concurrency eight).
+Preserve failed comparators and sample mismatches. The campaign heartbeat
+**run-lighter-fereg-scc-campaign is ACTIVE** and records this pilot job; it will
+continue through accepted stages and stop on a diagnosed blocker. Do not
+resubmit setup/smoke/pilot or reuse the earlier rejected controller.
 
 ## Lighter systematic SCC rerun — 2026-09-26
 

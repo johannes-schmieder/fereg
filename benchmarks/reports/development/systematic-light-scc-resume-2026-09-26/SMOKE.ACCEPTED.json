@@ -1,0 +1,565 @@
+{
+  "diagnostics": [
+    [
+      [
+        "ols-two_fe_sparse-n7680-k10-t4-main",
+        1
+      ],
+      "areg",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ols-two_fe_sparse-n7680-k10-t4-main",
+        1
+      ],
+      "greg",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ols-two_fe_sparse-n7680-k10-t4-main",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ols-two_fe_sparse-n7680-k10-t4-main",
+        1
+      ],
+      "pyfixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ols-three_fe_sparse-n1920-k10-t4-main",
+        1
+      ],
+      "areg",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ols-three_fe_sparse-n1920-k10-t4-main",
+        1
+      ],
+      "greg",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ols-three_fe_sparse-n1920-k10-t4-main",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ols-three_fe_sparse-n1920-k10-t4-main",
+        1
+      ],
+      "pyfixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ols-three_fe_sparse-n960-k10-t4-slopes_fast",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ols-three_fe_sparse-n960-k6-t4-slopes_low",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-one_fe-n7680-k10-t4-main",
+        1
+      ],
+      "pyfixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_dense-n7680-k10-t4-main",
+        1
+      ],
+      "pyfixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_sparse-n7680-k10-t4-main",
+        1
+      ],
+      "gglm",
+      "worker_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_sparse-n7680-k10-t4-main",
+        1
+      ],
+      "gglm",
+      "unavailable"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n1920-k10-t4-main",
+        1
+      ],
+      "gglm",
+      "worker_failure"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n1920-k10-t4-main",
+        1
+      ],
+      "gglm",
+      "unavailable"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n1920-k10-t4-main",
+        1
+      ],
+      "pyfixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-weak_d3-n7680-k10-t4-main",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-one_fe-n960-k10-t4-zeros",
+        1
+      ],
+      "ppmlhdfe",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-one_fe-n960-k10-t4-zeros",
+        1
+      ],
+      "gglm",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-one_fe-n960-k10-t4-zeros",
+        1
+      ],
+      "pyfixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_dense-n960-k10-t4-zeros",
+        1
+      ],
+      "gglm",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_dense-n960-k10-t4-zeros",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_dense-n960-k10-t4-zeros",
+        1
+      ],
+      "fixest_strict",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_dense-n960-k10-t4-zeros",
+        1
+      ],
+      "pyfixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "gglm",
+      "worker_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "pyfixest",
+      "worker_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "ppmlhdfe",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "gglm",
+      "unavailable"
+    ],
+    [
+      [
+        "ppml-two_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "fixest_strict",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "pyfixest",
+      "unavailable"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "gglm",
+      "worker_failure"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "pyfixest",
+      "worker_failure"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "ppmlhdfe",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "gglm",
+      "unavailable"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "fixest_strict",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k10-t4-zeros",
+        1
+      ],
+      "pyfixest",
+      "unavailable"
+    ],
+    [
+      [
+        "ppml-two_fe_dense-n960-k10-t4-slopes_fast",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_dense-n960-k6-t4-slopes_low",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k10-t4-slopes_fast",
+        1
+      ],
+      "ppmlhdfe",
+      "worker_failure"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k10-t4-slopes_fast",
+        1
+      ],
+      "ppmlhdfe",
+      "unavailable"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k10-t4-slopes_fast",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k6-t4-slopes_low",
+        1
+      ],
+      "ppmlhdfe",
+      "worker_failure"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k6-t4-slopes_low",
+        1
+      ],
+      "ppmlhdfe",
+      "unavailable"
+    ],
+    [
+      [
+        "ppml-three_fe_sparse-n960-k6-t4-slopes_low",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ]
+  ],
+  "evidence": {
+    "accounting/7745656.json": "d2237915c9eb57c6e82069c5c4096cfa601b71613af5ee011f92acf3004148e5",
+    "bundle-results/smoke-1.json": "ee2406b8901009dc207303c1a95db806edf2ca9ef73cc21e70e178bbc90d3f89",
+    "smoke-results/ols-one_fe-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "bea6cc1b0c0b8f985e3aab95d70ee62e764825489d2e1a27586265304fa6c5d7",
+    "smoke-results/ols-one_fe-n7680-k10-t4-main/warm-1/areg/result.json": "5a42c97f5dabd5ba389a3812e54e11c5ad3e908b2cea6d40af192970ef8ac515",
+    "smoke-results/ols-one_fe-n7680-k10-t4-main/warm-1/fereg/result.json": "98036dfc925de5ea3c5d064dccdd88ef440384143eecbffef476fa9c8fcf5d30",
+    "smoke-results/ols-one_fe-n7680-k10-t4-main/warm-1/fixest/result.json": "a774a8573504874633c921145e0e1183e66b7b9223bb1b83d22ea3b53edb5e9c",
+    "smoke-results/ols-one_fe-n7680-k10-t4-main/warm-1/greg/result.json": "16ab036e85bb4280b912ba736f1543249d6547da2c97e5f3e95e11228036a106",
+    "smoke-results/ols-one_fe-n7680-k10-t4-main/warm-1/pyfixest/result.json": "1d23f5493cc9507ce0a74227fd2646e4daedfcf5d5736da263c38e888646fd91",
+    "smoke-results/ols-one_fe-n7680-k10-t4-main/warm-1/reghdfe/result.json": "9f0badae4c71993c8b3b515c0adb90fd27fa1b1ba8546e7fd0f75a268d90192f",
+    "smoke-results/ols-strong_d2-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "8876624c778b2fc603c6d0aa87d5825590ca75555d4caeaca50a35a96eb8b679",
+    "smoke-results/ols-strong_d2-n7680-k10-t4-main/warm-1/areg/result.json": "223ff749c5c7a12a8f7c6bf3a638899259210145215c80e833f06d83babee27b",
+    "smoke-results/ols-strong_d2-n7680-k10-t4-main/warm-1/fereg/result.json": "451b4c05aa95ba6995a4c1efaa3f156d848d3cca1c36fc18d4b0aed5fcdb7e94",
+    "smoke-results/ols-strong_d2-n7680-k10-t4-main/warm-1/fixest/result.json": "84bc8a51c91a4aa001b0c5418bb40e86a2ca4d77c5e83e173a09e3fa96cb7c5c",
+    "smoke-results/ols-strong_d2-n7680-k10-t4-main/warm-1/greg/result.json": "d23a551b246a9a383e4b82e2151dc3a1ab8176f58c56a4b5f3f3641c003feb6c",
+    "smoke-results/ols-strong_d2-n7680-k10-t4-main/warm-1/pyfixest/result.json": "c191d2595b7c515b1954ef624e0986e6f04684500e53fbda7c8115ddc6d0303c",
+    "smoke-results/ols-strong_d2-n7680-k10-t4-main/warm-1/reghdfe/result.json": "800d0906854477747af39e110fab25e14e4c74fca5f265eb3528401e11e36838",
+    "smoke-results/ols-strong_d3-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "82ea24a8ce6502b79ef9c6a210775deb6199a5a2fce9e0b7be2f96dea6a4843d",
+    "smoke-results/ols-strong_d3-n7680-k10-t4-main/warm-1/areg/result.json": "2006be205c310858668765bbedbcc8d04c684bb6f86e3a07f3499e7ba44d91af",
+    "smoke-results/ols-strong_d3-n7680-k10-t4-main/warm-1/fereg/result.json": "4ed9deb9d48cfadda3326b40c261b2399fbe39d61d7f8e9a99201da22215c9b3",
+    "smoke-results/ols-strong_d3-n7680-k10-t4-main/warm-1/fixest/result.json": "72e961dce07f8822d31074d9fc8326c10002fb714c9a34dde99030054bd9ba18",
+    "smoke-results/ols-strong_d3-n7680-k10-t4-main/warm-1/greg/result.json": "ea3a7dbb9d100ab7290faeacebafbbb9c288ab3be106e49f9960497bb62a5461",
+    "smoke-results/ols-strong_d3-n7680-k10-t4-main/warm-1/pyfixest/result.json": "d0a252c0648ae71de7154419ae2cb099e144e1dffb67e4b96ec9b88f3820ff05",
+    "smoke-results/ols-strong_d3-n7680-k10-t4-main/warm-1/reghdfe/result.json": "f0e9b8f1816e576635015ca72c7a697b8e4f27eec574e5db8a3344891ad18607",
+    "smoke-results/ols-strong_d6-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "78f56822785fc0814488bdf3fc1e4c384f347af12bd73f81b2753ae6b6a869e7",
+    "smoke-results/ols-strong_d6-n7680-k10-t4-main/warm-1/areg/result.json": "f15338b664b9596364c89e45737defcf576987b4380af17ed2afc36b5cf1ac78",
+    "smoke-results/ols-strong_d6-n7680-k10-t4-main/warm-1/fereg/result.json": "532c9136aaa9ca34b7092169dc0326f258de42de4df5fb35e600b530b443960c",
+    "smoke-results/ols-strong_d6-n7680-k10-t4-main/warm-1/fixest/result.json": "b5e9783ae9cc1fcbbf3a215df0185797f568962f1f98278ca30a748ed3d94283",
+    "smoke-results/ols-strong_d6-n7680-k10-t4-main/warm-1/greg/result.json": "93255a888d3424056650113ae714ca1bd6d0a7e3b15cf898739919a787b021d1",
+    "smoke-results/ols-strong_d6-n7680-k10-t4-main/warm-1/pyfixest/result.json": "2ef03ae01de437b95037531d58b22b767e85f72e8d3a12bf38d2cc24e6d660fd",
+    "smoke-results/ols-strong_d6-n7680-k10-t4-main/warm-1/reghdfe/result.json": "68372d36e369b1b3bbc899d54d61eebf4c9246d1981e8fbecd73731f2dbd065d",
+    "smoke-results/ols-three_fe_sparse-n1920-k10-t4-main/warm-1/GROUP.COMPLETE.json": "6500f161ac7f963f3d858984adf49fa71b4c16db8641cfcf4805f8f24ec565d7",
+    "smoke-results/ols-three_fe_sparse-n1920-k10-t4-main/warm-1/areg/result.json": "0b3f01c54b52451efecd0d07ae7a150ccec3c3282925eaa82be569c17c97f182",
+    "smoke-results/ols-three_fe_sparse-n1920-k10-t4-main/warm-1/fereg/result.json": "e29192e68e392e4d7f97ef84a11fbac591e0b5a588d1a72a963c78b2671a4546",
+    "smoke-results/ols-three_fe_sparse-n1920-k10-t4-main/warm-1/fixest/result.json": "e78718894b458031c6a9e20bb259bc6ac4a0a97951a3fc3f7a6729d41c1937de",
+    "smoke-results/ols-three_fe_sparse-n1920-k10-t4-main/warm-1/greg/result.json": "53974a36f2d52310d78a605d7fc7c670d9dcfaa403dd91f2f714d1088953f3e2",
+    "smoke-results/ols-three_fe_sparse-n1920-k10-t4-main/warm-1/pyfixest/result.json": "b92b57df06f9b721bb3cbcbf63044274239b68322d5aa2e5479de2acc041a8ad",
+    "smoke-results/ols-three_fe_sparse-n1920-k10-t4-main/warm-1/reghdfe/result.json": "55fd0d81254ee7b804fbbe266d4b04d21bc2d15e0bde4026102c550d95e1c5c1",
+    "smoke-results/ols-three_fe_sparse-n960-k10-t4-slopes_fast/warm-1/GROUP.COMPLETE.json": "f9dc54fc8a9fec597bf5a84526d6b31acdaed6e3ed1f28425a19b5f0d88d730d",
+    "smoke-results/ols-three_fe_sparse-n960-k10-t4-slopes_fast/warm-1/fereg/result.json": "0eb82e1578ffcccb0177840fdc424924e20b843697dbcfe74b33f1fd5b7bf245",
+    "smoke-results/ols-three_fe_sparse-n960-k10-t4-slopes_fast/warm-1/fixest/result.json": "0bfb30f8ff46705177ec010155f8060ead46403492fe30401425c8cdeef11dd0",
+    "smoke-results/ols-three_fe_sparse-n960-k10-t4-slopes_fast/warm-1/reghdfe/result.json": "949663ed28aa097c7b307a3dce474a9dbc1f80a062bcbefa2cb0b9bc3f99a7c0",
+    "smoke-results/ols-three_fe_sparse-n960-k6-t4-slopes_low/warm-1/GROUP.COMPLETE.json": "7d964289890f6d385138682b3462d8c92b4fcbf99d0ffa312c88ef5f2b24f9e9",
+    "smoke-results/ols-three_fe_sparse-n960-k6-t4-slopes_low/warm-1/fereg/result.json": "1f3b4648f58c9b8e86b0aa4fbe44830c6cfd6393ea7c60d273bc22050bc14301",
+    "smoke-results/ols-three_fe_sparse-n960-k6-t4-slopes_low/warm-1/fixest/result.json": "c27bc8fda358f375985a06167e26cd651b373acecca25e503bbcc5577f7a4df1",
+    "smoke-results/ols-three_fe_sparse-n960-k6-t4-slopes_low/warm-1/reghdfe/result.json": "61a5d994e0a8e338ef033e237af9ec9fed399e0b3990a231442dc7823d8a0191",
+    "smoke-results/ols-two_fe_dense-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "845d9c754ff1a1cf66c78944288dbc6334d19fbc22fd15891c9ea89b080b5b2b",
+    "smoke-results/ols-two_fe_dense-n7680-k10-t4-main/warm-1/areg/result.json": "4a461a11e1ce3f032d7d169c64140c85ed5dd55c199363142749c2f0ea25e3b9",
+    "smoke-results/ols-two_fe_dense-n7680-k10-t4-main/warm-1/fereg/result.json": "8d7213aa76b7dbf1e0b30fe85a15a1054012f0dcd6c2ca49ca26ae3602b6ea2e",
+    "smoke-results/ols-two_fe_dense-n7680-k10-t4-main/warm-1/fixest/result.json": "79b86602d91bc2eac5b645c2c535c335e1b54bc41892d5dc41b0b09617b93c3f",
+    "smoke-results/ols-two_fe_dense-n7680-k10-t4-main/warm-1/greg/result.json": "bf91e5200cd5a5b9f47114c0eb81e239be9c14ceea4be28315750eb7e2348bb3",
+    "smoke-results/ols-two_fe_dense-n7680-k10-t4-main/warm-1/pyfixest/result.json": "005d43b9b635f9e76d91c0871f44f20a1fe784a4582d791578363bc69b8f9976",
+    "smoke-results/ols-two_fe_dense-n7680-k10-t4-main/warm-1/reghdfe/result.json": "e801423cb3801d3e9a897fc081a8855306e578e2003646f6b5d9f275db7600c3",
+    "smoke-results/ols-two_fe_dense-n960-k10-t4-slopes_fast/warm-1/GROUP.COMPLETE.json": "99b5f1e24a59f78d24ed45e452065c137759840fd9b7437032c780ec2c486864",
+    "smoke-results/ols-two_fe_dense-n960-k10-t4-slopes_fast/warm-1/fereg/result.json": "9cb69eb370a941bca1f9901f21697480cf6e9687ab81253034556e690f90deb8",
+    "smoke-results/ols-two_fe_dense-n960-k10-t4-slopes_fast/warm-1/fixest/result.json": "9918f9d32652f37e9c7b26af507023bb422f66126171e699bb1d18a39673d129",
+    "smoke-results/ols-two_fe_dense-n960-k10-t4-slopes_fast/warm-1/reghdfe/result.json": "14dd6035be84072029029068eec5be703053089abc7e27ebf0339e430aea8389",
+    "smoke-results/ols-two_fe_dense-n960-k6-t4-slopes_low/warm-1/GROUP.COMPLETE.json": "4f9d7d10d649042eb477bf0303f80b3a72e3c67813b7929682a6472feb30d5b6",
+    "smoke-results/ols-two_fe_dense-n960-k6-t4-slopes_low/warm-1/fereg/result.json": "025baaf935cb39cd894487810a783afc1ee26ec615c702e18207422999b243cd",
+    "smoke-results/ols-two_fe_dense-n960-k6-t4-slopes_low/warm-1/fixest/result.json": "b402c8d560adb0c2e80e1a4c0c15001012b14ed49303167fca061fd08c8c2c07",
+    "smoke-results/ols-two_fe_dense-n960-k6-t4-slopes_low/warm-1/reghdfe/result.json": "5afcbbad7aa13517e85e73d2e7d009959a65e3a4670b047cf50b72ce48201534",
+    "smoke-results/ols-two_fe_sparse-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "587819f97102de533c7447472782bbe56781caf9c1cc31ddd6f5621c033ccac5",
+    "smoke-results/ols-two_fe_sparse-n7680-k10-t4-main/warm-1/areg/result.json": "a00c88c401bd7d7d794035d4ec8510621543ed0bace911e6085a729a217c5b6c",
+    "smoke-results/ols-two_fe_sparse-n7680-k10-t4-main/warm-1/fereg/result.json": "a731ecde33c97006b4e24640889855137f8236b35dedf7686216c3c0fce2cb6a",
+    "smoke-results/ols-two_fe_sparse-n7680-k10-t4-main/warm-1/fixest/result.json": "123cfc30b11e91045205155a9b598727e1d5e600afec08f6c02a7ee5a94d34b1",
+    "smoke-results/ols-two_fe_sparse-n7680-k10-t4-main/warm-1/greg/result.json": "296496d7aac59fa2662b9d52647af02db6049f7c276c0e34bed48ad6c9ea3ebe",
+    "smoke-results/ols-two_fe_sparse-n7680-k10-t4-main/warm-1/pyfixest/result.json": "2e72b793e0604a5abc67b5e679f7b644f2bf1bcd9d742028d4b83945d736b005",
+    "smoke-results/ols-two_fe_sparse-n7680-k10-t4-main/warm-1/reghdfe/result.json": "4409c8dbadd6d8f2cd65f90b7832b3fad35492e98d95eac61ab738a632faebb8",
+    "smoke-results/ols-weak_d3-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "a73f9f64c11ec7a364cecfaa38d1ecec615a9ed208b0223a36124d5997fabae4",
+    "smoke-results/ols-weak_d3-n7680-k10-t4-main/warm-1/areg/result.json": "20fa471728a597aeee976bc90fe500f77612ad27c91ed649918e131cf09436c3",
+    "smoke-results/ols-weak_d3-n7680-k10-t4-main/warm-1/fereg/result.json": "e5a952252bca8c7aa0cd2bb4bd84ba5f629602e8d7fb26dade543abcf2fdb797",
+    "smoke-results/ols-weak_d3-n7680-k10-t4-main/warm-1/fixest/result.json": "367a25c304b6397063ffc2c23e3fd0cf82bc376cfa0b5e54078dcf29764e45ef",
+    "smoke-results/ols-weak_d3-n7680-k10-t4-main/warm-1/greg/result.json": "8ee7f52e825dc1e283b660c96c3c56f455ffd772d05cf113acbe6d4915a8772d",
+    "smoke-results/ols-weak_d3-n7680-k10-t4-main/warm-1/pyfixest/result.json": "aa29485c20e7051c41033f85621b0d75994df8b5f78b54be29524b54b7516df7",
+    "smoke-results/ols-weak_d3-n7680-k10-t4-main/warm-1/reghdfe/result.json": "778a1223925d42a6e9201b8a0ef7e55a52a483dd87b9a7500e97a8db49d07cd7",
+    "smoke-results/ppml-one_fe-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "5252beca4b41961b6a9f5d5277cf58b00fa9d0305312a6cad1778405d4617359",
+    "smoke-results/ppml-one_fe-n7680-k10-t4-main/warm-1/feppml/result.json": "38ced97b5c8c7a03c9450f0f4f89770e5873ad599f9817cc4ce2d68e430cb146",
+    "smoke-results/ppml-one_fe-n7680-k10-t4-main/warm-1/fixest/result.json": "803a7335555c86145733bd4af3d18d2eff663adbad0e8557a5388204680efc1e",
+    "smoke-results/ppml-one_fe-n7680-k10-t4-main/warm-1/fixest_strict/result.json": "f9db9620efe662309cf73e2cdd5fcaae49357dee0a703de2b78f0283d2a46cb1",
+    "smoke-results/ppml-one_fe-n7680-k10-t4-main/warm-1/gglm/result.json": "55564aae251dd0d2c205c6d91813a92d8e1c20f41b096cc60704d8857ddf8463",
+    "smoke-results/ppml-one_fe-n7680-k10-t4-main/warm-1/ppmlhdfe/result.json": "e2953c478c663bd471aa3651cf57b9f5ee82dff53bfaf3129d61cd667db83955",
+    "smoke-results/ppml-one_fe-n7680-k10-t4-main/warm-1/pyfixest/result.json": "23339baac041a02bb0a4ee7e30a399fcb82e4e4a67e3ff43e7e315cb256aa9b1",
+    "smoke-results/ppml-one_fe-n960-k10-t4-zeros/warm-1/GROUP.COMPLETE.json": "389bb30dbba202f6f7dea039962b9b1d842c5c21f30c46f3c9b1c49127c45946",
+    "smoke-results/ppml-one_fe-n960-k10-t4-zeros/warm-1/feppml/result.json": "28441d69d5cb01fca302383bd511dc10faf29b23d3ac21f31ff2581e7c7cac43",
+    "smoke-results/ppml-one_fe-n960-k10-t4-zeros/warm-1/fixest/result.json": "22299ea84c74a8cec28d255f1811a40629401c41045ca843290bebee751ce1fe",
+    "smoke-results/ppml-one_fe-n960-k10-t4-zeros/warm-1/fixest_strict/result.json": "fe513e919e11d195fcd48473d8cfac44e08a94dd1909a150666e2510f16dc660",
+    "smoke-results/ppml-one_fe-n960-k10-t4-zeros/warm-1/gglm/result.json": "f79aceffdd3e882e0f0712d3eca5de6ca36a3eb66d3c8fa4b22af61f190de714",
+    "smoke-results/ppml-one_fe-n960-k10-t4-zeros/warm-1/ppmlhdfe/result.json": "5716226d5d5a2b457a1543e6c5c3f5183812a9d48deca822214308e9aa683417",
+    "smoke-results/ppml-one_fe-n960-k10-t4-zeros/warm-1/pyfixest/result.json": "b05b63f82865f93b74d6be9ce8bc0d89661bee4334f383b2b654724c91244d06",
+    "smoke-results/ppml-strong_d2-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "5bc36ca2cb9832ecd090487bb34c524f5a4a99911c63a1f789992b73cccb46b7",
+    "smoke-results/ppml-strong_d2-n7680-k10-t4-main/warm-1/feppml/result.json": "b0bf6e8193061a012763e3a35acc60ebbf9c2ab43a4c145d94320f160108d0ed",
+    "smoke-results/ppml-strong_d2-n7680-k10-t4-main/warm-1/fixest/result.json": "bd45f346fbcdea7fbd62c738e5084b70cfb1ebf35a6a771fed441e1d9301c59d",
+    "smoke-results/ppml-strong_d2-n7680-k10-t4-main/warm-1/fixest_strict/result.json": "d14b74729e160d3c3c20413e33375656e1e67d3be4057a2442812f037c0546fb",
+    "smoke-results/ppml-strong_d2-n7680-k10-t4-main/warm-1/gglm/result.json": "953f442b6ad2837d2c3ca52a27c12de60a6eae9af5cca5f8ed7c6416276295dd",
+    "smoke-results/ppml-strong_d2-n7680-k10-t4-main/warm-1/ppmlhdfe/result.json": "7b09eba5d444f09a7ccbb537b9cb7bb682d55a2c6e6ea351c2c3e07e91b4c12d",
+    "smoke-results/ppml-strong_d2-n7680-k10-t4-main/warm-1/pyfixest/result.json": "aedc0ff48a3f353cc12fbda879c5b3d9b6f79d4cb2654b9eed5ba1787448471b",
+    "smoke-results/ppml-strong_d3-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "d4580a01671255a5bf8711144d7fff4c705bb26326a6a1a75fa4ef72c6b79cf6",
+    "smoke-results/ppml-strong_d3-n7680-k10-t4-main/warm-1/feppml/result.json": "586909683adc434f10208c892738c5801a3ddc81d643c700e42f255036419a26",
+    "smoke-results/ppml-strong_d3-n7680-k10-t4-main/warm-1/fixest/result.json": "4cec3b0601d804b9002dcf7fa1c49a9823d55152b0c49585f4c62a17ced86c6d",
+    "smoke-results/ppml-strong_d3-n7680-k10-t4-main/warm-1/fixest_strict/result.json": "47cdd16c48670c314830d3ec825326328a1b678f25cf0210955fe63d4c02b251",
+    "smoke-results/ppml-strong_d3-n7680-k10-t4-main/warm-1/gglm/result.json": "c2e75f4b204523fc69f65095677a61f4da089853c0c343796cc26f39a4d0a938",
+    "smoke-results/ppml-strong_d3-n7680-k10-t4-main/warm-1/ppmlhdfe/result.json": "b71529ad288423c6f10e38d8bfa2f36ef36b3cf4549aa6e76e7740bd4cfb22be",
+    "smoke-results/ppml-strong_d3-n7680-k10-t4-main/warm-1/pyfixest/result.json": "9995354b08742591b90fc782fd5f2fd6a5225348b5946ae83f78085921c6681d",
+    "smoke-results/ppml-strong_d6-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "87a4fe0e5d195ca4c51642f6fade164bed0e2075286f242163406279c2b8c87c",
+    "smoke-results/ppml-strong_d6-n7680-k10-t4-main/warm-1/feppml/result.json": "3d6895415919ae2cfeae82eea5b6ccb262745d86c81a2e6f7e9b3911a8e9ada8",
+    "smoke-results/ppml-strong_d6-n7680-k10-t4-main/warm-1/fixest/result.json": "18f4f27be01709d96c592a7194f61fdadfd9662cb320c894a891482e6e95e8a6",
+    "smoke-results/ppml-strong_d6-n7680-k10-t4-main/warm-1/fixest_strict/result.json": "e634285e92129c2cb22c081b4d3e503425afbe12fb601fdb4ae9328fd4f51164",
+    "smoke-results/ppml-strong_d6-n7680-k10-t4-main/warm-1/gglm/result.json": "76f9d51c3f78d5b9b6a097292b6536232fced82035061aec85c1ade16970c839",
+    "smoke-results/ppml-strong_d6-n7680-k10-t4-main/warm-1/ppmlhdfe/result.json": "b7a4486823bc636f0eb3835ae619e0699c9638d8ece326a4def113a7b0cb9605",
+    "smoke-results/ppml-strong_d6-n7680-k10-t4-main/warm-1/pyfixest/result.json": "8d53330082eeb09030da15d43d81957e2ae937a5dbd8b3e9f732b041e98ba97f",
+    "smoke-results/ppml-three_fe_sparse-n1920-k10-t4-main/warm-1/GROUP.COMPLETE.json": "2a402b38c80972d8fb03ad726cfcd4b097a5c4071c94cb3c53dcbaafee4d2a2a",
+    "smoke-results/ppml-three_fe_sparse-n1920-k10-t4-main/warm-1/feppml/result.json": "61b9f7b185eb60838dc9a44250ed59ec9d293df8fbfe9b5b6fdb5ce3f611173a",
+    "smoke-results/ppml-three_fe_sparse-n1920-k10-t4-main/warm-1/fixest/result.json": "00091f5e160767ade9f22a83bd3a8cb068c45d9651d67df76e5723ef01576a98",
+    "smoke-results/ppml-three_fe_sparse-n1920-k10-t4-main/warm-1/fixest_strict/result.json": "d7e9d5c30b70b46712e0553af34316f4c9d6f8575560e675e5ade365bf8bcdb0",
+    "smoke-results/ppml-three_fe_sparse-n1920-k10-t4-main/warm-1/gglm/result.json": "e43dd0df98e2db8b96064d827c7064779e6014090c72191ca71e580420a59aa3",
+    "smoke-results/ppml-three_fe_sparse-n1920-k10-t4-main/warm-1/ppmlhdfe/result.json": "c02b84f91e188cbc48088b337611cc5fd2d71cd91614b7a54f070c49b3955b8d",
+    "smoke-results/ppml-three_fe_sparse-n1920-k10-t4-main/warm-1/pyfixest/result.json": "cf0def83baa4a1b5f2eda9c9a07847b76fe4f26aa553294dba6545c6a2424303",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-slopes_fast/warm-1/GROUP.COMPLETE.json": "f3d7d076d2b5259d1070fdf4d1b53510e9d747b6abc942d7d5155dd432792c64",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-slopes_fast/warm-1/feppml/result.json": "50a65eae596edda6403bd2812ba8756532b2f104aadd2ce8a42dae1bc2af2b87",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-slopes_fast/warm-1/fixest/result.json": "4e17fe1cedce4761a9806800a3b8a8c82bcf34f3da14d0eef7b02e344f15f3af",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-slopes_fast/warm-1/fixest_strict/result.json": "e1cceaf4e2fe4a1572333dc48838c0d3d9bcc77e90463a0e4713b367e9349ec0",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-slopes_fast/warm-1/ppmlhdfe/result.json": "48a0bd26c3f1a5b7592aa8bd8794521db96887f57f14164830c2e0451292f49e",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-zeros/warm-1/GROUP.COMPLETE.json": "8e136858440f8f2974eaf0c05855e7cafb6b62e83237b7e61682ccdf8e5b6b23",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-zeros/warm-1/feppml/result.json": "88531780300e73a100653abdc9297da321e2a9ec41698289b69fa49527427b12",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-zeros/warm-1/fixest/result.json": "c51e1da24e0d68e625808a46e424fae7ed83610bccc9a3aa32d83c366b8f6c28",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-zeros/warm-1/fixest_strict/result.json": "5152e8da9ffe2a3e2d0d2ae618c05e8f5fcef9f95f6cbd9415c358a1eead398d",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-zeros/warm-1/gglm/result.json": "c150b8d9e78d5d2a9915bfcf2e800477a60ab2098a4562330c4f84a9ff853a3c",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-zeros/warm-1/ppmlhdfe/result.json": "bce40688e57da541bcc1f94b52c7cc3c3e6a99f6416d5a1f90587937e1483cb6",
+    "smoke-results/ppml-three_fe_sparse-n960-k10-t4-zeros/warm-1/pyfixest/result.json": "15dcd3da09bdcd31c9f83933444e5157cac31de05c63ec6315a87b6bdf83b273",
+    "smoke-results/ppml-three_fe_sparse-n960-k6-t4-slopes_low/warm-1/GROUP.COMPLETE.json": "6290f247035352924a32b217acb3cc0a4c6f1ea291b09e486e139ca082a1cfa6",
+    "smoke-results/ppml-three_fe_sparse-n960-k6-t4-slopes_low/warm-1/feppml/result.json": "49fd8f2219f8ef809cceb805f563469e88ab9a318f1cea860a3e24aa9d683bd6",
+    "smoke-results/ppml-three_fe_sparse-n960-k6-t4-slopes_low/warm-1/fixest/result.json": "2482a8700a4b11c517a7bec116ae198ee1f83c332b85c58d0b62ed0850aa5825",
+    "smoke-results/ppml-three_fe_sparse-n960-k6-t4-slopes_low/warm-1/fixest_strict/result.json": "d32e1b157660dc5e3fa7bc094f09748452afd09dbf443ac36513f5255393ab2c",
+    "smoke-results/ppml-three_fe_sparse-n960-k6-t4-slopes_low/warm-1/ppmlhdfe/result.json": "6cc8532bb8228582e8023b7ad7b2aadc86bf86a43615a0cf66a2fab96da075d7",
+    "smoke-results/ppml-two_fe_dense-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "ec76cbfac30857030bd0d156b424ee9da7a268132f21e1b159f37a6341ac5afd",
+    "smoke-results/ppml-two_fe_dense-n7680-k10-t4-main/warm-1/feppml/result.json": "80f7d6f803b0f42bf0c4856837bcb2f4b492349a27bd5d23bcde6228748e27de",
+    "smoke-results/ppml-two_fe_dense-n7680-k10-t4-main/warm-1/fixest/result.json": "06494ba667d94ead0ba961d7a07da55ecc11194e5f6a8adb7a0ef4c9d5177202",
+    "smoke-results/ppml-two_fe_dense-n7680-k10-t4-main/warm-1/fixest_strict/result.json": "2e775d4cef4989ff9affbe412ddcce1d387d435f70c250edf71cce6d77099917",
+    "smoke-results/ppml-two_fe_dense-n7680-k10-t4-main/warm-1/gglm/result.json": "0e0f93a2c5e699452c752a511be8aa40c57aa6cbea57a96a56d4eb469f27dc2d",
+    "smoke-results/ppml-two_fe_dense-n7680-k10-t4-main/warm-1/ppmlhdfe/result.json": "821abd339b8d9a85e82ddbccb7cb7f60ef44fd6ca1a60d815d12556493c38da5",
+    "smoke-results/ppml-two_fe_dense-n7680-k10-t4-main/warm-1/pyfixest/result.json": "9fb465a093afd64e68bb39031bcee3f34f2da06007c8ea871e9ed03c4de2bb44",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-slopes_fast/warm-1/GROUP.COMPLETE.json": "d7d54a3205bfca45e531ec6890456ffe9fa1eea5912d385cafe3ebedaa8ba380",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-slopes_fast/warm-1/feppml/result.json": "d71decdf2c3f2ea4721bcc47c66bae13cca2cb8424dbb44d48b182c5d85d6167",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-slopes_fast/warm-1/fixest/result.json": "c1d5bb5cce880948a677c0accf5e50f48908b619fd1b5d867ce2221cf3370673",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-slopes_fast/warm-1/fixest_strict/result.json": "f5eb35119ae5da302b1b9db100da5ccabe76f6d0c210d5f4766b4b18bbe34bab",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-slopes_fast/warm-1/ppmlhdfe/result.json": "2b36631e91611a4a5dfcd93cdd99de56c9363a5fa716a8d8578c189388cd7918",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-zeros/warm-1/GROUP.COMPLETE.json": "ae700717383c4ae3edcf52340c40f9843788575267487fe7d8ff67972eaca4d2",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-zeros/warm-1/feppml/result.json": "e88c817d9d3127a3ad25138db7afc90a84d14b69af8eda424339f7bf3fc7d4da",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-zeros/warm-1/fixest/result.json": "af51fb8144d20edbc6552f847e43dea1b691703aa11bb490a6781be1496a97fa",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-zeros/warm-1/fixest_strict/result.json": "d9b56345906fec5228c2487b07d19176a5977710150995c188ac40688ae5b54b",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-zeros/warm-1/gglm/result.json": "0dc1f587e96bf3933cf3284c332bda488c90c381685f95259e258ac4cf941317",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-zeros/warm-1/ppmlhdfe/result.json": "4cc6a4855d2d7b79bfb8acaebeeafbe6bd874d128db243e0be5f77156bbdf3f5",
+    "smoke-results/ppml-two_fe_dense-n960-k10-t4-zeros/warm-1/pyfixest/result.json": "524089913167e850eff3294897fd73fb59639174db9b74a67a0c927c0cabb9f9",
+    "smoke-results/ppml-two_fe_dense-n960-k6-t4-slopes_low/warm-1/GROUP.COMPLETE.json": "c55e11f4f46eee0db295b57e902e0ec97375f6341c8cfd2046b2b7f2773ca772",
+    "smoke-results/ppml-two_fe_dense-n960-k6-t4-slopes_low/warm-1/feppml/result.json": "26dde7c70f5e6478d62090a2c96ec53d7ee629c98f7ab65b73d4abb2623616b7",
+    "smoke-results/ppml-two_fe_dense-n960-k6-t4-slopes_low/warm-1/fixest/result.json": "73fb191d70e0fa1da24d482b9fa8ddf75ac64063237e02c0b7bc75d5bc311018",
+    "smoke-results/ppml-two_fe_dense-n960-k6-t4-slopes_low/warm-1/fixest_strict/result.json": "cb772522c76fbc5774d5451561a264ef8cb0afc6b2e77f8975fc526fcec5f4bd",
+    "smoke-results/ppml-two_fe_dense-n960-k6-t4-slopes_low/warm-1/ppmlhdfe/result.json": "716665f125859782ef8f5000397271d7c0172d672b4b271c44a7a0cb19f9aa29",
+    "smoke-results/ppml-two_fe_sparse-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "b39d2c94f1fa5a13669b02c868b1456b93ff26fbaed11d8531a67ac33d78820b",
+    "smoke-results/ppml-two_fe_sparse-n7680-k10-t4-main/warm-1/feppml/result.json": "03be51b75a4889fe8a919ecfc78cea94b3c2072c71ad5bf7ae8fee9c8333b5b3",
+    "smoke-results/ppml-two_fe_sparse-n7680-k10-t4-main/warm-1/fixest/result.json": "d2e59becc8705d6b912298f5caff378abfc1f06e05c3898fae1d1aa45c4404e2",
+    "smoke-results/ppml-two_fe_sparse-n7680-k10-t4-main/warm-1/fixest_strict/result.json": "8c197f7ca3e4cb6c155956d52dce42fd2617a179f77f7e6eabb630b51b67acce",
+    "smoke-results/ppml-two_fe_sparse-n7680-k10-t4-main/warm-1/gglm/result.json": "9797b120e17cf53134e677c5d5e74f5384e8c533f1259109da36094a2dbac22a",
+    "smoke-results/ppml-two_fe_sparse-n7680-k10-t4-main/warm-1/ppmlhdfe/result.json": "8ca06b98174ebf917da2d99541458d9679c90b690c1b9dce96ebaa9cb24c21cd",
+    "smoke-results/ppml-two_fe_sparse-n7680-k10-t4-main/warm-1/pyfixest/result.json": "869dabed4c614ff627f7f61d3daf9780da9bbd0b3568679204ab54a9dad55fa3",
+    "smoke-results/ppml-two_fe_sparse-n960-k10-t4-zeros/warm-1/GROUP.COMPLETE.json": "dc0a774f3a903abce12b5768d2c64bca7f636873deba8190ce7c5392ea948170",
+    "smoke-results/ppml-two_fe_sparse-n960-k10-t4-zeros/warm-1/feppml/result.json": "33e63fb0c8801b0e3efeee520f1f873794ed4c7bdb09fa0f311eb3e135a5b75e",
+    "smoke-results/ppml-two_fe_sparse-n960-k10-t4-zeros/warm-1/fixest/result.json": "5fa8478195e63cc19fc96b4cd89c328ca0e71d2a54726ba172e1bbf028829a61",
+    "smoke-results/ppml-two_fe_sparse-n960-k10-t4-zeros/warm-1/fixest_strict/result.json": "1fbde1f409ce6cd361925fd0c445b33a89e0e8af2b92651c4bac9652a20ee053",
+    "smoke-results/ppml-two_fe_sparse-n960-k10-t4-zeros/warm-1/gglm/result.json": "f12f6eefad4c285b7e1275d68166ee7af0c945ed31a7a7dd02a9843d292e6e22",
+    "smoke-results/ppml-two_fe_sparse-n960-k10-t4-zeros/warm-1/ppmlhdfe/result.json": "9361d75355970cfd024027c57867b088290ca2f7b944bdb4aa9c8e2b763b25e9",
+    "smoke-results/ppml-two_fe_sparse-n960-k10-t4-zeros/warm-1/pyfixest/result.json": "199bf30b5954f5976e63f69f45385cbb39e09829f114dc35a2a3817fff0db390",
+    "smoke-results/ppml-weak_d3-n7680-k10-t4-main/warm-1/GROUP.COMPLETE.json": "fc17d87ed701e820ea6f3b5f55b78beec9e4e8c0f8eb06594d01e8104da232ab",
+    "smoke-results/ppml-weak_d3-n7680-k10-t4-main/warm-1/feppml/result.json": "ce52be1fd89fb3551e7697e059f2efa8e1b47cad257969caccf67385c72e00ee",
+    "smoke-results/ppml-weak_d3-n7680-k10-t4-main/warm-1/fixest/result.json": "0f17ec09b2449e9a4d13264a26b38f81e0c7ea0b34bc6e7743f1e8a94678c2aa",
+    "smoke-results/ppml-weak_d3-n7680-k10-t4-main/warm-1/fixest_strict/result.json": "005cceb629607af301be54ebe52072aca67bf8a9e9f95d1a6e949987f4b3aab6",
+    "smoke-results/ppml-weak_d3-n7680-k10-t4-main/warm-1/gglm/result.json": "bc51f0603298cd18d63845fecb85fa6580a5a90536c5dcc7e1d80176d81d057c",
+    "smoke-results/ppml-weak_d3-n7680-k10-t4-main/warm-1/ppmlhdfe/result.json": "cc14f8c098aeef808d5465bdd0592f2762d72a0d3196fbdc9d7d67af62e91847",
+    "smoke-results/ppml-weak_d3-n7680-k10-t4-main/warm-1/pyfixest/result.json": "8c9a5b1ba3c0dba4449ae9bc3d83e83a87154cd82303ab65ee123f933bfe4e97"
+  },
+  "groups": 28,
+  "measurement_fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+  "mode": "smoke",
+  "plan": "plans/smoke.json",
+  "plan_sha256": "18e388a9737d7818aebf791bbd8db97e52cdd8935ba398d47b4511f9b92bdb88"
+}
