@@ -113,6 +113,10 @@ pub(crate) struct InstalledThreadTeam {
 }
 
 impl InstalledThreadTeam {
+    pub(crate) fn threads(&self) -> usize {
+        self.pool.pool.as_ref().expect("live worker team").current_num_threads()
+    }
+
     pub(crate) fn install<T, F>(&self, function: F) -> T
     where
         T: Send,

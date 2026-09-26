@@ -4846,33 +4846,65 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
     }
     workspace.fe_moments.fill(0.0);
     workspace.fe_basis_squares.fill(0.0);
-    let mut effect_offset = 0_usize;
-    for effect in fe_design.effects() {
-        let directions = effect.n_levels().saturating_mul(effect.channels());
-        for row in 0..rows {
-            let level = effect.codes()[row] as usize;
-            for channel in 0..effect.channels() {
-                let direction = effect_offset + level * effect.channels() + channel;
-                let basis = effect.basis_value(channel, row);
-                workspace.fe_moments[direction] +=
-                    prior_weights[row] * (outcome[row] - mean[row]) * basis;
-                workspace.fe_basis_squares[direction] +=
-                    prior_weights[row] * mean[row] * basis * basis;
+    let moments = &mut workspace.fe_moments;
+    let squares = &mut workspace.fe_basis_squares;
+    let parallel = rows >= 4096 && workspace.team.threads() > 1;
+    let mut accumulate_effects = || {
+        let mut effect_offset = 0_usize;
+        for effect in fe_design.effects() {
+            let directions = effect.n_levels().saturating_mul(effect.channels());
+            if parallel {
+                use rayon::prelude::*;
+                // A direction owns its two accumulators. Membership order is
+                // original observation order, so independent groups/channels
+                // can run together without reassociating either score sum.
+                moments[effect_offset..effect_offset + directions].par_iter_mut()
+                    .zip(squares[effect_offset..effect_offset + directions].par_iter_mut())
+                    .enumerate().for_each(|(direction, (moment, square))| {
+                        let level = direction / effect.channels();
+                        let channel = direction % effect.channels();
+                        let mut total = 0.0;
+                        let mut norm = 0.0;
+                        for &row in effect.level_index().members(level) {
+                            let basis = effect.basis_value(channel, row);
+                            total += prior_weights[row] * (outcome[row] - mean[row]) * basis;
+                            norm += prior_weights[row] * mean[row] * basis * basis;
+                        }
+                        *moment = total;
+                        *square = norm;
+                    });
+            } else {
+                for row in 0..rows {
+                    let level = effect.codes()[row] as usize;
+                    for channel in 0..effect.channels() {
+                        let direction = effect_offset + level * effect.channels() + channel;
+                        let basis = effect.basis_value(channel, row);
+                        moments[direction] += prior_weights[row] * (outcome[row] - mean[row]) * basis;
+                        squares[direction] += prior_weights[row] * mean[row] * basis * basis;
+                    }
+                }
             }
+            for direction in effect_offset..effect_offset + directions {
+                let moment = moments[direction];
+                fe_absolute = fe_absolute.max(moment.abs());
+                add_relative_score(
+                    moment,
+                    squares[direction].sqrt(),
+                    score_scale,
+                    &mut relative_infinity,
+                    &mut relative_square,
+                    &mut relative_count,
+                );
+            }
+            effect_offset += directions;
         }
-        for direction in effect_offset..effect_offset + directions {
-            let moment = workspace.fe_moments[direction];
-            fe_absolute = fe_absolute.max(moment.abs());
-            add_relative_score(
-                moment,
-                workspace.fe_basis_squares[direction].sqrt(),
-                score_scale,
-                &mut relative_infinity,
-                &mut relative_square,
-                &mut relative_count,
-            );
-        }
-        effect_offset += directions;
+    };
+    // Do not submit a serial task: external Rayon submissions can allocate
+    // queue blocks inside the required allocation-free iteration window.
+    if parallel {
+        workspace.team.install(accumulate_effects);
+    } else {
+        accumulate_effects();
     }
     let relative_two = if relative_count == 0 {
         0.0
@@ -5323,6 +5355,82 @@ mod tests {
                         assert_eq!(actual, expected);
                         assert_eq!(workspace.fe_moments, reference.fe_moments);
                         assert_eq!(workspace.fe_basis_squares, reference.fe_basis_squares);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn independent_fe_scores_match_integer_design_across_frames_and_empty_directions() {
+        use crate::fe::EffectTerm;
+        for rows in [4097, 16385] {
+            let y: Vec<_> = (0..rows).map(|r| if r % 3 == 0 { 0. } else { 2. }).collect();
+            let z: Vec<_> = (0..rows).map(|r| (r % 5) as f64 - 2.).collect();
+            let w: Vec<_> = (0..rows).map(|r| (r % 7) as f64 - 3.).collect();
+            let x: Vec<_> = (0..rows).map(|r| (r as f64 / 17.).sin()).collect();
+            let prepared = prepared(&y, &[x]);
+            let first: Vec<_> = (0..rows).map(|r|
+                (12 * (r % 2) + if r % 97 < 80 { 0 } else { 1 + (r / 2) % 7 }) as u32).collect();
+            let second: Vec<_> = (0..rows).map(|r| (5 * (r % 2) + (r / 2) % 3) as u32).collect();
+            let third: Vec<_> = (0..rows).map(|r| (r % 2) as u32).collect();
+            // Two disconnected components, a dominant group, unused labels,
+            // duplicate slopes, a slope-only effect and an identically zero
+            // direction exercise ownership without granting any rank authority.
+            let specs = [
+                (first, 24, true, vec![z.clone(), z]),
+                (second, 10, false, vec![w, vec![0.; rows]]),
+                (third, 3, true, vec![]),
+            ];
+            let mut explicit = Vec::new();
+            let mut effects = Vec::new();
+            for (codes, levels, intercept, slopes) in specs {
+                let channels = usize::from(intercept) + slopes.len();
+                for level in 0..levels {
+                    for channel in 0..channels {
+                        explicit.push((0..rows).map(|r| {
+                            if codes[r] as usize != level { 0_i64 }
+                            else if intercept && channel == 0 { 1 }
+                            else { slopes[channel - usize::from(intercept)][r] as i64 }
+                        }).collect::<Vec<_>>());
+                    }
+                }
+                effects.push(EffectTerm::new(codes, levels, intercept, slopes).unwrap());
+            }
+            let design = FeDesign::new(rows, effects).unwrap();
+            for threads in [1, 4, 8] {
+                let mut workspace = PpmlScoreWorkspace::new(&design,
+                    crate::options::ThreadConfig::from_requested(threads, true).unwrap()).unwrap();
+                let storage = (workspace.fe_moments.as_ptr(), workspace.fe_moments.capacity(),
+                    workspace.fe_basis_squares.as_ptr(), workspace.fe_basis_squares.capacity());
+                for frame in [1, 7] {
+                    let mu: Vec<_> = (0..rows).map(|r| (1 + (r + frame) % 2) as f64).collect();
+                    let q: Vec<_> = (0..rows).map(|r| (1 + (r * frame) % 7) as i64).collect();
+                    // Integer explicit-design dot products are an independent
+                    // exact oracle; binary common scales remain exactly representable.
+                    let expected: Vec<_> = explicit.iter().map(|column| {
+                        let mut score = 0_i64;
+                        let mut square = 0_i64;
+                        for r in 0..rows {
+                            score += q[r] * (y[r] as i64 - mu[r] as i64) * column[r];
+                            square += q[r] * mu[r] as i64 * column[r] * column[r];
+                        }
+                        (score, square)
+                    }).collect();
+                    for exponent in [-400, 0, 400] {
+                        let scale = 2_f64.powi(exponent);
+                        let weights: Vec<_> = q.iter().map(|&value| value as f64 * scale).collect();
+                        workspace.fe_moments.fill(f64::NAN);
+                        workspace.fe_basis_squares.fill(f64::NAN);
+                        let actual = prepared_score_certificate(&prepared, &design, &y, &mu,
+                            &weights, 1e-8, &mut workspace).unwrap();
+                        assert!(!actual.passed);
+                        for (direction, &(score, square)) in expected.iter().enumerate() {
+                            assert_eq!(workspace.fe_moments[direction], score as f64 * scale);
+                            assert_eq!(workspace.fe_basis_squares[direction], square as f64 * scale);
+                        }
+                        assert_eq!((workspace.fe_moments.as_ptr(), workspace.fe_moments.capacity(),
+                            workspace.fe_basis_squares.as_ptr(), workspace.fe_basis_squares.capacity()), storage);
                     }
                 }
             }

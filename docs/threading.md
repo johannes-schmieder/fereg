@@ -85,6 +85,15 @@ objective replay retains its original row-order reduction (ADR 0212). Small
 and T1 calls keep scalar family evaluation; T1 adapter execution stays on the
 calling thread.
 
+Independent PPML outer FE scores use the same installed team and existing two
+scalar banks (ADR 0220). At N>=4096 with multiple workers, each direction owns
+its outputs and traverses immutable group members in original row order. The
+final reduction retains canonical direction order; scale and finite-column
+checks stay separate and fresh. Small/T1 calls retain row scans. Read the resolved
+team size directly and invoke serial accumulation without a team submission;
+external submissions can allocate queue blocks inside warmed iteration windows.
+No numeric bank, pool, cached score or cross-generation authority is added.
+
 ## SPI prohibition
 
 The Mac numeric input pipeline uses `ThreadTeam::in_place_scope`: the scope

@@ -7,14 +7,115 @@
 tag, or Windows scientific qualification.
 
 This is the sole mutable progress/handover record. Historical receipts remain
-unchanged under benchmarks/reports/. This opening supersedes previous next-step
-directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-**The fixed compensated objective-block implementation is accepted.** Production
-matches all **567 computational inputs of objectiveblocks1**, based on
-**826bcdfd** plus the two captured PPML family/workspace overlays. The next
-boundary is the independent outer score certificate, not accepted-mean caching
-or further family block-size tuning. Fresh seed **202609449** is consumed; do
-not tune on it or earlier frozen validation seeds. No task-owned job is pending.
+unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
+
+## Independent FE score directions accepted — 2026-09-26
+
+[ADR 0220](docs/adr/0220-owned-fe-score-directions.md) adopts **directionalscore2**.
+Each FE score direction owns its existing moment/norm destinations and traverses
+immutable group members in original row order on the resolved team. Canonical
+certificate reduction and each direction's arithmetic order remain. Small/T1
+fits retain direct row scans. Team size is read without a task submission.
+No numeric bank, pool, cached score or generation authority is added. Scale sums,
+finite columns, fresh-state acceptance, tolerances, samples, weights, DoF,
+inference, separation, final-Hessian conditions and failure atomicity are unchanged.
+
+Candidate plugin SHA-256:
+`aec92cd86fc9152bf06de471eafb1f8aedc3e976e1391d0901310c7bb70b5a73`.
+Baseline objectiveblocks1 matches all 567 computational inputs of **d15b907e**;
+all 567 final production inputs match the repaired measured candidate. No source
+input changed after its build. The [source-bound report](benchmarks/reports/development/ppml-directional-scores-local-2026-09-26/README.md)
+retains distributions, losses, identities, independent oracles and fixed-input
+follow-ups. Work root: `target/ppml-score-construction-20260926/final-candidate`.
+All operations are terminal; no campaign or benchmark is running.
+
+Final supplemental evidence: **11,347 restored, hash/privacy-verified receipts**,
+archive SHA-256
+`04a59a1305da165a27abbd9bdc0350a1787e88fb6cd6a518f1f8505389c7ea28`.
+The original first-candidate 11,419-receipt archive remains immutable at SHA-256
+`55692ae2fb9f7fdfd18bdbf73818f38250f939d3e1b774733c2bf7ad492465d9`.
+
+**Late failure preserved and repaired:** directionalscore1 failed the real T1
+low-memory slope allocation audit (nonzero allocation events, exact count not
+printed); unchanged baseline passed. The extra external Rayon submission on the
+serial branch invalidated its draft acceptance. It was never committed. Reading
+resolved team size before dispatch and directly executing serial work restores
+T1/T4 categorical/slope 16-iteration zero-event/zero-growth audits on the repaired
+artifact. No allowance or scientific assertion changed. First-stage timings remain
+separate; do not transfer them to directionalscore2.
+
+Paired final diagnostics reduce large fast/low FE accumulation
+**26.358->12.445 / 26.838->12.061 ms**, entire scores
+**40.364->26.560 / 41.093->26.505**. Factor FE work **7.555->1.752**.
+Scale/finite work is essentially unchanged. Whole instrumented fast and three-FE
+slope timings lose, while low and factor timings improve; nested spans are not
+additive and diagnostic clocks are separate from public stock comparisons.
+
+Pilot B/C/stock medians: million low **958/937/931**, fast **858/845/868**,
+two slopes low **72/70/118**, three-FE two slopes **152/149/234**, factors
+**571/565/714**, serial **545/547/953**. **11 wins, seven losses, no ties**;
+four of six families meet 0.90 stock in every pair. Large fast/low still need
+**63.8/99.1 ms** at the median target; low remains slower than stock.
+
+Fresh seed202609451, five rotations: fast **652/643/761**, low **708/705/766**,
+T4 fast **454/447/661**, factors **686/679/3157**, three-FE two slopes
+**192/189/292**, four slopes low **115/112/117**, serial **539/541/941**, weak
+**121/120/837**, disconnected low **93/93/98**. **32 wins, nine losses, four ties**.
+All 45 direct stock comparisons pass science; six of nine families meet 0.90
+in every pair. Large low, four-slope low and disconnected low remain short by
+**15.6/6.7/4.8 ms** at the median targets. Preserve the 1107-ms baseline outlier.
+Neither seed449 mean discrepancies nor seed450's weak-case loss is declared
+repaired by a different seed.
+
+The single fixed-input serial PPML follow-up is **540/541 ms**, four paired
+losses/one win. Initial OLS B/C medians **65/63,76/77,14/15,208/211,160/158,17/18**;
+small serial/factor/one-FE follow-ups **14/14,209/209,17/18**. Their paired
+wins/losses/ties are **1/2/2,3/1/1,1/2/2**. Full/warm input hashes match.
+Retain these small, unattributed trade-offs for broader threaded savings without
+extra numeric storage. Do not claim universal non-regression or pursue further
+threshold, graph, layout or seed tuning for this milestone.
+
+**65 distinct Rust passes** (58 prepared-IRLS, seven threading), **13 licensed
+fixtures**, **238 public-state audits** and **15 explicit Poisson/Hessian/sandwich
+comparisons**. All **85 native PPML and 33 OLS export pairs are exact**. The new
+integer-design oracle covers dominant/disconnected groups, unused levels,
+multiple/duplicate/zero slopes, slope-only terms, changed means/weights, common
+scales 2^-400..2^400, T1/T4/T8 and stable storage. N4800/T4 three-FE low-memory
+slopes exercise parallel accumulation inside the independent Poisson oracle.
+Anchored comparisons **152/153**, direct C/stock **67/68**; the older small
+saved-output discrepancy remains unranked. Final screens have no application
+failure, timeout, incomplete pair or detected contention.
+
+The inherited checkpoint-count assertion remains failing 0 versus 1 on baseline
+and candidate. A test-controller log-name collision was preserved, then threading
+tests completed separately with a unique log and the same source-bound target.
+Observed pilot/fresh heap/scratch deltas are zero; modeled bounds vary
+**-48..+112 bytes**, with unchanged allowances. No physical-cap or platform
+qualification. Static inventory drift, wire-minor/checkpoint-count failures,
+weighted constrained-fit/nonretaining-CG failures, SCC deferral, stopped campaigns
+and frozen 77/16/111 definitions remain unchanged. No push or release.
+
+### Next implementation: canonical multi-slope absorption and RHS scheduling
+
+Start with low-memory four-slope PPML and relevant multi-partition OLS controls.
+Final paired canonical preparation is **42.929/42.959 ms**, much larger than the
+remaining score cost. Earlier diagnostic decomposition leaves about **25–27 ms**
+in the absorb_in_generation envelope after instrumented descendants. Its name
+does not establish a generic MAP fallback: source delegates to the admitted
+coefficient solver. Current-weight group geometry and ordinary joint-IRLS reuse
+already exist; do not remove policy/memory guards on the assumption they are stale.
+
+Instrument SlopeCoefficientWorkspace::solve, Worker::solve, operator sweeps,
+acceleration/checking, packing/reconstruction and fresh certificates in
+fe/slope_coefficients.rs, fe/map.rs and callers. Record actual RHS windows, active
+workers, individual stopping/iterations and geometry generations. Whole-column
+scheduling may limit parallelism in narrow low-memory windows; this remains a
+hypothesis. Select a coherent scheduling or within-column coefficient-work change
+from that split, protecting shared OLS. Preserve independent weighted geometry
+and original-input projection, score, model-space, rank, finite-solve, objective,
+reconstruction and final-Hessian acceptance. No changing-weight shortcuts,
+rejected residual extrapolation/norm-handoff/incidence probes or benchmark guards.
+Avoid another cycle on the last few score milliseconds or small control losses.
 
 ## Compensated PPML objective blocks accepted — 2026-09-26
 

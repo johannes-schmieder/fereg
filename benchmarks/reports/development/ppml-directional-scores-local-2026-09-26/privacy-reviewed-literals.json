@@ -1,0 +1,194 @@
+[
+  {
+    "file": "artifacts/directionalscore1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references"
+  },
+  {
+    "file": "artifacts/directionalscore1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references"
+  },
+  {
+    "file": "artifacts/directionalscore1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/references"
+  },
+  {
+    "file": "artifacts/directionalscore1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/reghdfe"
+  },
+  {
+    "file": "artifacts/directionalscore1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/reghdfe"
+  },
+  {
+    "file": "artifacts/directionalscore1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/ftools"
+  },
+  {
+    "file": "artifacts/directionalscore1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/ftools"
+  },
+  {
+    "file": "artifacts/directionalscore1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/require"
+  },
+  {
+    "file": "artifacts/directionalscore1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/stata-require"
+  },
+  {
+    "file": "artifacts/directionalscore1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/require"
+  },
+  {
+    "file": "artifacts/directionalscore1/tests/python/test_ols_hidden_numeric.py",
+    "literal": "/Users/licensed/private"
+  },
+  {
+    "file": "artifacts/directionalscore1/tests/python/test_ols_reference_harness.py",
+    "literal": "/Users/alice/private/reference.log"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/references"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/reghdfe"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/reghdfe"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/ftools"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/ftools"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/require"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/stata-require"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/require"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/tests/python/test_ols_hidden_numeric.py",
+    "literal": "/Users/licensed/private"
+  },
+  {
+    "file": "artifacts/objectiveblocks1/tests/python/test_ols_reference_harness.py",
+    "literal": "/Users/alice/private/reference.log"
+  },
+  {
+    "file": "artifacts/scoreprofile1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references"
+  },
+  {
+    "file": "artifacts/scoreprofile1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references"
+  },
+  {
+    "file": "artifacts/scoreprofile1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/references"
+  },
+  {
+    "file": "artifacts/scoreprofile1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/reghdfe"
+  },
+  {
+    "file": "artifacts/scoreprofile1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/reghdfe"
+  },
+  {
+    "file": "artifacts/scoreprofile1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/ftools"
+  },
+  {
+    "file": "artifacts/scoreprofile1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/ftools"
+  },
+  {
+    "file": "artifacts/scoreprofile1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/require"
+  },
+  {
+    "file": "artifacts/scoreprofile1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/stata-require"
+  },
+  {
+    "file": "artifacts/scoreprofile1/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/require"
+  },
+  {
+    "file": "artifacts/scoreprofile1/tests/python/test_ols_hidden_numeric.py",
+    "literal": "/Users/licensed/private"
+  },
+  {
+    "file": "artifacts/scoreprofile1/tests/python/test_ols_reference_harness.py",
+    "literal": "/Users/alice/private/reference.log"
+  },
+  {
+    "file": "artifacts/scoreprofile2/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references"
+  },
+  {
+    "file": "artifacts/scoreprofile2/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references"
+  },
+  {
+    "file": "artifacts/scoreprofile2/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/references"
+  },
+  {
+    "file": "artifacts/scoreprofile2/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/reghdfe"
+  },
+  {
+    "file": "artifacts/scoreprofile2/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/reghdfe"
+  },
+  {
+    "file": "artifacts/scoreprofile2/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/ftools"
+  },
+  {
+    "file": "artifacts/scoreprofile2/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/ftools"
+  },
+  {
+    "file": "artifacts/scoreprofile2/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/require"
+  },
+  {
+    "file": "artifacts/scoreprofile2/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/stata-require"
+  },
+  {
+    "file": "artifacts/scoreprofile2/scripts/resolve_reference_root.py",
+    "literal": "/Users/Shared/fereg-references/require"
+  },
+  {
+    "file": "artifacts/scoreprofile2/tests/python/test_ols_hidden_numeric.py",
+    "literal": "/Users/licensed/private"
+  },
+  {
+    "file": "artifacts/scoreprofile2/tests/python/test_ols_reference_harness.py",
+    "literal": "/Users/alice/private/reference.log"
+  }
+]
