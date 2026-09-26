@@ -1250,20 +1250,22 @@ fn finish_prepare_categorical_ols_data(
         } => SingletonMultiplicity::Frequency(values.as_slice()),
         PreparedWeights::None | PreparedWeights::Provided { .. } => SingletonMultiplicity::Unit,
     };
-    // Availability already owns a validated membership index. For one ordinary
-    // unit-weight partition, member counts prove whether pruning changes the
-    // sample; the generic queue is needed only when a singleton exists.
+    // No initial singleton in any partition implies the pruning fixed point.
+    // Unchanged single-source partitions can then move their validated owners;
+    // interactions and weighted samples keep the generic pruning/finalization.
     let fixed_point = if availability.sample.n_active() >= 16_384
         && matches!(availability.sample.weights, PreparedWeights::None)
-        && bound_effects.len() == 1 && recipe_views[0].len() == 1
-        && availability.fe_topology.sources().len() == 1
+        && !recipe_views.is_empty() && recipe_views.iter().all(|recipe| recipe.len() == 1)
     {
-        let source = &availability.fe_topology.sources()[0];
-        source.categorical_source_index() == recipe_views[0][0]
-            && (plan.requested_keep_singletons() || (0..source.n_levels())
+        recipe_views.iter().try_fold(true, |clear, recipe| -> Result<bool> {
+            let Some(source) = availability.fe_topology.sources().iter()
+                .find(|source| source.categorical_source_index() == recipe[0])
+            else { return Ok(false); };
+            Ok(clear && (plan.requested_keep_singletons() || (0..source.n_levels())
                 .try_fold(true, |clear, level| -> Result<bool> {
                     Ok(clear && source.members(level)?.len() > 1)
-                })?)
+                })?))
+        })?
     } else { false };
     let singleton = if fixed_point {
         SingletonResult { active: initially_active, dropped_observations: Vec::new(), cascade_events: 0 }
@@ -1284,7 +1286,6 @@ fn finish_prepare_categorical_ols_data(
         Some(finalize_categorical_topology(&candidate_views, &recipe_views, &singleton.active)?)
     };
     drop(candidate_views);
-    drop(recipe_views);
 
     let PreparedOlsData {
         model: availability_model,
@@ -1300,16 +1301,21 @@ fn finish_prepare_categorical_ols_data(
         drop(availability_topology);
         topology
     } else {
-        let (source_index, level_index) = availability_topology.into_single_source_index()?;
-        let source_count = candidate_sources.len();
-        let source = candidate_sources.get_mut(source_index)
-            .ok_or_else(|| invalid("transferred categorical source is out of range"))?;
-        let n_levels = source.encoded.n_levels();
-        let codes = std::mem::take(&mut source.encoded.codes);
-        FinalizedCategoricalTopology::from_single_source_index(
-            source_count, source_index, codes, n_levels, level_index,
+        let mut membership_sources = availability_topology.into_sources();
+        FinalizedCategoricalTopology::from_single_source_indexes(
+            candidate_sources.len(), sample.n_active(), &recipe_views,
+            |source_index| {
+                let position = membership_sources.iter().position(|source|
+                    source.categorical_source_index() == source_index)
+                    .ok_or_else(|| invalid("transferred topology source is missing"))?;
+                let index = membership_sources.swap_remove(position).into_level_index();
+                let source = candidate_sources.get_mut(source_index)
+                    .ok_or_else(|| invalid("transferred categorical source is out of range"))?;
+                Ok((std::mem::take(&mut source.encoded.codes), source.encoded.n_levels(), index))
+            },
         )?
     };
+    drop(recipe_views);
     let final_sources = final_categorical_sources(&availability_model, cluster_sources)?;
     let model_source_plans = plan_model_sources(candidate_sources, &final_sources, &fe_topology)?;
     let sample = sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;

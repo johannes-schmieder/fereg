@@ -128,65 +128,105 @@ impl<'a> ValidatedSingleTopology<'a> {
 }
 
 impl FinalizedCategoricalTopology {
-    /// Consume an unchanged single-source row axis and its membership owner.
-    /// Exact membership validation proves that every declared level is present,
-    /// so final level identities are unchanged and no recoding is necessary.
-    pub(crate) fn from_single_source_index(
+    /// Preserve an unchanged compact row axis while moving single-source
+    /// membership. Source storage follows candidate order; registry storage
+    /// follows first effect use, exactly as in ordinary finalization.
+    pub(crate) fn from_single_source_indexes(
         candidate_source_count: usize,
-        candidate_source_index: usize,
-        codes: Vec<u32>,
-        n_levels: usize,
-        level_index: super::design::LevelIndex,
+        nobs: usize,
+        effect_recipes: &[&[usize]],
+        take_source: impl FnMut(usize) -> Result<(Vec<u32>, usize, super::design::LevelIndex)>,
     ) -> Result<Self> {
-        let mut reservation = SystemTopologyFinalizeReservation;
-        Self::from_single_source_index_with_reservation(
-            candidate_source_count, candidate_source_index, codes, n_levels, level_index,
-            &mut reservation,
+        Self::from_single_source_indexes_with_reservation(
+            candidate_source_count, nobs, effect_recipes, take_source,
+            &mut SystemTopologyFinalizeReservation,
         )
     }
 
-    fn from_single_source_index_with_reservation<R: TopologyFinalizeReservation>(
+    fn from_single_source_indexes_with_reservation<R: TopologyFinalizeReservation>(
         candidate_source_count: usize,
-        candidate_source_index: usize,
-        codes: Vec<u32>,
-        n_levels: usize,
-        level_index: super::design::LevelIndex,
+        nobs: usize,
+        effect_recipes: &[&[usize]],
+        mut take_source: impl FnMut(usize) -> Result<(Vec<u32>, usize, super::design::LevelIndex)>,
         reservation: &mut R,
     ) -> Result<Self> {
-        if candidate_source_index >= candidate_source_count || n_levels > u32::MAX as usize {
-            return Err(invalid("transferred categorical source identity is out of range"));
+        if effect_recipes.is_empty() || effect_recipes.iter().any(|r| r.len() != 1 || r[0] >= candidate_source_count) {
+            return Err(invalid("transferred effect source identity is out of range"));
         }
-        let source = super::CategoricalTopologySource::single_with_index(
-            0, CategoricalCodeView::new(&codes, n_levels), level_index,
-        )?;
-        let mut retained_rows = reserved_filled(reservation, codes.len(), 0,
-            "unable to reserve transferred categorical row map")?;
-        for (row, original) in retained_rows.iter_mut().enumerate() { *original = row; }
-        let mut original_levels = reserved_filled(reservation, n_levels, 0,
-            "unable to reserve transferred categorical level identities")?;
-        for (level, original) in original_levels.iter_mut().enumerate() { *original = level as u32; }
-        let mut candidate_to_compacted_source = reserved_filled(reservation, candidate_source_count, None,
-            "unable to reserve transferred categorical source map")?;
-        candidate_to_compacted_source[candidate_source_index] = Some(0);
+        let mut referenced = Vec::new();
+        reservation.reserve_vec(&mut referenced, effect_recipes.len(),
+            "unable to reserve transferred source identities")?;
+        for recipe in effect_recipes {
+            let source = recipe[0];
+            push_reserved(&mut referenced, source, "transferred source identity capacity exhausted")?;
+        }
+        referenced.sort_unstable();
+        referenced.dedup();
+        let mut source_map = reserved_filled(reservation, candidate_source_count, None,
+            "unable to reserve transferred source map")?;
         let mut compacted_sources = Vec::new();
-        reservation.reserve_vec(&mut compacted_sources, 1,
-            "unable to reserve transferred compact categorical source")?;
-        push_reserved(&mut compacted_sources,
-            CompactedCategoricalSource { candidate_source_index, codes, original_levels },
-            "transferred compact categorical source capacity exhausted")?;
-        let recipe = reserved_filled(reservation, 1, 0,
-            "unable to reserve transferred categorical recipe")?;
+        let mut memberships = Vec::new();
+        reservation.reserve_vec(&mut compacted_sources, referenced.len(),
+            "unable to reserve transferred compact sources")?;
+        reservation.reserve_vec(&mut memberships, referenced.len(),
+            "unable to reserve transferred membership owners")?;
+        for candidate_source_index in referenced {
+            let compacted_index = compacted_sources.len();
+            let (codes, n_levels, index) = take_source(candidate_source_index)?;
+            if codes.len() != nobs || n_levels > u32::MAX as usize {
+                return Err(invalid("transferred categorical row or level axis differs"));
+            }
+            // This checks every code/member relationship and every declared
+            // level before the unchanged level identities become authoritative.
+            let source = super::CategoricalTopologySource::single_with_index(
+                compacted_index, CategoricalCodeView::new(&codes, n_levels), index,
+            )?;
+            let mut original_levels = reserved_filled(reservation, n_levels, 0,
+                "unable to reserve transferred level identities")?;
+            for (level, original) in original_levels.iter_mut().enumerate() {
+                *original = level as u32;
+            }
+            source_map[candidate_source_index] = Some(compacted_index);
+            push_reserved(&mut compacted_sources,
+                CompactedCategoricalSource { candidate_source_index, codes, original_levels },
+                "transferred source capacity exhausted")?;
+            push_reserved(&mut memberships, Some(source), "transferred membership capacity exhausted")?;
+        }
+        let mut registry_sources = Vec::new();
+        reservation.reserve_vec(&mut registry_sources, compacted_sources.len(),
+            "unable to reserve transferred topology registry")?;
+        let mut topology_map = reserved_filled(reservation, compacted_sources.len(), None,
+            "unable to reserve transferred topology map")?;
         let mut remapped_effect_recipes = Vec::new();
-        reservation.reserve_vec(&mut remapped_effect_recipes, 1,
-            "unable to reserve transferred categorical recipe table")?;
-        push_reserved(&mut remapped_effect_recipes, recipe,
-            "transferred categorical recipe capacity exhausted")?;
-        let effect_to_topology = reserved_filled(reservation, 1, 0,
-            "unable to reserve transferred effect topology map")?;
+        let mut effect_to_topology = Vec::new();
+        reservation.reserve_vec(&mut remapped_effect_recipes, effect_recipes.len(),
+            "unable to reserve transferred effect recipes")?;
+        reservation.reserve_vec(&mut effect_to_topology, effect_recipes.len(),
+            "unable to reserve transferred effect map")?;
+        for recipe in effect_recipes {
+            let candidate_source = recipe[0];
+            let compacted = source_map[candidate_source]
+                .ok_or_else(|| invalid("transferred effect source was not retained"))?;
+            let topology = if let Some(index) = topology_map[compacted] { index } else {
+                let index = registry_sources.len();
+                let source = memberships[compacted].take()
+                    .ok_or_else(|| invalid("transferred membership owner was already consumed"))?;
+                push_reserved(&mut registry_sources, source, "transferred registry capacity exhausted")?;
+                topology_map[compacted] = Some(index);
+                index
+            };
+            let recipe = reserved_filled(reservation, 1, compacted,
+                "unable to reserve transferred effect recipe")?;
+            push_reserved(&mut remapped_effect_recipes, recipe, "transferred recipe capacity exhausted")?;
+            push_reserved(&mut effect_to_topology, topology, "transferred effect capacity exhausted")?;
+        }
+        let mut retained_rows = reserved_filled(reservation, nobs, 0,
+            "unable to reserve transferred row identities")?;
+        for (row, original) in retained_rows.iter_mut().enumerate() { *original = row; }
         Ok(Self {
-            compacted_sources, candidate_to_compacted_source, remapped_effect_recipes,
-            effect_to_topology, retained_rows,
-            registry: CategoricalTopologyRegistry::from_single_source(source)?,
+            compacted_sources, candidate_to_compacted_source: source_map,
+            remapped_effect_recipes, effect_to_topology, retained_rows,
+            registry: CategoricalTopologyRegistry::from_transferred_sources(registry_sources),
         })
     }
 
@@ -819,44 +859,68 @@ mod tests {
     }
 
     #[test]
-    fn transferred_single_source_matches_rebuilt_topology_without_copying_codes() {
+    fn transferred_partitions_preserve_order_aliases_and_membership_owners() {
         use super::super::design::LevelIndex;
-        for codes in [vec![], vec![0], vec![0, 0, 1, 1, 2, 2], vec![2, 0, 1, 2, 0, 1]] {
-            let n_levels = codes.iter().max().map_or(0, |code| *code as usize + 1);
-            for source_index in [0, 1, 2] {
-                let views = vec![CategoricalCodeView::new(&codes, n_levels); 3];
-                let expected = finalize_categorical_topology(&views, &[&[source_index]], &vec![true; codes.len()]).unwrap();
-                let owned_codes = codes.clone();
-                let pointer = owned_codes.as_ptr();
-                let index = LevelIndex::try_from_ordered_codes(&codes, n_levels).unwrap()
-                    .unwrap_or_else(|| LevelIndex::from_codes(&codes, n_levels).unwrap());
-                let actual = FinalizedCategoricalTopology::from_single_source_index(
-                    3, source_index, owned_codes, n_levels, index,
+        for n in [0, 1, 8, 41] {
+            let codes = [
+                (0..n).map(|i| (i % 3) as u32).collect::<Vec<_>>(),
+                (0..n).map(|i| (i / 4) as u32).collect::<Vec<_>>(),
+                (0..n).map(|i| ((n - i - 1) % 2) as u32).collect::<Vec<_>>(),
+            ];
+            let levels = codes.each_ref().map(|c| c.iter().max().map_or(0, |v| *v as usize + 1));
+            let views: Vec<_> = codes.iter().zip(levels).map(|(c, k)| CategoricalCodeView::new(c, k)).collect();
+            for effects in [vec![2, 0], vec![2, 0, 2, 1], vec![1, 1], vec![0, 1, 2]] {
+                let recipes: Vec<_> = effects.iter().map(std::slice::from_ref).collect();
+                let expected = finalize_categorical_topology(&views, &recipes, &vec![true; n]).unwrap();
+                let mut inputs: Vec<_> = codes.iter().zip(levels).map(|(c, k)| {
+                    Some((c.clone(), LevelIndex::from_codes(c, k).unwrap()))
+                }).collect();
+                let pointers: Vec<_> = inputs.iter().map(|v| v.as_ref().unwrap().0.as_ptr()).collect();
+                let members: Vec<_> = inputs.iter().map(|v| v.as_ref().unwrap().1.checked_members(0).ok().map(|m| m.as_ptr())).collect();
+                let actual = FinalizedCategoricalTopology::from_single_source_indexes(
+                    3, n, &recipes, |i| { let (codes, index) = inputs[i].take().expect("one move per source"); Ok((codes, levels[i], index)) },
                 ).unwrap();
-                assert_eq!(expected, actual);
-                assert_eq!(pointer, actual.compacted_sources()[0].codes().as_ptr());
+                assert_eq!(actual, expected);
                 actual.validate().unwrap();
+                for (i, source) in actual.compacted_sources().iter().enumerate() {
+                    let candidate = source.candidate_source_index();
+                    assert_eq!(source.codes().as_ptr(), pointers[candidate]);
+                    let topology = actual.registry().sources().iter().find(|s|
+                        s.partition().categorical_source_indices() == [i]).unwrap();
+                    assert_eq!(topology.level_index().checked_members(0).ok().map(|m| m.as_ptr()), members[candidate]);
+                    assert!(inputs[candidate].is_none());
+                }
             }
         }
     }
 
     #[test]
-    fn transferred_topology_rejects_mismatched_membership_and_allocation_failures() {
+    fn transferred_partitions_reject_bad_axes_and_every_reservation_failure() {
         use super::super::design::LevelIndex;
-        let codes = vec![0, 1, 0, 1];
-        let index = LevelIndex::from_codes(&codes, 2).unwrap();
-        for (count, source, codes, levels) in [
-            (0, 0, codes.clone(), 2), (1, 1, codes.clone(), 2),
-            (1, 0, vec![0, 0, 1, 1], 2), (1, 0, vec![0, 1], 2),
-            (1, 0, codes.clone(), 3), (1, 0, vec![0, 1, 0, 2], 2),
-        ] {
-            assert!(FinalizedCategoricalTopology::from_single_source_index(
-                count, source, codes, levels, index.clone(),
-            ).is_err());
+        let input = || (vec![0, 1, 0, 1], 2, LevelIndex::from_codes(&[0, 1, 0, 1], 2).unwrap());
+        for effects in [vec![], vec![0, 2]] {
+            let recipes: Vec<_> = effects.iter().map(std::slice::from_ref).collect();
+            assert!(FinalizedCategoricalTopology::from_single_source_indexes(2, 4, &recipes, |_| Ok(input())).is_err());
         }
+        for changed in [vec![0, 0, 1, 1], vec![0, 1], vec![0, 1, 0, 2]] {
+            assert!(FinalizedCategoricalTopology::from_single_source_indexes(2, 4, &[&[1], &[0]], |_| {
+                Ok((changed.clone(), 2, input().2))
+            }).is_err());
+        }
+        for recipes in [&[&[0, 1][..]][..], &[&[][..]][..]] {
+            assert!(FinalizedCategoricalTopology::from_single_source_indexes(2, 4, recipes, |_| Ok(input())).is_err());
+        }
+        for levels in [0, 1, 3] {
+            assert!(FinalizedCategoricalTopology::from_single_source_indexes(2, 4, &[&[1]], |_| {
+                Ok((input().0, levels, input().2))
+            }).is_err());
+        }
+        assert!(FinalizedCategoricalTopology::from_single_source_indexes(2, 4, &[&[1]], |_| {
+            Ok((vec![0, 0, 2, 2], 3, LevelIndex::from_codes(&[0, 0, 2, 2], 3)?))
+        }).is_err());
         let mut successful = InjectedReservation::default();
-        FinalizedCategoricalTopology::from_single_source_index_with_reservation(
-            1, 0, codes.clone(), 2, index.clone(), &mut successful,
+        FinalizedCategoricalTopology::from_single_source_indexes_with_reservation(
+            3, 4, &[&[2], &[0], &[2]], |_| Ok(input()), &mut successful,
         ).unwrap();
         for position in 0..successful.calls {
             for skip in [false, true] {
@@ -864,10 +928,9 @@ mod tests {
                     fail_at: (!skip).then_some(position), skip_at: skip.then_some(position),
                     ..InjectedReservation::default()
                 };
-                let error = FinalizedCategoricalTopology::from_single_source_index_with_reservation(
-                    1, 0, codes.clone(), 2, index.clone(), &mut reservation,
-                ).unwrap_err();
-                assert_eq!(error.code, ErrorCode::Allocation);
+                assert_eq!(FinalizedCategoricalTopology::from_single_source_indexes_with_reservation(
+                    3, 4, &[&[2], &[0], &[2]], |_| Ok(input()), &mut reservation,
+                ).unwrap_err().code, ErrorCode::Allocation);
             }
         }
     }

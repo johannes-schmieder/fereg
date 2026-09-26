@@ -9,12 +9,113 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. This opening supersedes previous next-step
 directions. The multi-FE PPML <=0.90-times-comparable-stock goal remains active.
-Borrow-bound numeric selection is adopted. The
-[next implementation](#next-implementation-multi-fe-topology-ownership) is eligible
-multi-FE topology ownership, supported by new attribution. Prior solver and
-initialization improvements remain intact. Rejected operator/extrapolation and
-borrowed-canonical-control probes remain closed. Fresh seed 202609444 is consumed.
-Historical timings and unresolved comparisons do not transfer to this artifact.
+**Unchanged multi-partition topology ownership is adopted.** Numeric selection,
+initialization and prior slope/categorical solver gains remain intact. The next
+substantial boundary is canonical retained-rank construction, not more topology
+or selection tuning. Fresh seed **202609445** is consumed; do not tune on it or
+reuse earlier frozen validation seeds. Historical timings do not transfer to the
+current artifact. All task-owned jobs are terminal.
+
+## Shared unchanged topology ownership adopted — 2026-09-26
+
+Retain **multitopology1**, base **5e90bb3e** plus four Rust overlays
+(`fe/topology_finalize.rs`, `fe/topology_registry.rs`, `ols/prepared.rs`,
+`ols/prepared_categorical_data.rs`) and one licensed fixture. All **567
+computational inputs** match. Plugin SHA-256:
+`ec59c589f62fd3c0992fb2428355b6b315ee10e28f029762024bc9a4440cddb2`.
+[ADR 0215](docs/adr/0215-unchanged-multipartition-topology-ownership.md) and the
+[source-bound report](benchmarks/reports/development/ppml-multi-topology-local-2026-09-26/README.md)
+retain the source, ordered distributions, independent checks and **11,984 restored
+hash/privacy-verified receipts**. Container SHA-256:
+`8aa0a8ad8e4218c6756c81b681ee83a1cb5ba47e57b10ecded7c45ba09552461`.
+Local work root: `target/ppml-multi-topology-20260926`.
+
+One constructor now transfers unchanged one-/multi-partition code and membership
+owners. Preserve the existing >=16,384-row unweighted-prepared-sample floor;
+ordinary single-source recipes and existing membership must agree. Explicitly
+kept singletons or no singleton in any partition prove unchanged row/level axes.
+Validate exact codes, levels and membership, ordering/aliases, and the final
+immutable owner. Weighted samples, composite recipes, small samples and actual
+singleton pruning retain generic finalization. Compatible slope availability is
+included, covered by explicit-dummy inference and one-FE slope controls. No
+current-weight geometry, RHS, solution or certificate authority crosses calls.
+
+ADR 0202's small PPML-only prototype remains rejected. The new million-row
+attribution supplies a materially larger cost budget, while this implementation
+replaces the prior single-source constructor instead of adding a second route.
+No source or guard changed after observing pilot/fresh results.
+
+Development B/C/stock medians: million-row fast **875/861/880 ms**, low
+**980/967/872** (1.6/1.3% gains). Factors **571/567/695**, three-FE two slopes
+**153/152/232**, low two slopes **73/71/120**, serial **545/539/937**; small
+three-FE **72/72/80**, unranked one-FE control **60/61**. B/C: **16 wins, six
+losses, two ties**. Four of seven multi-FE families meet 0.90 in every pair.
+
+Fresh seed202609445: large fast **669/660/760**, low **741/735/761**; gains
+**1.3/0.8%**, smaller than the pilot. Other B/C/S: fast368640 **466/461/665**,
+factors **681/681/3159**, two slopes **191/190/293**, four-slope low
+**115/116/119**, serial **544/541/934**, weak **130/130/762**, disconnected low
+**96/96/98**. All **45 fresh stock comparisons pass**; **six of nine** families
+meet 0.90 in every pair. Low numeric, four-slope low and disconnected low miss
+that target. Fresh B/C: **26 wins, 12 losses, seven ties**. Preserve all losses.
+
+**121 distinct Rust tests, ten distinct licensed fixtures, 231 PPML public states
+and 12 explicit Poisson/Hessian/sandwich checks pass.** All **79 native PPML pairs**
+and **48 OLS pairs** have exact scientific exports. Anchored comparisons
+**154/158** and direct C/stock **69/73** retain four older-seed discrepancies
+(one small full-output residual and three protected one-FE means), unranked.
+No missing completed pair, timeout, interruption or contended measurement.
+
+OLS original three-pair medians: **63/67, 75/75, 14/14, 207/210, 159/158,
+17/16** (slopes, three-FE low, small, factors, large, one FE). The predeclared
+five-pair unchanged-source repeat: **65/65, 76/75, 14/14, 207/209, 158/159,
+16/17**. The slope slowdown did not reproduce; small losses remain. Keep both
+blocks, not a pooled non-regression claim. Tracked whole-fit peak deltas
+**-240..0 bytes**, scratch zero, modeled **-48..+112** with unchanged allowances.
+Only model-sized maps are added; repeated preparation code/membership banks are
+removed. This does not establish physical-cap or platform qualification.
+
+Retain initial process-table sandbox refusal, invalid fresh disconnected harness
+label (zero fits, corrected separately as `fresh-valid`) and supplemental fixture
+filename/sentinel mismatch (Stata rc/assertions passed; collector failed, then
+identical renamed fixture passed). No failed attempt is silently replaced.
+Static-inventory drift, existing wire-minor/checkpoint-count failures, weighted
+constrained-fit/nonretaining-CG failures and SCC deferrals remain open. Frozen
+77/16/111 definitions, stopped campaigns and reference pins are unchanged.
+No push or release.
+
+### Next implementation: canonical-frame lifecycle
+
+Paired **modelprofile1/modelprofile2** confirms model generation
+**49.30->35.28 ms** fast and **49.05->35.77** low; containing final categorical
+preparation **25.10->9.91 /25.01->10.39**. Membership validation remains. The
+availability membership construction still costs about 8.9 ms and is needed.
+Stop this topology milestone here; do not chase its remaining few milliseconds.
+
+Current-candidate large fast/low IRLS **576/660 ms** contains canonical retained
+rank construction **222/276**. The two-FE canonical product builder costs about
+**119 ms**, containing **40 setup**, **43 solve**, **21 fresh certificate/products**.
+Low finite/rank work costs **65 ms** versus fast **25**; low retained-control
+writing adds **23 ms**. These spans nest and must not be added indiscriminately.
+Original-input score checks cost about **40**, loading **42**, publication **24**,
+inference **6/11**. `remaining-phase-costs.json`, full spans and source snapshots
+are archived. Diagnostic clocks do not enter stock headline rankings.
+
+Inspect `ols/canonical_products.rs::build` and
+`ols/linear_session.rs::solve_full_retained_rank`. Per-call component planning and
+repeated neighbor accumulation/sorting mix immutable graph structure with weighted
+masses, anchors, scaling, factors and responses. Design one canonical-frame
+lifecycle that owns valid immutable topology once and feeds current-weight finite
+products/reconstruction through the retained-rank builder without redundant
+low-storage passes. First split the measured setup/finite costs to establish the
+avoidable part; the entire 40/65 ms is not assumed removable. Retain current-weight
+and final-Hessian acceptance, rank policy, budget refusal and generation invalidation.
+Do not add overlapping cache layers or resume rejected residual probes.
+
+Development deficits to 0.90 stock are about **69/182 ms** fast/low. Fresh low
+numeric still needs about **50 ms**, four-slope low **9**, disconnected low **8**.
+Prioritize the larger canonical-frame boundary, preserve focused OLS controls,
+and keep the broad objective active. No second production candidate is pending.
 
 ## Borrow-bound PPML numeric selection adopted — 2026-09-26
 
