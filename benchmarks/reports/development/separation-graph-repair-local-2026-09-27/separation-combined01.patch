@@ -1,0 +1,499 @@
+diff --git a/crates/fereg-core/src/ppml/memory.rs b/crates/fereg-core/src/ppml/memory.rs
+index 508bebec..0e2272f2 100644
+--- a/crates/fereg-core/src/ppml/memory.rs
++++ b/crates/fereg-core/src/ppml/memory.rs
+@@ -697,6 +697,8 @@ pub struct PpmlMemoryPlan {
+     /// Retained workspace for the selected PPML-specific ordinary-frame
+     /// engine. MAP is already included in the base route inventory.
+     pub solver_workspace_bytes: u128,
++    /// Separately admitted graph/CG detector state, released before IRLS.
++    pub(crate) separation_projection_bytes: u128,
+     /// Optional generic MAP projection bank, retained from preparation through
+     /// the final Hessian solve and released with the linear session.
+     pub reusable_projection_bytes: u128,
+@@ -749,12 +751,13 @@ impl PpmlMemoryPlan {
+ 
+     #[must_use]
+     pub const fn selected_bytes(self) -> u128 {
+-        self.selected_inventory()
+-            .peak_bytes
+-            .saturating_add(self.solver_workspace_bytes)
++        let ordinary = self.solver_workspace_bytes
+             .saturating_add(self.reusable_projection_bytes)
+             .saturating_add(self.reusable_certificate_bytes)
+-            .saturating_add(self.reusable_slope_bytes)
++            .saturating_add(self.reusable_slope_bytes);
++        let separate = self.separation_projection_bytes;
++        self.selected_inventory().peak_bytes.saturating_add(
++            if ordinary > separate { ordinary } else { separate })
+     }
+ 
+     /// Optional storage must never make an otherwise affordable fit fail.
+@@ -812,6 +815,13 @@ impl PpmlMemoryPlan {
+         true
+     }
+ 
++    pub(crate) fn admit_separation_projection(&mut self, bytes: u128) -> bool {
++        let Some(peak) = self.selected_inventory().peak_bytes.checked_add(bytes) else { return false; };
++        if self.usable_bytes.is_some_and(|usable| peak > usable) { return false; }
++        self.separation_projection_bytes = bytes;
++        true
++    }
++
+     pub(crate) fn with_solver_workspace(mut self, bytes: u128) -> Result<Self> {
+         let peak = self
+             .selected_inventory()
+@@ -873,8 +883,8 @@ impl PpmlMemoryPlan {
+             PpmlPhase::SeparationFe
+             | PpmlPhase::SeparationSimplex
+             | PpmlPhase::SeparationIr
+-            | PpmlPhase::SeparationMu
+-            | PpmlPhase::Inference
++            | PpmlPhase::SeparationMu => base.saturating_add(self.separation_projection_bytes),
++            PpmlPhase::Inference
+             | PpmlPhase::FeRecovery
+             | PpmlPhase::Publication => base,
+         }
+@@ -981,6 +991,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
+         safety_headroom_bytes,
+         usable_bytes,
+         solver_workspace_bytes: 0,
++        separation_projection_bytes: 0,
+         reusable_projection_bytes: 0,
+         reusable_certificate_bytes: 0,
+         reusable_slope_bytes: 0,
+@@ -3506,7 +3517,8 @@ impl PpmlMemoryTelemetry {
+         )?
+         .with_final_dimensions(self.plan.dimensions)?
+         .with_solver_workspace(self.plan.solver_workspace_bytes)?;
+-        if !reconstructed.admit_reusable_projection(self.plan.reusable_projection_bytes)
++        if !reconstructed.admit_separation_projection(self.plan.separation_projection_bytes)
++            || !reconstructed.admit_reusable_projection(self.plan.reusable_projection_bytes)
+             || !reconstructed.admit_reusable_certificate(self.plan.reusable_certificate_bytes)
+             || !reconstructed.admit_reusable_slope(self.plan.reusable_slope_bytes)
+             || reconstructed != self.plan
+@@ -5266,6 +5278,26 @@ mod tests {
+         assert_eq!(error.code, ErrorCode::Allocation);
+     }
+ 
++    #[test]
++    fn detector_graph_admission_and_irls_workspaces_have_separate_lifetimes() {
++        let mut plan = plan_ppml_memory(dimensions(), PpmlMemoryConfig::default()).unwrap();
++        let base = plan.selected_bytes();
++        plan.usable_bytes = Some(base + 4096);
++        assert!(plan.admit_separation_projection(4096));
++        assert_eq!(plan.selected_bytes(), base + 4096);
++        let old = plan;
++        assert!(!plan.admit_separation_projection(4097));
++        assert!(!plan.admit_separation_projection(u128::MAX));
++        assert_eq!(plan, old);
++        plan = plan.with_solver_workspace(4096).unwrap();
++        assert_eq!(plan.selected_bytes(), base + 4096);
++        assert!(plan.with_solver_workspace(4097).is_err());
++        assert_eq!(plan.modeled_phase_peak_bytes(PpmlPhase::SeparationIr),
++            plan.selected_inventory().separation_peak_bytes + 4096);
++        assert_eq!(plan.modeled_phase_peak_bytes(PpmlPhase::StrictFinalSolve),
++            plan.selected_inventory().strict_final_peak_bytes + 4096);
++    }
++
+     #[test]
+     fn optional_reusable_certificate_accounts_for_projection_and_phase_lifetime() {
+         let mut base = plan_ppml_memory(dimensions(), PpmlMemoryConfig::default())
+diff --git a/crates/fereg-core/src/ppml/prepared_separation.rs b/crates/fereg-core/src/ppml/prepared_separation.rs
+index d0200d5b..47eac960 100644
+--- a/crates/fereg-core/src/ppml/prepared_separation.rs
++++ b/crates/fereg-core/src/ppml/prepared_separation.rs
+@@ -15,7 +15,8 @@ use std::cell::Cell;
+ 
+ use crate::data::{DenseMatrix, DropReason, WeightKind};
+ use crate::error::{ErrorCode, FeregError, Result};
+-use crate::fe::{BorrowedMapWeights, LevelIndex};
++use crate::fe::{BorrowedMapWeights, FeSolverKind, LevelIndex};
++use crate::prepared_fit_view::PreparedOlsFitView;
+ use crate::ols::{
+     fit_prepared_weighted_linear_projection_once, LinearSolveFrame, PreparedOlsBreadWeightScale,
+     PreparedOlsFitConfig,
+@@ -390,7 +391,7 @@ pub(crate) fn fit_with_prepared_ppml_separation<T, E, F>(
+     ppml: PpmlConfig,
+     config: SeparationConfig,
+     phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
+-    execution: PreparedPpmlSeparationExecution,
++    mut execution: PreparedPpmlSeparationExecution,
+     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+     mut explore_generation: E,
+     mut fit_generation: F,
+@@ -412,12 +413,15 @@ where
+     validate_config(config)?;
+     let (coordinator, initial_preparation_elapsed, initial_preparation_peak) =
+         prepare_initial_generation(owner, phase_allocation_probe)?;
++    let (projection_ppml, projection_linear) = admit_detector_projection(
++        coordinator.view().prepared, ppml, config, &mut execution,
++    )?;
+     let (mut outcome, fit) = coordinate_prepared_ppml_separation(
+         coordinator,
+-        ppml,
++        projection_ppml,
+         config,
+         phase_allocation_probe,
+-        execution.linear,
++        projection_linear,
+         interrupt,
+         |generation, interrupt| {
+             explore_generation(
+@@ -441,6 +445,56 @@ where
+     Ok((outcome, fit))
+ }
+ 
++/// Graph proposals and retained CG need extra detector workspace, not an IRLS cache. Resolve
++/// its complete bound on generation zero; later generations only shrink.
++fn admit_detector_projection(
++    generation: &PreparedPpmlModelGeneration,
++    mut ppml: PpmlConfig,
++    config: SeparationConfig,
++    execution: &mut PreparedPpmlSeparationExecution,
++) -> Result<(PpmlConfig, PreparedOlsFitConfig)> {
++    let mut linear = execution.linear;
++    if ppml.absorb.solver != FeSolverKind::Map || !config.methods.iterated_rectifier
++        || !generation.outcome().contains(&0.0)
++    {
++        return Ok((ppml, linear));
++    }
++    let Some(design) = generation.fit_view().fit_borrowed_intercept_map_design()? else {
++        return Ok((ppml, linear));
++    };
++    let Some(graph_bytes) = graph::workspace_bytes(&design)? else { return Ok((ppml, linear)); };
++    let levels = fallible_collect(design.effects().iter().map(|e| e.n_levels()),
++        design.effects().len(), "unable to reserve separation solver level counts")?;
++    let rhs = generation.model().columns.len().checked_add(1)
++        .ok_or_else(|| allocation("separation projection width overflows"))?;
++    let estimate = crate::memory::estimate_fe_solver_memory(generation.original_rows().len(),
++        rhs, &levels, linear.execution.threads.resolved(), linear.absorb.lsmr.local_size)?;
++    // CG's retained products preserve its FE coefficient representation. Charge
++    // return/conversion overlap and full raw/within banks even for Low's otherwise
++    // streamed finite solve. Graph traversal dies before any projection begins.
++    let cg_bytes = estimate.coefficient_batch_bytes.checked_mul(5)
++        .and_then(|n| n.checked_add(estimate.cg_bytes))
++        .and_then(|n| estimate.rhs_copy_bytes.checked_mul(2).and_then(|m| n.checked_add(m)))
++        .and_then(|n| (generation.original_rows().len() as u128).checked_mul(16).and_then(|m| n.checked_add(m)))
++        .ok_or_else(|| allocation("separation projection memory overflows"))?;
++    let bytes = graph_bytes.max(cg_bytes);
++    let base = execution.preliminary_plan.selected_bytes();
++    if !execution.preliminary_plan.admit_separation_projection(bytes) {
++        return Ok((ppml, linear));
++    }
++    linear.absorb.solver = FeSolverKind::Cg;
++    linear.absorb.retain_coefficients = true;
++    linear.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
++        execution_bytes: base,
++        usable_bytes: base.checked_add(bytes).ok_or_else(|| allocation("separation projection budget overflows"))?,
++    });
++    ppml.absorb = linear.absorb;
++    Ok((ppml, linear))
++}
++
++#[path = "prepared_separation_graph.rs"]
++mod graph;
++
+ /// A separate scope makes success and failed initial construction observable;
+ /// later rebuilds remain nested in the requesting separation phase.
+ fn prepare_initial_generation(
+@@ -1903,6 +1957,31 @@ fn prepared_iterated_rectifier(
+             "no zero-outcome observations",
+         ));
+     }
++    // A two-intercept submodel can prove a recession direction exactly even
++    // when the IR boundary weights make weighted MAP nearly disconnected.
++    // This proposes deletions only. The coordinator still independently checks
++    // the full-model span and signs, rebases, and replays comprehensive IR.
++    if let Some(budget) = linear.absorb.solver_memory_budget {
++        if let Some(design) = generation.fit_view().fit_borrowed_intercept_map_design()? {
++            if graph::workspace_bytes(&design)?.is_some_and(|bytes| budget.fits(bytes)) {
++                if let Some(direction) = graph::direction(&design, outcome, &mut || interrupt(PpmlInterruptPoint::SeparationIrIteration))? {
++                    let scale = infinity_norm(&direction);
++                    let dropped = fallible_collect(boundary.iter().copied()
++                        .filter(|&row| direction[row] < -config.tolerance * scale),
++                        boundary.len(), "unable to reserve graph separation proposal")?;
++                    let certificate = detector_direction_certificate(outcome, &direction,
++                        &dropped, config.certificate_tolerance)?;
++                    return Ok(DetectionProposal {
++                        method: SeparationMethod::IteratedRectifier,
++                        dropped, iterations: 0, status: MethodStatus::Certified,
++                        certificate: Some(certificate), exact_fe_certificate: None,
++                        direction: Some(direction),
++                        note: "prepared iterated-rectifier candidate direction".into(),
++                    });
++                }
++            }
++        }
++    }
+     let boundary_weight =
+         (config.tolerance * config.tolerance / boundary.len() as f64).max(f64::MIN_POSITIVE);
+     let weights = fallible_collect(
+@@ -2158,6 +2237,12 @@ fn prepared_project(
+     }
+     let weight_sum = compensated_sum(weights.iter().copied())?;
+     let divisor = weights.iter().copied().fold(0.0_f64, f64::max);
++    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
++        super::categorical_lsmr::emit_solver_trace_line(&format!(
++            "FEREG_SOLVER_TRACE|phase=separation_projection|generation={}|rows={}|solver={:?}|minimum_weight={:.17e}",
++            generation.generation(), response.len(), fit_config.absorb.solver,
++            weights.iter().copied().fold(f64::INFINITY, f64::min)));
++    }
+     let frame = LinearSolveFrame::from_parts(
+         response,
+         BorrowedMapWeights::Provided(weights),
+@@ -4940,6 +5025,43 @@ mod tests {
+         assert_eq!(fit.finite_rank(), 0);
+     }
+ 
++    #[test]
++    fn admitted_graph_direction_passes_full_span_and_terminal_ledger_checks() {
++        let (mut request, clusters, mut loaded, mut uses) = fixture();
++        let mut second = request.absorbed_terms[0].clone();
++        second.id = AbsorbTermId::new(2).unwrap();
++        second.categorical_sources = vec![SourceId::new(3).unwrap()];
++        second.label = "h".into();
++        request.absorbed_terms.push(second);
++        request.keep_singletons = true;
++        loaded.outcome = column(&[1., 1., 1., 1., 0., 0.]);
++        loaded.numeric_sources[0].1 = column(&[1., -1., 1., -1., 0., 0.]);
++        loaded.numeric_sources[1].1 = column(&[1., 1., 2., 2., 1., 1.]);
++        loaded.numeric_sources[2].1 = column(&[1., 1., 2., 2., 2., 2.]);
++        uses[2].fixed_effect = true;
++        let make_owner = || PreparedPpmlModelOwner::new(request.clone(), clusters.clone(),
++            loaded.clone(), prepare_numeric(&loaded, &uses)).unwrap();
++        let config = SeparationConfig {
++            methods: SeparationMethods { fixed_effects: true, simplex: false,
++                iterated_rectifier: true, mu: false },
++            drop_singletons: false, ..SeparationConfig::default()
++        };
++        let mut ppml = PpmlConfig::default();
++        ppml.absorb.solver = FeSolverKind::Map;
++        ppml.absorb.map.max_iterations = 128;
++        ppml.absorb.lsmr.threads = crate::ThreadConfig::from_requested(1, true).unwrap();
++        let original = detect_prepared_ppml_separation(make_owner(), ppml, config, None, None);
++        assert!(original.err().unwrap().message.contains("borrowed MAP exhausted"));
++        ppml.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
++            execution_bytes: 0, usable_bytes: 1_000_000,
++        });
++        let result = detect_prepared_ppml_separation(make_owner(), ppml, config, None, None).unwrap();
++        assert_eq!(result.prepared.original_rows(), &[0,1,2,3]);
++        assert_eq!(result.separation.separated_count, 2);
++        assert!(result.separation.methods.iter().any(|r| r.method == SeparationMethod::IteratedRectifier
++            && r.iterations == 0 && r.status == MethodStatus::Certified));
++    }
++
+     fn fixture() -> (
+         OlsRequestV1,
+         Vec<OlsClusterTermV1>,
+diff --git a/crates/fereg-core/src/ppml/prepared_separation_graph.rs b/crates/fereg-core/src/ppml/prepared_separation_graph.rs
+new file mode 100644
+index 00000000..71702eb0
+--- /dev/null
++++ b/crates/fereg-core/src/ppml/prepared_separation_graph.rs
+@@ -0,0 +1,205 @@
++//! Exact recession-direction proposal from a two-intercept submodel.
++//!
++//! Positive rows identify the two endpoint potentials. On the resulting
++//! quotient, a zero row imposes potential(left) <= potential(right). Strongly
++//! connected components must share a potential; their topological order gives
++//! a nonpositive direction on every zero row and a strict one across components.
++//! This supplies an IR starting proposal, never a full-model no-separation proof.
++
++use super::{allocation, fallible_copy, fallible_filled, invalid_argument};
++use crate::error::Result;
++use crate::fe::BorrowedInterceptFeDesign;
++
++pub(super) fn workspace_bytes(design: &BorrowedInterceptFeDesign<'_>) -> Result<Option<u128>> {
++    if design.effects().len() < 2 { return Ok(None); }
++    let levels = (design.effects()[0].n_levels() as u128)
++        .checked_add(design.effects()[1].n_levels() as u128)
++        .ok_or_else(|| allocation("separation graph levels overflow"))?;
++    // Integer potentials and their differences must be exactly representable.
++    if levels > (1_u128 << 53) { return Ok(None); }
++    // DSU, dual CSR, traversal, finishing order, component labels, returned
++    // direction and proposal overlap. No recursion or per-vertex allocation.
++    let bytes = levels.checked_mul(96)
++        .and_then(|n| (design.nobs() as u128).checked_mul(32).and_then(|m| n.checked_add(m)))
++        .and_then(|n| n.checked_add(4096))
++        .ok_or_else(|| allocation("separation graph workspace overflows"))?;
++    Ok(Some(bytes))
++}
++
++fn root(parent: &mut [usize], mut v: usize) -> usize {
++    while parent[v] != v {
++        parent[v] = parent[parent[v]];
++        v = parent[v];
++    }
++    v
++}
++
++pub(super) fn direction(design: &BorrowedInterceptFeDesign<'_>, outcome: &[f64], interrupt: &mut dyn FnMut() -> Result<()>) -> Result<Option<Vec<f64>>> {
++    if workspace_bytes(design)?.is_none() { return Ok(None); }
++    if outcome.len() != design.nobs() || outcome.iter().any(|v| !v.is_finite() || *v < 0.) {
++        return Err(invalid_argument("separation graph outcomes are not aligned and nonnegative"));
++    }
++    interrupt()?;
++    let left = design.effects()[0];
++    let right = design.effects()[1];
++    let split = left.n_levels();
++    let levels = split.checked_add(right.n_levels())
++        .ok_or_else(|| allocation("separation graph levels overflow"))?;
++    let offsets = levels.checked_add(1).ok_or_else(|| allocation("separation graph offsets overflow"))?;
++    let mut parent = fallible_filled(levels, 0_usize, "unable to reserve separation graph parents")?;
++    for (v, p) in parent.iter_mut().enumerate() { *p = v; }
++    let mut rank = fallible_filled(levels, 0_u8, "unable to reserve separation graph ranks")?;
++    for (row, &y) in outcome.iter().enumerate() {
++        if row % 65_536 == 0 { interrupt()?; }
++        if y > 0. {
++            let mut a = root(&mut parent, left.codes()[row] as usize);
++            let mut b = root(&mut parent, split + right.codes()[row] as usize);
++            if a != b {
++                if rank[a] < rank[b] { std::mem::swap(&mut a, &mut b); }
++                parent[b] = a;
++                if rank[a] == rank[b] { rank[a] += 1; }
++            }
++        }
++    }
++    for v in 0..levels { parent[v] = root(&mut parent, v); }
++    drop(rank);
++    let endpoints = |row: usize| (parent[left.codes()[row] as usize], parent[split + right.codes()[row] as usize]);
++    let mut forward = fallible_filled(offsets, 0_usize, "unable to reserve separation graph forward offsets")?;
++    let mut reverse = fallible_filled(offsets, 0_usize, "unable to reserve separation graph reverse offsets")?;
++    for (row, &y) in outcome.iter().enumerate() {
++        if row % 65_536 == 0 { interrupt()?; }
++        if y == 0. {
++            let (a,b) = endpoints(row);
++            if a != b { forward[a+1] += 1; reverse[b+1] += 1; }
++        }
++    }
++    for v in 0..levels { forward[v+1] += forward[v]; reverse[v+1] += reverse[v]; }
++    if forward[levels] == 0 { return Ok(None); }
++    let mut targets = fallible_filled(forward[levels], 0_usize, "unable to reserve separation graph edges")?;
++    let mut origins = fallible_filled(reverse[levels], 0_usize, "unable to reserve separation graph reverse edges")?;
++    let mut next = fallible_copy(&forward[..levels], "unable to reserve separation graph cursors")?;
++    let mut reverse_next = fallible_copy(&reverse[..levels], "unable to reserve separation graph reverse cursors")?;
++    for (row, &y) in outcome.iter().enumerate() {
++        if row % 65_536 == 0 { interrupt()?; }
++        if y == 0. {
++            let (a,b) = endpoints(row);
++            if a != b {
++                targets[next[a]] = b; next[a] += 1;
++                origins[reverse_next[b]] = a; reverse_next[b] += 1;
++            }
++        }
++    }
++    drop(reverse_next);
++    next.copy_from_slice(&forward[..levels]);
++    let mut seen = fallible_filled(levels, false, "unable to reserve separation graph visits")?;
++    let mut stack = Vec::new();
++    stack.try_reserve_exact(levels).map_err(|_| allocation("unable to reserve separation graph traversal"))?;
++    let mut order = Vec::new();
++    order.try_reserve_exact(levels).map_err(|_| allocation("unable to reserve separation graph finishing order"))?;
++    for v in 0..levels {
++        if v % 65_536 == 0 { interrupt()?; }
++        if parent[v] != v || seen[v] { continue; }
++        seen[v] = true; stack.push(v);
++        while let Some(&a) = stack.last() {
++            if next[a] == forward[a+1] { order.push(a); stack.pop(); }
++            else {
++                if next[a] % 65_536 == 0 { interrupt()?; }
++                let b = targets[next[a]]; next[a] += 1;
++                if !seen[b] { seen[b] = true; stack.push(b); }
++            }
++        }
++    }
++    let mut component = fallible_filled(levels, usize::MAX, "unable to reserve separation graph components")?;
++    let mut count = 0;
++    for &v in order.iter().rev() {
++        if component[v] != usize::MAX { continue; }
++        component[v] = count; stack.push(v);
++        while let Some(a) = stack.pop() {
++            if a % 65_536 == 0 { interrupt()?; }
++            for &b in &origins[reverse[a]..reverse[a+1]] {
++                if component[b] == usize::MAX { component[b] = count; stack.push(b); }
++            }
++        }
++        count += 1;
++    }
++    let mut direction = fallible_filled(outcome.len(), 0., "unable to reserve separation graph direction")?;
++    let mut strict = false;
++    // Reconstruct from original endpoint codes, independently of CSR edges.
++    // Extra model columns/FE effects have coefficient zero in this proposal.
++    for (row, z) in direction.iter_mut().enumerate() {
++        if row % 65_536 == 0 { interrupt()?; }
++        let (a,b) = endpoints(row);
++        *z = component[a] as f64 - component[b] as f64;
++        if (outcome[row] > 0. && *z != 0.) || (outcome[row] == 0. && *z > 0.) {
++            return Err(invalid_argument("separation graph direction failed exact endpoint reconstruction"));
++        }
++        strict |= *z < 0.;
++    }
++    Ok(strict.then_some(direction))
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::fe::{BorrowedInterceptEffect, LevelIndex};
++
++    fn run(g: &[u32], h: &[u32], y: &[f64]) -> Option<Vec<f64>> {
++        let ng = *g.iter().max().unwrap() as usize + 1;
++        let nh = *h.iter().max().unwrap() as usize + 1;
++        let gi = LevelIndex::from_codes(g, ng).unwrap();
++        let hi = LevelIndex::from_codes(h, nh).unwrap();
++        let design = BorrowedInterceptFeDesign::new(g.len(), vec![
++            BorrowedInterceptEffect::new(g, ng, &gi).unwrap(),
++            BorrowedInterceptEffect::new(h, nh, &hi).unwrap(),
++        ]).unwrap();
++        direction(&design, y, &mut || Ok(())).unwrap()
++    }
++
++    #[test]
++    fn positive_pairs_with_one_way_zero_bridge_have_an_exact_direction() {
++        let z = run(&[0,0,1,1,0,0], &[0,0,1,1,1,1], &[1.,1.,1.,1.,0.,0.]).unwrap();
++        assert_eq!(&z[..4], &[0.;4]);
++        assert!(z[4] < 0. && z[4] == z[5]);
++    }
++
++    #[test]
++    fn a_reverse_zero_bridge_closes_the_cycle_and_forces_equality() {
++        assert!(run(&[0,1,0,1], &[0,1,1,0], &[1.,1.,0.,0.]).is_none());
++        assert!(run(&[0,0,1,1], &[0,0,1,1], &[1.,0.,1.,0.]).is_none());
++    }
++
++    #[test]
++    fn small_graphs_match_independent_enumeration_of_all_binary_potentials() {
++        let g: Vec<_> = (0..9).map(|i| i / 3).collect();
++        let h: Vec<_> = (0..9).map(|i| i % 3).collect();
++        // Every edge between distinct SCCs admits a binary cut potential. The
++        // exhaustive oracle knows neither DSU, traversal nor component labels.
++        for pattern in 0..512 {
++            let y: Vec<_> = (0..9).map(|i| f64::from(pattern & (1 << i) != 0)).collect();
++            let mut strict = vec![false; 9];
++            for bits in 0..64 {
++                let z: Vec<i32> = (0..9).map(|i| ((bits >> g[i]) & 1)
++                    - ((bits >> (3 + h[i])) & 1)).collect();
++                if (0..9).all(|i| if y[i] > 0. { z[i] == 0 } else { z[i] <= 0 }) {
++                    for i in 0..9 { strict[i] |= z[i] < 0; }
++                }
++            }
++            let actual = run(&g, &h, &y).unwrap_or_else(|| vec![0.; 9]);
++            assert_eq!(actual.iter().map(|v| *v < 0.).collect::<Vec<_>>(), strict, "pattern {pattern}");
++            let reverse: Vec<_> = (0..9).rev().collect();
++            let gr: Vec<_> = reverse.iter().map(|&i| g[i]).collect();
++            let hr: Vec<_> = reverse.iter().map(|&i| h[i]).collect();
++            let yr: Vec<_> = reverse.iter().map(|&i| y[i]).collect();
++            let reversed = run(&gr, &hr, &yr).unwrap_or_else(|| vec![0.; 9]);
++            assert_eq!(reversed.iter().rev().map(|v| *v < 0.).collect::<Vec<_>>(), strict);
++        }
++    }
++
++    #[test]
++    fn disconnected_cycle_and_chain_keep_all_positive_rows_exactly_zero() {
++        let z = run(&[0,1,2,3,0,1,2,3], &[0,1,2,3,1,0,3,4],
++            &[1.,1.,1.,1.,0.,0.,0.,0.]).unwrap();
++        assert_eq!(&z[..6], &[0.;6]);
++        assert!(z[6] < 0. && z[7] < 0.);
++    }
++}

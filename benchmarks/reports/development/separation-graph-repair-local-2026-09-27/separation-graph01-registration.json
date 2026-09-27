@@ -1,0 +1,48 @@
+{
+  "source": "separation-graph01-source.json",
+  "purpose": "failure repair, not headline speed ranking",
+  "original_cases": [
+    "ppml-two_fe_sparse-n61440-k10-t4-zeros-auto",
+    "ppml-three_fe_sparse-n61440-k10-t4-zeros-auto"
+  ],
+  "fresh_cases": [
+    {
+      "design": "two_fe_sparse",
+      "n": 7680,
+      "k": 6,
+      "seed": 202609273,
+      "threads": 1,
+      "memory": "fast"
+    },
+    {
+      "design": "three_fe_sparse",
+      "n": 7680,
+      "k": 6,
+      "seed": 202609274,
+      "threads": 4,
+      "memory": "fast"
+    },
+    {
+      "design": "two_fe_dense",
+      "n": 1920,
+      "k": 6,
+      "seed": 202609273,
+      "threads": 4,
+      "memory": "low"
+    },
+    {
+      "design": "three_fe_sparse",
+      "n": 1920,
+      "k": 6,
+      "seed": 202609274,
+      "threads": 1,
+      "memory": "low"
+    }
+  ],
+  "fixtures": [
+    "tests/stata/development/feppml_separation_graph_oracle.do",
+    "tests/stata/development/feppml_categorical_final_oracle.do",
+    "tests/stata/development/ols_three_fe_batch_oracle.do",
+    "tests/stata/parity_ppmlhdfe/feppml_multipartition_slope_oracle.do"
+  ]
+}

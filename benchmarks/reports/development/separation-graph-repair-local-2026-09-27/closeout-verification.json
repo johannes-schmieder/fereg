@@ -1,0 +1,12 @@
+{
+  "accepted_production_commit": "e4317d8e",
+  "accepted_manifest": "benchmarks/reports/development/performance-repair-diagnostics-2026-09-27/candidate01-source.json",
+  "accepted_manifest_sha256": "684079da813169b5a6304eab2529de2130f77e725aca4477b50fa3c1dd01d5a0",
+  "matching_computational_inputs": 210,
+  "production_plugin_sha256": "1b2bc3ccbaa237bf0cd67da8606804c046c711e8573b7e69282afb4f00d823a3",
+  "independent_oracle_sha256": "ba8ef8d97da3991a23757bd9069ca7b6dfb7678509c61e648287b1caeeb028b0",
+  "reproduced_proof_sha256": "a35f633b2060acb5ac62833bf58b0a308d0b94a3941075cff1bbeba73b8298b5",
+  "proof_reproduction": "All fields match for both original inputs; record order ignored.",
+  "experimental_production_changes_remaining": false,
+  "all_report_json_parses": true
+}

@@ -1,0 +1,64 @@
+[
+  {
+    "version": "separation-cg01",
+    "case": "ppml-three_fe_sparse-n61440-k10-t4-zeros-auto",
+    "log_sha256": "7935780a3bb4ef52fda6be301f757981644e04dbb1775658451918569e1c9214",
+    "errors": [
+      "fereg: nonconvergence: joint PPML LSMR correction did not pass its exact normal-equation certificate"
+    ]
+  },
+  {
+    "version": "separation-cg01",
+    "case": "ppml-two_fe_sparse-n61440-k10-t4-zeros-auto",
+    "log_sha256": "af16c7cc31726792e693d2a8faf85e19e2c02d8f9d5b2fb486ae8910265ffb0f",
+    "errors": [
+      "fereg: nonconvergence: joint PPML LSMR correction did not pass its exact normal-equation certificate"
+    ]
+  },
+  {
+    "version": "separation-graph02-probes",
+    "case": "fresh-three_fe_sparse-n1920-t1-low",
+    "log_sha256": "c738a06c616a5e0193873910e1d074c614ee720174f9a1396aa3a37b18578464",
+    "errors": []
+  },
+  {
+    "version": "separation-graph02-probes",
+    "case": "fresh-three_fe_sparse-n7680-t4-fast",
+    "log_sha256": "2650d128a9fea3b6bb9c0d4c709327726871b09073f938b2aa1d35f548417e1d",
+    "errors": []
+  },
+  {
+    "version": "separation-graph02-probes",
+    "case": "fresh-two_fe_dense-n1920-t4-low",
+    "log_sha256": "961389a722c74c932e4727be969b1efe8fad4c1d176f591fd8268d0096ffe25d",
+    "errors": []
+  },
+  {
+    "version": "separation-graph02-probes",
+    "case": "fresh-two_fe_sparse-n7680-t1-fast",
+    "log_sha256": "600b03867a27287134d7121629dbaff5d0cea69aa38aa6a2e32ec652b0c84c08",
+    "errors": []
+  },
+  {
+    "version": "separation-graph02-probes",
+    "case": "ppml-three_fe_sparse-n61440-k10-t4-zeros-auto",
+    "log_sha256": "f669c028f2af7f98932a236088d73e11cde36c9ec9fceda624c69fe34eff597b",
+    "errors": [
+      "fereg: invalid_data: borrowed MAP exhausted its iteration budget without a passing final certificate"
+    ]
+  },
+  {
+    "version": "separation-graph02-probes",
+    "case": "ppml-two_fe_sparse-n61440-k10-t4-zeros-auto",
+    "log_sha256": "f0dc5056e5b67f489c3648a2850ea3d5ccaa15371a1f42fac51b86715692ca99",
+    "errors": [
+      "fereg: invalid_data: borrowed MAP exhausted its iteration budget without a passing final certificate"
+    ]
+  },
+  {
+    "version": "separation-graph01-public",
+    "application_rc": 3499,
+    "error": "PPML separation note code does not match its method and status",
+    "resolution": "Use the existing registered IR candidate-direction note; mathematical algorithm unchanged."
+  }
+]

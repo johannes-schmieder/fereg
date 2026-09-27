@@ -22,8 +22,8 @@ adds failure-stage receipts and matched Stata-capacity preflight, committed as
 **947489ac**. Focused worker/campaign/capacity checks and real licensed probes
 pass; two plotting modules remain unrun locally because matplotlib is absent.
 
-The shared Schwarz scratch model now uses the proven T+R bound rather than
-T*(1+R), preserving all other memory allowances and numerical certificates.
+The shared Schwarz scratch correction is committed as **e4317d8e**. It uses
+the proven T+R bound rather than T*(1+R), preserving all other memory allowances and numerical certificates.
 [ADR 0228](docs/adr/0228-schwarz-worker-stack-memory-bound.md) records the proof.
 Candidate source/artifact hashes are in the report. SCC baseline **7759645**
 completed with eight successes, r(459) and a timeout. Candidate **7759702**
@@ -47,14 +47,28 @@ failed-retest rule. All cases/settings are in rotation02-registration.json;
 rotation03 preserves them and fixes only launching. Full 140-configuration
 confirmation, adaptive thread ceilings and <=1.20/<=0.90 targets remain open.
 
-Sparse-zero separation remains unresolved. A six-row explicit FE truth probe
-reproduces MAP stagnation under tiny boundary weights. CG recovers the response
-to 5.4e-13; LSMR fails the finite-score check. Its isolated patch and results
-are preserved. This localizes a solver problem but does not justify an
-unbudgeted production swap. Next work is a certified, memory-admitted detector
-projection, then the remaining large categorical PPML and OLS slope losses.
-Static allocation-inventory drift and constrained nonretaining-CG issues are
-unchanged. No full qualification or push has been performed in this milestone.
+The bounded [sparse-zero repair experiment](benchmarks/reports/development/separation-graph-repair-local-2026-09-27/README.md)
+ended with all three production variants rejected; [ADR 0229](docs/adr/0229-rejected-generic-separation-projector-replacements.md)
+records why. An independent integer-potential graph oracle proves 81 additional
+separated rows beyond zero-only FE levels in the original two-FE case, and 70
+in three FE. Generic retained CG gets past initial MAP but misses those rows;
+final publication fails. An exact graph proposal with MAP passes exhaustive
+small-graph and weighted public Poisson/Hessian checks but still exhausts MAP
+on the large originals. Graph plus CG fails the independent finite-score gate.
+Categorical PPML, OLS and slope controls pass, but do not override that failure.
+All patches, exact input identities and failed receipts are preserved.
+
+All experimental production edits were removed. The 210 accepted computational
+inputs again match the Schwarz candidate manifest exactly; the local Mac plugin
+is restored to SHA-256 1b2bc3ccbaa237bf0cd67da8606804c046c711e8573b7e69282afb4f00d823a3.
+Next separation work needs an explicit coefficient-product model-span proof and
+a reliable current-weight finite-plus-FE projector, including nearly zero
+projected responses. Do not repeat the rejected generic substitutions or relax
+the finite-score gate. The full performance plan remains incomplete: large
+categorical PPML, dense OLS slopes, comparator adjudication, adaptive thread
+ceilings and the 140-configuration confirmation remain open. Static allocation-
+inventory drift and constrained nonretaining-CG issues are unchanged. No full
+qualification or push was performed in this milestone.
 
 ## Illustrated SCC campaign report — 2026-09-27
 
