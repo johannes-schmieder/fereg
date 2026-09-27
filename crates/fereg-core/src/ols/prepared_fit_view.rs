@@ -224,6 +224,8 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_has_one_slope_effect(&self) -> bool { false }
 
+    fn fit_has_two_effects_with_slopes(&self) -> bool { false }
+
     fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
         false
     }
@@ -977,6 +979,10 @@ impl PreparedOlsFitView for PreparedOlsData {
 }
 
 impl PreparedOlsFitView for PreparedCategoricalOlsData {
+    fn fit_has_two_effects_with_slopes(&self) -> bool {
+        self.effect_specs().len() == 2 && self.has_absorbed_slope()
+    }
+
     fn fit_has_one_slope_effect(&self) -> bool {
         self.effect_specs().len() == 1 && !self.effect_specs()[0].slopes.is_empty()
     }

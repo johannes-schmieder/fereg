@@ -1,0 +1,77 @@
+{
+  "two-dense-fast": {
+    "arm": "native",
+    "diagnostic": true,
+    "process_seconds": 1.0334997498430312,
+    "process_rc": 0,
+    "sentinel": true,
+    "metadata": {
+      "seconds": 0.36,
+      "N": 61440.0,
+      "rss": 9007.26185733368,
+      "df_r": 35625.0,
+      "iterations": 26.0,
+      "converged": 1.0
+    },
+    "files": {
+      "stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "V.csv": "f6dcdccddea41d6438cf5013eb3502240b7806d85e9bcf5b02110f83d85e633c",
+      "fit.do": "f1e81d03d6501e728e3e7543f4fa68fbe5de6257813cd6963de362f290f48c74",
+      "b.csv": "aa433ea6caec4f3e8a4461e1373a67c84cf5d3391b11179b9ddd0ef8590dd473",
+      "rows.csv": "f6b9847d82cec06b479afe3af034b573f12eb19f4af427334245f576b6b4014f",
+      "stderr.txt": "922fd4cf1093f2203c632780d7bdc1f6cf6455183495fe7c9610102adbf019b7",
+      "fit.log": "bf5c3a6625aa6c9bd9ee50b601d60de30eb502c7a1e2d035448de94068529d15",
+      "meta.csv": "db299df6abb4c8b378277af28855e5d8335c833a9d96dc1aeb3648de237f8ecb"
+    }
+  },
+  "three-sparse-fast": {
+    "arm": "native",
+    "diagnostic": true,
+    "process_seconds": 1.7471539583057165,
+    "process_rc": 0,
+    "sentinel": true,
+    "metadata": {
+      "seconds": 0.732,
+      "N": 61440.0,
+      "rss": 9002.846810122714,
+      "df_r": 35632.0,
+      "iterations": 77.0,
+      "converged": 1.0
+    },
+    "files": {
+      "stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "V.csv": "eb8d4dd1b4c080c75a5dc29436039c9d0365edde0a73bbf2959cad688ecc3339",
+      "fit.do": "a1d6648296da128f66d32f44549fa1443ff46833fa0a47d4cb0ef00d13fd0b5d",
+      "b.csv": "ad1a0bf5cd256a0b032dce44220b26e5323d019553abc6f7caa4216085cd5a90",
+      "rows.csv": "d0bdb35d90e3a8151655ee8a4e4b26571af8bfc17f7758024111ed8d9fa0d04d",
+      "stderr.txt": "f3a913e4d602e38ea755730afe92c064665611299fb3f1847bb8869542a1c036",
+      "fit.log": "90fa14373e92d3b21c5847221fc7baf50d7b23e0b2936c593b3df325fb583323",
+      "meta.csv": "f71095c85ac9ce5485455ba1ed8e338ca78a7bfc177e66317769d3caf93a16ff"
+    }
+  },
+  "two-dense-low": {
+    "arm": "native",
+    "diagnostic": true,
+    "process_seconds": 1.030296332668513,
+    "process_rc": 0,
+    "sentinel": true,
+    "metadata": {
+      "seconds": 0.402,
+      "N": 61440.0,
+      "rss": 9007.261857333684,
+      "df_r": 35625.0,
+      "iterations": 26.0,
+      "converged": 1.0
+    },
+    "files": {
+      "stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "V.csv": "37ea031e40aee18235341bd7d053f05404344f3404d51d3420ba035bd06c88c3",
+      "fit.do": "83a8f4229b1a7211957065ff47d4fc92613f304a39bce34d38f8d3bbdb5e05d8",
+      "b.csv": "54769ed6fcdb4b962779f02bfe7ef4d7db1623aa65b7c1c49a2e9360615a3004",
+      "rows.csv": "a727e4ecbcb5be274d7931553071ab5274a3e7f3674f815f6f00a3c654c357ec",
+      "stderr.txt": "15590b781246ab008fa1329212d0110173ee87a8c4c36517dd763cb3fd54b917",
+      "fit.log": "04eb5bc05cb7390cf2cf2f926167bb251297d9a5404d2b81d9daad735d939f2e",
+      "meta.csv": "b83cd3d0625ea9a429e0086a8f007dfaf356f171f192389437d628be683ea734"
+    }
+  }
+}

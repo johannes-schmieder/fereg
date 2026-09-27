@@ -21,6 +21,7 @@ mod prepared_scores;
 mod prepared_scratch;
 mod prepared_unadjusted;
 mod rank;
+mod slope_absorber;
 mod vce;
 
 pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};

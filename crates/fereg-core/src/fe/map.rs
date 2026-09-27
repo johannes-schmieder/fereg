@@ -257,6 +257,22 @@ pub(crate) struct ReusableMapCapacities {
 }
 
 impl ReusableMapAbsorber {
+    /// Serial base owner, excluding the separately admitted design and optional
+    /// geometry/solver banks. One-shot owners use the same allocation layout.
+    pub(crate) fn base_workspace_bytes(design: &FeDesign, rhs: usize) -> Result<u128> {
+        let channels = design.max_channels().max(1) as u128;
+        let members = design.effects().iter().flat_map(|effect| {
+            (0..effect.n_levels()).map(|level| effect.level_index().members(level).len())
+        }).max().unwrap_or(1) as u128;
+        let cells = channels.checked_mul(channels)
+            .and_then(|n| n.checked_add(channels.checked_mul(rhs as u128)?))
+            .and_then(|n| n.checked_add(7 * rhs as u128))
+            .and_then(|n| n.checked_add(2 * channels * members))
+            .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "reusable MAP bytes overflow"))?;
+        cells.checked_mul(8).and_then(|n| n.checked_add(std::mem::size_of::<Self>() as u128))
+            .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "reusable MAP bytes overflow"))
+    }
+
     pub(crate) fn into_design(self) -> FeDesign {
         self.design
     }

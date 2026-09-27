@@ -9,6 +9,31 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## Two-partition OLS slope owner — fresh confirmation pending
+
+The [source-bound candidate report](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/README.md)
+and [ADR 0231](docs/adr/0231-one-shot-two-partition-slope-owner.md) preserve a new
+one-shot owner of PPML's coefficient-space Schur projector. It freezes OLS
+design/weights, reuses admitted QR/coupling geometry across RHS blocks and final
+residual work, and retains independent fresh projection/publication checks.
+Automatic two-partition slope fits are eligible; other routes remain controls.
+The first candidate's two-partition pilot takes approximately 30% of baseline
+time, but its three-partition extension loses 6.8% and is rejected. Candidate02
+keeps only two partitions and corrects the fully admitted workspace report.
+Do not transfer candidate01 pilot timing to candidate02.
+
+Candidate02 passes 79 Rust tests, four licensed fixtures including a 32-fit
+independent weighted WLS/sandwich/saved-output oracle, and universal Mac build/
+ABI checks. Exact source/artifact manifests and rejected attempts are preserved.
+Fresh seeds 202609279/202609280 and seven cases were registered before generation.
+No fresh local fit has run: unrelated Mac Stata work prevented a quiet interval.
+The literal inputs are moving to SCC under existing authority. An explicit
+registration amendment keeps baseline/candidate controls for excluded three-FE
+routes and both default/strict stock arms for the five new-path cases: 192 fits.
+Separate Linux smoke/oracle and isolated paired timing remain pending. This
+checkpoint is a scientifically validated development candidate, not an accepted
+fresh performance result or completion of the broader plan.
+
 ## Completed SCC repair confirmation — 2026-09-27
 
 The [final Schwarz rotation](benchmarks/reports/development/performance-repair-paired-scc-2026-09-27/final/README.md)

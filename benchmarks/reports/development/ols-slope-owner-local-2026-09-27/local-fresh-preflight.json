@@ -1,0 +1,16 @@
+{
+  "attempts": [
+    "fresh02",
+    "fresh03",
+    "fresh04"
+  ],
+  "timed_fits": 0,
+  "disposition": "All attempts stopped before any estimator fit because unrelated Mac Stata work was active. Only our waiting controller was stopped; unrelated work was untouched. Move this exact frozen input block to SCC.",
+  "last_attempt": {
+    "timed_fits": 0,
+    "stopped_own_waiting_controllers": [
+      1848
+    ],
+    "reason": "Other-project Mac tests remain active; move frozen confirmation to isolated SCC node."
+  }
+}

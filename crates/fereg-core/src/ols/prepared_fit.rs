@@ -1592,6 +1592,7 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
 }
 
 struct FitFeAbsorber<'a> {
+    slopes: Option<super::slope_absorber::OlsSlopeAbsorber>,
     single_slope: Option<crate::fe::SingleSlopeAbsorber<'a>>,
     one_fe: Option<crate::fe::BorrowedInterceptEffect<'a>>,
     session: Option<CmgAbsorber<'a>>,
@@ -1615,6 +1616,28 @@ fn build_fit_fe_absorber<'a, P: PreparedOlsFitView + ?Sized>(
 fn build_fit_fe_absorber_with_one_fe_reuse<'a, P: PreparedOlsFitView + ?Sized>(
     prepared: &'a P, weights: BorrowedMapWeights<'a>, config: PreparedOlsFitConfig, reuse: bool, allow_single_slope: bool,
 ) -> Result<FitFeAbsorber<'a>> {
+    let mut attempted_peak = crate::memory::SolverWorkspacePeak::ZERO;
+    match super::slope_absorber::OlsSlopeAbsorber::build(prepared, weights, config, &mut attempted_peak) {
+        Ok(Some(slopes)) => return Ok(FitFeAbsorber {
+            slopes: Some(slopes), single_slope: None, one_fe: None,
+            session: None, lsmr: None, auto_direct_solver: None,
+            auto_discarded_setup_seconds: 0.0,
+            auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
+            auto_setup_warning: None, schur_config: None, schur_probe: None,
+        }),
+        Ok(None) => {},
+        Err(error) if error.code == ErrorCode::Allocation => {},
+        Err(error) => return Err(error),
+    }
+    let mut result = build_fit_fe_absorber_without_multipartition(prepared, weights, config, reuse, allow_single_slope)?;
+    result.auto_discarded_workspace_peak = result.auto_discarded_workspace_peak.max(attempted_peak);
+    Ok(result)
+}
+
+fn build_fit_fe_absorber_without_multipartition<'a, P: PreparedOlsFitView + ?Sized>(
+    prepared: &'a P, weights: BorrowedMapWeights<'a>, config: PreparedOlsFitConfig,
+    reuse: bool, allow_single_slope: bool,
+) -> Result<FitFeAbsorber<'a>> {
     if allow_single_slope && config.absorb.solver == FeSolverKind::Auto
         && config.execution.mode == PreparedOlsExecutionMode::Fast
         && !config.absorb.retain_coefficients && config.absorb.certified_fallback
@@ -1634,6 +1657,7 @@ fn build_fit_fe_absorber_with_one_fe_reuse<'a, P: PreparedOlsFitView + ?Sized>(
             };
             if let Some(single_slope) = single_slope {
                 return Ok(FitFeAbsorber {
+            slopes: None,
                     single_slope: Some(single_slope), one_fe: None, session: None, lsmr: None,
                     auto_direct_solver: None, auto_discarded_setup_seconds: 0.0,
                     auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
@@ -1663,6 +1687,7 @@ fn build_fit_fe_absorber_with_one_fe_reuse<'a, P: PreparedOlsFitView + ?Sized>(
             return Err(invalid_argument("one-FE routing metadata differs from its validated design"));
         }
         return Ok(FitFeAbsorber {
+            slopes: None,
             single_slope: None,
             one_fe: Some(design.effects()[0]), session: None, lsmr: None,
             auto_direct_solver: None, auto_discarded_setup_seconds: 0.0,
@@ -1702,6 +1727,7 @@ fn build_fit_fe_absorber_with_one_fe_reuse<'a, P: PreparedOlsFitView + ?Sized>(
                 .map_or(true, |budget| budget.fits(planned))
             {
                 return Ok(FitFeAbsorber {
+            slopes: None,
                     single_slope: None,
             one_fe: None,
                     session: None,
@@ -1728,6 +1754,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
         && (config.absorb.solver != FeSolverKind::Auto || !prepared.fit_supports_cmg_auto())
     {
         return Ok(FitFeAbsorber {
+            slopes: None,
             single_slope: None,
             one_fe: None,
             schur_config: None,
@@ -1743,6 +1770,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
     let design = prepared.fit_borrowed_cmg_design()?;
     if config.absorb.solver == FeSolverKind::Auto && design.effects().len() <= 1 {
         return Ok(FitFeAbsorber {
+            slopes: None,
             single_slope: None,
             one_fe: None,
             schur_config: None,
@@ -1758,6 +1786,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
     let profile = CmgTopologyProfile::analyze(&design)?;
     if config.absorb.solver == FeSolverKind::Auto && !profile.auto_favorable() {
         return Ok(FitFeAbsorber {
+            slopes: None,
             single_slope: None,
             one_fe: None,
             schur_config: None,
@@ -1810,6 +1839,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
     };
     match built {
         Ok(CmgAutoBuildOutcome::Ready(session)) => Ok(FitFeAbsorber {
+            slopes: None,
             single_slope: None,
             one_fe: None,
             schur_config: None,
@@ -1822,6 +1852,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             auto_setup_warning: None,
         }),
         Ok(CmgAutoBuildOutcome::HierarchyRejected { setup_seconds }) => Ok(FitFeAbsorber {
+            slopes: None,
             single_slope: None,
             one_fe: None,
             schur_config: None,
@@ -1834,6 +1865,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             auto_setup_warning: None,
         }),
         Ok(CmgAutoBuildOutcome::DirectCgPreferred { setup_seconds }) => Ok(FitFeAbsorber {
+            slopes: None,
             single_slope: None,
             one_fe: None,
             schur_config: None,
@@ -1846,6 +1878,7 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
             auto_setup_warning: None,
         }),
         Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitFeAbsorber {
+            slopes: None,
             single_slope: None,
             one_fe: None,
             schur_config: None,
@@ -1873,6 +1906,11 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
     initial: bool,
     final_residual: bool,
 ) -> Result<CertifiedBorrowedMap> {
+    if let Some(slopes) = cmg.slopes.as_mut() {
+        let result = slopes.absorb(values, config.map, final_residual)?;
+        if final_residual { cmg.slopes = None; }
+        return Ok(result);
+    }
     let mut slope_rejected_iterations = 0;
     if let Some(session) = cmg.single_slope.as_mut() {
         match session.absorb(values, config.map.tolerance, config.solver_memory_budget, original_norms, final_residual)? {
@@ -8370,6 +8408,7 @@ mod tests {
                                         1 => view.fit_absorb_matrix(weights, values, config),
                                         _ => {
                                             let mut session = FitFeAbsorber {
+                                                slopes: None,
                                                 single_slope: None,
             one_fe: None,
                                                 session: None,
@@ -8652,6 +8691,73 @@ mod tests {
                 assert!(actual.score_certificate().passed);
             }
         }}
+    }
+
+    #[test]
+    fn multipartition_slope_owner_preserves_span_and_admission_boundaries() {
+        let g = source(1, "g"); let h = source(2, "h"); let z = source(3, "z");
+        let n = 280;
+        let groups: Vec<_> = (0..n).map(|r| (r % 5) as f64).collect();
+        let other: Vec<_> = (0..n).map(|r| (r % 7) as f64).collect();
+        let slope: Vec<_> = (0..n).map(|r| (r as f64 / 11.).sin()).collect();
+        let outcome: Vec<_> = (0..n).map(|r| 0.3 * groups[r] +
+            groups[r].cos() * slope[r] - 0.2 * other[r]).collect();
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph { sources: vec![g.clone(),h.clone(),z.clone()], terms: Vec::new() },
+            absorbed_terms: vec![
+                AbsorbedTerm { id: AbsorbTermId::new(1).unwrap(), intercept: true,
+                    categorical_sources: vec![g.id], slope_sources: vec![z.id],
+                    label: "g##c.z".into(), saved_name: String::new() },
+                AbsorbedTerm { id: AbsorbTermId::new(2).unwrap(), intercept: true,
+                    categorical_sources: vec![h.id], slope_sources: Vec::new(),
+                    label: "h".into(), saved_name: String::new() },
+            ],
+            bindings: vec![
+                OlsInputBinding { stata_var_position: 1, role: OlsInputRole::Candidate },
+                OlsInputBinding { stata_var_position: 2, role: OlsInputRole::Outcome },
+                OlsInputBinding { stata_var_position: 3, role: OlsInputRole::NumericSource(g.id) },
+                OlsInputBinding { stata_var_position: 4, role: OlsInputRole::NumericSource(h.id) },
+                OlsInputBinding { stata_var_position: 5, role: OlsInputRole::NumericSource(z.id) },
+            ], include_intercept: false, keep_singletons: true,
+        };
+        let input = LoadedOlsInput { candidate: vec![true;n], outcome: loaded(&outcome),
+            numeric_sources: vec![(g.id,loaded(&groups)),(h.id,loaded(&other)),(z.id,loaded(&slope))],
+            analytic_weight: None, frequency_weight: None, probability_weight: None };
+        let data = crate::prepared_categorical_data::prepare_categorical_ols_data_owned(&request,input).unwrap();
+        let supplied: Vec<_> = (0..n).map(|r| 0.1 + (r % 13) as f64).collect();
+        for mode in [PreparedOlsExecutionMode::Fast,PreparedOlsExecutionMode::Low] {
+        for threads in [1,4] {
+        for weights in [BorrowedMapWeights::Unit,BorrowedMapWeights::Provided(&supplied)] {
+            let mut config = PreparedOlsFitConfig::default();
+            config.execution.mode=mode;
+            config.execution.poolsize=1;
+            config.execution.threads=ThreadConfig::from_requested(threads,true).unwrap();
+            ThreadTeam::new(config.execution.threads).install(|| {
+                let mut session=build_fit_fe_absorber(&data,weights,config).unwrap();
+                assert!(session.slopes.is_some());
+                let raw=DenseMatrix::from_row_major(n,1,outcome.clone()).unwrap();
+                let actual=absorb_fit_matrix(None,&data,weights,raw,config.absorb,&mut session,true,false).unwrap();
+                assert!(actual.report().certified());
+                assert!(actual.residualized().as_slice().iter().all(|v| v.abs()<1e-9));
+                let peak=actual.report().solver_workspace_peak.bytes().unwrap() as u128;
+                for reason in 0..3 {
+                    let mut refused=config;
+                    match reason {
+                        0 => refused.absorb.solver=FeSolverKind::Map,
+                        1 => refused.absorb.retain_coefficients=true,
+                        _ => refused.absorb.solver_memory_budget=Some(crate::memory::FeSolverMemoryBudget { execution_bytes: 100,usable_bytes: 100 }),
+                    }
+                    assert!(build_fit_fe_absorber(&data,weights,refused).unwrap().slopes.is_none());
+                }
+                let mut bounded=config;
+                bounded.absorb.solver_memory_budget=Some(crate::memory::FeSolverMemoryBudget { execution_bytes: 100,usable_bytes: 100+peak });
+                assert!(build_fit_fe_absorber(&data,weights,bounded).unwrap().slopes.is_some());
+                let residual=DenseMatrix::from_row_major(n,1,vec![0.;n]).unwrap();
+                let actual=absorb_fit_matrix(None,&data,weights,residual,config.absorb,&mut session,false,true).unwrap();
+                assert_eq!(actual.report().iterations,0);
+                assert!(session.slopes.is_none());
+            }).unwrap();
+        }}}
     }
 
     #[test]
