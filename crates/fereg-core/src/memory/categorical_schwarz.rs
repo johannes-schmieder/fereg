@@ -114,14 +114,16 @@ pub(super) fn estimate_schwarz_memory(
     // WorkerBufferStack retains each worker's maximum re-entry depth. Only
     // components with an FE block above 10,000 levels can yield inside the
     // pinned local solver; each consumes at least 10,002 pair-level incidences.
-    // Charge every such suspended frame on every worker, plus its active frame.
-    // The outer RHS loop is bounded separately by its full batch width.
+    // Each component executes once per apply on one worker. Across all workers,
+    // every stack entry beyond the first therefore consumes a distinct yielding
+    // component. Summed worker high-water depths are bounded by T + R, not
+    // T * (1 + R), even when their maxima occur at different times. At the end
+    // of each apply all stacks return to one shared pool; prior idle buffers are
+    // consumed before allocating, so repeated applies cannot grow this bound.
+    // Each concurrent outer RHS owns a separate apply and is charged by its
+    // caller. See ADR 0228 for the lifetime argument and pinned source paths.
     let reentrant_components = pair_level_incidence / 10_002;
-    let worker_buffers = checked_mul(
-        threads,
-        checked_sum(&[1, reentrant_components])?,
-        "categorical Schwarz worker stack depth",
-    )?;
+    let worker_buffers = checked_sum(&[threads, reentrant_components])?;
     let apply_peak_bytes = checked_sum(&[
         bytes_for_memory::<f64>(
             checked_mul(
@@ -210,4 +212,39 @@ fn checked_add_memory(left: u128, right: u128, context: &'static str) -> Result<
 
 fn bytes_for_memory<T>(elements: u128, context: &'static str) -> Result<u128> {
     checked_mul(elements, std::mem::size_of::<T>() as u128, context)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sparse_schwarz_memory_does_not_multiply_yielding_components_by_workers() {
+        // Three independent sparse partitions, with many levels in the first.
+        // Every apply still charges all possible yielding frames, all worker
+        // accumulators and four retained pooled applies. A 32 GiB solver budget
+        // must not reject the same complete checkpoint at a larger team size.
+        for threads in [1, 4, 8, 16, 28] {
+            let model = crate::memory::estimate_fe_solver_memory(
+                983_040, 11, &[196_608, 9_831, 492], threads, Some(4),
+            ).unwrap();
+            assert!(model.lsmr_schwarz_bytes < 32 * 1024_u128.pow(3));
+            let frame = estimate_categorical_schwarz_memory(
+                983_040, 3, 206_931, 196_608, threads as u128, 0,
+            ).unwrap();
+            let active_worker_payload = threads as u128 * (206_931 + 6 * 196_608 + 4) * 8;
+            assert!(frame.apply_peak_bytes > active_worker_payload);
+            assert!(frame.retained_bytes > 4 * frame.apply_peak_bytes);
+        }
+    }
+
+    #[test]
+    fn schwarz_stack_bound_keeps_nonreentrant_and_overflow_boundaries() {
+        // Below the first yielding component the ordinary T-worker allowance
+        // is unchanged. Crossing the threshold must add scratch even at T=1.
+        let below = estimate_categorical_schwarz_memory(20_000, 2, 10_001, 6_000, 1, 0).unwrap();
+        let above = estimate_categorical_schwarz_memory(20_000, 2, 10_002, 6_000, 1, 0).unwrap();
+        assert!(above.apply_peak_bytes > 2 * below.apply_peak_bytes - 256);
+        assert!(estimate_categorical_schwarz_memory(1, 2, 10_002, 1, u128::MAX, 0).is_err());
+    }
 }

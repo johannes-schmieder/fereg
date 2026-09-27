@@ -88,6 +88,16 @@ solver peak fits. If LSMR does not fit but CG does, auto visibly selects CG. If
 neither certified route fits, estimation returns `r(909)` before allocating a
 large solver workspace.
 
+The pinned Schwarz worker stacks charge `T + R` scratch banks per apply, where
+T is the installed team and R bounds distinct components that can yield inside
+their local solve. A yielding component runs once on one worker, so it cannot
+increase every worker's retained nesting depth. Stacks return to a shared pool
+between applies. Concurrent RHS applies and four retained top-level objects
+remain separately charged; see [ADR 0228](adr/0228-schwarz-worker-stack-memory-bound.md).
+This tighter conservative admission bound can select a faster solver with
+greater actual memory use than the previous fallback; it does not reduce that
+solver's physical allocation or change the safety margin.
+
 Prepared direct intercept CG applies that joint check at its adapter boundary,
 including explicit CG and preselected automatic CG calls that bypass the
 LSMR/CG planner. It uses the installed team and charges five coefficient batches

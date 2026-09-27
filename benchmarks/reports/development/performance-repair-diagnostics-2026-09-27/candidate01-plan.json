@@ -1,0 +1,159 @@
+{
+  "schema": "fereg-performance-diagnostic-v1",
+  "purpose": "Intrusive route/failure diagnostics; not headline timing",
+  "baseline_commit": "a05882933fb0f1fc668e2a09bed8ff768b7329be",
+  "cases": [
+    {
+      "id": "ppml-three_fe_sparse-n983040-k10-t8-main-auto",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 10,
+        "threads": 8,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "solver": "auto",
+      "seed": 104729,
+      "timeout_seconds": 480
+    },
+    {
+      "id": "ppml-three_fe_sparse-n983040-k10-t28-main-auto",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 10,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "solver": "auto",
+      "seed": 104729,
+      "timeout_seconds": 480
+    },
+    {
+      "id": "ols-strong_d2-n983040-k10-t4-main-auto",
+      "cell": {
+        "model": "ols",
+        "design": "strong_d2",
+        "n": 983040,
+        "k": 10,
+        "threads": 4,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "solver": "auto",
+      "seed": 104729,
+      "timeout_seconds": 300
+    },
+    {
+      "id": "ols-strong_d2-n983040-k10-t28-main-auto",
+      "cell": {
+        "model": "ols",
+        "design": "strong_d2",
+        "n": 983040,
+        "k": 10,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "solver": "auto",
+      "seed": 104729,
+      "timeout_seconds": 300
+    },
+    {
+      "id": "ols-three_fe_sparse-n983040-k50-t4-width-auto",
+      "cell": {
+        "model": "ols",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 50,
+        "threads": 4,
+        "section": "width",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "solver": "auto",
+      "seed": 104729,
+      "timeout_seconds": 300
+    },
+    {
+      "id": "ols-three_fe_sparse-n983040-k50-t28-width-auto",
+      "cell": {
+        "model": "ols",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 50,
+        "threads": 28,
+        "section": "width",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "solver": "auto",
+      "seed": 104729,
+      "timeout_seconds": 300
+    },
+    {
+      "id": "ppml-three_fe_sparse-n983040-k50-t4-width-auto",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 50,
+        "threads": 4,
+        "section": "width",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "solver": "auto",
+      "seed": 104729,
+      "timeout_seconds": 1000
+    },
+    {
+      "id": "ppml-three_fe_sparse-n983040-k50-t28-width-auto",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 50,
+        "threads": 28,
+        "section": "width",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "solver": "auto",
+      "seed": 104729,
+      "timeout_seconds": 1000
+    }
+  ],
+  "candidate": "schwarz-stack-bound-01",
+  "plugin_sha256": "e072ecfc7305d63e12833385ee44339423c8f0a429ffbbf1998ab31e988083fa"
+}

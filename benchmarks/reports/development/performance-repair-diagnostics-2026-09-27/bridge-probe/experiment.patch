@@ -1,0 +1,52 @@
+diff --git a/crates/fereg-core/src/ppml/prepared_separation.rs b/crates/fereg-core/src/ppml/prepared_separation.rs
+index d0200d5b..2c0c231b 100644
+--- a/crates/fereg-core/src/ppml/prepared_separation.rs
++++ b/crates/fereg-core/src/ppml/prepared_separation.rs
+@@ -4940,6 +4940,47 @@ mod tests {
+         assert_eq!(fit.finite_rank(), 0);
+     }
+ 
++    #[test]
++    fn tiny_weight_bridge_projection_probe() {
++        let (mut request, clusters, mut loaded, mut uses) = fixture();
++        let mut second = request.absorbed_terms[0].clone();
++        second.id = AbsorbTermId::new(2).unwrap();
++        second.categorical_sources = vec![SourceId::new(3).unwrap()];
++        second.label = "h".into();
++        request.absorbed_terms.push(second);
++        request.keep_singletons = true;
++        loaded.outcome = column(&[1., 1., 1., 1., 0., 0.]);
++        loaded.numeric_sources[0].1 = column(&[1., -1., 1., -1., 0., 0.]);
++        loaded.numeric_sources[1].1 = column(&[1., 1., 2., 2., 1., 1.]);
++        loaded.numeric_sources[2].1 = column(&[1., 1., 2., 2., 2., 2.]);
++        uses[2].fixed_effect = true;
++        let numeric = prepare_numeric(&loaded, &uses);
++        let owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap();
++        let config = SeparationConfig {
++            methods: SeparationMethods { fixed_effects: false, simplex: false, iterated_rectifier: false, mu: false },
++            drop_singletons: false,
++            ..SeparationConfig::default()
++        };
++        let generation = detect_prepared_ppml_separation(owner, PpmlConfig::default(), config, None, None).unwrap();
++        let response = [0., 0., 0., 0., 1., 1.];
++        let small = config.tolerance * config.tolerance / 2.;
++        let weights = [1., 1., 1., 1., small, small];
++        // Exact oracle: g=(0,-1), h=(0,1), finite beta=0 reconstructs
++        // this response on every row, including the tiny-weight bridge.
++        for solver in [crate::fe::FeSolverKind::Map, crate::fe::FeSolverKind::Lsmr, crate::fe::FeSolverKind::Cg] {
++            let mut ppml = PpmlConfig::default();
++            ppml.absorb.solver = solver;
++            ppml.absorb.map.max_iterations = 128;
++            ppml.absorb.lsmr.threads = crate::ThreadConfig::from_requested(1, true).unwrap();
++            let mut linear = PreparedOlsFitConfig::default();
++            linear.absorb = ppml.absorb;
++            linear.fixed_effect_collinearity_tolerance = ppml.fixed_effect_collinearity_tolerance;
++            linear.execution.threads = crate::ThreadConfig::from_requested(1, true).unwrap();
++            let fit = prepared_project(&generation.prepared, &response, &weights, ppml, config, linear);
++            eprintln!("BRIDGE_PROBE {solver:?}: {:?}", fit.as_ref().map(|v| &v.residual).map_err(|e| e.to_string()));
++        }
++    }
++
+     fn fixture() -> (
+         OlsRequestV1,
+         Vec<OlsClusterTermV1>,

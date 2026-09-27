@@ -1,0 +1,591 @@
+{
+  "schema": "fereg-performance-rotation-v1",
+  "source": "schwarz-stack-bound-01",
+  "orders": [
+    [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    [
+      "stock",
+      "candidate",
+      "baseline"
+    ]
+  ],
+  "cases": [
+    {
+      "id": "ppml-three_fe_sparse-n983040-k10-t8-main-auto",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 10,
+        "threads": 8,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 480,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "ppml-three_fe_sparse-n983040-k10-t28-main-auto",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 10,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 480,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "ols-strong_d2-n983040-k10-t4-main-auto",
+      "cell": {
+        "model": "ols",
+        "design": "strong_d2",
+        "n": 983040,
+        "k": 10,
+        "threads": 4,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 300,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "ols-strong_d2-n983040-k10-t28-main-auto",
+      "cell": {
+        "model": "ols",
+        "design": "strong_d2",
+        "n": 983040,
+        "k": 10,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 300,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "ols-three_fe_sparse-n983040-k50-t4-width-auto",
+      "cell": {
+        "model": "ols",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 50,
+        "threads": 4,
+        "section": "width",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 300,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "ols-three_fe_sparse-n983040-k50-t28-width-auto",
+      "cell": {
+        "model": "ols",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 50,
+        "threads": 28,
+        "section": "width",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 300,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "ppml-three_fe_sparse-n983040-k50-t4-width-auto",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 50,
+        "threads": 4,
+        "section": "width",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 1000,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "ppml-three_fe_sparse-n983040-k50-t28-width-auto",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 983040,
+        "k": 50,
+        "threads": 28,
+        "section": "width",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 1000,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ppml-three_fe_sparse-n245760-k6-t4",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 245760,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ppml-three_fe_sparse-n245760-k6-t8",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 245760,
+        "k": 6,
+        "threads": 8,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ppml-three_fe_sparse-n245760-k6-t16",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 245760,
+        "k": 6,
+        "threads": 16,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ppml-three_fe_sparse-n245760-k6-t28",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 245760,
+        "k": 6,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ols-strong_d2-n491520-k10-t4",
+      "cell": {
+        "model": "ols",
+        "design": "strong_d2",
+        "n": 491520,
+        "k": 10,
+        "threads": 4,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ols-strong_d2-n491520-k10-t8",
+      "cell": {
+        "model": "ols",
+        "design": "strong_d2",
+        "n": 491520,
+        "k": 10,
+        "threads": 8,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ols-strong_d2-n491520-k10-t28",
+      "cell": {
+        "model": "ols",
+        "design": "strong_d2",
+        "n": 491520,
+        "k": 10,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ols-three_fe_sparse-n491520-k20-t4",
+      "cell": {
+        "model": "ols",
+        "design": "three_fe_sparse",
+        "n": 491520,
+        "k": 20,
+        "threads": 4,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ols-three_fe_sparse-n491520-k20-t28",
+      "cell": {
+        "model": "ols",
+        "design": "three_fe_sparse",
+        "n": 491520,
+        "k": 20,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ppml-two_fe_dense-n61440-k10-t4",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 61440,
+        "k": 10,
+        "threads": 4,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "fresh-ppml-two_fe_dense-n61440-k10-t28",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 61440,
+        "k": 10,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "limits": {
+        "startup": 300,
+        "command": 360,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "oracle-ols-strong_d2",
+      "cell": {
+        "model": "ols",
+        "design": "strong_d2",
+        "n": 1920,
+        "k": 6,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609271
+      ],
+      "oracle": true,
+      "limits": {
+        "startup": 300,
+        "command": 120,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "oracle-ols-three_fe_sparse",
+      "cell": {
+        "model": "ols",
+        "design": "three_fe_sparse",
+        "n": 1920,
+        "k": 6,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609271
+      ],
+      "oracle": true,
+      "limits": {
+        "startup": 300,
+        "command": 120,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "oracle-ppml-three_fe_sparse",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 1920,
+        "k": 6,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609271
+      ],
+      "oracle": true,
+      "limits": {
+        "startup": 300,
+        "command": 120,
+        "extraction": 180
+      }
+    },
+    {
+      "id": "oracle-ppml-two_fe_dense",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 1920,
+        "k": 6,
+        "threads": 28,
+        "section": "main",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609271
+      ],
+      "oracle": true,
+      "limits": {
+        "startup": 300,
+        "command": 120,
+        "extraction": 180
+      }
+    }
+  ],
+  "plugins": {
+    "baseline": "259e27939df8288456a254bdebe150682dac6d30fff321e2bc32d0bdac04d909",
+    "candidate": "bind-after-build-before-submission"
+  },
+  "threads_policy": "exact baseline/candidate team sizes; no thread ceiling change in this candidate",
+  "reference": "pinned stock OLS feols IID and PPML fepois robust glm.tol=1e-10 fixef.tol=1e-11",
+  "warmup": "unchanged systematic measurement.warmup_rows"
+}

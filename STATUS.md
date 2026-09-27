@@ -17,27 +17,44 @@ repeatable core-scaling slowdown, and the eventual full 140-configuration fixest
 development sweep. The <=0.90 ambition remains. These are acceptance targets,
 not achieved claims. No new push or release is authorized.
 
-The [first diagnostic milestone](benchmarks/reports/development/performance-repair-diagnostics-2026-09-27/README.md)
-binds unchanged computational baseline a0588293 and ten frozen attempts. SCC
-job 7759645 is running; this is instrumented attribution, not headline timing.
-Sparse-zero two-FE PPML reproduces r(459): borrowed MAP exhausts its iteration
-budget before any publication-IRLS trace. The three-FE counterpart reaches its
-180-second diagnostic cap. Separation's one-shot weighted projector is the
-leading localization, not yet a confirmed repair.
+The [first implementation milestone](benchmarks/reports/development/performance-repair-diagnostics-2026-09-27/README.md)
+adds failure-stage receipts and matched Stata-capacity preflight, committed as
+**947489ac**. Focused worker/campaign/capacity checks and real licensed probes
+pass; two plotting modules remain unrun locally because matplotlib is absent.
 
-The same-job sparse-three-FE N983040/K10 diagnostic spends 21.585 seconds in
-projection at T8 versus 142.424 at T28; the solver route changes after memory
-admission. A shared Schwarz scratch-bound correction is being investigated:
-the sum of retained worker high-water depths is bounded by workers plus unique
-yielding components per apply, rather than their product. Native acceptance and
-fresh timing remain pending; original receipts remain untouched.
+The shared Schwarz scratch model now uses the proven T+R bound rather than
+T*(1+R), preserving all other memory allowances and numerical certificates.
+[ADR 0228](docs/adr/0228-schwarz-worker-stack-memory-bound.md) records the proof.
+Candidate source/artifact hashes are in the report. SCC baseline **7759645**
+completed with eight successes, r(459) and a timeout. Candidate **7759702**
+passes all eight nonzero-design diagnostics. At 28 cores, single diagnostic
+command clocks fall from 155.619 to 32.768 seconds (three-FE PPML K10), 643.931
+to 60.551 (K50), 12.713 to 3.924 (graph OLS), and 71.817 to 15.402 (three-FE
+OLS K50). Lower-thread controls range from 0.974 to 1.034 candidate/baseline.
+These are instrumented attribution clocks, not headline timing distributions.
+111 existing memory tests, two new bound tests and 29 joint-LSMR tests pass
+(overlapping counts), alongside three licensed independent-oracle fixtures and
+Mac/Linux plugin audits. Actual memory can rise when the corrected admission
+allows LSMR instead of MAP; per-fit RSS confirmation remains pending.
 
-Worker failures now preserve their actual stage and error; the separate bias
-benchmark rejects unsupported matched Stata processor requests before timing.
-Four new worker tests, six existing campaign tests, two capacity tests, and real
-licensed Stata success/rejection and quiet-error probes pass. Two plotting test
-modules remain unrun locally because matplotlib is unavailable. Do not infer
-solver acceptance or a completed sweep from these harness checks.
+The paired block is frozen at 23 configurations/126 fits. **7760118** was
+stopped for insufficient strict-reference limits; **7760156** then failed
+before fits because the copied launcher reused the prior output path. Both
+attempts remain preserved. A shared attempt-derived launcher passes three
+local tests and read-only SCC source/path preflight. No benchmark is running;
+**rotation03 requires the pending user approval** under the cluster skill's
+failed-retest rule. All cases/settings are in rotation02-registration.json;
+rotation03 preserves them and fixes only launching. Full 140-configuration
+confirmation, adaptive thread ceilings and <=1.20/<=0.90 targets remain open.
+
+Sparse-zero separation remains unresolved. A six-row explicit FE truth probe
+reproduces MAP stagnation under tiny boundary weights. CG recovers the response
+to 5.4e-13; LSMR fails the finite-score check. Its isolated patch and results
+are preserved. This localizes a solver problem but does not justify an
+unbudgeted production swap. Next work is a certified, memory-admitted detector
+projection, then the remaining large categorical PPML and OLS slope losses.
+Static allocation-inventory drift and constrained nonretaining-CG issues are
+unchanged. No full qualification or push has been performed in this milestone.
 
 ## Illustrated SCC campaign report — 2026-09-27
 

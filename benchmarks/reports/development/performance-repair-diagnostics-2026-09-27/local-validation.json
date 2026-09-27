@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "computational_source": "candidate01-source.json",
+  "mac_plugin_sha256": "1b2bc3ccbaa237bf0cd67da8606804c046c711e8573b7e69282afb4f00d823a3",
+  "core_checks": [
+    {
+      "filter": "memory",
+      "passed": 111
+    },
+    {
+      "filter": "memory::categorical_schwarz",
+      "passed": 2
+    },
+    {
+      "filter": "ppml::categorical_lsmr::tests",
+      "passed": 29
+    }
+  ],
+  "note": "Counts overlap; no summed distinct-test claim. Initial Stata driver invocation rejected missing plugin hash before any fit; corrected identity-bound invocation passes all three fixtures.",
+  "build": {
+    "macos_universal": true,
+    "binary_audit": true,
+    "actual_plugin_ABI_test": true
+  },
+  "stata_receipt": "local-stata.json"
+}
