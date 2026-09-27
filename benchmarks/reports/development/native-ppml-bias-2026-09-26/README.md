@@ -66,7 +66,14 @@ under `tests/stata/bias/`. This direct-core check is not licensed-Stata evidence
 [SCC v05 feature evidence](scc-feature-v05.json) records four passing fixtures
 and ten independent oracles under Linux/Stata 19. The original diagnostic
 wrapper failed because of its terminal marker and is not reported as passed.
-Later validation and campaign completion are tracked only in STATUS.md.
+[SCC v06 validation](scc-v06-result.json) passes shared smoke, all four feature/
+help fixtures, ten control oracles and all 15 reconstruction cases. The maximum
+control/reconstruction discrepancies are 6.62e-10/9.19e-10. The
+[Mac Stata 18 validation](licensed-mac-v06.json) passes the same feature and
+oracle checks. Its eight-second overlap with the existing MC controller is
+recorded; the timing preflight rejected that attempt before any measurement.
+The new Mac binary is installed in the local development dist directory.
+Campaign completion and any outstanding work are tracked only in STATUS.md.
 
 ## Independent mathematics and retained fits
 
