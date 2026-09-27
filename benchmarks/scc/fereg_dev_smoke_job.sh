@@ -8,6 +8,9 @@
 #$ -m a
 
 set -eo pipefail
+# A caller may source this entry point under nounset. SCC's system startup
+# deliberately probes unset variables, so disable it until initialization ends.
+set +u
 source /etc/bashrc
 set -u
 

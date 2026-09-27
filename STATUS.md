@@ -9,6 +9,33 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## Completed SCC repair confirmation — 2026-09-27
+
+The [final Schwarz rotation](benchmarks/reports/development/performance-repair-paired-scc-2026-09-27/final/README.md)
+completed as **7760466**: 42/42 triplets, 126 successful applications, all native
+science comparisons and four independent oracle cases pass. Accounting is clean
+(5,947 seconds, 28 slots, isolated scc-wo4). This receipt tests **e4317d8e**, not
+subsequent source. Nine of ten comparable PPML timing configurations beat stock
+by at least 10%; the remaining dense control is 1.113 times stock. All nine OLS
+timing configurations remain scientifically unranked against stock.
+
+Large T28 repairs reduce PPML K10/K50 to 0.179/0.085 of baseline and OLS graph/
+wide-three-FE to 0.274/0.204. Admitting the faster solver increases actual memory;
+PPML K50/T28 uses 7.28 GiB versus 3.19 baseline and 3.88 stock. Narrow PPML still
+slows above eight cores, and two unchanged-route controls lose 6–8% to baseline
+on both seeds. Shared concurrency planning and focused alternating confirmation
+remain necessary; these results do not satisfy the full performance plan.
+
+Linux separation repair **f8803410** now passes the standard PPML smoke and
+12-fit independent Poisson/Hessian/sandwich oracle as **7761618**. The
+[acceptance receipt](benchmarks/reports/development/separation-coefficient-proof-local-2026-09-27/linux-acceptance02.json)
+binds the Linux plugin, clean accounting, application sentinels and fixture
+results. Prior **7760663** failed before compilation because inherited shell
+nounset reached SCC's system startup. The shared development entry now disables
+nounset during that startup and restores it afterward; the targeted inherited-
+nounset test passes. Both the failure and narrow successful retry are preserved.
+No estimator policy changed in this wrapper fix. No push or qualification run.
+
 ## Complete original-issue inventory — 2026-09-27
 
 The [captured inventory](benchmarks/reports/development/performance-repair-issue-inventory-2026-09-27/README.md)

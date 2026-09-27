@@ -1,0 +1,78 @@
+{
+  "job": "7761618",
+  "source_commit": "f8803410c52d909892708f012c447eb940ad179b",
+  "run_id": "20260927-separation-proof-f8803410",
+  "accounting": {
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 166,
+    "cpu_seconds": 248.543,
+    "slots": 4,
+    "host": "scc-tb4",
+    "queue": "econ",
+    "maxvmem": "8.807G"
+  },
+  "plugin_sha256": "5dd3956fa04b53277e0071e1e017eb1f8e1dea7a54288c5abc419b52c4c98da2",
+  "smoke": {
+    "break_receipts": [],
+    "build_rc": 0,
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "plugin_filename": "fereg_linux.plugin",
+    "plugin_sha256": "5dd3956fa04b53277e0071e1e017eb1f8e1dea7a54288c5abc419b52c4c98da2",
+    "profile": "scc-dev-ppml",
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "ci/feppml_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "PC (64-bit x86-64)",
+    "stata_os": "Unix",
+    "stata_processors": 4,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 1
+  },
+  "oracle": {
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_separation_graph_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "PC (64-bit x86-64)",
+    "stata_os": "Unix",
+    "stata_processors": 4,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 1
+  },
+  "oracle_fits": 12,
+  "terminal_sentinels": [
+    "FEREG_DEV_SMOKE_SUCCESS profile=ppml snapshot=f8803410c52d909892708f012c447eb940ad179b",
+    "FEREG_SEPARATION_SMOKE_SUCCESS job=7761618 snapshot=f8803410c52d909892708f012c447eb940ad179b"
+  ],
+  "captured_accounting_and_outputs_sha256": "1b5b30867b2e2fbc3a8e40fff064550f187d459a1e12cb7e7f0278837a486dd4",
+  "disposition": "Linux development smoke and independent separation Poisson/Hessian/sandwich oracle pass; no qualification or timing claim."
+}

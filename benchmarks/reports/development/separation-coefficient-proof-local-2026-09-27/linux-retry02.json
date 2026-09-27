@@ -1,0 +1,29 @@
+{
+  "prior_job": "7760663",
+  "prior_failed": 0,
+  "prior_exit_status": 1,
+  "prior_wall_seconds": 0,
+  "stage": "shell startup before build or estimator execution",
+  "error": "/etc/bashrc: line 21: BASHRCSOURCED: unbound variable",
+  "cause": "wrapper sourced development entry under inherited nounset; set -eo did not disable nounset",
+  "preserved_log": "logs/smoke.log",
+  "new_job": "7761618",
+  "new_log": "logs/smoke02.log",
+  "run_id": "20260927-separation-proof-f8803410",
+  "source_commit": "f8803410c52d909892708f012c447eb940ad179b",
+  "native_source_unchanged": true,
+  "profile": "ppml",
+  "additional_fixture": "tests/stata/development/feppml_separation_graph_oracle.do",
+  "resources": {
+    "slots": 4,
+    "wall_seconds": 1800,
+    "memory_gib_per_slot": 4
+  },
+  "harness": {
+    "fereg_dev_smoke_job.sh": "fcfa9fa0999bc035dbcacdba237e803303e6128b30946b07ab968d30c9b69921",
+    "linux_smoke.sh": "d229f26129a2cd598de76771f4227ba5e078b410174dc2a5bfed54f7a4047a20"
+  },
+  "local_validation": "inherited-nounset initialization test and bash syntax pass",
+  "remote_deployed_hashes": "match",
+  "authorization": "explicit user instruction: in-scope SCC testing needs no additional approval"
+}

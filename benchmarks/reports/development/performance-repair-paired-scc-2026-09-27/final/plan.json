@@ -1,0 +1,983 @@
+{
+  "cases": [
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 983040,
+        "section": "main",
+        "threads": 8
+      },
+      "id": "ppml-three_fe_sparse-n983040-k10-t8-main-auto",
+      "limits": {
+        "baseline": {
+          "command": 480,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 480,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": 63.774,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 983040,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "ppml-three_fe_sparse-n983040-k10-t28-main-auto",
+      "limits": {
+        "baseline": {
+          "command": 480,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 480,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": 42.363,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "ols-strong_d2-n983040-k10-t4-main-auto",
+      "limits": {
+        "baseline": {
+          "command": 300,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 300,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": 13.379,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "ols-strong_d2-n983040-k10-t28-main-auto",
+      "limits": {
+        "baseline": {
+          "command": 300,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 300,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": 8.639,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 50,
+        "model": "ols",
+        "n": 983040,
+        "section": "width",
+        "threads": 4
+      },
+      "id": "ols-three_fe_sparse-n983040-k50-t4-width-auto",
+      "limits": {
+        "baseline": {
+          "command": 300,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 300,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 191,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": 86.668,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 50,
+        "model": "ols",
+        "n": 983040,
+        "section": "width",
+        "threads": 28
+      },
+      "id": "ols-three_fe_sparse-n983040-k50-t28-width-auto",
+      "limits": {
+        "baseline": {
+          "command": 300,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 300,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": 40.517,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 50,
+        "model": "ppml",
+        "n": 983040,
+        "section": "width",
+        "threads": 4
+      },
+      "id": "ppml-three_fe_sparse-n983040-k50-t4-width-auto",
+      "limits": {
+        "baseline": {
+          "command": 1000,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 1000,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 580,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": 346.402,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 50,
+        "model": "ppml",
+        "n": 983040,
+        "section": "width",
+        "threads": 28
+      },
+      "id": "ppml-three_fe_sparse-n983040-k50-t28-width-auto",
+      "limits": {
+        "baseline": {
+          "command": 1000,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 1000,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 265,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": 136.353,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        104729,
+        130363
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "model": "ppml",
+        "n": 245760,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "fresh-ppml-three_fe_sparse-n245760-k6-t4",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "model": "ppml",
+        "n": 245760,
+        "section": "main",
+        "threads": 8
+      },
+      "id": "fresh-ppml-three_fe_sparse-n245760-k6-t8",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "model": "ppml",
+        "n": 245760,
+        "section": "main",
+        "threads": 16
+      },
+      "id": "fresh-ppml-three_fe_sparse-n245760-k6-t16",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "model": "ppml",
+        "n": 245760,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "fresh-ppml-three_fe_sparse-n245760-k6-t28",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 491520,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "fresh-ols-strong_d2-n491520-k10-t4",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 491520,
+        "section": "main",
+        "threads": 8
+      },
+      "id": "fresh-ols-strong_d2-n491520-k10-t8",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 491520,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "fresh-ols-strong_d2-n491520-k10-t28",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 20,
+        "model": "ols",
+        "n": 491520,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "fresh-ols-three_fe_sparse-n491520-k20-t4",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 20,
+        "model": "ols",
+        "n": 491520,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "fresh-ols-three_fe_sparse-n491520-k20-t28",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "fresh-ppml-two_fe_dense-n61440-k10-t4",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": 0.668,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "fresh-ppml-two_fe_dense-n61440-k10-t28",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "reference_limit_evidence": {
+        "historical_max_seconds": 0.61,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271,
+        202609272
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "model": "ols",
+        "n": 1920,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "oracle-ols-strong_d2",
+      "limits": {
+        "baseline": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "oracle": true,
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "model": "ols",
+        "n": 1920,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "oracle-ols-three_fe_sparse",
+      "limits": {
+        "baseline": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "oracle": true,
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "model": "ppml",
+        "n": 1920,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "oracle-ppml-three_fe_sparse",
+      "limits": {
+        "baseline": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "oracle": true,
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271
+      ],
+      "stock_arm": "fixest_strict"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "model": "ppml",
+        "n": 1920,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "oracle-ppml-two_fe_dense",
+      "limits": {
+        "baseline": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 120,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "oracle": true,
+      "reference_limit_evidence": {
+        "historical_max_seconds": null,
+        "rule": "1.5*historical maximum + 60s, minimum180s; fresh360s, oracle120s"
+      },
+      "seeds": [
+        202609271
+      ],
+      "stock_arm": "fixest_strict"
+    }
+  ],
+  "orders": [
+    [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    [
+      "stock",
+      "candidate",
+      "baseline"
+    ]
+  ],
+  "plugins": {
+    "baseline": "259e27939df8288456a254bdebe150682dac6d30fff321e2bc32d0bdac04d909",
+    "candidate": "e072ecfc7305d63e12833385ee44339423c8f0a429ffbbf1998ab31e988083fa"
+  },
+  "reference": "Pinned stock defaults; independently checked strict PPML only in bounded oracle cases. Incomparable results remain unranked.",
+  "schema": "fereg-performance-rotation-v1",
+  "source": "schwarz-stack-bound-01",
+  "supersedes": "rotation02: launcher rejected an existing output path before fits; fixed launcher derives every attempt path from one identifier",
+  "threads_policy": "exact baseline/candidate team sizes; no thread ceiling change in this candidate",
+  "warmup": "unchanged systematic measurement.warmup_rows"
+}
