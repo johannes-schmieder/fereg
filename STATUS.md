@@ -36,24 +36,47 @@ new independent evidence without manufacturing PILOT.ACCEPTED.json. The first
 production plan contains exactly 556 pending groups, preserving 12 completed
 pilot groups and all 568 definitions.
 
-**Production array 7747518/tasks 1–16 is submitted**, queued at launch on
-2026-09-26 17:19:33 UTC. [Launch receipt and immutable plan](benchmarks/reports/development/systematic-light-scc-resume-2026-09-26/production-launch.md)
-record 270 OLS/286 PPML pending groups, 28 E5-2680v4 cores, 3G/core,
-12h/task and concurrency eight. Forecast: 9.87–9.95h/task, 158.59 node-hours.
+**Production array 7747518/tasks 1–16 completed** on 2026-09-27 at
+09:28:35 UTC. [Final evidence and analysis](benchmarks/reports/development/systematic-light-scc-final-2026-09-27/README.md)
+cover all 568 registered groups, including 12 retained pilot groups. All 16
+scheduler records pass, all terminal markers exist, and the frozen-controller
+audit has zero integrity errors. A captured-output audit exactly replays all
+2,748 comparisons and binds 11,674 evidence files. No groups remain pending;
+no failed fits were rerun. Production used 119.987 node-hours, 5.58–8.84h/task,
+and 16h09m from submission to completion, below the 158.59-node-hour forecast.
+The [original launch and plan](benchmarks/reports/development/systematic-light-scc-resume-2026-09-26/production-launch.md)
+remain unchanged: 28 E5-2680v4 cores, 3G/core, 12h/task, concurrency eight.
 External planner commit **78b2eb0b**; estimator/controller remains **58284f76**.
 Run root: `/projectnb/welfgr/fereg/runs/20260926-systematic-light-58284f76`.
 Plan: `plans/production-adjudicated.json`, SHA256
 `80e2439f6d134f9c9e1afd2d701910d6b38886d148e3e32d9783463396f84702`.
-The separate `env/PILOT.ADJUDICATED.json` is published; no rejected receipt or
-frozen measurement byte changed. No production performance claim exists yet.
+The separate `env/PILOT.ADJUDICATED.json` remains published; the original pilot
+rejection and missing warm-1 reference timing pairs remain intact. Diagnostic
+reference clocks never fill missing production repetitions.
 
-Next: allow the array to run, collect all 16 accounting records and terminal
-bundle/application receipts, audit all 568 groups, and report valid four-repeat
-distributions with losses/timeouts/discrepancies visible. Any pending whole
-groups require a distinct immutable plan after all original tasks stop; never
-repeat completed groups or combine partial timing pairs across nodes. The
-existing **run-lighter-fereg-scc-campaign heartbeat is ACTIVE**, updated with
-production identity and collection/recovery instructions. Commits remain local.
+Four-valid-repeat median native/reference ratios are 1.159 for OLS/default
+fixest (44/68 configurations), 1.157 for PPML/default (51/72), and 0.806 for
+PPML/strict (55/72). At least 10% faster medians occur in 14/44, 16/51 and
+34/55, respectively; median losses remain in 25, 30 and 18 configurations.
+Strict stock PPML uses glm.tol=1e-10 and fixef.tol=1e-11. Dense two-partition
+PPML slopes win at 0.457/0.321 (fast/low); OLS slopes lose at 3.226/4.445.
+Three-FE slope fixest results do not support complete four-repeat headlines.
+All 64 complete reghdfe and 58 ppmlhdfe comparisons win every repetition.
+These are development comparisons of IID OLS/robust PPML, without fitted-mean
+publication, not qualification or a before/after estimator speedup.
+
+Native results: 536 pass, 28 command timeouts, four rc459 application failures
+on sparse two-FE zeros. Pair comparisons: 1,930 pass, 393 accuracy discrepancies,
+425 unavailable. Full distributions, timeout caps, memory costs, exclusions
+and failed checks remain in the report. Disagreements do not identify the
+erroneous estimator by themselves. Later local bias work is not this snapshot.
+
+The campaign is closed and **run-lighter-fereg-scc-campaign is PAUSED**.
+Next development priorities from this evidence: localize sparse-zero failures
+and timeout cases with independent oracles; profile large strong/weak graph
+PPML at T28 (2–3.7x strict-reference losses); address dense OLS slopes separately.
+Adjudicate sparse OLS reference discrepancies before ranking those timings.
+No optimization or new campaign was started in this closeout. Commits remain local.
 
 ## SCC preflight continuation: automatic report merge — 2026-09-26
 

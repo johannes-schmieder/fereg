@@ -1,0 +1,2237 @@
+{
+  "completed": [
+    {
+      "arm_predictions": {
+        "areg": 85.543728,
+        "fereg": 65.085728,
+        "fixest": 101.636728,
+        "greg": 799.149728,
+        "pyfixest": 727.9011034699911,
+        "reghdfe": 2012.854728
+      },
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 3932160,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 225,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 321,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 3807.1717434699913,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 60.391152,
+        "fixest": 74.924152,
+        "fixest_strict": 367.302152,
+        "ppmlhdfe": 74.6811697111143
+      },
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 61440,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 180,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 1934,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 178,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 592.2986257111143,
+      "repetition": 3,
+      "skips": {
+        "gglm": {
+          "reason": "Pinned worker has no validated absorbed-slope API; no expanded-dummy substitute.",
+          "status": "unsupported_surface"
+        },
+        "pyfixest": {
+          "reason": "Pinned worker has no validated absorbed-slope API; no expanded-dummy substitute.",
+          "status": "unsupported_surface"
+        }
+      }
+    },
+    {
+      "arm_predictions": {
+        "fereg": 61.217491200000005,
+        "fixest": 56.0374912,
+        "reghdfe": 151.4474912
+      },
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ols",
+        "n": 61440,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "limits": {
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 639,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 283.7024736,
+      "repetition": 2,
+      "skips": {
+        "areg": {
+          "reason": "Pinned worker has no validated absorbed-slope API; no expanded-dummy substitute.",
+          "status": "unsupported_surface"
+        },
+        "greg": {
+          "reason": "Pinned worker has no validated absorbed-slope API; no expanded-dummy substitute.",
+          "status": "unsupported_surface"
+        },
+        "pyfixest": {
+          "reason": "Pinned worker has no validated absorbed-slope API; no expanded-dummy substitute.",
+          "status": "unsupported_surface"
+        }
+      }
+    },
+    {
+      "arm_predictions": {
+        "areg": 85.42072800000001,
+        "fereg": 59.742728,
+        "fixest": 73.19672800000001,
+        "greg": 803.148728,
+        "pyfixest": 373.01611161000307,
+        "reghdfe": 2047.398728
+      },
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 3932160,
+        "section": "main",
+        "suite": "paper",
+        "threads": 28
+      },
+      "limits": {
+        "areg": {
+          "command": 224,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 151,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 1950,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 3456.923751610003,
+      "repetition": 3,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 83.59022800000001,
+        "fereg": 58.425728,
+        "fixest": 90.163728,
+        "greg": 181.890728,
+        "pyfixest": 1687.7900886689936,
+        "reghdfe": 362.667228
+      },
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 3932160,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 213,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 253,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 803,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 1888,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 2479.5277286689934,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 252.48716000000002,
+        "fixest": 456.70716000000004,
+        "fixest_strict": 660.59466,
+        "gglm": 286.39216,
+        "ppmlhdfe": 2448.93216,
+        "pyfixest": 1995.7598600150193
+      },
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 50,
+        "model": "ppml",
+        "n": 983040,
+        "section": "width",
+        "suite": "panels",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 1222,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 1425,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 6115.8731600150195,
+      "repetition": 2,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 85.754228,
+        "fereg": 57.491228,
+        "fixest": 65.367228,
+        "greg": 183.450228,
+        "pyfixest": 676.6969168309993,
+        "reghdfe": 360.585728
+      },
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 3932160,
+        "section": "main",
+        "suite": "panels",
+        "threads": 28
+      },
+      "limits": {
+        "areg": {
+          "command": 226,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 812,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 1875,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 1444.3455568309994,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 84.50416,
+        "fereg": 71.18816,
+        "fixest": 133.04316,
+        "greg": 284.98216,
+        "reghdfe": 776.37316
+      },
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 50,
+        "model": "ols",
+        "n": 983040,
+        "section": "width",
+        "suite": "panels",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 214,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 134,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 505,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 1417,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 1365.0908,
+      "repetition": 2,
+      "skips": {
+        "pyfixest": {
+          "evidence": "benchmarks/reports/systematic-stopped-2026-09-11/runs.csv",
+          "reason": "The pinned comparator exceeded 2400 seconds on seed31415927. Remaining seeds in this configuration are budget exclusions, not observed failures.",
+          "status": "budget_exclusion"
+        }
+      }
+    },
+    {
+      "arm_predictions": {
+        "feppml": 86.497432,
+        "fixest": 127.34143200000001,
+        "fixest_strict": 168.118932,
+        "gglm": 93.278432,
+        "ppmlhdfe": 590.398432,
+        "pyfixest": 435.15197200300383
+      },
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 983040,
+        "section": "main",
+        "suite": "paper",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 245,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 490,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 734,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 285,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 2337,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 1515.786632003004,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 54.483432,
+        "fereg": 51.449431999999995,
+        "fixest": 65.87043200000001,
+        "greg": 96.786432,
+        "pyfixest": 439.5385651489988,
+        "reghdfe": 203.85043199999998
+      },
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 121,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 306,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 2363,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 949,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 926.9787251489988,
+      "repetition": 3,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 54.706432,
+        "fereg": 50.087432,
+        "fixest": 57.039432,
+        "greg": 97.530432,
+        "pyfixest": 232.89065283600132,
+        "reghdfe": 202.241432
+      },
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 28
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 311,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 1123,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 939,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 709.4958128360013,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 86.497432,
+        "fixest": 127.34143200000001,
+        "fixest_strict": 168.118932,
+        "gglm": 93.278432,
+        "ppmlhdfe": 590.398432,
+        "pyfixest": 435.15197200300383
+      },
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "limits": {
+        "feppml": {
+          "command": 245,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 490,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 734,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 285,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 2337,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 1515.786632003004,
+      "repetition": 3,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 86.497432,
+        "fixest": 127.34143200000001,
+        "fixest_strict": 168.118932,
+        "gglm": 93.278432,
+        "ppmlhdfe": 590.398432,
+        "pyfixest": 435.15197200300383
+      },
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "limits": {
+        "feppml": {
+          "command": 245,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 490,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 734,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 285,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 2337,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 1515.786632003004,
+      "repetition": 4,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 150.77416,
+        "fixest": 126.58816,
+        "fixest_strict": 165.41616000000002,
+        "pyfixest": 648.294750304001
+      },
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 50,
+        "model": "ppml",
+        "n": 983040,
+        "section": "width",
+        "suite": "panels",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 612,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 466,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 699,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 2400,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 1106.073230304001,
+      "repetition": 2,
+      "skips": {
+        "gglm": {
+          "evidence": "benchmarks/reports/systematic-stopped-2026-09-11/runs.csv",
+          "reason": "Pinned worker initialization timed out in the matching pilot. This is a startup exclusion, not evidence that the target fit would time out.",
+          "status": "budget_exclusion"
+        },
+        "ppmlhdfe": {
+          "evidence": "benchmarks/reports/systematic-stopped-2026-09-11/runs.csv",
+          "reason": "A matching pinned-reference pilot exceeded 2400 seconds. Other seeds are predeclared budget exclusions, not asserted observed failures.",
+          "status": "budget_exclusion"
+        }
+      }
+    },
+    {
+      "arm_predictions": {
+        "areg": 67.654728,
+        "fereg": 73.088728,
+        "fixest": 51.349728,
+        "greg": 64.404728,
+        "pyfixest": 55.16107010200043,
+        "reghdfe": 104.632728
+      },
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 3932160,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 150,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 339,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 431.2917101020004,
+      "repetition": 4,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 65.94615999999999,
+        "fereg": 58.75616,
+        "fixest": 52.37116,
+        "greg": 60.81616,
+        "pyfixest": 53.217685048006096,
+        "reghdfe": 91.92515999999999
+      },
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 50,
+        "model": "ols",
+        "n": 983040,
+        "section": "width",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 258,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 398.0324850480061,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 65.236728,
+        "fereg": 58.198727999999996,
+        "fixest": 50.758728,
+        "greg": 59.565728,
+        "pyfixest": 52.862005328989234,
+        "reghdfe": 94.233728
+      },
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 3932160,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 277,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 395.8556453289892,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 65.83516,
+        "fereg": 55.43316,
+        "fixest": 50.83516,
+        "greg": 60.956160000000004,
+        "pyfixest": 52.11480082200767,
+        "reghdfe": 92.56715999999999
+      },
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 50,
+        "model": "ols",
+        "n": 983040,
+        "section": "width",
+        "suite": "paper",
+        "threads": 28
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 262,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 392.7416008220077,
+      "repetition": 2,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 60.391152,
+        "fixest": 74.924152,
+        "fixest_strict": 367.302152,
+        "gglm": 45.149152,
+        "ppmlhdfe": 59.86516085555714,
+        "pyfixest": 55.64172669305358
+      },
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "suite": "panels",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 180,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 1934,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 678.2734955486108,
+      "repetition": 2,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 52.030432,
+        "fereg": 52.202431999999995,
+        "fixest": 47.893432,
+        "greg": 48.494431999999996,
+        "pyfixest": 48.952827897002074,
+        "reghdfe": 62.89843199999999
+      },
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "paper",
+        "threads": 1
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 327.47198789700207,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 80.948728,
+        "fixest": 55.745728,
+        "fixest_strict": 59.545728,
+        "gglm": 148.241728,
+        "ppmlhdfe": 206.71472799999998,
+        "pyfixest": 60.451314096001205
+      },
+      "cell": {
+        "design": "weak_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 3932160,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "feppml": {
+          "command": 197,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 601,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 952,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 626.6479540960012,
+      "repetition": 2,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 51.730728,
+        "fereg": 51.501728,
+        "fixest": 49.953728,
+        "greg": 50.065728,
+        "pyfixest": 50.66015610799926,
+        "reghdfe": 55.121728
+      },
+      "cell": {
+        "design": "weak_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 3932160,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 324.03379610799925,
+      "repetition": 2,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 80.948728,
+        "fixest": 55.745728,
+        "fixest_strict": 56.844727999999996,
+        "gglm": 148.241728,
+        "ppmlhdfe": 206.71472799999998,
+        "pyfixest": 60.451314096001205
+      },
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 3932160,
+        "section": "main",
+        "suite": "paper",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 197,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 601,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 952,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 623.9469540960011,
+      "repetition": 2,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 49.713432,
+        "fereg": 48.987432,
+        "fixest": 46.960432,
+        "greg": 48.493432,
+        "pyfixest": 47.51671240899953,
+        "reghdfe": 56.149432
+      },
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 312.82087240899955,
+      "repetition": 2,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 49.687431999999994,
+        "fereg": 48.450432,
+        "fixest": 46.845431999999995,
+        "greg": 48.459432,
+        "pyfixest": 47.20486939800242,
+        "reghdfe": 56.007432
+      },
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "paper",
+        "threads": 8
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 311.6550293980024,
+      "repetition": 4,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 49.388431999999995,
+        "fereg": 48.212432,
+        "fixest": 46.805431999999996,
+        "greg": 48.044432,
+        "pyfixest": 46.83951200399964,
+        "reghdfe": 54.809431999999994
+      },
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 983040,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 309.0996720039996,
+      "repetition": 3,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 45.542152,
+        "fereg": 45.420152,
+        "fixest": 46.016652,
+        "greg": 46.443652,
+        "pyfixest": 57.70861662700231,
+        "reghdfe": 51.189152
+      },
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 61440,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 307.3203766270023,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 45.523652,
+        "fereg": 45.260152,
+        "fixest": 45.449152,
+        "greg": 45.712151999999996,
+        "pyfixest": 53.437754835511846,
+        "reghdfe": 47.540152
+      },
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 61440,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 297.9230148355118,
+      "repetition": 4,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 74.93580145640477,
+        "fixest": 55.63766909245457,
+        "fixest_strict": 60.56328763868186,
+        "gglm": 48.72709978879241,
+        "ppmlhdfe": 83.86807986486171,
+        "pyfixest": 50.673279899977835
+      },
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 983040,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "limits": {
+        "feppml": {
+          "command": 175,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 229,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 389.40521774117315,
+      "repetition": 3,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 47.819733577100116,
+        "fixest": 47.161760579478866,
+        "fixest_strict": 48.2180648692183,
+        "gglm": 45.149152,
+        "ppmlhdfe": 110.3404442472093,
+        "pyfixest": 61.354634518992874
+      },
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "suite": "panels",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 392,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 375.0437897919995,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 47.819733577100116,
+        "fixest": 47.161760579478866,
+        "fixest_strict": 48.2180648692183,
+        "gglm": 45.149152,
+        "ppmlhdfe": 110.3404442472093,
+        "pyfixest": 61.354634518992874
+      },
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "suite": "panels",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 392,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 375.0437897919995,
+      "repetition": 4,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 45.608152,
+        "fixest": 45.750152,
+        "fixest_strict": 46.302152,
+        "gglm": 46.34115785475186,
+        "ppmlhdfe": 69.661152,
+        "pyfixest": 45.29939521721907
+      },
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "suite": "panels",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 148,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 313.9621610719709,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "areg": 45.263152,
+        "fereg": 45.318152,
+        "fixest": 45.102152,
+        "greg": 45.169152,
+        "pyfixest": 45.12995400100085,
+        "reghdfe": 45.689152
+      },
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 61440,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "areg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fereg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "greg": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "reghdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 286.67171400100085,
+      "repetition": 0,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 45.842152,
+        "fixest": 45.317152,
+        "fixest_strict": 45.451152,
+        "gglm": 45.149152,
+        "ppmlhdfe": 46.085152,
+        "pyfixest": 45.18209725600213
+      },
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "suite": "paper",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 288.02685725600213,
+      "repetition": 1,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 45.842152,
+        "fixest": 45.317152,
+        "fixest_strict": 45.451152,
+        "gglm": 45.149152,
+        "ppmlhdfe": 46.085152,
+        "pyfixest": 45.18209725600213
+      },
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "feppml": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 288.02685725600213,
+      "repetition": 2,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 45.842152,
+        "fixest": 45.317152,
+        "fixest_strict": 45.451152,
+        "gglm": 45.149152,
+        "ppmlhdfe": 46.085152,
+        "pyfixest": 45.18209725600213
+      },
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "suite": "paper",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 288.02685725600213,
+      "repetition": 3,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 45.842152,
+        "fixest": 45.317152,
+        "fixest_strict": 45.451152,
+        "gglm": 45.149152,
+        "ppmlhdfe": 46.085152,
+        "pyfixest": 45.18209725600213
+      },
+      "cell": {
+        "design": "weak_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "limits": {
+        "feppml": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 288.02685725600213,
+      "repetition": 4,
+      "skips": {}
+    },
+    {
+      "arm_predictions": {
+        "feppml": 45.19634243804284,
+        "fixest": 45.149152,
+        "fixest_strict": 45.149152,
+        "gglm": 45.49829305680384,
+        "ppmlhdfe": 45.76066742755283,
+        "pyfixest": 45.149152
+      },
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "suite": "paper",
+        "threads": 28
+      },
+      "limits": {
+        "feppml": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "fixest_strict": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "gglm": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "ppmlhdfe": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        },
+        "pyfixest": {
+          "command": 120,
+          "extraction": 600,
+          "startup": 600
+        }
+      },
+      "predicted_seconds": 286.9027589223995,
+      "repetition": 2,
+      "skips": {}
+    }
+  ],
+  "job_id": "7747518",
+  "measurement_fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+  "pending": [],
+  "plan_sha256": "80e2439f6d134f9c9e1afd2d701910d6b38886d148e3e32d9783463396f84702",
+  "status": "complete",
+  "task_id": 13,
+  "wall_seconds": 29086.452308804
+}

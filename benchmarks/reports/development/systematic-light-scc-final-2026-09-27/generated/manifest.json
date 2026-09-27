@@ -1,0 +1,228 @@
+{
+  "appendix_controls": [
+    50
+  ],
+  "arms": {
+    "ols": [
+      "fereg",
+      "reghdfe",
+      "areg",
+      "greg",
+      "fixest",
+      "pyfixest"
+    ],
+    "ppml": [
+      "feppml",
+      "ppmlhdfe",
+      "gglm",
+      "fixest",
+      "fixest_strict",
+      "pyfixest"
+    ]
+  },
+  "candidate_commit": "58284f76a65b226e6df09a48cafa5caa68461af2",
+  "cold_repetitions": 1,
+  "designs": {
+    "one_fe": {
+      "effects": [
+        "g1"
+      ],
+      "mobility": 0.2,
+      "suite": "panels"
+    },
+    "strong_d2": {
+      "degree": 2,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "suite": "paper"
+    },
+    "strong_d3": {
+      "degree": 3,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "suite": "paper"
+    },
+    "strong_d6": {
+      "degree": 6,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "suite": "paper"
+    },
+    "three_fe_sparse": {
+      "effects": [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "mobility": 0.02,
+      "suite": "panels"
+    },
+    "two_fe_dense": {
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "mobility": 0.2,
+      "suite": "panels"
+    },
+    "two_fe_sparse": {
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "mobility": 0.02,
+      "suite": "panels"
+    },
+    "weak_d3": {
+      "degree": 3,
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "suite": "paper"
+    }
+  },
+  "fixed_threads": 4,
+  "fixest_strict": {
+    "fixef_tol": 1e-11,
+    "glm_tol": 1e-10
+  },
+  "historical_cost_sha256": "07179fd0e1e5c570a4269bb0535609231d77ff96c421fadd613093cc9d6ad705",
+  "main_controls": 10,
+  "maximum_threads": 28,
+  "measurement": {
+    "command_timeout_seconds": 2400,
+    "extraction_timeout_seconds": 600,
+    "rss_interval_seconds": 0.01,
+    "rss_scope": "absolute estimator-phase process-tree RSS",
+    "startup_timeout_seconds": 600,
+    "warmup_rows": 7680
+  },
+  "purpose": "New bounded Linux development campaign; not a resumption or release qualification",
+  "scaling_designs": [
+    "one_fe",
+    "two_fe_dense",
+    "three_fe_sparse",
+    "strong_d3"
+  ],
+  "scaling_n": 983040,
+  "scc": {
+    "array_concurrency": 8,
+    "cpu_type": "E5-2680v4",
+    "pilot_mem_per_core_gib": 3,
+    "project": "welfgr",
+    "slots": 28,
+    "target_bundle_seconds": 37800,
+    "wall_seconds": 43200
+  },
+  "schema": "fereg-systematic-light-v2",
+  "science": {
+    "coefficient_atol": 1e-10,
+    "coefficient_rtol": 1e-07,
+    "objective_atol": 1e-10,
+    "objective_rtol": 1e-08,
+    "vce_atol": 1e-10,
+    "vce_rtol": 1e-06
+  },
+  "seeds": [
+    104729,
+    8675309,
+    20260819,
+    31415927
+  ],
+  "settings": {
+    "ols_vce": "iid",
+    "ppml_vce": "robust",
+    "solver": "native defaults; separate stricter stock fixest PPML arm",
+    "weights": "none"
+  },
+  "sizes": [
+    61440,
+    983040,
+    3932160
+  ],
+  "skip_rules": [
+    {
+      "arm": "ppmlhdfe",
+      "evidence": "benchmarks/reports/systematic-stopped-2026-09-11/runs.csv",
+      "match": {
+        "design": "two_fe_sparse",
+        "k": 50,
+        "model": "ppml",
+        "n": 983040,
+        "section": "width",
+        "threads": 28
+      },
+      "reason": "A matching pinned-reference pilot exceeded 2400 seconds. Other seeds are predeclared budget exclusions, not asserted observed failures.",
+      "repetitions": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "arm": "gglm",
+      "evidence": "benchmarks/reports/systematic-stopped-2026-09-11/runs.csv",
+      "match": {
+        "design": "two_fe_sparse",
+        "k": 50,
+        "model": "ppml",
+        "n": 983040,
+        "section": "width",
+        "threads": 28
+      },
+      "reason": "Pinned worker initialization timed out in the matching pilot. This is a startup exclusion, not evidence that the target fit would time out.",
+      "repetitions": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "arm": "pyfixest",
+      "evidence": "benchmarks/reports/systematic-stopped-2026-09-11/runs.csv",
+      "match": {
+        "design": "three_fe_sparse",
+        "k": 50,
+        "model": "ols",
+        "n": 983040,
+        "section": "width",
+        "threads": 4
+      },
+      "reason": "The pinned comparator exceeded 2400 seconds on seed31415927. Remaining seeds in this configuration are budget exclusions, not observed failures.",
+      "repetitions": [
+        1,
+        2,
+        3,
+        4
+      ]
+    }
+  ],
+  "threads": [
+    1,
+    4,
+    8,
+    28
+  ],
+  "warm_repetitions": 4,
+  "width_designs": [
+    "two_fe_dense",
+    "two_fe_sparse",
+    "three_fe_sparse",
+    "strong_d6"
+  ],
+  "zero_designs": [
+    "one_fe",
+    "two_fe_dense",
+    "two_fe_sparse",
+    "three_fe_sparse"
+  ]
+}
