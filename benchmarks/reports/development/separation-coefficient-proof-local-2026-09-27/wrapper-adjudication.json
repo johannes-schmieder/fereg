@@ -1,0 +1,5 @@
+{
+  "failure": "/usr/bin/time -l returns 1 after the Stata child exits because sandbox blocks sysctl kern.clockrate.",
+  "scope": "All six Stata logs report PERFORMANCE_COMPLETE rc=0 and metadata rc=0; wrapper status is preserved as failure.",
+  "correction": "Run the same candidate and registered inputs directly without the optional OS RSS wrapper. Do not claim per-fit RSS from this attempt."
+}

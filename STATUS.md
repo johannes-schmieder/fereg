@@ -9,6 +9,46 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## Exact categorical separation repair — 2026-09-27
+
+Candidate04 is adopted for local development under [ADR 0230](docs/adr/0230-exact-coefficient-certificates-for-ppml-separation.md).
+The [source-bound report](benchmarks/reports/development/separation-coefficient-proof-local-2026-09-27/README.md)
+binds 211 computational inputs and universal Mac plugin SHA-256
+`571eccb27a6cafb3239b163a37344ffb3e0e917d56b2b7d53c5a73762f250a50`.
+An exact integer FE coefficient product now supplies independently replayed
+model-span membership for graph-proposed IR deletions. Arbitrary directions and
+remaining full-model IR still use certified current-weight projections. The
+terminal chain and all publication/final-Hessian checks remain mandatory.
+This materially changes the verification organization rejected in ADR 0229;
+no scientific tolerance or sample policy is relaxed.
+
+Both original N61440 sparse-zero failures now pass locally: two FE drops 631
+separated plus three singleton rows and retains 60806; three FE drops 580 plus
+one singleton and retains 60859. Every retained observation matches an independent
+integer-potential proof and singleton/zero-level closure. Four predeclared fresh
+cases pass. The public explicit Poisson/Hessian/sandwich oracle passes 12 fits
+over weights, fast/low, T1/T4, clustered/robust inference and saved outputs.
+Categorical PPML, three-FE OLS and multipartition PPML slope controls pass.
+Forty separation and 54 memory tests, Mac binary audit and actual-plugin
+ABI checks pass. No Linux confirmation or full qualification for this new source
+yet. Existing constrained/nonretaining-CG and static allocation-drift issues remain.
+
+The detector has an explicit generation-zero workspace admission. Graph/replay
+and retained CG use sequential storage, separate from publication IRLS; low
+mode charges its full projection banks. Optional refusal keeps the previous
+route. Diagnostic original-fit process peaks are approximately 122/175 MiB;
+there is no paired memory-reduction or fixest timing claim. Failed wrapper and
+unit-test setup attempts remain preserved in the report.
+
+SCC job **7760466** continues the unchanged Schwarz-only 23-configuration,
+126-fit rotation. Local correctness work used a separate Mac; the timed SCC
+node and frozen source remain untouched. Preliminary two-seed sparse-three-FE
+PPML K10 ratios are about 0.501 of stock at T8 and 0.749 at T28; T28 is 0.179
+of baseline but 3.8–6.8% slower than candidate T8. These partial observations
+are not the campaign conclusion. Thread ceilings and the full performance
+plan remain open; collect and validate this rotation before the next routing
+change or broader sweep. No push has been performed.
+
 ## Benchmark repair implementation — 2026-09-27
 
 Johannes approved implementing the expanded performance/failure plan, including
@@ -41,10 +81,12 @@ The paired block is frozen at 23 configurations/126 fits. **7760118** was
 stopped for insufficient strict-reference limits; **7760156** then failed
 before fits because the copied launcher reused the prior output path. Both
 attempts remain preserved. A shared attempt-derived launcher passes three
-local tests and read-only SCC source/path preflight. No benchmark is running;
-**rotation03 requires the pending user approval** under the cluster skill's
-failed-retest rule. All cases/settings are in rotation02-registration.json;
-rotation03 preserves them and fixes only launching. Full 140-configuration
+local tests and read-only SCC source/path preflight. Johannes authorized
+continuing after the failure report. **rotation03 is running as job 7760466**
+on scc-wo4 (28 cores, three-hour cap); its first completed comparison passes
+baseline and stock science. The [submission receipt](benchmarks/reports/development/performance-repair-paired-scc-2026-09-27/submission.json)
+binds the unchanged candidate and corrected harness. All cases/settings are in
+rotation02-registration.json; rotation03 preserves them and fixes only launching. Full 140-configuration
 confirmation, adaptive thread ceilings and <=1.20/<=0.90 targets remain open.
 
 The bounded [sparse-zero repair experiment](benchmarks/reports/development/separation-graph-repair-local-2026-09-27/README.md)

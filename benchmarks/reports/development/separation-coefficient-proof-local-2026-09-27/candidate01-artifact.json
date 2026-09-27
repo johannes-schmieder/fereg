@@ -1,0 +1,8 @@
+{
+  "plugin_sha256": "db637d6d1f054c42ac8f6556dcf83e9499c76a83af65e5c75abe29297696cf7f",
+  "core_tests": 39,
+  "memory_tests": 54,
+  "target_directory": "target/separation-coefficient-proof-cargo",
+  "build_audit": "pass",
+  "actual_plugin_abi": "pass"
+}

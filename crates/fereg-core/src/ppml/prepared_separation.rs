@@ -15,13 +15,14 @@ use std::cell::Cell;
 
 use crate::data::{DenseMatrix, DropReason, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{BorrowedMapWeights, LevelIndex};
+use crate::fe::{BorrowedMapWeights, FeSolverKind, LevelIndex};
 use crate::ols::{
     fit_prepared_weighted_linear_projection_once, LinearSolveFrame, PreparedOlsBreadWeightScale,
     PreparedOlsFitConfig,
 };
 use crate::ppml_separation::{
-    model_simplex_interruptible, separation_generation_capacity, separation_method_count, simplex_workspace_peak_cells,
+    model_simplex_interruptible, separation_generation_capacity, separation_method_count,
+    simplex_workspace_peak_cells,
 };
 use crate::ppml_separation::{
     DetectionProposal, ExactFeLevelIdentity, ExactFeSeparationCertificate, MethodStatus,
@@ -29,6 +30,7 @@ use crate::ppml_separation::{
     SeparationConfig, SeparationDropReason, SeparationMethod, SeparationMethodReport,
     SeparationNote, SeparationReport,
 };
+use crate::prepared_fit_view::PreparedOlsFitView;
 
 use super::memory::{begin_phase_allocation, end_phase_allocation};
 use super::prepared_estimator::PpmlInterruptPoint;
@@ -79,6 +81,7 @@ struct PreparedNumericalProposal {
     exact_fe_certificate: Option<ExactFeSeparationCertificate>,
     /// Observation-space direction on this proposal's compact generation.
     direction: Option<Vec<f64>>,
+    exact_intercept_span: Option<graph::ExactInterceptSpan>,
     note: SeparationNote,
 }
 
@@ -346,6 +349,7 @@ pub(crate) fn detect_prepared_ppml_separation(
         config,
         phase_allocation_probe,
         linear,
+        ppml.absorb.solver_memory_budget.is_some(),
         &mut interrupt,
         |generation, _| {
             let fitted_start = match &supplied_start {
@@ -390,7 +394,7 @@ pub(crate) fn fit_with_prepared_ppml_separation<T, E, F>(
     ppml: PpmlConfig,
     config: SeparationConfig,
     phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
-    execution: PreparedPpmlSeparationExecution,
+    mut execution: PreparedPpmlSeparationExecution,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     mut explore_generation: E,
     mut fit_generation: F,
@@ -412,12 +416,15 @@ where
     validate_config(config)?;
     let (coordinator, initial_preparation_elapsed, initial_preparation_peak) =
         prepare_initial_generation(owner, phase_allocation_probe)?;
+    let (projection_ppml, projection_linear) =
+        admit_detector_projection(coordinator.view().prepared, ppml, config, &mut execution)?;
     let (mut outcome, fit) = coordinate_prepared_ppml_separation(
         coordinator,
-        ppml,
+        projection_ppml,
         config,
         phase_allocation_probe,
-        execution.linear,
+        projection_linear,
+        execution.preliminary_plan.separation_projection_bytes > 0,
         interrupt,
         |generation, interrupt| {
             explore_generation(
@@ -441,12 +448,97 @@ where
     Ok((outcome, fit))
 }
 
+/// Graph proposals and retained CG need extra detector workspace, not an IRLS cache. Resolve
+/// its complete bound on generation zero; later generations only shrink.
+fn admit_detector_projection(
+    generation: &PreparedPpmlModelGeneration,
+    mut ppml: PpmlConfig,
+    config: SeparationConfig,
+    execution: &mut PreparedPpmlSeparationExecution,
+) -> Result<(PpmlConfig, PreparedOlsFitConfig)> {
+    let mut linear = execution.linear;
+    if ppml.absorb.solver != FeSolverKind::Map
+        || !config.methods.iterated_rectifier
+        || !generation.outcome().contains(&0.0)
+    {
+        return Ok((ppml, linear));
+    }
+    let Some(design) = generation.fit_view().fit_borrowed_intercept_map_design()? else {
+        return Ok((ppml, linear));
+    };
+    let Some(graph_bytes) = graph::workspace_bytes(&design)? else {
+        return Ok((ppml, linear));
+    };
+    let levels = fallible_collect(
+        design.effects().iter().map(|e| e.n_levels()),
+        design.effects().len(),
+        "unable to reserve separation solver level counts",
+    )?;
+    let rhs = generation
+        .model()
+        .columns
+        .len()
+        .checked_add(1)
+        .ok_or_else(|| allocation("separation projection width overflows"))?;
+    let estimate = crate::memory::estimate_fe_solver_memory(
+        generation.original_rows().len(),
+        rhs,
+        &levels,
+        linear.execution.threads.resolved(),
+        linear.absorb.lsmr.local_size,
+    )?;
+    // CG's retained products preserve its FE coefficient representation. Charge
+    // return/conversion overlap and full raw/within banks even for Low's otherwise
+    // streamed finite solve. Graph traversal dies before any projection begins.
+    let cg_bytes = estimate
+        .coefficient_batch_bytes
+        .checked_mul(5)
+        .and_then(|n| n.checked_add(estimate.cg_bytes))
+        .and_then(|n| {
+            estimate
+                .rhs_copy_bytes
+                .checked_mul(2)
+                .and_then(|m| n.checked_add(m))
+        })
+        .and_then(|n| {
+            (generation.original_rows().len() as u128)
+                .checked_mul(16)
+                .and_then(|m| n.checked_add(m))
+        })
+        .ok_or_else(|| allocation("separation projection memory overflows"))?;
+    let bytes = graph_bytes.max(cg_bytes);
+    let base = execution.preliminary_plan.selected_bytes();
+    if !execution
+        .preliminary_plan
+        .admit_separation_projection(bytes)
+    {
+        return Ok((ppml, linear));
+    }
+    linear.absorb.solver = FeSolverKind::Cg;
+    linear.absorb.retain_coefficients = true;
+    linear.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+        execution_bytes: base,
+        usable_bytes: base
+            .checked_add(bytes)
+            .ok_or_else(|| allocation("separation projection budget overflows"))?,
+    });
+    ppml.absorb = linear.absorb;
+    Ok((ppml, linear))
+}
+
+#[path = "prepared_separation_graph.rs"]
+mod graph;
+
 /// A separate scope makes success and failed initial construction observable;
 /// later rebuilds remain nested in the requesting separation phase.
 fn prepare_initial_generation(
     owner: PreparedPpmlModelOwner,
     phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
-) -> Result<(PreparedSeparationCoordinator<PreparedPpmlModelOwner>, Duration, Option<u64>)> {
+) -> Result<(
+    PreparedSeparationCoordinator<PreparedPpmlModelOwner>,
+    Duration,
+    Option<u64>,
+)> {
     let started = Instant::now();
     begin_phase_allocation(phase_allocation_probe, PpmlPhase::Preparation);
     let coordinator = PreparedSeparationCoordinator::new(owner);
@@ -466,6 +558,7 @@ fn coordinate_prepared_ppml_separation<T, E, F>(
     config: SeparationConfig,
     phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
     linear: PreparedOlsFitConfig,
+    graph_admitted: bool,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     mut explore_generation: E,
     mut fit_generation: F,
@@ -796,6 +889,7 @@ where
                     ppml,
                     config,
                     linear,
+                    graph_admitted,
                     interrupt,
                     None,
                 )?;
@@ -825,15 +919,13 @@ where
                 let started = Instant::now();
                 let proposal = {
                     let view = coordinator.view();
-                    bind_numerical_proposal(
+                    prepared_bound_iterated_rectifier(
                         view.prepared,
-                        prepared_iterated_rectifier(
-                            view.prepared,
-                            ppml,
-                            config,
-                            linear,
-                            interrupt,
-                        )?,
+                        ppml,
+                        config,
+                        linear,
+                        graph_admitted,
+                        interrupt,
                     )?
                 };
                 fail_closed_comprehensive(&proposal)?;
@@ -862,6 +954,7 @@ where
                     ppml,
                     config,
                     linear,
+                    graph_admitted,
                     interrupt,
                     None,
                 )?;
@@ -963,6 +1056,7 @@ where
                     ppml,
                     config,
                     linear,
+                    graph_admitted,
                     interrupt,
                     Some(&exploration),
                 )?;
@@ -1119,13 +1213,14 @@ fn commit_numerical(
         status,
         exact_fe_certificate,
         direction,
+        exact_intercept_span,
         note,
         ..
     } = proposal;
     // The direction has already passed the independent span/sign
     // certificate. It is not needed to construct or publish the atomic
     // deletion transaction, so release its N-vector before cascade/rebuild.
-    drop(direction);
+    drop((direction, exact_intercept_span));
     let cascade = {
         let view = coordinator.view();
         complete_cascade(view.prepared, &primary_rows, config)?
@@ -1222,6 +1317,7 @@ fn bind_numerical_proposal(
         certificate: proposal.certificate,
         exact_fe_certificate: proposal.exact_fe_certificate,
         direction: proposal.direction,
+        exact_intercept_span: None,
         note: proposal.note,
     })
 }
@@ -1318,17 +1414,22 @@ fn singleton_fixed_point_owned(
     generation: &PreparedPpmlModelGeneration,
     active: Vec<bool>,
 ) -> Result<Vec<usize>> {
-    let categorical = generation.prepared().categorical().ok_or_else(|| {
-        invalid_argument("prepared singleton model has no categorical topology")
-    })?;
+    let categorical = generation
+        .prepared()
+        .categorical()
+        .ok_or_else(|| invalid_argument("prepared singleton model has no categorical topology"))?;
     let finalized = categorical.fe_topology();
     let views = fallible_collect(
-        finalized.compacted_sources().iter().map(|source| source.view()),
+        finalized
+            .compacted_sources()
+            .iter()
+            .map(|source| source.view()),
         finalized.compacted_sources().len(),
         "unable to reserve prepared singleton categorical views",
     )?;
     let mut sources = Vec::new();
-    sources.try_reserve_exact(topology.sources.len())
+    sources
+        .try_reserve_exact(topology.sources.len())
         .map_err(|_| allocation("unable to reserve prepared singleton source views"))?;
     for (source, members) in finalized.registry().sources().iter().zip(&topology.sources) {
         bounded_push(
@@ -1880,6 +1981,70 @@ fn prepared_simplex_proposal(
     )
 }
 
+/// A coefficient-backed submodel proposal is independently reconstructed at
+/// acceptance. No graph result can certify absence of full-model separation.
+fn prepared_bound_iterated_rectifier(
+    generation: &PreparedPpmlModelGeneration,
+    ppml: PpmlConfig,
+    config: SeparationConfig,
+    linear: PreparedOlsFitConfig,
+    graph_admitted: bool,
+    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
+) -> Result<PreparedNumericalProposal> {
+    if graph_admitted && generation.outcome().contains(&0.0) {
+        if let Some(budget) = linear.absorb.solver_memory_budget {
+            if let Some(design) = generation.fit_view().fit_borrowed_intercept_map_design()? {
+                if graph::workspace_bytes(&design)?.is_some_and(|bytes| budget.fits(bytes)) {
+                    if let Some(candidate) =
+                        graph::direction(&design, generation.outcome(), &mut || {
+                            interrupt(PpmlInterruptPoint::SeparationIrIteration)
+                        })?
+                    {
+                        let scale = infinity_norm(&candidate.direction);
+                        let dropped =
+                            fallible_collect(
+                                candidate.direction.iter().enumerate().filter_map(
+                                    |(row, &value)| {
+                                        (generation.outcome()[row] == 0.0
+                                            && value < -config.tolerance * scale)
+                                            .then_some(row)
+                                    },
+                                ),
+                                candidate.direction.len(),
+                                "unable to reserve graph separation proposal",
+                            )?;
+                        let certificate = detector_direction_certificate(
+                            generation.outcome(),
+                            &candidate.direction,
+                            &dropped,
+                            config.certificate_tolerance,
+                        )?;
+                        let mut proposal = bind_numerical_proposal(
+                            generation,
+                            DetectionProposal {
+                                method: SeparationMethod::IteratedRectifier,
+                                dropped,
+                                iterations: 0,
+                                status: MethodStatus::Certified,
+                                certificate: Some(certificate),
+                                exact_fe_certificate: None,
+                                direction: Some(candidate.direction),
+                                note: "prepared iterated-rectifier candidate direction".into(),
+                            },
+                        )?;
+                        proposal.exact_intercept_span = Some(candidate.span);
+                        return Ok(proposal);
+                    }
+                }
+            }
+        }
+    }
+    bind_numerical_proposal(
+        generation,
+        prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?,
+    )
+}
+
 fn prepared_iterated_rectifier(
     generation: &PreparedPpmlModelGeneration,
     ppml: PpmlConfig,
@@ -2158,6 +2323,12 @@ fn prepared_project(
     }
     let weight_sum = compensated_sum(weights.iter().copied())?;
     let divisor = weights.iter().copied().fold(0.0_f64, f64::max);
+    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        super::categorical_lsmr::emit_solver_trace_line(&format!(
+            "FEREG_SOLVER_TRACE|phase=separation_projection|generation={}|rows={}|solver={:?}|minimum_weight={:.17e}",
+            generation.generation(), response.len(), fit_config.absorb.solver,
+            weights.iter().copied().fold(f64::INFINITY, f64::min)));
+    }
     let frame = LinearSolveFrame::from_parts(
         response,
         BorrowedMapWeights::Provided(weights),
@@ -2227,6 +2398,7 @@ fn replay_numerical_no_drop(
     ppml: PpmlConfig,
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
+    graph_admitted: bool,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     mu_exploration: Option<&PreparedPpmlMuExploration>,
 ) -> Result<Option<SeparationCertificate>> {
@@ -2250,37 +2422,50 @@ fn replay_numerical_no_drop(
             "terminal numerical detector did not produce a replayable no-drop status",
         ));
     }
-    let replayed = bind_numerical_proposal(
-        generation,
-        match observed.method {
-            SeparationMethod::Simplex => prepared_simplex_proposal(generation, config, interrupt)?,
-            SeparationMethod::IteratedRectifier => {
-                prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?
-            }
-            SeparationMethod::Mu => {
-                let exploration = mu_exploration.ok_or_else(|| {
-                    FeregError::new(
+    let replayed = if observed.method == SeparationMethod::IteratedRectifier {
+        prepared_bound_iterated_rectifier(
+            generation,
+            ppml,
+            config,
+            linear,
+            graph_admitted,
+            interrupt,
+        )?
+    } else {
+        bind_numerical_proposal(
+            generation,
+            match observed.method {
+                SeparationMethod::Simplex => {
+                    prepared_simplex_proposal(generation, config, interrupt)?
+                }
+                SeparationMethod::IteratedRectifier => {
+                    prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?
+                }
+                SeparationMethod::Mu => {
+                    let exploration = mu_exploration.ok_or_else(|| {
+                        FeregError::new(
+                            ErrorCode::Internal,
+                            "prepared Mu certification replay omitted its fitted generation state",
+                        )
+                    })?;
+                    prepared_mu_from_mean(
+                        generation,
+                        ppml,
+                        config,
+                        linear,
+                        exploration.mean(),
+                        exploration.certificate().accepted_iterations,
+                    )?
+                }
+                SeparationMethod::Singletons | SeparationMethod::FixedEffects => {
+                    return Err(FeregError::new(
                         ErrorCode::Internal,
-                        "prepared Mu certification replay omitted its fitted generation state",
-                    )
-                })?;
-                prepared_mu_from_mean(
-                    generation,
-                    ppml,
-                    config,
-                    linear,
-                    exploration.mean(),
-                    exploration.certificate().accepted_iterations,
-                )?
-            }
-            SeparationMethod::Singletons | SeparationMethod::FixedEffects => {
-                return Err(FeregError::new(
-                    ErrorCode::Internal,
-                    "exact separation method entered the numerical replay path",
-                ));
-            }
-        },
-    )?;
+                        "exact separation method entered the numerical replay path",
+                    ));
+                }
+            },
+        )?
+    };
     if replayed.method != observed.method
         || replayed.status != observed.status
         || replayed.iterations != observed.iterations
@@ -2362,6 +2547,13 @@ fn validate_prepared_numerical_metadata(
     }
 
     let has_drops = !proposal.dropped_original_rows.is_empty();
+    if proposal.exact_intercept_span.is_some()
+        && (!has_drops || proposal.method != SeparationMethod::IteratedRectifier)
+    {
+        return Err(invalid_argument(
+            "exact separation proof requires an IR deletion proposal",
+        ));
+    }
     if has_drops {
         if proposal.status != MethodStatus::Certified || proposal.direction.is_none() {
             return Err(FeregError::new(
@@ -2552,13 +2744,24 @@ fn validate_numerical_proposal(
             "prepared numerical proposal certificate is inconsistent with its direction and stable rows",
         ));
     }
-    let unit = fallible_filled(
-        direction.len(),
-        1.0,
-        "unable to reserve prepared separation certificate weights",
-    )?;
-    let projection = prepared_project(generation, direction, &unit, ppml, config, linear)?;
-    let span_residual_relative = euclidean_norm(&projection.residual) / euclidean_norm(direction);
+    let span_residual_relative = if let Some(proof) = &proposal.exact_intercept_span {
+        let design = generation
+            .fit_view()
+            .fit_borrowed_intercept_map_design()?
+            .ok_or_else(|| {
+                invalid_argument("exact separation proof requires categorical intercepts")
+            })?;
+        proof.verify(&design, direction)?;
+        0.0
+    } else {
+        let unit = fallible_filled(
+            direction.len(),
+            1.0,
+            "unable to reserve prepared separation certificate weights",
+        )?;
+        let projection = prepared_project(generation, direction, &unit, ppml, config, linear)?;
+        euclidean_norm(&projection.residual) / euclidean_norm(direction)
+    };
     let interior_zero_relative = generation
         .outcome()
         .iter()
@@ -3384,31 +3587,72 @@ mod tests {
     #[test]
     fn scheduled_seals_keep_byte_identity_and_reject_mutated_bindings() {
         let n = 8193;
-        let rows: Vec<_> = (0..n).map(|i| 5+3*i).collect();
-        let y: Vec<_> = (0..n).map(|i| [0.,0.25,2.,1e100][i%4]).collect();
+        let rows: Vec<_> = (0..n).map(|i| 5 + 3 * i).collect();
+        let y: Vec<_> = (0..n).map(|i| [0., 0.25, 2., 1e100][i % 4]).collect();
         let report = SeparationReport {
-            candidate_observations:n, active:vec![true;n], retained_observations:(0..n).collect(),
-            dropped_observations:vec![],drop_reasons:vec![None;n], singleton_count:0,separated_count:0,
-            generations:0,generation_hashes:vec![candidate_ledger_hash_candidate_axis(&rows,&vec![true;n],&vec![None;n]).unwrap()],methods:vec![],
+            candidate_observations: n,
+            active: vec![true; n],
+            retained_observations: (0..n).collect(),
+            dropped_observations: vec![],
+            drop_reasons: vec![None; n],
+            singleton_count: 0,
+            separated_count: 0,
+            generations: 0,
+            generation_hashes: vec![candidate_ledger_hash_candidate_axis(
+                &rows,
+                &vec![true; n],
+                &vec![None; n],
+            )
+            .unwrap()],
+            methods: vec![],
         };
-        let config = SeparationConfig { drop_singletons:false,
-            methods:SeparationMethods { fixed_effects:false,simplex:false,iterated_rectifier:false,mu:false },
-            ..SeparationConfig::default() };
-        let scalar=certify_disabled_separation_for_test(config,&report,&rows,&y).unwrap();
-        for threads in [1,2,4,8] {
-            crate::parallel::ThreadTeam::new(crate::options::ThreadConfig::from_requested(threads,true).unwrap()).install(|| {
-                let actual=certify_disabled_separation_for_test(config,&report,&rows,&y).unwrap();
-                assert_eq!(actual,scalar);
-                actual.validate(config,&report,&rows,&y).unwrap();
-                let mut changed_rows=rows.clone();changed_rows[4000]+=1;
-                let mut changed_y=y.clone();changed_y[4000]=f64::NAN;
-                let mut changed_report=report.clone();changed_report.active[4000]=false;
-                for (r,o,t) in [(&changed_rows,&y,&report),(&rows,&changed_y,&report),(&rows,&y,&changed_report),(&changed_rows,&changed_y,&changed_report)] {
-                    let expected = std::thread::scope(|scope| scope.spawn(|| scalar.validate(config,t,r,o)).join().unwrap()).unwrap_err();
-                    let found=actual.validate(config,t,r,o).unwrap_err();
-                    assert_eq!((found.code,found.message),(expected.code,expected.message));
+        let config = SeparationConfig {
+            drop_singletons: false,
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: false,
+                iterated_rectifier: false,
+                mu: false,
+            },
+            ..SeparationConfig::default()
+        };
+        let scalar = certify_disabled_separation_for_test(config, &report, &rows, &y).unwrap();
+        for threads in [1, 2, 4, 8] {
+            crate::parallel::ThreadTeam::new(
+                crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
+            )
+            .install(|| {
+                let actual =
+                    certify_disabled_separation_for_test(config, &report, &rows, &y).unwrap();
+                assert_eq!(actual, scalar);
+                actual.validate(config, &report, &rows, &y).unwrap();
+                let mut changed_rows = rows.clone();
+                changed_rows[4000] += 1;
+                let mut changed_y = y.clone();
+                changed_y[4000] = f64::NAN;
+                let mut changed_report = report.clone();
+                changed_report.active[4000] = false;
+                for (r, o, t) in [
+                    (&changed_rows, &y, &report),
+                    (&rows, &changed_y, &report),
+                    (&rows, &y, &changed_report),
+                    (&changed_rows, &changed_y, &changed_report),
+                ] {
+                    let expected = std::thread::scope(|scope| {
+                        scope
+                            .spawn(|| scalar.validate(config, t, r, o))
+                            .join()
+                            .unwrap()
+                    })
+                    .unwrap_err();
+                    let found = actual.validate(config, t, r, o).unwrap_err();
+                    assert_eq!(
+                        (found.code, found.message),
+                        (expected.code, expected.message)
+                    );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -3622,6 +3866,7 @@ mod tests {
             },
             Some(mu_scope_probe),
             linear,
+            false,
             &mut interrupt,
             |generation, _| {
                 assert!(
@@ -3783,6 +4028,7 @@ mod tests {
             certificate: Some(claimed),
             exact_fe_certificate: None,
             direction: Some(vec![-1.0; generation.original_rows().len()]),
+            exact_intercept_span: None,
             note: "adversarial proposal".into(),
         };
 
@@ -4938,6 +5184,153 @@ mod tests {
         )
         .expect("rank-certified final generation");
         assert_eq!(fit.finite_rank(), 0);
+    }
+
+    #[test]
+    fn admitted_graph_direction_passes_full_span_and_terminal_ledger_checks() {
+        let (mut request, clusters, mut loaded, mut uses) = fixture();
+        let mut second = request.absorbed_terms[0].clone();
+        second.id = AbsorbTermId::new(2).unwrap();
+        second.categorical_sources = vec![SourceId::new(3).unwrap()];
+        second.label = "h".into();
+        request.absorbed_terms.push(second);
+        request.keep_singletons = true;
+        loaded.outcome = column(&[1., 1., 1., 1., 0., 0.]);
+        loaded.numeric_sources[0].1 = column(&[1., -1., 1., -1., 0., 0.]);
+        loaded.numeric_sources[1].1 = column(&[1., 1., 2., 2., 1., 1.]);
+        loaded.numeric_sources[2].1 = column(&[1., 1., 2., 2., 2., 2.]);
+        uses[2].fixed_effect = true;
+        let make_owner = || {
+            PreparedPpmlModelOwner::new(
+                request.clone(),
+                clusters.clone(),
+                loaded.clone(),
+                prepare_numeric(&loaded, &uses),
+            )
+            .unwrap()
+        };
+        let config = SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: true,
+                simplex: false,
+                iterated_rectifier: true,
+                mu: false,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        };
+        let mut ppml = PpmlConfig::default();
+        ppml.absorb.solver = FeSolverKind::Map;
+        ppml.absorb.map.max_iterations = 128;
+        ppml.absorb.lsmr.threads = crate::ThreadConfig::from_requested(1, true).unwrap();
+        let original = detect_prepared_ppml_separation(make_owner(), ppml, config, None, None);
+        assert!(original
+            .err()
+            .unwrap()
+            .message
+            .contains("borrowed MAP exhausted"));
+        ppml.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: 1_000_000,
+        });
+        let coordinator = PreparedSeparationCoordinator::new(make_owner()).unwrap();
+        let generation = coordinator.view().prepared;
+        let linear = PreparedOlsFitConfig {
+            absorb: ppml.absorb,
+            fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+            ..PreparedOlsFitConfig::default()
+        };
+        // A generic solver budget is not authority to allocate detector state.
+        let unadmitted =
+            prepared_bound_iterated_rectifier(generation, ppml, config, linear, false, &mut |_| {
+                Ok(())
+            });
+        let error = unadmitted.err().unwrap();
+        assert!(error.message.contains("borrowed MAP exhausted"), "{error}");
+        let proposal =
+            prepared_bound_iterated_rectifier(generation, ppml, config, linear, true, &mut |_| {
+                Ok(())
+            })
+            .unwrap();
+        assert!(proposal.exact_intercept_span.is_some());
+        let certified =
+            validate_numerical_proposal(generation, proposal.clone(), ppml, config, linear)
+                .unwrap();
+        assert_eq!(certified.certificate.span_residual_relative, 0.0);
+        let mut malformed = proposal;
+        malformed.dropped_original_rows.clear();
+        malformed.direction = None;
+        malformed.status = MethodStatus::NoSeparation;
+        assert!(validate_prepared_numerical_metadata(generation, &malformed, config).is_err());
+        let result =
+            detect_prepared_ppml_separation(make_owner(), ppml, config, None, None).unwrap();
+        assert_eq!(result.prepared.original_rows(), &[0, 1, 2, 3]);
+        assert_eq!(result.separation.separated_count, 2);
+        assert!(result
+            .separation
+            .methods
+            .iter()
+            .any(|r| r.method == SeparationMethod::IteratedRectifier
+                && r.iterations == 0
+                && r.status == MethodStatus::Certified));
+    }
+
+    #[test]
+    fn admitted_projection_still_detects_finite_separation_outside_graph_submodel() {
+        for opposed in [false, true] {
+            let (mut request, clusters, mut loaded, mut uses) = fixture();
+            let mut second = request.absorbed_terms[0].clone();
+            second.id = AbsorbTermId::new(2).unwrap();
+            second.categorical_sources = vec![SourceId::new(3).unwrap()];
+            second.label = "h".into();
+            request.absorbed_terms.push(second);
+            request.keep_singletons = true;
+            loaded.outcome = column(&[1., 1., 1., 1., 0., 0.]);
+            loaded.numeric_sources[0].1 =
+                column(&[0., 0., 0., 0., 1., if opposed { -1. } else { 1. }]);
+            loaded.numeric_sources[1].1 = column(&[1., 1., 2., 2., 1., 2.]);
+            loaded.numeric_sources[2].1 = column(&[1., 2., 1., 2., 1., 2.]);
+            uses[2].fixed_effect = true;
+            let owner = PreparedPpmlModelOwner::new(
+                request,
+                clusters,
+                loaded.clone(),
+                prepare_numeric(&loaded, &uses),
+            )
+            .unwrap();
+            let config = SeparationConfig {
+                methods: SeparationMethods {
+                    fixed_effects: false,
+                    simplex: false,
+                    iterated_rectifier: true,
+                    mu: false,
+                },
+                drop_singletons: false,
+                ..SeparationConfig::default()
+            };
+            let mut ppml = PpmlConfig::default();
+            ppml.absorb.solver = FeSolverKind::Cg;
+            ppml.absorb.retain_coefficients = true;
+            ppml.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+                execution_bytes: 0,
+                usable_bytes: 1_000_000,
+            });
+            // Positive rows span the entire two-intercept submodel. Only x can
+            // separate the zeros; opposite signs rule out that final direction.
+            let outcome = detect_prepared_ppml_separation(owner, ppml, config, None, None).unwrap();
+            assert_eq!(
+                outcome.separation.separated_count,
+                if opposed { 0 } else { 2 }
+            );
+            assert_eq!(
+                outcome.prepared.original_rows(),
+                if opposed {
+                    &[0, 1, 2, 3, 4, 5][..]
+                } else {
+                    &[0, 1, 2, 3][..]
+                }
+            );
+        }
     }
 
     fn fixture() -> (

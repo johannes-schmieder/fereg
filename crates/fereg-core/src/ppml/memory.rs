@@ -10,9 +10,9 @@
 use std::mem::size_of;
 use std::time::{Duration, Instant};
 
-use super::family::{means_from_eta, objective_partial_cells, PreparedPoissonInputs};
 #[cfg(test)]
 use super::family::{fill_poisson_working_state, poisson_objective_from_eta};
+use super::family::{means_from_eta, objective_partial_cells, PreparedPoissonInputs};
 use super::{
     PoissonBounds, PoissonObjective, PpmlCoefficientStatus, PpmlConfig, PpmlIterationReport,
 };
@@ -697,6 +697,8 @@ pub struct PpmlMemoryPlan {
     /// Retained workspace for the selected PPML-specific ordinary-frame
     /// engine. MAP is already included in the base route inventory.
     pub solver_workspace_bytes: u128,
+    /// Separately admitted graph/CG detector state, released before IRLS.
+    pub(crate) separation_projection_bytes: u128,
     /// Optional generic MAP projection bank, retained from preparation through
     /// the final Hessian solve and released with the linear session.
     pub reusable_projection_bytes: u128,
@@ -749,12 +751,19 @@ impl PpmlMemoryPlan {
 
     #[must_use]
     pub const fn selected_bytes(self) -> u128 {
-        self.selected_inventory()
-            .peak_bytes
-            .saturating_add(self.solver_workspace_bytes)
+        let ordinary = self
+            .solver_workspace_bytes
             .saturating_add(self.reusable_projection_bytes)
             .saturating_add(self.reusable_certificate_bytes)
-            .saturating_add(self.reusable_slope_bytes)
+            .saturating_add(self.reusable_slope_bytes);
+        let separate = self.separation_projection_bytes;
+        self.selected_inventory()
+            .peak_bytes
+            .saturating_add(if ordinary > separate {
+                ordinary
+            } else {
+                separate
+            })
     }
 
     /// Optional storage must never make an otherwise affordable fit fail.
@@ -812,6 +821,17 @@ impl PpmlMemoryPlan {
         true
     }
 
+    pub(crate) fn admit_separation_projection(&mut self, bytes: u128) -> bool {
+        let Some(peak) = self.selected_inventory().peak_bytes.checked_add(bytes) else {
+            return false;
+        };
+        if self.usable_bytes.is_some_and(|usable| peak > usable) {
+            return false;
+        }
+        self.separation_projection_bytes = bytes;
+        true
+    }
+
     pub(crate) fn with_solver_workspace(mut self, bytes: u128) -> Result<Self> {
         let peak = self
             .selected_inventory()
@@ -865,18 +885,16 @@ impl PpmlMemoryPlan {
                 .saturating_add(self.solver_workspace_bytes)
                 .saturating_add(self.reusable_projection_bytes)
                 .saturating_add(self.reusable_certificate_bytes)
-            .saturating_add(self.reusable_slope_bytes),
+                .saturating_add(self.reusable_slope_bytes),
             PpmlPhase::Preparation => base
                 .saturating_add(self.reusable_projection_bytes)
                 .saturating_add(self.reusable_certificate_bytes)
-            .saturating_add(self.reusable_slope_bytes),
+                .saturating_add(self.reusable_slope_bytes),
             PpmlPhase::SeparationFe
             | PpmlPhase::SeparationSimplex
             | PpmlPhase::SeparationIr
-            | PpmlPhase::SeparationMu
-            | PpmlPhase::Inference
-            | PpmlPhase::FeRecovery
-            | PpmlPhase::Publication => base,
+            | PpmlPhase::SeparationMu => base.saturating_add(self.separation_projection_bytes),
+            PpmlPhase::Inference | PpmlPhase::FeRecovery | PpmlPhase::Publication => base,
         }
     }
 }
@@ -981,6 +999,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
         safety_headroom_bytes,
         usable_bytes,
         solver_workspace_bytes: 0,
+        separation_projection_bytes: 0,
         reusable_projection_bytes: 0,
         reusable_certificate_bytes: 0,
         reusable_slope_bytes: 0,
@@ -3465,10 +3484,11 @@ impl PpmlMemoryTelemetry {
         &mut self,
         observation: PpmlSteadyStateAllocationObservation,
     ) -> Result<()> {
-        if self
-            .linear_route
-            .is_some_and(|route| !self.plan.audit_route_matches_final(observation.linear_route, route))
-        {
+        if self.linear_route.is_some_and(|route| {
+            !self
+                .plan
+                .audit_route_matches_final(observation.linear_route, route)
+        }) {
             return Err(FeregError::new(
                 ErrorCode::Internal,
                 "PPML steady-state allocation route differs from the final linear route",
@@ -3506,7 +3526,8 @@ impl PpmlMemoryTelemetry {
         )?
         .with_final_dimensions(self.plan.dimensions)?
         .with_solver_workspace(self.plan.solver_workspace_bytes)?;
-        if !reconstructed.admit_reusable_projection(self.plan.reusable_projection_bytes)
+        if !reconstructed.admit_separation_projection(self.plan.separation_projection_bytes)
+            || !reconstructed.admit_reusable_projection(self.plan.reusable_projection_bytes)
             || !reconstructed.admit_reusable_certificate(self.plan.reusable_certificate_bytes)
             || !reconstructed.admit_reusable_slope(self.plan.reusable_slope_bytes)
             || reconstructed != self.plan
@@ -3601,7 +3622,12 @@ impl PpmlMemoryTelemetry {
                 .dimensions
                 .observations
                 .checked_mul(ITERATION_VECTOR_COUNT as usize)
-                .and_then(|n| n.checked_add(objective_partial_cells(self.plan.dimensions.observations, self.plan.dimensions.threads)))
+                .and_then(|n| {
+                    n.checked_add(objective_partial_cells(
+                        self.plan.dimensions.observations,
+                        self.plan.dimensions.threads,
+                    ))
+                })
                 .ok_or_else(|| allocation("PPML workspace observation capacity overflows"))?;
             let minimum_coefficient_capacity = self
                 .plan
@@ -5264,6 +5290,30 @@ mod tests {
         )
         .expect_err("no usable memory");
         assert_eq!(error.code, ErrorCode::Allocation);
+    }
+
+    #[test]
+    fn detector_graph_admission_and_irls_workspaces_have_separate_lifetimes() {
+        let mut plan = plan_ppml_memory(dimensions(), PpmlMemoryConfig::default()).unwrap();
+        let base = plan.selected_bytes();
+        plan.usable_bytes = Some(base + 4096);
+        assert!(plan.admit_separation_projection(4096));
+        assert_eq!(plan.selected_bytes(), base + 4096);
+        let old = plan;
+        assert!(!plan.admit_separation_projection(4097));
+        assert!(!plan.admit_separation_projection(u128::MAX));
+        assert_eq!(plan, old);
+        plan = plan.with_solver_workspace(4096).unwrap();
+        assert_eq!(plan.selected_bytes(), base + 4096);
+        assert!(plan.with_solver_workspace(4097).is_err());
+        assert_eq!(
+            plan.modeled_phase_peak_bytes(PpmlPhase::SeparationIr),
+            plan.selected_inventory().separation_peak_bytes + 4096
+        );
+        assert_eq!(
+            plan.modeled_phase_peak_bytes(PpmlPhase::StrictFinalSolve),
+            plan.selected_inventory().strict_final_peak_bytes + 4096
+        );
     }
 
     #[test]

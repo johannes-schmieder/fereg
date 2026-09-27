@@ -98,6 +98,17 @@ This tighter conservative admission bound can select a faster solver with
 greater actual memory use than the previous fallback; it does not reduce that
 solver's physical allocation or change the safety margin.
 
+Categorical multi-FE PPML separation can separately admit an exact graph
+coefficient proof and retained-product CG under
+[ADR 0230](adr/0230-exact-coefficient-certificates-for-ppml-separation.md).
+The complete detector bound is charged on generation zero and carried through
+smaller generations. Graph construction/replay and numerical projection use
+sequential storage; both die before publication IRLS. The plan charges the
+maximum of detector and ordinary optional workspace, validates both authorities,
+and keeps the existing route if optional admission fails. Low mode also charges
+the full matrices needed by its separation projection. This repair can increase
+actual memory and does not resolve the documented static allocation drift.
+
 Prepared direct intercept CG applies that joint check at its adapter boundary,
 including explicit CG and preselected automatic CG calls that bypass the
 LSMR/CG planner. It uses the installed team and charges five coefficient batches

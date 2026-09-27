@@ -1,0 +1,22 @@
+[
+  {
+    "case": "ppml-three_fe_sparse-n61440-k10-t4-zeros-auto",
+    "input_sha256": "dbbf2893d9f4f793e630d8605ce07c1d0b2cdc92262ca76353ee96a48276a174",
+    "exact_proven_separation_rows": 580,
+    "subsequent_singleton_or_zero_level_rows": 1,
+    "retained_rows": 60859,
+    "retained_original_ids_sha256": "16e5aaef798980430339ecf6a61d24205519ae3973fc78bae4d97861eadfe96d",
+    "native_sample_file_sha256": "dad4fc480470574883273a53ff674aaf39c9d9398e46d5b29be9cde387972c4a",
+    "exact_row_match": true
+  },
+  {
+    "case": "ppml-two_fe_sparse-n61440-k10-t4-zeros-auto",
+    "input_sha256": "95171454f4642fc920f47440e3fef5d6bc22d28d3f9edda469e5ca65b1ea34b3",
+    "exact_proven_separation_rows": 631,
+    "subsequent_singleton_or_zero_level_rows": 3,
+    "retained_rows": 60806,
+    "retained_original_ids_sha256": "ba7d6acdbfed354bfa1893be8a822c47148c84b1bd93a8a9a2af599369627462",
+    "native_sample_file_sha256": "2e3dc4aafbf592d6dbb10af5725c2dfd7e164e40aca7bcd3189cdd9ae827cd40",
+    "exact_row_match": true
+  }
+]
