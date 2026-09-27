@@ -9,6 +9,39 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## Illustrated SCC campaign report — 2026-09-27
+
+Johannes requested a PDF, Telegram delivery, interpretation, and committing and
+pushing all current work. The [eight-page PDF](output/pdf/fereg-scc-benchmark-report-2026-09-27.pdf)
+and [reproducible derivative evidence](benchmarks/reports/development/systematic-light-scc-pdf-2026-09-27/README.md)
+contain six figures and explicit coverage, failures, timing distributions,
+thread scaling, slopes and memory. All eight pages passed rendered visual review;
+the content/bounds checks and immutable PDF hash are recorded. Telegram delivery
+succeeded. The original campaign receipts and benchmark definitions are unchanged.
+No new fits or profiling were run for this report.
+
+Additional captured metadata exposes sparse three-FE PPML at N983,040/K10:
+T8 takes 24.33s versus T28 194.64s; projection medians are 16.35s versus 152.68s.
+Final reported routes and iteration counts differ, but causality remains
+unproven. All 392 extracted result hashes match the original capture inventory.
+Among 46 PPML configurations eligible against both fixest settings, median
+native/default and native/strict ratios are 1.165 and 0.819. Strict/default
+reference command medians have a median ratio of 1.405. Default-reference wins
+remain valid where their scientific comparisons pass.
+
+Priority experiments are the sparse three-FE T28 routing/concurrency problem,
+large categorical PPML projection/finite-solve work, and a principled transfer
+of the successful PPML slope organization to OLS. Sparse-zero failures and
+unresolved sparse OLS comparisons still need independent adjudication. Covariance
+micro-tuning has little support in the large measured losses. These are proposals;
+no new optimization or campaign was started.
+
+The existing PPML mean-correction work was checkpointed separately as
+**f35392aa**, including its source-bound evidence and unfinished validation below.
+Forty-three focused Python oracle/protocol/transaction/help checks passed during
+this report task. This checkpoint does not convert ongoing MC or million-row
+benchmarks into accepted results, nor claim release qualification.
+
 ## Native PPML coefficient mean correction — validation in progress
 
 Johannes approved the six-milestone implementation request. Exact and fixed-probe
@@ -128,6 +161,11 @@ the task target directory. A first observer typo exited before any test; its
 existing MC or this guard is active. The last audit has 2,900 attempts and one
 native failure; a later lightweight inventory reached 2,960.
 
+A proposed 30-minute same-thread follow-up was rejected by automatic approval
+review because recurring execution requires explicit authorization. A question
+is pending; **no automation exists for this campaign**. The already-running
+SCC job and local MC/observer continue normally.
+
 Million/ten-million-row SCC performance, the queued local timing comparison,
 full MC analysis and final documentation/evidence closeout remain outstanding. Documentation/help
 and measured local v05 evidence are present. The precision change now passes
@@ -201,7 +239,7 @@ Next development priorities from this evidence: localize sparse-zero failures
 and timeout cases with independent oracles; profile large strong/weak graph
 PPML at T28 (2–3.7x strict-reference losses); address dense OLS slopes separately.
 Adjudicate sparse OLS reference discrepancies before ranking those timings.
-No optimization or new campaign was started in this closeout. Commits remain local.
+No optimization or new campaign was started in this closeout.
 
 ## SCC preflight continuation: automatic report merge — 2026-09-26
 

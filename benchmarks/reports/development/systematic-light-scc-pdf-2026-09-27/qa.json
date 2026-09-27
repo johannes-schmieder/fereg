@@ -1,0 +1,25 @@
+{
+  "schema": "fereg-illustrated-report-qa-v1",
+  "date": "2026-09-27",
+  "pdf_path": "output/pdf/fereg-scc-benchmark-report-2026-09-27.pdf",
+  "pdf_sha256": "d8636964f14ab1934555d48f439dc630f1bb9573b8b0fe7ea917435ed596bf3a",
+  "pdf_bytes": 904435,
+  "pages": 8,
+  "figures": 6,
+  "page_text_checks": [
+    "568 / 568",
+    "1.159",
+    "1.157",
+    "0.806",
+    "194.64",
+    "152.68",
+    "32.633",
+    "2,748",
+    "58284f76a65b226e6df09a48cafa5caa68461af2"
+  ],
+  "characters_within_page_bounds": true,
+  "render_warnings": 0,
+  "visual_review": "All eight final page renders reviewed; no clipping, overlapping labels, broken tables or page-number defects found.",
+  "new_fits_run": false,
+  "source_report_unchanged": true
+}

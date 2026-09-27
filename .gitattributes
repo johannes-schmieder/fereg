@@ -2,3 +2,5 @@
 # Patch context and Stata/CSV exports can contain significant whitespace.
 benchmarks/reports/** -text -whitespace
 Veneto_Benchmark/results/** -text -whitespace
+# PDFs contain byte offsets and must not undergo text conversion or line diffs.
+*.pdf binary
