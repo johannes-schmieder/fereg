@@ -1,0 +1,16 @@
+{
+  "source_commit": "f8803410c52d909892708f012c447eb940ad179b",
+  "archive_sha256": "9cd49493447fa92f3e70e37a282499795eae548191f0607b12cdb029868609eb",
+  "computational_files_verified": 211,
+  "job_id": "7760663",
+  "run_id": "20260927-separation-proof-f8803410",
+  "profile": "ppml",
+  "additional_fixture": "tests/stata/development/feppml_separation_graph_oracle.do",
+  "slots": 4,
+  "wall_seconds": 1800,
+  "memory_gib_per_slot": 4,
+  "hold_until_job": "7760466",
+  "hold_reason": "Avoid compilation or other fits during the headline rotation; no upstream results are consumed.",
+  "script_sha256": "321cfed09006c899716a512e8dc59fbd04a5ebdfd9200d85f94cfe7ce5259dbb",
+  "status_at_submission": "held"
+}

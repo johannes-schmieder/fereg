@@ -11,7 +11,7 @@ unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains acti
 
 ## Exact categorical separation repair — 2026-09-27
 
-Candidate04 is adopted for local development under [ADR 0230](docs/adr/0230-exact-coefficient-certificates-for-ppml-separation.md).
+Candidate04 is committed as **f8803410** and adopted for local development under [ADR 0230](docs/adr/0230-exact-coefficient-certificates-for-ppml-separation.md).
 The [source-bound report](benchmarks/reports/development/separation-coefficient-proof-local-2026-09-27/README.md)
 binds 211 computational inputs and universal Mac plugin SHA-256
 `571eccb27a6cafb3239b163a37344ffb3e0e917d56b2b7d53c5a73762f250a50`.
@@ -30,8 +30,11 @@ cases pass. The public explicit Poisson/Hessian/sandwich oracle passes 12 fits
 over weights, fast/low, T1/T4, clustered/robust inference and saved outputs.
 Categorical PPML, three-FE OLS and multipartition PPML slope controls pass.
 Forty separation and 54 memory tests, Mac binary audit and actual-plugin
-ABI checks pass. No Linux confirmation or full qualification for this new source
-yet. Existing constrained/nonretaining-CG and static allocation-drift issues remain.
+ABI checks pass. Linux PPML smoke **7760663** is submitted at commit f8803410,
+with the new 12-fit separation oracle after the standard PPML profile. It is held
+until timing job 7760466 ends, so compilation and fits cannot contend with it.
+The [submission receipt](benchmarks/reports/development/separation-coefficient-proof-local-2026-09-27/linux-submission.json)
+binds the source/archive. Linux acceptance and full qualification remain pending. Existing constrained/nonretaining-CG and static allocation-drift issues remain.
 
 The detector has an explicit generation-zero workspace admission. Graph/replay
 and retained CG use sequential storage, separate from publication IRLS; low
@@ -47,7 +50,10 @@ PPML K10 ratios are about 0.501 of stock at T8 and 0.749 at T28; T28 is 0.179
 of baseline but 3.8–6.8% slower than candidate T8. These partial observations
 are not the campaign conclusion. Thread ceilings and the full performance
 plan remain open; collect and validate this rotation before the next routing
-change or broader sweep. No push has been performed.
+change or broader sweep. The new rotation summarizer passes six tests (nine with
+launcher controls), requires every registered seed and independent oracle before
+ranking, and keeps process/RSS distributions and scaling losses separate. No push
+has been performed.
 
 ## Benchmark repair implementation — 2026-09-27
 
