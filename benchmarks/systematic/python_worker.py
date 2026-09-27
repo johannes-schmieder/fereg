@@ -14,7 +14,7 @@ import pyfixest as pf
 from common import read_json, write_json
 
 
-def run(config):
+def run_model(config, progress):
     output = Path(config["output"])
     cell = config["cell"]
     formula = "y ~ " + " + ".join(f"x{i}" for i in range(1, cell["k"] + 1)) + " | " + " + ".join(cell["effects"])
@@ -22,11 +22,13 @@ def run(config):
     kwargs = {"vcov": "iid" if cell["model"] == "ols" else "hetero"}
     if cell["model"] == "ppml":
         kwargs["ssc"] = pf.ssc(k_adj=False)
+    progress["error_stage"] = "warmup"
     if config["phase"] == "warm":
         warm = pd.read_stata(config["warm"], convert_categoricals=False)
         fit_function(formula, data=warm, **kwargs)
         del warm
         gc.collect()
+    progress["error_stage"] = "input_validation"
     data = pd.read_stata(config["data"], convert_categoricals=False)
     info = read_json(Path(config["data"]).with_suffix(".json"))
     for column, expected in info["column_sha256"].items():
@@ -37,6 +39,7 @@ def run(config):
     (output / "START").write_text("START\n")
     while not (output / "START.CHECKED").exists():
         time.sleep(.001)
+    progress["error_stage"] = "estimation"
     start = time.perf_counter()
     fit = None
     error = None
@@ -49,7 +52,10 @@ def run(config):
     metadata = {"rc": 0 if fit is not None else 1, "seconds": elapsed,
                 "python_version": sys.version.split()[0], "pyfixest_version": importlib.metadata.version("pyfixest"),
                 "formula": formula, "vcov": kwargs["vcov"], "error": error}
+    metadata["error_stage"] = "estimation" if error else None
+    progress.update(metadata)
     if fit is not None:
+        progress["error_stage"] = "extraction"
         b = fit.coef()
         se = fit.se()
         correction = fit._N / (fit._N - 1) if cell["model"] == "ppml" else 1.0
@@ -79,6 +85,18 @@ def run(config):
             metadata["sample_kind"] = "stored_observation_ids"
     write_json(output / "metadata.json", metadata)
     print("SYSTEMATIC_WORKER_COMPLETE rc=" + str(metadata["rc"]), flush=True)
+
+
+def run(config):
+    progress = {"rc": 1, "seconds": None, "error_stage": "initialization"}
+    try:
+        run_model(config, progress)
+    except Exception as error:
+        # Startup and extraction failures need the same durable receipt as a
+        # failed timed command. They never become successful timing samples.
+        progress.update(rc=1, error=f"{type(error).__name__}: {error}")
+        write_json(Path(config["output"]) / "metadata.json", progress)
+        print("SYSTEMATIC_WORKER_COMPLETE rc=1", flush=True)
 
 
 if __name__ == "__main__":

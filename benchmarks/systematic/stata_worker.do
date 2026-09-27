@@ -34,16 +34,22 @@ if "`arm'" == "gglm" local command `"`command' family(poisson) robust"'
 if inlist("`arm'", "feppml", "ppmlhdfe") local command `"`command' vce(robust)"'
 
 if "`phase'" == "warm" {
+    display "SYSTEMATIC_STAGE warmup"
     quietly use `"`warm'"', clear
     capture noisily `command'
     local warm_rc = _rc
     if `warm_rc' {
+        tempname warmmeta
+        file open `warmmeta' using `"`output'/metadata.tsv"', write text replace
+        file write `warmmeta' "rc" _tab "`warm_rc'" _n "error_stage" _tab "warmup" _n
+        file close `warmmeta'
         display as error "SYSTEMATIC_WARMUP_FAILED rc=`warm_rc'"
         exit `warm_rc'
     }
     ereturn clear
     capture mata: mata drop BenchG
 }
+display "SYSTEMATIC_STAGE input_validation"
 quietly use `"`data'"', clear
 local inputvars obs_id `effects' `xvars' `slope_names' y
 mata:
@@ -85,9 +91,10 @@ while _rc {
     sleep 10
     capture confirm file `"`output'/START.CHECKED"'
 }
+display "SYSTEMATIC_STAGE estimation"
 timer clear 91
 timer on 91
-capture quietly `command'
+capture noisily quietly `command'
 local rc = _rc
 local returned_n = r(N)
 timer off 91
@@ -100,12 +107,14 @@ file close `mark'
 tempname meta
 file open `meta' using `"`output'/metadata.tsv"', write text replace
 file write `meta' "rc" _tab "`rc'" _n "seconds" _tab %24.17g (`seconds') _n
+if `rc' file write `meta' "error_stage" _tab "estimation" _n
 file write `meta' "stata_processors" _tab "`processors'" _n
 file write `meta' "processors_lic" _tab "`c(processors_lic)'" _n
 file write `meta' "processors_mach" _tab "`c(processors_mach)'" _n
 file write `meta' "stata_version" _tab "`c(stata_version)'" _n
 file write `meta' "command" _tab `"`command'"' _n
 if !`rc' {
+    display "SYSTEMATIC_STAGE extraction"
     if inlist("`arm'", "greg", "gglm") {
         file write `meta' "N" _tab %24.17g (`returned_n') _n
         mata: st_matrix("__sb_b", BenchG.b)

@@ -6,10 +6,39 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from run_stata_tests import run_fixture, sha256_file
 
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def preflight_capacity(stata, root, work, plugin, cases):
+    """Reject an impossible matched Stata/Mata thread plan before any fits."""
+    threads = max(int(case["threads"]) for case in cases)
+    if threads < 1 or any(int(case["threads"]) < 1 for case in cases):
+        raise ValueError("Matched benchmark thread counts must be positive")
+    fixture = work / "benchmark_capacity.do"
+    fixture.write_text(f'''version 18.0
+clear all
+set more off
+display "BENCHMARK_CAPACITY requested={threads} licensed=" c(processors_lic) " machine=" c(processors_mach)
+if {threads} > min(c(processors_lic), c(processors_mach)) {{
+    display as error "Matched benchmark exceeds Stata processor capacity; freeze a supported successor plan."
+    exit 198
+}}
+set processors {threads}
+display "END_FIXTURE|benchmark_capacity|rc=0"
+''')
+    result = run_fixture(stata, fixture, root, plugin=plugin,
+                         plugin_sha256=sha256_file(plugin), log_dir=work / "capacity-logs",
+                         require_status=True)
+    receipt = dict(requested_threads=threads, passed=not result.error and result.stata_rc == 0,
+                   process_rc=result.process_returncode, stata_rc=result.stata_rc,
+                   error=result.error, metadata=result.metadata)
+    (work / "capacity.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    if not receipt["passed"]:
+        raise ValueError("Benchmark capacity preflight failed; no timed fits were started")
 
 
 def main():
@@ -33,6 +62,7 @@ def main():
         if sha(path) != plan[field]:
             raise ValueError(f"Frozen benchmark input changed: {field}")
     args.work.mkdir(parents=True, exist_ok=False)
+    preflight_capacity(args.stata, root, args.work, args.plugin, plan["cases"])
     for case, settings in enumerate(plan["cases"]):
         for block, order in enumerate(plan["orders"]):
             for engine in order:

@@ -9,6 +9,36 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## Benchmark repair implementation — 2026-09-27
+
+Johannes approved implementing the expanded performance/failure plan, including
+adaptive thread-ceiling semantics, a <=1.20 comparable-fixest ceiling, no
+repeatable core-scaling slowdown, and the eventual full 140-configuration fixest
+development sweep. The <=0.90 ambition remains. These are acceptance targets,
+not achieved claims. No new push or release is authorized.
+
+The [first diagnostic milestone](benchmarks/reports/development/performance-repair-diagnostics-2026-09-27/README.md)
+binds unchanged computational baseline a0588293 and ten frozen attempts. SCC
+job 7759645 is running; this is instrumented attribution, not headline timing.
+Sparse-zero two-FE PPML reproduces r(459): borrowed MAP exhausts its iteration
+budget before any publication-IRLS trace. The three-FE counterpart reaches its
+180-second diagnostic cap. Separation's one-shot weighted projector is the
+leading localization, not yet a confirmed repair.
+
+The same-job sparse-three-FE N983040/K10 diagnostic spends 21.585 seconds in
+projection at T8 versus 142.424 at T28; the solver route changes after memory
+admission. A shared Schwarz scratch-bound correction is being investigated:
+the sum of retained worker high-water depths is bounded by workers plus unique
+yielding components per apply, rather than their product. Native acceptance and
+fresh timing remain pending; original receipts remain untouched.
+
+Worker failures now preserve their actual stage and error; the separate bias
+benchmark rejects unsupported matched Stata processor requests before timing.
+Four new worker tests, six existing campaign tests, two capacity tests, and real
+licensed Stata success/rejection and quiet-error probes pass. Two plotting test
+modules remain unrun locally because matplotlib is unavailable. Do not infer
+solver acceptance or a completed sweep from these harness checks.
+
 ## Illustrated SCC campaign report — 2026-09-27
 
 The requested [expanded 14-page edition](output/pdf/fereg-scc-benchmark-report-2026-09-27-expanded.pdf)

@@ -18,6 +18,7 @@ import psutil
 
 from common import HERE, arm_order, cell_id, dataset_id, read_json, sha256, thread_environment, write_json, manifest_for
 from generate import generate
+from worker_diagnostics import failure_evidence
 
 
 def numeric(value):
@@ -193,6 +194,7 @@ def measure(root, cell, arm, phase, data, warm, output, manifest, identity=None,
                "host": socket.gethostname(), "input_sha256": sha256(data),
                "elapsed_seconds": time.monotonic()-arm_start, "limits": limits,
                "command_time_lower_bound": limits['command'] if reason == "command_timeout" else None}
+    receipt["failure"] = failure_evidence(output, meta, status)
     if (output / "sample.csv").exists():
         receipt["sample_sha256"], receipt["sample_rows"] = sample_hash(output / "sample.csv")
         (output / "sample.csv").unlink()

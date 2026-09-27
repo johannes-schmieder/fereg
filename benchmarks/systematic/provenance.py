@@ -8,7 +8,7 @@ from common import HERE, read_json, sha256, write_json, manifest_for
 
 MEASUREMENT_FILES = ("manifest.json", "references.json", "common.py", "generate.py",
                      "runner.py", "oracle.py", "stata_worker.do", "r_worker.R",
-                     "python_worker.py", "job.sh", "provenance.py", "light.py", "campaign.py", "report.py", "light_control.py", "light_report.py", "accounting.py")
+                     "python_worker.py", "worker_diagnostics.py", "job.sh", "provenance.py", "light.py", "campaign.py", "report.py", "light_control.py", "light_report.py", "accounting.py")
 
 
 def fingerprint(value):
