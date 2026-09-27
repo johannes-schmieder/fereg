@@ -57,6 +57,27 @@ rank, VCE, DoF, solver scheduling, line-search and score tolerances are unchange
 
 ## Independent checks
 
+Canonical final-product reuse also needs sufficient precision in the absorbed
+component. A Newton working response can be much larger than the fitted
+predictor when exposure is tiny. Subtracting its residual can leave enough
+rounding noise to pass the outer predictor check but fail separate FE recovery.
+The reuse shortcut is declined when `8 * epsilon * working_scale` exceeds
+`strict_inner_tolerance * absorbed_scale`, for a nonzero absorbed component.
+Here the scales are the maximum absolute response, residual or finite
+contribution, and the maximum absolute absorbed contribution, respectively.
+This is a conservative shortcut-admission screen, not a relaxed certificate.
+The existing final-Hessian solve then uses the accepted predictor as its RHS;
+rank, score, reconstruction and final-frame checks still govern acceptance and
+can require more ordinary iterations. This screen applies independently of
+requested saved effects or bias correction, preserving their estimation-path
+invariance.
+
+A balanced Cartesian regression checks the resulting absorbed vector against
+an independent closed-form additive projection. The licensed fixture
+`tests/stata/bias/final_recovery_precision.do` checks saved effects, exact bias
+correction, ordinary coefficient/VCE/mean invariance and fast/low storage with
+a very small exposure.
+
 `tests/fixtures/ppml/generate_reconstruction.py` uses Python exact rational
 arithmetic on the binary64 input values to form the correctly rounded absorbed
 predictor and its exact decomposition discrepancy. The checked-in bit-pattern

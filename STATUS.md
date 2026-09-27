@@ -74,7 +74,7 @@ snapshot f359a43902da7742a085e7b36d9ab909de16a9c1d8ffbff7602f754aa2d6363a.
 The v05 universal Mac plugin SHA-256 is
 57c5f334d4e777bce80f81b92b6aa23004401f6bdbd019c3774f63bc8552c2ce,
 retained as an immutable earlier artifact. The local development
-`dist/fereg_macos.plugin` now contains the licensed-tested v06 binary below.
+`dist/fereg_macos.plugin` now contains the licensed-tested v07 binary below.
 The baseline and v03 candidate each pass all 186 retained full/A/B fits.
 Ten v05 independent control cases pass, including high leverage, collinearity,
 sparse outcomes and severe imbalance (maximum error 1.086e-10). Fourteen targeted
@@ -92,14 +92,21 @@ separates paired available and joint-interior comparisons. The frozen v04 MC
 artifact remains unchanged; v05 adds only a nonfinite total-variance guard, and
 all ten explicit-oracle numerical summaries are identical between versions.
 
-The remaining confirmation jobs are running locally and serially under the
-licensed lock, using `scripts/ppml_bias_campaign.py` and the frozen
-`mc/confirmation-plan01.json`. Session 46048 owns the supervisor; live logs are
-`mc-remaining04.log`/`.err`, and its terminal receipt will be
-`mc-remaining04-process.json`. Completed/attempted job directories under
-`mc/confirmation-runs01` must never be overwritten or rerun. The full 4,690
-attempts and exact/1024 subsets remain unaccepted until the terminal receipts
-and full analyzer pass. Do not start concurrent licensed Stata locally.
+The frozen confirmation campaign is now complete: all 4,690 attempts are
+recorded, with no missing or incomplete jobs. The [complete report](benchmarks/reports/development/native-ppml-bias-2026-09-26/mc-confirmation.md)
+includes all 4,200 main native/legacy attempts, 140 exact checks and 350 B=1024
+checks. One native failure remains the preserved duration_960 draw described
+below; completing the inventory does not erase it. Legacy fixed_3840 has 57
+non-interior draws and fixed_960 has thirteen, out of 300 each. Pairing checks
+pass, and unchanged wage/FEVC differences are at most 2.15e-13. Completed
+attempts under `mc/confirmation-runs01` must never be overwritten or rerun.
+
+Across the 49 joint-interior corrected separation-moment cells, native versus
+legacy mean differences are at most 0.059 native Monte Carlo standard errors.
+The exact and B=1024 subset comparisons have maximum ratios 0.032 and 0.029.
+These are paired approximation checks on the stated populations, not universal
+equivalence or RMSE-improvement claims. All ten moments, tails, failures and
+population definitions remain in the complete report and [summary](benchmarks/reports/development/native-ppml-bias-2026-09-26/mc-confirmation-summary.json).
 
 The [monitored end-to-end benchmark](benchmarks/reports/development/native-ppml-bias-2026-09-26/performance.md)
 passes eight cases, 48 processes and 288 timed calls at 2,880–120,000 rows.
@@ -116,12 +123,11 @@ The Linux binary is c3c7c77911de6111d5d2892af587e953573077ae5dfc11d6037b584b9413
 from source 09814cf381392b174966a9f35e73b055aa9f383c033d6173c0eaf61f3c7f2428.
 See the source-bound SCC launch record in the development evidence directory.
 
-At the latest local check, 114 completed job receipts contain 2,280 of 4,690
-attempts and one native failure: duration_960 replication 10131, raw anchored
+An earlier audit found one native failure: duration_960 replication 10131, raw anchored
 FE reconstruction. Independent explicit Poisson and SCC diagnostic outputs
 localize it to working-response cancellation: accepted means differ by at most
 6.22e-15, whereas the canonical raw FE target has about 2.93e-9 of rounding
-noise. The in-progress fix recovers raw effects directly from the accepted
+noise. The implemented v06 fix recovers raw effects directly from the accepted
 predictor, offset and unchanged finite contribution at the same tolerance.
 All 14 focused core bias tests pass. A retained synthetic cancellation
 regression fixture and independent full/A/B oracles are prepared. The v06
@@ -132,7 +138,7 @@ and remains recorded. Direct execution of the exact built core rlib passes all
 exactly, and matches independent raw/D/C oracles within 4.81e-10/2.47e-11/7.29e-13.
 The identical harness linked against v05 reproduces the original failure.
 Evidence is in reconstruction-v06.json and reconstruction-adjudication.json.
-Licensed artifact validation remains in progress. No ordinary solver changes.
+Licensed artifact validation subsequently passed below. No ordinary solver changes.
 Diagnostic job 7755536 completed its 12 calls but its wrapper had a mismatched
 terminal marker, so its job is not accepted as a pass. The original MC failure
 and unchanged v04 campaign remain preserved; do not rerun or replace attempts.
@@ -147,46 +153,164 @@ The source is 80d600283f87828e50a28700f0d65797bf3a659468404ed62d793edfdd8e1c28,
 Mac plugin 73b44fd3968f93f0e7caf33998a6ce0ead3eee1ade321d63817dab174fb3bfc8.
 Source-bound receipts are in the development evidence directory.
 
-One-million-row SCC benchmark **7756011 is running** at
-`/projectnb/welfgr/fereg/dev/20260927-ppml-bias-80d60028` on the frozen
-`benchmark-inputs/matrix10-1m.json`: native/current-Mata/cached-Mata, one/eight
-threads, two reversed orders, one cold/three warm calls. It reserves 28 slots,
-3G/core and two hours; the established process monitor gates timing claims.
-Scratch inputs/outputs are archived on exit under `benchmarks/matrix10-1m/`.
-Do not rerun or overwrite attempted timing pairs. Inspect application, numerical
-summary, process monitor and qacct before acceptance. Use its resource evidence
-to size the still-pending ten-million-row comparison.
+One-million-row SCC benchmark **7756011 failed** after 2,274 seconds at
+11:16:37 UTC on 2026-09-27. Accounting reports failed=0, exit_status=1,
+28 slots and 1.773G maxvmem. The first ordinary PPML call, requesting saved
+fixed effects, returned r(459): categorical recovery target outside the
+certified absorbed span, relative infinity residual 4.932458e-10. It never
+reached correction or repeated-call timing. The process monitor passed its
+visibility/isolation checks; this does not make the failed fit timing evidence.
+The [source-bound failure receipt](benchmarks/reports/development/native-ppml-bias-2026-09-26/benchmark-scc-1m-failure.json)
+records the unchanged v06 artifact, input/settings and captured log hashes.
+Raw evidence is preserved under `benchmarks/matrix10-1m/` in the approved SCC
+campaign root; small receipts/logs are collected in local `scc-bench10/collected`.
+Johannes requested repair of this job. The retained archive was collected and
+its SHA-256 verified. Independent explicit-dummy Newton and weighted projection
+checks show cancellation in both the canonical absorbed target and accepted
+predictor; switching only the recovery target is insufficient here. The v07
+repair declines canonical final-product reuse when component precision consumes
+the strict inner budget, retaining the existing predictor-RHS final-Hessian
+solve and all acceptance checks. No tolerance is relaxed. The exact million-row
+core fit now agrees with the independent predictor within 3.56e-15 and recovers
+saved effects with relative error 3.78e-14. Saved/unsaved and T1/T8 ordinary
+outputs are byte-identical. The new regression fails without the guard
+(absorbed-span error 1.71e-10) and passes with it. All four canonical-final tests
+and 16 help checks pass; the PPML Rust screen has 402 passes and one reproduced
+baseline rejection-count assertion failure.
 
-The frozen v04 local MC controller remains active as PID 94266 (creation time
-1790481337.28423); it outlived its original supervisor and is now parented to
-PID 1. Its original lock was therefore absent. The attempted queued v06 Mac
+[Repair adjudication](benchmarks/reports/development/native-ppml-bias-2026-09-26/recovery-v07-adjudication.json)
+binds source ff476a4581e1af6218511b22f1e78ff56477465039e60f1482d094c1c6658c66
+and universal Mac plugin
+86262c38fa7f7ceef1b16336ae63b0ea93d3da2960072338c981f209bcc6ec03.
+At this initial v07 build, the frozen v04 MC, v06 local benchmark and development
+dist plugin were left unchanged. SCC repair job **7756944** built Linux and passed PPML smoke,
+five feature/help fixtures, ten control oracles and 15 prior reconstruction
+cases, but failed in the retained-case wrapper: its driver was outside the
+source tree and the receipt writer requires a repository-relative path.
+Accounting is failed=0/exit_status=1, 217 seconds, 5.445G maxvmem. Preserve this
+wrapper failure; it is not an accepted full validation. The Linux binary is
+259e27939df8288456a254bdebe150682dac6d30fff321e2bc32d0bdac04d909.
+The narrow wrapper fix placed the driver under source/target and wrote new
+outputs. Retest **7757003** passed smoke, five feature/help fixtures and all 25
+oracle cases. The million-row Stata call also completed with rc=0 and every
+ordinary/saved/randomized invariance and reconstruction assertion passed.
+However, its filename-based sentinel expected `million-recovery02` while the
+driver emitted `million_recovery`; the wrapper rejected it. Accounting remains
+failed=0/exit_status=1, 133 seconds, 2.402G maxvmem. No accepted job or timing is
+claimed. The collected million-row output independently matches explicit-dummy
+Newton log predictors and relative means within 3.56e-15; the saved-effect sum
+matches d within 2.84e-14. The
+[SCC adjudication](benchmarks/reports/development/native-ppml-bias-2026-09-26/recovery-v07-scc-adjudication.json)
+preserves both wrapper failures and all scientific checks.
+
+Johannes approved the corrected wrapper and subsequent benchmark restart.
+SCC validation **7757511 passed** with clean accounting (failed=0,
+exit_status=0), 83 seconds, four slots and 3.175G maxvmem on scc-ei3. All six
+smoke/feature/help fixtures, ten correction oracles, 15 reconstruction cases
+and the retained million-row fixture pass, including the corrected completion
+marker. The independent all-row check matches log predictors and relative
+means within 3.56e-15 and saved reconstruction within 2.84e-14. Maximum control
+and reconstruction oracle discrepancies are 6.62e-10 and 1.43e-13. See
+[accepted validation](benchmarks/reports/development/native-ppml-bias-2026-09-26/recovery-v07-scc-pass.json)
+and [all-row oracle](benchmarks/reports/development/native-ppml-bias-2026-09-26/recovery-v07-scc-oracle.json).
+Both earlier wrapper failures remain preserved.
+
+The matched million-row benchmark **7757609 failed** on scc-wo4 after 2,207
+seconds, with failed=0/exit_status=1, 28 slots and 3.820G maxvmem. All six T1
+processes completed: 24 of 48 planned timed calls. The first T8 process stopped
+at `set processors 8` with r(198), before estimation, because this Stata/MP
+installation permits at most four processors. This is a license limit; the
+saved-FE failure did not recur. The [failure receipt](benchmarks/reports/development/native-ppml-bias-2026-09-26/benchmark-scc-v07-license-failure.json)
+preserves accounting, logs and each completed process. No retry is submitted.
+The immutable [launch record](benchmarks/reports/development/native-ppml-bias-2026-09-26/benchmark-scc-v07-launch.json)
+binds `matrix12-1m.json`, `benchmark-job03.sh`, the passing recovery03 receipts,
+source ff476a45 and the unchanged validated Linux plugin. Settings match failed
+matrix10: one million rows, 256 levels per FE, 100,000 units, B=64, T1/T8,
+three matched engines, two orders, one cold and three warm calls per process.
+The archived outputs were subsequently collected and hash-verified. A
+[separate analysis of all six completed T1 processes](benchmarks/reports/development/native-ppml-bias-2026-09-26/benchmark-scc-v07-t1-verification.json)
+passes the original matched-output tolerance, with maximum discrepancy
+3.01e-17. Both engine orders and every process-monitor receipt pass. Native
+warm correction is 32.922s versus 71.327s cached Mata (2.17x); end-to-end
+medians are 51.711s versus 92.956s (1.80x). This verifies the completed T1
+subset, not the failed full job or missing T8 case. A matched T4 case would
+be a new benchmark definition, not completion of the frozen T8 case.
+Results are retained under
+`/projectnb/welfgr/fereg/dev/20260927-ppml-recovery-ff476a45/benchmarks/matrix12-1m`.
+The staged matrix11 was never run and must remain unused. Ten-million-row work
+remains unlaunched.
+
+The frozen v04 local MC controller outlived its original supervisor as PID 94266
+(creation time 1790481337.28423), parented to PID 1. Its original lock was
+therefore absent. The attempted queued v06 Mac
 validation ran concurrently for about eight seconds: all four fixtures, ten
 oracles and 15 reconstruction cases passed, but benchmark matrix06 measured
 nothing because its process monitor failed closed on sandbox visibility.
 The failed combined supervisor receipt is preserved in `final-v06-process.json`;
 these are scientific results only, never timing evidence.
 
-The process-bound observer in session **4633** now holds the licensed lock while
-waiting for that exact MC PID/creation time. It will audit the full frozen
-inventory to `mc/confirmation-terminal01.json`, and only if complete will run
-the same two-case v06 local timing plan in new output `bench/matrix07` with
-process visibility. Observer script `wait_mc_then_bench_v06b.py`; logs
-`mc-guard08.log`/`.err`, terminal receipt `mc-guard08-process.json`. All are under
-the task target directory. A first observer typo exited before any test; its
-`mc-guard07` receipt is preserved. Do not start further local Stata while the
-existing MC or this guard is active. The last audit has 2,900 attempts and one
-native failure; a later lightweight inventory reached 2,960.
+The 13:00 UTC check found that observer session 4633's supervisor had also
+disappeared, releasing its lock while its idle handoff survived as PID 27445.
+Only that idle handoff was terminated after verifying its exact creation time,
+absence of children and unchanged waiting state. The MC was not interrupted.
+`mc-guard08-orphan-recovery.json` preserves this scheduling failure.
 
-A proposed 30-minute same-thread follow-up was rejected by automatic approval
-review because recurring execution requires explicit authorization. A question
-is pending; **no automation exists for this campaign**. The already-running
-SCC job and local MC/observer continue normally.
+The replacement detached handoff, **PID 39394**, creation time
+1790514166.573242, held the licensed lock itself through completion. Script
+`wait_mc_then_bench_v06c.py` wraps the unchanged `wait_mc_then_bench_v06b.py`;
+startup receipt `mc-guard09-start.json`, logs `mc-guard09.log`/`.err`, terminal
+receipt `mc-guard09-process.json`. All are under the task target directory.
+It waited for the exact MC PID/creation time, audited the complete frozen
+inventory to `mc/confirmation-terminal01.json`, and then ran the unchanged
+two-case v06 timing plan in new output `bench/matrix07`. Its terminal receipt
+records completed=true, exit_code=0, and the log ends with
+`LOCAL_MC_AND_V06_BENCH_COMPLETE`.
+The earlier `mc-guard07` pre-test typo and `mc-guard08` logs remain preserved.
 
-Million/ten-million-row SCC performance, the queued local timing comparison,
-full MC analysis and final documentation/evidence closeout remain outstanding. Documentation/help
-and measured local v05 evidence are present. The precision change now passes
-licensed Mac/Linux validation; final v06 performance evidence is pending. No Windows or release qualification is claimed. Do not mark
-the task complete.
+The [v06 local comparison](benchmarks/reports/development/native-ppml-bias-2026-09-26/benchmark-v06.json)
+passes both cases, all twelve monitored processes and 48 timed calls. Maximum
+matched coefficient/numerical-covariance discrepancy is 5.96e-15. Warm native
+correction medians are 0.02954s at 2,880 rows and 1.11548s at 120,000 rows,
+versus 0.276s and 3.620s for cached Mata: 9.34x and 3.25x faster. End-to-end
+ratios are 6.71x and 2.72x. [Acceptance metadata](benchmarks/reports/development/native-ppml-bias-2026-09-26/benchmark-v06-acceptance.json)
+binds the completed handoff, frozen plan and v06 binary. These are v06 Mac
+measurements; they do not establish v07 or SCC performance.
+
+The [final v07 Mac validation](benchmarks/reports/development/native-ppml-bias-2026-09-26/licensed-mac-v07.json)
+now passes all six public/smoke/help fixtures, ten independent control cases,
+15 retained-draw reconstruction cases and the million-row regression under
+Stata 18. The shared licensed lock covered the complete serial run. All 204
+selected runtime/build-source files match [source v07](benchmarks/reports/development/native-ppml-bias-2026-09-26/source-v07.json).
+The million-row saved output matches the independent predictor and relative
+means within 3.56e-15, and its FE sum reconstructs within 2.84e-14. Maximum
+control/reconstruction discrepancies are 6.62e-10 and 1.44e-13.
+
+The same run passes the [two-case v07 local benchmark](benchmarks/reports/development/native-ppml-bias-2026-09-26/benchmark-v07.json):
+twelve monitored processes, 48 timed calls and maximum matched discrepancy
+1.94e-15. Warm native correction takes 0.02916s and 1.09151s at 2,880 and
+120,000 rows, respectively, versus 0.272s and 3.7615s for cached Mata (9.33x
+and 3.45x). Its terminal marker is `FINAL_V07_LOCAL_SUCCESS`, exit_code=0.
+Only after all checks passed was the local development plugin replaced by
+v07, SHA-256 86262c38fa7f7ceef1b16336ae63b0ea93d3da2960072338c981f209bcc6ec03.
+The historical v04/v05/v06 artifacts and evidence remain unchanged.
+
+Implementation and public documentation/help are complete for the specified
+two-intercept-FE scope. No unresolved feature-specific mathematical discrepancy
+is identified by these checks. The frozen MC retains its original failure,
+whose repair is separately validated; it was not rerun or rewritten. The
+broader repository screen still has the documented baseline failures.
+Johannes requested committing and pushing this implementation and its completed
+validation evidence on 2026-09-27; this is a development checkpoint, not release
+qualification or closure of the remaining performance plan.
+
+**No automation exists for this campaign.** Local validation is complete and
+the SCC benchmark is terminal. Resolution of the parallel SCC license limit,
+the planned ten-million-row performance measurement, and final project
+closeout remain outstanding. Current correction timing evidence reaches one
+million rows but only 256 levels per FE; it does not establish performance at
+very large FE dimensions. These are remaining scale/performance checks, not
+identified defects in the correction formula. No Windows or release
+qualification is claimed. Do not mark the full validation plan complete.
 
 ## Slope pilot adjudication continuation — 2026-09-26
 

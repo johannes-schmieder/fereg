@@ -152,6 +152,9 @@ All requested names, including mechanically derived {cmd:_Slope#} names, must
 be new and mutually distinct. Saved effects are missing outside {cmd:e(sample)}.
 Requesting them cannot change the sample, estimates, covariance, objective, or
 iteration path.
+Saved contributions must also pass reconstruction checks against the total
+fitted contribution. A failed check returns an error without publishing partial
+results.
 
 {marker sample}
 {title:Outcome, sample, and adjustment}

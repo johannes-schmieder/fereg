@@ -1,0 +1,72 @@
+{
+  "kind": "approved benchmark launch; no timing outcome yet",
+  "job_id": 7757609,
+  "prerequisite_passed_job_id": 7757511,
+  "validation_receipt_sha256": "df264888d7779a8f5924cc51ec680ee10865c86a24b59b1a9edc419fc5905038",
+  "source_identity": "ff476a4581e1af6218511b22f1e78ff56477465039e60f1482d094c1c6658c66",
+  "plugin_sha256": "259e27939df8288456a254bdebe150682dac6d30fff321e2bc32d0bdac04d909",
+  "plan_sha256": "7feb109ebd5cd7a9ff284abf18fb17df23857c46030619041db5cf5240d46621",
+  "job_script_sha256": "91ca88ce95cacbedde65c01e02d21ac4c7343d204699274ee5d36df607bf71b5",
+  "resources": {
+    "slots": 28,
+    "mem_per_core": "3G",
+    "h_rt": "02:00:00",
+    "maximum_application_threads": 8
+  },
+  "plan": {
+    "accuracy_absolute": 2e-08,
+    "analysis": "All three engines use the same probes and full saved FE/numerical diagnostic outputs; Mata refits ordinary PPML every call. Accuracy and process isolation must pass before ranking.",
+    "cases": [
+      {
+        "levels_each": 256,
+        "memory": "auto",
+        "probes": 64,
+        "rows": 1000000,
+        "threads": 1,
+        "units": 100000
+      },
+      {
+        "levels_each": 256,
+        "memory": "auto",
+        "probes": 64,
+        "rows": 1000000,
+        "threads": 8,
+        "units": 100000
+      }
+    ],
+    "cold_calls": 1,
+    "controller_sha256": "4b8c614fb96579d3df33bfa29a14ea43e6387d7f6b85bf156d55ba1985686ab6",
+    "job_script_sha256": "91ca88ce95cacbedde65c01e02d21ac4c7343d204699274ee5d36df607bf71b5",
+    "kind": "development matched SCC correction benchmark",
+    "mata_sha256": "11ae9679a906100503814b6a0e8deaa967b90bae15b52473c785a7da67456e0f",
+    "monitor_sha256": "1c7fe37c714ba2516869b3e42b6d33d639792865152d42b348a75b1959e52686",
+    "orders": [
+      [
+        "native",
+        "mata_current",
+        "mata_cached"
+      ],
+      [
+        "mata_cached",
+        "mata_current",
+        "native"
+      ]
+    ],
+    "plugin_sha256": "259e27939df8288456a254bdebe150682dac6d30fff321e2bc32d0bdac04d909",
+    "reference_sha256": "7b9662e3c2b47e15209cba6982862bf846357302cabf1e3453adc9bf8457db63",
+    "refit_reference": true,
+    "require_monitor": true,
+    "resource_rationale": "28 slots reserve timing capacity; each process uses at most 8 application threads. 3G/core minimum class supplies 84GB headroom; measured 120k-row local calls motivate a two-hour ceiling. No host or queue pin.",
+    "schema": 1,
+    "script_sha256": "c293ab34582f4d5568ac0d6580623178a0ea6d3fbfb3597977545e060b5fc6a2",
+    "seed": 739391,
+    "source_identity": "ff476a4581e1af6218511b22f1e78ff56477465039e60f1482d094c1c6658c66",
+    "source_manifest_sha256": "da36192e870e7c8057aa39feeafdeadff8957dacb0d57cfd67fbbaeb7b16a3a1",
+    "stream": 17,
+    "warm_calls": 3
+  },
+  "previous_failed_benchmark_job": 7756011,
+  "results_directory": "benchmarks/matrix12-1m",
+  "remote_root": "/projectnb/welfgr/fereg/dev/20260927-ppml-recovery-ff476a45",
+  "settings_preserved": "Only source, binary and wrapper identities differ from failed matrix10; inputs, probes, comparator, call counts, threads and acceptance thresholds are unchanged."
+}

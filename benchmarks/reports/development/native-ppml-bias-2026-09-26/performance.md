@@ -59,3 +59,69 @@ process. The largest matched D/C or numerical-covariance error is 8.14e-15
 against the prespecified 2e-8 accuracy threshold. Numerical work, sample, probe
 count and published correction channels are matched. The initial unmonitored
 matrix remains diagnostic and is not used for these timing claims.
+
+## Completed v06 local comparison
+
+The separate [v06 comparison](benchmark-v06.json) uses the precision repair
+preceding the million-row v07 change. Its [acceptance record](benchmark-v06-acceptance.json)
+binds the frozen plan, source and Mac binary. Both cases pass all twelve
+process-monitor receipts and matched D/C/numerical-covariance checks; the
+maximum discrepancy is 5.96e-15. There are 48 timed calls, with two cold and
+six warm calls per engine per case. The earlier v05 measurements above remain
+unchanged; these are separate within-run comparisons, not a v05/v06 speedup.
+
+| Rows | Levels per FE | Units | B | Threads / memory | Native correction | Current Mata correction | Cached Mata correction | Cached / native |
+|---:|---:|---:|---:|:---|---:|---:|---:|---:|
+| 2,880 | 8 | 240 | 256 | 1 / auto | 0.02954 | 0.27650 | 0.27600 | 9.34 |
+| 120,000 | 256 | 10,000 | 64 | 1 / auto | 1.11548 | 4.72800 | 3.62000 | 3.25 |
+
+All times are warm median seconds, with the same phase definitions above.
+End-to-end native/current-Mata/cached-Mata medians are 0.0430/0.2890/0.2885s
+for the smaller case and 1.4500/5.0555/3.9460s for the larger case. Cached Mata
+takes 6.71 and 2.72 times as long end to end. This completes the queued v06
+local measurement; it is not v07 performance evidence.
+
+## Completed v07 SCC single-thread subset
+
+Job 7757609 completed all six single-thread processes before the first
+eight-thread process stopped at Stata's four-processor license limit. The
+full job failed. A [separately identified analysis](benchmark-scc-v07-t1-verification.json)
+of the completed subset retains both engine orders and all 24 calls; it does
+not replace or complete the missing eight-thread case. The collected archive,
+inputs and probes are hash-verified. Every selected process and monitor passes,
+and the original accuracy check passes with maximum discrepancy 3.01e-17.
+
+The case has 1,000,000 rows, 256 levels per FE, 100,000 units, B=64, one thread
+and automatic memory routing. Each engine has two cold and six warm calls.
+The [full distributions and phase measurements](benchmark-scc-v07-t1.json)
+retain the frozen v07 source/binary bindings and original parent plan.
+
+| Engine | Warm correction median [min, max], s | Warm total median [min, max], s | Peak Stata RSS, MB |
+|:---|:---|:---|---:|
+| Native | 32.922 [32.174, 33.087] | 51.711 [51.271, 52.907] | 948.4 |
+| Current Mata | 72.147 [71.934, 72.462] | 93.885 [92.157, 94.241] | 954.5 |
+| Cached Mata | 71.327 [71.134, 71.434] | 92.956 [91.444, 93.201] | 953.1 |
+
+Cached Mata takes 2.17 times as long for correction and 1.80 times as long end
+to end. This is a within-host, within-subset comparison, not a Mac/Linux or
+v06/v07 speedup. Native additional correction workspace is 385.15 MB; process
+RSS includes loaded data and saved outputs. No parallel SCC scaling result or
+ten-million-row result is available from this job.
+
+## Final v07 local comparison
+
+The [final Mac validation](licensed-mac-v07.json) includes the [frozen two-case v07 plan](benchmark-plan-v07.json)
+and [all matched results](benchmark-v07.json). All twelve process monitors and
+48 timed calls pass; the maximum matched-output discrepancy is 1.94e-15.
+Case definitions and phase scope are the same as the v06 table. Each engine
+has two cold and six warm calls per case. Medians below are seconds.
+
+| Rows | Native correction | Current Mata correction | Cached Mata correction | Cached / native | Native total | Current Mata total | Cached Mata total |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2,880 | 0.02916 | 0.27250 | 0.27200 | 9.33 | 0.0460 | 0.2880 | 0.2885 |
+| 120,000 | 1.09151 | 4.71550 | 3.76150 | 3.45 | 1.5630 | 5.1750 | 4.2470 |
+
+Cached Mata takes 6.27 and 2.72 times as long end to end. These are within-run
+engine comparisons. The separate v05/v06 measurements above are retained;
+they do not form a controlled before/after timing experiment for the precision
+repair. The installed local development plugin now matches this v07 binary.

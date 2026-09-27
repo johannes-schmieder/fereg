@@ -3648,7 +3648,14 @@ fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
     {
         return Err(internal("canonical final predictor is misaligned"));
     }
+    let mut absorbed_scale = 0.0_f64;
+    let mut working_scale = 0.0_f64;
     for row in 0..offset.len() {
+        absorbed_scale = absorbed_scale.max(output.absorbed_predictor()[row].abs());
+        working_scale = working_scale
+            .max(output.response()[row].abs())
+            .max(output.fit().residuals()[row].abs())
+            .max(output.finite_predictor()[row].abs());
         let candidate =
             offset[row] + (output.finite_predictor()[row] + output.absorbed_predictor()[row]);
         #[cfg(test)]
@@ -3662,6 +3669,23 @@ fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
         {
             return Ok(false);
         }
+    }
+    // A strict Newton response can be enormous when a fitted mean is tiny.
+    // Its response-minus-residual decomposition can pass the outer predictor
+    // check while losing the precision needed to recover separate FE channels.
+    // Decline this shortcut when component rounding exceeds the strict inner
+    // budget. The existing final-Hessian replay uses the small accepted
+    // predictor as its RHS and retains all rank, score and frame checks.
+    if absorbed_scale > 0.0
+        && 8.0 * f64::EPSILON * working_scale
+            > strict_inner_tolerance(config.ppml) * absorbed_scale
+    {
+        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+            super::categorical_lsmr::emit_solver_trace_line(
+                "FEREG_SOLVER_TRACE|phase=profile_final_products|accepted=0|reason=working_response_cancellation",
+            );
+        }
+        return Ok(false);
     }
     #[cfg(test)]
     PROFILE_FINAL_ACCEPTED.set(PROFILE_FINAL_ACCEPTED.get() + 1);
@@ -7452,6 +7476,49 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn canonical_final_replays_cancellation_before_saved_effect_recovery() {
+        let n = 4096;
+        let g: Vec<_> = (0..n).map(|i| (i % 8) as f64).collect();
+        let h: Vec<_> = (0..n).map(|i| (i / 8 % 8) as f64).collect();
+        let x: Vec<_> = (0..n).map(|i| (i as f64 * 0.37).sin()).collect();
+        let y: Vec<_> = (0..n).map(|i| (2 + i % 5) as f64).collect();
+        let mut offset: Vec<_> = (0..n)
+            .map(|i| (0.2 + (i % 17) as f64 / 8.0).ln())
+            .collect();
+        offset[37] = 5e-7_f64.ln();
+        let prepared = prepared_two_fe_with_codes(&y, &x, &g, &h);
+        let config = PreparedPpmlIrlsConfig::default();
+        profile_final_test_mode(0);
+        let fit = fit_prepared_ppml_irls(
+            &prepared,
+            &y,
+            &vec![1.0; n],
+            &offset,
+            config,
+            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+            None,
+        )
+        .unwrap();
+        assert!(fit.diagnostics().converged && fit.diagnostics().final_score.passed);
+        // This balanced Cartesian design has a separate closed-form additive
+        // projection, independent of the production FE solver and its weights.
+        let d = fit.linear().absorbed_predictor();
+        let mut first = [0.0; 8];
+        let mut second = [0.0; 8];
+        let mut overall = 0.0;
+        for i in 0..n {
+            first[g[i] as usize] += d[i] / (n / 8) as f64;
+            second[h[i] as usize] += d[i] / (n / 8) as f64;
+            overall += d[i] / n as f64;
+        }
+        let error = (0..n)
+            .map(|i| (d[i] - first[g[i] as usize] - second[h[i] as usize] + overall).abs())
+            .fold(0.0_f64, f64::max);
+        assert!(error < 1e-12, "absorbed span error={error:.17e}");
+        assert_eq!(profile_final_test_mode(0), 0);
     }
 
     #[test]

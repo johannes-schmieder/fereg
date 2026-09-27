@@ -1,0 +1,73 @@
+{
+  "accounting": {
+    "end_utc": "2026-09-27T11:16:37Z",
+    "exit_status": 1,
+    "failed": 0,
+    "maxvmem": "1.773G",
+    "slots": 28,
+    "start_utc": "2026-09-27T10:38:43Z",
+    "wall_seconds": 2274
+  },
+  "attempted_settings": {
+    "engine": "native",
+    "levels": 256,
+    "memory": "auto",
+    "probes": 64,
+    "refit_reference": true,
+    "rows": 1000000,
+    "threads": 1,
+    "units": 100000,
+    "warm": 3
+  },
+  "evidence_sha256": {
+    "campaign.log": "e2763575037f3892f539a509a65dc3c1c85f795c605f29be31456fbdd326f717",
+    "process-exit.txt": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "qacct.txt": "40ddfb16f1f210d68a00101a264b0acb5485037c491de2a5424ef484dc6b8cd7",
+    "receipts/matrix-0-0-native/receipt.json": "4559404939ea67229ff5684581c8c58c83e44734f171b65e29d525a4bdba5833"
+  },
+  "failure": {
+    "cause_adjudicated": false,
+    "correction_calls_completed": 0,
+    "message": "categorical recovery target is not certified to lie in the absorbed span: relative infinity residual 4.932458e-10",
+    "phase": "initial ordinary PPML fit with saved fixed effects, before correction or repeated-call timing",
+    "relative_infinity_residual": 4.932458e-10
+  },
+  "first_process": {
+    "fixture_sha256": "dfa69c17bc64fc60f74628bfdc4463f196edf18c1873aca7c5e666f24a90a773",
+    "input_sha256": "71c74329ffa18140544e96139691e7eb4920d5ab044e79f7230112a4e494e538",
+    "mata_sha256": "11ae9679a906100503814b6a0e8deaa967b90bae15b52473c785a7da67456e0f",
+    "monitor": {
+      "errors": [],
+      "interval_seconds": 0.05,
+      "overlaps": [],
+      "sha256": "1c7fe37c714ba2516869b3e42b6d33d639792865152d42b348a75b1959e52686",
+      "successful_samples": 27825
+    },
+    "process_peak_rss_bytes": 802738176,
+    "process_seconds": 2243.424648762011,
+    "reference_sha256": "7b9662e3c2b47e15209cba6982862bf846357302cabf1e3453adc9bf8457db63",
+    "script_sha256": "c293ab34582f4d5568ac0d6580623178a0ea6d3fbfb3597977545e060b5fc6a2",
+    "stata_rc": 459
+  },
+  "job": 7756011,
+  "monitor_interpretation": "Process visibility and isolation passed; the fixture failed. Its raw timing_eligible field does not establish a successful or accepted measurement.",
+  "passed": false,
+  "performance_result_accepted": false,
+  "plan_sha256": "975a476628ca7f74e981342090933b3da7bb5e9a78213cdbe0874ef7db97d83d",
+  "plugin_sha256": "d14c9474dd70e28d4d5e06d7cccfd20c165817c403b5745929849542bda7917c",
+  "remote_archive_locally_verified": false,
+  "remote_archive_sha256": "52616fd50695de4e7271a7f99ad04780e937d2dc095f57c9eaf0c85e84e018d2",
+  "schema": 1,
+  "source_file_sha256": "2577f4fcc2b68554e46ed322612afca9a5adde5ef7efc77b1f44bd1a95538de4",
+  "source_identity": "80d600283f87828e50a28700f0d65797bf3a659468404ed62d793edfdd8e1c28",
+  "stata": {
+    "completed": "1",
+    "schema_version": "1",
+    "stata_edition": "MP",
+    "stata_machine_type": "PC (64-bit x86-64)",
+    "stata_os": "Unix",
+    "stata_processors": "1",
+    "stata_rc": "459",
+    "stata_version": "19"
+  }
+}

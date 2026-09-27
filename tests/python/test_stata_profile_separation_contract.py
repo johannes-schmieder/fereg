@@ -19,6 +19,9 @@ TRANSACTION_FIXTURE = (
 )
 PUBLIC_PPML_FIXTURES = [
     "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+    "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+    "tests/stata/bias/split_branch_example.do",
+    "tests/stata/bias/final_recovery_precision.do",
     "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
     "tests/stata/parity_ppmlhdfe/feppml_scientific_contract.do",
     "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",

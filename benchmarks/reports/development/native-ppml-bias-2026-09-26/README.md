@@ -72,7 +72,8 @@ control/reconstruction discrepancies are 6.62e-10/9.19e-10. The
 [Mac Stata 18 validation](licensed-mac-v06.json) passes the same feature and
 oracle checks. Its eight-second overlap with the existing MC controller is
 recorded; the timing preflight rejected that attempt before any measurement.
-The new Mac binary is installed in the local development dist directory.
+The v06 Mac binary was installed in the local development dist directory at
+that checkpoint; the final v07 validation and refresh are recorded below.
 Campaign completion and any outstanding work are tracked only in STATUS.md.
 
 ## Independent mathematics and retained fits
@@ -179,6 +180,15 @@ peak RSS and route limits. Native correction medians are 3.4–9.7 times faster
 than cached-factor Mata on these designs; end-to-end ratios are 2.8–8.3.
 The four-thread dense correction does not improve over its one-thread case.
 
+The [v06 million-row SCC attempt](benchmark-scc-1m-failure.json), job 7756011,
+failed in its first ordinary PPML call with saved fixed effects, before any
+correction call or repeated-call timing. Categorical recovery returned r(459)
+with a relative infinity residual of 4.932458e-10. Accounting records 2,274
+seconds, exit_status=1 and 1.773G maxvmem. Process visibility/isolation passed,
+but no performance comparison is accepted. The exact source, input and logs
+remain bound to this failed attempt. Its subsequent adjudication and repair
+are recorded below.
+
 The [first confirmation block](mc-firstblock.json), with
 [all-ten-moment tables](mc-firstblock.md), contains 280 attempts on
 140 fresh datasets, twenty per design. All pipeline calls completed. Native
@@ -189,7 +199,104 @@ unchanged wage/FEVC difference is `1.93e-13`. This partial receipt reports all
 ten moments, their Monte Carlo precision, RMSE and tails, and sets `complete`
 to false. It is not the completed 300-draw confirmation campaign.
 
-Linux/SCC,
-million/ten-million-row performance, and Windows scientific behavior are not
-established by the local tests. FEVC, its pin, Separations production ado files,
-and the older SCC production campaign are unchanged.
+The [complete frozen confirmation report](mc-confirmation.md) now covers all
+4,690 planned attempts: 4,200 main native/legacy calls, 140 exact checks and
+350 B=1024 checks. Its [full audit](mc-confirmation.json) has no missing or
+incomplete jobs. The original v04 duration_960 failure is preserved; no further
+native failures occurred. Legacy fixed_3840 and fixed_960 have 57 and thirteen
+non-interior draws, respectively, out of 300 each. All pairing checks pass,
+and unchanged wage/FEVC differences are at most 2.15e-13.
+
+The [derived summary](mc-confirmation-summary.json) binds the complete audit
+and all-ten-moment report. Across 49 joint-interior corrected separation-moment
+cells, native/legacy mean differences are at most 0.059 native Monte Carlo
+standard errors. Corresponding maximum ratios for the exact and B=1024 subset
+checks are 0.032 and 0.029. These paired subset checks support the numerical
+approximation on the tested populations. They do not establish universal
+statistical equivalence or uniform RMSE improvement; the complete tables
+retain failures, boundary cases and moments where RMSE increases.
+
+The separately monitored [v06 local comparison](benchmark-v06.json) passes
+two cases, twelve processes and 48 timed calls, with maximum matched-output
+error 5.96e-15. Native correction takes 0.02954s at 2,880 rows and 1.11548s at
+120,000 rows, versus 0.276s and 3.620s for cached Mata. The [acceptance record](benchmark-v06-acceptance.json)
+binds the frozen plan, binary and completed local handoff; [measurement tables](performance.md)
+keep these results distinct from v05 and v07.
+
+Million/ten-million-row performance and Windows scientific behavior are not
+established by these local tests. FEVC, its pin, Separations production ado
+files, and the older SCC production campaign are unchanged.
+
+## Million-row saved-effect recovery repair
+
+[Independent adjudication](recovery-v07-adjudication.json) identifies working-response
+cancellation in the ordinary fit preceding SCC benchmark 7756011. Both the
+canonical absorbed target and accepted predictor had small components outside
+the FE span. The v07 precision screen declines unsafe canonical-product reuse
+and retains the established final-Hessian replay, with unchanged tolerances.
+The exact retained input agrees with an independent explicit-dummy Poisson
+fit within 3.56e-15 in the log predictor. Saved-FE reconstruction error is
+3.78e-14; ordinary outputs are byte-identical with/without saves and at T1/T8.
+
+The balanced Cartesian regression fails without the screen at 1.71e-10
+out-of-span error and passes with it. Four canonical-final tests and 16 help
+checks pass. The broader PPML screen has 402 passes and one pre-existing
+rejection-count failure, reproduced in the comparison build. The
+[core harness](core-recovery.rs) links the immutable release core;
+[the independent oracle](recovery-oracle.py) accepts `--work` pointing to the
+retained input/output directory. These are mathematical checks, not accepted
+performance measurements or licensed Mac evidence. Current SCC status is in
+STATUS.md; the failed benchmark receipt remains unchanged.
+
+[Linux repair adjudication](recovery-v07-scc-adjudication.json) preserves two
+failed wrappers. Job 7757003 passed six smoke/feature/help fixtures and all 25
+oracle cases; the retained million-row Stata fixture completed every assertion
+and returned zero, but its completion label differed from its filename.
+Neither failed job is an accepted validation job or benchmark. Independent
+comparison of all million saved outputs agrees with explicit Poisson predictors
+and means within 3.56e-15 and saved reconstruction within 2.84e-14.
+
+The approved follow-up [SCC job 7757511 passed](recovery-v07-scc-pass.json):
+clean accounting, seven smoke/feature/help/retained-data fixtures and all 25
+oracle cases. It used four slots, 83 seconds and 3.175G maxvmem. The
+[independent all-row check](recovery-v07-scc-oracle.json) confirms the same
+3.56e-15 predictor/mean agreement and 2.84e-14 saved reconstruction bound.
+The [matched benchmark launch](benchmark-scc-v07-launch.json) is job 7757609;
+it preserves matrix10 settings and uses the repaired v07 binary. The
+[terminal failure receipt](benchmark-scc-v07-license-failure.json) records
+24 completed T1 timed calls, followed by r(198) at `set processors 8` before
+the first T8 fit. The SCC Stata/MP installation permits at most four processors.
+Accounting is failed=0/exit_status=1, 2,207 seconds and 3.820G maxvmem. The
+saved-FE failure did not recur. The failed full matrix is preserved.
+
+The archive was subsequently collected and its SHA-256 verified. The
+[completed T1 subset](benchmark-scc-v07-t1.json), selected by a [separate analysis plan](benchmark-scc-v07-t1-plan.json),
+passes the unchanged accuracy checks at maximum discrepancy 3.01e-17. All six
+completed processes, both engine orders and 24 timed calls are retained;
+input/probe hashes and process monitors pass. The [verification record](benchmark-scc-v07-t1-verification.json)
+binds the selected outputs to the failed parent job. Native warm correction
+takes 32.922s versus 71.327s for cached Mata, and end-to-end calls take 51.711s
+versus 92.956s. These results support the complete T1 comparison only; the full
+job still failed and no T8 result is available. No fits were rerun.
+
+## Final repaired Mac artifact
+
+The [v07 Mac validation](licensed-mac-v07.json) binds the [complete source manifest](source-v07.json)
+and universal plugin SHA-256
+`86262c38fa7f7ceef1b16336ae63b0ea93d3da2960072338c981f209bcc6ec03`.
+It verifies 204 runtime/build-source files and holds the shared licensed lock
+through all serial checks. Stata 18 passes six smoke/public/help fixtures,
+ten independent controls, fifteen retained-draw reconstruction cases, and the
+retained million-row fixture. Maximum control/reconstruction errors are
+6.62e-10/1.44e-13. The million-row output agrees with independent explicit-dummy
+Newton predictors and relative means within 3.56e-15; the saved FE sum agrees
+within 2.84e-14. Public and hidden help examples execute on this final binary.
+
+Its [frozen local timing plan](benchmark-plan-v07.json) and [results](benchmark-v07.json)
+cover both unchanged 2,880/120,000-row case definitions, twelve monitored
+processes and 48 timed calls. Maximum matched correction/diagnostic error is
+1.94e-15. Cached Mata takes 9.33 and 3.45 times as long for correction; phase
+medians are in [the performance report](performance.md). After every check
+passed, the local development plugin was replaced by this exact tested binary.
+The old binaries and frozen MC remain preserved. No release qualification or
+new large-scale/parallel SCC result is implied.
