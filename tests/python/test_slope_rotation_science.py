@@ -10,9 +10,34 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "benchmarks/performance"))
 import slope_rotation as rotation
+import slope_summary as summary
 
 
 class SlopeComparisonTests(unittest.TestCase):
+    def test_summary_requires_every_registered_pair_and_retains_disagreement(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            rotation.write(root / "plan.json", dict(cases=[dict(id="test", arms=["baseline", "candidate"])],
+                                                   seeds=[7, 11], rotations_per_seed=1))
+            result = dict(process_rc=0, sentinel=True, timed_out=False, metadata=dict(seconds=1.),
+                          process_seconds=2., process_peak_rss_bytes=1024)
+            records = [dict(case="test", seed=seed, repetition=0, arm=arm, result=result)
+                       for seed in [7, 11] for arm in ["baseline", "candidate"]]
+            pairs = [dict(case="test", seed=seed, repetition=0,
+                          comparisons=dict(baseline=dict(ranked=seed == 7, checks=dict(covariance=seed == 7),
+                                                        ratio=1. if seed == 7 else None))) for seed in [7, 11]]
+            for name, data in [("results.json", records), ("comparisons.json", pairs),
+                               ("complete.json", dict(complete=True, fits=4, pairs=2)), ("identity.json", {})]:
+                rotation.write(root / name, data)
+            row = summary.summarize(root)["cases"][0]
+            self.assertEqual(row["comparisons"]["baseline"]["eligible"], 1)
+            self.assertIsNone(row["comparisons"]["baseline"]["ratios"])
+            self.assertEqual(row["comparisons"]["baseline"]["failed_checks"], ["covariance"])
+            for incomplete in (records[:2], [records[0], *records[1:3], records[0]]):
+                rotation.write(root / "results.json", incomplete)
+                with self.assertRaisesRegex(ValueError, "incomplete or duplicated"):
+                    summary.summarize(root)
+
     def test_requested_outputs_and_failures_control_eligibility(self):
         tolerance = json.loads((ROOT / "benchmarks/systematic/manifest-light-v2.json").read_text())["science"]
         with tempfile.TemporaryDirectory() as temporary:

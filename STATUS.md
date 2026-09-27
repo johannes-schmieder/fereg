@@ -27,10 +27,14 @@ independent weighted WLS/sandwich/saved-output oracle, and universal Mac build/
 ABI checks. Exact source/artifact manifests and rejected attempts are preserved.
 Fresh seeds 202609279/202609280 and seven cases were registered before generation.
 No fresh local fit has run: unrelated Mac Stata work prevented a quiet interval.
-The literal inputs are moving to SCC under existing authority. An explicit
+The literal inputs are deployed on SCC with verified hashes. An explicit
 registration amendment keeps baseline/candidate controls for excluded three-FE
 routes and both default/strict stock arms for the five new-path cases: 192 fits.
-Separate Linux smoke/oracle and isolated paired timing remain pending. This
+Linux smoke/oracle **7761688** and isolated paired timing **7761689** are submitted
+at committed candidate **852b03a9**; the latter is dependency-held and checks
+upstream accounting and application receipts before fitting. The
+[submission receipt](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-submission01.json)
+binds the exact archive and literal input manifest. Results remain pending. This
 checkpoint is a scientifically validated development candidate, not an accepted
 fresh performance result or completion of the broader plan.
 
