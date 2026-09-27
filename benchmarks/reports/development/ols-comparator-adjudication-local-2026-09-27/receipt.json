@@ -1,0 +1,18 @@
+{
+  "kind": "untimed_local_comparator_adjudication",
+  "native_commit": "f8803410c52d909892708f012c447eb940ad179b",
+  "native_plugin_sha256": "571eccb27a6cafb3239b163a37344ffb3e0e917d56b2b7d53c5a73762f250a50",
+  "native_fits": 3,
+  "stock_fits": 9,
+  "independent_svd_oracles": 3,
+  "native_oracle_passes": 3,
+  "input_replays": "byte-exact Stata and R doubles for all three inputs",
+  "source_files": {
+    "benchmarks/reports/development/ols-comparator-adjudication-local-2026-09-27/registration.json": "ab403d394dff6ecc832bf857486413ec4c6d81d0d220eb9dd7482c427de2dd52",
+    "benchmarks/reports/development/ols-comparator-adjudication-local-2026-09-27/replay.py": "b00203f52d154bdeef9b8d7beb01baa8ae505a744fcc958b318b68d02ba72d57",
+    "benchmarks/reports/development/ols-comparator-adjudication-local-2026-09-27/reference.R": "97386d5c019b6ac35ef2e227fe01ce7b8e53378949c5adaac32c84228e9e068c",
+    "benchmarks/reports/development/ols-comparator-adjudication-local-2026-09-27/analyze.py": "33de3b0d7a95afef48ba00a6615bcc169fdd945a8b857897cb6f2cbd42624f6f",
+    "benchmarks/systematic/generate.py": "b56668181b80cd8dd00629b9841cf8a4faaacce5711e54bdfec8b137d2183482",
+    "benchmarks/systematic/manifest-light-v2.json": "ae86338b8a573d669479441c5b015b9fc0feddf72670c1ad0437deac0a0bd22d"
+  }
+}

@@ -55,6 +55,21 @@ launcher controls), requires every registered seed and independent oracle before
 ranking, and keeps process/RSS distributions and scaling losses separate. No push
 has been performed.
 
+## OLS comparator adjudication — 2026-09-27
+
+The [bounded independent check](benchmarks/reports/development/ols-comparator-adjudication-local-2026-09-27/README.md)
+passes native coefficients, full finite IID covariance, RSS, sample and exact
+explicit-design rank on three fresh small strong/sparse designs. A fresh pinned
+stock fixest build compares defaults, fixef.tol=1e-11, and that tolerance plus
+K.exact=TRUE. Tightening convergence alone does not repair inference counts.
+The sparse two-FE rank is 820 versus default 823; K.exact supplies 820 and passes.
+The three-FE rank is 827 versus default 832 and K.exact 826; even the latter
+remains scientifically incomparable. Singular-value gaps clearly identify rank.
+The native documented pairwise policy matches exact rank on these inputs only;
+this is not a universal large-three-FE rank claim. No timing rankings, frozen
+manifests, native DoF or covariance tolerances changed. The large degree-two
+accuracy discrepancy still needs a stricter reference check on its actual input.
+
 ## Benchmark repair implementation — 2026-09-27
 
 Johannes approved implementing the expanded performance/failure plan, including
