@@ -245,8 +245,8 @@ The public call graph is:
 _fereg_ppml.ado public syntax adapter
   -> one _fereg_estimate_ppml.ado transaction
        -> one plugin call __fereg_plugin, estimate-ppml <framed request>
-            -> exact PPML request 1.5/result 1.2 wire validation
-            -> preparation, separation, topology rebase, IRLS, inference
+            -> exact PPML request 1.7/result 1.4 wire validation
+            -> preparation, separation, topology rebase, IRLS, optional bias correction, inference
             -> complete private shadows, including solver report; COMPLETE last
        -> validate shadows and receipt; protected post or full rollback
 

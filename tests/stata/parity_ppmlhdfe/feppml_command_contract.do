@@ -31,10 +31,10 @@ assert `"`e(adjustment)'"' == "none"
 assert `"`e(predict)'"' == "feppml_p"
 assert `"`e(feppml_gate)'"' == "public_ppml_v1"
 assert `"`e(feppml_memory_requested)'"' == "auto"
-assert `"`e(feppml_action_protocol)'"' == "1.5"
+assert `"`e(feppml_action_protocol)'"' == "1.6"
 assert `"`e(feppml_model_wire)'"' == "2.1"
-assert `"`e(feppml_request_wire)'"' == "1.6"
-assert `"`e(feppml_result_wire)'"' == "1.3"
+assert `"`e(feppml_request_wire)'"' == "1.7"
+assert `"`e(feppml_result_wire)'"' == "1.4"
 assert `"`e(feppml_plugin)'"' == "0.5.0"
 assert `"`e(solver)'"' == "auto"
 assert `"`e(feppml_solver_requested)'"' == "auto"
@@ -166,7 +166,7 @@ local allowed_macros cmd cmdline model depvar indepvars vce vcetype absvars ///
     clustvar3 clustvar4 clustvar5 resid residual_type xb_var d_var eta_var ///
     mu_var drop_reason_var predict feppml_action_protocol feppml_model_wire ///
     feppml_request_wire feppml_result_wire feppml_plugin feppml_gate ///
-    feppml_memory_requested solver feppml_solver_requested ///
+    feppml_memory_requested feppml_memory_method solver feppml_solver_requested ///
     feppml_solver_selected feppml_solver_engine feppml_solver_effective ///
     feppml_solver_engine_effective feppml_solver_checkpoint ///
     feppml_solver_fallback_reason properties
@@ -179,7 +179,7 @@ foreach field of local actual_macros {
 local allowed_matrices b V feppml_status feppml_fit feppml_dof feppml_fe ///
     feppml_cluster feppml_subset feppml_separation feppml_inference ///
     feppml_drop_counts feppml_separation_sequence feppml_certificate ///
-    feppml_solver feppml_runtime feppml_receipt dof_table
+    feppml_solver feppml_runtime feppml_memory feppml_receipt dof_table
 local actual_matrices : e(matrices)
 foreach field of local actual_matrices {
     local allowed : list field in allowed_matrices

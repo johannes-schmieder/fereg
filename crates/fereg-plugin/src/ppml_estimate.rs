@@ -1,16 +1,18 @@
+#[path = "ppml_bias.rs"]
+pub(crate) mod bias;
 use crate::memory_report::{Baseline, Report as MemoryReport, ROWS as MEMORY_ROWS};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::time::Instant;
 
-use crate::estimate::{
-    imposed_memory_limit_bytes, load_ols_input_with_memory, loading_memory, parse_bool, parse_nonnegative_u32,
-    parse_positive_f64, parse_positive_u32, parse_positive_usize, parse_u16, parse_usize,
-    read_bindings, read_local_estimate_bundle, read_numeric_columns_in_chunks, read_table,
-    required,
-};
 #[cfg(test)]
 use crate::estimate::load_ols_input;
+use crate::estimate::{
+    imposed_memory_limit_bytes, load_ols_input_with_memory, loading_memory, parse_bool,
+    parse_nonnegative_u32, parse_positive_f64, parse_positive_u32, parse_positive_usize, parse_u16,
+    parse_usize, read_bindings, read_local_estimate_bundle, read_numeric_columns_in_chunks,
+    read_table, required,
+};
 use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::instrumentation::{
     ppml_action_allocation_observation, ppml_allocator_snapshot_probe,
@@ -53,7 +55,7 @@ pub const ACTION_ESTIMATE_PPML: &str = "estimate-ppml";
 const CONFIRMATION: &str = "feppml-estimation";
 const CLUSTER_TERM_ROW_WIDTH: usize = 2;
 const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
-const MAX_PPML_PROTOCOL_FIELDS: usize = 88;
+const MAX_PPML_PROTOCOL_FIELDS: usize = 99;
 const NATIVE_BREAK_MARKER: &str = "FEPPML_NATIVE_BREAK_ARMED\n";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -104,6 +106,8 @@ impl Drop for PublicationPhaseScope {
 
 #[derive(Debug, Clone)]
 struct ResultMatrices {
+    bias: Option<String>,
+    bias_diagnostics: Option<String>,
     b: String,
     covariance: String,
     coefficient_status: String,
@@ -125,6 +129,8 @@ struct ResultMatrices {
 
 #[derive(Debug)]
 struct PreparedResultMatrices {
+    bias: Option<PreparedMatrixStoreName>,
+    bias_diagnostics: Option<PreparedMatrixStoreName>,
     b: PreparedMatrixStoreName,
     covariance: PreparedMatrixStoreName,
     coefficient_status: PreparedMatrixStoreName,
@@ -155,6 +161,7 @@ struct ResultMatrixDimensions {
 
 #[derive(Debug, Clone, Default)]
 struct ObservationOutputs {
+    bias_channels: Vec<Option<u32>>,
     sample: u32,
     residual: Option<u32>,
     xb: Option<u32>,
@@ -177,6 +184,7 @@ impl ObservationOutputs {
                 self.drop_reason,
             ])
             .chain(self.saved_channels.iter().copied())
+            .chain(self.bias_channels.iter().copied())
             .flatten()
     }
 }
@@ -207,6 +215,8 @@ impl AdjustmentBinding {
 
 #[derive(Debug)]
 struct EstimatePpmlAction {
+    bias: Option<fereg_core::ppml::PpmlBiasRequest>,
+    bias_unit: Option<u32>,
     memory_baseline: Baseline,
     transport_parent_bytes: u128,
     request: OlsRequestV1,
@@ -234,6 +244,8 @@ struct EstimatePpmlAction {
 
 #[derive(Debug)]
 struct EstimatePpmlSpec {
+    bias: Option<fereg_core::ppml::PpmlBiasRequest>,
+    bias_unit: Option<u32>,
     memory_baseline: Baseline,
     transport_parent_bytes: u128,
     transport_peak_bytes: u128,
@@ -313,7 +325,8 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let mut input_memory = loading_memory(
         &action.request,
         spi.nobs()?,
-        usize::from(action.adjustment.position().is_some()),
+        usize::from(action.adjustment.position().is_some())
+            + usize::from(action.bias_unit.is_some()),
         action.metadata_capacity_bytes() + action.transport_parent_bytes,
         action.memory.usable_bytes(),
     )?;
@@ -325,9 +338,11 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         spi,
     )?;
     let adjustment = load_adjustment(action.adjustment, &loaded.candidate, spi)?;
+    let bias_units = load_optional_numeric(action.bias_unit, &loaded.candidate, spi)?;
     spi.check_interrupted()?;
     let phase_probe = ppml_phase_allocator_probe(action.allocation_audit);
     let mut prepared_request = PreparedPpmlRequestV1 {
+        bias: action.bias,
         ols: fallible_clone_ols_request(&action.request)?,
         clusters: fallible_clone_clusters(&action.clusters)?,
         vce: action.vce,
@@ -358,6 +373,7 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             == PpmlDeveloperInjection::Allocation,
     };
     let prepared_input = LoadedPpmlInput {
+        bias_units,
         ols: loaded,
         adjustment,
         adjustment_kind: action.adjustment.kind(),
@@ -408,9 +424,10 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     let before_fit = probe();
                     let embedding_resident_bytes =
                         before_fit.current_bytes.saturating_sub(start.current_bytes);
-                    prepared_request.memory.embedding_resident_bytes = u128::from(embedding_resident_bytes)
-                        .checked_add(transport_parent_bytes)
-                        .ok_or_else(|| allocation("PPML embedding parent size overflows"))?;
+                    prepared_request.memory.embedding_resident_bytes =
+                        u128::from(embedding_resident_bytes)
+                            .checked_add(transport_parent_bytes)
+                            .ok_or_else(|| allocation("PPML embedding parent size overflows"))?;
                     #[cfg(test)]
                     TEST_LAST_EMBEDDING_RESIDENT_BYTES.store(
                         embedding_resident_bytes,
@@ -443,8 +460,11 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         },
     )?;
     publication_memory.validate_capacity(&shadow)?;
-    let mut memory_ledger = ppml_action_memory_ledger(result.memory().plan,
-        Some(input_memory.peak()), Some(action.metadata_peak_bytes))?;
+    let mut memory_ledger = ppml_action_memory_ledger(
+        result.memory().plan,
+        Some(input_memory.peak()),
+        Some(action.metadata_peak_bytes),
+    )?;
     memory_ledger.record(
         crate::action_memory::Stage::Publication,
         crate::action_memory::Frame {
@@ -455,8 +475,12 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     )?;
     if std::env::var_os("FEREG_ACTION_MEMORY_AUDIT").is_some() {
         let resources = crate::instrumentation::snapshot();
-        crate::action_memory::emit(&memory_ledger,
-            resources.allocation_peak_bytes.saturating_sub(resources_start.allocation_current_bytes))?;
+        crate::action_memory::emit(
+            &memory_ledger,
+            resources
+                .allocation_peak_bytes
+                .saturating_sub(resources_start.allocation_current_bytes),
+        )?;
     }
     let expected_solver = match result.memory().expected_solver_workspace_peak {
         Some(peak) => peak.expected_heap_bytes().map(u128::from),
@@ -467,23 +491,39 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         // telemetry validation, which retain the original conservative plan.
         let mut expected_plan = result.memory().plan;
         expected_plan.solver_workspace_bytes = expected_solver;
-        let expected = ppml_action_memory_ledger(expected_plan,
-            Some(input_memory.peak()), Some(action.metadata_peak_bytes))?;
+        let expected = ppml_action_memory_ledger(
+            expected_plan,
+            Some(input_memory.peak()),
+            Some(action.metadata_peak_bytes),
+        )?;
         Some(crate::memory_forecast::Forecast {
-            native_peak: expected.summary().accounted_peak.max(
-                publication_memory.parent_bytes + publication_memory.shadow_bytes),
+            native_peak: expected
+                .summary()
+                .accounted_peak
+                .max(publication_memory.parent_bytes + publication_memory.shadow_bytes),
             stata_growth: crate::memory_forecast::Forecast::publication_growth(
-                shadow.drop_reasons.len(), action.publication_matrix_cells as u128,
+                shadow.drop_reasons.len(),
+                action.publication_matrix_cells as u128,
                 crate::memory_forecast::has_factor_stripes(&action.request.model),
-                action.memory_baseline.before_allocated)?,
+                action.memory_baseline.before_allocated,
+            )?,
         })
-    } else { None };
+    } else {
+        None
+    };
     if let Some(forecast) = forecast {
-        forecast.trace(action.memory_baseline, crate::instrumentation::native_live_before())?;
+        forecast.trace(
+            action.memory_baseline,
+            crate::instrumentation::native_live_before(),
+        )?;
     }
-    let memory_report = MemoryReport::estimated(action.memory_baseline,
-        crate::instrumentation::native_live_before(), memory_ledger.summary(),
-        result.memory().plan.safety_headroom_bytes, forecast)?;
+    let memory_report = MemoryReport::estimated(
+        action.memory_baseline,
+        crate::instrumentation::native_live_before(),
+        memory_ledger.summary(),
+        result.memory().plan.safety_headroom_bytes,
+        forecast,
+    )?;
     precommit(&action, &shadow, spi)?;
     store_shadow_prefix(&action, &shadow, spi)?;
     let action_end = action_probe.map(|probe| probe());
@@ -516,10 +556,11 @@ impl EstimatePpmlAction {
                         + cluster.sources.capacity() as u128 * size_of::<SourceId>() as u128
                 })
                 .sum::<u128>()
-            + self.outputs.saved_channels.capacity() as u128 * size_of::<Option<u32>>() as u128
+            + (self.outputs.saved_channels.capacity() + self.outputs.bias_channels.capacity())
+                as u128
+                * size_of::<Option<u32>>() as u128
             + self.break_marker_token.capacity() as u128
             + prepared_matrix_names(&self.matrices)
-                .iter()
                 .map(|name| name.as_c_str().to_bytes_with_nul().len() as u128)
                 .sum::<u128>()
     }
@@ -548,7 +589,10 @@ impl EstimatePpmlSpec {
             &self.absorb_labels,
             &self.absorb_saved_names,
             &self.cluster_labels,
-        ].into_iter().map(crate::metadata_memory::strings_bytes).sum::<u128>();
+        ]
+        .into_iter()
+        .map(crate::metadata_memory::strings_bytes)
+        .sum::<u128>();
         let string_bytes = [
             &self.source_matrix,
             &self.term_matrix,
@@ -576,14 +620,38 @@ impl EstimatePpmlSpec {
             &self.matrices.drop_counts,
             &self.matrices.separation_sequence,
             &self.break_marker_token,
-        ].into_iter().map(|value| value.capacity() as u128).sum::<u128>();
+        ]
+        .into_iter()
+        .map(|value| value.capacity() as u128)
+        .sum::<u128>();
         crate::metadata_memory::MetadataShape {
-            rows: [self.source_count, self.term_count, self.component_count,
-                self.absorb_term_count, self.absorb_component_count, self.cluster_term_count,
-                self.cluster_component_count, self.binding_count],
+            rows: [
+                self.source_count,
+                self.term_count,
+                self.component_count,
+                self.absorb_term_count,
+                self.absorb_component_count,
+                self.cluster_term_count,
+                self.cluster_component_count,
+                self.binding_count,
+            ],
             transport_parent_bytes: self.transport_parent_bytes,
-            specification_bytes: registry_bytes + string_bytes
-                + self.outputs.saved_channels.capacity() as u128 * std::mem::size_of::<Option<u32>>() as u128,
+            specification_bytes: registry_bytes
+                + string_bytes
+                + self
+                    .matrices
+                    .bias
+                    .as_ref()
+                    .map_or(0, |v| v.capacity() as u128)
+                + self
+                    .matrices
+                    .bias_diagnostics
+                    .as_ref()
+                    .map_or(0, |v| v.capacity() as u128)
+                + self.outputs.bias_channels.capacity() as u128
+                    * std::mem::size_of::<Option<u32>>() as u128
+                + self.outputs.saved_channels.capacity() as u128
+                    * std::mem::size_of::<Option<u32>>() as u128,
         }
     }
 
@@ -636,7 +704,14 @@ impl EstimatePpmlSpec {
         let absorb_component_count = parse_usize(&values, "absorb_component_count")?;
         let cluster_term_count = parse_usize(&values, "cluster_term_count")?;
         let cluster_component_count = parse_usize(&values, "cluster_component_count")?;
+        let bias_request = bias::parse(&values)?;
         let specification = Self {
+            bias: bias_request,
+            bias_unit: if bias_request.is_some() {
+                Some(parse_positive_u32(&values, "bias_unit")?)
+            } else {
+                None
+            },
             memory_baseline: Baseline::parse(&values)?,
             transport_parent_bytes: crate::metadata_memory::argument_parent_bytes(args)?,
             transport_peak_bytes,
@@ -709,6 +784,18 @@ impl EstimatePpmlSpec {
             simplex_max_iterations: parse_positive_usize(&values, "simplex_max_iterations")?,
             simplex_max_tableau_cells: parse_positive_usize(&values, "simplex_max_tableau_cells")?,
             outputs: ObservationOutputs {
+                bias_channels: if bias_request.is_some() {
+                    let values = decode_output_position_registry(
+                        required(&values, "output_bias_channels")?,
+                        parse_usize(&values, "output_bias_count")?,
+                    )?;
+                    if values.iter().any(Option::is_none) {
+                        return Err(syntax("partial bias FE outputs are unsupported"));
+                    }
+                    values
+                } else {
+                    Vec::new()
+                },
                 sample: parse_positive_u32(&values, "output_sample")?,
                 residual: optional_position(&values, "output_residual")?,
                 xb: optional_position(&values, "output_xb")?,
@@ -722,6 +809,8 @@ impl EstimatePpmlSpec {
                 )?,
             },
             matrices: ResultMatrices {
+                bias: values.get("output_bias_matrix").cloned(),
+                bias_diagnostics: values.get("output_bias_diagnostics").cloned(),
                 b: required(&values, "output_b_matrix")?.to_owned(),
                 covariance: required(&values, "output_v_matrix")?.to_owned(),
                 coefficient_status: required(&values, "output_status_matrix")?.to_owned(),
@@ -828,6 +917,15 @@ impl EstimatePpmlSpec {
             "output_drop_reason",
             "output_saved_count",
             "output_saved_channels",
+            "bias_method",
+            "bias_unit",
+            "bias_probes",
+            "bias_seed",
+            "bias_stream",
+            "output_bias_count",
+            "output_bias_channels",
+            "output_bias_matrix",
+            "output_bias_diagnostics",
             "output_b_matrix",
             "output_v_matrix",
             "output_status_matrix",
@@ -898,7 +996,10 @@ impl EstimatePpmlSpec {
             poolsize: self.poolsize,
             ..PpmlMemoryConfig::default()
         };
-        let metadata_peak_bytes = self.metadata_shape().admit(memory.usable_bytes())?.max(self.transport_peak_bytes);
+        let metadata_peak_bytes = self
+            .metadata_shape()
+            .admit(memory.usable_bytes())?
+            .max(self.transport_peak_bytes);
         crate::metadata_memory::admit(metadata_peak_bytes, memory.usable_bytes())?;
         let wire = ModelWireV2 {
             major: self.model_major,
@@ -976,7 +1077,15 @@ impl EstimatePpmlSpec {
         let residual = parse_residual_request(&self.residual, self.outputs.residual)?;
         let outputs = std::mem::take(&mut self.outputs);
         validate_saved_output_layout(&request, &outputs)?;
-        validate_variable_layout(&request, adjustment, &outputs, spi)?;
+        if let Some(position) = self.bias_unit {
+            validate_adjustment_binding(AdjustmentBinding::Offset(position), spi)?;
+        }
+        validate_variable_layout(&request, adjustment, self.bias_unit, &outputs, spi)?;
+        if self.bias.is_some() != self.matrices.bias.is_some()
+            || self.bias.is_some() != self.matrices.bias_diagnostics.is_some()
+        {
+            return Err(syntax("bias request and output matrices disagree"));
+        }
         let coefficient_count = request
             .model
             .terms
@@ -1075,6 +1184,8 @@ impl EstimatePpmlSpec {
             .ok_or_else(|| allocation("PPML requested output-column count overflows"))?;
         let publication_matrix_cells = publication_matrix_cells(&matrices)?;
         Ok(EstimatePpmlAction {
+            bias: self.bias,
+            bias_unit: self.bias_unit,
             memory_baseline: self.memory_baseline,
             transport_parent_bytes: self.transport_parent_bytes,
             request,
@@ -1252,7 +1363,15 @@ fn load_adjustment(
     candidate: &[bool],
     spi: &mut dyn SpiApi,
 ) -> Result<Option<LoadedNumericColumn>> {
-    let Some(position) = binding.position() else {
+    load_optional_numeric(binding.position(), candidate, spi)
+}
+
+fn load_optional_numeric(
+    position: Option<u32>,
+    candidate: &[bool],
+    spi: &mut dyn SpiApi,
+) -> Result<Option<LoadedNumericColumn>> {
+    let Some(position) = position else {
         return Ok(None);
     };
     let mut values = reserved_filled(candidate.len(), 0.0, "PPML adjustment values")?;
@@ -1291,8 +1410,11 @@ fn ppml_action_memory_ledger(
             parents: 0,
             workspace: input_peak_bytes.unwrap_or(embedding),
         },
-        if input_peak_bytes.is_some() { Gaps::TRANSPORT_COMPILER }
-        else { Gaps::STRING_LOADING.union(Gaps::TRANSPORT_COMPILER) },
+        if input_peak_bytes.is_some() {
+            Gaps::TRANSPORT_COMPILER
+        } else {
+            Gaps::STRING_LOADING.union(Gaps::TRANSPORT_COMPILER)
+        },
     )?;
     let runtime = Gaps::WORKER_RUNTIME.union(Gaps::DEPENDENCY_CONTAINERS);
     let generation = runtime.union(Gaps::PPML_GENERATION_PARENT);
@@ -1371,6 +1493,7 @@ fn validate_shadow(
     shadow: &PpmlShadowResult<'_>,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
+    bias::validate(action, shadow, spi)?;
     let dimension = shadow.coefficient_count.max(1);
     if shadow.b.len() != dimension
         || shadow.covariance.len() != dimension.saturating_mul(dimension)
@@ -1686,9 +1809,11 @@ fn validate_solver_evidence(
                 || (expected_selected == f64::from(PpmlSolverFamily::Map.code())
                     && shadow.runtime[5] == 2.0
                     && action.request.absorbed_terms.len() == 3
-                    && action.request.absorbed_terms.iter().all(|term| {
-                        term.intercept && term.slope_sources.is_empty()
-                    }))));
+                    && action
+                        .request
+                        .absorbed_terms
+                        .iter()
+                        .all(|term| term.intercept && term.slope_sources.is_empty()))));
     let no_fallback = fallback_reason == 0.0
         && fallback_count == 0
         && shadow.solver[3] == expected_selected
@@ -2251,11 +2376,44 @@ fn store_shadow_prefix(
                     spi.store_numeric(position, zero_based + 1, values[retained_cursor])?;
                 }
             }
+            if let Some(bias) = &shadow.bias {
+                for (position, values) in action.outputs.bias_channels.iter().zip(bias.saved) {
+                    spi.store_numeric(
+                        position.ok_or_else(|| internal("missing bias output position"))?,
+                        zero_based + 1,
+                        values[retained_cursor],
+                    )?;
+                }
+            }
             retained_cursor += 1;
         }
         if let Some(position) = action.outputs.drop_reason {
             spi.store_numeric(position, zero_based + 1, f64::from(reason.code()))?;
         }
+    }
+    if let Some(bias) = &shadow.bias {
+        store_matrix(
+            spi,
+            action
+                .matrices
+                .bias
+                .as_ref()
+                .ok_or_else(|| internal("bias matrix missing"))?,
+            bias::CHANNELS,
+            shadow.coefficient_count,
+            &bias.coefficients,
+        )?;
+        store_matrix(
+            spi,
+            action
+                .matrices
+                .bias_diagnostics
+                .as_ref()
+                .ok_or_else(|| internal("bias diagnostics missing"))?,
+            bias::DIAGNOSTICS,
+            1,
+            &bias.diagnostics,
+        )?;
     }
     store_matrix(spi, &action.matrices.b, 1, shadow.b.len(), &shadow.b)?;
     let dimension = shadow.coefficient_count.max(1);
@@ -2355,7 +2513,13 @@ fn store_runtime_and_complete(
     memory_report: &MemoryReport,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
-    store_matrix(spi, &action.matrices.memory_report, MEMORY_ROWS, 2, &memory_report.0)?;
+    store_matrix(
+        spi,
+        &action.matrices.memory_report,
+        MEMORY_ROWS,
+        2,
+        &memory_report.0,
+    )?;
     store_matrix(
         spi,
         &action.matrices.runtime,
@@ -2477,7 +2641,9 @@ fn read_ppml_clusters(
             return Err(invalid("PPML cluster term order or arity is invalid"));
         }
         if count > spec.cluster_component_count.saturating_sub(cursor) {
-            return Err(invalid("PPML cluster component table ended before its declared arity"));
+            return Err(invalid(
+                "PPML cluster component table ended before its declared arity",
+            ));
         }
         let mut sources = Vec::new();
         sources
@@ -2551,6 +2717,7 @@ fn validate_adjustment_binding(adjustment: AdjustmentBinding, spi: &mut dyn SpiA
 fn validate_variable_layout(
     request: &OlsRequestV1,
     adjustment: AdjustmentBinding,
+    bias_unit: Option<u32>,
     outputs: &ObservationOutputs,
     spi: &mut dyn SpiApi,
 ) -> Result<()> {
@@ -2559,7 +2726,9 @@ fn validate_variable_layout(
     let expected = request
         .bindings
         .len()
-        .checked_add(usize::from(adjustment.position().is_some()))
+        .checked_add(
+            usize::from(adjustment.position().is_some()) + usize::from(bias_unit.is_some()),
+        )
         .and_then(|inputs| inputs.checked_add(output_count))
         .ok_or_else(|| allocation("PPML plugin varlist width overflows"))?;
     if nvars != expected {
@@ -2588,6 +2757,16 @@ fn validate_variable_layout(
             return Err(invalid("PPML adjustment aliases another input"));
         }
     }
+    if let Some(position) = bias_unit {
+        if request
+            .bindings
+            .iter()
+            .any(|b| b.stata_var_position == position)
+            || adjustment.position() == Some(position)
+        {
+            return Err(invalid("bias unit input aliases another input position"));
+        }
+    }
     for (index, position) in outputs.positions().enumerate() {
         if position == 0 || position as usize > nvars {
             return Err(invalid("PPML output position exceeds the plugin varlist"));
@@ -2596,6 +2775,7 @@ fn validate_variable_layout(
             .bindings
             .iter()
             .any(|binding| binding.stata_var_position == position)
+            || bias_unit == Some(position)
             || adjustment.position() == Some(position)
             || outputs
                 .positions()
@@ -2671,7 +2851,21 @@ fn validate_matrix_layout(
         .map(|name| name.as_str())
         .collect::<BTreeSet<_>>();
     let mut output_names = BTreeSet::new();
-    for (name, rows, columns) in layouts {
+    for (name, rows, columns) in layouts
+        .into_iter()
+        .chain(
+            matrices
+                .bias
+                .as_ref()
+                .map(|name| (name, bias::CHANNELS, dimension)),
+        )
+        .chain(
+            matrices
+                .bias_diagnostics
+                .as_ref()
+                .map(|name| (name, bias::DIAGNOSTICS, 1)),
+        )
+    {
         if name.is_empty() || input_names.contains(name.as_str()) || !output_names.insert(name) {
             return Err(invalid(
                 "PPML result matrices alias an input or another output matrix",
@@ -2691,6 +2885,16 @@ fn validate_matrix_layout(
         }
     }
     Ok(PreparedResultMatrices {
+        bias: matrices
+            .bias
+            .as_ref()
+            .map(|name| PreparedMatrixStoreName::try_new(name, bias::CHANNELS, dimension))
+            .transpose()?,
+        bias_diagnostics: matrices
+            .bias_diagnostics
+            .as_ref()
+            .map(|name| PreparedMatrixStoreName::try_new(name, bias::DIAGNOSTICS, 1))
+            .transpose()?,
         b: PreparedMatrixStoreName::try_new(&matrices.b, 1, dimension)?,
         covariance: PreparedMatrixStoreName::try_new(&matrices.covariance, dimension, dimension)?,
         coefficient_status: PreparedMatrixStoreName::try_new(
@@ -2747,7 +2951,9 @@ fn validate_matrix_layout(
     })
 }
 
-fn prepared_matrix_names(matrices: &PreparedResultMatrices) -> [&PreparedMatrixStoreName; 17] {
+fn prepared_matrix_names(
+    matrices: &PreparedResultMatrices,
+) -> impl Iterator<Item = &PreparedMatrixStoreName> {
     [
         &matrices.b,
         &matrices.covariance,
@@ -2767,6 +2973,9 @@ fn prepared_matrix_names(matrices: &PreparedResultMatrices) -> [&PreparedMatrixS
         &matrices.memory_report,
         &matrices.receipt,
     ]
+    .into_iter()
+    .chain(matrices.bias.iter())
+    .chain(matrices.bias_diagnostics.iter())
 }
 
 fn parse_separation_methods(value: &str) -> Result<SeparationMethods> {
@@ -2894,7 +3103,9 @@ fn decode_ppml_registry(value: &str, expected: usize) -> Result<Vec<String>> {
     // The caller's declared cardinality is not an allocation bound until it
     // agrees with the actual framing. Reject malformed huge counts first.
     if value.split('|').count() != expected {
-        return Err(invalid("registry cardinality does not match its declared count"));
+        return Err(invalid(
+            "registry cardinality does not match its declared count",
+        ));
     }
     let mut output = Vec::new();
     output
@@ -3385,11 +3596,21 @@ mod tests {
 
     #[test]
     fn memory_baseline_and_matrix_are_validated_before_any_store() {
-        for replacement in ["stata_alloc_before=-1", "stata_used_before=9007199254740993", "output_memory_matrix=RB"] {
+        for replacement in [
+            "stata_alloc_before=-1",
+            "stata_used_before=9007199254740993",
+            "output_memory_matrix=RB",
+        ] {
             let (mut args, mut spi) = fixture();
             let key = replacement.split_once('=').unwrap().0;
-            *args.iter_mut().find(|arg| arg.starts_with(&format!("{key}="))).unwrap() = replacement.to_owned();
-            assert!(estimate_ppml_test(&args, &mut spi).is_err(), "{replacement}");
+            *args
+                .iter_mut()
+                .find(|arg| arg.starts_with(&format!("{key}=")))
+                .unwrap() = replacement.to_owned();
+            assert!(
+                estimate_ppml_test(&args, &mut spi).is_err(),
+                "{replacement}"
+            );
             assert_eq!(spi.store_calls, 0);
             assert_eq!(spi.receipt_complete(), 0.0);
         }
@@ -3797,6 +4018,168 @@ mod tests {
         (args, spi)
     }
 
+    fn bias_fixture(saved: bool) -> (Vec<String>, FakeSpi) {
+        let (mut args, mut spi) = categorical_absorb_cluster_weight_fixture();
+        let x = SourceId::new(1).unwrap();
+        let h = SourceId::new(2).unwrap();
+        let g = SourceId::new(3).unwrap();
+        let cluster = SourceId::new(4).unwrap();
+        let wire = ModelWireV2::from_specification(&CompiledModelSpecification {
+            model: CompiledTermGraph {
+                sources: [(x, "x"), (h, "h"), (g, "g"), (cluster, "cluster_only")]
+                    .into_iter()
+                    .map(|(id, name)| SourceEntry {
+                        id,
+                        canonical_name: name.to_owned(),
+                    })
+                    .collect(),
+                terms: vec![continuous_test_term(1, x)],
+            },
+            absorbed_terms: [(g, "g", "fe_g"), (h, "h", "")]
+                .into_iter()
+                .enumerate()
+                .map(|(j, (source, label, saved_name))| AbsorbedTerm {
+                    id: AbsorbTermId::new(j as u32 + 1).unwrap(),
+                    intercept: true,
+                    categorical_sources: vec![source],
+                    slope_sources: Vec::new(),
+                    label: label.to_owned(),
+                    saved_name: saved_name.to_owned(),
+                })
+                .collect(),
+        })
+        .unwrap();
+        for (key, value) in [
+            ("term_count", "term_count=1".to_owned()),
+            ("component_count", "component_count=1".to_owned()),
+            ("absorb_term_count", "absorb_term_count=2".to_owned()),
+            (
+                "absorb_component_count",
+                format!(
+                    "absorb_component_count={}",
+                    wire.absorb_components.rows.len()
+                ),
+            ),
+            (
+                "canonical_tokens",
+                format!("canonical_tokens={}", registry(&wire.canonical_tokens)),
+            ),
+            (
+                "raw_component_operators",
+                format!(
+                    "raw_component_operators={}",
+                    registry(&wire.raw_component_operators)
+                ),
+            ),
+            (
+                "raw_time_series_operators",
+                format!(
+                    "raw_time_series_operators={}",
+                    registry(&wire.raw_time_series_operators)
+                ),
+            ),
+            (
+                "absorb_labels",
+                format!("absorb_labels={}", registry(&wire.absorb_labels)),
+            ),
+            (
+                "absorb_saved_names",
+                format!("absorb_saved_names={}", registry(&wire.absorb_saved_names)),
+            ),
+            ("output_saved_count", "output_saved_count=2".to_owned()),
+            (
+                "output_saved_channels",
+                "output_saved_channels=2:14|1:0".to_owned(),
+            ),
+        ] {
+            replace_argument(&mut args, key, value);
+        }
+        for (name, values) in [
+            ("T", wire.terms.rows),
+            ("C", wire.components.rows),
+            ("A", wire.absorb_terms.rows),
+            ("AC", wire.absorb_components.rows),
+        ] {
+            spi.matrices.insert(name.to_owned(), values);
+        }
+        for (name, rows, cols) in [
+            ("RB", 1, 2),
+            ("RV", 2, 2),
+            ("RSTATUS", 2, COEFFICIENT_STATUS_COLUMNS),
+            ("RFE", 2, FE_COLUMNS),
+            ("RBIAS", bias::CHANNELS, 2),
+            ("RBDIAG", bias::DIAGNOSTICS, 1),
+        ] {
+            spi.matrices
+                .insert(name.to_owned(), zero_matrix(rows, cols));
+        }
+        spi.nvars = if saved { 34 } else { 16 };
+        for row in 1..=spi.nobs {
+            spi.numeric
+                .insert((16, row), (((row - 1) / 4 + 1) as f64, false));
+            spi.numeric
+                .insert((2, row), (1. + ((row * 7 + row / 4) % 9) as f64, false));
+            if saved {
+                for position in 17..=34 {
+                    spi.numeric.insert((position, row), (-999., false));
+                }
+            }
+        }
+        args.extend(
+            [
+                "bias_method=exact",
+                "bias_unit=16",
+                "bias_probes=0",
+                "bias_seed=0",
+                "bias_stream=0",
+                "output_bias_matrix=RBIAS",
+                "output_bias_diagnostics=RBDIAG",
+            ]
+            .into_iter()
+            .map(str::to_owned),
+        );
+        args.push(format!("output_bias_count={}", if saved { 18 } else { 0 }));
+        args.push(format!(
+            "output_bias_channels={}",
+            if saved {
+                (17..=34)
+                    .map(|p| format!("2:{p}"))
+                    .collect::<Vec<_>>()
+                    .join("|")
+            } else {
+                ".".to_owned()
+            }
+        ));
+        (args, spi)
+    }
+
+    #[test]
+    fn bias_publication_and_every_store_failure_are_atomic() {
+        let (args, mut spi) = bias_fixture(true);
+        estimate_ppml_test(&args, &mut spi).unwrap();
+        assert_eq!(spi.matrices["RBDIAG"][0][0], 1.);
+        assert_eq!(spi.matrices["RBDIAG"][1][0], 8.);
+        assert_eq!(
+            spi.matrices["RREC"][0][PPML_RESULT_RECEIPT_COMPLETE_COLUMN - 1],
+            1.
+        );
+        assert!(spi.matrices["RBIAS"][1][0].abs() > 1e-7);
+        let (args, mut missing) = bias_fixture(true);
+        missing.numeric.insert((16, 2), (0., true));
+        let error = estimate_ppml_test(&args, &mut missing).unwrap_err();
+        assert!(error.message.contains("missing on a retained"));
+        assert_eq!(missing.store_calls, 0);
+        for ordinal in 1..=spi.store_calls {
+            let (args, mut failed) = bias_fixture(true);
+            failed.fail_store_at = Some(ordinal);
+            assert!(
+                estimate_ppml_test(&args, &mut failed).is_err(),
+                "store {ordinal}"
+            );
+            assert_eq!(failed.receipt_complete(), 0., "store {ordinal}");
+        }
+    }
+
     #[cfg(feature = "ffi")]
     fn allocation_failure_phase_fixture(phase: PpmlPhase) -> (Vec<String>, FakeSpi) {
         let (mut args, mut spi) = categorical_absorb_cluster_weight_fixture();
@@ -4012,7 +4395,7 @@ mod tests {
     }
 
     #[test]
-    fn ppml_bundle_decoder_accepts_the_closed_88_field_protocol_only() {
+    fn ppml_bundle_decoder_accepts_the_closed_99_field_protocol_only() {
         fn encode(fields: &[String]) -> String {
             let mut bundle = format!("{}:", fields.len());
             for field in fields {
@@ -4025,7 +4408,7 @@ mod tests {
             .map(|index| format!("field_{index}=value_{index}"))
             .collect::<Vec<_>>();
         assert_eq!(
-            decode_ppml_estimate_bundle(&encode(&fields)).expect("88-field PPML bundle"),
+            decode_ppml_estimate_bundle(&encode(&fields)).expect("99-field PPML bundle"),
             fields,
         );
 
@@ -4033,9 +4416,9 @@ mod tests {
             .map(|index| format!("field_{index}=value_{index}"))
             .collect::<Vec<_>>();
         let error = decode_ppml_estimate_bundle(&encode(&oversized))
-            .expect_err("84-field PPML bundle must fail closed");
+            .expect_err("100-field PPML bundle must fail closed");
         assert_eq!(error.code, ErrorCode::Syntax);
-        assert!(error.message.contains("between one and 88"));
+        assert!(error.message.contains("between one and 99"));
     }
 
     #[test]
@@ -4081,7 +4464,10 @@ mod tests {
         assert_eq!(spi.receipt_complete(), 1.0);
         assert_eq!(spi.matrices["RREC"][0][0], fereg_core::PPML_RESULT_MAGIC);
         assert_eq!(spi.matrices["RREC"][0][1], 1.0);
-        assert_eq!(spi.matrices["RREC"][0][2], f64::from(PPML_RESULT_WIRE_VERSION.minor));
+        assert_eq!(
+            spi.matrices["RREC"][0][2],
+            f64::from(PPML_RESULT_WIRE_VERSION.minor)
+        );
         assert_eq!(spi.matrices["RREC"][0][4], 2.0);
         assert_eq!(spi.matrices["RREC"][0][6], 10.0);
         assert_eq!(spi.matrices["RREC"][0][8], 10.0);
@@ -4244,6 +4630,7 @@ mod tests {
             .expect("PPML fixture adjustment");
         let result = fit_prepared_ppml(
             PreparedPpmlRequestV1 {
+                bias: None,
                 ols: fallible_clone_ols_request(&action.request).expect("request copy"),
                 clusters: fallible_clone_clusters(&action.clusters).expect("cluster copy"),
                 vce: action.vce,
@@ -4271,6 +4658,7 @@ mod tests {
                 inject_fe_recovery_allocation_failure: false,
             },
             LoadedPpmlInput {
+                bias_units: None,
                 ols: loaded,
                 adjustment,
                 adjustment_kind: action.adjustment.kind(),
@@ -4303,8 +4691,10 @@ mod tests {
     fn low_checkpoint_publication_uses_selected_memory_including_auto() {
         with_unpublished_shadow(|_, shadow, _| {
             let (args, mut spi) = categorical_absorb_cluster_weight_fixture();
-            let mut action = EstimatePpmlSpec::parse(&args).unwrap()
-                .decode_and_validate(&mut spi).unwrap();
+            let mut action = EstimatePpmlSpec::parse(&args)
+                .unwrap()
+                .decode_and_validate(&mut spi)
+                .unwrap();
             let term = action.request.absorbed_terms[0].clone();
             action.request.absorbed_terms = vec![term; 3];
             shadow.runtime[5] = 2.0;
@@ -4621,6 +5011,7 @@ mod tests {
             memory.available_bytes = Some(1);
             memory.embedding_resident_bytes = 0;
             let prepared_request = PreparedPpmlRequestV1 {
+                bias: None,
                 ols: fallible_clone_ols_request(&action.request).expect("request copy"),
                 clusters: fallible_clone_clusters(&action.clusters).expect("cluster copy"),
                 vce: action.vce,
@@ -4648,6 +5039,7 @@ mod tests {
                 inject_fe_recovery_allocation_failure: false,
             };
             let prepared_input = LoadedPpmlInput {
+                bias_units: None,
                 ols: loaded,
                 adjustment,
                 adjustment_kind: action.adjustment.kind(),
@@ -5213,8 +5605,13 @@ mod tests {
         let _guard = crate::instrumentation::lock_action_observation();
         with_unpublished_shadow(|action, shadow, spi| {
             spi.record_stores = false;
-            let memory_report = MemoryReport::partial(Baseline::default(), None,
-                crate::action_memory::Ledger::new(crate::action_memory::Estimator::Ppml).summary(), 0).unwrap();
+            let memory_report = MemoryReport::partial(
+                Baseline::default(),
+                None,
+                crate::action_memory::Ledger::new(crate::action_memory::Estimator::Ppml).summary(),
+                0,
+            )
+            .unwrap();
             let before = crate::ffi::allocation_usage();
             precommit(action, shadow, spi).unwrap();
             let validated = crate::ffi::allocation_usage();

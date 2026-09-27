@@ -1,0 +1,36 @@
+{
+  "base_head": "08891ef17ceba7256824e78d95256c16126d63db",
+  "limitations": [
+    "Development evidence, no release qualification",
+    "Broader baseline failures remain as recorded in verification-v04.json",
+    "SCC/Linux large-scale measurements pending"
+  ],
+  "plugin_sha256": "57c5f334d4e777bce80f81b92b6aa23004401f6bdbd019c3774f63bc8552c2ce",
+  "raw_evidence_root": "target/ppml-bias-20260926",
+  "raw_evidence_sha256": {
+    "bench-matrix04-process.json": "6693b6a77fd76846e64356337086f7b3b32aabb821e782bcb920c569cf1e831a",
+    "candidate/build05.log": "3eb7ef29ed15e7207eec151ab2f4f68d7d0d094a1f95589c0c5efe1838eb2349",
+    "clippy-candidate12.jsonl": "a9cfa73f1adcb81f30fd9d236ec2c89dd1a0b4cf52953c034667142155b25597",
+    "core-final12.log": "8fb3e949094ab2b3f00072d6464976c2ec6f4bb7440f19f2554100e9cb08a3f7",
+    "evidence-tests14.log": "921b60a7fd52e978fbb551cacd29df2d6708879400278e1fcc70fceeb0c6f8e0",
+    "final-stata12.json": "ac3b350ff60abd403e2704fd628125aa7695a0a18fab82fbb1314116248e1a09",
+    "final-validation12-process.json": "04b5df42e05d486edc2894c362fd4bbcb1ebabab296650ab747287007fc8b0fd",
+    "help-final11.log": "ad39657e9a93015fea4ac1851d18700cb486bc60497c740c21a23113b02c3119",
+    "mc-firstblock-process.json": "1fea6da30f74d5003d5b4e397971ef47ad1258a83ddaf8829f4b6b39c9abcbb4",
+    "oracle-final10.log": "9c2dcdbed803180dd4999ac35e5b9b9f6dc50e14da044d05f59dac4152878a7a"
+  },
+  "runtime_differences": [],
+  "runtime_files_unchanged": 206,
+  "schema": 1,
+  "scopes": {
+    "benchmark": "Eight monitored matched end-to-end cases, 48 processes, 288 calls",
+    "evidence_audit": "Three passing tests, MC denominator/identity and benchmark setting/source binding",
+    "final_core": "14 passing bias tests",
+    "final_stata": "Four passing fixtures: feature, Split Branch, seven public and seven hidden help examples",
+    "independent_oracle": "10 passing cases; all numerical summaries identical to v04",
+    "monte_carlo": "Frozen v04; first 280 of 4690 attempts complete. Later overflow-only runtime guard v05 has identical explicit-oracle results."
+  },
+  "source_identity": "f359a43902da7742a085e7b36d9ab909de16a9c1d8ffbff7602f754aa2d6363a",
+  "source_manifest_sha256": "acbe424697ed1ed7a17f7e94145e6c4932f087499e6d6adbb917b35da1ec7092",
+  "v04_v05_oracle_results_identical": true
+}

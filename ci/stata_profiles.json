@@ -246,6 +246,8 @@
       "build_plugin": true,
       "fixtures": [
         "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "tests/stata/bias/split_branch_example.do",
         "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
         "tests/stata/parity_ppmlhdfe/feppml_scientific_contract.do",
         "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
@@ -347,6 +349,8 @@
         "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
         "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
         "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "tests/stata/bias/split_branch_example.do",
         "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
         "tests/stata/parity_ppmlhdfe/feppml_scientific_contract.do",
         "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",

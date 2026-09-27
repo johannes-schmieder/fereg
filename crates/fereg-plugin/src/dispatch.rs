@@ -166,8 +166,8 @@ mod tests {
         assert!(sink.displayed().contains("fereg.action_protocol=1.6"));
         assert!(sink.displayed().contains("fereg.model_wire=2.1"));
         assert!(sink.displayed().contains("fereg.ols_result_wire=1.5"));
-        assert!(sink.displayed().contains("fereg.ppml_request_wire=1.6"));
-        assert!(sink.displayed().contains("fereg.ppml_result_wire=1.3"));
+        assert!(sink.displayed().contains("fereg.ppml_request_wire=1.7"));
+        assert!(sink.displayed().contains("fereg.ppml_result_wire=1.4"));
         assert!(!sink.displayed().contains("fereg.model_protocol="));
     }
 

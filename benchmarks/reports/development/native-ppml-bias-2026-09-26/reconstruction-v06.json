@@ -1,0 +1,107 @@
+{
+  "cases": [
+    {
+      "c_error": 1.1535911115245767e-16,
+      "case": "0-0-exact",
+      "d_error": 3.2255014631443757e-16,
+      "raw_error": 5.329070518200751e-15
+    },
+    {
+      "c_error": 1.1709383462843448e-17,
+      "case": "0-0-randomized",
+      "d_error": 2.949029909160572e-17,
+      "raw_error": 5.329070518200751e-15
+    },
+    {
+      "c_error": 9.237402509576498e-17,
+      "case": "1-0-randomized",
+      "d_error": 1.2750217548429532e-16,
+      "raw_error": 5.329070518200751e-15
+    },
+    {
+      "c_error": 1.5525775109992423e-16,
+      "case": "2-0-randomized",
+      "d_error": 1.5482407023093003e-16,
+      "raw_error": 2.9976021664879227e-15
+    },
+    {
+      "c_error": 1.938553484404082e-16,
+      "case": "3-0-randomized",
+      "d_error": 2.6020852139652106e-16,
+      "raw_error": 4.218847493575595e-15
+    },
+    {
+      "c_error": 7.28205690192496e-13,
+      "case": "0-1-exact",
+      "d_error": 2.4633134941554058e-11,
+      "raw_error": 4.806336439955317e-10
+    },
+    {
+      "c_error": 5.666751790034397e-13,
+      "case": "0-1-randomized",
+      "d_error": 2.3535409732211576e-11,
+      "raw_error": 4.806336439955317e-10
+    },
+    {
+      "c_error": 5.668807437353429e-13,
+      "case": "1-1-randomized",
+      "d_error": 2.3535890250614422e-11,
+      "raw_error": 4.711974144200326e-10
+    },
+    {
+      "c_error": 5.667003324938413e-13,
+      "case": "2-1-randomized",
+      "d_error": 2.3535572796218318e-11,
+      "raw_error": 4.5553327776559627e-10
+    },
+    {
+      "c_error": 5.666994651321033e-13,
+      "case": "3-1-randomized",
+      "d_error": 2.3535531162854895e-11,
+      "raw_error": 4.5553394389941104e-10
+    },
+    {
+      "c_error": 1.929879867024198e-16,
+      "case": "0-2-exact",
+      "d_error": 6.162605148407607e-16,
+      "raw_error": 7.105427357601002e-15
+    },
+    {
+      "c_error": 5.767955557622884e-17,
+      "case": "0-2-randomized",
+      "d_error": 1.1449174941446927e-16,
+      "raw_error": 7.105427357601002e-15
+    },
+    {
+      "c_error": 1.231653667943533e-16,
+      "case": "1-2-randomized",
+      "d_error": 5.030698080332741e-16,
+      "raw_error": 7.72715225139109e-14
+    },
+    {
+      "c_error": 8.521829075736065e-17,
+      "case": "2-2-randomized",
+      "d_error": 3.2959746043559335e-16,
+      "raw_error": 6.994405055138486e-15
+    },
+    {
+      "c_error": 6.23416249179165e-17,
+      "case": "3-2-randomized",
+      "d_error": 3.0184188481996443e-16,
+      "raw_error": 1.4654943925052066e-14
+    }
+  ],
+  "hashes": {
+    "input.csv": "35ecf23fe841c547314abc8fcbf46ea8fd8b364c8aa9e4f3f8404e5d04b15902",
+    "libfereg_core-9453043d71570b6a.rlib": "eabde3012c3ac3c2c41e58d46797054712c8289aa7a35ba663f736dd14ec4647",
+    "main.rs": "0c01d37b318a48bbf6b4a078bad96b249686f7330ab734a696d85540b09c2e0b",
+    "result.log": "f796354b17d17fc1027cf5da9f9a797fdbd4bde93dbe73122e3bcc22d1d50372",
+    "run": "83c1d9057ae0ef09eda459a95f23ec678ed60c4a0c34cb0a1ed502c6f99ca6cc"
+  },
+  "ordinary_exactly_unchanged": true,
+  "passed": true,
+  "plugin_sha256": "73b44fd3968f93f0e7caf33998a6ce0ead3eee1ade321d63817dab174fb3bfc8",
+  "schema": 1,
+  "scope": "Direct core library from candidate plugin build, not licensed-Stata execution",
+  "source_identity": "80d600283f87828e50a28700f0d65797bf3a659468404ed62d793edfdd8e1c28"
+}

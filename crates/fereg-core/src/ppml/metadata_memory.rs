@@ -20,6 +20,7 @@ use crate::topology_dof::{CategoricalTopologyDofEffectSpec, CategoricalTopologyD
 /// Rebased generations retain the original reporting-axis reservations.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct PpmlMetadataMemory {
+    pub bias_workspace_bytes: u128,
     /// Capacity sum of the transferred raw request and input owner. The
     /// embedding observation may already include it; only a shortfall is added.
     pub input_owner_bytes: u128,
@@ -137,6 +138,7 @@ impl PpmlMetadataMemory {
         let (generation_fixed_bytes, generation_bytes_per_row) =
             generation_storage(request, clusters)?;
         Ok(Self {
+            bias_workspace_bytes: 0,
             input_owner_bytes: 0,
             generation_fixed_bytes,
             generation_bytes_per_row,

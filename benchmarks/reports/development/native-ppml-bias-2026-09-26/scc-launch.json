@@ -1,0 +1,37 @@
+{
+  "authorized": "Johannes explicitly approved the SCC test on 2026-09-27.",
+  "diagnostic_job": 7755536,
+  "environment_fix": "Fetched only dependencies under the unchanged Cargo.lock, then retried in a new isolated run directory.",
+  "feature_job": 7755531,
+  "files_verified": 1644,
+  "first_smoke": {
+    "exit_status": 1,
+    "failed": 0,
+    "job": 7755522,
+    "reason": "Offline cache lacked the exact lockfile-pinned CMG revision; no estimation ran"
+  },
+  "original_root": "20260927-ppml-bias-09814cf3",
+  "raw_logs": {
+    "scc-dependency-fetch07.log": "6acccf8ae6f6554a94c35605814ccd34f1c8147561b43e2c6a30b8805209ea1c",
+    "scc-inspect02.log": "3fe0b8578b242f072fe868fe011bf4c13bbd035fcec540830580ec9ef8f3feb6",
+    "scc-preflight02.log": "715de71d7bd85348835256984e7c184a283463d2d76894cc82645b7f3d7bbf69",
+    "scc-smoke06-failure.log": "25ed5fb5b4dcb73fabd7116a38f0bec5e26035e34a67c401bf449241dd4652ea",
+    "scc-smoke07-result.log": "cfa1a72175b02e5885a2539d8c6a51f80f1a0110ed776bccd3156fa4cb7f9a56",
+    "scc-verify06.json": "6b739b5b0ca0c1eeeff930f4f479bc28f9ec9853838e3bebd257ee1fbfbca411"
+  },
+  "retry_root": "20260927-ppml-bias-09814cf3-r1",
+  "schema": 1,
+  "smoke": {
+    "application_fixtures": 2,
+    "exit_status": 0,
+    "failed": 0,
+    "job": 7755530,
+    "maxvmem": "10.363G",
+    "plugin_sha256": "c3c7c77911de6111d5d2892af587e953573077ae5dfc11d6037b584b9413204f",
+    "slots": 4,
+    "stata_version": "19",
+    "wall_seconds": 132
+  },
+  "source_identity": "09814cf381392b174966a9f35e73b055aa9f383c033d6173c0eaf61f3c7f2428",
+  "source_manifest_sha256": "d61ac68c98d0d124032c07074be731005522b87717da719b307a3db04ce778ed"
+}

@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-26
+**Last updated:** 2026-09-27
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -8,6 +8,131 @@ tag, or Windows scientific qualification.
 
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
+
+## Native PPML coefficient mean correction — validation in progress
+
+Johannes approved the six-milestone implementation request. Exact and fixed-probe
+randomized corrections now run natively on the accepted final PPML state,
+with separately published finite/FE increments, corrected outputs and numerical
+covariance diagnostics. Ordinary estimates remain ordinary. The narrow API and
+assumptions are in [ADR0227](docs/adr/0227-native-ppml-mean-bias-correction.md),
+[the contract](docs/ppml_bias_correction.md), and updated `feppml` help.
+FEVC, its pin and Separations production files are unchanged.
+
+[Development evidence](benchmarks/reports/development/native-ppml-bias-2026-09-26/README.md)
+binds base source 08891ef17ceba7256824e78d95256c16126d63db and the v05 local
+snapshot f359a43902da7742a085e7b36d9ab909de16a9c1d8ffbff7602f754aa2d6363a.
+The v05 universal Mac plugin SHA-256 is
+57c5f334d4e777bce80f81b92b6aa23004401f6bdbd019c3774f63bc8552c2ce,
+retained as an immutable earlier artifact. The local development
+`dist/fereg_macos.plugin` now contains the licensed-tested v06 binary below.
+The baseline and v03 candidate each pass all 186 retained full/A/B fits.
+Ten v05 independent control cases pass, including high leverage, collinearity,
+sparse outcomes and severe imbalance (maximum error 1.086e-10). Fourteen targeted
+core tests, transaction failure tests, public saved effects, all seven public
+and hidden help examples, and the Split Branch example pass under Stata 18.
+The broader Rust/Stata screen retains independently reproduced baseline
+failures, detailed in the evidence; it is not globally green.
+
+The frozen confirmation plan contains 2,100 fresh data draws and 4,690 native/
+legacy/probe-count/exact attempts. The first 20 native/legacy draws per design
+are complete: 280 successful pipeline calls, no native failures, four legacy
+PPML fallbacks in fixed_3840, and unchanged wage/FEVC differences at most 1.93e-13.
+The [partial all-ten-moment report](benchmarks/reports/development/native-ppml-bias-2026-09-26/mc-firstblock.md)
+separates paired available and joint-interior comparisons. The frozen v04 MC
+artifact remains unchanged; v05 adds only a nonfinite total-variance guard, and
+all ten explicit-oracle numerical summaries are identical between versions.
+
+The remaining confirmation jobs are running locally and serially under the
+licensed lock, using `scripts/ppml_bias_campaign.py` and the frozen
+`mc/confirmation-plan01.json`. Session 46048 owns the supervisor; live logs are
+`mc-remaining04.log`/`.err`, and its terminal receipt will be
+`mc-remaining04-process.json`. Completed/attempted job directories under
+`mc/confirmation-runs01` must never be overwritten or rerun. The full 4,690
+attempts and exact/1024 subsets remain unaccepted until the terminal receipts
+and full analyzer pass. Do not start concurrent licensed Stata locally.
+
+The [monitored end-to-end benchmark](benchmarks/reports/development/native-ppml-bias-2026-09-26/performance.md)
+passes eight cases, 48 processes and 288 timed calls at 2,880–120,000 rows.
+Maximum numerical discrepancy is 8.14e-15. Native correction is 3.4–9.7 times
+faster than cached-factor Mata here, with no dense correction improvement at
+four threads. The earlier unmonitored matrix remains diagnostic. Raw receipts are under
+`target/ppml-bias-20260926/`; tracked plans and hashes are in the evidence directory.
+
+Johannes explicitly authorized SCC testing on 2026-09-27. Shared smoke
+7755530 passed after a narrow pinned-dependency cache repair; the original
+7755522 failed before estimation and remains recorded. Feature job 7755531
+passed four Stata fixtures and ten independent oracles (maximum error 1.086e-10).
+The Linux binary is c3c7c77911de6111d5d2892af587e953573077ae5dfc11d6037b584b9413204f
+from source 09814cf381392b174966a9f35e73b055aa9f383c033d6173c0eaf61f3c7f2428.
+See the source-bound SCC launch record in the development evidence directory.
+
+At the latest local check, 114 completed job receipts contain 2,280 of 4,690
+attempts and one native failure: duration_960 replication 10131, raw anchored
+FE reconstruction. Independent explicit Poisson and SCC diagnostic outputs
+localize it to working-response cancellation: accepted means differ by at most
+6.22e-15, whereas the canonical raw FE target has about 2.93e-9 of rounding
+noise. The in-progress fix recovers raw effects directly from the accepted
+predictor, offset and unchanged finite contribution at the same tolerance.
+All 14 focused core bias tests pass. A retained synthetic cancellation
+regression fixture and independent full/A/B oracles are prepared. The v06
+universal Mac build passes its binary/ABI checks. All 170 serial default-feature
+plugin tests pass; the concurrent run has 16 global allocation-counter failures
+and remains recorded. Direct execution of the exact built core rlib passes all
+15 full/A/B exact/randomized and row-order cases, preserves ordinary outputs
+exactly, and matches independent raw/D/C oracles within 4.81e-10/2.47e-11/7.29e-13.
+The identical harness linked against v05 reproduces the original failure.
+Evidence is in reconstruction-v06.json and reconstruction-adjudication.json.
+Licensed artifact validation remains in progress. No ordinary solver changes.
+Diagnostic job 7755536 completed its 12 calls but its wrapper had a mismatched
+terminal marker, so its job is not accepted as a pass. The original MC failure
+and unchanged v04 campaign remain preserved; do not rerun or replace attempts.
+
+Johannes approved the exact changed payload after the automatic-review rejection.
+SCC job **7755704 passed**: four slots, 195 seconds, 8.865G maxvmem, clean
+accounting, two shared smoke fixtures, four public/help fixtures, ten independent
+control cases and all 15 retained-draw reconstruction cases. Maximum oracle and
+reconstruction errors are 6.62e-10 and 9.19e-10, respectively. Linux plugin:
+d14c9474dd70e28d4d5e06d7cccfd20c165817c403b5745929849542bda7917c.
+The source is 80d600283f87828e50a28700f0d65797bf3a659468404ed62d793edfdd8e1c28,
+Mac plugin 73b44fd3968f93f0e7caf33998a6ce0ead3eee1ade321d63817dab174fb3bfc8.
+Source-bound receipts are in the development evidence directory.
+
+One-million-row SCC benchmark **7756011 is running** at
+`/projectnb/welfgr/fereg/dev/20260927-ppml-bias-80d60028` on the frozen
+`benchmark-inputs/matrix10-1m.json`: native/current-Mata/cached-Mata, one/eight
+threads, two reversed orders, one cold/three warm calls. It reserves 28 slots,
+3G/core and two hours; the established process monitor gates timing claims.
+Scratch inputs/outputs are archived on exit under `benchmarks/matrix10-1m/`.
+Do not rerun or overwrite attempted timing pairs. Inspect application, numerical
+summary, process monitor and qacct before acceptance. Use its resource evidence
+to size the still-pending ten-million-row comparison.
+
+The frozen v04 local MC controller remains active as PID 94266 (creation time
+1790481337.28423); it outlived its original supervisor and is now parented to
+PID 1. Its original lock was therefore absent. The attempted queued v06 Mac
+validation ran concurrently for about eight seconds: all four fixtures, ten
+oracles and 15 reconstruction cases passed, but benchmark matrix06 measured
+nothing because its process monitor failed closed on sandbox visibility.
+The failed combined supervisor receipt is preserved in `final-v06-process.json`;
+these are scientific results only, never timing evidence.
+
+The process-bound observer in session **4633** now holds the licensed lock while
+waiting for that exact MC PID/creation time. It will audit the full frozen
+inventory to `mc/confirmation-terminal01.json`, and only if complete will run
+the same two-case v06 local timing plan in new output `bench/matrix07` with
+process visibility. Observer script `wait_mc_then_bench_v06b.py`; logs
+`mc-guard08.log`/`.err`, terminal receipt `mc-guard08-process.json`. All are under
+the task target directory. A first observer typo exited before any test; its
+`mc-guard07` receipt is preserved. Do not start further local Stata while the
+existing MC or this guard is active. The last audit has 2,900 attempts and one
+native failure; a later lightweight inventory reached 2,960.
+
+Million/ten-million-row SCC performance, the queued local timing comparison,
+full MC analysis and final documentation/evidence closeout remain outstanding. Documentation/help
+and measured local v05 evidence are present. The precision change now passes
+licensed Mac/Linux validation; final v06 performance evidence is pending. No Windows or release qualification is claimed. Do not mark
+the task complete.
 
 ## Slope pilot adjudication continuation — 2026-09-26
 

@@ -108,7 +108,7 @@ class CanonicalContractTests(unittest.TestCase):
 
     def test_inventory_and_order_are_closed(self) -> None:
         source = _canonical()
-        missing = source.replace(_example(EXPECTED_EXAMPLE_IDS[-1], 6), "")
+        missing = source.replace(_example(EXPECTED_EXAMPLE_IDS[-1], len(EXPECTED_EXAMPLE_IDS)), "")
         with self.assertRaisesRegex(HelpContractError, "inventory or order"):
             validate_canonical_help(missing)
 

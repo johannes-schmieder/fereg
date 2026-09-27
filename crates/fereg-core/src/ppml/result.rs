@@ -7,8 +7,6 @@ use super::psd::apply_ppml_psd_policy;
 use super::psd::inspect_published_ppml_covariance;
 use super::residuals::{ppml_residuals, PpmlResidualKind};
 use super::vce::{compute_ppml_wald, validate_weight_report};
-#[cfg(test)]
-use super::{poisson_objective, PpmlIterationWorkspace};
 use super::{
     poisson_null_objective, PoissonNullObjective, PoissonObjective, PpmlAllocationTelemetry,
     PpmlAllocatorSnapshot, PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlInferenceResult,
@@ -16,6 +14,8 @@ use super::{
     PpmlTestDistribution, PpmlVceKind, PpmlVceRequest, PreparedPpmlAdjustmentKind,
     PreparedPpmlAdjustmentReport, PreparedPpmlWeightReport,
 };
+#[cfg(test)]
+use super::{poisson_objective, PpmlIterationWorkspace};
 use crate::data::{DropReason, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 #[cfg(test)]
@@ -69,10 +69,14 @@ impl PpmlLikelihoodStatistics {
     }
 
     fn from_replayed_null(objective: PoissonObjective, null: PoissonNullObjective) -> Result<Self> {
-        if !objective.deviance.is_finite() || objective.deviance < 0.0
-            || !objective.log_likelihood.is_finite() {
-            return Err(FeregError::new(ErrorCode::NonConvergence,
-                "PPML final objective is not publishable"));
+        if !objective.deviance.is_finite()
+            || objective.deviance < 0.0
+            || !objective.log_likelihood.is_finite()
+        {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                "PPML final objective is not publishable",
+            ));
         }
         if null.log_likelihood == 0.0 {
             return Err(FeregError::new(
@@ -1002,6 +1006,7 @@ pub struct PpmlResultCertificate {
 /// Owned inputs to the single certified PPML publication boundary.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct CertifiedPpmlResultInput {
+    pub(crate) bias: Option<super::PpmlBiasResult>,
     pub(crate) coefficients: PpmlCoefficientOutput,
     pub(crate) sample: PpmlFinalSample,
     pub(crate) weights: PreparedPpmlWeightReport,
@@ -1026,6 +1031,7 @@ pub(crate) struct CertifiedPpmlResultInput {
 /// cross-generation mapping agrees.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CertifiedPpmlResult {
+    bias: Option<super::PpmlBiasResult>,
     coefficients: PpmlCoefficientOutput,
     sample: PpmlFinalSample,
     weights: PreparedPpmlWeightReport,
@@ -1044,6 +1050,9 @@ pub struct CertifiedPpmlResult {
 }
 
 impl CertifiedPpmlResult {
+    pub fn bias(&self) -> Option<&super::PpmlBiasResult> {
+        self.bias.as_ref()
+    }
     /// Heap retained by the certified result, including nested spare capacity.
     /// The shared prepared-row Arc is counted once in full: after core return
     /// it belongs to this publication parent, even if another observer holds it.
@@ -1056,7 +1065,10 @@ impl CertifiedPpmlResult {
         let output = &self.output;
         let vce = &self.inference.vce;
         let separation = &self.separation;
-        bytes(&coefficients.values)
+        self.bias
+            .as_ref()
+            .map_or(0, super::PpmlBiasResult::owned_buffer_bytes)
+            + bytes(&coefficients.values)
             + bytes(&coefficients.statuses)
             + bytes(&coefficients.generated_columns)
             + bytes(&coefficients.kept_full_slots)
@@ -1476,6 +1488,7 @@ impl PpmlOutputState {
 impl CertifiedPpmlResult {
     pub(crate) fn new(input: CertifiedPpmlResultInput) -> Result<Self> {
         let CertifiedPpmlResultInput {
+            bias,
             coefficients,
             sample,
             weights,
@@ -1501,6 +1514,15 @@ impl CertifiedPpmlResult {
                 ErrorCode::Internal,
                 "PPML result tolerance must be finite and lie in (0, 1)",
             ));
+        }
+        if let Some(bias) = &bias {
+            bias.validate()?;
+            if separation.separated_count != 0 {
+                return Err(FeregError::new(
+                    ErrorCode::Internal,
+                    "bias correction cannot certify a separation-selected sample",
+                ));
+            }
         }
         validate_adjustment_report(adjustment)?;
         validate_weight_report(
@@ -1553,12 +1575,17 @@ impl CertifiedPpmlResult {
             memory.plan.preflight_dimensions.fe_total_levels,
         )?;
 
-        let (recomputed_objective, null_objective) =
-            replay_final_objectives_with_threads(sample.outcome(), output.mean(), sample.prior_weights(),
-                crate::options::ThreadConfig::from_requested(memory.plan.dimensions.threads, true)?,
-                memory.plan.selected_inventory().publication_validator_workspace_bytes).map_err(
-                |error| composed_result_error("PPML final objective replay failed", error),
-            )?;
+        let (recomputed_objective, null_objective) = replay_final_objectives_with_threads(
+            sample.outcome(),
+            output.mean(),
+            sample.prior_weights(),
+            crate::options::ThreadConfig::from_requested(memory.plan.dimensions.threads, true)?,
+            memory
+                .plan
+                .selected_inventory()
+                .publication_validator_workspace_bytes,
+        )
+        .map_err(|error| composed_result_error("PPML final objective replay failed", error))?;
         let objective_deviance_relative_error =
             relative_scalar_error(objective.deviance, recomputed_objective.deviance);
         let objective_log_likelihood_relative_error = relative_scalar_error(
@@ -1566,9 +1593,9 @@ impl CertifiedPpmlResult {
             recomputed_objective.log_likelihood,
         );
         let likelihood = PpmlLikelihoodStatistics::from_replayed_null(objective, null_objective)
-        .map_err(|error| {
-            composed_result_error("PPML final likelihood publication failed", error)
-        })?;
+            .map_err(|error| {
+                composed_result_error("PPML final likelihood publication failed", error)
+            })?;
         let score_passed = convergence.final_score.passed;
         let inference_passed = inference.vce.certificate.passed && inference.vce.psd.passed;
         let reconstruction_passed = output.certificate().passed;
@@ -1589,6 +1616,7 @@ impl CertifiedPpmlResult {
             ));
         }
         Ok(Self {
+            bias,
             coefficients,
             sample,
             weights,
@@ -2796,8 +2824,12 @@ fn validate_separation_report(
     for row in 0..report.candidate_observations {
         let retained = retained_rows.peek().is_some_and(|value| **value == row);
         let dropped = dropped_rows.peek().is_some_and(|value| **value == row);
-        if retained { retained_rows.next(); }
-        if dropped { dropped_rows.next(); }
+        if retained {
+            retained_rows.next();
+        }
+        if dropped {
+            dropped_rows.next();
+        }
         if retained == dropped
             || report.active[row] != retained
             || report.drop_reasons[row].is_some() != dropped
@@ -4086,6 +4118,7 @@ mod tests {
             .certify_workspace(&workspace)
             .expect("memory workspace telemetry");
         CertifiedPpmlResultInput {
+            bias: None,
             coefficients,
             sample,
             weights: weight_report,
@@ -4809,8 +4842,9 @@ mod tests {
     fn separation_sorted_lists_still_require_a_disjoint_complete_partition() {
         let input = certified_composite_input();
         let original_rows = (0..input.separation.candidate_observations).collect::<Vec<_>>();
-        let check = |report: &SeparationReport| validate_separation_report(
-            report, input.separation_config, &original_rows, 1, &[], 0);
+        let check = |report: &SeparationReport| {
+            validate_separation_report(report, input.separation_config, &original_rows, 1, &[], 0)
+        };
         assert!(check(&input.separation).unwrap());
         for overlap in [1, input.separation.candidate_observations - 1] {
             let mut report = input.separation.clone();

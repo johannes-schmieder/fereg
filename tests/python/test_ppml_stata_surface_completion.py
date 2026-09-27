@@ -225,35 +225,18 @@ class PpmlStataSurfaceCompletionTests(unittest.TestCase):
         expected = set(
             re.findall(r"ereturn scalar (feppml_[A-Za-z0-9_]+)\s*=", transaction)
         )
-        for pattern, prefix in (
-            (
-                r"local allocator_names (?P<body>.*?)\n\s*forvalues allocator_row",
-                "feppml_",
-            ),
-            (
-                r"local phase_names (?P<body>.*?)\n\s*forvalues phase_row",
-                "feppml_time_",
-            ),
-            (
-                r"local audit_scalar_names (?P<body>.*?)\n\s*forvalues runtime_row",
-                "feppml_",
-            ),
-        ):
-            match = re.search(pattern, transaction, re.DOTALL)
-            self.assertIsNotNone(match)
-            expected.update(
-                prefix + name
-                for name in match.group("body").replace("///", " ").split()
-            )
-        peaks = re.search(
-            r"local peak_phase_names (?P<body>.*?)\n\s*forvalues peak_index",
-            transaction,
-            re.DOTALL,
+        mata = (ROOT / "stata/_fereg_ppml_result_mata.ado").read_text()
+        expected.update(re.findall(r'st_numscalar\("e\((feppml_[A-Za-z0-9_]+)\)"', mata))
+        blocks = re.findall(
+            r'names = tokens\((?P<names>.*?)\)\s*for \(i = 1; i <= cols\(names\); \+\+i\) \{(?P<body>.*?)\n    \}',
+            mata, re.DOTALL,
         )
-        self.assertIsNotNone(peaks)
-        peak_names = peaks.group("body").replace("///", " ").split()
-        expected.update(f"feppml_modeled_peak_{name}" for name in peak_names)
-        expected.update(f"feppml_observed_peak_{name}" for name in peak_names)
+        self.assertEqual(len(blocks), 4)
+        for names, body in blocks:
+            labels = " ".join(re.findall(r'"([^"\n]*)"', names)).split()
+            prefixes = re.findall(r'st_numscalar\("e\((feppml_[a-z_]*)" \+ names\[i\]', body)
+            self.assertTrue(prefixes)
+            expected.update(prefix + name for prefix in prefixes for name in labels)
         self.assertEqual(allowed, expected)
 
     def test_hidden_profile_closes_allocation_and_shared_surface_inventory(self) -> None:

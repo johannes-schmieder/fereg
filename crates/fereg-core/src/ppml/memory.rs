@@ -1845,6 +1845,7 @@ fn estimate_route(
     let input_owner_supplement_bytes = dimensions.metadata.input_owner_bytes
         .saturating_sub(config.embedding_resident_bytes);
     let common = checked_sum(&[
+        dimensions.metadata.bias_workspace_bytes,
         config.embedding_resident_bytes,
         input_owner_supplement_bytes,
         canonical_numeric_bytes,

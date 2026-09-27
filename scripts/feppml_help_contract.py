@@ -39,6 +39,7 @@ EXPECTED_EXAMPLE_IDS = (
     "ppml_clusters",
     "ppml_separation",
     "ppml_time_series",
+    "ppml_bias_correction",
 )
 
 START_MARKER = re.compile(

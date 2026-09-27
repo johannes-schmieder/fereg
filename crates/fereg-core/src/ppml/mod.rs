@@ -4,6 +4,8 @@
 //! solver as OLS.  Candidate steps must remain finite and weakly reduce deviance;
 //! success additionally requires independently recomputed finite and FE scores.
 
+mod bias;
+pub use bias::{PpmlBiasMethod, PpmlBiasRequest, PpmlBiasResult};
 mod categorical_fwl_cmg;
 mod categorical_lsmr;
 mod certificate;

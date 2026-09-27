@@ -26,6 +26,9 @@ use std::cell::Cell;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
+#[path = "bias_linear.rs"]
+mod bias_linear;
+
 use super::finite_wls_kernel::{
     certify_normal_equations, certify_retained_qr_dropped_span, factor_guarded_cholesky_in_place,
     factor_rank_revealing_retained_qr, fill_finite_wls_moments, finite_wls_moment_layout,

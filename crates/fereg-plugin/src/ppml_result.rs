@@ -60,6 +60,7 @@ enum StataCellClass {
 /// computation and performs no allocation.
 #[derive(Debug)]
 pub(crate) struct PpmlShadowResult<'a> {
+    pub(crate) bias: Option<crate::ppml_estimate::bias::Shadow<'a>>,
     pub(crate) b: Vec<f64>,
     pub(crate) covariance: Vec<f64>,
     pub(crate) coefficient_status: Vec<f64>,
@@ -132,6 +133,7 @@ impl PpmlShadowResult<'_> {
         .iter()
         .map(|values| values.capacity() as u128 * std::mem::size_of::<f64>() as u128)
         .sum::<u128>()
+            + self.bias.as_ref().map_or(0, |b| b.capacity_bytes())
             + self.saved_channels.capacity() as u128 * std::mem::size_of::<&[f64]>() as u128
     }
 }
@@ -690,6 +692,7 @@ pub(crate) fn build_certified_ppml_shadow(
     }
 
     Ok(PpmlShadowResult {
+        bias: crate::ppml_estimate::bias::shadow(result)?,
         b,
         covariance,
         coefficient_status,
@@ -1308,7 +1311,9 @@ fn validate_memory_telemetry(result: &CertifiedPpmlResult) -> Result<()> {
             ));
         }
         Some(certificate)
-            if !memory.plan.audit_route_matches_final(certificate.linear_route, route)
+            if !memory
+                .plan
+                .audit_route_matches_final(certificate.linear_route, route)
                 || certificate.workspace_capacity_stable
                     != (certificate.workspace_start == certificate.workspace_end)
                 || certificate.scratch_stable

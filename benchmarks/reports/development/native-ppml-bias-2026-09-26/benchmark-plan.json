@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "kind": "development matched correction benchmark",
+  "source_manifest": "candidate/v04/source.json",
+  "plugin_sha256": "b4c51562a8620abd4fa0a4d0041776f7dec8ff03dfb77e637613a15c20bc1c76",
+  "cases": [
+    {
+      "rows": 2880,
+      "levels_each": 8,
+      "units": 240,
+      "probes": 64,
+      "threads": 1,
+      "memory": "auto"
+    },
+    {
+      "rows": 2880,
+      "levels_each": 8,
+      "units": 240,
+      "probes": 256,
+      "threads": 1,
+      "memory": "auto"
+    },
+    {
+      "rows": 2880,
+      "levels_each": 8,
+      "units": 240,
+      "probes": 1024,
+      "threads": 1,
+      "memory": "auto"
+    },
+    {
+      "rows": 11520,
+      "levels_each": 32,
+      "units": 960,
+      "probes": 256,
+      "threads": 1,
+      "memory": "auto"
+    },
+    {
+      "rows": 46080,
+      "levels_each": 64,
+      "units": 3840,
+      "probes": 256,
+      "threads": 1,
+      "memory": "auto"
+    },
+    {
+      "rows": 46080,
+      "levels_each": 64,
+      "units": 3840,
+      "probes": 256,
+      "threads": 4,
+      "memory": "auto"
+    },
+    {
+      "rows": 11520,
+      "levels_each": 32,
+      "units": 960,
+      "probes": 256,
+      "threads": 2,
+      "memory": "low"
+    },
+    {
+      "rows": 120000,
+      "levels_each": 256,
+      "units": 10000,
+      "probes": 64,
+      "threads": 1,
+      "memory": "auto"
+    }
+  ],
+  "orders": [
+    [
+      "native",
+      "mata_current",
+      "mata_cached"
+    ],
+    [
+      "mata_cached",
+      "mata_current",
+      "native"
+    ]
+  ],
+  "cold_calls": 1,
+  "warm_calls": 5,
+  "seed": 739391,
+  "stream": 17,
+  "accuracy_absolute": 2e-08,
+  "analysis": "All routes publish 18 FE outputs; every timed Mata call refits ordinary PPML. Timing ranks require the established process monitor to pass. Probe preparation is outside timed calls and reported separately. Accuracy and ordinary b/V invariants remain unchanged.",
+  "script_sha256": "d1476a876e7c9b00cbf473882551d46e6793b395b6180d6e2d1f4681145922b0",
+  "mata_sha256": "b24856940598796d91f4ca2f70e4be2a01399d41e6b5d34fd809e5c4d4ed46a5",
+  "require_monitor": true,
+  "refit_reference": true,
+  "monitor_sha256": "1c7fe37c714ba2516869b3e42b6d33d639792865152d42b348a75b1959e52686"
+}

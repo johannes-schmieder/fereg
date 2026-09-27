@@ -439,6 +439,7 @@ pub(crate) struct PreparedPpmlIrlsDiagnostics {
 /// The owned handoff keeps either dense or scratch-backed compact within rows
 /// alive for inference without reconstructing an observation-by-slot matrix.
 pub(crate) struct PreparedPpmlIrlsFit {
+    bias: Option<super::PpmlBiasResult>,
     linear: CertifiedLinearSessionProducts,
     coefficients: Vec<PreparedOlsFittedCoefficient>,
     eta: Vec<f64>,
@@ -449,6 +450,9 @@ pub(crate) struct PreparedPpmlIrlsFit {
 }
 
 impl PreparedPpmlIrlsFit {
+    pub(crate) fn take_bias(&mut self) -> Option<super::PpmlBiasResult> {
+        self.bias.take()
+    }
     pub(crate) fn coefficients(&self) -> &[PreparedOlsFittedCoefficient] {
         &self.coefficients
     }
@@ -920,6 +924,7 @@ pub(crate) fn fit_prepared_ppml_irls_interruptible<P: PreparedOlsFitView + Sync 
         memory_plan,
         start,
         PreparedPpmlIrlsPurpose::Publication,
+        None,
         interrupt,
     )? {
         PreparedPpmlIrlsRun::Publication(fit) => Ok(*fit),
@@ -939,6 +944,7 @@ pub(crate) fn fit_shared_prepared_ppml_irls_interruptible(
     config: PreparedPpmlIrlsConfig,
     memory_plan: PpmlMemoryPlan,
     start: Option<&PreparedPpmlStart>,
+    bias: Option<(super::PpmlBiasRequest, &[f64])>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedPpmlIrlsFit> {
     match run_prepared_ppml_irls(
@@ -951,6 +957,7 @@ pub(crate) fn fit_shared_prepared_ppml_irls_interruptible(
         memory_plan,
         start,
         PreparedPpmlIrlsPurpose::Publication,
+        bias,
         interrupt,
     )? {
         PreparedPpmlIrlsRun::Publication(fit) => Ok(*fit),
@@ -983,6 +990,7 @@ pub(crate) fn explore_prepared_ppml_mu_interruptible<P: PreparedOlsFitView + Syn
         memory_plan,
         start,
         PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance },
+        None,
         interrupt,
     )? {
         PreparedPpmlIrlsRun::MuExploration(exploration) => Ok(*exploration),
@@ -1004,6 +1012,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     mut memory_plan: PpmlMemoryPlan,
     start: Option<&PreparedPpmlStart>,
     purpose: PreparedPpmlIrlsPurpose,
+    bias: Option<(super::PpmlBiasRequest, &[f64])>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedPpmlIrlsRun> {
     // Direct internal callers may start from the shared FE default. Resolve
@@ -2826,6 +2835,25 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     memory.certify_workspace(&workspace)?;
     workspace.refresh_score_residuals(outcome)?;
     let (_coefficient_values, eta, mean, score_residuals) = workspace.into_final_buffers();
+    if bias.is_some() {
+        validate_final_hessian_frame(session.bias_weights(), prior_weights, &mean)?;
+    }
+    let bias = match bias {
+        Some((request, units)) => Some(super::bias::compute(
+            &mut session,
+            request,
+            super::bias::AcceptedBiasFrame {
+                units,
+                y: outcome,
+                mu: &mean,
+                eta: &eta,
+                offset,
+            },
+            config.ppml.tolerance,
+            interrupt,
+        )?),
+        None => None,
+    };
     let linear = session.into_current_products()?;
     validate_final_hessian_frame(linear.weights(), prior_weights, &mean)?;
     let final_generations = linear.generations();
@@ -2839,6 +2867,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     }
     Ok(PreparedPpmlIrlsRun::Publication(Box::new(
         PreparedPpmlIrlsFit {
+            bias,
             linear,
             coefficients,
             eta,

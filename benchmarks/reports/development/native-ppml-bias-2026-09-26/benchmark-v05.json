@@ -1,0 +1,2331 @@
+{
+  "analysis_script_sha256": "27d872be3ec34799baaed2a090cfbe451754247f8c0123590cfb5f3bfedf681d",
+  "cases": [
+    {
+      "correction_ratios_native_over_reference": {
+        "mata_cached": 0.10760468518518512,
+        "mata_current": 0.10760468518518512
+      },
+      "inputs": {
+        "0-mata_cached": {
+          "coefficients_sha256": "f0a560863738de92d4b1e91f7aa1c2a998593ecc0b7fbdceced7e6d8a884f6a4",
+          "peak_rss_bytes": 58507264,
+          "probe_preparation_seconds": 0.007892291992902756,
+          "process_seconds": 0.6666981251910329,
+          "receipt_sha256": "d231d1f2a071ff482591caf34f9b77224a61fe9c40f95bb0ff04611294b48588",
+          "timing_sha256": "92ecde5bdbdd86c38bc0f4f07f336c185670c9b858995216ba62a8ec1e50b30c"
+        },
+        "0-mata_current": {
+          "coefficients_sha256": "f0a560863738de92d4b1e91f7aa1c2a998593ecc0b7fbdceced7e6d8a884f6a4",
+          "peak_rss_bytes": 59277312,
+          "probe_preparation_seconds": 0.008002832997590303,
+          "process_seconds": 0.6712410422042012,
+          "receipt_sha256": "252f24e217113788ded31642519de2fd4b6044b9d0dd73ac8db05372f102deb3",
+          "timing_sha256": "2d7dc750967d4beb660e925644e5ca0bbbd445b07e5c1f6a75b68cd7653c49c6"
+        },
+        "0-native": {
+          "coefficients_sha256": "e8840cf5e7a3108c2d3f62505603f1605996e0e92151ba909af13cbcbc20e3ea",
+          "peak_rss_bytes": 46628864,
+          "probe_preparation_seconds": 0.009035374969244003,
+          "process_seconds": 0.3172106253914535,
+          "receipt_sha256": "2dd2fa183cc14fb76547fe422a8d2724950653403924a829ae7d09dc0ede0f2a",
+          "timing_sha256": "be4898736dcd58a42314b542e99aa704e4ab1099a80b9c4f7fe0b5791aff8298"
+        },
+        "1-mata_cached": {
+          "coefficients_sha256": "f0a560863738de92d4b1e91f7aa1c2a998593ecc0b7fbdceced7e6d8a884f6a4",
+          "peak_rss_bytes": 60456960,
+          "probe_preparation_seconds": 0.007942208088934422,
+          "process_seconds": 0.6683449172414839,
+          "receipt_sha256": "047d9ff628f1bb7c52afacb938adfb611352e63a3d3cd21488ba482255cac05d",
+          "timing_sha256": "ccb41844ec2807c7c7cd9da7620a9fca89ad68dfa49db64bcdaa1c2f8895ffaf"
+        },
+        "1-mata_current": {
+          "coefficients_sha256": "f0a560863738de92d4b1e91f7aa1c2a998593ecc0b7fbdceced7e6d8a884f6a4",
+          "peak_rss_bytes": 58966016,
+          "probe_preparation_seconds": 0.00794412475079298,
+          "process_seconds": 0.6743422080762684,
+          "receipt_sha256": "bebd566aa938543f4c2f01f36f786e9060b758c3401ce3c0a74269826334e57d",
+          "timing_sha256": "450c41ce2bdab8a5eaa5896d8809e4ffd090121e60a92a548062a0f03e3d5a9b"
+        },
+        "1-native": {
+          "coefficients_sha256": "e8840cf5e7a3108c2d3f62505603f1605996e0e92151ba909af13cbcbc20e3ea",
+          "peak_rss_bytes": 47890432,
+          "probe_preparation_seconds": 0.008632500190287828,
+          "process_seconds": 0.30915849981829524,
+          "receipt_sha256": "1654df74eb55a3fb480cef43d812f42aa27d6a0e1a860345460f0828ba3ac5ea",
+          "timing_sha256": "54ff065cb2b09ac38260a69937a80bb2c3746e6b3e6329082cdda8a1d41fc118"
+        }
+      },
+      "maximum_error": 1.0001765041178778e-17,
+      "measurements": {
+        "mata_cached": {
+          "cold": [
+            {
+              "correction": 0.081,
+              "fitting": 0.00257975099999999,
+              "inference": 5.5458e-05,
+              "ordinary": 0.01099999999999999,
+              "preparation": 0.000678792,
+              "publication": 0.001520166,
+              "recovery": 0.000856458,
+              "score": null,
+              "total": 0.093,
+              "workspace": null
+            },
+            {
+              "correction": 0.08,
+              "fitting": 0.00257921,
+              "inference": 5.3958e-05,
+              "ordinary": 0.01099999999999999,
+              "preparation": 0.00168449899999999,
+              "publication": 0.001525584,
+              "recovery": 0.00085270799999999,
+              "score": null,
+              "total": 0.093,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.082,
+              "median": 0.081,
+              "minimum": 0.08
+            },
+            "fitting": {
+              "maximum": 0.00264516299999999,
+              "median": 0.0025904999999999947,
+              "minimum": 0.002528752
+            },
+            "inference": {
+              "maximum": 6.404199999999e-05,
+              "median": 5.7478999999995e-05,
+              "minimum": 5.4042e-05
+            },
+            "ordinary": {
+              "maximum": 0.012,
+              "median": 0.01099999999999999,
+              "minimum": 0.01
+            },
+            "preparation": {
+              "maximum": 0.001850125,
+              "median": 0.000675583499999995,
+              "minimum": 0.000667583
+            },
+            "publication": {
+              "maximum": 0.00153775,
+              "median": 0.0015056465,
+              "minimum": 0.001495791
+            },
+            "recovery": {
+              "maximum": 0.000902667,
+              "median": 0.000857917,
+              "minimum": 0.000841542
+            },
+            "total": {
+              "maximum": 0.094,
+              "median": 0.093,
+              "minimum": 0.091
+            }
+          },
+          "warm_count": 10
+        },
+        "mata_current": {
+          "cold": [
+            {
+              "correction": 0.081,
+              "fitting": 0.00260483399999999,
+              "inference": 5.5667e-05,
+              "ordinary": 0.01,
+              "preparation": 0.001691416,
+              "publication": 0.001529,
+              "recovery": 0.00085574999999999,
+              "score": null,
+              "total": 0.093,
+              "workspace": null
+            },
+            {
+              "correction": 0.081,
+              "fitting": 0.00259354499999999,
+              "inference": 5.7083e-05,
+              "ordinary": 0.01099999999999999,
+              "preparation": 0.00170924899999999,
+              "publication": 0.001524876,
+              "recovery": 0.0008515,
+              "score": null,
+              "total": 0.094,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.082,
+              "median": 0.081,
+              "minimum": 0.08
+            },
+            "fitting": {
+              "maximum": 0.00277737599999999,
+              "median": 0.0025882895000000003,
+              "minimum": 0.002517541
+            },
+            "inference": {
+              "maximum": 7.170799999999e-05,
+              "median": 5.7437499999995006e-05,
+              "minimum": 5.466699999999e-05
+            },
+            "ordinary": {
+              "maximum": 0.01099999999999999,
+              "median": 0.01099999999999999,
+              "minimum": 0.01
+            },
+            "preparation": {
+              "maximum": 0.001725125,
+              "median": 0.0016693539999999949,
+              "minimum": 0.00067133299999999
+            },
+            "publication": {
+              "maximum": 0.002491291,
+              "median": 0.001507167,
+              "minimum": 0.00149341699999999
+            },
+            "recovery": {
+              "maximum": 0.00093075,
+              "median": 0.000859208,
+              "minimum": 0.000841458
+            },
+            "total": {
+              "maximum": 0.094,
+              "median": 0.093,
+              "minimum": 0.092
+            }
+          },
+          "warm_count": 10
+        },
+        "native": {
+          "cold": [
+            {
+              "correction": 0.00877512499999999,
+              "fitting": 0.002602916,
+              "inference": 6.258299999999e-05,
+              "ordinary": 0.032,
+              "preparation": 0.000708168,
+              "publication": 0.00085249999999999,
+              "recovery": 4.1700000000000004e-07,
+              "score": 4.470083667961074e-15,
+              "total": 0.023,
+              "workspace": 1114592
+            },
+            {
+              "correction": 0.00878954099999999,
+              "fitting": 0.002621417,
+              "inference": 7.1e-05,
+              "ordinary": 0.033,
+              "preparation": 0.000718001,
+              "publication": 0.00085249999999999,
+              "recovery": 5.000000000000001e-07,
+              "score": 4.470083667961074e-15,
+              "total": 0.023,
+              "workspace": 1114592
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.009044959,
+              "median": 0.008715979499999995,
+              "minimum": 0.00869008299999999
+            },
+            "fitting": {
+              "maximum": 0.002612503,
+              "median": 0.002533207999999995,
+              "minimum": 0.002509123
+            },
+            "inference": {
+              "maximum": 5.8958e-05,
+              "median": 5.7145999999989996e-05,
+              "minimum": 5.0584e-05
+            },
+            "ordinary": {
+              "maximum": 0.033,
+              "median": 0.0325,
+              "minimum": 0.032
+            },
+            "preparation": {
+              "maximum": 0.000704334,
+              "median": 0.000669979,
+              "minimum": 0.00066
+            },
+            "publication": {
+              "maximum": 0.000888541,
+              "median": 0.000845332999999995,
+              "minimum": 0.00083212599999999
+            },
+            "recovery": {
+              "maximum": 3.75e-07,
+              "median": 2.09e-07,
+              "minimum": 1.2500000000000002e-07
+            },
+            "score": {
+              "maximum": 4.470083667961074e-15,
+              "median": 4.470083667961074e-15,
+              "minimum": 4.470083667961074e-15
+            },
+            "total": {
+              "maximum": 0.02199999999999999,
+              "median": 0.02199999999999999,
+              "minimum": 0.021
+            },
+            "workspace": {
+              "maximum": 1114592.0,
+              "median": 1114592.0,
+              "minimum": 1114592.0
+            }
+          },
+          "warm_count": 10
+        }
+      },
+      "settings": {
+        "levels_each": 8,
+        "memory": "auto",
+        "probes": 64,
+        "rows": 2880,
+        "threads": 1,
+        "units": 240
+      }
+    },
+    {
+      "correction_ratios_native_over_reference": {
+        "mata_cached": 0.10821530514705881,
+        "mata_current": 0.10781891208791207
+      },
+      "inputs": {
+        "0-mata_cached": {
+          "coefficients_sha256": "8131ee88050f997bfaaedac3009024584c28d2fe153fca4f8ccad2329ca96158",
+          "peak_rss_bytes": 59965440,
+          "probe_preparation_seconds": 0.028816374950110912,
+          "process_seconds": 1.8298578751273453,
+          "receipt_sha256": "41ebc166966823e6afc732c04b85f6f01d519ef6d6e195ed0a42df9f2311d918",
+          "timing_sha256": "c44a38e96ba0b0c774d1df979cbc7f8ebec5b31fab9559723dfcdaf0e3ebaaec"
+        },
+        "0-mata_current": {
+          "coefficients_sha256": "8131ee88050f997bfaaedac3009024584c28d2fe153fca4f8ccad2329ca96158",
+          "peak_rss_bytes": 61276160,
+          "probe_preparation_seconds": 0.02893541706725955,
+          "process_seconds": 1.8712451658211648,
+          "receipt_sha256": "88a12f98578a137db85a3ae29c4810d28a6752789388317ed2f62d9446b05f07",
+          "timing_sha256": "eaf165e95e308445202d8cd1e082e00ad0cc924cfc3f906322968938d9d1958e"
+        },
+        "0-native": {
+          "coefficients_sha256": "b1a08622dfd783be1e34fbee47abaf890cdc14b4ddccf6c6448be91e3c27b350",
+          "peak_rss_bytes": 47349760,
+          "probe_preparation_seconds": 0.029982042033225298,
+          "process_seconds": 0.46784345898777246,
+          "receipt_sha256": "5980841e2c10d56112bdda235835c9a30db5c8e3258cfad60f52d6839018976e",
+          "timing_sha256": "11158879bff3fc0bcff327ec166ead3a7a07f28f2645c52629123ee0abd5857b"
+        },
+        "1-mata_cached": {
+          "coefficients_sha256": "8131ee88050f997bfaaedac3009024584c28d2fe153fca4f8ccad2329ca96158",
+          "peak_rss_bytes": 59342848,
+          "probe_preparation_seconds": 0.02897495822981,
+          "process_seconds": 1.8402400417253375,
+          "receipt_sha256": "d9d62224906d2c1e0b49f7c13740acf5954aef39b6bddd4241d9bdf73bbc744f",
+          "timing_sha256": "c72d3c89953d1ef42c7d3bba911f408f080e7d3dabab4ad7f8e1dd57e7249eda"
+        },
+        "1-mata_current": {
+          "coefficients_sha256": "8131ee88050f997bfaaedac3009024584c28d2fe153fca4f8ccad2329ca96158",
+          "peak_rss_bytes": 60981248,
+          "probe_preparation_seconds": 0.029198416974395514,
+          "process_seconds": 1.8835313748568296,
+          "receipt_sha256": "43e89f9f537afa5f371d8545f523166994167f45acd5bcf0c8044d58ec12012a",
+          "timing_sha256": "b1333a7e2c3bba165289b6a7b41d2ef2328dc1851cd51be0be75dbe9c1e04ec4"
+        },
+        "1-native": {
+          "coefficients_sha256": "b1a08622dfd783be1e34fbee47abaf890cdc14b4ddccf6c6448be91e3c27b350",
+          "peak_rss_bytes": 46514176,
+          "probe_preparation_seconds": 0.028943374752998352,
+          "process_seconds": 0.4613954587839544,
+          "receipt_sha256": "8a49d29b35717c6d0f230ec41782a6f545d568ff7624edf47a576b9142655eb7",
+          "timing_sha256": "69e84baa111948e38630e9170b886f0938ed402d17fc9fe861f12776a580be76"
+        }
+      },
+      "maximum_error": 1.0408340855860843e-17,
+      "measurements": {
+        "mata_cached": {
+          "cold": [
+            {
+              "correction": 0.279,
+              "fitting": 0.002598249,
+              "inference": 5.254099999999e-05,
+              "ordinary": 0.01099999999999999,
+              "preparation": 0.00071858299999999,
+              "publication": 0.00252225,
+              "recovery": 0.000852208,
+              "score": null,
+              "total": 0.292,
+              "workspace": null
+            },
+            {
+              "correction": 0.272,
+              "fitting": 0.00255596099999999,
+              "inference": 5.6708e-05,
+              "ordinary": 0.01099999999999999,
+              "preparation": 0.000689624,
+              "publication": 0.001499792,
+              "recovery": 0.0008455,
+              "score": null,
+              "total": 0.284,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.275,
+              "median": 0.272,
+              "minimum": 0.271
+            },
+            "fitting": {
+              "maximum": 0.002884499,
+              "median": 0.0025859984999999997,
+              "minimum": 0.002550665
+            },
+            "inference": {
+              "maximum": 6.8541e-05,
+              "median": 6.0728999999995e-05,
+              "minimum": 5.7958e-05
+            },
+            "ordinary": {
+              "maximum": 0.012,
+              "median": 0.01099999999999999,
+              "minimum": 0.01
+            },
+            "preparation": {
+              "maximum": 0.001797875,
+              "median": 0.0016906035,
+              "minimum": 0.000698833
+            },
+            "publication": {
+              "maximum": 0.002508792,
+              "median": 0.001522520999999995,
+              "minimum": 0.00149975
+            },
+            "recovery": {
+              "maximum": 0.00092937499999999,
+              "median": 0.000866438,
+              "minimum": 0.00084625
+            },
+            "total": {
+              "maximum": 0.288,
+              "median": 0.285,
+              "minimum": 0.284
+            }
+          },
+          "warm_count": 10
+        },
+        "mata_current": {
+          "cold": [
+            {
+              "correction": 0.273,
+              "fitting": 0.002634834,
+              "inference": 5.4209e-05,
+              "ordinary": 0.01099999999999999,
+              "preparation": 0.00168679199999999,
+              "publication": 0.001500166,
+              "recovery": 0.00085516699999999,
+              "score": null,
+              "total": 0.286,
+              "workspace": null
+            },
+            {
+              "correction": 0.275,
+              "fitting": 0.002591956,
+              "inference": 5.158399999999e-05,
+              "ordinary": 0.01099999999999999,
+              "preparation": 0.000701792,
+              "publication": 0.00150245799999999,
+              "recovery": 0.000843334,
+              "score": null,
+              "total": 0.287,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.276,
+              "median": 0.273,
+              "minimum": 0.271
+            },
+            "fitting": {
+              "maximum": 0.002660127,
+              "median": 0.0025612095,
+              "minimum": 0.002526294
+            },
+            "inference": {
+              "maximum": 6.258299999999e-05,
+              "median": 5.975e-05,
+              "minimum": 5.6042e-05
+            },
+            "ordinary": {
+              "maximum": 0.012,
+              "median": 0.01099999999999999,
+              "minimum": 0.01
+            },
+            "preparation": {
+              "maximum": 0.001726,
+              "median": 0.001685083,
+              "minimum": 0.000678958
+            },
+            "publication": {
+              "maximum": 0.00253070899999999,
+              "median": 0.001594499999999995,
+              "minimum": 0.00149724999999999
+            },
+            "recovery": {
+              "maximum": 0.000885833,
+              "median": 0.00085341699999999,
+              "minimum": 0.00084358299999999
+            },
+            "total": {
+              "maximum": 0.289,
+              "median": 0.286,
+              "minimum": 0.284
+            }
+          },
+          "warm_count": 10
+        },
+        "native": {
+          "cold": [
+            {
+              "correction": 0.029185292,
+              "fitting": 0.00262362399999999,
+              "inference": 6.0917e-05,
+              "ordinary": 0.031,
+              "preparation": 0.00071129199999999,
+              "publication": 0.000846292,
+              "recovery": 3.75e-07,
+              "score": 3.4316445931921484e-15,
+              "total": 0.04299999999999999,
+              "workspace": 1114592
+            },
+            {
+              "correction": 0.02925825,
+              "fitting": 0.002597583,
+              "inference": 6.0625e-05,
+              "ordinary": 0.032,
+              "preparation": 0.000777001,
+              "publication": 0.000845417,
+              "recovery": 5.000000000000001e-07,
+              "score": 3.4316445931921484e-15,
+              "total": 0.04299999999999999,
+              "workspace": 1114592
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.031449417,
+              "median": 0.029434562999999997,
+              "minimum": 0.029160042
+            },
+            "fitting": {
+              "maximum": 0.00265687799999999,
+              "median": 0.0025516230000000003,
+              "minimum": 0.00253054099999999
+            },
+            "inference": {
+              "maximum": 6.65e-05,
+              "median": 5.9458499999995e-05,
+              "minimum": 5.6041e-05
+            },
+            "ordinary": {
+              "maximum": 0.032,
+              "median": 0.0315,
+              "minimum": 0.031
+            },
+            "preparation": {
+              "maximum": 0.00074295999999999,
+              "median": 0.0006782705000000001,
+              "minimum": 0.000654168
+            },
+            "publication": {
+              "maximum": 0.000915917,
+              "median": 0.000849249499999995,
+              "minimum": 0.00083295799999999
+            },
+            "recovery": {
+              "maximum": 6.67e-07,
+              "median": 2.7100000000000003e-07,
+              "minimum": 1.2500000000000002e-07
+            },
+            "score": {
+              "maximum": 3.4316445931921484e-15,
+              "median": 3.4316445931921484e-15,
+              "minimum": 3.4316445931921484e-15
+            },
+            "total": {
+              "maximum": 0.04599999999999999,
+              "median": 0.04299999999999999,
+              "minimum": 0.042
+            },
+            "workspace": {
+              "maximum": 1114592.0,
+              "median": 1114592.0,
+              "minimum": 1114592.0
+            }
+          },
+          "warm_count": 10
+        }
+      },
+      "settings": {
+        "levels_each": 8,
+        "memory": "auto",
+        "probes": 256,
+        "rows": 2880,
+        "threads": 1,
+        "units": 240
+      }
+    },
+    {
+      "correction_ratios_native_over_reference": {
+        "mata_cached": 0.1088775291586998,
+        "mata_current": 0.1088775291586998
+      },
+      "inputs": {
+        "0-mata_cached": {
+          "coefficients_sha256": "fa3a48d25f7a89c904ce6d3f902efa147e1f01f2fb8760d8bc018754c53a3bc3",
+          "peak_rss_bytes": 61243392,
+          "probe_preparation_seconds": 0.11488991603255272,
+          "process_seconds": 6.485195457935333,
+          "receipt_sha256": "a3d08a7116f53bf9d8c6c7a2eb291428ea27d1405d98d185bc587b4364fc473f",
+          "timing_sha256": "b997e155d49ac996735752430ad8658fe0dd34dcb60bc1bf929e102e186298c5"
+        },
+        "0-mata_current": {
+          "coefficients_sha256": "fa3a48d25f7a89c904ce6d3f902efa147e1f01f2fb8760d8bc018754c53a3bc3",
+          "peak_rss_bytes": 60932096,
+          "probe_preparation_seconds": 0.11193162528797984,
+          "process_seconds": 6.519814958795905,
+          "receipt_sha256": "dd7c4d7300694a9b0a1ccd48ac0534efa212e90db94dc68c6397fd9f4cec6087",
+          "timing_sha256": "fc88fc71eebce6be69ab5ec5c8139304c83d8c4fe91a57367a4a88401f3538aa"
+        },
+        "0-native": {
+          "coefficients_sha256": "7ab5ff42c8143df7108ae81ef5f891a89206a7c2f2fad71c048689ae89213d55",
+          "peak_rss_bytes": 47513600,
+          "probe_preparation_seconds": 0.1143715837970376,
+          "process_seconds": 0.939968042075634,
+          "receipt_sha256": "e7272324a673b83b8161236cb4be93f203bcb57cb6fc0a4359e38d8048c62db6",
+          "timing_sha256": "34452e0068545c6afee9f71ebb3e369dcef6a52f07dbc4b454f2f99bb7fa5993"
+        },
+        "1-mata_cached": {
+          "coefficients_sha256": "fa3a48d25f7a89c904ce6d3f902efa147e1f01f2fb8760d8bc018754c53a3bc3",
+          "peak_rss_bytes": 62160896,
+          "probe_preparation_seconds": 0.11289129219949245,
+          "process_seconds": 6.4821823332458735,
+          "receipt_sha256": "48e4e7331c1e00aaf86ce378d947d9c3bfff46654e86d352129fdb8274d2c7d4",
+          "timing_sha256": "990c110485c93f10124e2dd0e1f7735932897ec5d8ba1b7839b6cbe57bc1a05d"
+        },
+        "1-mata_current": {
+          "coefficients_sha256": "fa3a48d25f7a89c904ce6d3f902efa147e1f01f2fb8760d8bc018754c53a3bc3",
+          "peak_rss_bytes": 61833216,
+          "probe_preparation_seconds": 0.1138210422359407,
+          "process_seconds": 6.480291208252311,
+          "receipt_sha256": "2e6b7b8aca7d3b2b8364946db822d604a4b7f1b827d52cdccc95d098ab65a471",
+          "timing_sha256": "28de2026e20b426deb0d1ea67086337b2b48665bb77a76592ba804f9174c3364"
+        },
+        "1-native": {
+          "coefficients_sha256": "7ab5ff42c8143df7108ae81ef5f891a89206a7c2f2fad71c048689ae89213d55",
+          "peak_rss_bytes": 46481408,
+          "probe_preparation_seconds": 0.11195195885375142,
+          "process_seconds": 0.9355604173615575,
+          "receipt_sha256": "629919bb6ff8c82e6a1f70d11b2aa99f2b42ae337e2aea1607d8fc09e73cf32c",
+          "timing_sha256": "a713b2c7e9769bc7d11974fc138483586342036267a20ada880cddc64130b46d"
+        }
+      },
+      "maximum_error": 1.0408340855860843e-17,
+      "measurements": {
+        "mata_cached": {
+          "cold": [
+            {
+              "correction": 1.05,
+              "fitting": 0.002572711,
+              "inference": 5.6541e-05,
+              "ordinary": 0.01099999999999999,
+              "preparation": 0.00069174899999999,
+              "publication": 0.002502041,
+              "recovery": 0.000844916,
+              "score": null,
+              "total": 1.063,
+              "workspace": null
+            },
+            {
+              "correction": 1.037,
+              "fitting": 0.00255808499999999,
+              "inference": 5.466699999999e-05,
+              "ordinary": 0.01,
+              "preparation": 0.001680126,
+              "publication": 0.001531667,
+              "recovery": 0.000855625,
+              "score": null,
+              "total": 1.05,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 1.055,
+              "median": 1.046,
+              "minimum": 1.04
+            },
+            "fitting": {
+              "maximum": 0.002865832,
+              "median": 0.002615790999999995,
+              "minimum": 0.00257128999999999
+            },
+            "inference": {
+              "maximum": 7.2125e-05,
+              "median": 6.3561999999995e-05,
+              "minimum": 6.1041e-05
+            },
+            "ordinary": {
+              "maximum": 0.01299999999999999,
+              "median": 0.01099999999999999,
+              "minimum": 0.01099999999999999
+            },
+            "preparation": {
+              "maximum": 0.001733875,
+              "median": 0.0017056875,
+              "minimum": 0.00070049999999999
+            },
+            "publication": {
+              "maximum": 0.002538791,
+              "median": 0.001531187,
+              "minimum": 0.00151324899999999
+            },
+            "recovery": {
+              "maximum": 0.00099945799999999,
+              "median": 0.000869437,
+              "minimum": 0.000849875
+            },
+            "total": {
+              "maximum": 1.068,
+              "median": 1.06,
+              "minimum": 1.053
+            }
+          },
+          "warm_count": 10
+        },
+        "mata_current": {
+          "cold": [
+            {
+              "correction": 1.042,
+              "fitting": 0.002582875,
+              "inference": 5.7333e-05,
+              "ordinary": 0.01099999999999999,
+              "preparation": 0.000691959,
+              "publication": 0.001529208,
+              "recovery": 0.000863542,
+              "score": null,
+              "total": 1.054,
+              "workspace": null
+            },
+            {
+              "correction": 1.041,
+              "fitting": 0.002546459,
+              "inference": 6.0166e-05,
+              "ordinary": 0.01099999999999999,
+              "preparation": 0.00068533299999999,
+              "publication": 0.002500417,
+              "recovery": 0.000847042,
+              "score": null,
+              "total": 1.054,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 1.054,
+              "median": 1.046,
+              "minimum": 1.039
+            },
+            "fitting": {
+              "maximum": 0.002685165,
+              "median": 0.0025948355,
+              "minimum": 0.002569169
+            },
+            "inference": {
+              "maximum": 6.5083e-05,
+              "median": 6.25415e-05,
+              "minimum": 6.0166e-05
+            },
+            "ordinary": {
+              "maximum": 0.012,
+              "median": 0.01099999999999999,
+              "minimum": 0.01099999999999999
+            },
+            "preparation": {
+              "maximum": 0.001734208,
+              "median": 0.001707895499999995,
+              "minimum": 0.000700417
+            },
+            "publication": {
+              "maximum": 0.002537459,
+              "median": 0.0015263955,
+              "minimum": 0.001512874
+            },
+            "recovery": {
+              "maximum": 0.000933916,
+              "median": 0.000853729,
+              "minimum": 0.00084908399999999
+            },
+            "total": {
+              "maximum": 1.067,
+              "median": 1.0594999999999999,
+              "minimum": 1.053
+            }
+          },
+          "warm_count": 10
+        },
+        "native": {
+          "cold": [
+            {
+              "correction": 0.1121485,
+              "fitting": 0.002570834,
+              "inference": 6.1666e-05,
+              "ordinary": 0.032,
+              "preparation": 0.000689833,
+              "publication": 0.000854584,
+              "recovery": 5.420000000000001e-07,
+              "score": 3.3360293497710434e-15,
+              "total": 0.125,
+              "workspace": 1114592
+            },
+            {
+              "correction": 0.114169708,
+              "fitting": 0.00258416899999999,
+              "inference": 6.8167e-05,
+              "ordinary": 0.032,
+              "preparation": 0.00068937399999999,
+              "publication": 0.000894583,
+              "recovery": 6.660000000000001e-07,
+              "score": 3.3360293497710434e-15,
+              "total": 0.128,
+              "workspace": 1114592
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.114983,
+              "median": 0.1138858955,
+              "minimum": 0.112493667
+            },
+            "fitting": {
+              "maximum": 0.00266258499999999,
+              "median": 0.0025590425,
+              "minimum": 0.002537709
+            },
+            "inference": {
+              "maximum": 7.158299999999e-05,
+              "median": 6.2999999999995e-05,
+              "minimum": 5.8958e-05
+            },
+            "ordinary": {
+              "maximum": 0.032,
+              "median": 0.032,
+              "minimum": 0.032
+            },
+            "preparation": {
+              "maximum": 0.000719042,
+              "median": 0.0006817709999999951,
+              "minimum": 0.00067116599999999
+            },
+            "publication": {
+              "maximum": 0.00091391699999999,
+              "median": 0.0008744369999999951,
+              "minimum": 0.00084620799999999
+            },
+            "recovery": {
+              "maximum": 5.830000000000001e-07,
+              "median": 4.3750000000000005e-07,
+              "minimum": 2.5000000000000004e-07
+            },
+            "score": {
+              "maximum": 3.3360293497710434e-15,
+              "median": 3.3360293497710434e-15,
+              "minimum": 3.3360293497710434e-15
+            },
+            "total": {
+              "maximum": 0.128,
+              "median": 0.127,
+              "minimum": 0.126
+            },
+            "workspace": {
+              "maximum": 1114592.0,
+              "median": 1114592.0,
+              "minimum": 1114592.0
+            }
+          },
+          "warm_count": 10
+        }
+      },
+      "settings": {
+        "levels_each": 8,
+        "memory": "auto",
+        "probes": 1024,
+        "rows": 2880,
+        "threads": 1,
+        "units": 240
+      }
+    },
+    {
+      "correction_ratios_native_over_reference": {
+        "mata_cached": 0.10383556415929204,
+        "mata_current": 0.10351494265549184
+      },
+      "inputs": {
+        "0-mata_cached": {
+          "coefficients_sha256": "30bec7b34f6215ec23568aafd958f64175224a5c013e9e7df84947cc88ef6dff",
+          "peak_rss_bytes": 62275584,
+          "probe_preparation_seconds": 0.035216791089624166,
+          "process_seconds": 7.126995000056922,
+          "receipt_sha256": "4c7c452e5404dba0d9ecfed1c5650b73b62475be2db13e3c802d12a22229ae9b",
+          "timing_sha256": "ff987ae481166eaa9f39361b16a7585eba57f8e0cf32d213fa788d5eb50a6c29"
+        },
+        "0-mata_current": {
+          "coefficients_sha256": "30bec7b34f6215ec23568aafd958f64175224a5c013e9e7df84947cc88ef6dff",
+          "peak_rss_bytes": 60850176,
+          "probe_preparation_seconds": 0.03519099997356534,
+          "process_seconds": 7.132209083065391,
+          "receipt_sha256": "154a84cf87106b0a881e57d84489b71853186b9f978f6aeb242ce0afe4f4e6e6",
+          "timing_sha256": "ec6a314d3ac592e667411fc08d185a4a970a2d666b90fd024b474a4237059bdf"
+        },
+        "0-native": {
+          "coefficients_sha256": "def2b812283a8604463a79364069f84924b9f8006ecbe24ba20c85d2e6bf9b2a",
+          "peak_rss_bytes": 49397760,
+          "probe_preparation_seconds": 0.037240583915263414,
+          "process_seconds": 1.2579091251827776,
+          "receipt_sha256": "f54edb006d8ac387e0f031559e30e2cec0e698e084f7b95ff6f68a9c70778bc1",
+          "timing_sha256": "18800c30af3987129068f12b6882c13d1a9d5bc34a1b39228d9eb0c8207893c5"
+        },
+        "1-mata_cached": {
+          "coefficients_sha256": "30bec7b34f6215ec23568aafd958f64175224a5c013e9e7df84947cc88ef6dff",
+          "peak_rss_bytes": 60571648,
+          "probe_preparation_seconds": 0.03559629200026393,
+          "process_seconds": 7.117557875346392,
+          "receipt_sha256": "1eb18d1183c86f69eb34178092ee0fcce0e5695216ffb02d5dd0f4084daf0e42",
+          "timing_sha256": "b5103687b5ba9f5f43abbdf0ac8b2575cb556c39b4a96207f245b7ea1af15eb5"
+        },
+        "1-mata_current": {
+          "coefficients_sha256": "30bec7b34f6215ec23568aafd958f64175224a5c013e9e7df84947cc88ef6dff",
+          "peak_rss_bytes": 61325312,
+          "probe_preparation_seconds": 0.03539112489670515,
+          "process_seconds": 7.22381675010547,
+          "receipt_sha256": "f0f68a54fd46d24baf41f61a7e8baf8538cbe42b22fb9fe822fd9799b2bec619",
+          "timing_sha256": "745968844ed3df877c8ea1a1ee4dfad1e530ec0d61d8545ecbf458781aa310ce"
+        },
+        "1-native": {
+          "coefficients_sha256": "def2b812283a8604463a79364069f84924b9f8006ecbe24ba20c85d2e6bf9b2a",
+          "peak_rss_bytes": 48594944,
+          "probe_preparation_seconds": 0.03531654132530093,
+          "process_seconds": 1.233995458111167,
+          "receipt_sha256": "c865ad4eff8e759e77608e700ce9db54037484a5e6d10022f3d94852130996cd",
+          "timing_sha256": "00d263d255708310747066e6f5acf32f431018b47f7acb9dc5d01bb55e89a71a"
+        }
+      },
+      "maximum_error": 2.0383000842727483e-17,
+      "measurements": {
+        "mata_cached": {
+          "cold": [
+            {
+              "correction": 1.131,
+              "fitting": 0.009524995,
+              "inference": 0.00017374999999999,
+              "ordinary": 0.027,
+              "preparation": 0.004724584,
+              "publication": 0.00672416699999999,
+              "recovery": 0.00334758299999999,
+              "score": null,
+              "total": 1.165,
+              "workspace": null
+            },
+            {
+              "correction": 1.128,
+              "fitting": 0.00946279499999999,
+              "inference": 0.000174541,
+              "ordinary": 0.027,
+              "preparation": 0.0035785,
+              "publication": 0.00572704199999999,
+              "recovery": 0.00334825,
+              "score": null,
+              "total": 1.16,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 1.139,
+              "median": 1.13,
+              "minimum": 1.127
+            },
+            "fitting": {
+              "maximum": 0.00987791799999999,
+              "median": 0.009730293000000001,
+              "minimum": 0.00951599799999999
+            },
+            "inference": {
+              "maximum": 0.00018554199999999,
+              "median": 0.000182832999999995,
+              "minimum": 0.000176708
+            },
+            "ordinary": {
+              "maximum": 0.02999999999999999,
+              "median": 0.029,
+              "minimum": 0.028
+            },
+            "preparation": {
+              "maximum": 0.00470920799999999,
+              "median": 0.004153186999999996,
+              "minimum": 0.003593541
+            },
+            "publication": {
+              "maximum": 0.00675374899999999,
+              "median": 0.0058247295000000004,
+              "minimum": 0.00579683399999999
+            },
+            "recovery": {
+              "maximum": 0.00357137499999999,
+              "median": 0.003484541999999995,
+              "minimum": 0.003359167
+            },
+            "total": {
+              "maximum": 1.175,
+              "median": 1.1655,
+              "minimum": 1.161
+            }
+          },
+          "warm_count": 10
+        },
+        "mata_current": {
+          "cold": [
+            {
+              "correction": 1.132,
+              "fitting": 0.009547582,
+              "inference": 0.00017833399999999,
+              "ordinary": 0.027,
+              "preparation": 0.00473703999999999,
+              "publication": 0.006731875,
+              "recovery": 0.00334575,
+              "score": null,
+              "total": 1.166,
+              "workspace": null
+            },
+            {
+              "correction": 1.132,
+              "fitting": 0.009556713,
+              "inference": 0.000176708,
+              "ordinary": 0.027,
+              "preparation": 0.00470237599999999,
+              "publication": 0.006737167,
+              "recovery": 0.003385959,
+              "score": null,
+              "total": 1.166,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 1.139,
+              "median": 1.1335,
+              "minimum": 1.128
+            },
+            "fitting": {
+              "maximum": 0.01007366599999999,
+              "median": 0.0095439775,
+              "minimum": 0.00950299999999999
+            },
+            "inference": {
+              "maximum": 0.000187583,
+              "median": 0.0001792915,
+              "minimum": 0.000176875
+            },
+            "ordinary": {
+              "maximum": 0.029,
+              "median": 0.028,
+              "minimum": 0.027
+            },
+            "preparation": {
+              "maximum": 0.00471729199999999,
+              "median": 0.0046027505,
+              "minimum": 0.003592792
+            },
+            "publication": {
+              "maximum": 0.00677925,
+              "median": 0.005751792,
+              "minimum": 0.005743459
+            },
+            "recovery": {
+              "maximum": 0.00345162499999999,
+              "median": 0.0033636250000000003,
+              "minimum": 0.00335
+            },
+            "total": {
+              "maximum": 1.173,
+              "median": 1.167,
+              "minimum": 1.163
+            }
+          },
+          "warm_count": 10
+        },
+        "native": {
+          "cold": [
+            {
+              "correction": 0.116953458,
+              "fitting": 0.00948358399999999,
+              "inference": 0.000192916,
+              "ordinary": 0.049,
+              "preparation": 0.002594542,
+              "publication": 0.00323562399999999,
+              "recovery": 5.000000000000001e-07,
+              "score": 4.0972022565435215e-15,
+              "total": 0.152,
+              "workspace": 4506080
+            },
+            {
+              "correction": 0.11557325,
+              "fitting": 0.00951675299999999,
+              "inference": 0.000178958,
+              "ordinary": 0.049,
+              "preparation": 0.002620208,
+              "publication": 0.00316720899999999,
+              "recovery": 6.67e-07,
+              "score": 4.0972022565435215e-15,
+              "total": 0.151,
+              "workspace": 4506080
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.117851625,
+              "median": 0.11733418749999999,
+              "minimum": 0.116814875
+            },
+            "fitting": {
+              "maximum": 0.00950666399999999,
+              "median": 0.00948147949999999,
+              "minimum": 0.00945612699999999
+            },
+            "inference": {
+              "maximum": 0.00018808299999999,
+              "median": 0.0001834165,
+              "minimum": 0.00017816699999999
+            },
+            "ordinary": {
+              "maximum": 0.049,
+              "median": 0.049,
+              "minimum": 0.049
+            },
+            "preparation": {
+              "maximum": 0.002623209,
+              "median": 0.002581875499999995,
+              "minimum": 0.002564625
+            },
+            "publication": {
+              "maximum": 0.00332279199999999,
+              "median": 0.0032262074999999998,
+              "minimum": 0.00308962499999999
+            },
+            "recovery": {
+              "maximum": 5.420000000000001e-07,
+              "median": 4.795e-07,
+              "minimum": 4.16e-07
+            },
+            "score": {
+              "maximum": 4.0972022565435215e-15,
+              "median": 4.0972022565435215e-15,
+              "minimum": 4.0972022565435215e-15
+            },
+            "total": {
+              "maximum": 0.155,
+              "median": 0.153,
+              "minimum": 0.152
+            },
+            "workspace": {
+              "maximum": 4506080.0,
+              "median": 4506080.0,
+              "minimum": 4506080.0
+            }
+          },
+          "warm_count": 10
+        }
+      },
+      "settings": {
+        "levels_each": 32,
+        "memory": "auto",
+        "probes": 256,
+        "rows": 11520,
+        "threads": 1,
+        "units": 960
+      }
+    },
+    {
+      "correction_ratios_native_over_reference": {
+        "mata_cached": 0.1035166547277937,
+        "mata_current": 0.10263441051136363
+      },
+      "inputs": {
+        "0-mata_cached": {
+          "coefficients_sha256": "5ee787e86c2ea87576b1ed2806159591c2951b4424fe4b01403d9f5aef9c5869",
+          "peak_rss_bytes": 117948416,
+          "probe_preparation_seconds": 0.06276245787739754,
+          "process_seconds": 28.252684874925762,
+          "receipt_sha256": "038df85d4340320dc15eef1352b470b29dd75eeccfea8ace1846900b660f9fbf",
+          "timing_sha256": "8e0b7c6b5491bd7f42ec838bb2c88b5cd6dca8b982814e6b329343901ecd1a9e"
+        },
+        "0-mata_current": {
+          "coefficients_sha256": "5ee787e86c2ea87576b1ed2806159591c2951b4424fe4b01403d9f5aef9c5869",
+          "peak_rss_bytes": 108380160,
+          "probe_preparation_seconds": 0.062102333176881075,
+          "process_seconds": 28.51350437477231,
+          "receipt_sha256": "3c782c7f362f2cc666c02c892109f3410ead5b1b393c8b817a0a0cb1e292062e",
+          "timing_sha256": "dc2b7ff8485b6250a2c76934b056fc74f8e52ddc74f460a4018dfa92b19bebfd"
+        },
+        "0-native": {
+          "coefficients_sha256": "de889b88d98a5f48bb7ce892908013300d4c1fe442343a69c5b656070dfeea72",
+          "peak_rss_bytes": 82755584,
+          "probe_preparation_seconds": 0.06371858296915889,
+          "process_seconds": 4.486014333087951,
+          "receipt_sha256": "0ed6bdbf9ef817d5097b0ba65148dc5d335ea3a95727538399343b9fdb9fbcde",
+          "timing_sha256": "365ffaa0e78b6d607bc0446e8b0fe3f1ba2eaa07d3b5f92645fb1e097afdf6ae"
+        },
+        "1-mata_cached": {
+          "coefficients_sha256": "5ee787e86c2ea87576b1ed2806159591c2951b4424fe4b01403d9f5aef9c5869",
+          "peak_rss_bytes": 102416384,
+          "probe_preparation_seconds": 0.06347329076379538,
+          "process_seconds": 28.138062708079815,
+          "receipt_sha256": "fb1e58e12f01d646d2b44106c46ed89b6020b3d9f1b4a2cb6a046f8c21265e7d",
+          "timing_sha256": "889dd074c349b22d2d72875b8bf0e52e951db0b16ea208638e0cf5db385b0ccd"
+        },
+        "1-mata_current": {
+          "coefficients_sha256": "5ee787e86c2ea87576b1ed2806159591c2951b4424fe4b01403d9f5aef9c5869",
+          "peak_rss_bytes": 123518976,
+          "probe_preparation_seconds": 0.06479049986228347,
+          "process_seconds": 28.565023791976273,
+          "receipt_sha256": "9e0532dec2bd9e5eb6eb330acba239deb272c7d67b2358f78e7200d0c047fc7b",
+          "timing_sha256": "049ac1336b02a05b245a6d5417fd412b41c3b12bb312f7be79b1afd9f4758387"
+        },
+        "1-native": {
+          "coefficients_sha256": "de889b88d98a5f48bb7ce892908013300d4c1fe442343a69c5b656070dfeea72",
+          "peak_rss_bytes": 81084416,
+          "probe_preparation_seconds": 0.06416937476024032,
+          "process_seconds": 4.476990167051554,
+          "receipt_sha256": "79881714411e5db0444c8580e56665a88f59ac0d04234414369ed19f729dfe7d",
+          "timing_sha256": "99c3f6922e5898dc2b05abf9b0ba2ae0e5fb04b7fe670c6d9c15355b63faeaf2"
+        }
+      },
+      "maximum_error": 3.0357660829594124e-17,
+      "measurements": {
+        "mata_cached": {
+          "cold": [
+            {
+              "correction": 4.554,
+              "fitting": 0.040153038,
+              "inference": 0.000665833,
+              "ordinary": 0.096,
+              "preparation": 0.01577316699999999,
+              "publication": 0.02472750099999999,
+              "recovery": 0.013732833,
+              "score": null,
+              "total": 4.675,
+              "workspace": null
+            },
+            {
+              "correction": 4.504,
+              "fitting": 0.03946354,
+              "inference": 0.00064325,
+              "ordinary": 0.095,
+              "preparation": 0.015990792,
+              "publication": 0.02368287499999999,
+              "recovery": 0.01343745799999999,
+              "score": null,
+              "total": 4.622,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 4.579,
+              "median": 4.537,
+              "minimum": 4.501
+            },
+            "fitting": {
+              "maximum": 0.043771498,
+              "median": 0.0389782905,
+              "minimum": 0.03817245799999999
+            },
+            "inference": {
+              "maximum": 0.000683167,
+              "median": 0.000648166499999995,
+              "minimum": 0.000640666
+            },
+            "ordinary": {
+              "maximum": 0.107,
+              "median": 0.0975,
+              "minimum": 0.096
+            },
+            "preparation": {
+              "maximum": 0.019889501,
+              "median": 0.017582977999999992,
+              "minimum": 0.015721083
+            },
+            "publication": {
+              "maximum": 0.02597420799999999,
+              "median": 0.02485574949999999,
+              "minimum": 0.023714042
+            },
+            "recovery": {
+              "maximum": 0.014379083,
+              "median": 0.013599124499999995,
+              "minimum": 0.013390833
+            },
+            "total": {
+              "maximum": 4.707,
+              "median": 4.66,
+              "minimum": 4.622
+            }
+          },
+          "warm_count": 10
+        },
+        "mata_current": {
+          "cold": [
+            {
+              "correction": 4.54,
+              "fitting": 0.03926404399999999,
+              "inference": 0.000639834,
+              "ordinary": 0.095,
+              "preparation": 0.01580295799999999,
+              "publication": 0.02467491699999999,
+              "recovery": 0.013412541,
+              "score": null,
+              "total": 4.659,
+              "workspace": null
+            },
+            {
+              "correction": 4.579,
+              "fitting": 0.04017925299999999,
+              "inference": 0.00066458399999999,
+              "ordinary": 0.103,
+              "preparation": 0.017857834,
+              "publication": 0.02499533299999999,
+              "recovery": 0.013970417,
+              "score": null,
+              "total": 4.708,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 4.695,
+              "median": 4.5760000000000005,
+              "minimum": 4.534
+            },
+            "fitting": {
+              "maximum": 0.04255341899999999,
+              "median": 0.03922733349999999,
+              "minimum": 0.038310376
+            },
+            "inference": {
+              "maximum": 0.00072,
+              "median": 0.00065862499999999,
+              "minimum": 0.00064249999999999
+            },
+            "ordinary": {
+              "maximum": 0.11,
+              "median": 0.0975,
+              "minimum": 0.095
+            },
+            "preparation": {
+              "maximum": 0.022343832,
+              "median": 0.017612375,
+              "minimum": 0.015877207
+            },
+            "publication": {
+              "maximum": 0.025662917,
+              "median": 0.024678083999999996,
+              "minimum": 0.02377725
+            },
+            "recovery": {
+              "maximum": 0.01495299999999999,
+              "median": 0.013612416999999995,
+              "minimum": 0.013390667
+            },
+            "total": {
+              "maximum": 4.835,
+              "median": 4.701,
+              "minimum": 4.659
+            }
+          },
+          "warm_count": 10
+        },
+        "native": {
+          "cold": [
+            {
+              "correction": 0.466206791,
+              "fitting": 0.039108665,
+              "inference": 0.000652959,
+              "ordinary": 0.118,
+              "preparation": 0.00965204199999999,
+              "publication": 0.011978958,
+              "recovery": 7.09e-07,
+              "score": 4.936220692380519e-15,
+              "total": 0.5920000000000001,
+              "workspace": 17990112
+            },
+            {
+              "correction": 0.46203625,
+              "fitting": 0.039539002,
+              "inference": 0.00068037499999999,
+              "ordinary": 0.12,
+              "preparation": 0.009682625,
+              "publication": 0.012172667,
+              "recovery": 8.750000000000001e-07,
+              "score": 4.936220692380519e-15,
+              "total": 0.589,
+              "workspace": 17990112
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.480556708,
+              "median": 0.4696550625,
+              "minimum": 0.460109666
+            },
+            "fitting": {
+              "maximum": 0.04096295799999999,
+              "median": 0.0387897725,
+              "minimum": 0.038057292
+            },
+            "inference": {
+              "maximum": 0.00069891599999999,
+              "median": 0.0006647295,
+              "minimum": 0.000650458
+            },
+            "ordinary": {
+              "maximum": 0.12,
+              "median": 0.119,
+              "minimum": 0.118
+            },
+            "preparation": {
+              "maximum": 0.010791499,
+              "median": 0.009906686999999994,
+              "minimum": 0.00962579199999999
+            },
+            "publication": {
+              "maximum": 0.012944667,
+              "median": 0.0122485,
+              "minimum": 0.012054833
+            },
+            "recovery": {
+              "maximum": 1.0000000000000002e-06,
+              "median": 7.705000000000001e-07,
+              "minimum": 5.420000000000001e-07
+            },
+            "score": {
+              "maximum": 4.936220692380519e-15,
+              "median": 4.936220692380519e-15,
+              "minimum": 4.936220692380519e-15
+            },
+            "total": {
+              "maximum": 0.619,
+              "median": 0.598,
+              "minimum": 0.5860000000000001
+            },
+            "workspace": {
+              "maximum": 17990112.0,
+              "median": 17990112.0,
+              "minimum": 17990112.0
+            }
+          },
+          "warm_count": 10
+        }
+      },
+      "settings": {
+        "levels_each": 64,
+        "memory": "auto",
+        "probes": 256,
+        "rows": 46080,
+        "threads": 1,
+        "units": 3840
+      }
+    },
+    {
+      "correction_ratios_native_over_reference": {
+        "mata_cached": 0.10751410998552821,
+        "mata_current": 0.106377271725961
+      },
+      "inputs": {
+        "0-mata_cached": {
+          "coefficients_sha256": "5701ee6f86911d6d0871064d412242b08e7604e98f6065f676cb77328717aa25",
+          "peak_rss_bytes": 112214016,
+          "probe_preparation_seconds": 0.06182554177939892,
+          "process_seconds": 27.780505083035678,
+          "receipt_sha256": "691a3b56ff8166139f9beb245e9572d2922a1e76723c429fb26015f48382ea20",
+          "timing_sha256": "8f7299cd3febdd9a3d8b82fae1eae3f3f38c06180c81dd4a81dd566d60debad9"
+        },
+        "0-mata_current": {
+          "coefficients_sha256": "5701ee6f86911d6d0871064d412242b08e7604e98f6065f676cb77328717aa25",
+          "peak_rss_bytes": 112689152,
+          "probe_preparation_seconds": 0.0631201253272593,
+          "process_seconds": 28.100748584140092,
+          "receipt_sha256": "dd0a93ac132be48d7ae536d718281edfa176a09ea399c1cca8e2a045aec77292",
+          "timing_sha256": "e6e69f12b4bde394c1d5b30102dac099d01d582da8a5e29f4b914658c64a6111"
+        },
+        "0-native": {
+          "coefficients_sha256": "f87c779d4fbf28577050ab74b227bcd51c6597307a759606a8126a7a3c3f8a98",
+          "peak_rss_bytes": 87736320,
+          "probe_preparation_seconds": 0.06353712501004338,
+          "process_seconds": 4.2723506656475365,
+          "receipt_sha256": "3d87b8c83a9ff2f32e7d2ce403b412fa531748763637aab457f3c3b2f36276b7",
+          "timing_sha256": "a24bf041983edc0df7788578e68bef9b0f9586c3b920ceb2152a508551fce324"
+        },
+        "1-mata_cached": {
+          "coefficients_sha256": "5701ee6f86911d6d0871064d412242b08e7604e98f6065f676cb77328717aa25",
+          "peak_rss_bytes": 112672768,
+          "probe_preparation_seconds": 0.0615252498537302,
+          "process_seconds": 27.64751625014469,
+          "receipt_sha256": "8149779747e2aa04ca9248d75982eb43bc795b97ea1aed6c4f793a3aa82ad937",
+          "timing_sha256": "04b9b790b19d930d6fb94a91fff7689c24a6813da51e2627250be82d36fb3e9b"
+        },
+        "1-mata_current": {
+          "coefficients_sha256": "5701ee6f86911d6d0871064d412242b08e7604e98f6065f676cb77328717aa25",
+          "peak_rss_bytes": 112574464,
+          "probe_preparation_seconds": 0.06141462503001094,
+          "process_seconds": 27.967319208197296,
+          "receipt_sha256": "a38476319abba864d881a363ac9a31c8a8b2cbccecc044b36a2815757a46b2fd",
+          "timing_sha256": "311f6198b8dade725e7b586e30df864ca93720fcd6e841ad883131962e740b0d"
+        },
+        "1-native": {
+          "coefficients_sha256": "f87c779d4fbf28577050ab74b227bcd51c6597307a759606a8126a7a3c3f8a98",
+          "peak_rss_bytes": 83968000,
+          "probe_preparation_seconds": 0.061836374923586845,
+          "process_seconds": 4.218118333257735,
+          "receipt_sha256": "a5768c190b62f223fd8c1400f87b5bb34a2ad83fcac09d217ff822cf943044d2",
+          "timing_sha256": "10f8b13392e89d0f5177182bb714eff5c4927fa5ddaf72cc6be086a2a5f6956a"
+        }
+      },
+      "maximum_error": 3.0357660829594124e-17,
+      "measurements": {
+        "mata_cached": {
+          "cold": [
+            {
+              "correction": 4.494,
+              "fitting": 0.023697872,
+              "inference": 0.00048216699999999,
+              "ordinary": 0.062,
+              "preparation": 0.012545667,
+              "publication": 0.023899625,
+              "recovery": 0.00621758299999999,
+              "score": null,
+              "total": 4.578,
+              "workspace": null
+            },
+            {
+              "correction": 4.481,
+              "fitting": 0.024222666,
+              "inference": 0.000539416,
+              "ordinary": 0.063,
+              "preparation": 0.01519295899999999,
+              "publication": 0.02433129099999999,
+              "recovery": 0.00716437499999999,
+              "score": null,
+              "total": 4.569,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 4.574,
+              "median": 4.4915,
+              "minimum": 4.482
+            },
+            "fitting": {
+              "maximum": 0.02487008099999999,
+              "median": 0.0238821455,
+              "minimum": 0.023513625
+            },
+            "inference": {
+              "maximum": 0.000659375,
+              "median": 0.00048104149999999,
+              "minimum": 0.000466042
+            },
+            "ordinary": {
+              "maximum": 0.065,
+              "median": 0.0635,
+              "minimum": 0.063
+            },
+            "preparation": {
+              "maximum": 0.014271333,
+              "median": 0.013391957499999996,
+              "minimum": 0.012079334
+            },
+            "publication": {
+              "maximum": 0.02500379099999999,
+              "median": 0.023984145499999995,
+              "minimum": 0.022989625
+            },
+            "recovery": {
+              "maximum": 0.00710612499999999,
+              "median": 0.00617979149999999,
+              "minimum": 0.005983958
+            },
+            "total": {
+              "maximum": 4.659,
+              "median": 4.5775,
+              "minimum": 4.568
+            }
+          },
+          "warm_count": 10
+        },
+        "mata_current": {
+          "cold": [
+            {
+              "correction": 4.597,
+              "fitting": 0.024217083,
+              "inference": 0.000477542,
+              "ordinary": 0.064,
+              "preparation": 0.013774542,
+              "publication": 0.025215958,
+              "recovery": 0.006356666,
+              "score": null,
+              "total": 4.686,
+              "workspace": null
+            },
+            {
+              "correction": 4.536,
+              "fitting": 0.02364803999999999,
+              "inference": 0.000467375,
+              "ordinary": 0.063,
+              "preparation": 0.01223375099999999,
+              "publication": 0.02419054199999999,
+              "recovery": 0.006051667,
+              "score": null,
+              "total": 4.621,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 4.592,
+              "median": 4.5395,
+              "minimum": 4.53
+            },
+            "fitting": {
+              "maximum": 0.024755498,
+              "median": 0.024136105499999994,
+              "minimum": 0.023759833
+            },
+            "inference": {
+              "maximum": 0.00053983299999999,
+              "median": 0.00048102050000000003,
+              "minimum": 0.000457958
+            },
+            "ordinary": {
+              "maximum": 0.068,
+              "median": 0.06349999999999995,
+              "minimum": 0.062
+            },
+            "preparation": {
+              "maximum": 0.01475620899999999,
+              "median": 0.013336021,
+              "minimum": 0.01140433299999999
+            },
+            "publication": {
+              "maximum": 0.025032166,
+              "median": 0.023999832999999995,
+              "minimum": 0.0229585
+            },
+            "recovery": {
+              "maximum": 0.00715237499999999,
+              "median": 0.00613547949999999,
+              "minimum": 0.006014709
+            },
+            "total": {
+              "maximum": 4.68,
+              "median": 4.625,
+              "minimum": 4.617
+            }
+          },
+          "warm_count": 10
+        },
+        "native": {
+          "cold": [
+            {
+              "correction": 0.486297166,
+              "fitting": 0.02423512699999999,
+              "inference": 0.000463084,
+              "ordinary": 0.086,
+              "preparation": 0.008373208,
+              "publication": 0.012016417,
+              "recovery": 9.709e-06,
+              "score": 4.872618282303281e-15,
+              "total": 0.563,
+              "workspace": 17990112
+            },
+            {
+              "correction": 0.48189275,
+              "fitting": 0.023895584,
+              "inference": 0.000448875,
+              "ordinary": 0.085,
+              "preparation": 0.0081495,
+              "publication": 0.011433083,
+              "recovery": 5.75e-06,
+              "score": 4.872618282303281e-15,
+              "total": 0.5549999999999999,
+              "workspace": 17990112
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.490036125,
+              "median": 0.482899625,
+              "minimum": 0.479396167
+            },
+            "fitting": {
+              "maximum": 0.024652169,
+              "median": 0.024195748499999996,
+              "minimum": 0.023591209
+            },
+            "inference": {
+              "maximum": 0.00047620799999999,
+              "median": 0.0004660415,
+              "minimum": 0.000441625
+            },
+            "ordinary": {
+              "maximum": 0.086,
+              "median": 0.08549999999999999,
+              "minimum": 0.085
+            },
+            "preparation": {
+              "maximum": 0.00857149999999999,
+              "median": 0.008242187500000001,
+              "minimum": 0.008098374
+            },
+            "publication": {
+              "maximum": 0.01179645899999999,
+              "median": 0.011529249999999994,
+              "minimum": 0.011348792
+            },
+            "recovery": {
+              "maximum": 3.375e-05,
+              "median": 1.0458499999995e-05,
+              "minimum": 5.792e-06
+            },
+            "score": {
+              "maximum": 4.872618282303281e-15,
+              "median": 4.872618282303281e-15,
+              "minimum": 4.872618282303281e-15
+            },
+            "total": {
+              "maximum": 0.565,
+              "median": 0.5585,
+              "minimum": 0.554
+            },
+            "workspace": {
+              "maximum": 17990112.0,
+              "median": 17990112.0,
+              "minimum": 17990112.0
+            }
+          },
+          "warm_count": 10
+        }
+      },
+      "settings": {
+        "levels_each": 64,
+        "memory": "auto",
+        "probes": 256,
+        "rows": 46080,
+        "threads": 4,
+        "units": 3840
+      }
+    },
+    {
+      "correction_ratios_native_over_reference": {
+        "mata_cached": 0.2886200924444445,
+        "mata_current": 0.2865821747572816
+      },
+      "inputs": {
+        "0-mata_cached": {
+          "coefficients_sha256": "125e350981e25facd4f4f463f7106efacdfd99f47f3face1dd64d94c4498db29",
+          "peak_rss_bytes": 63471616,
+          "probe_preparation_seconds": 0.03520858380943537,
+          "process_seconds": 7.122094791382551,
+          "receipt_sha256": "72aff62cc0c3cc1ab62f2bf351ef3b2395c0b4c4dc921f785bf3902d01e795ad",
+          "timing_sha256": "3034e4e0b2134ae9a31a71101fb7924350c0a600ba214e66392e6b985367dc67"
+        },
+        "0-mata_current": {
+          "coefficients_sha256": "125e350981e25facd4f4f463f7106efacdfd99f47f3face1dd64d94c4498db29",
+          "peak_rss_bytes": 62701568,
+          "probe_preparation_seconds": 0.034757417161017656,
+          "process_seconds": 7.208738291170448,
+          "receipt_sha256": "f40bedd8ff1f4f73698b50c1c0bc55e76676ba6fe8863fac8c3fcb709743c030",
+          "timing_sha256": "dc16cc3ac89bd4730d7247e01e784b0497731ed43aa09277986df6007dde0b75"
+        },
+        "0-native": {
+          "coefficients_sha256": "89edf7d93cd784e202645c5d1ff5e9732d463129516637c7c94682082f4db938",
+          "peak_rss_bytes": 51920896,
+          "probe_preparation_seconds": 0.03592241695150733,
+          "process_seconds": 2.493409459013492,
+          "receipt_sha256": "39e764a1f450eeebe9abf6078be7bf57e221a03701381f666990eda14d0a31d2",
+          "timing_sha256": "cc68911dc02bc0aecbd8513de8035cf0a6e8c5b19e4d9889c94d56fd352227a6"
+        },
+        "1-mata_cached": {
+          "coefficients_sha256": "125e350981e25facd4f4f463f7106efacdfd99f47f3face1dd64d94c4498db29",
+          "peak_rss_bytes": 64700416,
+          "probe_preparation_seconds": 0.03560825018212199,
+          "process_seconds": 7.07512279227376,
+          "receipt_sha256": "632910440f43a54213e9a9999b9e3b2de73bc7d9caea0f0cce8812595bc44620",
+          "timing_sha256": "f11a49abb7e3d0937b90a534aa7a3a2f9a82c9ca8156be3e4af3a5136b6e2cb8"
+        },
+        "1-mata_current": {
+          "coefficients_sha256": "125e350981e25facd4f4f463f7106efacdfd99f47f3face1dd64d94c4498db29",
+          "peak_rss_bytes": 62930944,
+          "probe_preparation_seconds": 0.03551045898348093,
+          "process_seconds": 7.111012666020542,
+          "receipt_sha256": "5d3edfb33ec08cfe99a5e280963761472aad1fb707bd7f6ce9e511d15a34cc0d",
+          "timing_sha256": "e8a24879473ee2954fd6e785165bfd3306bb35dab44b2394ea8517be45622b92"
+        },
+        "1-native": {
+          "coefficients_sha256": "89edf7d93cd784e202645c5d1ff5e9732d463129516637c7c94682082f4db938",
+          "peak_rss_bytes": 50118656,
+          "probe_preparation_seconds": 0.03539529209956527,
+          "process_seconds": 2.5053434590809047,
+          "receipt_sha256": "c3b1a6504ddf54ed58eaf22df1c523f9acf9fffc5f3fc9d01deb8c1e799c3379",
+          "timing_sha256": "c06cd83bb0c933ffcb3cdfa2ac570cc4319844ba39167942fa0ed9efc64ddf71"
+        }
+      },
+      "maximum_error": 8.140189911021167e-15,
+      "measurements": {
+        "mata_cached": {
+          "cold": [
+            {
+              "correction": 1.132,
+              "fitting": 0.00902599999999999,
+              "inference": 0.000286667,
+              "ordinary": 0.02599999999999999,
+              "preparation": 0.00466754099999999,
+              "publication": 0.007013249,
+              "recovery": 0.003601125,
+              "score": null,
+              "total": 1.166,
+              "workspace": null
+            },
+            {
+              "correction": 1.129,
+              "fitting": 0.008375086,
+              "inference": 0.00025954199999999,
+              "ordinary": 0.025,
+              "preparation": 0.003596792,
+              "publication": 0.005827042,
+              "recovery": 0.00346199999999999,
+              "score": null,
+              "total": 1.159,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 1.128,
+              "median": 1.125,
+              "minimum": 1.122
+            },
+            "fitting": {
+              "maximum": 0.00939966699999999,
+              "median": 0.008568144999999996,
+              "minimum": 0.008536333
+            },
+            "inference": {
+              "maximum": 0.000311708,
+              "median": 0.000277145499999995,
+              "minimum": 0.000260583
+            },
+            "ordinary": {
+              "maximum": 0.027,
+              "median": 0.02599999999999999,
+              "minimum": 0.02599999999999999
+            },
+            "preparation": {
+              "maximum": 0.00561833299999999,
+              "median": 0.0036142084999999952,
+              "minimum": 0.003562375
+            },
+            "publication": {
+              "maximum": 0.00724116699999999,
+              "median": 0.00677975,
+              "minimum": 0.0059085
+            },
+            "recovery": {
+              "maximum": 0.003564666,
+              "median": 0.003504874999999995,
+              "minimum": 0.003474458
+            },
+            "total": {
+              "maximum": 1.161,
+              "median": 1.157,
+              "minimum": 1.154
+            }
+          },
+          "warm_count": 10
+        },
+        "mata_current": {
+          "cold": [
+            {
+              "correction": 1.137,
+              "fitting": 0.008383082,
+              "inference": 0.00027233299999999,
+              "ordinary": 0.025,
+              "preparation": 0.003582084,
+              "publication": 0.00580504199999999,
+              "recovery": 0.003471875,
+              "score": null,
+              "total": 1.167,
+              "workspace": null
+            },
+            {
+              "correction": 1.133,
+              "fitting": 0.00845762499999999,
+              "inference": 0.00026983299999999,
+              "ordinary": 0.025,
+              "preparation": 0.00359616699999999,
+              "publication": 0.006831833,
+              "recovery": 0.003472166,
+              "score": null,
+              "total": 1.164,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 1.14,
+              "median": 1.133,
+              "minimum": 1.129
+            },
+            "fitting": {
+              "maximum": 0.00929437099999999,
+              "median": 0.008568729999999995,
+              "minimum": 0.00852429
+            },
+            "inference": {
+              "maximum": 0.000322458,
+              "median": 0.0002725415,
+              "minimum": 0.000257083
+            },
+            "ordinary": {
+              "maximum": 0.028,
+              "median": 0.026499999999999996,
+              "minimum": 0.02599999999999999
+            },
+            "preparation": {
+              "maximum": 0.005702458,
+              "median": 0.0036330005,
+              "minimum": 0.003590292
+            },
+            "publication": {
+              "maximum": 0.00780408299999999,
+              "median": 0.00691900049999999,
+              "minimum": 0.00590333399999999
+            },
+            "recovery": {
+              "maximum": 0.003605333,
+              "median": 0.003488854499999995,
+              "minimum": 0.00347475
+            },
+            "total": {
+              "maximum": 1.176,
+              "median": 1.1655,
+              "minimum": 1.162
+            }
+          },
+          "warm_count": 10
+        },
+        "native": {
+          "cold": [
+            {
+              "correction": 0.32419,
+              "fitting": 0.00837237899999999,
+              "inference": 0.00025349999999999,
+              "ordinary": 0.047,
+              "preparation": 0.002572083,
+              "publication": 0.003478499,
+              "recovery": 7.292e-06,
+              "score": 8.940217152404478e-13,
+              "total": 0.353,
+              "workspace": 4506080
+            },
+            {
+              "correction": 0.326463083,
+              "fitting": 0.00838812599999999,
+              "inference": 0.00025312499999999,
+              "ordinary": 0.048,
+              "preparation": 0.002587125,
+              "publication": 0.003273375,
+              "recovery": 6.5e-06,
+              "score": 8.940217152404478e-13,
+              "total": 0.356,
+              "workspace": 4506080
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 0.327145292,
+              "median": 0.32469760400000003,
+              "minimum": 0.32363825
+            },
+            "fitting": {
+              "maximum": 0.008966793,
+              "median": 0.008636541000000001,
+              "minimum": 0.00839608199999999
+            },
+            "inference": {
+              "maximum": 0.000283208,
+              "median": 0.000258145499999995,
+              "minimum": 0.000251959
+            },
+            "ordinary": {
+              "maximum": 0.048,
+              "median": 0.0475,
+              "minimum": 0.047
+            },
+            "preparation": {
+              "maximum": 0.00264341699999999,
+              "median": 0.002593145999999995,
+              "minimum": 0.002543084
+            },
+            "publication": {
+              "maximum": 0.00367250099999999,
+              "median": 0.0035017915,
+              "minimum": 0.00318445699999999
+            },
+            "recovery": {
+              "maximum": 1.3417e-05,
+              "median": 8.3545e-06,
+              "minimum": 5.75e-06
+            },
+            "score": {
+              "maximum": 8.940217152404478e-13,
+              "median": 8.940217152404478e-13,
+              "minimum": 8.940217152404478e-13
+            },
+            "total": {
+              "maximum": 0.358,
+              "median": 0.3555,
+              "minimum": 0.353
+            },
+            "workspace": {
+              "maximum": 4506080.0,
+              "median": 4506080.0,
+              "minimum": 4506080.0
+            }
+          },
+          "warm_count": 10
+        }
+      },
+      "settings": {
+        "levels_each": 32,
+        "memory": "low",
+        "probes": 256,
+        "rows": 11520,
+        "threads": 2,
+        "units": 960
+      }
+    },
+    {
+      "correction_ratios_native_over_reference": {
+        "mata_cached": 0.2951533952781996,
+        "mata_current": 0.22634156082583373
+      },
+      "inputs": {
+        "0-mata_cached": {
+          "coefficients_sha256": "167dc1043a59cf5f1f0787d1c744edecef5909f144a32c79572a658220cead51",
+          "peak_rss_bytes": 236830720,
+          "probe_preparation_seconds": 0.028848708141595125,
+          "process_seconds": 24.165015290956944,
+          "receipt_sha256": "16bfd683a24cde7154d2bfad7eb62fb26d1426e2edc577ed2c279278447c15de",
+          "timing_sha256": "11963b682e74ce42cc35da49e94fe229a7dae0067cd6750a11e299956e0ad8f0"
+        },
+        "0-mata_current": {
+          "coefficients_sha256": "167dc1043a59cf5f1f0787d1c744edecef5909f144a32c79572a658220cead51",
+          "peak_rss_bytes": 232669184,
+          "probe_preparation_seconds": 0.028678542003035545,
+          "process_seconds": 30.69824866577983,
+          "receipt_sha256": "ce1e4443a626e2dc22c94ffbb071316de4c9c92fa2277e6d22f3f8f8e45de96d",
+          "timing_sha256": "f7d82cc6c6d8958e1f9bd980a5e4438ed27c6196014f58b2dd877b7faa18cce1"
+        },
+        "0-native": {
+          "coefficients_sha256": "0631852b0d186bd91fb8e1b57cad316b08b4957f51f7367bc1219d91b5e13ca8",
+          "peak_rss_bytes": 220348416,
+          "probe_preparation_seconds": 0.028501249849796295,
+          "process_seconds": 10.51009774999693,
+          "receipt_sha256": "4d6b133b3bb7192025ea687751a3c761be8fcc8c1e4b1bd613cd83297cd80a5d",
+          "timing_sha256": "66494c77126185dbbeef161c56ca42dd80ff936b5fad584c4897e819753589a1"
+        },
+        "1-mata_cached": {
+          "coefficients_sha256": "167dc1043a59cf5f1f0787d1c744edecef5909f144a32c79572a658220cead51",
+          "peak_rss_bytes": 221364224,
+          "probe_preparation_seconds": 0.02861291589215398,
+          "process_seconds": 24.118661915883422,
+          "receipt_sha256": "b327b065e4eb7fc48ccb38045a7ba918050f209f48686964872c8cdbe21630dc",
+          "timing_sha256": "b2c9ceb379c47514a6f34936069c60c51f9f937d7f0fe406624b40910da430a7"
+        },
+        "1-mata_current": {
+          "coefficients_sha256": "167dc1043a59cf5f1f0787d1c744edecef5909f144a32c79572a658220cead51",
+          "peak_rss_bytes": 231473152,
+          "probe_preparation_seconds": 0.028941832948476076,
+          "process_seconds": 30.750135499984026,
+          "receipt_sha256": "8194b873ac943e85fd241e61742650f8eb35339d1a967631fbabaf3af265e284",
+          "timing_sha256": "234500e1fcd1e9219439e8b72eb42d42386da570d6500c589b0ecdcac47e1260"
+        },
+        "1-native": {
+          "coefficients_sha256": "0631852b0d186bd91fb8e1b57cad316b08b4957f51f7367bc1219d91b5e13ca8",
+          "peak_rss_bytes": 236830720,
+          "probe_preparation_seconds": 0.029054125305265188,
+          "process_seconds": 10.451912458054721,
+          "receipt_sha256": "a0c19de35bf6df845dd05912e344f5f8b087e535262d9079d1ac8bf9f6982a21",
+          "timing_sha256": "7c42fe3caa6325601827b6b7b33d135d698f10e5e40f34bad3c0a199700a6665"
+        }
+      },
+      "maximum_error": 5.959859342152818e-15,
+      "measurements": {
+        "mata_cached": {
+          "cold": [
+            {
+              "correction": 3.643,
+              "fitting": 0.117768623,
+              "inference": 0.001701,
+              "ordinary": 0.262,
+              "preparation": 0.048512127,
+              "publication": 0.07040695799999999,
+              "recovery": 0.03765025,
+              "score": null,
+              "total": 3.979,
+              "workspace": null
+            },
+            {
+              "correction": 3.651,
+              "fitting": 0.122058042,
+              "inference": 0.00171087499999999,
+              "ordinary": 0.266,
+              "preparation": 0.048634917,
+              "publication": 0.06921866599999998,
+              "recovery": 0.037591708,
+              "score": null,
+              "total": 3.99,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 3.638,
+              "median": 3.6215,
+              "minimum": 3.602
+            },
+            "fitting": {
+              "maximum": 0.121990123,
+              "median": 0.11848773,
+              "minimum": 0.118152127
+            },
+            "inference": {
+              "maximum": 0.001728292,
+              "median": 0.001643792,
+              "minimum": 0.001635167
+            },
+            "ordinary": {
+              "maximum": 0.264,
+              "median": 0.2625,
+              "minimum": 0.259
+            },
+            "preparation": {
+              "maximum": 0.046249959,
+              "median": 0.045114521,
+              "minimum": 0.04384104199999999
+            },
+            "publication": {
+              "maximum": 0.06483491699999999,
+              "median": 0.06252724949999999,
+              "minimum": 0.06119112499999999
+            },
+            "recovery": {
+              "maximum": 0.03949904099999999,
+              "median": 0.03744683349999999,
+              "minimum": 0.036815458
+            },
+            "total": {
+              "maximum": 3.964,
+              "median": 3.9465000000000003,
+              "minimum": 3.928
+            }
+          },
+          "warm_count": 10
+        },
+        "mata_current": {
+          "cold": [
+            {
+              "correction": 4.708,
+              "fitting": 0.121967833,
+              "inference": 0.001745833,
+              "ordinary": 0.266,
+              "preparation": 0.047909084,
+              "publication": 0.069281959,
+              "recovery": 0.037986916,
+              "score": null,
+              "total": 5.047,
+              "workspace": null
+            },
+            {
+              "correction": 4.739,
+              "fitting": 0.118480499,
+              "inference": 0.001642583,
+              "ordinary": 0.261,
+              "preparation": 0.04722387499999999,
+              "publication": 0.069526334,
+              "recovery": 0.036883167,
+              "score": null,
+              "total": 5.073,
+              "workspace": null
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 4.74,
+              "median": 4.7225,
+              "minimum": 4.712
+            },
+            "fitting": {
+              "maximum": 0.119399292,
+              "median": 0.1180910415,
+              "minimum": 0.116880665
+            },
+            "inference": {
+              "maximum": 0.001756875,
+              "median": 0.001683646,
+              "minimum": 0.001634417
+            },
+            "ordinary": {
+              "maximum": 0.264,
+              "median": 0.26,
+              "minimum": 0.258
+            },
+            "preparation": {
+              "maximum": 0.04799608299999999,
+              "median": 0.045800146,
+              "minimum": 0.044433791
+            },
+            "publication": {
+              "maximum": 0.06329445799999998,
+              "median": 0.06124685399999999,
+              "minimum": 0.06020383299999999
+            },
+            "recovery": {
+              "maximum": 0.03834075,
+              "median": 0.037888104000000006,
+              "minimum": 0.03718275
+            },
+            "total": {
+              "maximum": 5.061,
+              "median": 5.049,
+              "minimum": 5.035
+            }
+          },
+          "warm_count": 10
+        },
+        "native": {
+          "cold": [
+            {
+              "correction": 1.069406958,
+              "fitting": 0.11807049999999998,
+              "inference": 0.001647583,
+              "ordinary": 0.288,
+              "preparation": 0.027167625,
+              "publication": 0.032556792,
+              "recovery": 7.5e-07,
+              "score": 1.040879290114831e-12,
+              "total": 1.413,
+              "workspace": 47227296
+            },
+            {
+              "correction": 1.061250834,
+              "fitting": 0.117201835,
+              "inference": 0.001651375,
+              "ordinary": 0.281,
+              "preparation": 0.02665462399999999,
+              "publication": 0.031387959,
+              "recovery": 7.5e-07,
+              "score": 1.040879290114831e-12,
+              "total": 1.4,
+              "workspace": 47227296
+            }
+          ],
+          "warm": {
+            "correction": {
+              "maximum": 1.149143875,
+              "median": 1.0688980209999999,
+              "minimum": 1.045622208
+            },
+            "fitting": {
+              "maximum": 0.121429914,
+              "median": 0.11775643899999999,
+              "minimum": 0.116764876
+            },
+            "inference": {
+              "maximum": 0.00172062499999999,
+              "median": 0.001647978999999995,
+              "minimum": 0.001637875
+            },
+            "ordinary": {
+              "maximum": 0.288,
+              "median": 0.2845,
+              "minimum": 0.281
+            },
+            "preparation": {
+              "maximum": 0.028989625,
+              "median": 0.026955061999999995,
+              "minimum": 0.02659054099999999
+            },
+            "publication": {
+              "maximum": 0.03799920899999999,
+              "median": 0.0316568545,
+              "minimum": 0.031456333
+            },
+            "recovery": {
+              "maximum": 8.750000000000001e-07,
+              "median": 7.5e-07,
+              "minimum": 5.84e-07
+            },
+            "score": {
+              "maximum": 1.040879290114831e-12,
+              "median": 1.040879290114831e-12,
+              "minimum": 1.040879290114831e-12
+            },
+            "total": {
+              "maximum": 1.484,
+              "median": 1.4024999999999999,
+              "minimum": 1.384
+            },
+            "workspace": {
+              "maximum": 47227296.0,
+              "median": 47227296.0,
+              "minimum": 47227296.0
+            }
+          },
+          "warm_count": 10
+        }
+      },
+      "settings": {
+        "levels_each": 256,
+        "memory": "auto",
+        "probes": 64,
+        "rows": 120000,
+        "threads": 1,
+        "units": 10000
+      }
+    }
+  ],
+  "passed": true,
+  "performance_eligible": true,
+  "plan_sha256": "314c51e1e50091da538ff7ea64ca98fe9a2d28933939cdf04917dc8f94b45cc3",
+  "schema": 1,
+  "source_manifest_sha256": "acbe424697ed1ed7a17f7e94145e6c4932f087499e6d6adbb917b35da1ec7092",
+  "timing_scope": "Core correction includes native FE materialization; Mata publication is separately timed. Probe-file preparation is outside Stata timings. Only refit-reference plans support end-to-end comparison. Process RSS includes all loaded Stata banks and saved outputs. Process elapsed includes startup, compilation, all repeated calls and exports; startup is excluded from repeated calls but is not individually timed."
+}

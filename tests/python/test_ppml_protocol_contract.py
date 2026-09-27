@@ -15,11 +15,11 @@ class PpmlProtocolContractTests(unittest.TestCase):
     def test_versions_are_additive_and_existing_versions_are_frozen(self) -> None:
         protocol = PROTOCOL.read_text(encoding="utf-8")
         for declaration in (
-            "ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5)",
+            "ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 6)",
             "MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1)",
-            "OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4)",
-            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5)",
-            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 2)",
+            "OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5)",
+            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 7)",
+            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4)",
         ):
             self.assertIn(declaration, protocol)
 

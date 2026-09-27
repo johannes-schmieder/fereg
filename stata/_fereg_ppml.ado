@@ -6,6 +6,8 @@ program define _fereg_ppml, eclass
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
         [ABSorb(string asis) VCE(string asis) KEEPsingletons ///
          OFFset(varname numeric) EXPosure(varname numeric) ///
+         BIASCORRection(string) BIASUNIT(varname numeric) BIASFE(name) ///
+         BIASPROBes(string) BIASSEED(string) BIASSTREAM(string) ///
          SEParation(string asis) ///
          RESIDuals(name) RESIDualtype(string) ///
          XB(name) D(name) ETA(name) XBD(name) MU(name) DROPreason(name) ///
@@ -85,7 +87,12 @@ program define _fereg_ppml, eclass
     local display_option
     if `public_display' local display_option "publicdisplay"
 
+    local bias_options
+    foreach option in biascorrection biasunit biasfe biasprobes biasseed biasstream {
+        if `"``option''"' != "" local bias_options `"`bias_options' `option'(``option'')"'
+    }
     _fereg_estimate_ppml `varlist' `if' `in', ///
+        `bias_options' ///
         `weight_option' `absorb_option' `vce_option' `singleton_option' ///
         `offset_option' `exposure_option' `separation_option' ///
         `residual_option' `residual_type_option' `xb_option' `d_option' ///

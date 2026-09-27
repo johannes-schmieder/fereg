@@ -1,0 +1,35 @@
+{
+  "accounting": {
+    "exit_status": 0,
+    "failed": 0,
+    "maxvmem": "1.671G",
+    "slots": 4,
+    "wall_seconds": 25
+  },
+  "diagnostic": {
+    "accepted": false,
+    "exit_status": 1,
+    "failed": 0,
+    "job": 7755536,
+    "reason": "All 12 diagnostic calls completed, but terminal fixture sentinel did not match filename; four full correction calls returned 430, ordinary/full and A/B calls succeeded."
+  },
+  "files": {
+    "scc-diagnostic08-result.log": "f69ba50ce051575eacff9e868bd294d65142093d14176fc233867a9eda14853c",
+    "scc-feature07-result.log": "5c0cb8b957e2a180cdffa084987e23e3da72fe990f2e185c7d3a6673c4672286",
+    "scc-inspect09.log": "42e917d3c1405ed7d3272f05cfa515f028695937cb761a19e58945103b55217f"
+  },
+  "fixtures": {
+    "failed": 0,
+    "passed": 4
+  },
+  "independent_oracles": {
+    "maximum_error": 1.0859424470766044e-10,
+    "passed": 10
+  },
+  "job": 7755531,
+  "plugin_sha256": "c3c7c77911de6111d5d2892af587e953573077ae5dfc11d6037b584b9413204f",
+  "python_oracles": 3,
+  "schema": 1,
+  "source_identity": "09814cf381392b174966a9f35e73b055aa9f383c033d6173c0eaf61f3c7f2428",
+  "stata_version": "19"
+}

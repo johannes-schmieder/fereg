@@ -1,0 +1,41 @@
+{
+  "accounting": {
+    "exit_status": 0,
+    "failed": 0,
+    "maxvmem": "8.865G",
+    "slots": 4,
+    "wall_seconds": 195
+  },
+  "independent_oracles": {
+    "cases": 10,
+    "maximum_error": 6.615402114995561e-10
+  },
+  "job": 7755704,
+  "plugin_sha256": "d14c9474dd70e28d4d5e06d7cccfd20c165817c403b5745929849542bda7917c",
+  "public_fixtures": {
+    "failed": 0,
+    "passed": 4
+  },
+  "raw_evidence_sha256": "85eae7e698a1e3be581333829a7432cd542d9bf1ceb9b95860230b3762b227a4",
+  "reconstruction": {
+    "cases": 15,
+    "maximum_error": 9.186313931763834e-10,
+    "ordinary_exactly_unchanged": true
+  },
+  "schema": 1,
+  "shared_smoke": {
+    "failed": 0,
+    "passed": 2
+  },
+  "source_identity": "80d600283f87828e50a28700f0d65797bf3a659468404ed62d793edfdd8e1c28",
+  "stata": {
+    "completed": "1",
+    "schema_version": "1",
+    "stata_edition": "MP",
+    "stata_machine_type": "PC (64-bit x86-64)",
+    "stata_os": "Unix",
+    "stata_processors": "2",
+    "stata_rc": "0",
+    "stata_version": "19"
+  }
+}

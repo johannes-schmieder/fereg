@@ -1,0 +1,30 @@
+{
+  "benchmark_measurements": 0,
+  "feature_fixtures": {
+    "failed": 0,
+    "passed": 4
+  },
+  "limitation": "The MC controller had outlived its original supervisor and lost its lock. These scientific validation calls overlapped it for about eight seconds. The timing monitor failed closed before the first measurement because process visibility was unavailable inside the sandbox. No timing result is accepted from this attempt. The frozen MC attempts are unchanged. A process-bound observer now holds the licensed lock until the MC stops.",
+  "oracles": {
+    "cases": 10,
+    "maximum_error": 6.615402114995561e-10
+  },
+  "plugin_sha256": "73b44fd3968f93f0e7caf33998a6ce0ead3eee1ade321d63817dab174fb3bfc8",
+  "reconstruction": {
+    "cases": 15,
+    "maximum_error": 9.186287286411243e-10
+  },
+  "schema": 1,
+  "source_identity": "80d600283f87828e50a28700f0d65797bf3a659468404ed62d793edfdd8e1c28",
+  "stata": {
+    "completed": "1",
+    "schema_version": "1",
+    "stata_edition": "MP",
+    "stata_machine_type": "Mac (Apple Silicon)",
+    "stata_os": "Unix",
+    "stata_processors": "2",
+    "stata_rc": "0",
+    "stata_version": "18"
+  },
+  "supervisor_process_rc": 1
+}

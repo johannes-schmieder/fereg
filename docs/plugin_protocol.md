@@ -14,8 +14,8 @@ request/result layouts are independently versioned:
 | Action protocol | 1.6 |
 | Model wire | 2.1 |
 | OLS result wire | 1.5 |
-| PPML request wire | 1.6 |
-| PPML result wire | 1.3 |
+| PPML request wire | 1.7 |
+| PPML result wire | 1.4 |
 
 Estimation requires the exact action and estimator-specific request/result
 versions. Diagnostic `doctor` and `selftest` callers retain the action
@@ -180,3 +180,20 @@ low-16 proof gaps; its validator checks phase composition. Schema 1 remains
 readable under its original stricter status-2 rule (zero gaps). Package metadata
 binds the independently versioned memory schema. Existing OLS/PPML runtime
 matrices retain their layout and observation boundaries.
+
+## Optional PPML coefficient mean correction
+
+PPML request 1.7/result 1.4 adds an optional correction inside the same
+transaction. `bias_method`, `bias_unit`, `bias_probes`, `bias_seed`, and
+`bias_stream` identify its calculation. `output_bias_count`,
+`output_bias_channels`, `output_bias_matrix`, and `output_bias_diagnostics`
+identify private destinations. The saved-channel count is zero or eighteen;
+coefficient and diagnostic matrices have dimensions 9 by ordinary coefficient
+count and 21 by 1. Option-off requests allocate none of these outputs.
+
+All destinations, values, dimensions, sample identities and request bindings
+are validated before publication. Correction columns and matrices precede the
+ordinary COMPLETE receipt; no second substantive call or partial public result
+is permitted. Missing unit IDs do not select rows. The complete statistical,
+normalization, RNG and channel contracts are in
+[ppml_bias_correction.md](ppml_bias_correction.md).

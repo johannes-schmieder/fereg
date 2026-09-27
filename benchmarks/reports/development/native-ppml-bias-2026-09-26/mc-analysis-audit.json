@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "original_analysis_sha256": "555acde5d373b54903cd4d43d38aa8555942255ee1416e31c9c7eb2e1f6b4b44",
+  "updated_analysis_sha256": "221b549638891cfe53807f691816252c35b0068ed368cbe85ace9ad1cf1c07b9",
+  "changes": [
+    "Verify source, plugin, adapter, settings and draw inventory against frozen plan",
+    "Report separate observed and successful FEVC status counts and return codes"
+  ],
+  "unchanged": [
+    "All data/branch/correction/FEVC seeds and planned draws",
+    "Bias, MCSE, RMSE and tail formulas",
+    "All-available, paired-available and joint-interior definitions",
+    "Wage/FEVC comparison tolerance 1e-10"
+  ],
+  "recorded_attempts_at_audit": 160
+}

@@ -24,7 +24,7 @@ assert `"`e(model)'"' == "ols"
 assert `"`e(depvar)'"' == "y"
 assert `"`e(indepvars)'"' == "x1 x2"
 assert `"`e(vce)'"' == "ols"
-assert `"`e(fereg_action_protocol)'"' == "1.5"
+assert `"`e(fereg_action_protocol)'"' == "1.6"
 assert `"`e(fereg_model_wire)'"' == "2.1"
 assert `"`e(fereg_result_wire)'"' == "1.5"
 assert e(fereg_receipt)[1,1] == 5354601

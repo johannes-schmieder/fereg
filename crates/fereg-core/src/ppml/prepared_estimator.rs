@@ -100,6 +100,7 @@ impl PreparedPpmlOutputRequest {
 #[allow(unpredictable_function_pointer_comparisons)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct PreparedPpmlRequestV1 {
+    pub bias: Option<super::PpmlBiasRequest>,
     pub ols: OlsRequestV1,
     pub clusters: Vec<OlsClusterTermV1>,
     pub vce: PpmlVceRequest,
@@ -143,6 +144,8 @@ pub struct PreparedPpmlRequestV1 {
 /// present for `Offset` or `Exposure`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoadedPpmlInput {
+    /// Does not participate in ordinary sample selection.
+    pub bias_units: Option<LoadedNumericColumn>,
     pub ols: LoadedOlsInput,
     pub adjustment: Option<LoadedNumericColumn>,
     pub adjustment_kind: PreparedPpmlAdjustmentKind,
@@ -156,6 +159,7 @@ pub struct LoadedPpmlInput {
 /// caller-thread boundary, never from a Rayon worker.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PpmlInterruptPoint {
+    BiasCorrection,
     Preparation,
     SeparationGeneration,
     SeparationFixedEffects,
@@ -273,6 +277,14 @@ pub fn fit_prepared_ppml_interruptible(
         &mut preflight_dimensions,
         interrupt,
     )?;
+    if let Some(bias) = request.bias {
+        preflight_dimensions.metadata.bias_workspace_bytes = super::bias::memory_bound(
+            preflight_dimensions.observations,
+            preflight_dimensions.fe_total_levels,
+            preflight_dimensions.finite_columns,
+            bias.save_effects,
+        )?;
+    }
     let preliminary_plan = plan_ppml_memory_with_probe(
         preflight_dimensions,
         request.memory,
@@ -323,7 +335,12 @@ pub fn fit_prepared_ppml_interruptible(
         loaded.ols,
         numeric,
         loaded.adjustment,
-    )?.with_generation_memory_bound(preliminary_plan.selected_inventory().prepared_generation_bytes);
+    )?
+    .with_generation_memory_bound(
+        preliminary_plan
+            .selected_inventory()
+            .prepared_generation_bytes,
+    );
     let preparation_elapsed = preparation_clock.elapsed();
     let preparation_peak =
         end_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
@@ -339,7 +356,7 @@ pub fn fit_prepared_ppml_interruptible(
         .iter()
         .filter(|requested| **requested)
         .count();
-    let (separation_outcome, fit) = fit_with_prepared_ppml_separation(
+    let (separation_outcome, mut fit) = fit_with_prepared_ppml_separation(
         owner,
         ppml,
         separation,
@@ -395,6 +412,20 @@ pub fn fit_prepared_ppml_interruptible(
                 preliminary_plan.preflight_dimensions.metadata,
             )?;
             let final_plan = (*preliminary_plan).with_final_dimensions(dimensions)?;
+            let mut bias_units = Vec::new();
+            if let Some(units) = &loaded.bias_units {
+                bias_units
+                    .try_reserve_exact(generation.original_rows().len())
+                    .map_err(|_| allocation("unable to compact bias units"))?;
+                for &row in generation.original_rows() {
+                    if units.missing[row] || !units.values[row].is_finite() {
+                        return Err(invalid_argument(
+                            "bias unit is missing on a retained estimation row",
+                        ));
+                    }
+                    bias_units.push(units.values[row]);
+                }
+            }
             let fit = fit_shared_prepared_ppml_irls_interruptible(
                 generation.prepared(),
                 generation.outcome(),
@@ -411,11 +442,17 @@ pub fn fit_prepared_ppml_interruptible(
                 },
                 final_plan,
                 None,
+                request.bias.map(|b| (b, bias_units.as_slice())),
                 interrupt,
             )?;
             Ok(fit)
         },
     )?;
+    if request.bias.is_some() && separation_outcome.separation.separated_count > 0 {
+        return Err(invalid_argument(
+            "bias correction is unavailable after outcome-dependent separation deletions",
+        ));
+    }
     let final_drop_reasons = separation_outcome.final_drop_reasons()?;
     let prepared = &separation_outcome.prepared;
     let fixed_effect_report =
@@ -525,10 +562,15 @@ pub fn fit_prepared_ppml_interruptible(
     let convergence = convergence_report(&fit)?;
     let clusters = cluster_metadata(prepared)?;
     let mut memory = fit.diagnostics().memory.clone();
-    memory.record_phase(PpmlPhase::Preparation,
-        preparation_elapsed + separation_outcome.initial_preparation_elapsed);
-    if let Some(bytes) = preparation_peak.into_iter()
-        .chain(separation_outcome.initial_preparation_peak).max() {
+    memory.record_phase(
+        PpmlPhase::Preparation,
+        preparation_elapsed + separation_outcome.initial_preparation_elapsed,
+    );
+    if let Some(bytes) = preparation_peak
+        .into_iter()
+        .chain(separation_outcome.initial_preparation_peak)
+        .max()
+    {
         memory.observe_phase_peak(PpmlPhase::Preparation, bytes);
     }
     record_separation_timings(&mut memory, &separation_outcome.separation)?;
@@ -551,6 +593,7 @@ pub fn fit_prepared_ppml_interruptible(
         memory.observe_phase_peak(PpmlPhase::FeRecovery, bytes);
     }
     let result_input = CertifiedPpmlResultInput {
+        bias: fit.take_bias(),
         coefficients,
         sample,
         weights: prepared.weight_report(),
@@ -579,6 +622,7 @@ pub fn fit_prepared_ppml_interruptible(
     drop(wald_columns);
     drop(omission_statuses);
     drop(requested_saved_channels);
+    drop(loaded.bias_units);
     let result = CertifiedPpmlResult::new(result_input)?.retain_requested_outputs();
     interrupt(PpmlInterruptPoint::Publication)?;
     result.with_publication_observations(
@@ -591,6 +635,52 @@ pub fn fit_prepared_ppml_interruptible(
 }
 
 fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -> Result<()> {
+    if request.bias.is_some() != loaded.bias_units.is_some() {
+        return Err(invalid_argument(
+            "bias request and independent-unit input disagree",
+        ));
+    }
+    if let Some(bias) = request.bias {
+        if request.ols.absorbed_terms.len() != 2
+            || request
+                .ols
+                .absorbed_terms
+                .iter()
+                .any(|e| !e.intercept || !e.slope_sources.is_empty())
+            || request
+                .ols
+                .model
+                .terms
+                .iter()
+                .any(|t| t.raw_kind != crate::metadata::RawTermKind::Variable)
+        {
+            return Err(invalid_argument(
+                "bias correction requires two categorical intercept effects and ordinary controls",
+            ));
+        }
+        if bias.method == super::PpmlBiasMethod::Randomized
+            && (bias.probes < 2 || bias.probes > u32::MAX as usize)
+        {
+            return Err(invalid_argument(
+                "randomized bias correction requires 2 through 4294967295 probes",
+            ));
+        }
+        if bias.method == super::PpmlBiasMethod::Exact
+            && (bias.probes != 0 || bias.seed != 0 || bias.stream != 0)
+        {
+            return Err(invalid_argument(
+                "exact bias correction does not accept randomization controls",
+            ));
+        }
+        let units = loaded.bias_units.as_ref().unwrap();
+        if units.values.len() != loaded.ols.outcome.values.len()
+            || units.missing.len() != units.values.len()
+        {
+            return Err(invalid_argument(
+                "bias unit input is not aligned on the original observation axis",
+            ));
+        }
+    }
     validate_public_solver_request(request)?;
     request.ols.model.validate_executable_metadata()?;
     if !request.ols.include_intercept {
@@ -1198,16 +1288,31 @@ fn raw_input_owner_bytes(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInp
     let column = |value: &LoadedNumericColumn| bytes(&value.values) + bytes(&value.missing);
     request.ols.owned_buffer_bytes()
         + bytes(&request.clusters)
-        + request.clusters.iter().map(|cluster| {
-            cluster.label.capacity() as u128 + bytes(&cluster.sources)
-        }).sum::<u128>()
+        + request
+            .clusters
+            .iter()
+            .map(|cluster| cluster.label.capacity() as u128 + bytes(&cluster.sources))
+            .sum::<u128>()
         + bytes(&loaded.ols.candidate)
         + column(&loaded.ols.outcome)
         + bytes(&loaded.ols.numeric_sources)
-        + loaded.ols.numeric_sources.iter().map(|(_, value)| column(value)).sum::<u128>()
-        + [&loaded.ols.analytic_weight, &loaded.ols.frequency_weight,
-            &loaded.ols.probability_weight, &loaded.adjustment]
-            .into_iter().flatten().map(column).sum::<u128>()
+        + loaded
+            .ols
+            .numeric_sources
+            .iter()
+            .map(|(_, value)| column(value))
+            .sum::<u128>()
+        + [
+            &loaded.ols.analytic_weight,
+            &loaded.ols.frequency_weight,
+            &loaded.ols.probability_weight,
+            &loaded.adjustment,
+            &loaded.bias_units,
+        ]
+        .into_iter()
+        .flatten()
+        .map(column)
+        .sum::<u128>()
 }
 
 fn final_memory_dimensions(
@@ -1700,8 +1805,7 @@ mod tests {
     use crate::ols::{OlsInputBinding, OlsInputRole};
     use crate::ppml::prepared_irls::{
         reset_canonical_frame_refresh_count, take_canonical_frame_refresh_count,
-        take_fused_strict_witness_count,
-        take_cmg_early_memory_peaks,
+        take_cmg_early_memory_peaks, take_fused_strict_witness_count,
     };
     use crate::ppml::{PpmlFallbackKind, PPML_STEADY_STATE_AUDIT_ITERATIONS};
     use crate::ppml_separation::{MethodStatus, SeparationDropReason, SeparationMethods};
@@ -1724,11 +1828,17 @@ mod tests {
         }
         fixtures.push(factor_rebase_fixture());
         let (mut slope, data) = fixture(2, false, true, true, true, false);
-        slope.ols.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
+        slope.ols.absorbed_terms[0]
+            .slope_sources
+            .push(SourceId::new(1).unwrap());
         fixtures.push((slope, data));
         let (mut interaction, data) = fixture(2, false, true, false, false, false);
-        interaction.ols.absorbed_terms[0].categorical_sources.push(SourceId::new(3).unwrap());
-        interaction.clusters[0].sources.push(SourceId::new(2).unwrap());
+        interaction.ols.absorbed_terms[0]
+            .categorical_sources
+            .push(SourceId::new(3).unwrap());
+        interaction.clusters[0]
+            .sources
+            .push(SourceId::new(2).unwrap());
         fixtures.push((interaction, data));
         for (request, loaded) in fixtures {
             let input = borrowed_numeric_input(&request, &loaded).unwrap();
@@ -1736,20 +1846,32 @@ mod tests {
             let classified = classify_ppml_numeric_data(&view).unwrap();
             let classification = classified.classification();
             let dimensions = conservative_preflight_dimensions_from_classification(
-                &request, classification, input.numeric_sources.len(),
+                &request,
+                classification,
+                input.numeric_sources.len(),
                 input.offset.is_some() || input.exposure.is_some(),
-                loaded.ols.probability_weight.is_some(), 0,
-            ).unwrap();
+                loaded.ols.probability_weight.is_some(),
+                0,
+            )
+            .unwrap();
             let plan = plan_ppml_memory(dimensions, request.memory).unwrap();
             let bound = plan.selected_inventory().prepared_generation_bytes;
             let numeric = select_ppml_numeric_data(classified).unwrap();
             drop(input);
             let mut owner = PreparedPpmlModelOwner::from_selection(
-                request.ols, request.clusters, loaded.ols, numeric, loaded.adjustment,
-            ).unwrap().with_generation_memory_bound(bound);
+                request.ols,
+                request.clusters,
+                loaded.ols,
+                numeric,
+                loaded.adjustment,
+            )
+            .unwrap()
+            .with_generation_memory_bound(bound);
             let rows = owner.candidate_original_rows();
             let old = owner.rebuild_generation(&rows, 0).unwrap();
-            let new = owner.rebuild_generation(&rows[..rows.len() - 2], 1).unwrap();
+            let new = owner
+                .rebuild_generation(&rows[..rows.len() - 2], 1)
+                .unwrap();
             assert!(old.owned_buffer_bytes() <= bound);
             assert!(new.owned_buffer_bytes() <= bound);
             // Old/new coexist through commit; neither can use the other's bound.
@@ -2497,12 +2619,14 @@ mod tests {
                     for weighted in [false, true] {
                         let run = |mode| {
                             profile_final_test_mode(mode);
-                            let (mut request, loaded) = fixture(effects, true, true, weighted, true, false);
+                            let (mut request, loaded) =
+                                fixture(effects, true, true, weighted, true, false);
                             request.memory.requested = memory;
                             request.memory.poolsize = pool;
                             request.linear.execution.poolsize = pool;
                             request.linear.execution.threads =
-                                crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                                crate::options::ThreadConfig::from_requested(threads, true)
+                                    .unwrap();
                             let result = fit_prepared_ppml(request, loaded);
                             let accepted = profile_final_test_mode(0);
                             (result.expect("profiled final products"), accepted)
@@ -2521,7 +2645,8 @@ mod tests {
                                 .zip(&baseline.inference().vce.covariance)
                             {
                                 assert!(
-                                    (left - right).abs() <= 1e-8 * left.abs().max(right.abs()).max(1.0)
+                                    (left - right).abs()
+                                        <= 1e-8 * left.abs().max(right.abs()).max(1.0)
                                 );
                             }
                             assert!(candidate.inference().vce.certificate.passed);
@@ -2535,7 +2660,7 @@ mod tests {
                         }
                     }
                 }
-        }
+            }
         }
     }
 
@@ -2657,7 +2782,8 @@ mod tests {
             + inference.vce.standard_errors.capacity()
             + inference.vce.z_statistics.capacity()) as u128
             * std::mem::size_of::<f64>() as u128
-            + inference.wald.tested_columns.capacity() as u128 * std::mem::size_of::<usize>() as u128;
+            + inference.wald.tested_columns.capacity() as u128
+                * std::mem::size_of::<usize>() as u128;
         assert!(
             result
                 .memory()
@@ -3756,6 +3882,7 @@ mod tests {
             ..PpmlConfig::default()
         };
         let request = PreparedPpmlRequestV1 {
+            bias: None,
             ols,
             clusters,
             vce: if clustered {
@@ -3799,6 +3926,7 @@ mod tests {
             ])
         });
         let loaded = LoadedPpmlInput {
+            bias_units: None,
             ols: LoadedOlsInput {
                 candidate: vec![true; rows],
                 outcome,
@@ -3815,6 +3943,302 @@ mod tests {
             },
         };
         (request, loaded)
+    }
+
+    #[test]
+    fn bias_exact_full_system_matches_independent_explicit_design() {
+        let (mut request, mut loaded) = fixture(2, true, false, true, true, false);
+        let ordinary = fit_prepared_ppml(request.clone(), loaded.clone()).unwrap();
+        request.bias = Some(super::super::PpmlBiasRequest {
+            method: super::super::PpmlBiasMethod::Exact,
+            probes: 0,
+            seed: 0,
+            stream: 0,
+            save_effects: true,
+        });
+        loaded.bias_units = Some(column(&[1., 1., 2., 2., 3., 3., 4., 4., 5., 5., 6., 6.]));
+        let corrected = fit_prepared_ppml(request, loaded).unwrap();
+        assert_eq!(ordinary.coefficients(), corrected.coefficients());
+        assert_eq!(ordinary.output(), corrected.output());
+        assert_eq!(
+            ordinary.inference().vce.covariance,
+            corrected.inference().vce.covariance
+        );
+        assert_eq!(ordinary.inference().dof, corrected.inference().dof);
+        let bias = corrected.bias().unwrap();
+        // Independently formed explicit X, J_g and K in ppml_bias_oracle.py.
+        let raw = [
+            -0.6300485701861334,
+            0.30201008524001827,
+            0.8998899114400561,
+            1.4089593261745437,
+            1.875388786600004,
+            2.1284955000363808,
+            0.,
+            1.0631795606840344,
+            -0.42003238012408883,
+        ];
+        let derivative = [
+            -0.01909666805655696,
+            -0.01071031916277665,
+            -0.00290078385380488,
+            0.0018358318161324,
+            0.01085112865422022,
+            0.01747847379608403,
+            0.,
+            0.01273111203775312,
+            -0.01273111203764854,
+        ];
+        let curvature = [
+            -3.0998338180983354e-4,
+            -3.2113525834674694e-5,
+            1.1516708375668497e-4,
+            1.6404813626804408e-4,
+            3.122_760_522_483_309e-4,
+            4.0773501865865036e-4,
+            0.,
+            2.0665558787372196e-4,
+            -2.0665558787245908e-4,
+        ];
+        for (got, expected) in [
+            (&bias.raw, raw),
+            (&bias.derivative, derivative),
+            (&bias.curvature, curvature),
+        ] {
+            for (j, (&value, reference)) in got.iter().zip(expected).enumerate() {
+                assert!(
+                    (value - reference).abs() < 2e-8,
+                    "coordinate {j}: {value} vs {reference}"
+                );
+            }
+        }
+        assert_eq!(bias.saved_effects.len(), 18);
+        assert_eq!(bias.solves, 8);
+        assert_eq!(bias.route, 2);
+        assert!((0. ..=1.).contains(&bias.maximum_fe_leverage_lower_bound));
+    }
+
+    fn bias_fixture(randomized: bool) -> (PreparedPpmlRequestV1, LoadedPpmlInput) {
+        let (mut request, mut loaded) = fixture(2, true, false, true, true, false);
+        request.bias = Some(super::super::PpmlBiasRequest {
+            method: if randomized {
+                super::super::PpmlBiasMethod::Randomized
+            } else {
+                super::super::PpmlBiasMethod::Exact
+            },
+            probes: if randomized { 256 } else { 0 },
+            seed: if randomized { 739391 } else { 0 },
+            stream: if randomized { 7 } else { 0 },
+            save_effects: true,
+        });
+        loaded.bias_units = Some(column(&[1., 1., 2., 2., 3., 3., 4., 4., 5., 5., 6., 6.]));
+        (request, loaded)
+    }
+
+    #[test]
+    fn bias_weight_scale_low_memory_and_row_order() {
+        let (request, loaded) = bias_fixture(true);
+        let reference = fit_prepared_ppml(request.clone(), loaded.clone()).unwrap();
+        for mode in 0..3 {
+            let mut request = request.clone();
+            let mut loaded = loaded.clone();
+            if mode == 0 {
+                for w in &mut loaded.ols.probability_weight.as_mut().unwrap().values {
+                    *w *= 17.;
+                }
+            } else if mode == 1 {
+                request.memory.requested = MemoryMode::Low;
+                request.memory.poolsize = 1;
+            } else {
+                loaded.ols.candidate.reverse();
+                for col in std::iter::once(&mut loaded.ols.outcome)
+                    .chain(loaded.ols.numeric_sources.iter_mut().map(|(_, c)| c))
+                    .chain(loaded.ols.probability_weight.iter_mut())
+                    .chain(loaded.adjustment.iter_mut())
+                    .chain(loaded.bias_units.iter_mut())
+                {
+                    col.values.reverse();
+                    col.missing.reverse();
+                }
+                request.linear.execution.threads =
+                    crate::ThreadConfig::from_requested(2, false).unwrap();
+            }
+            let result = fit_prepared_ppml(request, loaded).unwrap();
+            assert_eq!(result.bias().unwrap().route, if mode == 1 { 1 } else { 2 });
+            for (got, expected) in [
+                &result.bias().unwrap().raw,
+                &result.bias().unwrap().derivative,
+                &result.bias().unwrap().curvature,
+                &result.bias().unwrap().covariance,
+            ]
+            .iter()
+            .zip([
+                &reference.bias().unwrap().raw,
+                &reference.bias().unwrap().derivative,
+                &reference.bias().unwrap().curvature,
+                &reference.bias().unwrap().covariance,
+            ]) {
+                for (&a, &b) in got.iter().zip(expected) {
+                    assert!((a - b).abs() < 2e-8, "mode {mode}: {a} vs {b}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn bias_missing_units_fail_without_sample_selection() {
+        let (request, mut loaded) = bias_fixture(false);
+        loaded.bias_units.as_mut().unwrap().missing[3] = true;
+        let error = fit_prepared_ppml(request, loaded).unwrap_err();
+        assert!(
+            error.to_string().contains("missing on a retained"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn bias_rejects_separation_selected_sample_and_one_unit() {
+        let (request, mut loaded) = bias_fixture(false);
+        loaded.bias_units.as_mut().unwrap().values.fill(1.);
+        let error = fit_prepared_ppml(request, loaded).unwrap_err();
+        assert!(error.to_string().contains("at least two"), "{error}");
+        let (mut request, mut loaded) = fixture(2, true, false, true, true, true);
+        request.bias = bias_fixture(false).0.bias;
+        loaded.bias_units = bias_fixture(false).1.bias_units;
+        let error = fit_prepared_ppml(request, loaded).unwrap_err();
+        assert!(
+            error.to_string().contains("separation deletions"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn bias_interrupt_before_auxiliary_solve_returns_no_result() {
+        let (request, loaded) = bias_fixture(false);
+        let mut seen = false;
+        let result = fit_prepared_ppml_interruptible(request, loaded, &mut |point| {
+            if point == PpmlInterruptPoint::BiasCorrection {
+                seen = true;
+                return Err(FeregError::new(
+                    ErrorCode::Interrupted,
+                    "bias test interruption",
+                ));
+            }
+            Ok(())
+        });
+        assert!(seen);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn bias_randomized_full_system_expectation_and_variation() {
+        let (request, loaded) = bias_fixture(false);
+        let exact = fit_prepared_ppml(request, loaded.clone()).unwrap();
+        let p = exact.bias().unwrap().raw.len();
+        for probes in [8, 31, 256, 1024] {
+            let mut total = vec![0.; p];
+            let mut square = vec![0.; p];
+            let mut variance = vec![0.; p];
+            for seed in 0..64 {
+                let mut request = bias_fixture(true).0;
+                request.bias.as_mut().unwrap().seed = seed;
+                request.bias.as_mut().unwrap().probes = probes;
+                let result = fit_prepared_ppml(request, loaded.clone()).unwrap();
+                let bias = result.bias().unwrap();
+                for j in 0..p {
+                    let error =
+                        bias.value(j, 3).unwrap() - exact.bias().unwrap().value(j, 3).unwrap();
+                    total[j] += error;
+                    square[j] += error * error;
+                    variance[j] += bias.value(j, 8).unwrap().powi(2);
+                }
+            }
+            for j in 0..p {
+                if variance[j] > 1e-20 {
+                    assert!(
+                        total[j].abs() < 4. * variance[j].sqrt(),
+                        "coordinate {j}: numerical mean error"
+                    );
+                    assert!(
+                        (square[j] / variance[j] - 1.).abs() < 0.6,
+                        "coordinate {j}: numerical variance mismatch"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn bias_disconnected_components_anchor_and_reconstruct_on_both_routes() {
+        let (request, mut loaded) = bias_fixture(false);
+        loaded.ols.numeric_sources[2].1 = column(&[1., 2., 1., 2., 1., 2., 3., 4., 3., 4., 3., 4.]);
+        for mode in [MemoryMode::Fast, MemoryMode::Low] {
+            let mut request = request.clone();
+            request.memory.requested = mode;
+            let result = fit_prepared_ppml(request, loaded.clone()).unwrap();
+            let bias = result.bias().unwrap();
+            assert_eq!(bias.raw[6], 0.);
+            assert_eq!(bias.raw[8], 0.);
+            assert_eq!(bias.derivative[6], 0.);
+            assert_eq!(bias.derivative[8], 0.);
+            for row in 0..12 {
+                let eta = bias.saved_effects[0][row]
+                    + bias.saved_effects[9][row]
+                    + bias.raw[10] * loaded.ols.numeric_sources[0].1.values[row]
+                    + loaded.adjustment.as_ref().unwrap().values[row];
+                assert!((eta - result.output().mean()[row].ln()).abs() < 1e-8);
+            }
+        }
+    }
+
+    #[test]
+    fn bias_frequency_multiplicity_preserves_independent_units() {
+        let (mut request, mut loaded) = bias_fixture(false);
+        loaded.ols.probability_weight = None;
+        loaded.ols.frequency_weight =
+            Some(column(&[1., 2., 1., 3., 2., 1., 2., 3., 1., 2., 1., 2.]));
+        for binding in &mut request.ols.bindings {
+            if binding.role == OlsInputRole::ProbabilityWeight {
+                binding.role = OlsInputRole::FrequencyWeight;
+            }
+        }
+        let original = fit_prepared_ppml(request.clone(), loaded.clone()).unwrap();
+        let multiplicity = loaded.ols.frequency_weight.take().unwrap().values;
+        request
+            .ols
+            .bindings
+            .retain(|b| b.role != OlsInputRole::FrequencyWeight);
+        let repeat = |values: &[f64]| {
+            values
+                .iter()
+                .zip(&multiplicity)
+                .flat_map(|(&x, &m)| std::iter::repeat(x).take(m as usize))
+                .collect::<Vec<_>>()
+        };
+        for col in std::iter::once(&mut loaded.ols.outcome)
+            .chain(loaded.ols.numeric_sources.iter_mut().map(|(_, c)| c))
+            .chain(loaded.adjustment.iter_mut())
+            .chain(loaded.bias_units.iter_mut())
+        {
+            col.values = repeat(&col.values);
+            col.missing = vec![false; col.values.len()];
+        }
+        loaded.ols.candidate = vec![true; loaded.ols.outcome.values.len()];
+        let repeated = fit_prepared_ppml(request, loaded).unwrap();
+        assert_eq!(
+            original.bias().unwrap().units,
+            repeated.bias().unwrap().units
+        );
+        for channel in [0, 1, 2, 3, 4] {
+            for j in 0..original.bias().unwrap().raw.len() {
+                assert!(
+                    (original.bias().unwrap().value(j, channel).unwrap()
+                        - repeated.bias().unwrap().value(j, channel).unwrap())
+                    .abs()
+                        < 1e-8
+                );
+            }
+        }
     }
 
     fn make_finite_control_collinear_with_first_effect(loaded: &mut LoadedPpmlInput) {
@@ -3880,6 +4304,7 @@ mod tests {
         outcome.missing[0] = true;
         outcome.missing[1] = true;
         let loaded = LoadedPpmlInput {
+            bias_units: None,
             ols: LoadedOlsInput {
                 candidate: vec![true; rows],
                 outcome,
@@ -3908,6 +4333,7 @@ mod tests {
         };
         (
             PreparedPpmlRequestV1 {
+                bias: None,
                 ols,
                 clusters: Vec::new(),
                 vce: PpmlVceRequest::Robust,

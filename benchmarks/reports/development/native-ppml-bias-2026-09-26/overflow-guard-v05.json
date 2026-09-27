@@ -1,0 +1,12 @@
+{
+  "actual_plugin_abi": "pass",
+  "build_log_sha256": "3eb7ef29ed15e7207eec151ab2f4f68d7d0d094a1f95589c0c5efe1838eb2349",
+  "change_from_v04": "Reject nonfinite total numerical variance explicitly before the roundoff clamp; no change to the contractions, RNG, solves, or ordinary estimation.",
+  "clippy_log_sha256": "a9cfa73f1adcb81f30fd9d236ec2c89dd1a0b4cf52953c034667142155b25597",
+  "clippy_new_error_messages": 0,
+  "core_log_sha256": "8fb3e949094ab2b3f00072d6464976c2ec6f4bb7440f19f2554100e9cb08a3f7",
+  "plugin_sha256": "57c5f334d4e777bce80f81b92b6aa23004401f6bdbd019c3774f63bc8552c2ce",
+  "schema": 1,
+  "source_identity": "f359a43902da7742a085e7b36d9ab909de16a9c1d8ffbff7602f754aa2d6363a",
+  "targeted_core_tests": 14
+}

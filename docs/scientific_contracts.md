@@ -65,6 +65,15 @@ a witness. Fereg's own published mean must still replay its reported objective,
 lie in its declared model space, and pass every registered score, solver, rank,
 sample, and result certificate.
 
+The optional two-FE coefficient mean correction is governed by
+[ADR 0227](adr/0227-native-ppml-mean-bias-correction.md) and
+[its statistical contract](ppml_bias_correction.md). It uses the accepted full
+FE-plus-control information operator, explicit independent score units, both
+second-order increments, and separate corrected outputs. Ordinary estimation,
+VCE and prediction remain unchanged. Requested corrections fail after any
+outcome-dependent separation deletion and never change the sample for missing
+unit IDs. Numerical probe variation is distinct from sampling uncertainty.
+
 ## Core contracts
 
 | Contract | Current accepted rule | Enablement requirement |

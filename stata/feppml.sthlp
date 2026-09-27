@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 02sep2026}{...}
+{* *! version 0.5.0 26sep2026}{...}
 {.-}
 help for {cmd:feppml} {right:(Johannes F. Schmieder)}
 {.-}
@@ -62,6 +62,14 @@ transaction. An error or Break posts no partial result.
     {cmd:xbd(}{it:newvar}{cmd:)}{col 42}alias for {cmd:eta()}
     {cmd:mu(}{it:newvar}{cmd:)}{col 42}save the fitted conditional mean
     {cmd:dropreason(}{it:newvar}{cmd:)}{col 42}save the original-row drop code
+
+  {ul:Coefficient mean-bias correction}
+    {cmd:biascorrection(exact|randomized)}{col 42}optional second-order correction
+    {cmd:biasunit(}{it:varname}{cmd:)}{col 42}explicit independent score units
+    {cmd:biasfe(}{it:stub}{cmd:)}{col 42}save raw/corrected FE contributions
+    {cmd:biasprobes(}{it:#}{cmd:)}{col 42}fixed random probes; default 256
+    {cmd:biasseed(}{it:#}{cmd:)}{col 42}random seed; default 739391
+    {cmd:biasstream(}{it:#}{cmd:)}{col 42}independent stream; default 0
 
   {ul:Execution}
     {cmd:solver(auto|map|lsmr|cmg)}{col 42}fixed-effect solver; default {cmd:auto}
@@ -271,6 +279,101 @@ requires positive reported DoF and at least two groups in every cluster
 dimension. Inference is z and Wald chi-squared, not OLS t and F. PPML does not
 store OLS RSS, TSS, MSS, R-squared, adjusted R-squared, RMSE, F, or
 {cmd:e(df_r)} fields.
+
+{marker bias}
+{title:Optional coefficient mean-bias correction}
+
+{pstd}
+{cmd:biascorrection(exact)} or {cmd:biascorrection(randomized)} requests an
+unprojected second-order correction at the accepted ordinary fit. The supported
+model has exactly two categorical intercept FE sets and ordinary numeric
+controls, with the existing offset/exposure and unweighted, fweight, or pweight
+semantics. Absorbed slopes and finite factor expansions are outside this scope.
+{cmd:biasunit(}{it:varname}{cmd:)} is required and names the numeric independent
+score unit; it is never inferred from {cmd:vce(cluster)}. At least two retained
+units are required. Rows within a unit may be dependent.
+
+{pstd}
+Let x include both FE sets and every identified control, a denote the effective
+fitting weight, and mu the ordinary fitted mean. Define
+S_g = sum_g a*x*(y-mu), J_g = sum_g a*mu*x*x', J = sum_g J_g,
+K = sum_g S_g*S_g', and V = J^(-1)*K*J^(-1). The two increments are
+
+{p 8 12 2}
+c_D = J^(-1)*sum_g J_g*J^(-1)*S_g,
+{break}c_C = (1/2)*J^(-1)*sum_rows a*mu*x*(x'*V*x),
+{break}beta_bc = beta_hat + c_D + c_C.
+
+{pstd}
+This V is a full-system intermediate, with no HC1, DoF, multiway-cluster, or
+PSD adjustment. It is not the public {cmd:e(V)}. No coefficient caps are used.
+The approximation requires an interior fit and appropriate independent-unit
+sampling and observation-process assumptions; exposure syntax alone does not
+establish those assumptions. High leverage, weak support, few units, and sparse
+outcomes can limit its accuracy. It does not supply corrected confidence
+intervals, unbiased rates, or unbiased variances of estimated effects.
+
+{pstd}
+The ordinary sample is preserved. A missing bias-unit ID on any retained row
+rejects the transaction, rather than dropping that row. Any outcome-dependent
+separation deletion also rejects a requested correction. Other ordinary
+exclusions retain their usual interpretation; the correction refers to that
+retained sample. Frequency copies stay within the supplied independent unit.
+Common weight scaling leaves the correction invariant.
+
+{pstd}
+Exact mode streams units and is limited to 10,000 units and one billion
+row-unit contributions. Randomized mode uses a fixed {cmd:biasprobes()} count
+(default 256, at least 2), {cmd:biasseed()} (default 739391), and
+{cmd:biasstream()} (default 0). Seed and stream are unsigned 32-bit integers.
+Exact mode rejects these randomization options. Philox4x32-10 assigns signs by
+numeric-unit and probe identity without changing Stata's RNG. Use different
+streams for separate branches. Signs are stable across row order, native
+threads, and memory routes; floating-point results obey the ordinary numerical
+reproducibility limits. The production implementation streams one RHS at a time.
+Small supports may reuse a cached information factor; larger supports and
+{cmd:memory(low)} reuse the sparse weighted-linear solver.
+
+{pstd}
+Ordinary {cmd:e(b)}, {cmd:e(V)}, likelihood, means, and {cmd:predict} remain
+attached to the ordinary estimate. The additional coefficient row matrices,
+in ordinary coefficient order, are {cmd:e(b_bias_raw)}, {cmd:e(b_bias_d)},
+{cmd:e(b_bias_c)}, {cmd:e(b_bias_total)}, and {cmd:e(b_bc)}. Omitted positions
+and the absorbed normalized constant are zero. Numerical standard deviations
+are {cmd:e(bias_mcse_d)}, {cmd:e(bias_mcse_c)}, and
+{cmd:e(bias_mcse_total)}; {cmd:e(bias_cov_dc)} reports the numerical covariance
+between increments. These quantify random-probe variation conditional on the
+fit, not sampling uncertainty. Up to eight predetermined probe groups supply
+the estimates, including covariance in the total. Exact-mode values are zero.
+
+{pstd}
+{cmd:biasfe(}{it:stub}{cmd:)} creates 18 double variables, named
+{it:stub}{cmd:_1_}{it:channel} and {it:stub}{cmd:_2_}{it:channel} in absorb order.
+Channels are {cmd:raw}, {cmd:d}, {cmd:c}, {cmd:total}, {cmd:bc}, {cmd:sed},
+{cmd:sec}, {cmd:covdc}, and {cmd:setotal}. Names must be new and fit Stata's
+name limit. Values are missing outside {cmd:e(sample)}. Within each connected
+component the smallest canonical second-FE level is anchored at zero, with
+the constant assigned to the first FE. Raw effects and both increments share
+this support-based linear normalization. Ordinary saved FEs keep their usual
+normalization. Re-anchoring a branch requires subtracting its chosen second-FE
+anchor and adding it to its first FE in every raw and increment channel.
+Branch supports must admit a compatible common anchor.
+The numerical SE channels apply to the reported anchor. Cross-level covariances
+are not returned, so shifting these SE channels does not give valid numerical
+SEs for a different anchor.
+
+{pstd}
+{cmd:e(bias_diagnostics)} is a named 21-by-1 matrix: method (1 exact, 2 randomized),
+unit count, probes, seed, stream, numerical groups, solve count, maximum
+normalized score error, maximum reconstruction error, correction seconds,
+workspace bound in bytes, maximum absolute total increment, minimum/maximum
+mean, minimum/maximum rows per unit, route (1 sparse, 2 cached factor), validity
+(1 certified interior retained sample), certificate tolerance, minimum FE-level
+information, and maximum FE-indicator leverage lower bound. The leverage field
+is a lower bound on maximum full-system leverage, not a full hat-diagonal
+estimate. Exact mode uses G+2 solves; numerical diagnostics make randomized
+mode use B+2*min(8,B) solves. Allocation, solve, interruption, or validation
+failure restores prior results and creates no requested output variables.
 
 {marker execution}
 {title:Memory, iterations, and threads}
@@ -762,6 +865,37 @@ contract, and the fitted-mean prediction on the final sample.
 {txt}{...}
 {space 2}{hline 78}
 {space 2}{it:({stata fereg_run ppml_time_series using feppml.sthlp:click to run})}
+
+{space 2}{hline 8} {it:Example 7 - Separate mean-corrected coefficients and effects} {hline 8}
+{cmd}{...}
+          preserve
+{* example_start - ppml_bias_correction}{...}
+          clear
+          set obs 480
+          generate long worker = ceil(_n/12)
+          generate byte g = ceil(worker/10)
+          generate byte h = 1 + mod(_n + worker,6)
+          generate double x = sin(_n/7)
+          generate double y = exp(.2*x+.1*g-.08*h)*(.75+.1*mod(_n,7))
+          feppml y x, absorb(g h) biascorrection(randomized) ///
+              biasunit(worker) biasprobes(256) biasseed(739391) ///
+              biasstream(0) biasfe(bf) mu(saved_mu)
+          assert `"`e(cmd)'"' == "feppml"
+          assert e(converged) == 1
+          assert e(bias_diagnostics)[2,1] == 40
+          assert e(bias_diagnostics)[5,1] == 0
+          assert reldif(bf_1_bc,bf_1_raw+bf_1_total) < 1e-12
+          matrix list e(b_bc)
+          predict double predicted_mu, mu
+          assert reldif(predicted_mu,saved_mu) <= 1e-12 if e(sample)
+          assert predicted_mu > 0 if e(sample)
+          assert predicted_mu < . if e(sample)
+          assert missing(predicted_mu) if !e(sample)
+{* example_end}{...}
+          restore
+{txt}{...}
+{space 2}{hline 78}
+{space 2}{it:({stata fereg_run ppml_bias_correction using feppml.sthlp:click to run})}
 
 {marker requirements}
 {title:Requirements}

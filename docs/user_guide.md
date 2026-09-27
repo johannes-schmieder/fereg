@@ -69,6 +69,42 @@ errors remain fatal.
 `e(feppml_solver)` and the accompanying macros distinguish requested,
 selected, concrete, effective, checkpoint, and fallback identities.
 
+### Optional PPML coefficient mean correction
+
+For an interior model with two categorical intercept effects and ordinary
+numeric controls, request a separate corrected coefficient vector and saved
+effects:
+
+```stata
+feppml events x z, absorb(worker_group firm_group) exposure(duration) ///
+    biascorrection(randomized) biasunit(worker) biasprobes(256) ///
+    biasseed(739391) biasstream(0) biasfe(bc)
+matrix list e(b_bc)
+```
+
+`e(b)`, `e(V)` and `predict` describe the ordinary accepted fit. The matrices
+`e(b_bias_d)` and `e(b_bias_c)` hold the derivative-score and curvature
+increments; `e(b_bias_total)` is their sum. `bc_1_bc` and `bc_2_bc` hold corrected
+FE contributions. Their `raw`, `d`, `c`, `total`, `sed`, `sec`, `covdc`, and
+`setotal` companion channels expose the shared normalization and conditional
+numerical uncertainty. Numerical MCSEs are not sampling standard errors.
+
+Use `biascorrection(exact)` for bounded reference calculations. Randomized
+mode defaults to 256 fixed probes, seed 739391, and stream 0. Separate branches
+should use different streams, such as 1 and 2, under a prespecified common FE
+anchor. The RNG does not modify Stata's random state. Frequency copies remain
+in their supplied independent unit; common pweight scaling changes no correction.
+
+A missing unit ID on a retained row or any outcome-dependent separation
+deletion rejects the requested transaction. No rows are silently discarded and
+no zero-coefficient fallback is substituted. The approximation does not correct
+confidence intervals, predicted rates, or variances of estimated effects.
+See [the full assumptions, normalization and diagnostics](ppml_bias_correction.md)
+and the runnable example in `help feppml`. A
+[test-only Split Branch example](../tests/stata/bias/split_branch_example.do)
+shows separate branch streams; external moment estimation and FEVC remain the
+caller's responsibility.
+
 ### OLS model and inference options
 
 The following option tables describe `fereg`. PPML options and their narrower

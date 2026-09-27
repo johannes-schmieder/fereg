@@ -29,9 +29,9 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertEqual(text.count("plugin call __fereg_estimate_plugin"), 1)
         for field in (
             "request_major=1",
-            "request_minor=6",
+            "request_minor=7",
             "result_major=1",
-            "result_minor=3",
+            "result_minor=4",
             "model_major=`model_major'",
             "model_minor=`model_minor'",
             "output_inference_matrix=`inference_shadow'",
@@ -136,6 +136,10 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             match.group(1)
             for match in re.finditer(r"(?:^|;)([a-z_]+)=", request.group("body"))
         }
+        bias_request = re.search(r"local request_arguments `\"`request_arguments'bias_method=(?P<body>.*?)\"'", ado)
+        self.assertIsNotNone(bias_request)
+        ado_keys.add("bias_method")
+        ado_keys.update(re.findall(r";([a-z_]+)=", bias_request.group("body")))
         if "inject=`plugin_inject';" in ado:
             ado_keys.add("inject")
         if "break_marker_token=`break_marker_token';" in ado:
@@ -149,11 +153,11 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         rust_keys = set(re.findall(r'"([a-z_]+)"', allowed.group("body")))
         self.assertEqual(ado_keys, rust_keys)
 
-    def test_protocol_uses_ppml_request_16_and_result_13(self) -> None:
+    def test_protocol_uses_ppml_request_17_and_result_14(self) -> None:
         protocol = PROTOCOL.read_text(encoding="utf-8")
         for token in (
-            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 6)",
-            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 3)",
+            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 7)",
+            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4)",
             "PPML_RESULT_INFERENCE_ROWS: usize = 16",
             "PPML_RESULT_DROP_COUNT_ROWS: usize = 14",
             "PPML_RESULT_SEPARATION_SEQUENCE_ROWS: usize = 5",
@@ -176,7 +180,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "rows(separation_sequence) != 5 | cols(separation_sequence) != 13",
             "rows(solver) != 4 | cols(solver) != 22",
             "rows(receipt) != 1 | cols(receipt) != 33",
-            "receipt[1,3] != 3",
+            "receipt[1,3] != 4",
             "receipt[1,33] != 1",
         ):
             self.assertIn(token, text)
@@ -926,7 +930,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "requestedsolvercode(7)",
             "matrix `runtime' = J(108,1,.)",
             "matrix `receipt' = J(1,33,0)",
-            "matrix `receipt'[1,3] = 3",
+            "matrix `receipt'[1,3] = 4",
             "matrix `receipt'[1,33] = 1",
             "requestedvcecode(2)",
             "dropsingletons(1)",

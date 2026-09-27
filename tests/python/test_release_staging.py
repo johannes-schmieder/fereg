@@ -126,8 +126,8 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertEqual(manifest["action_protocol"], "1.6")
             self.assertEqual(manifest["ols_result_wire"], "1.5")
             self.assertEqual(manifest["model_wire"], "2.1")
-            self.assertEqual(manifest["ppml_request_wire"], "1.6")
-            self.assertEqual(manifest["ppml_result_wire"], "1.3")
+            self.assertEqual(manifest["ppml_request_wire"], "1.7")
+            self.assertEqual(manifest["ppml_result_wire"], "1.4")
             caveats = " ".join(manifest["support_caveats"]).lower()
             self.assertNotRegex(caveats, r"r\(498\)|fail[- ]closed|ols[- ]only")
 

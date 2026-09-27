@@ -10,6 +10,8 @@ program define _fereg_estimate_ppml, eclass
         [FWEIGHT(varname numeric) PWEIGHT(varname numeric) ///
          ABSorb(string asis) CLUster(string asis) KEEPsingletons ///
          OFFset(varname numeric) EXPosure(varname numeric) ///
+         BIASCORRection(string) BIASUNIT(varname numeric) BIASFE(name) ///
+         BIASPROBes(string) BIASSEED(string) BIASSTREAM(string) ///
          VCE(string) SEParation(string asis) ///
          RESIDual(name) RESIDualtype(string) XB(name) D(name) ///
          ETA(name) XBD(name) MU(name) DROPreason(name) ///
@@ -21,6 +23,48 @@ program define _fereg_estimate_ppml, eclass
          ALLOCATIONAUDIT INJECT(string) PUBLICMode ///
          PUBLICCMDLINE(string) PUBLICTIMEIT PUBLICDISPlay ///
          PUBLICWEXP(string)]
+
+    local bias_method = lower(strtrim(`"`biascorrection'"'))
+    local has_bias = (`"`bias_method'"' != "")
+    if !`has_bias' & `"`biasunit'`biasfe'`biasprobes'`biasseed'`biasstream'"' != "" {
+        di as error "bias options require biascorrection(exact or randomized)"
+        exit 198
+    }
+    if `has_bias' {
+        if !inlist(`"`bias_method'"', "exact", "randomized") | `"`biasunit'"' == "" {
+            di as error "biascorrection() requires exact or randomized and explicit biasunit()"
+            exit 198
+        }
+        if `"`bias_method'"' == "exact" & `"`biasprobes'`biasseed'`biasstream'"' != "" {
+            di as error "probe, seed, and stream controls apply only to randomized correction"
+            exit 198
+        }
+        if `"`biasprobes'"' == "" local biasprobes = cond(`"`bias_method'"' == "exact", 0, 256)
+        if `"`biasseed'"' == "" local biasseed = cond(`"`bias_method'"' == "exact", 0, 739391)
+        if `"`biasstream'"' == "" local biasstream 0
+        foreach option in biasprobes biasseed biasstream {
+            local value = real(`"``option''"')
+            if missing(`value') | `value' != floor(`value') | !inrange(`value', 0, 4294967295) {
+                di as error "`option'() must be an unsigned 32-bit integer"
+                exit 198
+            }
+            local `option' = strtrim(string(`value', "%21.0f"))
+        }
+        if `"`bias_method'"' == "randomized" & `biasprobes' < 2 {
+            di as error "randomized correction requires at least two probes"
+            exit 198
+        }
+    }
+    local bias_target_variables
+    if `"`biasfe'"' != "" {
+        forvalues effect = 1/2 {
+            foreach channel in raw d c total bc sed sec covdc setotal {
+                local target `biasfe'_`effect'_`channel'
+                confirm new variable `target'
+                local bias_target_variables `bias_target_variables' `target'
+            }
+        }
+    }
 
     gettoken depvar_token : varlist
     capture confirm numeric variable `depvar_token'
@@ -436,7 +480,8 @@ program define _fereg_estimate_ppml, eclass
         local adjustment_variable `exposure'
         local adjustment_position = `n_bindings' + 1
     }
-    local input_variable_count = `n_bindings' + `has_adjustment'
+    local bias_unit_position = cond(`has_bias', `n_bindings' + `has_adjustment' + 1, 0)
+    local input_variable_count = `n_bindings' + `has_adjustment' + `has_bias'
 
     local n_absorb_intercepts 0
     local n_absorb_slopes 0
@@ -445,6 +490,10 @@ program define _fereg_estimate_ppml, eclass
             local n_absorb_intercepts = `n_absorb_intercepts' + `absorb_terms'[`row',3]
             local n_absorb_slopes = `n_absorb_slopes' + `absorb_terms'[`row',4]
         }
+    }
+    if `has_bias' & (`n_absorb_terms' != 2 | `n_absorb_intercepts' != 2 | `n_absorb_slopes' != 0) {
+        di as error "bias correction requires exactly two categorical intercept fixed effects"
+        exit 198
     }
     local output_saved_count = `n_absorb_intercepts' + `n_absorb_slopes'
     local saved_target_variables
@@ -465,7 +514,7 @@ program define _fereg_estimate_ppml, eclass
             }
         }
     }
-    local all_output_names `requested_output_names' `saved_target_variables'
+    local all_output_names `requested_output_names' `saved_target_variables' `bias_target_variables'
     local all_output_names = strtrim(`"`all_output_names'"')
     local unique_all_output_names : list uniq all_output_names
     local all_output_count : word count `all_output_names'
@@ -584,6 +633,30 @@ program define _fereg_estimate_ppml, eclass
     }
     if `output_saved_count' == 0 local output_saved_registry "."
 
+    local output_bias_registry "."
+    local bias_shadow_variables
+    local output_bias_count : word count `bias_target_variables'
+    if `output_bias_count' {
+        local output_bias_registry
+        foreach target of local bias_target_variables {
+            tempvar bias_shadow_variable
+            generate double `bias_shadow_variable' = .
+            label variable `bias_shadow_variable' "[PPML bias] `target'"
+            local output_variables `output_variables' `bias_shadow_variable'
+            local output_variable_count : word count `output_variables'
+            local position = `input_variable_count' + `output_variable_count'
+            local piece `"`=strlen("`position'")':`position'"'
+            if `"`output_bias_registry'"' == "" local output_bias_registry `"`piece'"'
+            else local output_bias_registry `"`output_bias_registry'|`piece'"'
+            local bias_shadow_variables `bias_shadow_variables' `bias_shadow_variable'
+        }
+    }
+    if `has_bias' {
+        tempname bias_shadow bias_diagnostics_shadow
+        matrix `bias_shadow' = J(9, `matrix_dimension', .)
+        matrix `bias_diagnostics_shadow' = J(21, 1, .)
+    }
+
     tempname b_shadow v_shadow status_shadow fit_shadow dof_shadow
     tempname fe_shadow cluster_shadow subset_shadow separation_shadow
     tempname inference_shadow drop_counts_shadow separation_sequence_shadow
@@ -635,7 +708,10 @@ program define _fereg_estimate_ppml, eclass
     quietly _fereg_memory_baseline
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
-    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=feppml-estimation;plugin=0.5.0;result_major=1;result_minor=3;request_major=1;request_minor=6;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=feppml-estimation;plugin=0.5.0;result_major=1;result_minor=4;request_major=1;request_minor=7;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    if `has_bias' {
+        local request_arguments `"`request_arguments'bias_method=`bias_method';bias_unit=`bias_unit_position';bias_probes=`biasprobes';bias_seed=`biasseed';bias_stream=`biasstream';output_bias_count=`output_bias_count';output_bias_channels=`output_bias_registry';output_bias_matrix=`bias_shadow';output_bias_diagnostics=`bias_diagnostics_shadow';"'
+    }
     if `"`plugin_inject'"' != "" {
         local request_arguments `"`request_arguments'inject=`plugin_inject';"'
     }
@@ -675,7 +751,7 @@ program define _fereg_estimate_ppml, eclass
     }
     else local request_bundle `"bundle=`request_bundle'"'
     plugin call __fereg_estimate_plugin `touse' `depvar' `source_vars' ///
-        `weight_variable' `adjustment_variable' `output_variables', ///
+        `weight_variable' `adjustment_variable' `biasunit' `output_variables', ///
         `"estimate-ppml"' `"`request_bundle'"'
 
     // Developer-only publication-boundary mutations prove that malformed
@@ -716,6 +792,26 @@ program define _fereg_estimate_ppml, eclass
         exit 3499
     }
     local coefficient_count = r(coefficients)
+    if `has_bias' {
+        forvalues row = 1/21 {
+            if missing(`bias_diagnostics_shadow'[`row',1]) exit 3499
+        }
+        if `bias_diagnostics_shadow'[1,1] != cond(`"`bias_method'"' == "exact",1,2) | ///
+            `bias_diagnostics_shadow'[2,1] < 2 | `bias_diagnostics_shadow'[2,1] > `receipt_shadow'[1,9] | ///
+            `bias_diagnostics_shadow'[3,1] != `biasprobes' | ///
+            `bias_diagnostics_shadow'[4,1] != `biasseed' | ///
+            `bias_diagnostics_shadow'[5,1] != `biasstream' | ///
+            `bias_diagnostics_shadow'[18,1] != 1 | `receipt_shadow'[1,16] != 0 exit 3499
+        forvalues slot = 1/`coefficient_count' {
+            forvalues row = 1/9 {
+                if missing(`bias_shadow'[`row',`slot']) exit 3499
+            }
+            if reldif(`bias_shadow'[1,`slot'], `b_shadow'[1,`slot']) > `tolerance' | ///
+                reldif(`bias_shadow'[4,`slot'], `bias_shadow'[2,`slot'] + `bias_shadow'[3,`slot']) > 1e-12 | ///
+                reldif(`bias_shadow'[5,`slot'], `bias_shadow'[1,`slot'] + `bias_shadow'[4,`slot']) > 1e-12 | ///
+                min(`bias_shadow'[6,`slot'], `bias_shadow'[7,`slot'], `bias_shadow'[9,`slot']) < 0 exit 3499
+        }
+    }
     local solver_selected "map"
     if `solver_shadow'[1,2] == 3 local solver_selected "lsmr"
     if `solver_shadow'[1,2] == 7 local solver_selected "cmg"
@@ -822,7 +918,7 @@ program define _fereg_estimate_ppml, eclass
         exit 3499
     }
     foreach shadow in `residual_shadow' `xb_shadow' `d_shadow' ///
-        `eta_shadow' `mu_shadow' `saved_shadow_variables' {
+        `eta_shadow' `mu_shadow' `saved_shadow_variables' `bias_shadow_variables' {
         if `"`shadow'"' == "" continue
         capture assert `shadow' < . if `sample_shadow'
         if _rc {
@@ -913,6 +1009,30 @@ program define _fereg_estimate_ppml, eclass
 
     mata: _fereg_ppml_post_scalars()
     if `"`inject'"' == "postscalars" exit 3498
+
+    if `has_bias' {
+        matrix colnames `bias_shadow' = `marked_names'
+        matrix rownames `bias_shadow' = raw derivative curvature total corrected mcse_d mcse_c cov_dc mcse_total
+        local bias_matrices b_bias_raw b_bias_d b_bias_c b_bias_total b_bc bias_mcse_d bias_mcse_c bias_cov_dc bias_mcse_total
+        tempname bias_row
+        forvalues row = 1/9 {
+            local name : word `row' of `bias_matrices'
+            matrix `bias_row' = `bias_shadow'[`row',1..`coefficient_count']
+            ereturn matrix `name' = `bias_row', copy
+        }
+        matrix rownames `bias_diagnostics_shadow' = method units probes seed stream groups solves ///
+            max_score max_reconstruction seconds workspace_bytes max_increment ///
+            min_mu max_mu min_unit_rows max_unit_rows route valid ///
+            tolerance min_level_information max_fe_leverage_lb
+        matrix colnames `bias_diagnostics_shadow' = value
+        ereturn matrix bias_diagnostics = `bias_diagnostics_shadow', copy
+        ereturn local bias_method "`bias_method'"
+        ereturn local bias_unit "`biasunit'"
+        ereturn local bias_rng "philox4x32-10"
+        ereturn local bias_normalization "minimum-second-level-per-component"
+        ereturn local bias_validity "interior-retained-sample"
+        ereturn local bias_fevars "`bias_target_variables'"
+    }
 
     matrix colnames `status_shadow' = slot status kept omitted
     matrix rownames `status_shadow' = `marked_names'
@@ -1215,8 +1335,8 @@ program define _fereg_estimate_ppml, eclass
     ereturn local feppml_solver_fallback_reason "`solver_fallback_reason'"
     ereturn local feppml_action_protocol "1.6"
     ereturn local feppml_model_wire "2.1"
-    ereturn local feppml_request_wire "1.6"
-    ereturn local feppml_result_wire "1.3"
+    ereturn local feppml_request_wire "1.7"
+    ereturn local feppml_result_wire "1.4"
     ereturn local feppml_plugin "0.5.0"
     if `"`inject'"' == "breakpostpublic" {
         di as result "FEPPML_BREAK_ARMED"
@@ -1240,6 +1360,13 @@ program define _fereg_estimate_ppml, eclass
                 local saved_shadow : word `saved_index' of `saved_shadow_variables'
                 local saved_target : word `saved_index' of `saved_target_variables'
                 rename `saved_shadow' `saved_target'
+            }
+        }
+        if `output_bias_count' {
+            forvalues index = 1/`output_bias_count' {
+                local shadow : word `index' of `bias_shadow_variables'
+                local target : word `index' of `bias_target_variables'
+                rename `shadow' `target'
             }
         }
         _estimates unhold `held_estimates', not

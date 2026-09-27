@@ -105,7 +105,7 @@ generate double original_value = _n / 10
 quietly datasignature set, reset
 
 foreach example in ppml_basic ppml_absorbed_outputs ppml_weights ///
-    ppml_clusters ppml_separation ppml_time_series {
+    ppml_clusters ppml_separation ppml_time_series ppml_bias_correction {
     capture noisily _fereg_ppml_help_run `example' ///
         using `"`feppml_help_source'"', command(`feppml_test_command')
     assert _rc == 0
