@@ -9,6 +9,20 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## Complete original-issue inventory — 2026-09-27
+
+The [captured inventory](benchmarks/reports/development/performance-repair-issue-inventory-2026-09-27/README.md)
+indexes every one of the original campaign's 472 unsuccessful/excluded arm
+records and 1,258 timing-ineligible pair records, with frozen CSV locations and
+input/result receipt hashes. These include overlapping records for failures and
+their unavailable comparisons. All 53 complete stock-reference comparisons above
+1.20 remain listed as historical targets. Family dispositions distinguish tested
+repairs, partial adjudication, unresolved science and legitimate exclusions; no
+original result or eligibility changed. Generation asserts complete coverage and
+a captured input identity for every issue. The full implementation plan remains
+active. Johannes explicitly authorized in-scope SCC testing without further
+approval requests, including routine deployment, submission and collection.
+
 ## Exact categorical separation repair — 2026-09-27
 
 Candidate04 is committed as **f8803410** and adopted for local development under [ADR 0230](docs/adr/0230-exact-coefficient-certificates-for-ppml-separation.md).
