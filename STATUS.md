@@ -69,6 +69,9 @@ The native documented pairwise policy matches exact rank on these inputs only;
 this is not a universal large-three-FE rank claim. No timing rankings, frozen
 manifests, native DoF or covariance tolerances changed. The large degree-two
 accuracy discrepancy still needs a stricter reference check on its actual input.
+An attempted local regeneration failed the exact per-column input guard before
+any estimator ran; its [rejection](benchmarks/reports/development/ols-comparator-adjudication-local-2026-09-27/original-d2/README.md)
+is preserved. Use original bytes or the pinned SCC runtime for that check.
 
 ## Benchmark repair implementation — 2026-09-27
 

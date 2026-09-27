@@ -1,0 +1,19 @@
+{
+  "purpose": "Untimed accuracy adjudication on the literal original large degree-two input; reuse existing SCC candidate outputs, no new timing rank.",
+  "case": {
+    "design": "strong_d2",
+    "n": 983040,
+    "k": 10,
+    "seed": 104729
+  },
+  "reference_threads": 1,
+  "native_output_threads": 4,
+  "input_sha256": "0e4b437326bfe01a0e6058b0487f75b66036ae9f4f65d1ea94bfcea21c758ff0",
+  "native_result_sha256": "8743e06581015e79b2a7273ee0572215a234153ee09732d8c4d1786df2b70256",
+  "reference_arms": [
+    "default",
+    "strict",
+    "strict_exact_dof"
+  ],
+  "tolerances": "Unchanged manifest-light-v2 science; no full large explicit-dummy matrix is formed."
+}
